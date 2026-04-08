@@ -64,10 +64,35 @@ export const DOW = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
 export const HOURS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
 export const DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
-export const topbarMeta = {
-  home:     { title:"Buenos días ☀️", sub:"Lunes 7 de Abril" },
-  agenda:   { title:"Agenda",          sub:"Semana del 7 Abr" },
-  patients: { title:"Pacientes",       sub:"9 en total · 7 activos" },
-  finances: { title:"Finanzas",        sub:"Febrero 2026" },
-  settings: { title:"Ajustes",         sub:"Cardigan Pro" },
-};
+export const TODAY = new Date(2026, 3, 7); // April 7, 2026
+
+const SHORT_MONTHS_TOPBAR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const FULL_MONTHS_TOPBAR  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function todayGreeting() {
+  const h = TODAY.getHours();
+  if (h < 12) return "Buenos días ☀️";
+  if (h < 19) return "Buenas tardes 🌤️";
+  return "Buenas noches 🌙";
+}
+
+function todayLabel() {
+  const dayName = DAY_ORDER[((TODAY.getDay() + 6) % 7)];
+  return `${dayName} ${TODAY.getDate()} de ${FULL_MONTHS_TOPBAR[TODAY.getMonth()]}`;
+}
+
+function todayShort() {
+  return `${TODAY.getDate()} ${SHORT_MONTHS_TOPBAR[TODAY.getMonth()]}`;
+}
+
+export function buildTopbarMeta(patients) {
+  const total = patients.length;
+  const active = patients.filter(p => p.status === "active").length;
+  return {
+    home:     { title: todayGreeting(), sub: todayLabel() },
+    agenda:   { title:"Agenda",          sub:`Semana del ${todayShort()}` },
+    patients: { title:"Pacientes",       sub:`${total} en total · ${active} activos` },
+    finances: { title:"Finanzas",        sub: FULL_MONTHS_TOPBAR[TODAY.getMonth()] + " " + TODAY.getFullYear() },
+    settings: { title:"Ajustes",         sub:"Cardigan Pro" },
+  };
+}

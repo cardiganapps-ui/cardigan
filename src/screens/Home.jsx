@@ -1,12 +1,25 @@
 import { useState } from "react";
-import { clientColors } from "../data/seedData";
+import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
 
 export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating }) {
+  const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const FULL_MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const todayStr     = `${TODAY.getDate()} ${SHORT_MONTHS[TODAY.getMonth()]}`;
+  const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
+  const todayMonthName = FULL_MONTHS[TODAY.getMonth()];
+
   const totalBilled   = patients.reduce((s,p) => s+p.billed, 0);
   const totalPaid     = patients.reduce((s,p) => s+p.paid, 0);
   const totalOwed     = totalBilled - totalPaid;
   const activeCount   = patients.filter(p=>p.status==="active").length;
-  const todaySessions = upcomingSessions.filter(s => s.date === "7 Abr");
+  const todaySessions = upcomingSessions.filter(s => s.date === todayStr);
+
+  const currentMonthPayments = payments.filter(p => {
+    const parts = p.date.split(" ");
+    return parts[1] === SHORT_MONTHS[TODAY.getMonth()];
+  });
+  const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
+
   const [selected, setSelected] = useState(null);
 
   const openPatient = (name) => {
@@ -20,7 +33,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Sesiones Hoy</div>
           <div className="kpi-value">{todaySessions.length}</div>
-          <div className="kpi-meta">Lunes 7 Abr</div>
+          <div className="kpi-meta">{todayDayName} {todayStr}</div>
         </div>
         <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Pacientes</div>
@@ -29,8 +42,8 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         </div>
         <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Cobrado (Mes)</div>
-          <div className="kpi-value">$9,500</div>
-          <div className="kpi-meta">Febrero 2026</div>
+          <div className="kpi-value">${cobradoMes.toLocaleString()}</div>
+          <div className="kpi-meta">{todayMonthName} {TODAY.getFullYear()}</div>
         </div>
         <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Por Cobrar</div>
@@ -41,7 +54,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
 
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Hoy — Lunes 7 Abr</span>
+          <span className="section-title">Hoy — {todayDayName} {todayStr}</span>
           <button className="see-all" onClick={() => setScreen("agenda")}>Ver semana</button>
         </div>
         <div className="card">

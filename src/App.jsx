@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCardiganData } from "./hooks/useCardiganData";
-import { topbarMeta } from "./data/seedData";
+import { buildTopbarMeta } from "./data/seedData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { Home } from "./screens/Home";
@@ -48,12 +48,13 @@ export default function Cardigan() {
 
   const screenMap = {
     home:     <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
-    agenda:   <Agenda upcomingSessions={upcomingSessions} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
+    agenda:   <Agenda upcomingSessions={upcomingSessions} patients={patients} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
     patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     settings: <Settings />,
   };
 
+  const topbarMeta = useMemo(() => buildTopbarMeta(patients), [patients]);
   const isAuth = screen === "auth";
   const meta   = topbarMeta[screen] || topbarMeta.home;
 

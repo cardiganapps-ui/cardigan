@@ -1,7 +1,9 @@
 import { clientColors } from "../data/seedData";
 
-export function SessionSheet({ session, onClose, onMarkCompleted, onCancelSession, mutating }) {
+export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCancelSession, mutating }) {
   if (!session) return null;
+  const patientData = patients?.find(p => p.name === session.patient);
+  const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div className="sheet-panel" onClick={e => e.stopPropagation()}>
@@ -21,7 +23,7 @@ export function SessionSheet({ session, onClose, onMarkCompleted, onCancelSessio
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
             {[
               { label:"Estado",    value: session.status==="cancelled" ? "Cancelada" : "Agendada", highlight: session.status!=="cancelled" },
-              { label:"Tarifa",    value:"$700" },
+              { label:"Tarifa",    value:rate },
               { label:"¿Se cobra?",value:"Sí" },
               { label:"Tipo",      value:"Individual" },
             ].map((item,i) => (

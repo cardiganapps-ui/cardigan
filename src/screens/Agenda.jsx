@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import { clientColors, MONTH_NAMES, DOW, HOURS } from "../data/seedData";
+import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 
 /* ── DATE HELPERS ── */
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-const TODAY = new Date(2026, 3, 7); // April 7 2026
 
 function formatDateStr(d) {
   return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`;
@@ -239,7 +238,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 }
 
 /* ── AGENDA ROOT ── */
-export function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mutating }) {
+export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onCancelSession, mutating }) {
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
@@ -258,6 +257,7 @@ export function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSessi
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
       <SessionSheet
         session={selectedSession}
+        patients={patients}
         onClose={() => setSelectedSession(null)}
         onMarkCompleted={async (session) => {
           const ok = await onMarkSessionCompleted(session);
