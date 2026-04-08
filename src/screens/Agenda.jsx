@@ -3,21 +3,48 @@ import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { IconLeaf } from "../components/Icons";
 
-/* ── SWIPE HOOK ── */
+/* ── INTERACTIVE SWIPE HOOK ── */
 function useSwipe(onLeft, onRight) {
-  const start = useRef(null);
+  const ref = useRef(null);
+  const [offset, setOffset] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+
   const onTouchStart = useCallback((e) => {
-    start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.touches[0].clientX < 30) return; // reserve left edge for drawer
+    ref.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
   }, []);
+
+  const onTouchMove = useCallback((e) => {
+    if (!ref.current) return;
+    const dx = e.touches[0].clientX - ref.current.x;
+    const dy = e.touches[0].clientY - ref.current.y;
+    if (!ref.current.active) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        ref.current.active = true;
+        setSwiping(true);
+      } else if (Math.abs(dy) > 10) {
+        ref.current = null;
+        return;
+      } else return;
+    }
+    if (ref.current.active) setOffset(dx);
+  }, []);
+
   const onTouchEnd = useCallback((e) => {
-    if (!start.current) return;
-    const dx = e.changedTouches[0].clientX - start.current.x;
-    const dy = e.changedTouches[0].clientY - start.current.y;
-    start.current = null;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) onLeft(); else onRight();
+    if (!ref.current?.active) { ref.current = null; return; }
+    const dx = e.changedTouches[0].clientX - ref.current.x;
+    ref.current = null;
+    setSwiping(false);
+    setOffset(0);
+    if (dx < -80) onLeft();
+    else if (dx > 80) onRight();
   }, [onLeft, onRight]);
-  return { onTouchStart, onTouchEnd };
+
+  const style = swiping
+    ? { transform: `translateX(${offset}px)`, transition: "none", willChange: "transform" }
+    : undefined;
+
+  return { onTouchStart, onTouchMove, onTouchEnd, style };
 }
 
 /* ── DATE HELPERS ── */
@@ -124,7 +151,8 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
     : `${formatDateStr(monday)} – ${formatDateStr(sunday)}`;
 
   return (
-    <div {...swipe}>
+    <div onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove} onTouchEnd={swipe.onTouchEnd} style={{ overflow:"hidden" }}>
+      <div style={swipe.style}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 10px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
         <div style={{ textAlign:"center" }}>
@@ -164,6 +192,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
             </div>
         }
       </div>
+      </div>
     </div>
   );
 }
@@ -184,7 +213,8 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
   );
 
   return (
-    <div {...swipe}>
+    <div onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove} onTouchEnd={swipe.onTouchEnd} style={{ overflow:"hidden" }}>
+      <div style={swipe.style}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 8px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
         <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</div>
@@ -232,6 +262,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
           </div>
         ))}
       </div>
+      </div>
     </div>
   );
 }
@@ -255,7 +286,8 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
   );
 
   return (
-    <div {...swipe}>
+    <div onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove} onTouchEnd={swipe.onTouchEnd} style={{ overflow:"hidden" }}>
+      <div style={swipe.style}>
       <div className="month-header">
         <button className="month-nav-btn" onClick={() => goMonth(-1)}>‹</button>
         <span className="month-title">{MONTH_NAMES[displayMonth]} {displayYear}</span>
@@ -294,6 +326,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}
             </div>
         }
+      </div>
       </div>
     </div>
   );
