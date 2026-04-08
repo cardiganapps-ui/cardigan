@@ -230,8 +230,8 @@ html, body {
 .kpi-scroll::-webkit-scrollbar { display: none; }
 .kpi-card {
   background: var(--white); border-radius: var(--radius-lg);
-  padding: 14px 16px; min-width: 140px; flex-shrink: 0;
-  box-shadow: var(--shadow-sm); scroll-snap-align: start;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-lt); position: relative; overflow: hidden;
 }
 .kpi-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--teal-light), var(--teal)); }

@@ -16,28 +16,26 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
 
   return (
     <div className="page">
-      <div style={{ paddingTop:16, paddingBottom:4 }}>
-        <div className="kpi-scroll">
-          <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
-            <div className="kpi-label">Cobrado (Mes)</div>
-            <div className="kpi-value">$9,500</div>
-            <div className="kpi-meta">Febrero 2026</div>
-          </div>
-          <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
-            <div className="kpi-label">Por Cobrar</div>
-            <div className="kpi-value" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
-            <div className="kpi-meta">{patients.filter(p=>p.billed>p.paid).length} pacientes</div>
-          </div>
-          <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
-            <div className="kpi-label">Sesiones Hoy</div>
-            <div className="kpi-value">{todaySessions.length}</div>
-            <div className="kpi-meta">Lunes 7 Abr</div>
-          </div>
-          <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
-            <div className="kpi-label">Pacientes</div>
-            <div className="kpi-value">{activeCount}</div>
-            <div className="kpi-meta">activos</div>
-          </div>
+      <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
+          <div className="kpi-label">Sesiones Hoy</div>
+          <div className="kpi-value">{todaySessions.length}</div>
+          <div className="kpi-meta">Lunes 7 Abr</div>
+        </div>
+        <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
+          <div className="kpi-label">Pacientes</div>
+          <div className="kpi-value">{activeCount}</div>
+          <div className="kpi-meta">activos</div>
+        </div>
+        <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
+          <div className="kpi-label">Cobrado (Mes)</div>
+          <div className="kpi-value">$9,500</div>
+          <div className="kpi-meta">Febrero 2026</div>
+        </div>
+        <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
+          <div className="kpi-label">Por Cobrar</div>
+          <div className="kpi-value" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
+          <div className="kpi-meta">{patients.filter(p=>p.billed>p.paid).length} pacientes</div>
         </div>
       </div>
 
