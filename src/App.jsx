@@ -40,7 +40,7 @@ function AppShell({ user, signOut }) {
     loading, mutating, mutationError,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
-    deleteSession, deletePayment, refresh,
+    deleteSession, deletePayment, generateRecurringSessions, refresh,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
@@ -63,7 +63,7 @@ function AppShell({ user, signOut }) {
       onCancelSession={async (s) => s?.status !== "cancelled" && await updateSessionStatus(s.id, "cancelled")}
       deleteSession={deleteSession} mutating={mutating} />,
     patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal}
-      updatePatient={updatePatient} deletePatient={deletePatient} mutating={mutating} />,
+      updatePatient={updatePatient} deletePatient={deletePatient} generateRecurringSessions={generateRecurringSessions} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments}
       onRecordPayment={openRecordPaymentModal} deletePayment={deletePayment} mutating={mutating} />,
     settings: <Settings user={user} signOut={signOut} />,

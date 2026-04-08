@@ -8,16 +8,19 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   const [filterMethod, setFilterMethod]   = useState("all");
   const [dateRange, setDateRange]         = useState("all");
 
+  const monthAbbrevs = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const monthOrder = { "Ene":1, "Feb":2, "Mar":3, "Abr":4, "May":5, "Jun":6, "Jul":7, "Ago":8, "Sep":9, "Oct":10, "Nov":11, "Dic":12 };
   const parseDateKey = (dateStr) => {
     const [day, mon] = dateStr.split(" ");
     return (monthOrder[mon] || 0) * 100 + parseInt(day);
   };
 
+  const availableMonths = monthAbbrevs.filter(m => payments.some(p => p.date.split(" ")[1] === m));
+  const periodOptions = [{k:"all",l:"Todo"}, ...availableMonths.map(m => ({k:m, l:m}))];
+
   let filtered = [...payments];
   if (filterMethod !== "all") filtered = filtered.filter(p => p.method === filterMethod);
-  if (dateRange === "jan")    filtered = filtered.filter(p => p.date.includes("Ene"));
-  if (dateRange === "feb")    filtered = filtered.filter(p => p.date.includes("Feb"));
+  if (dateRange !== "all") filtered = filtered.filter(p => p.date.split(" ")[1] === dateRange);
   filtered.sort((a,b) => sortOrder === "desc" ? parseDateKey(b.date)-parseDateKey(a.date) : parseDateKey(a.date)-parseDateKey(b.date));
 
   const totalFiltered = filtered.reduce((s,p) => s+p.amount, 0);
@@ -87,11 +90,11 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>Período</span>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2 }}>
-            {[{k:"all",l:"Todo"},{k:"jan",l:"Ene"},{k:"feb",l:"Feb"}].map(o => (
+          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)", flexShrink:0 }}>Período</span>
+          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2, overflowX:"auto", marginLeft:10 }}>
+            {periodOptions.map(o => (
               <button key={o.k} onClick={() => setDateRange(o.k)}
-                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none" }}>
+                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none", whiteSpace:"nowrap", flexShrink:0 }}>
                 {o.l}
               </button>
             ))}

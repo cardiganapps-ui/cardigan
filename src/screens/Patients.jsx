@@ -2,7 +2,7 @@ import { useState } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
 
-export function Patients({ patients, onRecordPayment, updatePatient, deletePatient, mutating }) {
+export function Patients({ patients, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -17,6 +17,7 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
   const [editDay, setEditDay]       = useState("");
   const [editTime, setEditTime]     = useState("");
   const [editStatus, setEditStatus] = useState("");
+  const [genWeeks, setGenWeeks]     = useState("4");
 
   const openDetail = (p) => {
     setSelected(p);
@@ -179,6 +180,29 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                       <option value="active">Activo</option>
                       <option value="ended">Finalizado</option>
                     </select>
+                  </div>
+                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:8, paddingTop:14, marginBottom:14 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>Citas recurrentes</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <div className="input-group" style={{ flex:1, marginBottom:0 }}>
+                        <label className="input-label">Semanas</label>
+                        <input className="input" type="number" min="1" max="52" value={genWeeks} onChange={e => setGenWeeks(e.target.value)} />
+                      </div>
+                      <button type="button" className="btn" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", marginTop:18, whiteSpace:"nowrap", fontSize:12, fontWeight:700 }}
+                        disabled={mutating}
+                        onClick={async () => {
+                          // Save any pending edits first, then generate
+                          await saveEdit();
+                          const updated = patients.find(p => p.id === selected.id) || selected;
+                          await generateRecurringSessions(updated.id, Number(genWeeks) || 4);
+                        }}
+                      >
+                        {mutating ? "..." : `Generar ${genWeeks || 0} citas`}
+                      </button>
+                    </div>
+                    <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6 }}>
+                      Cada {editDay} a las {editTime}
+                    </div>
                   </div>
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
                     {mutating ? "Guardando..." : "Guardar cambios"}

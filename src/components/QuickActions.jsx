@@ -17,13 +17,15 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
   const [rate, setRate]     = useState("700");
   const [day, setDay]       = useState("Lunes");
   const [time, setTime]     = useState("16:00");
+  const [recurring, setRecurring] = useState(false);
+  const [recurringWeeks, setRecurringWeeks] = useState("4");
   const [err, setErr]       = useState("");
 
   const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) { setErr("Ingresa el nombre del paciente."); return; }
     setErr("");
-    const ok = await onSubmit({ name, parent, rate: Number(rate), day, time });
+    const ok = await onSubmit({ name, parent, rate: Number(rate), day, time, recurringWeeks: recurring ? Number(recurringWeeks) : 0 });
     if (ok) onClose();
   };
 
@@ -60,6 +62,24 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
               <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
             </div>
           </div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0 4px" }}>
+            <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>Generar citas recurrentes</span>
+            <button type="button"
+              onClick={() => setRecurring(r => !r)}
+              style={{ width:40, height:22, borderRadius:11, border:"none", cursor:"pointer", padding:2, background: recurring ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative" }}
+            >
+              <div style={{ width:18, height:18, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: recurring ? "translateX(18px)" : "translateX(0)", transition:"transform 0.2s" }} />
+            </button>
+          </div>
+          {recurring && (
+            <div className="input-group" style={{ marginTop:6 }}>
+              <label className="input-label">Semanas a generar</label>
+              <input className="input" type="number" min="1" max="52" value={recurringWeeks} onChange={e => setRecurringWeeks(e.target.value)} />
+              <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>
+                Se crearán {recurringWeeks || 0} citas cada {day} a las {time}
+              </div>
+            </div>
+          )}
           {err && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{err}</div>}
           <button className="btn btn-primary" type="submit" disabled={mutating}>
             {mutating ? "Guardando..." : "Agregar paciente"}

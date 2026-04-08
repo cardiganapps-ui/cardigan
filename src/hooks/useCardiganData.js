@@ -15,6 +15,24 @@ function mapRows(rows) {
   return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx }));
 }
 
+const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
+
+function getUpcomingDates(dayName, weeks) {
+  const target = DAY_TO_JS[dayName];
+  if (target == null || weeks <= 0) return [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let diff = target - today.getDay();
+  if (diff <= 0) diff += 7;
+  const dates = [];
+  for (let i = 0; i < weeks; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + diff + i * 7);
+    dates.push(d);
+  }
+  return dates;
+}
+
 export function useCardiganData(user) {
   const userId = user?.id;
   const [patients, setPatients] = useState([]);
@@ -40,23 +58,57 @@ export function useCardiganData(user) {
   useEffect(() => { refresh(); }, [refresh]);
 
   /* ── PATIENTS ── */
-  async function createPatient({ name, parent, rate, day, time }) {
+  async function createPatient({ name, parent, rate, day, time, recurringWeeks }) {
     if (!name?.trim()) return false;
     setMutating(true);
     setMutationError("");
+    const patientDay = day || "Lunes";
+    const patientTime = time || "16:00";
+    const patientRate = Number(rate) || 700;
+    const colorIdx = patients.length % 7;
     const { data, error } = await supabase.from("patients").insert({
       user_id: userId,
       name: name.trim(),
       parent: parent?.trim() || "",
       initials: getInitials(name),
-      rate: Number(rate) || 700,
-      day: day || "Lunes",
-      time: time || "16:00",
-      color_idx: patients.length % 7,
+      rate: patientRate,
+      day: patientDay,
+      time: patientTime,
+      color_idx: colorIdx,
     }).select().single();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    const newPatient = { ...data, colorIdx: data.color_idx };
+    let updatedPatient = newPatient;
+
+    // Generate recurring sessions if requested
+    const weeks = Number(recurringWeeks) || 0;
+    if (weeks > 0) {
+      const dates = getUpcomingDates(patientDay, weeks);
+      const rows = dates.map(d => ({
+        user_id: userId,
+        patient_id: data.id,
+        patient: name.trim(),
+        initials: getInitials(name),
+        time: patientTime,
+        day: patientDay,
+        date: formatShortDate(d),
+        color_idx: colorIdx,
+      }));
+      const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(rows).select();
+      if (!sessErr && sessData) {
+        const newSessions = sessData.length;
+        const newBilled = patientRate * newSessions;
+        await supabase.from("patients")
+          .update({ sessions: newSessions, billed: newBilled })
+          .eq("id", data.id);
+        updatedPatient = { ...newPatient, sessions: newSessions, billed: newBilled };
+        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+      }
+    }
+
+    setPatients(prev => [...prev, updatedPatient].sort((a, b) => a.name.localeCompare(b.name)));
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
-    setPatients(prev => [...prev, { ...data, colorIdx: data.color_idx }].sort((a, b) => a.name.localeCompare(b.name)));
     return true;
   }
 
@@ -160,6 +212,40 @@ export function useCardiganData(user) {
     return true;
   }
 
+  async function generateRecurringSessions(patientId, weeks) {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient || weeks <= 0) return false;
+    const dates = getUpcomingDates(patient.day, weeks);
+    if (dates.length === 0) return false;
+
+    setMutating(true);
+    setMutationError("");
+    const rows = dates.map(d => ({
+      user_id: userId,
+      patient_id: patient.id,
+      patient: patient.name,
+      initials: patient.initials,
+      time: patient.time,
+      day: patient.day,
+      date: formatShortDate(d),
+      color_idx: patient.colorIdx || 0,
+    }));
+    const { data, error } = await supabase.from("sessions").insert(rows).select();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    const newSessions = patient.sessions + data.length;
+    const newBilled = patient.billed + patient.rate * data.length;
+    await supabase.from("patients")
+      .update({ sessions: newSessions, billed: newBilled })
+      .eq("id", patient.id);
+
+    setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+    setPatients(prev => prev.map(p => p.id === patient.id
+      ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    setMutating(false);
+    return true;
+  }
+
   /* ── PAYMENTS ── */
   async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
     const parsedAmount = Number(amount);
@@ -216,7 +302,7 @@ export function useCardiganData(user) {
   return {
     patients, upcomingSessions, payments, loading, mutating, mutationError,
     createPatient, updatePatient, deletePatient,
-    createSession, updateSessionStatus, deleteSession,
+    createSession, updateSessionStatus, deleteSession, generateRecurringSessions,
     createPayment, deletePayment,
     refresh,
   };
