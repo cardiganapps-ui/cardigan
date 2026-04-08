@@ -42,6 +42,16 @@ function getRecurringDates(dayName, startDateStr, endDateStr) {
   return dates;
 }
 
+function toISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function parseShortDate(str) {
+  const [dayNum, mon] = str.split(" ");
+  const mIdx = SHORT_MONTHS.indexOf(mon);
+  return new Date(new Date().getFullYear(), mIdx >= 0 ? mIdx : 0, parseInt(dayNum) || 1);
+}
+
 export function useCardiganData(user) {
   const userId = user?.id;
   const [patients, setPatients] = useState([]);
@@ -58,11 +68,80 @@ export function useCardiganData(user) {
       supabase.from("sessions").select("*").order("created_at"),
       supabase.from("payments").select("*").order("created_at", { ascending: false }),
     ]);
-    setPatients(mapRows(pRes.data));
-    setUpcomingSessions(mapRows(sRes.data));
+
+    let pData = mapRows(pRes.data);
+    let sData = mapRows(sRes.data);
+
+    // Auto-extend recurring sessions for active patients
+    if (userId) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const threshold = new Date(today);
+      threshold.setDate(today.getDate() + 28); // extend when < 4 weeks remain
+      const extendEnd = toISODate(new Date(today.getTime() + 12 * 7 * 86400000));
+      let didExtend = false;
+
+      for (const patient of pData) {
+        if (patient.status !== "active") continue;
+        const pSess = sData.filter(s => s.patient_id === patient.id && s.status !== "cancelled");
+        if (pSess.length === 0) continue;
+
+        // Infer schedules from existing sessions
+        const schedMap = new Map();
+        pSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time }));
+
+        // Find latest session date
+        const existingDates = new Set(pSess.map(s => s.date));
+        let latest = null;
+        pSess.forEach(s => {
+          const d = parseShortDate(s.date);
+          if (!latest || d > latest) latest = d;
+        });
+
+        if (!latest || latest > threshold) continue;
+
+        // Generate from day after latest to 12 weeks from today
+        const nextDay = new Date(latest);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const rows = [];
+        for (const sched of schedMap.values()) {
+          getRecurringDates(sched.day, toISODate(nextDay), extendEnd).forEach(d => {
+            const ds = formatShortDate(d);
+            if (!existingDates.has(ds)) {
+              rows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
+                initials: patient.initials, time: sched.time, day: sched.day,
+                date: ds, color_idx: patient.color_idx || 0 });
+              existingDates.add(ds);
+            }
+          });
+        }
+
+        if (rows.length > 0) {
+          const { data, error } = await supabase.from("sessions").insert(rows).select();
+          if (!error && data) {
+            await supabase.from("patients")
+              .update({ sessions: patient.sessions + data.length, billed: patient.billed + patient.rate * data.length })
+              .eq("id", patient.id);
+            didExtend = true;
+          }
+        }
+      }
+
+      if (didExtend) {
+        const [pRes2, sRes2] = await Promise.all([
+          supabase.from("patients").select("*").order("name"),
+          supabase.from("sessions").select("*").order("created_at"),
+        ]);
+        pData = mapRows(pRes2.data);
+        sData = mapRows(sRes2.data);
+      }
+    }
+
+    setPatients(pData);
+    setUpcomingSessions(sData);
     setPayments(mapRows(pmRes.data));
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
