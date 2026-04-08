@@ -1,14 +1,30 @@
 import { useState } from "react";
 import { clientColors } from "../data/seedData";
+import { formatShortDate } from "../data/api";
 import { IconX } from "./Icons";
 
-export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCancelSession, onDelete, mutating }) {
+export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, mutating }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
   if (!session) return null;
   const patientData = patients?.find(p => p.name === session.patient);
   const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
   const isCancelled = session.status === "cancelled" || session.status === "charged";
   const statusLabel = isCancelled ? (session.status === "charged" ? "Cancelada (cobrada)" : "Cancelada") : session.status === "completed" ? "Completada" : "Agendada";
+
+  const startReschedule = () => {
+    setNewDate(session.date);
+    setNewTime(session.time);
+    setRescheduling(true);
+  };
+
+  const submitReschedule = async () => {
+    if (!newDate.trim() || !newTime.trim()) return;
+    const ok = await onReschedule(session.id, newDate, newTime);
+    if (ok) setRescheduling(false);
+  };
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -46,25 +62,41 @@ export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCa
               </button>
               <button className="btn btn-secondary w-full" onClick={() => setConfirmDelete(false)}>Cancelar</button>
             </div>
+          ) : rescheduling ? (
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", marginBottom:12 }}>Reagendar sesión</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div className="input-group">
+                  <label className="input-label">Fecha</label>
+                  <input className="input" type="text" value={newDate} onChange={e => setNewDate(e.target.value)} placeholder="7 Abr" />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Hora</label>
+                  <input className="input" type="time" value={newTime} onChange={e => setNewTime(e.target.value)} />
+                </div>
+              </div>
+              <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>
+                {mutating ? "Guardando..." : "Confirmar"}
+              </button>
+              <button className="btn btn-secondary w-full" onClick={() => setRescheduling(false)}>Cancelar</button>
+            </div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {session.status === "scheduled" && (
-                <>
-                  <button className="btn btn-primary" style={{ height:48 }} onClick={() => onMarkCompleted(session)} disabled={mutating}>
-                    {mutating ? "Guardando..." : "Marcar como completada"}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <button className="btn" style={{ height:44, fontSize:12, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
+                    onClick={() => onCancelSession(session, true)} disabled={mutating}>
+                    Cancelar y cobrar
                   </button>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    <button className="btn" style={{ height:44, fontSize:12, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
-                      onClick={() => onCancelSession(session, true)} disabled={mutating}>
-                      Cancelar y cobrar
-                    </button>
-                    <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-lt)", boxShadow:"none" }}
-                      onClick={() => onCancelSession(session, false)} disabled={mutating}>
-                      Cancelar sin cobrar
-                    </button>
-                  </div>
-                </>
+                  <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-lt)", boxShadow:"none" }}
+                    onClick={() => onCancelSession(session, false)} disabled={mutating}>
+                    Cancelar sin cobrar
+                  </button>
+                </div>
               )}
+              <button className="btn btn-primary" style={{ height:44 }} onClick={startReschedule}>
+                Reagendar
+              </button>
               <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
                 onClick={() => setConfirmDelete(true)}>
                 Eliminar

@@ -296,6 +296,26 @@ export function useCardiganData(user) {
     return true;
   }
 
+  async function rescheduleSession(sessionId, newDate, newTime) {
+    if (!newDate?.trim() || !newTime?.trim()) return false;
+    const [dayNum, monthStr] = newDate.split(" ");
+    const monthIdx = SHORT_MONTHS.indexOf(monthStr);
+    const year = new Date().getFullYear();
+    const dateObj = new Date(year, monthIdx >= 0 ? monthIdx : 0, parseInt(dayNum) || 1);
+    const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
+
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions")
+      .update({ date: newDate.trim(), time: newTime.trim(), day: dayName, status: "scheduled" })
+      .eq("id", sessionId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId
+      ? { ...s, date: newDate.trim(), time: newTime.trim(), day: dayName, status: "scheduled" } : s));
+    return true;
+  }
+
   async function generateRecurringSessions(patientId, schedules, startDate, endDate) {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !schedules?.length || !startDate) return false;
@@ -380,12 +400,45 @@ export function useCardiganData(user) {
     return true;
   }
 
+  // Auto-complete scheduled sessions that started > 1 hour ago
+  const enrichedSessions = useMemo(() => {
+    const now = new Date();
+    return upcomingSessions.map(s => {
+      if (s.status !== "scheduled") return s;
+      const d = parseShortDate(s.date);
+      if (s.time) {
+        const [h, m] = s.time.split(":");
+        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+      }
+      d.setTime(d.getTime() + 60 * 60 * 1000); // 1 hour after start
+      if (now >= d) return { ...s, status: "completed" };
+      return s;
+    });
+  }, [upcomingSessions]);
+
+  // Persist auto-completions to DB (fire-and-forget)
+  useEffect(() => {
+    const toComplete = enrichedSessions.filter((s, i) =>
+      s.status === "completed" && upcomingSessions[i]?.status === "scheduled" && s.id === upcomingSessions[i]?.id
+    );
+    if (toComplete.length > 0) {
+      Promise.all(toComplete.map(s =>
+        supabase.from("sessions").update({ status: "completed" }).eq("id", s.id)
+      )).then(() => {
+        setUpcomingSessions(prev => {
+          const ids = new Set(toComplete.map(s => s.id));
+          return prev.map(s => ids.has(s.id) ? { ...s, status: "completed" } : s);
+        });
+      });
+    }
+  }, [enrichedSessions, upcomingSessions]);
+
   // Compute amountDue per patient from past sessions only (date + time)
   const enrichedPatients = useMemo(() => {
     const now = new Date();
     return patients.map(p => {
       let billable = 0;
-      upcomingSessions.forEach(s => {
+      enrichedSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
         if (s.status === "cancelled") return;
         const d = parseShortDate(s.date);
@@ -398,12 +451,12 @@ export function useCardiganData(user) {
       });
       return { ...p, amountDue: Math.max(0, billable * p.rate - p.paid) };
     });
-  }, [patients, upcomingSessions]);
+  }, [patients, enrichedSessions]);
 
   return {
-    patients: enrichedPatients, upcomingSessions, payments, loading, mutating, mutationError,
+    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, loading, mutating, mutationError,
     createPatient, updatePatient, deletePatient,
-    createSession, updateSessionStatus, deleteSession, generateRecurringSessions,
+    createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions,
     createPayment, deletePayment,
     refresh,
   };

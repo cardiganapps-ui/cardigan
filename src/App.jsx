@@ -40,7 +40,7 @@ function AppShell({ user, signOut }) {
     loading, mutating, mutationError,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
-    deleteSession, deletePayment, generateRecurringSessions, refresh,
+    deleteSession, rescheduleSession, deletePayment, generateRecurringSessions, refresh,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
@@ -59,9 +59,8 @@ function AppShell({ user, signOut }) {
   const screenMap = {
     home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
-      onMarkSessionCompleted={async (s) => s?.status !== "completed" && await updateSessionStatus(s.id, "completed")}
       onCancelSession={async (s, charge) => s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
-      deleteSession={deleteSession} mutating={mutating} />,
+      deleteSession={deleteSession} rescheduleSession={rescheduleSession} mutating={mutating} />,
     patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient} generateRecurringSessions={generateRecurringSessions} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments}

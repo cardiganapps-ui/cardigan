@@ -251,7 +251,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 }
 
 /* ── AGENDA ROOT ── */
-export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onCancelSession, deleteSession, mutating }) {
+export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSession, rescheduleSession, mutating }) {
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
@@ -272,15 +272,16 @@ export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onC
         session={selectedSession}
         patients={patients}
         onClose={() => setSelectedSession(null)}
-        onMarkCompleted={async (session) => {
-          const ok = await onMarkSessionCompleted(session);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status:"completed" } : prev));
-        }}
         onCancelSession={async (session, charge) => {
           const ok = await onCancelSession(session, charge);
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled" } : prev));
         }}
         onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
+        onReschedule={async (id, date, time) => {
+          const ok = await rescheduleSession(id, date, time);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, status: "scheduled" } : prev);
+          return ok;
+        }}
         mutating={mutating}
       />
     </div>
