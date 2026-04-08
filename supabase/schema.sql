@@ -4,7 +4,7 @@
 -- Patients
 create table if not exists patients (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid default auth.uid() not null,
+  user_id uuid not null,
   name text not null,
   parent text default '',
   initials text not null,
@@ -22,7 +22,7 @@ create table if not exists patients (
 -- Sessions
 create table if not exists sessions (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid default auth.uid() not null,
+  user_id uuid not null,
   patient_id uuid references patients(id) on delete cascade,
   patient text not null,
   initials text not null,
@@ -37,7 +37,7 @@ create table if not exists sessions (
 -- Payments
 create table if not exists payments (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid default auth.uid() not null,
+  user_id uuid not null,
   patient_id uuid references patients(id) on delete set null,
   patient text not null,
   initials text not null,

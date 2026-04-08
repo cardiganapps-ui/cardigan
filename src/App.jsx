@@ -34,7 +34,7 @@ export default function Cardigan() {
 function AppShell({ user, signOut }) {
   const [screen, setScreen] = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const data = useCardiganData();
+  const data = useCardiganData(user);
   const {
     patients, upcomingSessions, payments,
     loading, mutating, mutationError,

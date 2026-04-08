@@ -15,7 +15,8 @@ function mapRows(rows) {
   return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx }));
 }
 
-export function useCardiganData() {
+export function useCardiganData(user) {
+  const userId = user?.id;
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -44,6 +45,7 @@ export function useCardiganData() {
     setMutating(true);
     setMutationError("");
     const { data, error } = await supabase.from("patients").insert({
+      user_id: userId,
       name: name.trim(),
       parent: parent?.trim() || "",
       initials: getInitials(name),
@@ -97,6 +99,7 @@ export function useCardiganData() {
     setMutating(true);
     setMutationError("");
     const { data, error } = await supabase.from("sessions").insert({
+      user_id: userId,
       patient_id: patient.id,
       patient: patientName.trim(),
       initials: patient.initials,
@@ -166,6 +169,7 @@ export function useCardiganData() {
     setMutating(true);
     setMutationError("");
     const { data, error } = await supabase.from("payments").insert({
+      user_id: userId,
       patient_id: patient?.id || null,
       patient: patientName,
       initials: patient?.initials || getInitials(patientName),
