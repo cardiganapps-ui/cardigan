@@ -372,12 +372,11 @@ html, body {
 .status-cancelled  { background: var(--cream-dark); color: var(--charcoal-lt); }
 
 /* CALENDAR DAY STRIP */
-.cal-strip { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 4px; scrollbar-width: none; }
-.cal-strip::-webkit-scrollbar { display: none; }
+.cal-strip { display: flex; padding: 0 16px 4px; }
 .cal-day {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 10px; border-radius: var(--radius); flex-shrink: 0;
-  cursor: pointer; min-width: 44px; -webkit-tap-highlight-color: transparent;
+  padding: 8px 0; border-radius: var(--radius); flex: 1;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: all 0.12s;
 }
 .cal-day.active { background: var(--teal); }
