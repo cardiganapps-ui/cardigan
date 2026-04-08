@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData } from "./hooks/useCardiganData";
 import { Drawer } from "./components/Drawer";
@@ -56,6 +56,19 @@ function AppShell({ user, signOut }) {
     setPaymentModalOpen(true);
   };
 
+  const edgeTouch = useRef(null);
+  const onTouchStart = useCallback((e) => {
+    if (e.touches[0].clientX < 24) edgeTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    else edgeTouch.current = null;
+  }, []);
+  const onTouchEnd = useCallback((e) => {
+    if (!edgeTouch.current) return;
+    const dx = e.changedTouches[0].clientX - edgeTouch.current.x;
+    const dy = e.changedTouches[0].clientY - edgeTouch.current.y;
+    edgeTouch.current = null;
+    if (dx > 60 && Math.abs(dx) > Math.abs(dy)) setDrawerOpen(true);
+  }, []);
+
   const screenMap = {
     home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
@@ -69,7 +82,7 @@ function AppShell({ user, signOut }) {
   };
 
   return (
-    <div className="shell">
+    <div className="shell" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="status-bar" />
       <div className="topbar">
         <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
