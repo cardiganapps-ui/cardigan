@@ -45,18 +45,19 @@ const styles = `
 
 html, body {
   font-family: var(--font);
-  background: var(--nav-bg);
+  background: var(--cream);
   color: var(--charcoal);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   height: 100%;
+  overflow: hidden;
 }
 #root { height: 100%; }
 
 .shell {
   display: flex; flex-direction: column;
   height: 100dvh;
-  max-width: 430px; margin: 0 auto;
+  width: 100%;
   background: var(--cream);
   position: relative; overflow: hidden;
 }
@@ -69,35 +70,36 @@ html, body {
 /* TOPBAR */
 .topbar {
   background: var(--nav-bg);
-  padding: 14px 20px 18px;
+  padding: 8px 16px 10px;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
 }
-.topbar-left { display: flex; align-items: center; gap: 12px; }
-.topbar-center { flex: 1; padding: 0 8px; }
-.topbar-title { font-family: var(--font-d); font-size: 18px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; }
-.topbar-sub { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.topbar-center { flex: 1; padding: 0 6px; }
+.topbar-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; }
+.topbar-sub { display: none; }
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 
 .icon-btn {
   width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(255,255,255,0.12); border: none;
+  background: transparent; border: none;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; cursor: pointer; color: white;
   -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
 }
-.icon-btn:active { background: rgba(255,255,255,0.22); }
+.icon-btn:active { opacity: 0.6; }
 
 /* HAMBURGER */
 .hamburger {
   width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(255,255,255,0.12); border: none;
+  background: transparent; border: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 5px; cursor: pointer; padding: 0;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s;
+  transition: opacity 0.15s;
 }
-.hamburger:active { background: rgba(255,255,255,0.22); }
+.hamburger:active { opacity: 0.6; }
 .hamburger-line {
   width: 18px; height: 2px; background: white; border-radius: 2px;
   transition: all 0.22s ease;
@@ -124,9 +126,8 @@ html, body {
 
 /* DRAWER PANEL */
 .drawer {
-  position: fixed; top: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 100%; max-width: 430px;
+  position: fixed; top: 0; left: 0;
+  width: 100%;
   height: 100dvh;
   display: flex; flex-direction: column;
   pointer-events: none;
@@ -186,9 +187,9 @@ html, body {
   width: 36px; height: 36px; border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   font-size: 17px; flex-shrink: 0;
-  background: rgba(255,255,255,0.07);
+  background: transparent;
 }
-.drawer-item.active .drawer-item-icon { background: rgba(91,155,175,0.25); }
+.drawer-item.active .drawer-item-icon { background: transparent; }
 .drawer-item-label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.65); }
 .drawer-item.active .drawer-item-label { color: white; font-weight: 700; }
 
@@ -360,11 +361,11 @@ select.input { height: 48px; }
 .balance-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.3s; }
 
 /* AUTH */
-.auth-screen { min-height: 100dvh; max-width: 430px; margin: 0 auto; background: var(--cream); display: flex; flex-direction: column; }
-.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 32px) 24px 40px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; border-radius: 0 0 24px 24px; }
-.auth-wordmark { font-family: var(--font-d); font-size: 30px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
-.auth-tagline { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 260px; }
-.auth-body { flex: 1; padding: 32px 24px calc(var(--sab) + 24px); }
+.auth-screen { min-height: 100dvh; width: 100%; background: var(--cream); display: flex; flex-direction: column; }
+.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 40px) 24px 48px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; border-radius: 0 0 28px 28px; }
+.auth-wordmark { font-family: var(--font-d); font-size: 32px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
+.auth-tagline { font-size: 14.5px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 280px; }
+.auth-body { flex: 1; padding: 24px 28px calc(var(--sab) + 28px); }
 .auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 28px; }
 .auth-tab { flex: 1; padding: 11px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
 .auth-tab.active { background: var(--white); color: var(--charcoal); box-shadow: var(--shadow-sm); }
@@ -383,7 +384,7 @@ select.input { height: 48px; }
 .sheet-overlay { position: fixed; inset: 0; background: rgba(20,35,40,0.45); backdrop-filter: blur(2px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.15s ease; }
 .sheet-panel {
   background: var(--white); border-radius: 20px 20px 0 0;
-  width: 100%; max-width: 430px;
+  width: 100%;
   padding-bottom: var(--sab);
   max-height: 88dvh; overflow-y: auto;
   animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
@@ -548,12 +549,12 @@ const clientColors = ["#5B9BAF","#7AB5C7","#4A8799","#3D6470","#84C5D4","#9E8BC4
 const DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const DAY_NAMES_SHORT = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
 const FULL_DAY_NAMES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
-const FULL_FULL_MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const FULL_MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 function getToday() { return new Date(); }
 function getTodayStr() { const d = getToday(); return `${d.getDate()} ${shortMonths[d.getMonth()]}`; }
 function getTodayLabel() { const d = getToday(); return `${FULL_DAY_NAMES[(d.getDay()+6)%7]} ${d.getDate()} ${shortMonths[d.getMonth()]}`; }
-function getCurrentMonthLabel() { const d = getToday(); return `${FULL_FULL_MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
+function getCurrentMonthLabel() { const d = getToday(); return `${FULL_MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
 
 function buildCurrentWeek(baseDate = getToday()) {
   const d = new Date(baseDate);
@@ -599,12 +600,27 @@ function computeMonthlyData(payments) {
 }
 
 /* ── NAV ── */
+/* ── SVG ICONS ── */
+const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 1.8 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const ICONS = {
+  home: "M3 12L12 3l9 9M5 10v9a1 1 0 001 1h3v-5h6v5h3a1 1 0 001-1v-9",
+  agenda: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+  patients: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",
+  finances: "M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6",
+  settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z",
+  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+};
+
 const navItems = [
-  { id:"home",     label:"Inicio",   icon:"🏠", section:"principal" },
-  { id:"agenda",   label:"Agenda",   icon:"📅", section:"principal" },
-  { id:"patients", label:"Pacientes",icon:"👤", section:"principal" },
-  { id:"finances", label:"Finanzas", icon:"💰", section:"principal" },
-  { id:"settings", label:"Ajustes",  icon:"⚙️", section:"cuenta"    },
+  { id:"home",     label:"Inicio",    iconKey:"home",     section:"principal" },
+  { id:"agenda",   label:"Agenda",    iconKey:"agenda",   section:"principal" },
+  { id:"patients", label:"Pacientes", iconKey:"patients", section:"principal" },
+  { id:"finances", label:"Finanzas",  iconKey:"finances", section:"principal" },
+  { id:"settings", label:"Ajustes",   iconKey:"settings", section:"cuenta"    },
 ];
 
 const shortMonths = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -861,25 +877,25 @@ function Drawer({ screen, setScreen, onClose, session }) {
             <div className="drawer-section-label">Principal</div>
             {principal.map(item => (
               <button key={item.id} className={`drawer-item ${screen===item.id?"active":""}`} onClick={() => handleNav(item.id)}>
-                <div className="drawer-item-icon">{item.icon}</div>
+                <div className="drawer-item-icon"><Icon d={ICONS[item.iconKey]} color={screen===item.id ? "var(--teal-light)" : "rgba(255,255,255,0.55)"} /></div>
                 <span className="drawer-item-label">{item.label}</span>
               </button>
             ))}
             <div className="drawer-section-label" style={{ marginTop:8 }}>Cuenta</div>
             {cuenta.map(item => (
               <button key={item.id} className={`drawer-item ${screen===item.id?"active":""}`} onClick={() => handleNav(item.id)}>
-                <div className="drawer-item-icon">{item.icon}</div>
+                <div className="drawer-item-icon"><Icon d={ICONS[item.iconKey]} color={screen===item.id ? "var(--teal-light)" : "rgba(255,255,255,0.55)"} /></div>
                 <span className="drawer-item-label">{item.label}</span>
               </button>
             ))}
             <button className="drawer-item" onClick={handleSignOut} style={{ marginTop:4 }}>
-              <div className="drawer-item-icon">🚪</div>
+              <div className="drawer-item-icon"><Icon d={ICONS.logout} color="var(--red)" /></div>
               <span className="drawer-item-label" style={{ color:"var(--red)" }}>Cerrar sesión</span>
             </button>
           </nav>
           <div className="drawer-footer">
             <div className="drawer-plan">
-              <div className="drawer-plan-icon">⭐</div>
+              <div className="drawer-plan-icon"><Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" size={18} color="var(--teal-light)" /></div>
               <div>
                 <div className="drawer-plan-label">Plan activo</div>
                 <div className="drawer-plan-value">Cardigan Pro · $199/mes</div>
@@ -1352,7 +1368,7 @@ function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mut
 
 /* ── PATIENTS ── */
 
-function Patients({ patients, onRecordPayment, mutating }) {
+function Patients({ patients, onRecordPayment, onAddPatient, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -1385,11 +1401,12 @@ function Patients({ patients, onRecordPayment, mutating }) {
 
   return (
     <div className="page">
-      <div style={{ padding:"16px 16px 10px" }}>
-        <div className="search-bar">
+      <div style={{ padding:"16px 16px 10px", display:"flex", gap:10 }}>
+        <div className="search-bar" style={{ flex:1 }}>
           <span style={{ color:"var(--charcoal-xl)", fontSize:16 }}>⌕</span>
           <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+        <button className="btn btn-primary" style={{ width:"auto", minWidth:48, height:42, padding:"0 16px", fontSize:13, borderRadius:"var(--radius-pill)", boxShadow:"none" }} onClick={onAddPatient}>+ Nuevo</button>
       </div>
       <div className="filter-chips">
         {filters.map(f => <button key={f.k} className={`chip ${filter===f.k?"active":""}`} onClick={() => setFilter(f.k)}>{f.l}</button>)}
@@ -1501,7 +1518,6 @@ function FinancesMiniChart({ data, valueKey, color }) {
 
 function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   const [groupByClient, setGroupByClient] = useState(false);
-  const [sortOrder, setSortOrder]         = useState("desc"); // desc = newest first
   const [filterMethod, setFilterMethod]   = useState("all");
   const [dateRange, setDateRange]         = useState("all"); // all | jan | feb
 
@@ -1516,7 +1532,7 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   if (filterMethod !== "all") filtered = filtered.filter(p => p.method === filterMethod);
   if (dateRange === "jan")    filtered = filtered.filter(p => p.date.includes("Ene"));
   if (dateRange === "feb")    filtered = filtered.filter(p => p.date.includes("Feb"));
-  filtered.sort((a,b) => sortOrder === "desc" ? parseDateKey(b.date)-parseDateKey(a.date) : parseDateKey(a.date)-parseDateKey(b.date));
+  filtered.sort((a,b) => parseDateKey(b.date)-parseDateKey(a.date));
 
   const totalFiltered = filtered.reduce((s,p) => s+p.amount, 0);
 
@@ -1565,18 +1581,6 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
           >
             <div style={{ width:18, height:18, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(18px)" : "translateX(0)", transition:"transform 0.2s" }} />
           </button>
-        </div>
-        {/* Sort */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>Orden</span>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2 }}>
-            {[{k:"desc",l:"Más reciente"},{k:"asc",l:"Más antiguo"}].map(o => (
-              <button key={o.k} onClick={() => setSortOrder(o.k)}
-                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none" }}>
-                {o.l}
-              </button>
-            ))}
-          </div>
         </div>
         {/* Method filter */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
@@ -1782,17 +1786,17 @@ function Settings({ session }) {
 
   const sections = [
     { label:"Mi práctica", rows:[
-      { icon:"👤", bg:"#EAF4F7", title:"Perfil profesional", sub:`${userName}` },
-      { icon:"💱", bg:"#EDF7F2", title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
-      { icon:"🔔", bg:"#FDF6E8", title:"Recordatorios",      sub:"WhatsApp automático" },
+      { iconD:"M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z", bg:"var(--teal-pale)", color:"var(--teal-dark)", title:"Perfil profesional", sub:`${userName}` },
+      { iconD:"M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6", bg:"var(--green-bg)", color:"var(--green)", title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
+      { iconD:"M18 8A6 6 0 006 8c0 7-3 9-6 9s-6-2-6-9M13.73 21a2 2 0 01-3.46 0", bg:"var(--amber-bg)", color:"var(--amber)", title:"Recordatorios",      sub:"WhatsApp automático" },
     ]},
     { label:"Suscripción", rows:[
-      { icon:"⭐", bg:"#F0EEF9", title:"Plan actual",         sub:"Cardigan Pro · $199/mes" },
-      { icon:"📋", bg:"#EAF4F7", title:"Historial de pagos",  sub:"Ver facturas" },
+      { iconD:"M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z", bg:"var(--purple-bg)", color:"var(--purple)", title:"Plan actual",         sub:"Cardigan Pro · $199/mes" },
+      { iconD:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8", bg:"var(--teal-pale)", color:"var(--teal-dark)", title:"Historial de pagos",  sub:"Ver facturas" },
     ]},
     { label:"Cuenta", rows:[
-      { icon:"🔑", bg:"#FDF6E8", title:"Cambiar contraseña", sub:"" },
-      { icon:"🚪", bg:"#FDF1F1", title:"Cerrar sesión",       sub:"", danger:true, action: handleSignOut },
+      { iconD:"M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4", bg:"var(--amber-bg)", color:"var(--amber)", title:"Cambiar contraseña", sub:"" },
+      { iconD:ICONS.logout, bg:"var(--red-bg)", color:"var(--red)", title:"Cerrar sesión",       sub:"", danger:true, action: handleSignOut },
     ]},
   ];
 
@@ -1816,7 +1820,7 @@ function Settings({ session }) {
           <div className="card" style={{ margin:"0 16px" }}>
             {s.rows.map((r,i) => (
               <div className="settings-row" key={i} onClick={r.action} style={{ cursor:r.action?"pointer":undefined }}>
-                <div className="settings-row-icon" style={{ background:r.bg }}>{r.icon}</div>
+                <div className="settings-row-icon" style={{ background:r.bg }}><Icon d={r.iconD} size={18} color={r.color || "var(--charcoal)"} /></div>
                 <div>
                   <div className="settings-row-title" style={{ color:r.danger?"var(--red)":undefined }}>{r.title}</div>
                   {r.sub && <div className="settings-row-sub">{r.sub}</div>}
@@ -2168,13 +2172,15 @@ function PaymentModal({
 }
 
 /* ── ROOT ── */
-const topbarMeta = {
-  home:     { title:"Buenos días ☀️", sub:"Lunes 7 de Abril" },
-  agenda:   { title:"Agenda",          sub:"Semana del 7 Abr" },
-  patients: { title:"Pacientes",       sub:"9 en total · 7 activos" },
-  finances: { title:"Finanzas",        sub:"Tu práctica" },
-  settings: { title:"Ajustes",         sub:"Cardigan Pro" },
-};
+function getTopbarMeta(patients) {
+  return {
+    home:     { title:"Inicio" },
+    agenda:   { title:"Agenda" },
+    patients: { title:`Pacientes (${patients.length})` },
+    finances: { title:"Finanzas" },
+    settings: { title:"Ajustes" },
+  };
+}
 
 export default function Cardigan() {
   const [session, setSession] = useState(null);
@@ -2241,11 +2247,12 @@ export default function Cardigan() {
   const screenMap = {
     home:     <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     agenda:   <Agenda upcomingSessions={upcomingSessions} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
-    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
+    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} onAddPatient={() => setAddPatientOpen(true)} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     settings: <Settings session={session} />,
   };
 
+  const topbarMeta = getTopbarMeta(patients);
   const meta = topbarMeta[screen] || topbarMeta.home;
 
   if (!authReady) {
@@ -2278,7 +2285,7 @@ export default function Cardigan() {
               </div>
             </div>
             <div className="topbar-right">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio">🏠</button>
+              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><Icon d={ICONS.home} size={18} color="white" /></button>
               <div className="avatar-sm">{userInitial}</div>
             </div>
           </div>
