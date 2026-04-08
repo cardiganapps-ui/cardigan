@@ -116,27 +116,39 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
 
 /* ── WEEK VIEW ── */
 function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions }) {
+  const [showWeekends, setShowWeekends] = useState(false);
   const weekDays = getWeekDays(selectedDate);
+  const visibleDays = showWeekends ? weekDays : weekDays.slice(0, 5);
+  const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
   const monday = weekDays[0];
   const weekLabel = `Semana del ${formatDateStr(monday)}`;
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
+  const gridCols = `44px repeat(${visibleDays.length}, 1fr)`;
 
   return (
     <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 12px" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 8px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
         <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</div>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>›</button>
       </div>
-      <div className="week-header-row">
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", padding:"0 16px 8px", gap:8 }}>
+        <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-xl)" }}>Fines de semana</span>
+        <button
+          onClick={() => setShowWeekends(v => !v)}
+          style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: showWeekends ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}
+        >
+          <div style={{ width:16, height:16, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: showWeekends ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
+        </button>
+      </div>
+      <div className="week-header-row" style={{ gridTemplateColumns: gridCols }}>
         <div />
-        {weekDays.map((d,i) => {
-          const ds = formatDateStr(d);
+        {visibleDays.map((d,i) => {
           const isActive = isSameDay(d, selectedDate);
           const isToday = isSameDay(d, TODAY);
           return (
             <div key={i} className="week-day-head" style={{ cursor:"pointer" }} onClick={() => { setSelectedDate(d); setView("day"); }}>
-              <span className="week-day-name">{DOW[i]}</span>
+              <span className="week-day-name">{visibleDow[i]}</span>
               <span className={`week-day-num ${isActive?"active":""} ${isToday&&!isActive?"today":""}`}>{d.getDate()}</span>
             </div>
           );
@@ -144,9 +156,9 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
       </div>
       <div className="week-body">
         {HOURS.map((hour, hIdx) => (
-          <div className="week-time-row" key={hour}>
+          <div className="week-time-row" key={hour} style={{ gridTemplateColumns: gridCols }}>
             <div className="week-time-label">{hour}</div>
-            {weekDays.map((d, dIdx) => {
+            {visibleDays.map((d, dIdx) => {
               const ds = formatDateStr(d);
               const sess = upcomingSessions.filter(s => s.date===ds).find(s => hourIndex(s.time)===hIdx);
               return (
