@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { clientColors, monthlyData } from "../data/seedData";
+import { IconBank, IconCash, IconCheck } from "../components/Icons";
 
 function FinancesMiniChart({ data, valueKey, color }) {
   const max = Math.max(...data.map(d => d[valueKey]), 1);
@@ -62,7 +63,7 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
           <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
             <span>{p.date}</span>
             <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
-            <span>{p.method==="Transferencia" ? "🏦" : "💵"} {p.method}</span>
+            <span>{p.method}</span>
           </div>
         </div>
         <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
@@ -100,7 +101,7 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
           <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>Método</span>
           <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2 }}>
-            {[{k:"all",l:"Todos"},{k:"Transferencia",l:"🏦"},{k:"Efectivo",l:"💵"}].map(o => (
+            {[{k:"all",l:"Todos"},{k:"Transferencia",l:"Transf."},{k:"Efectivo",l:"Efect."}].map(o => (
               <button key={o.k} onClick={() => setFilterMethod(o.k)}
                 style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none" }}>
                 {o.l}
@@ -237,7 +238,7 @@ export function Finances({ patients, payments, onRecordPayment, mutating }) {
                     <div className="bal-name">{p.name}</div>
                     <div className="bal-sub">${p.paid.toLocaleString()} pagado</div>
                   </div>
-                  <div className="bal-amt amount-paid">✓</div>
+                  <div className="bal-amt amount-paid"><IconCheck size={16} /></div>
                 </div>
               ))}
             </div>

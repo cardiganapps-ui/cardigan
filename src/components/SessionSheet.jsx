@@ -1,4 +1,5 @@
 import { clientColors } from "../data/seedData";
+import { IconX, IconCheck } from "./Icons";
 
 export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCancelSession, mutating }) {
   if (!session) return null;
@@ -10,7 +11,7 @@ export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCa
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Sesión</span>
-          <button className="sheet-close" onClick={onClose}>✕</button>
+          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20 }}>
@@ -40,7 +41,7 @@ export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCa
               onClick={() => onMarkCompleted(session)}
               disabled={mutating || session.status === "completed"}
             >
-              {session.status === "completed" ? "Ya completada" : (mutating ? "Guardando..." : "✓ Marcar como completada")}
+              {session.status === "completed" ? "Ya completada" : (mutating ? "Guardando..." : "Marcar como completada")}
             </button>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
               <button className="btn btn-secondary" style={{ height:44, fontSize:13 }}>Reagendar</button>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
+import { IconSearch, IconX } from "../components/Icons";
 
 export function Patients({ patients, onRecordPayment, mutating }) {
   const [search, setSearch]     = useState("");
@@ -36,7 +37,7 @@ export function Patients({ patients, onRecordPayment, mutating }) {
     <div className="page">
       <div style={{ padding:"16px 16px 10px" }}>
         <div className="search-bar">
-          <span style={{ color:"var(--charcoal-xl)", fontSize:16 }}>⌕</span>
+          <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
           <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
@@ -80,7 +81,7 @@ export function Patients({ patients, onRecordPayment, mutating }) {
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{selected.name}</span>
-              <button className="sheet-close" onClick={() => setSelected(null)}>✕</button>
+              <button className="sheet-close" onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>
@@ -109,7 +110,7 @@ export function Patients({ patients, onRecordPayment, mutating }) {
               ))}
               <div style={{ marginTop:20, display:"flex", flexDirection:"column", gap:10 }}>
                 <button className="btn btn-primary" style={{ height:48 }} onClick={() => onRecordPayment(selected)} disabled={mutating}>
-                  {mutating ? "Guardando..." : "💰 Registrar pago"}
+                  {mutating ? "Guardando..." : "Registrar pago"}
                 </button>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <button className="btn btn-secondary" style={{ height:44, fontSize:13 }}>Ver sesiones</button>

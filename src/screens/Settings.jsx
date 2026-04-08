@@ -1,17 +1,19 @@
+import { IconUser, IconCurrency, IconBell, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron } from "../components/Icons";
+
 export function Settings() {
   const sections = [
     { label:"Mi práctica", rows:[
-      { icon:"👤", bg:"#EAF4F7", title:"Perfil profesional", sub:"Daniela · Psicóloga" },
-      { icon:"💱", bg:"#EDF7F2", title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
-      { icon:"🔔", bg:"#FDF6E8", title:"Recordatorios",      sub:"WhatsApp automático" },
+      { Icon: IconUser,      title:"Perfil profesional", sub:"Daniela · Psicóloga" },
+      { Icon: IconCurrency,  title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
+      { Icon: IconBell,      title:"Recordatorios",      sub:"WhatsApp automático" },
     ]},
     { label:"Suscripción", rows:[
-      { icon:"⭐", bg:"#F0EEF9", title:"Plan actual",         sub:"Cardigan Pro · $199/mes" },
-      { icon:"📋", bg:"#EAF4F7", title:"Historial de pagos",  sub:"Ver facturas" },
+      { Icon: IconStar,      title:"Plan actual",         sub:"Cardigan Pro · $199/mes" },
+      { Icon: IconClipboard, title:"Historial de pagos",  sub:"Ver facturas" },
     ]},
     { label:"Cuenta", rows:[
-      { icon:"🔑", bg:"#FDF6E8", title:"Cambiar contraseña", sub:"" },
-      { icon:"🚪", bg:"#FDF1F1", title:"Cerrar sesión",       sub:"", danger:true },
+      { Icon: IconKey,    title:"Cambiar contraseña", sub:"" },
+      { Icon: IconLogOut, title:"Cerrar sesión",       sub:"", danger:true },
     ]},
   ];
 
@@ -35,12 +37,14 @@ export function Settings() {
           <div className="card" style={{ margin:"0 16px" }}>
             {s.rows.map((r,i) => (
               <div className="settings-row" key={i}>
-                <div className="settings-row-icon" style={{ background:r.bg }}>{r.icon}</div>
-                <div>
+                <div className="settings-row-icon" style={{ color: r.danger ? "var(--red)" : "var(--teal-dark)" }}>
+                  <r.Icon size={18} />
+                </div>
+                <div style={{ flex:1 }}>
                   <div className="settings-row-title" style={{ color:r.danger?"var(--red)":undefined }}>{r.title}</div>
                   {r.sub && <div className="settings-row-sub">{r.sub}</div>}
                 </div>
-                <span className="settings-chevron">›</span>
+                <IconChevron />
               </div>
             ))}
           </div>
