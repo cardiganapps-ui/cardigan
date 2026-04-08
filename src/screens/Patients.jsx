@@ -2,6 +2,14 @@ import { useState } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
 
+const todayISO = () => new Date().toISOString().split("T")[0];
+const Toggle = ({ on, onToggle }) => (
+  <button type="button" onClick={onToggle}
+    style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: on ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}>
+    <div style={{ width:16, height:16, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: on ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
+  </button>
+);
+
 export function Patients({ patients, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
@@ -11,13 +19,15 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Edit form state
-  const [editName, setEditName]     = useState("");
-  const [editParent, setEditParent] = useState("");
-  const [editRate, setEditRate]     = useState("");
-  const [editDay, setEditDay]       = useState("");
-  const [editTime, setEditTime]     = useState("");
-  const [editStatus, setEditStatus] = useState("");
-  const [genWeeks, setGenWeeks]     = useState("4");
+  const [editName, setEditName]       = useState("");
+  const [editIsMinor, setEditIsMinor] = useState(false);
+  const [editParent, setEditParent]   = useState("");
+  const [editRate, setEditRate]       = useState("");
+  const [editStatus, setEditStatus]   = useState("");
+  const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
+  const [genStartDate, setGenStartDate]   = useState(todayISO());
+  const [genHasEndDate, setGenHasEndDate] = useState(false);
+  const [genEndDate, setGenEndDate]       = useState("");
 
   const openDetail = (p) => {
     setSelected(p);
@@ -27,21 +37,27 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
 
   const startEdit = () => {
     setEditName(selected.name);
+    setEditIsMinor(!!selected.parent);
     setEditParent(selected.parent || "");
     setEditRate(String(selected.rate));
-    setEditDay(selected.day);
-    setEditTime(selected.time);
     setEditStatus(selected.status);
+    setEditSchedules([{ day: selected.day, time: selected.time }]);
+    setGenStartDate(todayISO());
+    setGenHasEndDate(false);
+    setGenEndDate("");
     setEditing(true);
   };
 
+  const updateEditSched = (i, f, v) => setEditSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
+
   const saveEdit = async () => {
+    const primary = editSchedules[0] || { day: "Lunes", time: "16:00" };
     const ok = await updatePatient(selected.id, {
       name: editName.trim(),
-      parent: editParent.trim(),
-      rate: Number(editRate) || 700,
-      day: editDay,
-      time: editTime,
+      parent: editIsMinor ? editParent.trim() : "",
+      rate: Number(editRate) || 0,
+      day: primary.day,
+      time: primary.time,
       status: editStatus,
     });
     if (ok) {
@@ -154,25 +170,19 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                     <label className="input-label">Nombre</label>
                     <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
                   </div>
-                  <div className="input-group">
-                    <label className="input-label">Tutor / contacto</label>
-                    <input className="input" value={editParent} onChange={e => setEditParent(e.target.value)} />
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: editIsMinor ? 6 : 14 }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Es menor de edad</span>
+                    <Toggle on={editIsMinor} onToggle={() => setEditIsMinor(v => !v)} />
                   </div>
+                  {editIsMinor && (
+                    <div className="input-group">
+                      <label className="input-label">Tutor / contacto</label>
+                      <input className="input" value={editParent} onChange={e => setEditParent(e.target.value)} />
+                    </div>
+                  )}
                   <div className="input-group">
                     <label className="input-label">Tarifa</label>
-                    <input className="input" type="number" value={editRate} onChange={e => setEditRate(e.target.value)} />
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    <div className="input-group">
-                      <label className="input-label">Día</label>
-                      <select className="input" value={editDay} onChange={e => setEditDay(e.target.value)}>
-                        {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Hora</label>
-                      <input className="input" type="time" value={editTime} onChange={e => setEditTime(e.target.value)} />
-                    </div>
+                    <input className="input" type="number" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Ej: 700" />
                   </div>
                   <div className="input-group">
                     <label className="input-label">Estado</label>
@@ -181,29 +191,61 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                       <option value="ended">Finalizado</option>
                     </select>
                   </div>
-                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:8, paddingTop:14, marginBottom:14 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>Citas recurrentes</div>
-                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <div className="input-group" style={{ flex:1, marginBottom:0 }}>
-                        <label className="input-label">Semanas</label>
-                        <input className="input" type="number" min="1" max="52" value={genWeeks} onChange={e => setGenWeeks(e.target.value)} />
+
+                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:14 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>Horarios de sesión</div>
+                    {editSchedules.map((s, i) => (
+                      <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          {i === 0 && <label className="input-label">Día</label>}
+                          <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
+                            {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                        </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          {i === 0 && <label className="input-label">Hora</label>}
+                          <input className="input" type="time" value={s.time} onChange={e => updateEditSched(i, "time", e.target.value)} />
+                        </div>
+                        {editSchedules.length > 1 && (
+                          <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))}
+                            style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            <IconX size={12} />
+                          </button>
+                        )}
                       </div>
-                      <button type="button" className="btn" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", marginTop:18, whiteSpace:"nowrap", fontSize:12, fontWeight:700 }}
-                        disabled={mutating}
-                        onClick={async () => {
-                          // Save any pending edits first, then generate
-                          await saveEdit();
-                          const updated = patients.find(p => p.id === selected.id) || selected;
-                          await generateRecurringSessions(updated.id, Number(genWeeks) || 4);
-                        }}
-                      >
-                        {mutating ? "..." : `Generar ${genWeeks || 0} citas`}
-                      </button>
+                    ))}
+                    <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00" }])}
+                      style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 12px", fontFamily:"var(--font)" }}>
+                      + Agregar otro horario
+                    </button>
+
+                    <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:12 }}>
+                      <div className="input-group" style={{ marginBottom:10 }}>
+                        <label className="input-label">Generar desde</label>
+                        <input className="input" type="date" value={genStartDate} onChange={e => setGenStartDate(e.target.value)} />
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: genHasEndDate ? 8 : 0 }}>
+                        <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Fecha de fin</span>
+                        <Toggle on={genHasEndDate} onToggle={() => setGenHasEndDate(v => !v)} />
+                      </div>
+                      {genHasEndDate ? (
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <input className="input" type="date" value={genEndDate} onChange={e => setGenEndDate(e.target.value)} />
+                        </div>
+                      ) : (
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Sin fecha de fin (12 semanas)</div>
+                      )}
                     </div>
-                    <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6 }}>
-                      Cada {editDay} a las {editTime}
-                    </div>
+                    <button type="button" className="btn" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", whiteSpace:"nowrap", fontSize:12, fontWeight:700, width:"100%" }}
+                      disabled={mutating}
+                      onClick={async () => {
+                        await generateRecurringSessions(selected.id, editSchedules, genStartDate, genHasEndDate ? genEndDate : null);
+                      }}
+                    >
+                      {mutating ? "Generando..." : "Generar citas recurrentes"}
+                    </button>
                   </div>
+
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
                     {mutating ? "Guardando..." : "Guardar cambios"}
                   </button>

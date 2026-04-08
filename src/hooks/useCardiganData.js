@@ -17,18 +17,27 @@ function mapRows(rows) {
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
 
-function getUpcomingDates(dayName, weeks) {
+function parseLocalDate(str) {
+  const [y, m, d] = str.split("-");
+  return new Date(+y, +m - 1, +d);
+}
+
+function getRecurringDates(dayName, startDateStr, endDateStr) {
   const target = DAY_TO_JS[dayName];
-  if (target == null || weeks <= 0) return [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let diff = target - today.getDay();
-  if (diff <= 0) diff += 7;
+  if (target == null) return [];
+  const start = parseLocalDate(startDateStr);
+  let diff = target - start.getDay();
+  if (diff < 0) diff += 7;
+
+  const end = endDateStr ? parseLocalDate(endDateStr) : new Date(start);
+  if (!endDateStr) end.setDate(end.getDate() + 12 * 7);
+
   const dates = [];
-  for (let i = 0; i < weeks; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + diff + i * 7);
-    dates.push(d);
+  const current = new Date(start);
+  current.setDate(start.getDate() + diff);
+  while (current <= end) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 7);
   }
   return dates;
 }
@@ -58,22 +67,22 @@ export function useCardiganData(user) {
   useEffect(() => { refresh(); }, [refresh]);
 
   /* ── PATIENTS ── */
-  async function createPatient({ name, parent, rate, day, time, recurringWeeks }) {
+  async function createPatient({ name, parent, rate, schedules, recurring, startDate, endDate }) {
     if (!name?.trim()) return false;
+    const sched = schedules?.length ? schedules : [{ day: "Lunes", time: "16:00" }];
+    const patientRate = Number(rate) || 0;
+    const colorIdx = patients.length % 7;
+
     setMutating(true);
     setMutationError("");
-    const patientDay = day || "Lunes";
-    const patientTime = time || "16:00";
-    const patientRate = Number(rate) || 700;
-    const colorIdx = patients.length % 7;
     const { data, error } = await supabase.from("patients").insert({
       user_id: userId,
       name: name.trim(),
       parent: parent?.trim() || "",
       initials: getInitials(name),
       rate: patientRate,
-      day: patientDay,
-      time: patientTime,
+      day: sched[0].day,
+      time: sched[0].time,
       color_idx: colorIdx,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -81,29 +90,23 @@ export function useCardiganData(user) {
     const newPatient = { ...data, colorIdx: data.color_idx };
     let updatedPatient = newPatient;
 
-    // Generate recurring sessions if requested
-    const weeks = Number(recurringWeeks) || 0;
-    if (weeks > 0) {
-      const dates = getUpcomingDates(patientDay, weeks);
-      const rows = dates.map(d => ({
-        user_id: userId,
-        patient_id: data.id,
-        patient: name.trim(),
-        initials: getInitials(name),
-        time: patientTime,
-        day: patientDay,
-        date: formatShortDate(d),
-        color_idx: colorIdx,
-      }));
-      const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(rows).select();
-      if (!sessErr && sessData) {
-        const newSessions = sessData.length;
-        const newBilled = patientRate * newSessions;
-        await supabase.from("patients")
-          .update({ sessions: newSessions, billed: newBilled })
-          .eq("id", data.id);
-        updatedPatient = { ...newPatient, sessions: newSessions, billed: newBilled };
-        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+    if (recurring && startDate) {
+      const allRows = [];
+      for (const s of sched) {
+        getRecurringDates(s.day, startDate, endDate).forEach(d =>
+          allRows.push({ user_id: userId, patient_id: data.id, patient: name.trim(),
+            initials: getInitials(name), time: s.time, day: s.day,
+            date: formatShortDate(d), color_idx: colorIdx }));
+      }
+      if (allRows.length > 0) {
+        const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
+        if (!sessErr && sessData) {
+          const n = sessData.length;
+          const billed = patientRate * n;
+          await supabase.from("patients").update({ sessions: n, billed }).eq("id", data.id);
+          updatedPatient = { ...newPatient, sessions: n, billed };
+          setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+        }
       }
     }
 
@@ -212,25 +215,22 @@ export function useCardiganData(user) {
     return true;
   }
 
-  async function generateRecurringSessions(patientId, weeks) {
+  async function generateRecurringSessions(patientId, schedules, startDate, endDate) {
     const patient = patients.find(p => p.id === patientId);
-    if (!patient || weeks <= 0) return false;
-    const dates = getUpcomingDates(patient.day, weeks);
-    if (dates.length === 0) return false;
+    if (!patient || !schedules?.length || !startDate) return false;
+
+    const allRows = [];
+    for (const s of schedules) {
+      getRecurringDates(s.day, startDate, endDate).forEach(d =>
+        allRows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
+          initials: patient.initials, time: s.time, day: s.day,
+          date: formatShortDate(d), color_idx: patient.colorIdx || 0 }));
+    }
+    if (allRows.length === 0) return false;
 
     setMutating(true);
     setMutationError("");
-    const rows = dates.map(d => ({
-      user_id: userId,
-      patient_id: patient.id,
-      patient: patient.name,
-      initials: patient.initials,
-      time: patient.time,
-      day: patient.day,
-      date: formatShortDate(d),
-      color_idx: patient.colorIdx || 0,
-    }));
-    const { data, error } = await supabase.from("sessions").insert(rows).select();
+    const { data, error } = await supabase.from("sessions").insert(allRows).select();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     const newSessions = patient.sessions + data.length;
