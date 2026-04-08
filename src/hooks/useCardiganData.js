@@ -380,16 +380,20 @@ export function useCardiganData(user) {
     return true;
   }
 
-  // Compute amountDue per patient from past sessions only
+  // Compute amountDue per patient from past sessions only (date + time)
   const enrichedPatients = useMemo(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    const now = new Date();
     return patients.map(p => {
       let billable = 0;
       upcomingSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
-        if (parseShortDate(s.date) > today) return;
         if (s.status === "cancelled") return;
+        const d = parseShortDate(s.date);
+        if (s.time) {
+          const [h, m] = s.time.split(":");
+          d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+        }
+        if (d > now) return;
         billable++;
       });
       return { ...p, amountDue: Math.max(0, billable * p.rate - p.paid) };
