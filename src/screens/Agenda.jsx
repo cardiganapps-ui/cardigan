@@ -3,6 +3,7 @@ import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { IconLeaf } from "../components/Icons";
 
+/* ── SWIPE HOOK ── */
 function useSwipe(onLeft, onRight) {
   const start = useRef(null);
   const onTouchStart = useCallback((e) => {
@@ -53,6 +54,10 @@ function isSameDay(a, b) {
   return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
 }
 
+function sortByTime(sessions) {
+  return [...sessions].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+}
+
 function buildMonthGrid(year, month) {
   const firstDay    = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -66,36 +71,76 @@ function buildMonthGrid(year, month) {
   return cells;
 }
 
+function isCancelledStatus(s) {
+  return s === "cancelled" || s === "charged";
+}
+
+function statusClass(s) {
+  if (s === "scheduled") return "status-scheduled";
+  if (s === "completed") return "status-completed";
+  return "status-cancelled";
+}
+
+function statusLabel(s) {
+  if (isCancelledStatus(s)) return "Cancelada";
+  if (s === "completed") return "Completada";
+  return "Agendada";
+}
+
+/* ── SESSION ROW (shared) ── */
+function SessionRow({ s, onClick, compact }) {
+  return (
+    <div className="row-item" key={s.id} onClick={() => onClick(s)}>
+      <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
+        <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? 13 : 14, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
+      </div>
+      <div className="row-avatar" style={{ background: clientColors[s.colorIdx], width: compact ? 34 : 36, height: compact ? 34 : 36, fontSize:11 }}>{s.initials}</div>
+      <div className="row-content">
+        <div className="row-title">{s.patient}</div>
+        <div className="row-sub">{s.day}</div>
+      </div>
+      <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
+      {!compact && <span className="row-chevron">›</span>}
+    </div>
+  );
+}
+
 /* ── DAY VIEW ── */
 function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions }) {
   const dateStr = formatDateStr(selectedDate);
-  const daySessions = upcomingSessions.filter(s => s.date === dateStr);
+  const daySessions = sortByTime(upcomingSessions.filter(s => s.date === dateStr));
   const weekDays = getWeekDays(selectedDate);
   const dayName = DOW[(selectedDate.getDay() + 6) % 7];
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
   const swipe = useSwipe(
-    useCallback(() => setSelectedDate(d => addDays(d, 1)), [setSelectedDate]),
-    useCallback(() => setSelectedDate(d => addDays(d, -1)), [setSelectedDate])
+    useCallback(() => setSelectedDate(d => addDays(d, 7)), [setSelectedDate]),
+    useCallback(() => setSelectedDate(d => addDays(d, -7)), [setSelectedDate])
   );
+
+  const monday = weekDays[0];
+  const sunday = weekDays[6];
+  const weekLabel = monday.getMonth() === sunday.getMonth()
+    ? `${monday.getDate()}–${sunday.getDate()} ${SHORT_MONTHS[monday.getMonth()]}`
+    : `${formatDateStr(monday)} – ${formatDateStr(sunday)}`;
 
   return (
     <div {...swipe}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 12px" }}>
-        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>‹</button>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 10px" }}>
+        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
         <div style={{ textAlign:"center" }}>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{dayName} {dateStr}</div>
-          <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>{daySessions.length===0 ? "Sin sesiones" : `${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
+          <div style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{weekLabel}</div>
         </div>
-        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>›</button>
+        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>›</button>
       </div>
-      <div style={{ paddingBottom:8 }}>
+      <div style={{ paddingBottom:4 }}>
         <div className="cal-strip">
           {weekDays.map((d,i) => {
             const ds = formatDateStr(d);
             const isActive = isSameDay(d, selectedDate);
+            const isToday = isSameDay(d, TODAY);
             const hasSess = sessionDateSet.has(ds);
             return (
-              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""}`} onClick={() => setSelectedDate(d)}>
+              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} onClick={() => setSelectedDate(d)}>
                 <span className="cal-day-name">{DOW[i]}</span>
                 <span className="cal-day-num">{d.getDate()}</span>
               </div>
@@ -103,7 +148,11 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
           })}
         </div>
       </div>
-      <div style={{ padding:"4px 16px 12px" }}>
+      <div style={{ padding:"0 16px 4px" }}>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)", marginBottom:2 }}>{dayName} {dateStr}</div>
+        <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? "Sin sesiones" : `${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
+      </div>
+      <div style={{ padding:"0 16px 12px" }}>
         {daySessions.length === 0
           ? <div className="card" style={{ padding:32, textAlign:"center" }}>
               <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconLeaf size={32} /></div>
@@ -111,22 +160,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
               <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>No hay sesiones este día.</div>
             </div>
           : <div className="card">
-              {daySessions.map(s => (
-                <div className="row-item" key={s.id} onClick={() => onSelectSession(s)}>
-                  <div style={{ width:44, textAlign:"center", flex:"none" }}>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
-                  </div>
-                  <div className="row-avatar" style={{ background: clientColors[s.colorIdx], width:36, height:36, fontSize:11 }}>{s.initials}</div>
-                  <div className="row-content">
-                    <div className="row-title">{s.patient}</div>
-                    <div className="row-sub">{s.day}</div>
-                  </div>
-                  <span className={`session-status ${s.status==="scheduled"?"status-scheduled":s.status==="completed"?"status-completed":"status-cancelled"}`}>
-                    {s.status==="scheduled"?"Agendada":s.status==="completed"?"Completada":"Cancelada"}
-                  </span>
-                  <span className="row-chevron">›</span>
-                </div>
-              ))}
+              {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} />)}
             </div>
         }
       </div>
@@ -188,7 +222,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
               return (
                 <div key={dIdx} className="week-cell" onClick={() => !sess && setSelectedDate(d)}>
                   {sess && (
-                    <div className={`week-event ${(sess.status==="cancelled"||sess.status==="charged")?"cancelled":""}`} onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
+                    <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`} onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
                       {sess.initials}
                     </div>
                   )}
@@ -205,7 +239,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
 /* ── MONTH VIEW ── */
 function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions }) {
   const [monthOffset, setMonthOffset] = useState(0);
-  const base = new Date(2026, 3);
+  const base = new Date(TODAY.getFullYear(), TODAY.getMonth());
   base.setMonth(base.getMonth() + monthOffset);
   const displayMonth = base.getMonth();
   const displayYear  = base.getFullYear();
@@ -213,7 +247,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
   const selectedDateStr = formatDateStr(selectedDate);
-  const daySessions = upcomingSessions.filter(s => s.date === selectedDateStr);
+  const daySessions = sortByTime(upcomingSessions.filter(s => s.date === selectedDateStr));
   const swipe = useSwipe(
     useCallback(() => setMonthOffset(o => o + 1), []),
     useCallback(() => setMonthOffset(o => o - 1), [])
@@ -256,21 +290,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
               <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>Día libre</div>
             </div>
           : <div className="card">
-              {daySessions.map(s => (
-                <div className="row-item" key={s.id} onClick={() => onSelectSession(s)}>
-                  <div style={{ width:40, textAlign:"center", flex:"none" }}>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:13, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
-                  </div>
-                  <div className="row-avatar" style={{ background: clientColors[s.colorIdx], width:34, height:34, fontSize:11 }}>{s.initials}</div>
-                  <div className="row-content">
-                    <div className="row-title">{s.patient}</div>
-                    <div className="row-sub">{s.day}</div>
-                  </div>
-                  <span className={`session-status ${(s.status==="cancelled"||s.status==="charged")?"status-cancelled":s.status==="completed"?"status-completed":"status-scheduled"}`}>
-                    {(s.status==="cancelled"||s.status==="charged")?"Cancelada":s.status==="completed"?"Completada":"Agendada"}
-                  </span>
-                </div>
-              ))}
+              {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}
             </div>
         }
       </div>
@@ -284,13 +304,23 @@ export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSess
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
 
+  const isToday = isSameDay(selectedDate, TODAY);
+
   return (
     <div className="page">
       <div style={{ paddingTop:16 }}>
-        <div className="view-toggle">
-          {[{k:"day",l:"Día"},{k:"week",l:"Semana"},{k:"month",l:"Mes"}].map(v => (
-            <button key={v.k} className={`view-btn ${view===v.k?"active":""}`} onClick={() => setView(v.k)}>{v.l}</button>
-          ))}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 16px 14px" }}>
+          <div className="view-toggle" style={{ flex:1, margin:0 }}>
+            {[{k:"day",l:"Día"},{k:"week",l:"Semana"},{k:"month",l:"Mes"}].map(v => (
+              <button key={v.k} className={`view-btn ${view===v.k?"active":""}`} onClick={() => setView(v.k)}>{v.l}</button>
+            ))}
+          </div>
+          {!isToday && (
+            <button onClick={() => setSelectedDate(new Date(TODAY))}
+              style={{ padding:"7px 12px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--teal)", background:"var(--white)", color:"var(--teal-dark)", cursor:"pointer", fontFamily:"var(--font)", whiteSpace:"nowrap", flexShrink:0 }}>
+              Hoy
+            </button>
+          )}
         </div>
       </div>
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}

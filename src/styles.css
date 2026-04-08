@@ -387,6 +387,8 @@ html, body {
 .cal-day.active .cal-day-name { color: rgba(255,255,255,0.8); }
 .cal-day-num { font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); }
 .cal-day.active .cal-day-num { color: white; }
+.cal-day.today:not(.active) { background: var(--teal-pale); }
+.cal-day.today:not(.active) .cal-day-num { color: var(--teal-dark); }
 
 /* BALANCE BAR */
 .balance-bar { height: 6px; background: var(--cream-dark); border-radius: 3px; overflow: hidden; margin-top: 6px; }
