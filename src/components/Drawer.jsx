@@ -1,5 +1,5 @@
 import { navItems } from "../data/seedData";
-import { IconHome, IconCalendar, IconUsers, IconDollar, IconSettings, IconStar } from "./Icons";
+import { IconHome, IconCalendar, IconUsers, IconDollar, IconSettings, IconStar, IconLogOut } from "./Icons";
 
 const NAV_ICONS = {
   home: IconHome,
@@ -9,10 +9,14 @@ const NAV_ICONS = {
   settings: IconSettings,
 };
 
-export function Drawer({ screen, setScreen, onClose }) {
+export function Drawer({ screen, setScreen, onClose, user, signOut }) {
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
+  const userEmail = user?.email || "";
+  const userInitial = userName.charAt(0).toUpperCase();
 
   const renderItem = (item) => {
     const Icon = NAV_ICONS[item.iconId];
@@ -31,10 +35,10 @@ export function Drawer({ screen, setScreen, onClose }) {
           <div className="drawer-header">
             <div className="drawer-logo">cardigan</div>
             <div className="drawer-user">
-              <div className="drawer-avatar">D</div>
+              <div className="drawer-avatar">{userInitial}</div>
               <div>
-                <div className="drawer-user-name">Daniela Kim</div>
-                <div className="drawer-user-sub">dani@cardigan.app · Psicóloga</div>
+                <div className="drawer-user-name">{userName}</div>
+                <div className="drawer-user-sub">{userEmail}</div>
               </div>
             </div>
           </div>
@@ -43,13 +47,17 @@ export function Drawer({ screen, setScreen, onClose }) {
             {principal.map(renderItem)}
             <div className="drawer-section-label" style={{ marginTop:8 }}>Cuenta</div>
             {cuenta.map(renderItem)}
+            <button className="drawer-item" onClick={() => { signOut(); onClose(); }}>
+              <div className="drawer-item-icon"><IconLogOut size={18} /></div>
+              <span className="drawer-item-label">Cerrar sesión</span>
+            </button>
           </nav>
           <div className="drawer-footer">
             <div className="drawer-plan">
               <div className="drawer-plan-icon"><IconStar size={16} /></div>
               <div>
                 <div className="drawer-plan-label">Plan activo</div>
-                <div className="drawer-plan-value">Cardigan Pro · $199/mes</div>
+                <div className="drawer-plan-value">Cardigan Pro</div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchJson, sendJson, formatShortDate } from "../data/api";
-import { seedPatients, seedUpcomingSessions, seedPayments, DAY_ORDER } from "../data/seedData";
+import { DAY_ORDER } from "../data/seedData";
 
 function getInitials(name) {
   const parts = name.trim().split(/\s+/);
@@ -37,10 +37,10 @@ export function useCardiganData() {
         setPayments(Array.isArray(paymentsData) ? paymentsData : []);
       } catch (err) {
         if (cancelled) return;
-        setPatients(seedPatients);
-        setUpcomingSessions(seedUpcomingSessions);
-        setPayments(seedPayments);
-        setError(err instanceof Error ? err.message : "No se pudieron cargar los datos.");
+        // No seed data — start clean
+        setPatients([]);
+        setUpcomingSessions([]);
+        setPayments([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
