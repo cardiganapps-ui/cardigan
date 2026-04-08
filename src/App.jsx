@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
+import { useAuth } from "./hooks/useAuth";
 import { useCardiganData } from "./hooks/useCardiganData";
-import { buildTopbarMeta } from "./data/seedData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
@@ -14,14 +14,31 @@ import { AuthScreen } from "./screens/AuthScreen";
 import "./styles.css";
 
 export default function Cardigan() {
-  const [screen, setScreen]       = useState("home");
+  const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="shell" style={{ justifyContent:"center", alignItems:"center" }}>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--charcoal-xl)" }}>cardigan</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} />;
+  }
+
+  return <AppShell user={user} signOut={signOut} />;
+}
+
+function AppShell({ user, signOut }) {
+  const [screen, setScreen] = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const {
     patients,
     upcomingSessions,
     payments,
     loading,
-    error,
     mutating,
     mutationError,
     createPayment,
@@ -31,6 +48,9 @@ export default function Cardigan() {
   } = useCardiganData();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
+
+  const userName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario";
+  const userInitial = userName.charAt(0).toUpperCase();
 
   const openRecordPaymentModal = (patient) => {
     setPaymentDraft({
@@ -55,67 +75,54 @@ export default function Cardigan() {
     agenda:   <Agenda upcomingSessions={upcomingSessions} patients={patients} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
     patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
-    settings: <Settings />,
+    settings: <Settings user={user} signOut={signOut} />,
   };
 
-  const topbarMeta = useMemo(() => buildTopbarMeta(patients), [patients]);
-  const isAuth = screen === "auth";
-  const meta   = topbarMeta[screen] || topbarMeta.home;
-
   return (
-    <>
-      {isAuth ? <AuthScreen /> : (
-        <div className="shell">
-          <div className="status-bar" />
-          <div className="topbar">
-            <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
-              <div className="hamburger-line" />
-              <div className="hamburger-line" />
-              <div className="hamburger-line" />
-            </button>
-            <div className="topbar-brand">cardigan</div>
-            <div className="topbar-right">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><IconHome size={18} /></button>
-              <div className="avatar-sm">D</div>
-            </div>
-          </div>
-          {loading && (
-            <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>
-              Cargando datos...
-            </div>
-          )}
-          {!loading && error && (
-            <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--amber)" }}>
-              No se pudo conectar al API. Mostrando datos locales.
-            </div>
-          )}
-          {!loading && mutationError && (
-            <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--red)" }}>
-              {mutationError}
-            </div>
-          )}
-          {screenMap[screen]}
-          <PaymentModal
-            open={paymentModalOpen}
-            onClose={() => setPaymentModalOpen(false)}
-            patients={patients}
-            initialPatientName={paymentDraft.patientName}
-            initialAmount={paymentDraft.amount}
-            onSubmit={createPayment}
-            mutating={mutating}
-          />
-          <QuickActions
-            patients={patients}
-            upcomingSessions={upcomingSessions}
-            onOpenPaymentModal={() => openRecordPaymentModal(null)}
-            createPatient={createPatient}
-            createSession={createSession}
-            updateSessionStatus={updateSessionStatus}
-            mutating={mutating}
-          />
-          {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} />}
+    <div className="shell">
+      <div className="status-bar" />
+      <div className="topbar">
+        <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
+          <div className="hamburger-line" />
+          <div className="hamburger-line" />
+          <div className="hamburger-line" />
+        </button>
+        <div className="topbar-brand">cardigan</div>
+        <div className="topbar-right">
+          <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><IconHome size={18} /></button>
+          <div className="avatar-sm">{userInitial}</div>
+        </div>
+      </div>
+      {loading && (
+        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>
+          Cargando datos...
         </div>
       )}
-    </>
+      {!loading && mutationError && (
+        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--red)" }}>
+          {mutationError}
+        </div>
+      )}
+      {screenMap[screen]}
+      <PaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        patients={patients}
+        initialPatientName={paymentDraft.patientName}
+        initialAmount={paymentDraft.amount}
+        onSubmit={createPayment}
+        mutating={mutating}
+      />
+      <QuickActions
+        patients={patients}
+        upcomingSessions={upcomingSessions}
+        onOpenPaymentModal={() => openRecordPaymentModal(null)}
+        createPatient={createPatient}
+        createSession={createSession}
+        updateSessionStatus={updateSessionStatus}
+        mutating={mutating}
+      />
+      {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} user={user} signOut={signOut} />}
+    </div>
   );
 }

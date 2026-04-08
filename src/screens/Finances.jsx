@@ -1,29 +1,6 @@
 import { useState } from "react";
-import { clientColors, monthlyData } from "../data/seedData";
-import { IconBank, IconCash, IconCheck } from "../components/Icons";
-
-function FinancesMiniChart({ data, valueKey, color }) {
-  const max = Math.max(...data.map(d => d[valueKey]), 1);
-  return (
-    <div className="bar-chart">
-      {data.map((d, i) => {
-        const pct    = Math.round((d[valueKey] / max) * 100);
-        const isLast = i === data.length - 1;
-        return (
-          <div className="bar-col" key={d.mes}>
-            <div className="bar-val" style={{ color: isLast ? color : "var(--charcoal-xl)", fontSize: isLast ? 9 : 8 }}>
-              {valueKey==="sesiones" ? d[valueKey] : `$${(d[valueKey]/1000).toFixed(1)}k`}
-            </div>
-            <div className="bar-track">
-              <div className="bar-fill" style={{ height:`${pct}%`, background: isLast ? color : "var(--cream-deeper)" }} />
-            </div>
-            <div className="bar-label" style={{ color: isLast ? color : undefined }}>{d.mes}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+import { clientColors } from "../data/seedData";
+import { IconCheck } from "../components/Icons";
 
 function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   const [groupByClient, setGroupByClient] = useState(false);
@@ -182,7 +159,7 @@ export function Finances({ patients, payments, onRecordPayment, mutating }) {
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+Math.max(0,p.billed-p.paid), 0);
   const owingPatients = patients.filter(p => p.billed>p.paid);
-  const currentMonth  = monthlyData[monthlyData.length-1];
+  const totalCollected = payments.reduce((s,p) => s+p.amount, 0);
 
   return (
     <div className="page">
@@ -248,32 +225,40 @@ export function Finances({ patients, payments, onRecordPayment, mutating }) {
 
       {tab==="ingresos" && (
         <div style={{ padding:"0 16px" }}>
-          <div className="card" style={{ padding:"16px 16px 12px", marginBottom:14 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
-              <div>
-                <div className="stat-tile-label">Cobrado este mes</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:26, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.5px" }}>${currentMonth.cobrado.toLocaleString()}</div>
-                <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>Febrero 2026</div>
-              </div>
-              <span className="badge badge-green">+{Math.round(((currentMonth.cobrado-monthlyData[monthlyData.length-2].cobrado)/monthlyData[monthlyData.length-2].cobrado)*100)}% vs Ene</span>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+            <div className="stat-tile">
+              <div className="stat-tile-label">Total cobrado</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)" }}>${totalCollected.toLocaleString()}</div>
+              <div className="stat-tile-sub">{payments.length} pagos</div>
             </div>
-            <FinancesMiniChart data={monthlyData} valueKey="cobrado" color="var(--teal)" />
+            <div className="stat-tile">
+              <div className="stat-tile-label">Pendiente</div>
+              <div className="stat-tile-val" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
+              <div className="stat-tile-sub">{owingPatients.length} pacientes</div>
+            </div>
           </div>
-          <div className="section-title" style={{ marginBottom:10 }}>Historial mensual</div>
-          <div className="card">
-            {[...monthlyData].reverse().map((m) => (
-              <div className="bal-row" key={m.mes}>
-                <div style={{ width:36, height:36, background:"var(--teal-pale)", borderRadius:"var(--radius-sm)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  <span style={{ fontSize:10, fontWeight:800, color:"var(--teal-dark)" }}>{m.mes}</span>
-                </div>
-                <div style={{ flex:1 }}>
-                  <div className="bal-name">{m.mes} {m.year}</div>
-                  <div className="bal-sub">{m.sesiones} sesiones · ${m.pendiente.toLocaleString()} pendiente</div>
-                </div>
-                <div className="bal-amt" style={{ color:"var(--charcoal)" }}>${m.cobrado.toLocaleString()}</div>
+          {payments.length === 0
+            ? <div className="card" style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+                Aún no hay pagos registrados
               </div>
-            ))}
-          </div>
+            : <div>
+                <div className="section-title" style={{ marginBottom:10 }}>Últimos pagos</div>
+                <div className="card">
+                  {[...payments].reverse().slice(0,10).map((p,i) => (
+                    <div className="bal-row" key={p.id}>
+                      <div className="row-avatar" style={{ background:clientColors[(p.colorIdx||i)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>
+                        {p.initials || p.patient?.slice(0,2).toUpperCase()}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div className="bal-name">{p.patient}</div>
+                        <div className="bal-sub">{p.date} · {p.method}</div>
+                      </div>
+                      <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+          }
         </div>
       )}
 
