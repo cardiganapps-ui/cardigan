@@ -239,7 +239,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 }
 
 /* ── AGENDA ROOT ── */
-export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onCancelSession, mutating }) {
+export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onCancelSession, deleteSession, mutating }) {
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
@@ -268,6 +268,7 @@ export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onC
           const ok = await onCancelSession(session);
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status:"cancelled" } : prev));
         }}
+        onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
         mutating={mutating}
       />
     </div>

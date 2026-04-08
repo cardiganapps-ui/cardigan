@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchJson, sendJson, formatShortDate } from "../data/api";
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
+import { formatShortDate } from "../data/api";
 
 function getInitials(name) {
   const parts = name.trim().split(/\s+/);
@@ -10,208 +11,209 @@ function getInitials(name) {
 
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
+function mapRows(rows) {
+  return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx }));
+}
+
 export function useCardiganData() {
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadData() {
-      setLoading(true);
-      setError("");
-      try {
-        const [patientsData, sessionsData, paymentsData] = await Promise.all([
-          fetchJson("/patients"),
-          fetchJson("/sessions/upcoming"),
-          fetchJson("/payments"),
-        ]);
-        if (cancelled) return;
-        setPatients(Array.isArray(patientsData) ? patientsData : []);
-        setUpcomingSessions(Array.isArray(sessionsData) ? sessionsData : []);
-        setPayments(Array.isArray(paymentsData) ? paymentsData : []);
-      } catch (err) {
-        if (cancelled) return;
-        // No seed data — start clean
-        setPatients([]);
-        setUpcomingSessions([]);
-        setPayments([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadData();
-    return () => {
-      cancelled = true;
-    };
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    const [pRes, sRes, pmRes] = await Promise.all([
+      supabase.from("patients").select("*").order("name"),
+      supabase.from("sessions").select("*").order("created_at"),
+      supabase.from("payments").select("*").order("created_at", { ascending: false }),
+    ]);
+    setPatients(mapRows(pRes.data));
+    setUpcomingSessions(mapRows(sRes.data));
+    setPayments(mapRows(pmRes.data));
+    setLoading(false);
   }, []);
 
-  const totals = useMemo(() => {
-    const totalBilled = patients.reduce((sum, p) => sum + p.billed, 0);
-    const totalPaid = patients.reduce((sum, p) => sum + p.paid, 0);
-    return {
-      totalBilled,
-      totalPaid,
-      totalOwed: totalBilled - totalPaid,
-    };
-  }, [patients]);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
-    const parsedAmount = Number(amount);
-    if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
-
-    const priorPatients = patients;
-    const priorPayments = payments;
-    const targetPatient = patients.find(p => p.name === patientName);
-    const tempId = `tmp-${Date.now()}`;
-    const tempPayment = {
-      id: tempId,
-      patient: patientName,
-      initials: targetPatient?.initials || patientName.slice(0, 2).toUpperCase(),
-      amount: parsedAmount,
-      date,
-      method,
-      colorIdx: 0,
-    };
-
-    setMutationError("");
-    setMutating(true);
-    setPayments(prev => [...prev, tempPayment]);
-    setPatients(prev => prev.map(p => (
-      p.name === patientName ? { ...p, paid: p.paid + parsedAmount } : p
-    )));
-
-    try {
-      const created = await sendJson("/payments", "POST", {
-        patient: patientName,
-        amount: parsedAmount,
-        method,
-        date,
-      });
-      if (created && typeof created === "object") {
-        setPayments(prev => prev.map(p => (p.id === tempId ? { ...p, ...created } : p)));
-      }
-      return true;
-    } catch (err) {
-      setPayments(priorPayments);
-      setPatients(priorPatients);
-      setMutationError(err instanceof Error ? err.message : "No se pudo registrar el pago.");
-      return false;
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  async function updateSessionStatus(sessionId, status) {
-    const priorSessions = upcomingSessions;
-    setMutationError("");
-    setMutating(true);
-    setUpcomingSessions(prev => prev.map(s => (
-      s.id === sessionId ? { ...s, status } : s
-    )));
-    try {
-      await sendJson(`/sessions/${sessionId}`, "PATCH", { status });
-      return true;
-    } catch (err) {
-      setUpcomingSessions(priorSessions);
-      setMutationError(err instanceof Error ? err.message : "No se pudo actualizar la sesión.");
-      return false;
-    } finally {
-      setMutating(false);
-    }
-  }
-
+  /* ── PATIENTS ── */
   async function createPatient({ name, parent, rate, day, time }) {
     if (!name?.trim()) return false;
-    const tempId = `tmp-${Date.now()}`;
-    const newPatient = {
-      id: tempId,
+    setMutating(true);
+    setMutationError("");
+    const { data, error } = await supabase.from("patients").insert({
       name: name.trim(),
       parent: parent?.trim() || "",
       initials: getInitials(name),
       rate: Number(rate) || 700,
       day: day || "Lunes",
       time: time || "16:00",
-      status: "active",
-      billed: 0,
-      paid: 0,
-      sessions: 0,
-    };
+      color_idx: patients.length % 7,
+    }).select().single();
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setPatients(prev => [...prev, { ...data, colorIdx: data.color_idx }].sort((a, b) => a.name.localeCompare(b.name)));
+    return true;
+  }
 
-    setMutationError("");
+  async function updatePatient(id, updates) {
     setMutating(true);
-    setPatients(prev => [...prev, newPatient]);
+    setMutationError("");
+    const patch = { ...updates };
+    if (patch.name) patch.initials = getInitials(patch.name);
+    const { data, error } = await supabase.from("patients")
+      .update(patch).eq("id", id).select().single();
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setPatients(prev => prev.map(p => p.id === id ? { ...data, colorIdx: data.color_idx } : p));
+    return true;
+  }
 
-    try {
-      const created = await sendJson("/patients", "POST", newPatient);
-      if (created && typeof created === "object") {
-        setPatients(prev => prev.map(p => (p.id === tempId ? { ...p, ...created } : p)));
+  async function deletePatient(id) {
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("patients").delete().eq("id", id);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setPatients(prev => prev.filter(p => p.id !== id));
+    setUpcomingSessions(prev => prev.filter(s => s.patient_id !== id));
+    return true;
+  }
+
+  /* ── SESSIONS ── */
+  async function createSession({ patientName, date, time }) {
+    if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
+    const patient = patients.find(p => p.name === patientName);
+    if (!patient) return false;
+
+    const [dayNum, monthStr] = date.split(" ");
+    const monthIdx = SHORT_MONTHS.indexOf(monthStr);
+    const year = new Date().getFullYear();
+    const dateObj = new Date(year, monthIdx >= 0 ? monthIdx : 0, parseInt(dayNum) || 1);
+    const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
+
+    setMutating(true);
+    setMutationError("");
+    const { data, error } = await supabase.from("sessions").insert({
+      patient_id: patient.id,
+      patient: patientName.trim(),
+      initials: patient.initials,
+      time: time.trim(),
+      day: dayName,
+      date: date.trim(),
+      color_idx: patient.colorIdx || 0,
+    }).select().single();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    // Update patient's session count and billed amount
+    const newSessions = patient.sessions + 1;
+    const newBilled = patient.billed + patient.rate;
+    await supabase.from("patients")
+      .update({ sessions: newSessions, billed: newBilled })
+      .eq("id", patient.id);
+
+    setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx }]);
+    setPatients(prev => prev.map(p => p.id === patient.id
+      ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    setMutating(false);
+    return true;
+  }
+
+  async function updateSessionStatus(sessionId, status) {
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions")
+      .update({ status }).eq("id", sessionId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status } : s));
+    return true;
+  }
+
+  async function deleteSession(sessionId) {
+    const session = upcomingSessions.find(s => s.id === sessionId);
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
+
+    // Reverse billed amount if session had a linked patient
+    if (session?.patient_id) {
+      const patient = patients.find(p => p.id === session.patient_id);
+      if (patient) {
+        const newSessions = Math.max(0, patient.sessions - 1);
+        const newBilled = Math.max(0, patient.billed - patient.rate);
+        await supabase.from("patients")
+          .update({ sessions: newSessions, billed: newBilled })
+          .eq("id", patient.id);
+        setPatients(prev => prev.map(p => p.id === patient.id
+          ? { ...p, sessions: newSessions, billed: newBilled } : p));
       }
-    } catch {
-      // keep optimistic update — API may not exist yet
-    } finally {
-      setMutating(false);
     }
     return true;
   }
 
-  async function createSession({ patientName, date, time }) {
-    if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
+  /* ── PAYMENTS ── */
+  async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
+    const parsedAmount = Number(amount);
+    if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
     const patient = patients.find(p => p.name === patientName);
 
-    // derive day name from date string (e.g. "10 Abr" → "Jueves")
-    const [dayNum, monthStr] = date.split(" ");
-    const monthIdx = SHORT_MONTHS.indexOf(monthStr);
-    const dateObj = new Date(2026, monthIdx >= 0 ? monthIdx : 3, parseInt(dayNum) || 1);
-    const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
-
-    const tempId = `tmp-${Date.now()}`;
-    const newSession = {
-      id: tempId,
-      patient: patientName.trim(),
-      initials: patient?.initials || getInitials(patientName),
-      time: time.trim(),
-      day: dayName,
-      date: date.trim(),
-      status: "scheduled",
-      colorIdx: patient ? patients.indexOf(patient) % 7 : 0,
-    };
-
-    setMutationError("");
     setMutating(true);
-    setUpcomingSessions(prev => [...prev, newSession]);
+    setMutationError("");
+    const { data, error } = await supabase.from("payments").insert({
+      patient_id: patient?.id || null,
+      patient: patientName,
+      initials: patient?.initials || getInitials(patientName),
+      amount: parsedAmount,
+      date,
+      method,
+      color_idx: patient?.colorIdx || 0,
+    }).select().single();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
 
-    try {
-      const created = await sendJson("/sessions", "POST", newSession);
-      if (created && typeof created === "object") {
-        setUpcomingSessions(prev => prev.map(s => (s.id === tempId ? { ...s, ...created } : s)));
+    if (patient) {
+      const newPaid = patient.paid + parsedAmount;
+      await supabase.from("patients")
+        .update({ paid: newPaid }).eq("id", patient.id);
+      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
+    }
+
+    setPayments(prev => [{ ...data, colorIdx: data.color_idx }, ...prev]);
+    setMutating(false);
+    return true;
+  }
+
+  async function deletePayment(paymentId) {
+    const payment = payments.find(p => p.id === paymentId);
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("payments").delete().eq("id", paymentId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
+
+    if (payment?.patient_id) {
+      const patient = patients.find(p => p.id === payment.patient_id);
+      if (patient) {
+        const newPaid = Math.max(0, patient.paid - payment.amount);
+        await supabase.from("patients")
+          .update({ paid: newPaid }).eq("id", patient.id);
+        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
       }
-    } catch {
-      // keep optimistic update
-    } finally {
-      setMutating(false);
     }
     return true;
   }
 
   return {
-    patients,
-    upcomingSessions,
-    payments,
-    loading,
-    error,
-    totals,
-    mutating,
-    mutationError,
-    createPayment,
-    createPatient,
-    createSession,
-    updateSessionStatus,
+    patients, upcomingSessions, payments, loading, mutating, mutationError,
+    createPatient, updatePatient, deletePatient,
+    createSession, updateSessionStatus, deleteSession,
+    createPayment, deletePayment,
+    refresh,
   };
 }
