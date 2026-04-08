@@ -1,7 +1,23 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { IconLeaf } from "../components/Icons";
+
+function useSwipe(onLeft, onRight) {
+  const start = useRef(null);
+  const onTouchStart = useCallback((e) => {
+    start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+  const onTouchEnd = useCallback((e) => {
+    if (!start.current) return;
+    const dx = e.changedTouches[0].clientX - start.current.x;
+    const dy = e.changedTouches[0].clientY - start.current.y;
+    start.current = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) onLeft(); else onRight();
+  }, [onLeft, onRight]);
+  return { onTouchStart, onTouchEnd };
+}
 
 /* ── DATE HELPERS ── */
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -57,9 +73,13 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   const weekDays = getWeekDays(selectedDate);
   const dayName = DOW[(selectedDate.getDay() + 6) % 7];
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
+  const swipe = useSwipe(
+    useCallback(() => setSelectedDate(d => addDays(d, 1)), [setSelectedDate]),
+    useCallback(() => setSelectedDate(d => addDays(d, -1)), [setSelectedDate])
+  );
 
   return (
-    <div>
+    <div {...swipe}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 12px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>‹</button>
         <div style={{ textAlign:"center" }}>
@@ -124,9 +144,13 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
   const weekLabel = `Semana del ${formatDateStr(monday)}`;
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
   const gridCols = `44px repeat(${visibleDays.length}, 1fr)`;
+  const swipe = useSwipe(
+    useCallback(() => setSelectedDate(d => addDays(d, 7)), [setSelectedDate]),
+    useCallback(() => setSelectedDate(d => addDays(d, -7)), [setSelectedDate])
+  );
 
   return (
-    <div>
+    <div {...swipe}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 8px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
         <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</div>
@@ -190,9 +214,13 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
   const selectedDateStr = formatDateStr(selectedDate);
   const daySessions = upcomingSessions.filter(s => s.date === selectedDateStr);
+  const swipe = useSwipe(
+    useCallback(() => setMonthOffset(o => o + 1), []),
+    useCallback(() => setMonthOffset(o => o - 1), [])
+  );
 
   return (
-    <div>
+    <div {...swipe}>
       <div className="month-header">
         <button className="month-nav-btn" onClick={() => setMonthOffset(o => o-1)}>‹</button>
         <span className="month-title">{MONTH_NAMES[displayMonth]} {displayYear}</span>
