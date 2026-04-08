@@ -14,6 +14,7 @@ export function PaymentModal({
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState("Transferencia");
+  const [customMethod, setCustomMethod] = useState("");
   const [date, setDate] = useState(todayISO());
   const [formError, setFormError] = useState("");
 
@@ -22,9 +23,19 @@ export function PaymentModal({
     setPatientName(initialPatientName || "");
     setAmount(initialAmount || "");
     setMethod("Transferencia");
+    setCustomMethod("");
     setDate(todayISO());
     setFormError("");
   }, [open, initialPatientName, initialAmount]);
+
+  const handlePatientChange = (name) => {
+    setPatientName(name);
+    if (name) {
+      const p = patients.find(pt => pt.name === name);
+      if (p && p.amountDue > 0) setAmount(String(p.amountDue));
+      else setAmount("");
+    }
+  };
 
   if (!open) return null;
 
@@ -39,11 +50,12 @@ export function PaymentModal({
       setFormError("Ingresa un monto valido.");
       return;
     }
+    const finalMethod = method === "Otro" ? (customMethod.trim() || "Otro") : method;
     setFormError("");
     const ok = await onSubmit({
       patientName: patientName.trim(),
       amount: parsedAmount,
-      method,
+      method: finalMethod,
       date: isoToShortDate(date),
     });
     if (ok) onClose();
@@ -60,22 +72,29 @@ export function PaymentModal({
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
             <label className="input-label">Paciente</label>
-            <select className="input" value={patientName} onChange={(e) => setPatientName(e.target.value)}>
+            <select className="input" value={patientName} onChange={(e) => handlePatientChange(e.target.value)}>
               <option value="">Seleccionar paciente</option>
               {patients.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div className="input-group">
             <label className="input-label">Monto</label>
-            <input className="input" type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="700" />
+            <input className="input" type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ej: 700" />
           </div>
           <div className="input-group">
             <label className="input-label">Método</label>
             <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>
               <option value="Transferencia">Transferencia</option>
               <option value="Efectivo">Efectivo</option>
+              <option value="Otro">Otro</option>
             </select>
           </div>
+          {method === "Otro" && (
+            <div className="input-group">
+              <label className="input-label">Especificar método</label>
+              <input className="input" type="text" value={customMethod} onChange={(e) => setCustomMethod(e.target.value)} placeholder="Ej: Tarjeta, Cheque..." />
+            </div>
+          )}
           <div className="input-group">
             <label className="input-label">Fecha</label>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
