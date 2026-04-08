@@ -62,7 +62,7 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
             <label className="input-label">Nombre completo</label>
-            <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="María López" autoFocus />
+            <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="María López" />
           </div>
 
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: isMinor ? 6 : 14 }}>
