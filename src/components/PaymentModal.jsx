@@ -47,7 +47,7 @@ export function PaymentModal({
       return;
     }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setFormError("Ingresa un monto valido.");
+      setFormError("Ingresa un monto válido.");
       return;
     }
     const finalMethod = method === "Otro" ? (customMethod.trim() || "Otro") : method;

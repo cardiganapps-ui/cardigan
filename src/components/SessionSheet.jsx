@@ -8,6 +8,7 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const [rescheduling, setRescheduling] = useState(false);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
+  const [rescheduleErr, setRescheduleErr] = useState("");
   if (!session) return null;
   const patientData = patients?.find(p => p.name === session.patient);
   const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
@@ -17,11 +18,14 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const startReschedule = () => {
     setNewDate(shortDateToISO(session.date));
     setNewTime(session.time);
+    setRescheduleErr("");
     setRescheduling(true);
   };
 
   const submitReschedule = async () => {
-    if (!newDate || !newTime.trim()) return;
+    if (!newDate) { setRescheduleErr("Selecciona una fecha."); return; }
+    if (!newTime.trim()) { setRescheduleErr("Selecciona una hora."); return; }
+    setRescheduleErr("");
     const ok = await onReschedule(session.id, isoToShortDate(newDate), newTime);
     if (ok) setRescheduling(false);
   };
@@ -75,6 +79,7 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
                   <input className="input" type="time" value={newTime} onChange={e => setNewTime(e.target.value)} />
                 </div>
               </div>
+              {rescheduleErr && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{rescheduleErr}</div>}
               <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>
                 {mutating ? "Guardando..." : "Confirmar"}
               </button>

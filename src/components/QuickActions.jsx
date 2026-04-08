@@ -17,7 +17,7 @@ const Toggle = ({ on, onToggle, type }) => (
 );
 
 /* ── NEW PATIENT FORM ── */
-function NewPatientSheet({ onClose, onSubmit, mutating }) {
+function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
   const [name, setName]       = useState("");
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
@@ -35,6 +35,9 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) { setErr("Ingresa el nombre del paciente."); return; }
+    if (patients?.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
+      setErr("Ya existe un paciente con ese nombre."); return;
+    }
     setErr("");
     const ok = await onSubmit({
       name,
@@ -235,7 +238,7 @@ export function QuickActions({
       >+</button>
 
       {activeSheet === "patient" && (
-        <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} />
+        <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} />
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} mutating={mutating} />

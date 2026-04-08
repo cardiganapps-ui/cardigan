@@ -222,7 +222,7 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
                     <div className="input-group">
                       <label className="input-label">Tarifa por sesión</label>
-                      <input className="input" type="number" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Ej: 700" />
+                      <input className="input" type="number" min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Ej: 700" />
                     </div>
                   </div>
 

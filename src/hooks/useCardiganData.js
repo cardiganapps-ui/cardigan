@@ -149,6 +149,10 @@ export function useCardiganData(user) {
   /* ── PATIENTS ── */
   async function createPatient({ name, parent, rate, schedules, recurring, startDate, endDate }) {
     if (!name?.trim()) return false;
+    if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
+      setMutationError("Ya existe un paciente con ese nombre.");
+      return false;
+    }
     const sched = schedules?.length ? schedules : [{ day: "Lunes", time: "16:00" }];
     const patientRate = Number(rate) || 0;
     const colorIdx = patients.length % 7;
@@ -196,6 +200,10 @@ export function useCardiganData(user) {
   }
 
   async function updatePatient(id, updates) {
+    if (updates.name) {
+      const dupe = patients.some(p => p.id !== id && p.name.toLowerCase() === updates.name.trim().toLowerCase());
+      if (dupe) { setMutationError("Ya existe un paciente con ese nombre."); return false; }
+    }
     setMutating(true);
     setMutationError("");
     const patch = { ...updates };
