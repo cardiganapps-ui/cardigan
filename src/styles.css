@@ -244,18 +244,18 @@ html, body {
 }
 
 .fab-action-label {
-  padding: 8px 4px 8px 14px;
-  font-size: 12px; font-weight: 600; color: var(--charcoal-md);
+  padding: 10px 6px 10px 16px;
+  font-size: 13px; font-weight: 600; color: var(--charcoal-md);
   white-space: nowrap; font-family: var(--font);
   letter-spacing: 0.02em;
 }
 
 .fab-action-icon {
-  width: 34px; height: 34px; border-radius: 50%;
+  width: 38px; height: 38px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   color: var(--teal-dark);
-  margin-right: 4px;
+  margin-right: 5px;
 }
 
 /* CARDS & SECTIONS */
