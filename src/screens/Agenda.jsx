@@ -238,27 +238,28 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
 
 /* ── MONTH VIEW ── */
 function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions }) {
-  const [monthOffset, setMonthOffset] = useState(0);
-  const base = new Date(TODAY.getFullYear(), TODAY.getMonth());
-  base.setMonth(base.getMonth() + monthOffset);
-  const displayMonth = base.getMonth();
-  const displayYear  = base.getFullYear();
+  const displayMonth = selectedDate.getMonth();
+  const displayYear  = selectedDate.getFullYear();
   const cells   = buildMonthGrid(displayYear, displayMonth);
+
+  const goMonth = useCallback((delta) => {
+    setSelectedDate(prev => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+  }, [setSelectedDate]);
 
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
   const selectedDateStr = formatDateStr(selectedDate);
   const daySessions = sortByTime(upcomingSessions.filter(s => s.date === selectedDateStr));
   const swipe = useSwipe(
-    useCallback(() => setMonthOffset(o => o + 1), []),
-    useCallback(() => setMonthOffset(o => o - 1), [])
+    useCallback(() => goMonth(1), [goMonth]),
+    useCallback(() => goMonth(-1), [goMonth])
   );
 
   return (
     <div {...swipe}>
       <div className="month-header">
-        <button className="month-nav-btn" onClick={() => setMonthOffset(o => o-1)}>‹</button>
+        <button className="month-nav-btn" onClick={() => goMonth(-1)}>‹</button>
         <span className="month-title">{MONTH_NAMES[displayMonth]} {displayYear}</span>
-        <button className="month-nav-btn" onClick={() => setMonthOffset(o => o+1)}>›</button>
+        <button className="month-nav-btn" onClick={() => goMonth(1)}>›</button>
       </div>
       <div className="month-grid">
         <div className="month-dow-row">{DOW.map(d => <div key={d} className="month-dow">{d}</div>)}</div>
@@ -271,7 +272,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
             const hasSess  = sessionDateSet.has(cellStr);
             return (
               <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
-                onClick={() => { setSelectedDate(cellDate); if (!cell.current) setMonthOffset(o => o + (i < 7 ? -1 : 1)); }}>
+                onClick={() => setSelectedDate(cellDate)}>
                 <span className="month-cell-num">{cell.num}</span>
                 {hasSess && <div className="month-dot" />}
               </div>
