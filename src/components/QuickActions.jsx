@@ -4,10 +4,10 @@ import { formatShortDate } from "../data/api";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconEdit, IconCheck, IconX } from "./Icons";
 
 const ACTIONS = [
-  { key:"patient", Icon: IconUserPlus,     label:"Nuevo paciente",   color:"var(--teal)" },
-  { key:"payment", Icon: IconDollar,       label:"Registrar pago",   color:"var(--green)" },
-  { key:"session", Icon: IconCalendarPlus, label:"Agendar sesión",   color:"var(--purple)" },
-  { key:"status",  Icon: IconEdit,         label:"Actualizar cita",  color:"var(--amber)" },
+  { key:"patient", Icon: IconUserPlus,     label:"Paciente" },
+  { key:"payment", Icon: IconDollar,       label:"Pago" },
+  { key:"session", Icon: IconCalendarPlus, label:"Sesión" },
+  { key:"status",  Icon: IconEdit,         label:"Estado" },
 ];
 
 /* ── NEW PATIENT FORM ── */
@@ -220,7 +220,7 @@ export function QuickActions({
           {ACTIONS.map((a, i) => (
             <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.04}s` }} onClick={() => handleAction(a.key)}>
               <span className="fab-action-label">{a.label}</span>
-              <span className="fab-action-icon" style={{ background: a.color }}><a.Icon size={20} /></span>
+              <span className="fab-action-icon"><a.Icon size={18} /></span>
             </button>
           ))}
         </div>
