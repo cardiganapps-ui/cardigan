@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { supabase } from "./supabaseClient";
 
 const styles = `
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@300;400;500;600&display=swap');
@@ -592,34 +593,18 @@ const navItems = [
   { id:"settings", label:"Ajustes",  icon:"⚙️", section:"cuenta"    },
 ];
 
-const API_BASE = "http://localhost:4000/api";
-
-async function fetchJson(endpoint) {
-  const response = await fetch(`${API_BASE}${endpoint}`);
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}) for ${endpoint}`);
-  }
-  return response.json();
-}
-
-async function sendJson(endpoint, method, body) {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}) for ${endpoint}`);
-  }
-  return response.json();
-}
+const shortMonths = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function formatShortDate(date = new Date()) {
-  const shortMonths = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   return `${date.getDate()} ${shortMonths[date.getMonth()]}`;
 }
 
-function useCardiganData() {
+function makeInitials(name) {
+  return name.split(/\s+/).filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+/* ── SUPABASE DATA HOOK ── */
+function useCardiganData(session) {
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -628,90 +613,143 @@ function useCardiganData() {
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadData = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
+    setError("");
+    try {
+      const [pRes, sRes, payRes] = await Promise.all([
+        supabase.from("patients").select("*"),
+        supabase.from("sessions").select("*, patients(name, initials, color_idx)").gte("scheduled_at", new Date(Date.now() - 7 * 86400000).toISOString()).order("scheduled_at"),
+        supabase.from("payments").select("*, patients(name, initials, color_idx)").order("created_at", { ascending: false }),
+      ]);
 
-    async function loadData() {
-      setLoading(true);
-      setError("");
-      try {
-        const [patientsData, sessionsData, paymentsData] = await Promise.all([
-          fetchJson("/patients"),
-          fetchJson("/sessions/upcoming"),
-          fetchJson("/payments"),
-        ]);
-        if (cancelled) return;
-        setPatients(Array.isArray(patientsData) ? patientsData : []);
-        setUpcomingSessions(Array.isArray(sessionsData) ? sessionsData : []);
-        setPayments(Array.isArray(paymentsData) ? paymentsData : []);
-      } catch (err) {
-        if (cancelled) return;
-        // Keep the UI usable while backend endpoints are being connected.
-        setPatients(seedPatients);
-        setUpcomingSessions(seedUpcomingSessions);
-        setPayments(seedPayments);
-        setError(err instanceof Error ? err.message : "No se pudieron cargar los datos.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      if (pRes.error) throw pRes.error;
+      if (sRes.error) throw sRes.error;
+      if (payRes.error) throw payRes.error;
+
+      // Compute billed/paid/sessions per patient from related data
+      const sessionsCountByPatient = {};
+      const paidByPatient = {};
+      const billedByPatient = {};
+
+      (sRes.data || []).forEach(s => {
+        sessionsCountByPatient[s.patient_id] = (sessionsCountByPatient[s.patient_id] || 0) + 1;
+      });
+
+      // For billed: count ALL sessions (not just upcoming), so query separately
+      // For MVP we compute from sessions + payments we already have
+      (payRes.data || []).forEach(p => {
+        paidByPatient[p.patient_id] = (paidByPatient[p.patient_id] || 0) + Number(p.amount);
+      });
+
+      const mappedPatients = (pRes.data || []).map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        parent: p.parent_guardian || "",
+        initials: p.initials || makeInitials(p.name),
+        rate: Number(p.session_rate) || 700,
+        day: p.preferred_day || "",
+        time: p.preferred_time || "",
+        status: p.status || "active",
+        phone: p.phone || "",
+        email: p.email || "",
+        billed: 0, // Will be computed when sessions are fully tracked
+        paid: paidByPatient[p.id] || 0,
+        sessions: sessionsCountByPatient[p.id] || 0,
+        colorIdx: p.color_idx ?? (i % clientColors.length),
+      }));
+
+      const mappedSessions = (sRes.data || []).map(s => {
+        const d = new Date(s.scheduled_at);
+        return {
+          id: s.id,
+          patient_id: s.patient_id,
+          patient: s.patients?.name || "",
+          initials: s.patients?.initials || "",
+          time: `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`,
+          day: DAY_ORDER[(d.getDay() + 6) % 7],
+          date: `${d.getDate()} ${shortMonths[d.getMonth()]}`,
+          status: s.status || "scheduled",
+          colorIdx: s.patients?.color_idx ?? 0,
+        };
+      });
+
+      const mappedPayments = (payRes.data || []).map((p, i) => {
+        const d = p.payment_date || formatShortDate(new Date(p.created_at));
+        return {
+          id: p.id,
+          patient_id: p.patient_id,
+          patient: p.patients?.name || "",
+          initials: p.patients?.initials || "",
+          amount: Number(p.amount),
+          date: d,
+          method: p.method || "Transferencia",
+          colorIdx: p.patients?.color_idx ?? (i % clientColors.length),
+        };
+      });
+
+      setPatients(mappedPatients);
+      setUpcomingSessions(mappedSessions);
+      setPayments(mappedPayments);
+    } catch (err) {
+      setError(err.message || "No se pudieron cargar los datos.");
+    } finally {
+      setLoading(false);
     }
+  }, [session]);
 
-    loadData();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const totals = useMemo(() => {
-    const totalBilled = patients.reduce((sum, p) => sum + p.billed, 0);
-    const totalPaid = patients.reduce((sum, p) => sum + p.paid, 0);
-    return {
-      totalBilled,
-      totalPaid,
-      totalOwed: totalBilled - totalPaid,
-    };
-  }, [patients]);
+  async function createPatient({ name, parentGuardian, phone, email, rate, day, time }) {
+    if (!name.trim() || !session) return false;
+    setMutating(true);
+    setMutationError("");
+    try {
+      const { error: err } = await supabase.from("patients").insert({
+        user_id: session.user.id,
+        name: name.trim(),
+        initials: makeInitials(name),
+        parent_guardian: parentGuardian || null,
+        phone: phone || null,
+        email: email || null,
+        session_rate: rate || 700,
+        preferred_day: day || null,
+        preferred_time: time || null,
+        color_idx: patients.length % clientColors.length,
+        status: "active",
+      });
+      if (err) throw err;
+      await loadData();
+      return true;
+    } catch (err) {
+      setMutationError(err.message || "No se pudo crear el paciente.");
+      return false;
+    } finally {
+      setMutating(false);
+    }
+  }
 
   async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
     const parsedAmount = Number(amount);
     if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
-
-    const priorPatients = patients;
-    const priorPayments = payments;
     const targetPatient = patients.find(p => p.name === patientName);
-    const tempId = `tmp-${Date.now()}`;
-    const tempPayment = {
-      id: tempId,
-      patient: patientName,
-      initials: targetPatient?.initials || patientName.slice(0, 2).toUpperCase(),
-      amount: parsedAmount,
-      date,
-      method,
-      colorIdx: 0,
-    };
+    if (!targetPatient) return false;
 
     setMutationError("");
     setMutating(true);
-    setPayments(prev => [...prev, tempPayment]);
-    setPatients(prev => prev.map(p => (
-      p.name === patientName ? { ...p, paid: p.paid + parsedAmount } : p
-    )));
-
     try {
-      const created = await sendJson("/payments", "POST", {
-        patient: patientName,
+      const { error: err } = await supabase.from("payments").insert({
+        patient_id: targetPatient.id,
         amount: parsedAmount,
         method,
-        date,
+        payment_date: date,
       });
-      if (created && typeof created === "object") {
-        setPayments(prev => prev.map(p => (p.id === tempId ? { ...p, ...created } : p)));
-      }
+      if (err) throw err;
+      await loadData();
       return true;
     } catch (err) {
-      setPayments(priorPayments);
-      setPatients(priorPatients);
-      setMutationError(err instanceof Error ? err.message : "No se pudo registrar el pago.");
+      setMutationError(err.message || "No se pudo registrar el pago.");
       return false;
     } finally {
       setMutating(false);
@@ -719,18 +757,16 @@ function useCardiganData() {
   }
 
   async function updateSessionStatus(sessionId, status) {
-    const priorSessions = upcomingSessions;
     setMutationError("");
     setMutating(true);
-    setUpcomingSessions(prev => prev.map(s => (
-      s.id === sessionId ? { ...s, status } : s
-    )));
+    setUpcomingSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, status } : s)));
     try {
-      await sendJson(`/sessions/${sessionId}`, "PATCH", { status });
+      const { error: err } = await supabase.from("sessions").update({ status }).eq("id", sessionId);
+      if (err) throw err;
       return true;
     } catch (err) {
-      setUpcomingSessions(priorSessions);
-      setMutationError(err instanceof Error ? err.message : "No se pudo actualizar la sesión.");
+      setMutationError(err.message || "No se pudo actualizar la sesión.");
+      await loadData();
       return false;
     } finally {
       setMutating(false);
@@ -743,19 +779,27 @@ function useCardiganData() {
     payments,
     loading,
     error,
-    totals,
     mutating,
     mutationError,
+    createPatient,
     createPayment,
     updateSessionStatus,
   };
 }
 
 /* ── DRAWER ── */
-function Drawer({ screen, setScreen, onClose }) {
+function Drawer({ screen, setScreen, onClose, session }) {
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Usuario";
+  const userEmail = session?.user?.email || "";
+  const userInitial = userName[0]?.toUpperCase() || "U";
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    onClose();
+  };
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
@@ -764,10 +808,10 @@ function Drawer({ screen, setScreen, onClose }) {
           <div className="drawer-header">
             <div className="drawer-logo">cardigan</div>
             <div className="drawer-user">
-              <div className="drawer-avatar">D</div>
+              <div className="drawer-avatar">{userInitial}</div>
               <div>
-                <div className="drawer-user-name">Daniela Kim</div>
-                <div className="drawer-user-sub">dani@cardigan.app · Psicóloga</div>
+                <div className="drawer-user-name">{userName}</div>
+                <div className="drawer-user-sub">{userEmail}</div>
               </div>
             </div>
           </div>
@@ -786,6 +830,10 @@ function Drawer({ screen, setScreen, onClose }) {
                 <span className="drawer-item-label">{item.label}</span>
               </button>
             ))}
+            <button className="drawer-item" onClick={handleSignOut} style={{ marginTop:4 }}>
+              <div className="drawer-item-icon">🚪</div>
+              <span className="drawer-item-label" style={{ color:"var(--red)" }}>Cerrar sesión</span>
+            </button>
           </nav>
           <div className="drawer-footer">
             <div className="drawer-plan">
@@ -1673,10 +1721,16 @@ function Finances({ patients, payments, onRecordPayment, mutating }) {
 }
 
 /* ── SETTINGS ── */
-function Settings() {
+function Settings({ session }) {
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Usuario";
+  const userEmail = session?.user?.email || "";
+  const userInitial = userName[0]?.toUpperCase() || "U";
+
+  const handleSignOut = async () => { await supabase.auth.signOut(); };
+
   const sections = [
     { label:"Mi práctica", rows:[
-      { icon:"👤", bg:"#EAF4F7", title:"Perfil profesional", sub:"Daniela · Psicóloga" },
+      { icon:"👤", bg:"#EAF4F7", title:"Perfil profesional", sub:`${userName}` },
       { icon:"💱", bg:"#EDF7F2", title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
       { icon:"🔔", bg:"#FDF6E8", title:"Recordatorios",      sub:"WhatsApp automático" },
     ]},
@@ -1686,7 +1740,7 @@ function Settings() {
     ]},
     { label:"Cuenta", rows:[
       { icon:"🔑", bg:"#FDF6E8", title:"Cambiar contraseña", sub:"" },
-      { icon:"🚪", bg:"#FDF1F1", title:"Cerrar sesión",       sub:"", danger:true },
+      { icon:"🚪", bg:"#FDF1F1", title:"Cerrar sesión",       sub:"", danger:true, action: handleSignOut },
     ]},
   ];
 
@@ -1695,10 +1749,10 @@ function Settings() {
       <div className="section" style={{ paddingTop:20 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
-            <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>D</div>
+            <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>{userInitial}</div>
             <div style={{ flex:1 }}>
-              <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>Daniela Kim</div>
-              <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>dani@cardigan.app · Psicóloga</div>
+              <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
+              <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
             </div>
             <button className="btn btn-ghost" style={{ fontSize:13,height:34 }}>Editar</button>
           </div>
@@ -1709,7 +1763,7 @@ function Settings() {
           <div className="settings-label">{s.label}</div>
           <div className="card" style={{ margin:"0 16px" }}>
             {s.rows.map((r,i) => (
-              <div className="settings-row" key={i}>
+              <div className="settings-row" key={i} onClick={r.action} style={{ cursor:r.action?"pointer":undefined }}>
                 <div className="settings-row-icon" style={{ background:r.bg }}>{r.icon}</div>
                 <div>
                   <div className="settings-row-title" style={{ color:r.danger?"var(--red)":undefined }}>{r.title}</div>
@@ -1729,6 +1783,40 @@ function Settings() {
 /* ── AUTH ── */
 function AuthScreen() {
   const [mode, setMode] = useState("login");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (err) {
+      setAuthError(err.message || "Error de autenticación");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+    if (error) setAuthError(error.message);
+  };
+
   return (
     <div className="auth-screen">
       <div className="auth-header">
@@ -1736,36 +1824,133 @@ function AuthScreen() {
         <div className="auth-wordmark">cardigan</div>
         <div className="auth-tagline">Gestiona tu práctica. Sin complicaciones.</div>
       </div>
-      <div className="auth-body">
+      <form className="auth-body" onSubmit={handleSubmit}>
         <div className="auth-toggle">
-          <button className={`auth-tab ${mode==="login"?"active":""}`} onClick={()=>setMode("login")}>Entrar</button>
-          <button className={`auth-tab ${mode==="signup"?"active":""}`} onClick={()=>setMode("signup")}>Crear cuenta</button>
+          <button type="button" className={`auth-tab ${mode==="login"?"active":""}`} onClick={()=>{setMode("login");setAuthError("");}} >Entrar</button>
+          <button type="button" className={`auth-tab ${mode==="signup"?"active":""}`} onClick={()=>{setMode("signup");setAuthError("");}} >Crear cuenta</button>
         </div>
         {mode==="signup" && (
           <div className="input-group">
             <label className="input-label">Nombre completo</label>
-            <input className="input" placeholder="Daniela Kim" type="text" autoComplete="name" />
+            <input className="input" placeholder="Daniela Kim" type="text" autoComplete="name" value={fullName} onChange={e=>setFullName(e.target.value)} required />
           </div>
         )}
         <div className="input-group">
           <label className="input-label">Correo electrónico</label>
-          <input className="input" placeholder="tu@correo.com" type="email" autoComplete="email" inputMode="email" />
+          <input className="input" placeholder="tu@correo.com" type="email" autoComplete="email" inputMode="email" value={email} onChange={e=>setEmail(e.target.value)} required />
         </div>
         <div className="input-group">
           <label className="input-label">Contraseña</label>
-          <input className="input" placeholder="••••••••" type="password" autoComplete={mode==="login"?"current-password":"new-password"} />
+          <input className="input" placeholder="••••••••" type="password" autoComplete={mode==="login"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} required minLength={6} />
         </div>
+        {authError && (
+          <div style={{ fontSize:13, color:"var(--red)", textAlign:"center", marginBottom:8 }}>{authError}</div>
+        )}
         {mode==="login" && (
           <div style={{ textAlign:"right", marginBottom:18, marginTop:-6 }}>
-            <button className="btn btn-ghost" style={{ height:36,fontSize:13,color:"var(--teal-dark)" }}>¿Olvidaste tu contraseña?</button>
+            <button type="button" className="btn btn-ghost" style={{ height:36,fontSize:13,color:"var(--teal-dark)" }}>¿Olvidaste tu contraseña?</button>
           </div>
         )}
-        <button className="btn btn-primary">{mode==="login" ? "Entrar a Cardigan" : "Crear mi cuenta"}</button>
+        <button type="submit" className="btn btn-primary" disabled={authLoading}>
+          {authLoading ? "Cargando..." : (mode==="login" ? "Entrar a Cardigan" : "Crear mi cuenta")}
+        </button>
+        {/* Google login disabled for now
+        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"16px 0" }}>
+          <div style={{ flex:1, height:1, background:"var(--border)" }} />
+          <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>o</span>
+          <div style={{ flex:1, height:1, background:"var(--border)" }} />
+        </div>
+        <button type="button" className="btn btn-secondary" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }} onClick={handleGoogleLogin}>
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Continuar con Google
+        </button>
+        */}
         {mode==="signup" && (
           <div style={{ textAlign:"center",fontSize:12,color:"var(--charcoal-xl)",marginTop:14,lineHeight:1.6 }}>
             Al registrarte aceptas los <span style={{ color:"var(--teal-dark)",fontWeight:700 }}>Términos</span> y la <span style={{ color:"var(--teal-dark)",fontWeight:700 }}>Política de privacidad</span>.
           </div>
         )}
+      </form>
+    </div>
+  );
+}
+
+/* ── ADD PATIENT SHEET ── */
+function AddPatientSheet({ open, onClose, onSubmit, mutating }) {
+  const [name, setName] = useState("");
+  const [parentGuardian, setParentGuardian] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [rate, setRate] = useState("700");
+  const [day, setDay] = useState("");
+  const [time, setTime] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setName(""); setParentGuardian(""); setPhone(""); setEmail("");
+    setRate("700"); setDay(""); setTime(""); setFormError("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) { setFormError("El nombre es obligatorio."); return; }
+    setFormError("");
+    const ok = await onSubmit({ name: name.trim(), parentGuardian, phone, email, rate: Number(rate) || 700, day, time });
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"90vh", overflow:"auto" }}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span className="sheet-title">Nuevo paciente</span>
+          <button className="sheet-close" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={submit} style={{ padding:"0 20px 24px" }}>
+          <div className="input-group">
+            <label className="input-label">Nombre completo *</label>
+            <input className="input" placeholder="Nombre del paciente" value={name} onChange={e=>setName(e.target.value)} required />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Tutor / Responsable</label>
+            <input className="input" placeholder="Nombre del tutor" value={parentGuardian} onChange={e=>setParentGuardian(e.target.value)} />
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">Teléfono</label>
+              <input className="input" placeholder="55 1234 5678" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Correo</label>
+              <input className="input" placeholder="correo@ejemplo.com" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Tarifa por sesión</label>
+            <input className="input" placeholder="700" type="number" min="0" value={rate} onChange={e=>setRate(e.target.value)} />
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">Día de sesión</label>
+              <select className="input" value={day} onChange={e=>setDay(e.target.value)}>
+                <option value="">Seleccionar</option>
+                {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="input-group">
+              <label className="input-label">Hora</label>
+              <input className="input" placeholder="16:30" type="time" value={time} onChange={e=>setTime(e.target.value)} />
+            </div>
+          </div>
+          {formError && <div style={{ fontSize:13, color:"var(--red)", marginBottom:10 }}>{formError}</div>}
+          <button type="submit" className="btn btn-primary" style={{ height:48, marginTop:8 }} disabled={mutating}>
+            {mutating ? "Guardando..." : "Agregar paciente"}
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -1869,8 +2054,22 @@ const topbarMeta = {
 };
 
 export default function Cardigan() {
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [screen, setScreen]       = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setAuthReady(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const {
     patients,
     upcomingSessions,
@@ -1879,11 +2078,14 @@ export default function Cardigan() {
     error,
     mutating,
     mutationError,
+    createPatient,
     createPayment,
     updateSessionStatus,
-  } = useCardiganData();
+  } = useCardiganData(session);
+
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
+  const [addPatientOpen, setAddPatientOpen] = useState(false);
 
   const openRecordPaymentModal = (patient) => {
     setPaymentDraft({
@@ -1893,31 +2095,44 @@ export default function Cardigan() {
     setPaymentModalOpen(true);
   };
 
-  const handleMarkSessionCompleted = async (session) => {
-    if (!session || session.status === "completed") return true;
-    return updateSessionStatus(session.id, "completed");
+  const handleMarkSessionCompleted = async (sess) => {
+    if (!sess || sess.status === "completed") return true;
+    return updateSessionStatus(sess.id, "completed");
   };
 
-  const handleCancelSession = async (session) => {
-    if (!session || session.status === "cancelled") return true;
-    return updateSessionStatus(session.id, "cancelled");
+  const handleCancelSession = async (sess) => {
+    if (!sess || sess.status === "cancelled") return true;
+    return updateSessionStatus(sess.id, "cancelled");
   };
+
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Usuario";
+  const userInitial = userName[0]?.toUpperCase() || "U";
 
   const screenMap = {
     home:     <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     agenda:   <Agenda upcomingSessions={upcomingSessions} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
     patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
-    settings: <Settings />,
+    settings: <Settings session={session} />,
   };
 
-  const isAuth = screen === "auth";
-  const meta   = topbarMeta[screen] || topbarMeta.home;
+  const meta = topbarMeta[screen] || topbarMeta.home;
+
+  if (!authReady) {
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="shell" style={{ alignItems:"center", justifyContent:"center" }}>
+          <LogoMark size={36} />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <style>{styles}</style>
-      {isAuth ? <AuthScreen /> : (
+      {!session ? <AuthScreen /> : (
         <div className="shell">
           <div className="status-bar" />
           <div className="topbar">
@@ -1934,7 +2149,7 @@ export default function Cardigan() {
             </div>
             <div className="topbar-right">
               <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio">🏠</button>
-              <div className="avatar-sm">D</div>
+              <div className="avatar-sm">{userInitial}</div>
             </div>
           </div>
           {loading && (
@@ -1944,7 +2159,7 @@ export default function Cardigan() {
           )}
           {!loading && error && (
             <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--amber)" }}>
-              No se pudo conectar al API. Mostrando datos locales.
+              {error}
             </div>
           )}
           {!loading && mutationError && (
@@ -1962,8 +2177,14 @@ export default function Cardigan() {
             onSubmit={createPayment}
             mutating={mutating}
           />
-          <button className="fab" aria-label="Agregar">+</button>
-          {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} />}
+          <AddPatientSheet
+            open={addPatientOpen}
+            onClose={() => setAddPatientOpen(false)}
+            onSubmit={createPatient}
+            mutating={mutating}
+          />
+          <button className="fab" aria-label="Agregar" onClick={() => setAddPatientOpen(true)}>+</button>
+          {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} session={session} />}
         </div>
       )}
     </>
