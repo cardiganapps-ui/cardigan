@@ -56,17 +56,47 @@ function AppShell({ user, signOut }) {
     setPaymentModalOpen(true);
   };
 
-  const edgeTouch = useRef(null);
+  /* ── Edge swipe to open drawer ── */
+  const edgeRef = useRef(null);
+  const [swipeX, setSwipeX] = useState(null);
+
   const onTouchStart = useCallback((e) => {
-    if (e.touches[0].clientX < 24) edgeTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    else edgeTouch.current = null;
-  }, []);
+    if (drawerOpen) return;
+    if (e.touches[0].clientX < 24) {
+      edgeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, active: false };
+    } else {
+      edgeRef.current = null;
+    }
+  }, [drawerOpen]);
+
+  const onTouchMove = useCallback((e) => {
+    if (!edgeRef.current || drawerOpen) return;
+    const dx = e.touches[0].clientX - edgeRef.current.startX;
+    const dy = e.touches[0].clientY - edgeRef.current.startY;
+    if (!edgeRef.current.active) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        edgeRef.current.active = true;
+      } else if (Math.abs(dy) > 10) {
+        edgeRef.current = null;
+        return;
+      } else {
+        return;
+      }
+    }
+    if (edgeRef.current.active) {
+      setSwipeX(Math.max(0, e.touches[0].clientX));
+    }
+  }, [drawerOpen]);
+
   const onTouchEnd = useCallback((e) => {
-    if (!edgeTouch.current) return;
-    const dx = e.changedTouches[0].clientX - edgeTouch.current.x;
-    const dy = e.changedTouches[0].clientY - edgeTouch.current.y;
-    edgeTouch.current = null;
-    if (dx > 60 && Math.abs(dx) > Math.abs(dy)) setDrawerOpen(true);
+    if (!edgeRef.current?.active) {
+      edgeRef.current = null;
+      return;
+    }
+    const finalX = e.changedTouches[0].clientX;
+    edgeRef.current = null;
+    setSwipeX(null);
+    if (finalX > 120) setDrawerOpen(true);
   }, []);
 
   const screenMap = {
@@ -82,7 +112,7 @@ function AppShell({ user, signOut }) {
   };
 
   return (
-    <div className="shell" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="shell" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="status-bar" />
       <div className="topbar">
         <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
@@ -119,7 +149,8 @@ function AppShell({ user, signOut }) {
         createSession={createSession}
         mutating={mutating}
       />
-      {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} user={user} signOut={signOut} />}
+      <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
+        user={user} signOut={signOut} open={drawerOpen} swipeX={swipeX} />
     </div>
   );
 }

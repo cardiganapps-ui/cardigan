@@ -9,7 +9,9 @@ const NAV_ICONS = {
   settings: IconSettings,
 };
 
-export function Drawer({ screen, setScreen, onClose, user, signOut }) {
+const PANEL_WIDTH = 300;
+
+export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeX }) {
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
@@ -17,6 +19,25 @@ export function Drawer({ screen, setScreen, onClose, user, signOut }) {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
+
+  const isSwiping = swipeX !== null;
+  const active = open || isSwiping;
+
+  let panelStyle, overlayStyle;
+  const ease = "cubic-bezier(0.32, 0.72, 0, 1)";
+
+  if (open) {
+    panelStyle = { transform: "translateX(0)", transition: `transform 0.25s ${ease}` };
+    overlayStyle = { opacity: 1, transition: "opacity 0.25s", pointerEvents: "auto" };
+  } else if (isSwiping) {
+    const clamped = Math.max(0, Math.min(PANEL_WIDTH, swipeX));
+    const progress = clamped / PANEL_WIDTH;
+    panelStyle = { transform: `translateX(${clamped - PANEL_WIDTH}px)`, transition: "none" };
+    overlayStyle = { opacity: progress, transition: "none", pointerEvents: "auto" };
+  } else {
+    panelStyle = { transform: "translateX(-100%)", transition: `transform 0.25s ${ease}` };
+    overlayStyle = { opacity: 0, transition: "opacity 0.25s", pointerEvents: "none" };
+  }
 
   const renderItem = (item) => {
     const Icon = NAV_ICONS[item.iconId];
@@ -29,9 +50,11 @@ export function Drawer({ screen, setScreen, onClose, user, signOut }) {
   };
 
   return (
-    <div className="drawer-overlay" onClick={onClose}>
+    <>
+      <div className="drawer-overlay" onClick={onClose}
+        style={{ ...overlayStyle, animation: "none", visibility: (!active && !open) ? "hidden" : "visible" }} />
       <div className="drawer" onClick={e => e.stopPropagation()}>
-        <div className="drawer-panel">
+        <div className="drawer-panel" style={{ ...panelStyle, animation: "none" }}>
           <div className="drawer-header">
             <div className="drawer-logo">cardigan</div>
             <div className="drawer-user">
@@ -63,6 +86,6 @@ export function Drawer({ screen, setScreen, onClose, user, signOut }) {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
