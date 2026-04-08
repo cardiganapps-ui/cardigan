@@ -21,31 +21,30 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
   const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
 
   const [selected, setSelected] = useState(null);
+  const owingPatients = patients.filter(p => p.billed > p.paid);
 
   const openPatient = (name) => {
     const p = patients.find(p => p.name === name);
     if (p) setSelected(p);
   };
 
-  // Empty state
-  if (patients.length === 0 && payments.length === 0) {
-    return (
-      <div className="page" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"40px 24px" }}>
-        <div style={{ width:64, height:64, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
-          <IconPlus size={28} style={{ color:"var(--teal)" }} />
-        </div>
-        <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--charcoal)", marginBottom:8 }}>
-          Bienvenido{userName ? `, ${userName.split(" ")[0]}` : ""}
-        </div>
-        <div style={{ fontSize:14, color:"var(--charcoal-xl)", lineHeight:1.6, marginBottom:24, maxWidth:260 }}>
-          Empieza agregando tu primer paciente con el botón <strong>+</strong> abajo a la derecha.
-        </div>
-      </div>
-    );
-  }
+  const emptyHint = (text) => (
+    <div style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:12, lineHeight:1.5 }}>{text}</div>
+  );
 
   return (
     <div className="page">
+      {patients.length === 0 && (
+        <div style={{ padding:"18px 16px 2px", textAlign:"center" }}>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
+            Bienvenido{userName ? `, ${userName.split(" ")[0]}` : ""}
+          </div>
+          <div style={{ fontSize:12, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
+            Usa el botón <strong>+</strong> para agregar tu primer paciente
+          </div>
+        </div>
+      )}
+
       <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Sesiones Hoy</div>
@@ -55,7 +54,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Pacientes</div>
           <div className="kpi-value">{activeCount}</div>
-          <div className="kpi-meta">activos</div>
+          <div className="kpi-meta">{activeCount === 0 ? "sin pacientes" : "activos"}</div>
         </div>
         <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Cobrado (Mes)</div>
@@ -64,8 +63,8 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         </div>
         <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Por Cobrar</div>
-          <div className="kpi-value" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
-          <div className="kpi-meta">{patients.filter(p=>p.billed>p.paid).length} pacientes</div>
+          <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
+          <div className="kpi-meta">{owingPatients.length} paciente{owingPatients.length !== 1 ? "s" : ""}</div>
         </div>
       </div>
 
@@ -76,7 +75,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         </div>
         <div className="card">
           {todaySessions.length === 0
-            ? <div style={{ padding:"24px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>Sin sesiones hoy</div>
+            ? emptyHint("Las sesiones agendadas para hoy aparecerán aquí")
             : todaySessions.map(s => (
               <div className="row-item" key={s.id} onClick={() => openPatient(s.patient)}>
                 <div className="row-avatar" style={{ background: clientColors[s.colorIdx % clientColors.length] }}>{s.initials}</div>
@@ -95,14 +94,15 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         </div>
       </div>
 
-      {patients.filter(p => p.billed > p.paid).length > 0 && (
-        <div className="section" style={{ paddingTop:20 }}>
-          <div className="section-header">
-            <span className="section-title">Saldos Pendientes</span>
-            <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
-          </div>
-          <div className="card">
-            {patients.filter(p => p.billed > p.paid).slice(0,4).map((p,i) => {
+      <div className="section" style={{ paddingTop:20 }}>
+        <div className="section-header">
+          <span className="section-title">Saldos Pendientes</span>
+          <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+        </div>
+        <div className="card">
+          {owingPatients.length === 0
+            ? emptyHint("Aquí verás los saldos pendientes de tus pacientes")
+            : owingPatients.slice(0,4).map((p,i) => {
               const owed = p.billed - p.paid;
               const pct  = p.billed > 0 ? (p.paid / p.billed) * 100 : 0;
               return (
@@ -119,18 +119,18 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                 </div>
               );
             })}
-          </div>
         </div>
-      )}
+      </div>
 
-      {payments.length > 0 && (
-        <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
-          <div className="section-header">
-            <span className="section-title">Últimos Pagos</span>
-            <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
-          </div>
-          <div className="card">
-            {payments.slice(0,3).map(p => (
+      <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
+        <div className="section-header">
+          <span className="section-title">Últimos Pagos</span>
+          <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+        </div>
+        <div className="card">
+          {payments.length === 0
+            ? emptyHint("Los pagos registrados se mostrarán aquí")
+            : payments.slice(0,3).map(p => (
               <div className="row-item" key={p.id} onClick={() => openPatient(p.patient)}>
                 <div className="row-icon" style={{ background:"var(--green-bg)", color:"var(--green)" }}><IconDollar size={18} /></div>
                 <div className="row-content">
@@ -142,9 +142,8 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                 </div>
               </div>
             ))}
-          </div>
         </div>
-      )}
+      </div>
 
       {selected && (
         <div className="sheet-overlay" onClick={() => setSelected(null)}>
