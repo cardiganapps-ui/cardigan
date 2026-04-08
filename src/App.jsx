@@ -51,7 +51,7 @@ function AppShell({ user, signOut }) {
   const openRecordPaymentModal = (patient) => {
     setPaymentDraft({
       patientName: patient?.name || "",
-      amount: patient ? String(Math.max(0, patient.billed - patient.paid)) : "",
+      amount: patient ? String(patient.amountDue || 0) : "",
     });
     setPaymentModalOpen(true);
   };
@@ -60,7 +60,7 @@ function AppShell({ user, signOut }) {
     home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
       onMarkSessionCompleted={async (s) => s?.status !== "completed" && await updateSessionStatus(s.id, "completed")}
-      onCancelSession={async (s) => s?.status !== "cancelled" && await updateSessionStatus(s.id, "cancelled")}
+      onCancelSession={async (s, charge) => s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
       deleteSession={deleteSession} mutating={mutating} />,
     patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient} generateRecurringSessions={generateRecurringSessions} mutating={mutating} />,

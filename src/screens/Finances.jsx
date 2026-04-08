@@ -130,8 +130,8 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
       <div style={{ marginTop:16 }}>
         <div className="section-title" style={{ marginBottom:10 }}>Pendientes de cobro</div>
         <div className="card">
-          {patients.filter(p=>p.billed>p.paid).sort((a,b)=>(b.billed-b.paid)-(a.billed-a.paid)).map((p,i) => {
-            const owed = p.billed-p.paid;
+          {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => {
+            const owed = p.amountDue;
             return (
               <div className="bal-row" key={p.id}>
                 <div className="row-avatar" style={{ background:clientColors[i%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
@@ -160,8 +160,8 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
 
 export function Finances({ patients, payments, onRecordPayment, mutating }) {
   const [tab, setTab] = useState("balances");
-  const totalOwed     = patients.reduce((s,p) => s+Math.max(0,p.billed-p.paid), 0);
-  const owingPatients = patients.filter(p => p.billed>p.paid);
+  const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
+  const owingPatients = patients.filter(p => p.amountDue>0);
   const totalCollected = payments.reduce((s,p) => s+p.amount, 0);
 
   return (
@@ -184,23 +184,24 @@ export function Finances({ patients, payments, onRecordPayment, mutating }) {
             </div>
             <div className="stat-tile">
               <div className="stat-tile-label">Al corriente</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)" }}>{patients.filter(p=>p.billed<=p.paid).length}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)" }}>{patients.filter(p=>p.amountDue<=0).length}</div>
               <div className="stat-tile-sub">pacientes</div>
             </div>
           </div>
           <div style={{ padding:"0 16px 8px" }}>
             <div className="section-title" style={{ marginBottom:10 }}>Saldo por paciente</div>
             <div className="card">
-              {patients.filter(p=>p.billed>p.paid).sort((a,b)=>(b.billed-b.paid)-(a.billed-a.paid)).map((p,i) => {
-                const owed = p.billed-p.paid;
-                const pct  = Math.round((p.paid/p.billed)*100);
+              {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => {
+                const owed = p.amountDue;
+                const totalDue = owed + p.paid;
+                const pct  = totalDue > 0 ? Math.round((p.paid/totalDue)*100) : 0;
                 return (
                   <div className="bal-row" key={p.id}>
                     <div className="row-avatar" style={{ background:clientColors[i%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div className="bal-name">{p.name}</div>
                       <div className="balance-bar" style={{ marginTop:5 }}><div className="balance-fill" style={{ width:`${pct}%`, background:"var(--teal)" }} /></div>
-                      <div className="bal-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} de ${p.billed.toLocaleString()} · {pct}%</div>
+                      <div className="bal-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} de ${totalDue.toLocaleString()} · {pct}%</div>
                     </div>
                     <div className="bal-amt amount-owe">-${owed.toLocaleString()}</div>
                   </div>
@@ -211,7 +212,7 @@ export function Finances({ patients, payments, onRecordPayment, mutating }) {
           <div style={{ padding:"16px 16px 0" }}>
             <div className="section-title" style={{ marginBottom:10 }}>Al corriente</div>
             <div className="card">
-              {patients.filter(p=>p.billed<=p.paid).map((p,i) => (
+              {patients.filter(p=>p.amountDue<=0).map((p,i) => (
                 <div className="bal-row" key={p.id}>
                   <div className="row-avatar" style={{ background:clientColors[(i+4)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                   <div style={{ flex:1 }}>

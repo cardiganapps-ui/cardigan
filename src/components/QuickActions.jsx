@@ -218,15 +218,20 @@ function UpdateStatusSheet({ onClose, upcomingSessions, onUpdateStatus, mutating
                   <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)" }}>{s.patient}</div>
                   <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:1 }}>{s.day} {s.date} · {s.time}</div>
                 </div>
-                <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                  <button
-                    style={{ padding:"5px 10px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--green-bg)", color:"var(--green)", cursor:"pointer", fontFamily:"var(--font)" }}
+                <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                  <button title="Completada"
+                    style={{ padding:"5px 8px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--green-bg)", color:"var(--green)", cursor:"pointer", fontFamily:"var(--font)" }}
                     onClick={() => onUpdateStatus(s.id, "completed")}
                     disabled={mutating}
                   ><IconCheck size={14} /></button>
-                  <button
-                    style={{ padding:"5px 10px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", fontFamily:"var(--font)" }}
-                    onClick={() => onUpdateStatus(s.id, "cancelled")}
+                  <button title="Cancelar y cobrar"
+                    style={{ padding:"5px 8px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--amber-bg)", color:"var(--amber)", cursor:"pointer", fontFamily:"var(--font)" }}
+                    onClick={() => onUpdateStatus(s.id, "cancelled", true)}
+                    disabled={mutating}
+                  ><IconDollar size={14} /></button>
+                  <button title="Cancelar sin cobrar"
+                    style={{ padding:"5px 8px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--cream)", color:"var(--charcoal-lt)", cursor:"pointer", fontFamily:"var(--font)" }}
+                    onClick={() => onUpdateStatus(s.id, "cancelled", false)}
                     disabled={mutating}
                   ><IconX size={14} /></button>
                 </div>

@@ -7,7 +7,8 @@ export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCa
   if (!session) return null;
   const patientData = patients?.find(p => p.name === session.patient);
   const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
-  const statusLabel = session.status === "cancelled" ? "Cancelada" : session.status === "completed" ? "Completada" : "Agendada";
+  const isCancelled = session.status === "cancelled" || session.status === "charged";
+  const statusLabel = isCancelled ? (session.status === "charged" ? "Cancelada (cobrada)" : "Cancelada") : session.status === "completed" ? "Completada" : "Agendada";
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -48,22 +49,26 @@ export function SessionSheet({ session, patients, onClose, onMarkCompleted, onCa
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {session.status === "scheduled" && (
-                <button className="btn btn-primary" style={{ height:48 }} onClick={() => onMarkCompleted(session)} disabled={mutating}>
-                  {mutating ? "Guardando..." : "Marcar como completada"}
-                </button>
-              )}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                {session.status === "scheduled" && (
-                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
-                    onClick={() => onCancelSession(session)} disabled={mutating}>
-                    Cancelar cita
+                <>
+                  <button className="btn btn-primary" style={{ height:48 }} onClick={() => onMarkCompleted(session)} disabled={mutating}>
+                    {mutating ? "Guardando..." : "Marcar como completada"}
                   </button>
-                )}
-                <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none", gridColumn: session.status !== "scheduled" ? "1 / -1" : undefined }}
-                  onClick={() => setConfirmDelete(true)}>
-                  Eliminar
-                </button>
-              </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <button className="btn" style={{ height:44, fontSize:12, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
+                      onClick={() => onCancelSession(session, true)} disabled={mutating}>
+                      Cancelar y cobrar
+                    </button>
+                    <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-lt)", boxShadow:"none" }}
+                      onClick={() => onCancelSession(session, false)} disabled={mutating}>
+                      Cancelar sin cobrar
+                    </button>
+                  </div>
+                </>
+              )}
+              <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
+                onClick={() => setConfirmDelete(true)}>
+                Eliminar
+              </button>
             </div>
           )}
         </div>

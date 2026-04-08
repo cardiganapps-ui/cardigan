@@ -8,9 +8,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
   const todayStr     = `${TODAY.getDate()} ${SHORT_MONTHS[TODAY.getMonth()]}`;
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
 
-  const totalBilled   = patients.reduce((s,p) => s+p.billed, 0);
-  const totalPaid     = patients.reduce((s,p) => s+p.paid, 0);
-  const totalOwed     = totalBilled - totalPaid;
+  const totalOwed     = patients.reduce((s,p) => s + p.amountDue, 0);
   const activeCount   = patients.filter(p=>p.status==="active").length;
   const todaySessions = upcomingSessions.filter(s => s.date === todayStr);
 
@@ -21,7 +19,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
   const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
 
   const [selected, setSelected] = useState(null);
-  const owingPatients = patients.filter(p => p.billed > p.paid);
+  const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {
     const p = patients.find(p => p.name === name);
@@ -84,8 +82,8 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                   <div className="row-sub">{s.time} · {s.day}</div>
                 </div>
                 <div className="row-right">
-                  <span className={`session-status ${s.status==="cancelled"?"status-cancelled":"status-scheduled"}`}>
-                    {s.status==="cancelled" ? "Cancelada" : s.status==="completed" ? "Completada" : "Agendada"}
+                  <span className={`session-status ${(s.status==="cancelled"||s.status==="charged")?"status-cancelled":s.status==="completed"?"status-completed":"status-scheduled"}`}>
+                    {(s.status==="cancelled"||s.status==="charged") ? "Cancelada" : s.status==="completed" ? "Completada" : "Agendada"}
                   </span>
                 </div>
               </div>
@@ -103,15 +101,16 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
           {owingPatients.length === 0
             ? emptyHint("Aquí verás los saldos pendientes de tus pacientes")
             : owingPatients.slice(0,4).map((p,i) => {
-              const owed = p.billed - p.paid;
-              const pct  = p.billed > 0 ? (p.paid / p.billed) * 100 : 0;
+              const owed = p.amountDue;
+              const totalDue = owed + p.paid;
+              const pct  = totalDue > 0 ? (p.paid / totalDue) * 100 : 0;
               return (
                 <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
                   <div className="row-avatar" style={{ background: clientColors[i % clientColors.length] }}>{p.initials}</div>
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
                     <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>
-                    <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} pagado de ${p.billed.toLocaleString()}</div>
+                    <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} pagado de ${totalDue.toLocaleString()}</div>
                   </div>
                   <div className="row-right">
                     <div className="row-amount amount-owe">-${owed.toLocaleString()}</div>
@@ -158,7 +157,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                 {[
                   { label:"Vendido", value:`$${selected.billed.toLocaleString()}` },
                   { label:"Cobrado", value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
-                  { label:"Saldo",   value:`$${(selected.billed-selected.paid).toLocaleString()}`, color: selected.billed>selected.paid?"var(--red)":"var(--charcoal-xl)" },
+                  { label:"Saldo",   value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                 ].map((s,i) => (
                   <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
                     <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{s.label}</div>

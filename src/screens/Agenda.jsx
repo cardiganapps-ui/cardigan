@@ -164,7 +164,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
               return (
                 <div key={dIdx} className="week-cell" onClick={() => !sess && setSelectedDate(d)}>
                   {sess && (
-                    <div className={`week-event ${sess.status==="cancelled"?"cancelled":""}`} onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
+                    <div className={`week-event ${(sess.status==="cancelled"||sess.status==="charged")?"cancelled":""}`} onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
                       {sess.initials}
                     </div>
                   )}
@@ -238,8 +238,8 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
                     <div className="row-title">{s.patient}</div>
                     <div className="row-sub">{s.day}</div>
                   </div>
-                  <span className={`session-status ${s.status==="cancelled"?"status-cancelled":"status-scheduled"}`}>
-                    {s.status==="cancelled"?"Cancelada":"Agendada"}
+                  <span className={`session-status ${(s.status==="cancelled"||s.status==="charged")?"status-cancelled":s.status==="completed"?"status-completed":"status-scheduled"}`}>
+                    {(s.status==="cancelled"||s.status==="charged")?"Cancelada":s.status==="completed"?"Completada":"Agendada"}
                   </span>
                 </div>
               ))}
@@ -276,9 +276,9 @@ export function Agenda({ upcomingSessions, patients, onMarkSessionCompleted, onC
           const ok = await onMarkSessionCompleted(session);
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status:"completed" } : prev));
         }}
-        onCancelSession={async (session) => {
-          const ok = await onCancelSession(session);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status:"cancelled" } : prev));
+        onCancelSession={async (session, charge) => {
+          const ok = await onCancelSession(session, charge);
+          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled" } : prev));
         }}
         onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
         mutating={mutating}

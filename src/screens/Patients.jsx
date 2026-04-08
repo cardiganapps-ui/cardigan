@@ -86,8 +86,8 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
   const applyFilter = (p) => {
     if (filter==="active") return p.status==="active";
     if (filter==="ended")  return p.status==="ended";
-    if (filter==="owes")   return p.billed>p.paid;
-    if (filter==="paid")   return p.billed<=p.paid;
+    if (filter==="owes")   return p.amountDue>0;
+    if (filter==="paid")   return p.amountDue<=0;
     return true;
   };
   const applySort = (a,b) => {
@@ -268,7 +268,7 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                     {[
                       { label:"Vendido", value:`$${selected.billed.toLocaleString()}` },
                       { label:"Cobrado", value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
-                      { label:"Saldo",   value:`$${(selected.billed-selected.paid).toLocaleString()}`, color: selected.billed>selected.paid?"var(--red)":"var(--charcoal-xl)" },
+                      { label:"Saldo",   value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                     ].map((s,i) => (
                       <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
                         <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{s.label}</div>

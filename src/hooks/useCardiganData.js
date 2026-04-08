@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import { formatShortDate } from "../data/api";
@@ -83,17 +83,18 @@ export function useCardiganData(user) {
 
       for (const patient of pData) {
         if (patient.status !== "active") continue;
-        const pSess = sData.filter(s => s.patient_id === patient.id && s.status !== "cancelled");
-        if (pSess.length === 0) continue;
+        const allPSess = sData.filter(s => s.patient_id === patient.id);
+        if (allPSess.length === 0) continue;
+        const activePSess = allPSess.filter(s => s.status !== "cancelled" && s.status !== "charged");
 
-        // Infer schedules from existing sessions
+        // Infer schedules from all sessions (pattern stays same regardless of status)
         const schedMap = new Map();
-        pSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time }));
+        allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time }));
 
-        // Find latest session date
-        const existingDates = new Set(pSess.map(s => s.date));
+        // Find latest active session date; skip all existing dates for dedup
+        const existingDates = new Set(allPSess.map(s => s.date));
         let latest = null;
-        pSess.forEach(s => {
+        activePSess.forEach(s => {
           const d = parseShortDate(s.date);
           if (!latest || d > latest) latest = d;
         });
@@ -258,14 +259,15 @@ export function useCardiganData(user) {
     return true;
   }
 
-  async function updateSessionStatus(sessionId, status) {
+  async function updateSessionStatus(sessionId, status, charge) {
     setMutating(true);
     setMutationError("");
+    const newStatus = (status === "cancelled" && charge) ? "charged" : status;
     const { error } = await supabase.from("sessions")
-      .update({ status }).eq("id", sessionId);
+      .update({ status: newStatus }).eq("id", sessionId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status } : s));
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: newStatus } : s));
     return true;
   }
 
@@ -378,8 +380,24 @@ export function useCardiganData(user) {
     return true;
   }
 
+  // Compute amountDue per patient from past sessions only
+  const enrichedPatients = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return patients.map(p => {
+      let billable = 0;
+      upcomingSessions.forEach(s => {
+        if (s.patient_id !== p.id) return;
+        if (parseShortDate(s.date) > today) return;
+        if (s.status === "cancelled") return;
+        billable++;
+      });
+      return { ...p, amountDue: Math.max(0, billable * p.rate - p.paid) };
+    });
+  }, [patients, upcomingSessions]);
+
   return {
-    patients, upcomingSessions, payments, loading, mutating, mutationError,
+    patients: enrichedPatients, upcomingSessions, payments, loading, mutating, mutationError,
     createPatient, updatePatient, deletePatient,
     createSession, updateSessionStatus, deleteSession, generateRecurringSessions,
     createPayment, deletePayment,
