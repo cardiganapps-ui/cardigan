@@ -347,6 +347,72 @@ export function useCardiganData(user) {
     return true;
   }
 
+  async function applyScheduleChange(patientId, { schedules, rate, effectiveDate, endDate }) {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient || !effectiveDate || !schedules?.length) return false;
+
+    setMutating(true);
+    setMutationError("");
+    const effDate = parseLocalDate(effectiveDate);
+    const newRate = Number(rate) || patient.rate;
+    const primary = schedules[0];
+
+    // 1. Delete future scheduled sessions from effective date
+    const toDelete = upcomingSessions.filter(s => {
+      if (s.patient_id !== patientId || s.status !== "scheduled") return false;
+      return parseShortDate(s.date) >= effDate;
+    });
+
+    let adjustedBilled = patient.billed;
+    let adjustedSessions = patient.sessions;
+
+    if (toDelete.length > 0) {
+      const ids = toDelete.map(s => s.id);
+      const { error } = await supabase.from("sessions").delete().in("id", ids);
+      if (error) { setMutating(false); setMutationError(error.message); return false; }
+      adjustedBilled -= toDelete.length * patient.rate;
+      adjustedSessions -= toDelete.length;
+      setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
+    }
+
+    // 2. Update patient record
+    const patch = { rate: newRate, day: primary.day, time: primary.time,
+      billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) };
+    const { data: updated, error: pErr } = await supabase.from("patients")
+      .update(patch).eq("id", patientId).select().single();
+    if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
+    setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
+
+    // 3. Generate new sessions with new schedule at new rate
+    const existingDates = new Set(upcomingSessions.filter(s => s.patient_id === patientId).map(s => s.date));
+    const allRows = [];
+    for (const s of schedules) {
+      getRecurringDates(s.day, effectiveDate, endDate).forEach(d => {
+        const ds = formatShortDate(d);
+        if (!existingDates.has(ds)) {
+          allRows.push({ user_id: userId, patient_id: patientId, patient: updated.name,
+            initials: updated.initials, time: s.time, day: s.day,
+            date: ds, color_idx: updated.color_idx || 0 });
+          existingDates.add(ds);
+        }
+      });
+    }
+
+    if (allRows.length > 0) {
+      const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
+      if (!sErr && sessData) {
+        const finalSessions = (updated.sessions || 0) + sessData.length;
+        const finalBilled = (updated.billed || 0) + newRate * sessData.length;
+        await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId);
+        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+        setPatients(prev => prev.map(p => p.id === patientId ? { ...p, sessions: finalSessions, billed: finalBilled } : p));
+      }
+    }
+
+    setMutating(false);
+    return true;
+  }
+
   /* ── PAYMENTS ── */
   async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
     const parsedAmount = Number(amount);
@@ -433,11 +499,11 @@ export function useCardiganData(user) {
     }
   }, [enrichedSessions, upcomingSessions]);
 
-  // Compute amountDue per patient from past sessions only (date + time)
+  // Compute amountDue: billed (historical) minus future sessions' billing minus paid
   const enrichedPatients = useMemo(() => {
     const now = new Date();
     return patients.map(p => {
-      let billable = 0;
+      let futureCount = 0;
       enrichedSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
         if (s.status === "cancelled") return;
@@ -446,17 +512,18 @@ export function useCardiganData(user) {
           const [h, m] = s.time.split(":");
           d.setHours(parseInt(h) || 0, parseInt(m) || 0);
         }
-        if (d > now) return;
-        billable++;
+        if (d > now) futureCount++;
       });
-      return { ...p, amountDue: Math.max(0, billable * p.rate - p.paid) };
+      const pastBilled = p.billed - (futureCount * p.rate);
+      return { ...p, amountDue: Math.max(0, pastBilled - p.paid) };
     });
   }, [patients, enrichedSessions]);
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, loading, mutating, mutationError,
     createPatient, updatePatient, deletePatient,
-    createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions,
+    createSession, updateSessionStatus, deleteSession, rescheduleSession,
+    generateRecurringSessions, applyScheduleChange,
     createPayment, deletePayment,
     refresh,
   };

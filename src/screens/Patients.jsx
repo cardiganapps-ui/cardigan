@@ -9,7 +9,7 @@ const Toggle = ({ on, onToggle }) => (
   </button>
 );
 
-export function Patients({ patients, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, mutating }) {
+export function Patients({ patients, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, applyScheduleChange, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -24,9 +24,12 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
   const [editRate, setEditRate]       = useState("");
   const [editStatus, setEditStatus]   = useState("");
   const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
-  const [genStartDate, setGenStartDate]   = useState(todayISO());
-  const [genHasEndDate, setGenHasEndDate] = useState(false);
-  const [genEndDate, setGenEndDate]       = useState("");
+  const [effectiveDate, setEffectiveDate] = useState(todayISO());
+  const [hasEndDate, setHasEndDate]       = useState(false);
+  const [endDate, setEndDate]             = useState("");
+  // Track originals to detect changes
+  const [origRate, setOrigRate]           = useState(0);
+  const [origSchedules, setOrigSchedules] = useState("[]");
 
   const openDetail = (p) => {
     setSelected(p);
@@ -35,33 +38,60 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
   };
 
   const startEdit = () => {
+    const scheds = [{ day: selected.day, time: selected.time }];
     setEditName(selected.name);
     setEditIsMinor(!!selected.parent);
     setEditParent(selected.parent || "");
     setEditRate(String(selected.rate));
     setEditStatus(selected.status);
-    setEditSchedules([{ day: selected.day, time: selected.time }]);
-    setGenStartDate(todayISO());
-    setGenHasEndDate(false);
-    setGenEndDate("");
+    setEditSchedules(scheds);
+    setOrigRate(selected.rate);
+    setOrigSchedules(JSON.stringify(scheds));
+    setEffectiveDate(todayISO());
+    setHasEndDate(false);
+    setEndDate("");
     setEditing(true);
   };
 
   const updateEditSched = (i, f, v) => setEditSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
 
+  const scheduleOrRateChanged = () => {
+    const rateChanged = Number(editRate) !== origRate;
+    const schedChanged = JSON.stringify(editSchedules) !== origSchedules;
+    return rateChanged || schedChanged;
+  };
+
   const saveEdit = async () => {
-    const primary = editSchedules[0] || { day: "Lunes", time: "16:00" };
-    const ok = await updatePatient(selected.id, {
-      name: editName.trim(),
-      parent: editIsMinor ? editParent.trim() : "",
-      rate: Number(editRate) || 0,
-      day: primary.day,
-      time: primary.time,
-      status: editStatus,
-    });
-    if (ok) {
-      setSelected(null);
-      setEditing(false);
+    if (scheduleOrRateChanged()) {
+      // Schedule or rate changed — apply with effective date
+      const ok = await applyScheduleChange(selected.id, {
+        schedules: editSchedules,
+        rate: Number(editRate) || 0,
+        effectiveDate,
+        endDate: hasEndDate ? endDate : null,
+      });
+      if (ok) {
+        // Also save basic info
+        await updatePatient(selected.id, {
+          name: editName.trim(),
+          parent: editIsMinor ? editParent.trim() : "",
+          status: editStatus,
+        });
+        setSelected(null);
+        setEditing(false);
+      }
+    } else {
+      // Only basic info changed
+      const ok = await updatePatient(selected.id, {
+        name: editName.trim(),
+        parent: editIsMinor ? editParent.trim() : "",
+        rate: Number(editRate) || 0,
+        status: editStatus,
+      });
+      if (ok) {
+        setSelected(null);
+        setEditing(false);
+      }
     }
   };
 
@@ -165,6 +195,7 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
               {editing ? (
                 /* ── EDIT MODE ── */
                 <div>
+                  {/* Basic info */}
                   <div className="input-group">
                     <label className="input-label">Nombre</label>
                     <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
@@ -180,10 +211,6 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                     </div>
                   )}
                   <div className="input-group">
-                    <label className="input-label">Tarifa</label>
-                    <input className="input" type="number" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Ej: 700" />
-                  </div>
-                  <div className="input-group">
                     <label className="input-label">Estado</label>
                     <select className="input" value={editStatus} onChange={e => setEditStatus(e.target.value)}>
                       <option value="active">Activo</option>
@@ -191,7 +218,16 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                     </select>
                   </div>
 
-                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:14 }}>
+                  {/* Rate */}
+                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
+                    <div className="input-group">
+                      <label className="input-label">Tarifa por sesión</label>
+                      <input className="input" type="number" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Ej: 700" />
+                    </div>
+                  </div>
+
+                  {/* Schedules */}
+                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:8 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>Horarios de sesión</div>
                     {editSchedules.map((s, i) => (
                       <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
@@ -214,39 +250,42 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                       </div>
                     ))}
                     <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00" }])}
-                      style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 12px", fontFamily:"var(--font)" }}>
+                      style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 8px", fontFamily:"var(--font)" }}>
                       + Agregar otro horario
                     </button>
+                  </div>
 
-                    <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:12 }}>
-                      <div className="input-group" style={{ marginBottom:10 }}>
-                        <label className="input-label">Generar desde</label>
-                        <input className="input" type="date" value={genStartDate} onChange={e => setGenStartDate(e.target.value)} />
+                  {/* Effective date — only when schedule or rate changed */}
+                  {scheduleOrRateChanged() && (
+                    <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
+                      <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:8 }}>
+                        {Number(editRate) !== origRate && JSON.stringify(editSchedules) !== origSchedules
+                          ? "Tarifa y horario modificados"
+                          : Number(editRate) !== origRate ? "Tarifa modificada" : "Horario modificado"}
                       </div>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: genHasEndDate ? 8 : 0 }}>
+                      <div style={{ fontSize:11, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
+                        Las sesiones futuras desde la fecha indicada serán reemplazadas con el nuevo horario y tarifa. Las sesiones anteriores no se verán afectadas.
+                      </div>
+                      <div className="input-group" style={{ marginBottom:8 }}>
+                        <label className="input-label">Efectivo desde</label>
+                        <input className="input" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: hasEndDate ? 8 : 0 }}>
                         <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Fecha de fin</span>
-                        <Toggle on={genHasEndDate} onToggle={() => setGenHasEndDate(v => !v)} />
+                        <Toggle on={hasEndDate} onToggle={() => setHasEndDate(v => !v)} />
                       </div>
-                      {genHasEndDate ? (
+                      {hasEndDate ? (
                         <div className="input-group" style={{ marginBottom:0 }}>
-                          <input className="input" type="date" value={genEndDate} onChange={e => setGenEndDate(e.target.value)} />
+                          <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                         </div>
                       ) : (
                         <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Permanente — se renuevan automáticamente</div>
                       )}
                     </div>
-                    <button type="button" className="btn" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", whiteSpace:"nowrap", fontSize:12, fontWeight:700, width:"100%" }}
-                      disabled={mutating}
-                      onClick={async () => {
-                        await generateRecurringSessions(selected.id, editSchedules, genStartDate, genHasEndDate ? genEndDate : null);
-                      }}
-                    >
-                      {mutating ? "Generando..." : "Generar citas recurrentes"}
-                    </button>
-                  </div>
+                  )}
 
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
-                    {mutating ? "Guardando..." : "Guardar cambios"}
+                    {mutating ? "Guardando..." : scheduleOrRateChanged() ? "Aplicar cambios" : "Guardar cambios"}
                   </button>
                   <button className="btn btn-secondary w-full" onClick={() => setEditing(false)}>Cancelar</button>
                 </div>
