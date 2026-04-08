@@ -1,25 +1,41 @@
-import { IconUser, IconCurrency, IconBell, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron } from "../components/Icons";
+import { useState } from "react";
+import { supabase } from "../supabaseClient";
+import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
 
 export function Settings({ user, signOut }) {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const sections = [
-    { label:"Mi práctica", rows:[
-      { Icon: IconUser,      title:"Perfil profesional", sub: userName },
-      { Icon: IconCurrency,  title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
-      { Icon: IconBell,      title:"Recordatorios",      sub:"WhatsApp automático" },
-    ]},
-    { label:"Suscripción", rows:[
-      { Icon: IconStar,      title:"Plan actual",         sub:"Cardigan Pro" },
-      { Icon: IconClipboard, title:"Historial de pagos",  sub:"Ver facturas" },
-    ]},
-    { label:"Cuenta", rows:[
-      { Icon: IconKey,    title:"Cambiar contraseña", sub:"" },
-      { Icon: IconLogOut, title:"Cerrar sesión", sub:"", danger:true, action: signOut },
-    ]},
-  ];
+  const [activeSheet, setActiveSheet] = useState(null);
+  const [editName, setEditName] = useState(userName);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const saveProfile = async () => {
+    if (!editName.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
+    setSaving(false);
+    if (error) { setMessage("Error al guardar."); return; }
+    setMessage("Perfil actualizado.");
+    setTimeout(() => { setMessage(""); setActiveSheet(null); }, 1200);
+  };
+
+  const resetPassword = async () => {
+    setSaving(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
+    setSaving(false);
+    if (error) { setMessage("Error al enviar correo."); return; }
+    setMessage("Correo enviado. Revisa tu bandeja.");
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  const openSheet = (key) => {
+    setMessage("");
+    if (key === "profile") setEditName(userName);
+    setActiveSheet(key);
+  };
 
   return (
     <div className="page">
@@ -31,30 +47,137 @@ export function Settings({ user, signOut }) {
               <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
               <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
             </div>
-            <button className="btn btn-ghost" style={{ fontSize:13,height:34 }}>Editar</button>
+            <button className="btn btn-ghost" style={{ fontSize:13,height:34 }} onClick={() => openSheet("profile")}>Editar</button>
           </div>
         </div>
       </div>
-      {sections.map(s => (
-        <div key={s.label}>
-          <div className="settings-label">{s.label}</div>
-          <div className="card" style={{ margin:"0 16px" }}>
-            {s.rows.map((r,i) => (
-              <div className="settings-row" key={i} onClick={r.action || undefined} style={r.action ? { cursor:"pointer" } : undefined}>
-                <div className="settings-row-icon" style={{ color: r.danger ? "var(--red)" : "var(--teal-dark)" }}>
-                  <r.Icon size={18} />
-                </div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title" style={{ color:r.danger?"var(--red)":undefined }}>{r.title}</div>
-                  {r.sub && <div className="settings-row-sub">{r.sub}</div>}
-                </div>
-                <IconChevron />
+
+      <div className="settings-label">Mi práctica</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("profile")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUser size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">Perfil</div>
+            <div className="settings-row-sub">{userName}</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("currency")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCurrency size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">Moneda</div>
+            <div className="settings-row-sub">MXN — Peso Mexicano</div>
+          </div>
+          <IconChevron />
+        </div>
+      </div>
+
+      <div className="settings-label">Suscripción</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("plan")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">Plan actual</div>
+            <div className="settings-row-sub">Cardigan Pro</div>
+          </div>
+          <IconChevron />
+        </div>
+      </div>
+
+      <div className="settings-label">Cuenta</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={resetPassword}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">Cambiar contraseña</div>
+            {message && activeSheet === null && <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>}
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={signOut}>
+          <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title" style={{ color:"var(--red)" }}>Cerrar sesión</div>
+          </div>
+          <IconChevron />
+        </div>
+      </div>
+
+      <div style={{ height:20 }} />
+
+      {/* ── PROFILE SHEET ── */}
+      {activeSheet === "profile" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">Editar perfil</span>
+              <button className="sheet-close" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div className="input-group">
+                <label className="input-label">Nombre completo</label>
+                <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
               </div>
-            ))}
+              <div className="input-group">
+                <label className="input-label">Correo electrónico</label>
+                <input className="input" value={userEmail} disabled style={{ opacity:0.5 }} />
+              </div>
+              {message && <div style={{ fontSize:12, color:"var(--green)", marginBottom:10, display:"flex", alignItems:"center", gap:4 }}><IconCheck size={14} /> {message}</div>}
+              <button className="btn btn-primary" onClick={saveProfile} disabled={saving || !editName.trim()}>
+                {saving ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
           </div>
         </div>
-      ))}
-      <div style={{ height:20 }} />
+      )}
+
+      {/* ── CURRENCY SHEET ── */}
+      {activeSheet === "currency" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">Moneda</span>
+              <button className="sheet-close" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div className="card" style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)" }}>MXN — Peso Mexicano</div>
+                  <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>$1,000.00</div>
+                </div>
+                <div style={{ color:"var(--teal)" }}><IconCheck size={18} /></div>
+              </div>
+              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:12, lineHeight:1.5, textAlign:"center" }}>
+                Próximamente más monedas disponibles.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PLAN SHEET ── */}
+      {activeSheet === "plan" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">Tu plan</span>
+              <button className="sheet-close" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px", textAlign:"center" }}>
+              <div style={{ width:48, height:48, background:"var(--amber-bg)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", color:"var(--amber)" }}>
+                <IconStar size={22} />
+              </div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>Cardigan Pro</div>
+              <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
+                Acceso completo a todas las funciones de Cardigan.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
