@@ -102,11 +102,6 @@ export function AuthScreen({ onSignIn, onSignUp }) {
                 <button type="button" className="btn btn-ghost" onClick={() => switchMode("login")}>Volver a iniciar sesión</button>
               </div>
             )}
-            {mode === "signup" && (
-              <div style={{ textAlign:"center",fontSize:12,color:"var(--charcoal-xl)",marginTop:14,lineHeight:1.6 }}>
-                Al registrarte aceptas los <span style={{ color:"var(--teal-dark)",fontWeight:700 }}>Términos</span> y la <span style={{ color:"var(--teal-dark)",fontWeight:700 }}>Política de privacidad</span>.
-              </div>
-            )}
           </>
         )}
       </div>
