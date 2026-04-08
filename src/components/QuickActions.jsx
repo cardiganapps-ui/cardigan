@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
-import { clientColors, DAY_ORDER } from "../data/seedData";
+import { DAY_ORDER } from "../data/seedData";
 import { todayISO, isoToShortDate } from "../data/api";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconEdit, IconCheck, IconX } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconX } from "./Icons";
 
 const ACTIONS = [
   { key:"patient", Icon: IconUserPlus,     label:"Paciente" },
   { key:"payment", Icon: IconDollar,       label:"Pago" },
   { key:"session", Icon: IconCalendarPlus, label:"Sesión" },
-  { key:"status",  Icon: IconEdit,         label:"Estado" },
 ];
 
 const Toggle = ({ on, onToggle, type }) => (
@@ -194,62 +193,12 @@ function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
   );
 }
 
-/* ── UPDATE STATUS SHEET ── */
-function UpdateStatusSheet({ onClose, upcomingSessions, onUpdateStatus, mutating }) {
-  const scheduled = upcomingSessions.filter(s => s.status === "scheduled");
-
-  return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" onClick={e => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div className="sheet-header">
-          <span className="sheet-title">Actualizar cita</span>
-          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
-        </div>
-        <div style={{ padding:"0 20px 22px" }}>
-          {scheduled.length === 0
-            ? <div style={{ textAlign:"center", padding:"24px 0", color:"var(--charcoal-xl)", fontSize:13 }}>No hay citas pendientes</div>
-            : scheduled.map(s => (
-              <div key={s.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
-                <div className="row-avatar" style={{ background: clientColors[s.colorIdx % clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{s.initials}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)" }}>{s.patient}</div>
-                  <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:1 }}>{s.day} {s.date} · {s.time}</div>
-                </div>
-                <div style={{ display:"flex", gap:5, flexShrink:0 }}>
-                  <button title="Completada"
-                    style={{ padding:"5px 8px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--green-bg)", color:"var(--green)", cursor:"pointer", fontFamily:"var(--font)" }}
-                    onClick={() => onUpdateStatus(s.id, "completed")}
-                    disabled={mutating}
-                  ><IconCheck size={14} /></button>
-                  <button title="Cancelar y cobrar"
-                    style={{ padding:"5px 8px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--amber-bg)", color:"var(--amber)", cursor:"pointer", fontFamily:"var(--font)" }}
-                    onClick={() => onUpdateStatus(s.id, "cancelled", true)}
-                    disabled={mutating}
-                  ><IconDollar size={14} /></button>
-                  <button title="Cancelar sin cobrar"
-                    style={{ padding:"5px 8px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--cream)", color:"var(--charcoal-lt)", cursor:"pointer", fontFamily:"var(--font)" }}
-                    onClick={() => onUpdateStatus(s.id, "cancelled", false)}
-                    disabled={mutating}
-                  ><IconX size={14} /></button>
-                </div>
-              </div>
-            ))
-          }
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── QUICK ACTIONS (FAB + MENU + SHEETS) ── */
 export function QuickActions({
   patients,
-  upcomingSessions,
   onOpenPaymentModal,
   createPatient,
   createSession,
-  updateSessionStatus,
   mutating,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -290,9 +239,6 @@ export function QuickActions({
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} mutating={mutating} />
-      )}
-      {activeSheet === "status" && (
-        <UpdateStatusSheet onClose={closeSheet} upcomingSessions={upcomingSessions} onUpdateStatus={updateSessionStatus} mutating={mutating} />
       )}
     </>
   );

@@ -101,11 +101,9 @@ function AppShell({ user, signOut }) {
       />
       <QuickActions
         patients={patients}
-        upcomingSessions={upcomingSessions}
         onOpenPaymentModal={() => openRecordPaymentModal(null)}
         createPatient={createPatient}
         createSession={createSession}
-        updateSessionStatus={updateSessionStatus}
         mutating={mutating}
       />
       {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} user={user} signOut={signOut} />}
