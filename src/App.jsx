@@ -45,7 +45,7 @@ const styles = `
 
 html, body {
   font-family: var(--font);
-  background: var(--cream);
+  background: var(--nav-bg);
   color: var(--charcoal);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
@@ -62,10 +62,14 @@ html, body {
 }
 .status-bar { height: var(--sat); background: var(--nav-bg); flex-shrink: 0; }
 
+/* Smooth page transitions */
+.page > .section, .page > div { animation: fadeInUp 0.25s ease-out; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
 /* TOPBAR */
 .topbar {
   background: var(--nav-bg);
-  padding: 12px 20px 16px;
+  padding: 14px 20px 18px;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
 }
@@ -207,16 +211,16 @@ html, body {
 
 /* FAB */
 .fab {
-  position: fixed; bottom: calc(var(--sab) + 20px); right: 20px;
-  width: 54px; height: 54px; background: var(--teal); border-radius: 50%;
+  position: absolute; bottom: calc(var(--sab) + 20px); right: 20px;
+  width: 56px; height: 56px; background: linear-gradient(135deg, var(--teal-light), var(--teal-dark)); border-radius: 50%;
   border: none; display: flex; align-items: center; justify-content: center;
-  font-size: 24px; color: white;
-  box-shadow: 0 4px 20px rgba(91,155,175,0.5);
+  font-size: 26px; font-weight: 300; color: white;
+  box-shadow: 0 6px 24px rgba(74,135,153,0.45);
   cursor: pointer; z-index: 50;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.fab:active { transform: scale(0.93); }
+.fab:active { transform: scale(0.92); box-shadow: 0 2px 12px rgba(74,135,153,0.35); }
 
 /* CARDS & SECTIONS */
 .section { padding: 16px 16px 0; }
@@ -224,7 +228,7 @@ html, body {
 .section-title { font-family: var(--font-d); font-size: 15px; font-weight: 800; color: var(--charcoal); }
 .see-all { font-size: 13px; font-weight: 600; color: var(--teal-dark); background: none; border: none; cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent; }
 
-.card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); box-shadow: var(--shadow-sm); overflow: hidden; }
+.card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); box-shadow: var(--shadow-sm); overflow: hidden; transition: box-shadow 0.15s; }
 
 /* KPI ROW */
 .kpi-scroll {
@@ -296,15 +300,17 @@ html, body {
 .search-bar input::placeholder { color: var(--charcoal-xl); }
 
 /* INPUT */
-.input-group { margin-bottom: 14px; }
-.input-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--charcoal-md); margin-bottom: 5px; }
+.input-group { margin-bottom: 16px; }
+.input-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--charcoal-md); margin-bottom: 6px; }
 .input {
-  width: 100%; padding: 11px 13px;
+  width: 100%; padding: 13px 16px;
   border: 1.5px solid var(--border); border-radius: var(--radius);
   font-size: 16px; font-family: var(--font); color: var(--charcoal);
   background: var(--white); outline: none; -webkit-appearance: none;
   transition: border-color 0.15s, box-shadow 0.15s;
+  height: 48px;
 }
+select.input { height: 48px; }
 .input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(91,155,175,0.13); }
 .input::placeholder { color: var(--charcoal-xl); }
 
@@ -354,13 +360,13 @@ html, body {
 .balance-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.3s; }
 
 /* AUTH */
-.auth-screen { min-height: 100dvh; background: var(--cream); display: flex; flex-direction: column; }
-.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 24px) 24px 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
-.auth-wordmark { font-family: var(--font-d); font-size: 28px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
-.auth-tagline { font-size: 13.5px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 260px; }
-.auth-body { flex: 1; padding: 28px 20px calc(var(--sab) + 20px); }
-.auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 24px; }
-.auth-tab { flex: 1; padding: 10px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
+.auth-screen { min-height: 100dvh; max-width: 430px; margin: 0 auto; background: var(--cream); display: flex; flex-direction: column; }
+.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 32px) 24px 40px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; border-radius: 0 0 24px 24px; }
+.auth-wordmark { font-family: var(--font-d); font-size: 30px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
+.auth-tagline { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 260px; }
+.auth-body { flex: 1; padding: 32px 24px calc(var(--sab) + 24px); }
+.auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 28px; }
+.auth-tab { flex: 1; padding: 11px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
 .auth-tab.active { background: var(--white); color: var(--charcoal); box-shadow: var(--shadow-sm); }
 
 /* SETTINGS */
@@ -374,19 +380,20 @@ html, body {
 .settings-chevron { color: var(--border); font-size: 16px; margin-left: auto; }
 
 /* DETAIL SHEET */
-.sheet-overlay { position: fixed; inset: 0; background: rgba(46,46,46,0.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-overlay { position: fixed; inset: 0; background: rgba(20,35,40,0.45); backdrop-filter: blur(2px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.15s ease; }
 .sheet-panel {
-  background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--white); border-radius: 20px 20px 0 0;
   width: 100%; max-width: 430px;
   padding-bottom: var(--sab);
-  max-height: 85dvh; overflow-y: auto;
-  animation: slideUp 0.25s ease;
+  max-height: 88dvh; overflow-y: auto;
+  animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 4px; }
-.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; }
-.sheet-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); }
-.sheet-close { width: 30px; height: 30px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 14px auto 6px; }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 18px; }
+.sheet-title { font-family: var(--font-d); font-size: 18px; font-weight: 800; color: var(--charcoal); }
+.sheet-close { width: 32px; height: 32px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; transition: background 0.12s; }
+.sheet-close:active { background: var(--cream-deeper); }
 
 /* AGENDA VIEW TOGGLE */
 .view-toggle {
@@ -523,66 +530,73 @@ html, body {
 `;
 
 /* ── LOGO ── */
-const LogoMark = ({ size = 24 }) => (
-  <svg width={size} height={size * 0.72} viewBox="0 0 100 72" fill="none">
-    <path d="M28 13C15.8 13 6 22.8 6 35C6 47.2 15.8 57 28 57C36.5 57 43.9 52.2 47.8 45.1L54.5 56.3C48.3 65.1 38.8 70 28 70C8.6 70-7 54.4-7 35C-7 15.6 8.6 0 28 0C38.8 0 48.3 4.9 54.5 13.7L47.8 24.9C43.9 17.8 36.5 13 28 13Z" fill="white"/>
-    <path d="M72 57C84.2 57 94 47.2 94 35C94 22.8 84.2 13 72 13C63.5 13 56.1 17.8 52.2 24.9L45.5 13.7C51.7 4.9 61.2 0 72 0C91.4 0 107 15.6 107 35C107 54.4 91.4 70 72 70C61.2 70 51.7 65.1 45.5 56.3L52.2 45.1C56.1 52.2 63.5 57 72 57Z" fill="white" opacity="0.55"/>
-  </svg>
-);
+const LogoMark = ({ size = 24, color = "#7AB5C7" }) => {
+  const w = size;
+  const h = size * 0.82;
+  return (
+    <svg width={w} height={h} viewBox="0 0 100 82" fill="none">
+      {/* Right loop — behind, lower opacity */}
+      <path d="M50 41 C56 28, 72 14, 82 20 C94 27, 92 48, 82 58 C72 68, 56 62, 50 41Z" fill={color} opacity="0.5"/>
+      {/* Left loop — front */}
+      <path d="M50 41 C44 54, 28 68, 18 62 C6 55, 8 34, 18 24 C28 14, 44 20, 50 41Z" fill={color}/>
+    </svg>
+  );
+};
 
 /* ── DATA ── */
 const clientColors = ["#5B9BAF","#7AB5C7","#4A8799","#3D6470","#84C5D4","#9E8BC4","#B08DC8"];
+const DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const DAY_NAMES_SHORT = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
+const FULL_DAY_NAMES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const FULL_FULL_MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-const seedPatients = [
-  { id:1,  name:"María Cordera",     parent:"Paola",      initials:"MC", rate:700, day:"Miércoles", time:"13:15", status:"active", billed:3500, paid:0,    sessions:5 },
-  { id:2,  name:"Emilia Romero",     parent:"María José", initials:"ER", rate:700, day:"Martes",    time:"19:15", status:"active", billed:3500, paid:2800, sessions:5 },
-  { id:3,  name:"Marina Nuñez",      parent:"Ana Belén",  initials:"MN", rate:700, day:"Martes",    time:"16:30", status:"active", billed:3500, paid:3500, sessions:5 },
-  { id:5,  name:"Inés Sagües",       parent:"Inés",       initials:"IS", rate:500, day:"Lunes",     time:"16:30", status:"active", billed:2500, paid:2000, sessions:5 },
-  { id:6,  name:"Regina Carrillo",   parent:"Guadalupe",  initials:"RC", rate:700, day:"Jueves",    time:"17:30", status:"active", billed:1400, paid:700,  sessions:2 },
-  { id:7,  name:"Olivia Rivera",     parent:"Kitsia",     initials:"OR", rate:700, day:"Miércoles", time:"19:15", status:"ended",  billed:3500, paid:2900, sessions:5 },
-  { id:8,  name:"Fernando Guerrero", parent:"Rossana",    initials:"FG", rate:700, day:"Martes",    time:"13:00", status:"active", billed:4200, paid:2100, sessions:6 },
-  { id:9,  name:"Elena González",    parent:"Mercedes",   initials:"EG", rate:700, day:"Lunes",     time:"17:15", status:"ended",  billed:1400, paid:700,  sessions:2 },
-  { id:10, name:"Eugenia Del Río",   parent:"Fernanda",   initials:"ED", rate:700, day:"Martes",    time:"20:15", status:"active", billed:0,    paid:0,    sessions:0 },
-];
+function getToday() { return new Date(); }
+function getTodayStr() { const d = getToday(); return `${d.getDate()} ${shortMonths[d.getMonth()]}`; }
+function getTodayLabel() { const d = getToday(); return `${FULL_DAY_NAMES[(d.getDay()+6)%7]} ${d.getDate()} ${shortMonths[d.getMonth()]}`; }
+function getCurrentMonthLabel() { const d = getToday(); return `${FULL_FULL_MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
 
-const seedUpcomingSessions = [
-  { id:1, patient:"Inés Sagües",       initials:"IS", time:"16:30", day:"Lunes",     date:"7 Abr",  status:"scheduled", colorIdx:3 },
-  { id:2, patient:"Fernando Guerrero", initials:"FG", time:"13:00", day:"Martes",    date:"8 Abr",  status:"scheduled", colorIdx:6 },
-  { id:3, patient:"Marina Nuñez",      initials:"MN", time:"16:30", day:"Martes",    date:"8 Abr",  status:"scheduled", colorIdx:2 },
-  { id:4, patient:"Emilia Romero",     initials:"ER", time:"19:15", day:"Martes",    date:"8 Abr",  status:"scheduled", colorIdx:1 },
-  { id:5, patient:"María Cordera",     initials:"MC", time:"13:15", day:"Miércoles", date:"9 Abr",  status:"scheduled", colorIdx:0 },
-  { id:6, patient:"Olivia Rivera",     initials:"OR", time:"19:15", day:"Miércoles", date:"9 Abr",  status:"cancelled", colorIdx:5 },
-  { id:7, patient:"Regina Carrillo",   initials:"RC", time:"17:30", day:"Jueves",    date:"10 Abr", status:"scheduled", colorIdx:4 },
-];
+function buildCurrentWeek(baseDate = getToday()) {
+  const d = new Date(baseDate);
+  const dayOfWeek = (d.getDay() + 6) % 7; // 0=Mon
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - dayOfWeek);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + i);
+    days.push({
+      name: DAY_NAMES_SHORT[i],
+      num: String(day.getDate()),
+      month: shortMonths[day.getMonth()],
+      dateStr: `${day.getDate()} ${shortMonths[day.getMonth()]}`,
+      fullDate: day,
+    });
+  }
+  return days;
+}
 
-const seedPayments = [
-  { id:1, patient:"Regina Carrillo",   initials:"RC", amount:700,  date:"15 Ene", method:"Transferencia", colorIdx:4 },
-  { id:2, patient:"Olivia Rivera",     initials:"OR", amount:1400, date:"21 Ene", method:"Transferencia", colorIdx:5 },
-  { id:3, patient:"Elena González",    initials:"EG", amount:700,  date:"26 Ene", method:"Efectivo",      colorIdx:7 },
-  { id:4, patient:"Fernando Guerrero", initials:"FG", amount:700,  date:"27 Ene", method:"Transferencia", colorIdx:6 },
-  { id:5, patient:"Marina Nuñez",      initials:"MN", amount:3500, date:"27 Ene", method:"Transferencia", colorIdx:2 },
-  { id:6, patient:"Emilia Romero",     initials:"ER", amount:2800, date:"9 Feb",  method:"Efectivo",      colorIdx:1 },
-  { id:7, patient:"Inés Sagües",       initials:"IS", amount:2000, date:"10 Feb", method:"Transferencia", colorIdx:3 },
-];
-
-const calDays = [
-  { name:"LUN", num:"7",  hasS:true  },
-  { name:"MAR", num:"8",  hasS:true  },
-  { name:"MIÉ", num:"9",  hasS:true  },
-  { name:"JUE", num:"10", hasS:true  },
-  { name:"VIE", num:"11", hasS:false },
-  { name:"SÁB", num:"12", hasS:false },
-  { name:"DOM", num:"13", hasS:false },
-];
-
-const monthlyData = [
-  { mes:"Sep", year:2025, cobrado:5600, sesiones:8,  pendiente:700  },
-  { mes:"Oct", year:2025, cobrado:7000, sesiones:10, pendiente:1400 },
-  { mes:"Nov", year:2025, cobrado:6300, sesiones:9,  pendiente:700  },
-  { mes:"Dic", year:2025, cobrado:4200, sesiones:6,  pendiente:0    },
-  { mes:"Ene", year:2026, cobrado:8400, sesiones:12, pendiente:2100 },
-  { mes:"Feb", year:2026, cobrado:9500, sesiones:14, pendiente:1600 },
-];
+function computeMonthlyData(payments) {
+  const byMonth = {};
+  payments.forEach(p => {
+    const parts = p.date.split(" ");
+    if (parts.length < 2) return;
+    const mon = parts[1];
+    const monIdx = shortMonths.indexOf(mon);
+    if (monIdx === -1) return;
+    // Infer year from current date context
+    const now = getToday();
+    const year = monIdx > now.getMonth() ? now.getFullYear() - 1 : now.getFullYear();
+    const key = `${year}-${String(monIdx).padStart(2,"0")}`;
+    if (!byMonth[key]) byMonth[key] = { mes: mon, year, cobrado: 0, sesiones: 0, pendiente: 0 };
+    byMonth[key].cobrado += p.amount;
+    byMonth[key].sesiones += 1;
+  });
+  return Object.values(byMonth).sort((a, b) => {
+    const aKey = a.year * 100 + shortMonths.indexOf(a.mes);
+    const bKey = b.year * 100 + shortMonths.indexOf(b.mes);
+    return aKey - bKey;
+  });
+}
 
 /* ── NAV ── */
 const navItems = [
@@ -620,7 +634,7 @@ function useCardiganData(session) {
     try {
       const [pRes, sRes, payRes] = await Promise.all([
         supabase.from("patients").select("*"),
-        supabase.from("sessions").select("*, patients(name, initials, color_idx)").gte("scheduled_at", new Date(Date.now() - 7 * 86400000).toISOString()).order("scheduled_at"),
+        supabase.from("sessions").select("*, patients(name, initials, color_idx)").order("scheduled_at"),
         supabase.from("payments").select("*, patients(name, initials, color_idx)").order("created_at", { ascending: false }),
       ]);
 
@@ -628,17 +642,20 @@ function useCardiganData(session) {
       if (sRes.error) throw sRes.error;
       if (payRes.error) throw payRes.error;
 
-      // Compute billed/paid/sessions per patient from related data
+      // Build patient rate lookup for billed computation
+      const rateByPatient = {};
+      (pRes.data || []).forEach(p => { rateByPatient[p.id] = Number(p.session_rate) || 700; });
+
+      // Compute billed/paid/sessions per patient
       const sessionsCountByPatient = {};
-      const paidByPatient = {};
       const billedByPatient = {};
+      const paidByPatient = {};
 
       (sRes.data || []).forEach(s => {
         sessionsCountByPatient[s.patient_id] = (sessionsCountByPatient[s.patient_id] || 0) + 1;
+        billedByPatient[s.patient_id] = (billedByPatient[s.patient_id] || 0) + (rateByPatient[s.patient_id] || 700);
       });
 
-      // For billed: count ALL sessions (not just upcoming), so query separately
-      // For MVP we compute from sessions + payments we already have
       (payRes.data || []).forEach(p => {
         paidByPatient[p.patient_id] = (paidByPatient[p.patient_id] || 0) + Number(p.amount);
       });
@@ -654,7 +671,7 @@ function useCardiganData(session) {
         status: p.status || "active",
         phone: p.phone || "",
         email: p.email || "",
-        billed: 0, // Will be computed when sessions are fully tracked
+        billed: billedByPatient[p.id] || 0,
         paid: paidByPatient[p.id] || 0,
         sessions: sessionsCountByPatient[p.id] || 0,
         colorIdx: p.color_idx ?? (i % clientColors.length),
@@ -700,6 +717,30 @@ function useCardiganData(session) {
   }, [session]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  async function createSession({ patientId, date, time, notes }) {
+    if (!patientId || !date || !time || !session) return false;
+    setMutating(true);
+    setMutationError("");
+    try {
+      const scheduledAt = new Date(`${date}T${time}`);
+      if (isNaN(scheduledAt.getTime())) throw new Error("Fecha u hora inválida");
+      const { error: err } = await supabase.from("sessions").insert({
+        patient_id: patientId,
+        scheduled_at: scheduledAt.toISOString(),
+        status: "scheduled",
+        notes: notes || null,
+      });
+      if (err) throw err;
+      await loadData();
+      return true;
+    } catch (err) {
+      setMutationError(err.message || "No se pudo crear la sesión.");
+      return false;
+    } finally {
+      setMutating(false);
+    }
+  }
 
   async function createPatient({ name, parentGuardian, phone, email, rate, day, time }) {
     if (!name.trim() || !session) return false;
@@ -782,6 +823,7 @@ function useCardiganData(session) {
     mutating,
     mutationError,
     createPatient,
+    createSession,
     createPayment,
     updateSessionStatus,
   };
@@ -856,8 +898,14 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
   const totalPaid     = patients.reduce((s,p) => s+p.paid, 0);
   const totalOwed     = totalBilled - totalPaid;
   const activeCount   = patients.filter(p=>p.status==="active").length;
-  const todaySessions = upcomingSessions.filter(s => s.date === "7 Abr");
+  const todayStr      = getTodayStr();
+  const todaySessions = upcomingSessions.filter(s => s.date === todayStr);
   const [selected, setSelected] = useState(null);
+
+  // Compute current month's collected amount from payments
+  const now = getToday();
+  const curMonthStr = shortMonths[now.getMonth()];
+  const monthCollected = payments.filter(p => p.date.includes(curMonthStr)).reduce((s, p) => s + p.amount, 0);
 
   const openPatient = (name) => {
     const p = patients.find(p => p.name === name);
@@ -870,8 +918,8 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
         <div className="kpi-scroll">
           <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Cobrado (Mes)</div>
-            <div className="kpi-value">$9,500</div>
-            <div className="kpi-meta">Febrero 2026</div>
+            <div className="kpi-value">${monthCollected.toLocaleString()}</div>
+            <div className="kpi-meta">{getCurrentMonthLabel()}</div>
           </div>
           <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Por Cobrar</div>
@@ -881,7 +929,7 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
           <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Sesiones Hoy</div>
             <div className="kpi-value">{todaySessions.length}</div>
-            <div className="kpi-meta">Lunes 7 Abr</div>
+            <div className="kpi-meta">{getTodayLabel()}</div>
           </div>
           <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Pacientes</div>
@@ -893,7 +941,7 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
 
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Hoy — Lunes 7 Abr</span>
+          <span className="section-title">Hoy — {getTodayLabel()}</span>
           <button className="see-all" onClick={() => setScreen("agenda")}>Ver semana</button>
         </div>
         <div className="card">
@@ -1074,7 +1122,6 @@ function SessionSheet({ session, onClose, onMarkCompleted, onCancelSession, muta
 }
 
 /* ── CALENDAR HELPERS ── */
-const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const DOW = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
 const HOURS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
 
@@ -1092,13 +1139,12 @@ function buildMonthGrid(year, month) {
 }
 
 /* ── DAY VIEW ── */
-function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSessions }) {
+function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSessions, weekDays }) {
   const daySessions = upcomingSessions.filter(s => s.date === selectedDay);
-  const dayNums = calDays.map(d => parseInt(d.num));
-  const curNum  = parseInt(selectedDay);
-  const curIdx  = dayNums.indexOf(curNum);
-  const goDay   = (delta) => { const next = dayNums[curIdx + delta]; if (next !== undefined) setSelectedDay(`${next} Abr`); };
-  const dayLabel = calDays.find(d => `${d.num} Abr` === selectedDay);
+  const curIdx = weekDays.findIndex(d => d.dateStr === selectedDay);
+  const goDay = (delta) => { const next = weekDays[curIdx + delta]; if (next) setSelectedDay(next.dateStr); };
+  const dayLabel = weekDays.find(d => d.dateStr === selectedDay);
+  const sessionDates = new Set(upcomingSessions.map(s => s.date));
 
   return (
     <div>
@@ -1108,19 +1154,16 @@ function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSession
           <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{dayLabel ? dayLabel.name : ""} {selectedDay}</div>
           <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>{daySessions.length===0 ? "Sin sesiones" : `${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
         </div>
-        <button className="month-nav-btn" onClick={() => goDay(1)} disabled={curIdx>=dayNums.length-1} style={{ opacity: curIdx>=dayNums.length-1?0.3:1 }}>›</button>
+        <button className="month-nav-btn" onClick={() => goDay(1)} disabled={curIdx>=weekDays.length-1} style={{ opacity: curIdx>=weekDays.length-1?0.3:1 }}>›</button>
       </div>
       <div style={{ paddingBottom:8 }}>
         <div className="cal-strip">
-          {calDays.map((d,i) => {
-            const dateStr = `${d.num} Abr`;
-            return (
-              <div key={i} className={`cal-day ${selectedDay===dateStr?"active":""} ${d.hasS?"has-sessions":""}`} onClick={() => setSelectedDay(dateStr)}>
-                <span className="cal-day-name">{d.name}</span>
-                <span className="cal-day-num">{d.num}</span>
-              </div>
-            );
-          })}
+          {weekDays.map((d,i) => (
+            <div key={i} className={`cal-day ${selectedDay===d.dateStr?"active":""} ${sessionDates.has(d.dateStr)?"has-sessions":""}`} onClick={() => setSelectedDay(d.dateStr)}>
+              <span className="cal-day-name">{d.name}</span>
+              <span className="cal-day-num">{d.num}</span>
+            </div>
+          ))}
         </div>
       </div>
       <div style={{ padding:"4px 16px 12px" }}>
@@ -1155,9 +1198,9 @@ function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSession
 }
 
 /* ── WEEK VIEW ── */
-function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcomingSessions }) {
-  const weekDays = calDays.map(d => ({ ...d, dateStr:`${d.num} Abr` }));
+function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcomingSessions, weekDays }) {
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
+  const todayStr = getTodayStr();
 
   return (
     <div>
@@ -1166,7 +1209,7 @@ function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcoming
         {weekDays.map((d,i) => (
           <div key={i} className="week-day-head" style={{ cursor:"pointer" }} onClick={() => { onSelectDay(d.dateStr); setView("day"); }}>
             <span className="week-day-name">{d.name}</span>
-            <span className={`week-day-num ${d.dateStr===selectedDay?"active":""} ${d.num==="7"&&d.dateStr!==selectedDay?"today":""}`}>{d.num}</span>
+            <span className={`week-day-num ${d.dateStr===selectedDay?"active":""} ${d.dateStr===todayStr&&d.dateStr!==selectedDay?"today":""}`}>{d.num}</span>
           </div>
         ))}
       </div>
@@ -1196,33 +1239,41 @@ function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcoming
 /* ── MONTH VIEW ── */
 function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions }) {
   const [monthOffset, setMonthOffset] = useState(0);
-  const base = new Date(2026, 3);
+  const now = getToday();
+  const base = new Date(now.getFullYear(), now.getMonth());
   base.setMonth(base.getMonth() + monthOffset);
   const displayMonth = base.getMonth();
   const displayYear  = base.getFullYear();
   const cells   = buildMonthGrid(displayYear, displayMonth);
-  const isApril = displayMonth === 3 && displayYear === 2026;
-  const daySessions = isApril ? upcomingSessions.filter(s => s.date === selectedDay) : [];
-  const sessionDays = useMemo(() => new Set(upcomingSessions.map(s => parseInt(s.date))), [upcomingSessions]);
-  const selectedNum  = parseInt(selectedDay);
+  const displayMonthStr = shortMonths[displayMonth];
+
+  // Filter sessions that belong to the displayed month
+  const monthSessions = upcomingSessions.filter(s => {
+    const parts = s.date.split(" ");
+    return parts[1] === displayMonthStr;
+  });
+  const daySessions = monthSessions.filter(s => s.date === selectedDay);
+  const sessionDays = useMemo(() => new Set(monthSessions.map(s => parseInt(s.date))), [monthSessions]);
+  const selectedNum = parseInt(selectedDay);
+  const isCurrentMonth = displayMonth === now.getMonth() && displayYear === now.getFullYear();
 
   return (
     <div>
       <div className="month-header">
         <button className="month-nav-btn" onClick={() => setMonthOffset(o => o-1)}>‹</button>
-        <span className="month-title">{MONTH_NAMES[displayMonth]} {displayYear}</span>
+        <span className="month-title">{FULL_MONTH_NAMES[displayMonth]} {displayYear}</span>
         <button className="month-nav-btn" onClick={() => setMonthOffset(o => o+1)}>›</button>
       </div>
       <div className="month-grid">
         <div className="month-dow-row">{DOW.map(d => <div key={d} className="month-dow">{d}</div>)}</div>
         <div className="month-days-grid">
           {cells.map((cell, i) => {
-            const isToday  = isApril && cell.current && cell.num === 7;
-            const isActive = isApril && cell.current && cell.num === selectedNum;
-            const hasSess  = isApril && cell.current && sessionDays.has(cell.num);
+            const isToday  = isCurrentMonth && cell.current && cell.num === now.getDate();
+            const isActive = cell.current && cell.num === selectedNum && selectedDay.includes(displayMonthStr);
+            const hasSess  = cell.current && sessionDays.has(cell.num);
             return (
               <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
-                onClick={() => cell.current && isApril && onSelectDay(`${cell.num} Abr`)}>
+                onClick={() => cell.current && onSelectDay(`${cell.num} ${displayMonthStr}`)}>
                 <span className="month-cell-num">{cell.num}</span>
                 {hasSess && <div className="month-dot" />}
               </div>
@@ -1266,8 +1317,9 @@ function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions
 /* ── AGENDA ── */
 function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mutating }) {
   const [view, setView]               = useState("day");
-  const [selectedDay, setSelectedDay] = useState("7 Abr");
+  const [selectedDay, setSelectedDay] = useState(getTodayStr());
   const [selectedSession, setSelectedSession] = useState(null);
+  const weekDays = useMemo(() => buildCurrentWeek(), []);
 
   return (
     <div className="page">
@@ -1278,8 +1330,8 @@ function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mut
           ))}
         </div>
       </div>
-      {view==="day"   && <DayView   selectedDay={selectedDay} setSelectedDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
-      {view==="week"  && <WeekView  selectedDay={selectedDay} onSelectDay={setSelectedDay} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
+      {view==="day"   && <DayView   selectedDay={selectedDay} setSelectedDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} weekDays={weekDays} />}
+      {view==="week"  && <WeekView  selectedDay={selectedDay} onSelectDay={setSelectedDay} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} weekDays={weekDays} />}
       {view==="month" && <MonthView selectedDay={selectedDay} onSelectDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
       <SessionSheet
         session={selectedSession}
@@ -1299,7 +1351,6 @@ function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mut
 }
 
 /* ── PATIENTS ── */
-const DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
 function Patients({ patients, onRecordPayment, mutating }) {
   const [search, setSearch]     = useState("");
@@ -1616,7 +1667,8 @@ function Finances({ patients, payments, onRecordPayment, mutating }) {
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+Math.max(0,p.billed-p.paid), 0);
   const owingPatients = patients.filter(p => p.billed>p.paid);
-  const currentMonth  = monthlyData[monthlyData.length-1];
+  const monthlyData   = useMemo(() => computeMonthlyData(payments), [payments]);
+  const currentMonth  = monthlyData.length > 0 ? monthlyData[monthlyData.length-1] : { mes: shortMonths[getToday().getMonth()], year: getToday().getFullYear(), cobrado: 0, sesiones: 0, pendiente: 0 };
 
   return (
     <div className="page">
@@ -1689,9 +1741,9 @@ function Finances({ patients, payments, onRecordPayment, mutating }) {
               <div>
                 <div className="stat-tile-label">Cobrado este mes</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:26, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.5px" }}>${currentMonth.cobrado.toLocaleString()}</div>
-                <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>Febrero 2026</div>
+                <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>{getCurrentMonthLabel()}</div>
               </div>
-              <span className="badge badge-green">+{Math.round(((currentMonth.cobrado-monthlyData[monthlyData.length-2].cobrado)/monthlyData[monthlyData.length-2].cobrado)*100)}% vs Ene</span>
+              {monthlyData.length >= 2 && <span className="badge badge-green">+{Math.round(((currentMonth.cobrado-monthlyData[monthlyData.length-2].cobrado)/Math.max(1,monthlyData[monthlyData.length-2].cobrado))*100)}% vs {monthlyData[monthlyData.length-2].mes}</span>}
             </div>
             <FinancesMiniChart data={monthlyData} valueKey="cobrado" color="var(--teal)" />
           </div>
@@ -1820,7 +1872,7 @@ function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-header">
-        <LogoMark size={36} />
+        <LogoMark size={48} color="white" />
         <div className="auth-wordmark">cardigan</div>
         <div className="auth-tagline">Gestiona tu práctica. Sin complicaciones.</div>
       </div>
@@ -1956,6 +2008,77 @@ function AddPatientSheet({ open, onClose, onSubmit, mutating }) {
   );
 }
 
+/* ── ADD SESSION SHEET ── */
+function AddSessionSheet({ open, onClose, onSubmit, patients, mutating }) {
+  const [patientId, setPatientId] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setPatientId(""); setNotes(""); setFormError("");
+    // Default to today's date and a reasonable time
+    const now = getToday();
+    setDate(now.toISOString().split("T")[0]);
+    setTime("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!patientId) { setFormError("Selecciona un paciente."); return; }
+    if (!date) { setFormError("Selecciona una fecha."); return; }
+    if (!time) { setFormError("Selecciona una hora."); return; }
+    setFormError("");
+    const ok = await onSubmit({ patientId, date, time, notes });
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"90vh", overflow:"auto" }}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span className="sheet-title">Nueva sesión</span>
+          <button className="sheet-close" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={submit} style={{ padding:"0 20px 24px" }}>
+          <div className="input-group">
+            <label className="input-label">Paciente *</label>
+            <select className="input" value={patientId} onChange={e => setPatientId(e.target.value)} required>
+              <option value="">Seleccionar paciente</option>
+              {patients.filter(p => p.status === "active").map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">Fecha *</label>
+              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Hora *</label>
+              <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} required />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Notas</label>
+            <input className="input" placeholder="Notas opcionales" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+          {formError && <div style={{ fontSize:13, color:"var(--red)", marginBottom:10 }}>{formError}</div>}
+          <button type="submit" className="btn btn-primary" style={{ height:48, marginTop:8 }} disabled={mutating}>
+            {mutating ? "Guardando..." : "Agendar sesión"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function PaymentModal({
   open,
   onClose,
@@ -2049,7 +2172,7 @@ const topbarMeta = {
   home:     { title:"Buenos días ☀️", sub:"Lunes 7 de Abril" },
   agenda:   { title:"Agenda",          sub:"Semana del 7 Abr" },
   patients: { title:"Pacientes",       sub:"9 en total · 7 activos" },
-  finances: { title:"Finanzas",        sub:"Febrero 2026" },
+  finances: { title:"Finanzas",        sub:"Tu práctica" },
   settings: { title:"Ajustes",         sub:"Cardigan Pro" },
 };
 
@@ -2079,6 +2202,7 @@ export default function Cardigan() {
     mutating,
     mutationError,
     createPatient,
+    createSession,
     createPayment,
     updateSessionStatus,
   } = useCardiganData(session);
@@ -2086,6 +2210,12 @@ export default function Cardigan() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [addPatientOpen, setAddPatientOpen] = useState(false);
+  const [addSessionOpen, setAddSessionOpen] = useState(false);
+
+  const handleFab = () => {
+    if (screen === "patients") setAddPatientOpen(true);
+    else setAddSessionOpen(true);
+  };
 
   const openRecordPaymentModal = (patient) => {
     setPaymentDraft({
@@ -2183,7 +2313,14 @@ export default function Cardigan() {
             onSubmit={createPatient}
             mutating={mutating}
           />
-          <button className="fab" aria-label="Agregar" onClick={() => setAddPatientOpen(true)}>+</button>
+          <AddSessionSheet
+            open={addSessionOpen}
+            onClose={() => setAddSessionOpen(false)}
+            onSubmit={createSession}
+            patients={patients}
+            mutating={mutating}
+          />
+          <button className="fab" aria-label="Agregar" onClick={handleFab}>+</button>
           {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} session={session} />}
         </div>
       )}
