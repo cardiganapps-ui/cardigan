@@ -9,7 +9,7 @@ const Toggle = ({ on, onToggle }) => (
   </button>
 );
 
-export function Patients({ patients, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, applyScheduleChange, mutating }) {
+export function Patients({ patients, upcomingSessions, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, applyScheduleChange, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -301,7 +301,18 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                 </div>
               ) : (
                 /* ── VIEW MODE ── */
-                <>
+                (() => {
+                  const pSessions = upcomingSessions ? upcomingSessions.filter(s => s.patient_id === selected.id) : [];
+                  const completed = pSessions.filter(s => s.status === "completed").length;
+                  const cancelled = pSessions.filter(s => s.status === "cancelled").length;
+                  const charged = pSessions.filter(s => s.status === "charged").length;
+                  const scheduled = pSessions.filter(s => s.status === "scheduled").length;
+                  const total = pSessions.length;
+                  const attendanceRate = (completed + charged) > 0 && total > 0
+                    ? Math.round(completed / (completed + cancelled + charged) * 100) : null;
+
+                  return (
+                  <>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>
                     {[
                       { label:"Vendido", value:`$${selected.billed.toLocaleString()}` },
@@ -314,11 +325,44 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                       </div>
                     ))}
                   </div>
+
+                  {/* Session summary */}
+                  {total > 0 && (
+                    <div style={{ marginBottom:16 }}>
+                      <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Historial de sesiones</div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
+                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--green)" }}>{completed}</div>
+                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Completadas</div>
+                        </div>
+                        <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
+                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--teal-dark)" }}>{scheduled}</div>
+                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Agendadas</div>
+                        </div>
+                        <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
+                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--amber)" }}>{charged}</div>
+                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Canceladas (cobradas)</div>
+                        </div>
+                        <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
+                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--red)" }}>{cancelled}</div>
+                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Canceladas</div>
+                        </div>
+                      </div>
+                      {attendanceRate !== null && (
+                        <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8 }}>
+                          <div style={{ flex:1, height:6, background:"var(--cream-dark)", borderRadius:3, overflow:"hidden" }}>
+                            <div style={{ height:"100%", width:`${attendanceRate}%`, background:"var(--green)", borderRadius:3 }} />
+                          </div>
+                          <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{attendanceRate}% asistencia</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {[
                     { label:"Tutor",            value: selected.parent || "—" },
                     { label:"Sesión regular",   value:`${selected.day} a las ${selected.time}` },
                     { label:"Tarifa",           value:`$${selected.rate} por sesión` },
-                    { label:"Sesiones totales", value:`${selected.sessions} sesiones` },
                     { label:"Estado",           value: selected.status==="active"?"Activo":"Finalizado" },
                   ].map((row,i) => (
                     <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
@@ -335,7 +379,9 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                       <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }} onClick={() => setConfirmDelete(true)}>Eliminar</button>
                     </div>
                   </div>
-                </>
+                  </>
+                  );
+                })()
               )}
             </div>
           </div>

@@ -104,7 +104,7 @@ function AppShell({ user, signOut }) {
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
       onCancelSession={async (s, charge) => s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
       deleteSession={deleteSession} rescheduleSession={rescheduleSession} mutating={mutating} />,
-    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal}
+    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient}
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments}
