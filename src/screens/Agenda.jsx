@@ -1,6 +1,41 @@
 import { useState, useMemo } from "react";
-import { clientColors, calDays, MONTH_NAMES, DOW, HOURS } from "../data/seedData";
+import { clientColors, MONTH_NAMES, DOW, HOURS } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
+
+/* ── DATE HELPERS ── */
+const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const TODAY = new Date(2026, 3, 7); // April 7 2026
+
+function formatDateStr(d) {
+  return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`;
+}
+
+function getMonday(d) {
+  const m = new Date(d);
+  const day = m.getDay();
+  m.setDate(m.getDate() - ((day + 6) % 7));
+  m.setHours(0,0,0,0);
+  return m;
+}
+
+function getWeekDays(d) {
+  const mon = getMonday(d);
+  return Array.from({length:7}, (_,i) => {
+    const day = new Date(mon);
+    day.setDate(mon.getDate() + i);
+    return day;
+  });
+}
+
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function isSameDay(a, b) {
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
 
 function buildMonthGrid(year, month) {
   const firstDay    = new Date(year, month, 1).getDay();
@@ -15,32 +50,34 @@ function buildMonthGrid(year, month) {
   return cells;
 }
 
-function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSessions }) {
-  const daySessions = upcomingSessions.filter(s => s.date === selectedDay);
-  const dayNums = calDays.map(d => parseInt(d.num));
-  const curNum  = parseInt(selectedDay);
-  const curIdx  = dayNums.indexOf(curNum);
-  const goDay   = (delta) => { const next = dayNums[curIdx + delta]; if (next !== undefined) setSelectedDay(`${next} Abr`); };
-  const dayLabel = calDays.find(d => `${d.num} Abr` === selectedDay);
+/* ── DAY VIEW ── */
+function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions }) {
+  const dateStr = formatDateStr(selectedDate);
+  const daySessions = upcomingSessions.filter(s => s.date === dateStr);
+  const weekDays = getWeekDays(selectedDate);
+  const dayName = DOW[(selectedDate.getDay() + 6) % 7];
+  const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
 
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 12px" }}>
-        <button className="month-nav-btn" onClick={() => goDay(-1)} disabled={curIdx<=0} style={{ opacity: curIdx<=0?0.3:1 }}>‹</button>
+        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>‹</button>
         <div style={{ textAlign:"center" }}>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{dayLabel ? dayLabel.name : ""} {selectedDay}</div>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{dayName} {dateStr}</div>
           <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>{daySessions.length===0 ? "Sin sesiones" : `${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
         </div>
-        <button className="month-nav-btn" onClick={() => goDay(1)} disabled={curIdx>=dayNums.length-1} style={{ opacity: curIdx>=dayNums.length-1?0.3:1 }}>›</button>
+        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>›</button>
       </div>
       <div style={{ paddingBottom:8 }}>
         <div className="cal-strip">
-          {calDays.map((d,i) => {
-            const dateStr = `${d.num} Abr`;
+          {weekDays.map((d,i) => {
+            const ds = formatDateStr(d);
+            const isActive = isSameDay(d, selectedDate);
+            const hasSess = sessionDateSet.has(ds);
             return (
-              <div key={i} className={`cal-day ${selectedDay===dateStr?"active":""} ${d.hasS?"has-sessions":""}`} onClick={() => setSelectedDay(dateStr)}>
-                <span className="cal-day-name">{d.name}</span>
-                <span className="cal-day-num">{d.num}</span>
+              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""}`} onClick={() => setSelectedDate(d)}>
+                <span className="cal-day-name">{DOW[i]}</span>
+                <span className="cal-day-num">{d.getDate()}</span>
               </div>
             );
           })}
@@ -77,29 +114,43 @@ function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSession
   );
 }
 
-function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcomingSessions }) {
-  const weekDays = calDays.map(d => ({ ...d, dateStr:`${d.num} Abr` }));
+/* ── WEEK VIEW ── */
+function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions }) {
+  const weekDays = getWeekDays(selectedDate);
+  const monday = weekDays[0];
+  const weekLabel = `Semana del ${formatDateStr(monday)}`;
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
 
   return (
     <div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 12px" }}>
+        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</div>
+        <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>›</button>
+      </div>
       <div className="week-header-row">
         <div />
-        {weekDays.map((d,i) => (
-          <div key={i} className="week-day-head" style={{ cursor:"pointer" }} onClick={() => { onSelectDay(d.dateStr); setView("day"); }}>
-            <span className="week-day-name">{d.name}</span>
-            <span className={`week-day-num ${d.dateStr===selectedDay?"active":""} ${d.num==="7"&&d.dateStr!==selectedDay?"today":""}`}>{d.num}</span>
-          </div>
-        ))}
+        {weekDays.map((d,i) => {
+          const ds = formatDateStr(d);
+          const isActive = isSameDay(d, selectedDate);
+          const isToday = isSameDay(d, TODAY);
+          return (
+            <div key={i} className="week-day-head" style={{ cursor:"pointer" }} onClick={() => { setSelectedDate(d); setView("day"); }}>
+              <span className="week-day-name">{DOW[i]}</span>
+              <span className={`week-day-num ${isActive?"active":""} ${isToday&&!isActive?"today":""}`}>{d.getDate()}</span>
+            </div>
+          );
+        })}
       </div>
       <div className="week-body">
         {HOURS.map((hour, hIdx) => (
           <div className="week-time-row" key={hour}>
             <div className="week-time-label">{hour}</div>
             {weekDays.map((d, dIdx) => {
-              const sess = upcomingSessions.filter(s => s.date===d.dateStr).find(s => hourIndex(s.time)===hIdx);
+              const ds = formatDateStr(d);
+              const sess = upcomingSessions.filter(s => s.date===ds).find(s => hourIndex(s.time)===hIdx);
               return (
-                <div key={dIdx} className="week-cell" onClick={() => !sess && onSelectDay(d.dateStr)}>
+                <div key={dIdx} className="week-cell" onClick={() => !sess && setSelectedDate(d)}>
                   {sess && (
                     <div className={`week-event ${sess.status==="cancelled"?"cancelled":""}`} onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
                       {sess.initials}
@@ -115,17 +166,18 @@ function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcoming
   );
 }
 
-function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions }) {
+/* ── MONTH VIEW ── */
+function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const base = new Date(2026, 3);
   base.setMonth(base.getMonth() + monthOffset);
   const displayMonth = base.getMonth();
   const displayYear  = base.getFullYear();
   const cells   = buildMonthGrid(displayYear, displayMonth);
-  const isApril = displayMonth === 3 && displayYear === 2026;
-  const daySessions = isApril ? upcomingSessions.filter(s => s.date === selectedDay) : [];
-  const sessionDays = useMemo(() => new Set(upcomingSessions.map(s => parseInt(s.date))), [upcomingSessions]);
-  const selectedNum  = parseInt(selectedDay);
+
+  const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
+  const selectedDateStr = formatDateStr(selectedDate);
+  const daySessions = upcomingSessions.filter(s => s.date === selectedDateStr);
 
   return (
     <div>
@@ -138,12 +190,14 @@ function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions
         <div className="month-dow-row">{DOW.map(d => <div key={d} className="month-dow">{d}</div>)}</div>
         <div className="month-days-grid">
           {cells.map((cell, i) => {
-            const isToday  = isApril && cell.current && cell.num === 7;
-            const isActive = isApril && cell.current && cell.num === selectedNum;
-            const hasSess  = isApril && cell.current && sessionDays.has(cell.num);
+            const cellDate = new Date(displayYear, displayMonth + (cell.current ? 0 : (i < 7 ? -1 : 1)), cell.num);
+            const cellStr = formatDateStr(cellDate);
+            const isToday  = isSameDay(cellDate, TODAY);
+            const isActive = cellStr === selectedDateStr;
+            const hasSess  = sessionDateSet.has(cellStr);
             return (
               <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
-                onClick={() => cell.current && isApril && onSelectDay(`${cell.num} Abr`)}>
+                onClick={() => { setSelectedDate(cellDate); if (!cell.current) setMonthOffset(o => o + (i < 7 ? -1 : 1)); }}>
                 <span className="month-cell-num">{cell.num}</span>
                 {hasSess && <div className="month-dot" />}
               </div>
@@ -153,7 +207,7 @@ function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions
       </div>
       <div style={{ padding:"16px 16px 0" }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:10 }}>
-          <div className="section-title">{selectedDay}</div>
+          <div className="section-title">{selectedDateStr}</div>
           <div style={{ fontSize:12, color:"var(--charcoal-xl)" }}>{daySessions.length===0?"Sin sesiones":`${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
         </div>
         {daySessions.length === 0
@@ -184,9 +238,10 @@ function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions
   );
 }
 
+/* ── AGENDA ROOT ── */
 export function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mutating }) {
-  const [view, setView]               = useState("day");
-  const [selectedDay, setSelectedDay] = useState("7 Abr");
+  const [view, setView] = useState("day");
+  const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
 
   return (
@@ -198,9 +253,9 @@ export function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSessi
           ))}
         </div>
       </div>
-      {view==="day"   && <DayView   selectedDay={selectedDay} setSelectedDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
-      {view==="week"  && <WeekView  selectedDay={selectedDay} onSelectDay={setSelectedDay} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
-      {view==="month" && <MonthView selectedDay={selectedDay} onSelectDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
       <SessionSheet
         session={selectedSession}
         onClose={() => setSelectedSession(null)}
