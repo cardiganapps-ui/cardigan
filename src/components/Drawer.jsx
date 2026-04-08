@@ -1,3 +1,4 @@
+import { useRef, useState, useCallback } from "react";
 import { navItems } from "../data/seedData";
 import { IconHome, IconCalendar, IconUsers, IconDollar, IconSettings, IconStar, IconLogOut } from "./Icons";
 
@@ -20,13 +21,47 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeX
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
 
+  /* ── Close swipe: track leftward drag on the open panel ── */
+  const closeRef = useRef(null);
+  const [closeOffset, setCloseOffset] = useState(null);
+
+  const onPanelTouchStart = useCallback((e) => {
+    if (!open) return;
+    closeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
+  }, [open]);
+
+  const onPanelTouchMove = useCallback((e) => {
+    if (!closeRef.current) return;
+    const dx = e.touches[0].clientX - closeRef.current.x;
+    const dy = e.touches[0].clientY - closeRef.current.y;
+    if (!closeRef.current.active) {
+      if (dx < -10 && Math.abs(dx) > Math.abs(dy)) closeRef.current.active = true;
+      else if (Math.abs(dy) > 10 || dx > 10) { closeRef.current = null; return; }
+      else return;
+    }
+    if (closeRef.current.active) setCloseOffset(Math.min(0, dx));
+  }, []);
+
+  const onPanelTouchEnd = useCallback((e) => {
+    if (!closeRef.current?.active) { closeRef.current = null; return; }
+    const dx = e.changedTouches[0].clientX - closeRef.current.x;
+    closeRef.current = null;
+    setCloseOffset(null);
+    if (dx < -80) onClose();
+  }, [onClose]);
+
+  const isCloseSwiping = closeOffset !== null;
   const isSwiping = swipeX !== null;
   const active = open || isSwiping;
 
   let panelStyle, overlayStyle;
   const ease = "cubic-bezier(0.32, 0.72, 0, 1)";
 
-  if (open) {
+  if (open && isCloseSwiping) {
+    const progress = 1 + closeOffset / PANEL_WIDTH;
+    panelStyle = { transform: `translateX(${closeOffset}px)`, transition: "none" };
+    overlayStyle = { opacity: Math.max(0, progress), transition: "none", pointerEvents: "auto" };
+  } else if (open) {
     panelStyle = { transform: "translateX(0)", transition: `transform 0.25s ${ease}` };
     overlayStyle = { opacity: 1, transition: "opacity 0.25s", pointerEvents: "auto" };
   } else if (isSwiping) {
@@ -54,7 +89,8 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeX
       <div className="drawer-overlay" onClick={onClose}
         style={{ ...overlayStyle, animation: "none", visibility: (!active && !open) ? "hidden" : "visible" }} />
       <div className="drawer" onClick={e => e.stopPropagation()}>
-        <div className="drawer-panel" style={{ ...panelStyle, animation: "none" }}>
+        <div className="drawer-panel" style={{ ...panelStyle, animation: "none" }}
+          onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove} onTouchEnd={onPanelTouchEnd}>
           <div className="drawer-header">
             <div className="drawer-logo">cardigan</div>
             <div className="drawer-user">
