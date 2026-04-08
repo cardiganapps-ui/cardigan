@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchJson, sendJson, formatShortDate } from "../data/api";
-import { seedPatients, seedUpcomingSessions, seedPayments } from "../data/seedData";
+import { seedPatients, seedUpcomingSessions, seedPayments, DAY_ORDER } from "../data/seedData";
+
+function getInitials(name) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 export function useCardiganData() {
   const [patients, setPatients] = useState([]);
@@ -119,6 +127,79 @@ export function useCardiganData() {
     }
   }
 
+  async function createPatient({ name, parent, rate, day, time }) {
+    if (!name?.trim()) return false;
+    const tempId = `tmp-${Date.now()}`;
+    const newPatient = {
+      id: tempId,
+      name: name.trim(),
+      parent: parent?.trim() || "",
+      initials: getInitials(name),
+      rate: Number(rate) || 700,
+      day: day || "Lunes",
+      time: time || "16:00",
+      status: "active",
+      billed: 0,
+      paid: 0,
+      sessions: 0,
+    };
+
+    setMutationError("");
+    setMutating(true);
+    setPatients(prev => [...prev, newPatient]);
+
+    try {
+      const created = await sendJson("/patients", "POST", newPatient);
+      if (created && typeof created === "object") {
+        setPatients(prev => prev.map(p => (p.id === tempId ? { ...p, ...created } : p)));
+      }
+    } catch {
+      // keep optimistic update — API may not exist yet
+    } finally {
+      setMutating(false);
+    }
+    return true;
+  }
+
+  async function createSession({ patientName, date, time }) {
+    if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
+    const patient = patients.find(p => p.name === patientName);
+
+    // derive day name from date string (e.g. "10 Abr" → "Jueves")
+    const [dayNum, monthStr] = date.split(" ");
+    const monthIdx = SHORT_MONTHS.indexOf(monthStr);
+    const dateObj = new Date(2026, monthIdx >= 0 ? monthIdx : 3, parseInt(dayNum) || 1);
+    const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
+
+    const tempId = `tmp-${Date.now()}`;
+    const newSession = {
+      id: tempId,
+      patient: patientName.trim(),
+      initials: patient?.initials || getInitials(patientName),
+      time: time.trim(),
+      day: dayName,
+      date: date.trim(),
+      status: "scheduled",
+      colorIdx: patient ? patients.indexOf(patient) % 7 : 0,
+    };
+
+    setMutationError("");
+    setMutating(true);
+    setUpcomingSessions(prev => [...prev, newSession]);
+
+    try {
+      const created = await sendJson("/sessions", "POST", newSession);
+      if (created && typeof created === "object") {
+        setUpcomingSessions(prev => prev.map(s => (s.id === tempId ? { ...s, ...created } : s)));
+      }
+    } catch {
+      // keep optimistic update
+    } finally {
+      setMutating(false);
+    }
+    return true;
+  }
+
   return {
     patients,
     upcomingSessions,
@@ -129,6 +210,8 @@ export function useCardiganData() {
     mutating,
     mutationError,
     createPayment,
+    createPatient,
+    createSession,
     updateSessionStatus,
   };
 }

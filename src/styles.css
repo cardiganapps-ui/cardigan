@@ -208,11 +208,56 @@ html, body {
   border: none; display: flex; align-items: center; justify-content: center;
   font-size: 24px; color: white;
   box-shadow: 0 4px 20px rgba(91,155,175,0.5);
-  cursor: pointer; z-index: 50;
+  cursor: pointer; z-index: 52;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s;
+  transition: transform 0.2s, background 0.2s;
 }
 .fab:active { transform: scale(0.93); }
+.fab.fab-open { transform: rotate(45deg); background: var(--charcoal); }
+.fab.fab-open:active { transform: rotate(45deg) scale(0.93); }
+
+.fab-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20,35,40,0.45);
+  z-index: 50; backdrop-filter: blur(3px);
+  animation: fadeIn 0.15s ease;
+}
+
+.fab-menu {
+  position: fixed;
+  bottom: calc(var(--sab) + 84px);
+  right: 20px;
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: flex-end;
+  z-index: 51;
+}
+
+.fab-action {
+  display: flex; align-items: center; gap: 10px;
+  background: none; border: none; cursor: pointer;
+  padding: 0; -webkit-tap-highlight-color: transparent;
+  animation: fabActionIn 0.22s ease both;
+}
+@keyframes fabActionIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fab-action-label {
+  background: var(--white);
+  padding: 8px 14px; border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 600; color: var(--charcoal);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  white-space: nowrap; font-family: var(--font);
+}
+.fab-action:active .fab-action-label { background: var(--cream); }
+
+.fab-action-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+}
 
 /* CARDS & SECTIONS */
 .section { padding: 16px 16px 0; }

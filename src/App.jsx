@@ -3,6 +3,7 @@ import { useCardiganData } from "./hooks/useCardiganData";
 import { buildTopbarMeta } from "./data/seedData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
+import { QuickActions } from "./components/QuickActions";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -23,6 +24,8 @@ export default function Cardigan() {
     mutating,
     mutationError,
     createPayment,
+    createPatient,
+    createSession,
     updateSessionStatus,
   } = useCardiganData();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -105,7 +108,15 @@ export default function Cardigan() {
             onSubmit={createPayment}
             mutating={mutating}
           />
-          <button className="fab" aria-label="Agregar">+</button>
+          <QuickActions
+            patients={patients}
+            upcomingSessions={upcomingSessions}
+            onOpenPaymentModal={() => openRecordPaymentModal(null)}
+            createPatient={createPatient}
+            createSession={createSession}
+            updateSessionStatus={updateSessionStatus}
+            mutating={mutating}
+          />
           {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} />}
         </div>
       )}
