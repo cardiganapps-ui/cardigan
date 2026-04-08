@@ -233,7 +233,7 @@ export function Patients({ patients, onRecordPayment, updatePatient, deletePatie
                           <input className="input" type="date" value={genEndDate} onChange={e => setGenEndDate(e.target.value)} />
                         </div>
                       ) : (
-                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Sin fecha de fin (12 semanas)</div>
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Permanente — se renuevan automáticamente</div>
                       )}
                     </div>
                     <button type="button" className="btn" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", whiteSpace:"nowrap", fontSize:12, fontWeight:700, width:"100%" }}

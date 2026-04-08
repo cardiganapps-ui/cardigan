@@ -126,7 +126,7 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
                   <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
               ) : (
-                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Sin fecha de fin (12 semanas)</div>
+                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Permanente — se renuevan automáticamente</div>
               )}
             </div>
           )}
