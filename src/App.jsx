@@ -68,17 +68,12 @@ export default function Cardigan() {
         <div className="shell">
           <div className="status-bar" />
           <div className="topbar">
-            <div className="topbar-left">
-              <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
-                <div className="hamburger-line" />
-                <div className="hamburger-line" />
-                <div className="hamburger-line" />
-              </button>
-              <div className="topbar-center">
-                <div className="topbar-title">{meta.title}</div>
-                <div className="topbar-sub">{meta.sub}</div>
-              </div>
-            </div>
+            <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
+              <div className="hamburger-line" />
+              <div className="hamburger-line" />
+              <div className="hamburger-line" />
+            </button>
+            <div className="topbar-brand">cardigan</div>
             <div className="topbar-right">
               <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><IconHome size={18} /></button>
               <div className="avatar-sm">D</div>
