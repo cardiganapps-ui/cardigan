@@ -94,7 +94,7 @@ export const IconPlus = (p) => (
 );
 
 export const IconUserPlus = (p) => (
-  <I {...p}><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a6 6 0 0112 0v1M20 8v6M23 11h-6"/></I>
+  <I {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></I>
 );
 
 export const IconCalendarPlus = (p) => (

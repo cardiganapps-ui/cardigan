@@ -230,33 +230,32 @@ html, body {
 }
 
 .fab-action {
-  display: flex; align-items: center; gap: 10px;
-  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 0;
+  background: var(--white); border: none; cursor: pointer;
   padding: 0; -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.08);
   animation: fabActionIn 0.22s ease both;
 }
+.fab-action:active { background: var(--cream); }
 @keyframes fabActionIn {
   from { opacity: 0; transform: translateY(10px) scale(0.92); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .fab-action-label {
-  background: var(--white);
-  padding: 7px 14px; border-radius: var(--radius-pill);
+  padding: 8px 4px 8px 14px;
   font-size: 12px; font-weight: 600; color: var(--charcoal-md);
-  box-shadow: 0 1px 8px rgba(0,0,0,0.08);
   white-space: nowrap; font-family: var(--font);
   letter-spacing: 0.02em;
 }
-.fab-action:active .fab-action-label { background: var(--cream); }
 
 .fab-action-icon {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  background: var(--cream);
   color: var(--teal-dark);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  margin-right: 4px;
 }
 
 /* CARDS & SECTIONS */

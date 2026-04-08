@@ -220,7 +220,7 @@ export function QuickActions({
           {ACTIONS.map((a, i) => (
             <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.04}s` }} onClick={() => handleAction(a.key)}>
               <span className="fab-action-label">{a.label}</span>
-              <span className="fab-action-icon"><a.Icon size={18} /></span>
+              <span className="fab-action-icon"><a.Icon size={16} /></span>
             </button>
           ))}
         </div>
