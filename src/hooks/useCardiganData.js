@@ -228,7 +228,7 @@ export function useCardiganData(user) {
   }
 
   /* ── SESSIONS ── */
-  async function createSession({ patientName, date, time }) {
+  async function createSession({ patientName, date, time, isTutor, tutorName, customRate }) {
     if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
     const patient = patients.find(p => p.name === patientName);
     if (!patient) return false;
@@ -239,13 +239,18 @@ export function useCardiganData(user) {
     const dateObj = new Date(year, monthIdx >= 0 ? monthIdx : 0, parseInt(dayNum) || 1);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
 
+    const sessionInitials = isTutor
+      ? "T·" + getInitials(tutorName || patient.parent || "Tutor")
+      : patient.initials;
+    const sessionRate = (customRate != null && Number(customRate) > 0) ? Number(customRate) : patient.rate;
+
     setMutating(true);
     setMutationError("");
     const { data, error } = await supabase.from("sessions").insert({
       user_id: userId,
       patient_id: patient.id,
       patient: patientName.trim(),
-      initials: patient.initials,
+      initials: sessionInitials,
       time: time.trim(),
       day: dayName,
       date: date.trim(),
@@ -255,7 +260,7 @@ export function useCardiganData(user) {
 
     // Update patient's session count and billed amount
     const newSessions = patient.sessions + 1;
-    const newBilled = patient.billed + patient.rate;
+    const newBilled = patient.billed + sessionRate;
     await supabase.from("patients")
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id);

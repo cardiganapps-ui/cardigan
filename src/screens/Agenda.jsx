@@ -114,16 +114,28 @@ function statusLabel(s) {
   return "Agendada";
 }
 
+function isTutorSession(s) {
+  return s.initials?.startsWith("T·");
+}
+
+function tutorDisplayInitials(s) {
+  return s.initials?.replace("T·", "") || "T";
+}
+
 /* ── SESSION ROW (shared) ── */
 function SessionRow({ s, onClick, compact }) {
+  const tutor = isTutorSession(s);
+  const sz = compact ? 34 : 36;
   return (
     <div className="row-item" key={s.id} onClick={() => onClick(s)}>
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? 13 : 14, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
       </div>
-      <div className="row-avatar" style={{ background: clientColors[s.colorIdx], width: compact ? 34 : 36, height: compact ? 34 : 36, fontSize:11 }}>{s.initials}</div>
+      <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : clientColors[s.colorIdx], width:sz, height:sz, fontSize:11, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
+        {tutor ? tutorDisplayInitials(s) : s.initials}
+      </div>
       <div className="row-content">
-        <div className="row-title">{s.patient}</div>
+        <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>Tutor</span>}</div>
         <div className="row-sub">{s.day}</div>
       </div>
       <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
@@ -252,8 +264,10 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
               return (
                 <div key={dIdx} className="week-cell" onClick={() => !sess && setSelectedDate(d)}>
                   {sess && (
-                    <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`} onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
-                      {sess.initials}
+                    <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
+                      style={isTutorSession(sess) ? { background:"var(--purple)", borderStyle:"dashed" } : undefined}
+                      onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
+                      {isTutorSession(sess) ? tutorDisplayInitials(sess) : sess.initials}
                     </div>
                   )}
                 </div>

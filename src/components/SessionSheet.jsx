@@ -14,6 +14,8 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
   const isCancelled = session.status === "cancelled" || session.status === "charged";
   const statusLabel = isCancelled ? (session.status === "charged" ? "Cancelada (cobrada)" : "Cancelada") : session.status === "completed" ? "Completada" : "Agendada";
+  const isTutor = session.initials?.startsWith("T·");
+  const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
 
   const startReschedule = () => {
     setNewDate(shortDateToISO(session.date));
@@ -40,9 +42,12 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20 }}>
-            <div className="row-avatar" style={{ background: clientColors[(session.colorIdx || 0) % clientColors.length], width:52, height:52, fontSize:16 }}>{session.initials}</div>
+            <div className="row-avatar" style={{ background: isTutor ? "var(--purple)" : clientColors[(session.colorIdx || 0) % clientColors.length], width:52, height:52, fontSize:16, border: isTutor ? "2px dashed var(--purple-bg)" : undefined }}>{displayInitials}</div>
             <div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)" }}>{session.patient}</div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)" }}>
+                {session.patient}
+                {isTutor && <span style={{ fontSize:11, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}
+              </div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time}</div>
             </div>
           </div>

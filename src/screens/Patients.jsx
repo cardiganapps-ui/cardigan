@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
-import { todayISO } from "../data/api";
+import { todayISO, isoToShortDate } from "../data/api";
 const Toggle = ({ on, onToggle }) => (
   <button type="button" onClick={onToggle}
     style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: on ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}>
@@ -9,13 +9,18 @@ const Toggle = ({ on, onToggle }) => (
   </button>
 );
 
-export function Patients({ patients, upcomingSessions, onRecordPayment, updatePatient, deletePatient, generateRecurringSessions, applyScheduleChange, mutating }) {
+export function Patients({ patients, upcomingSessions, onRecordPayment, updatePatient, deletePatient, createSession, generateRecurringSessions, applyScheduleChange, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
   const [selected, setSelected] = useState(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [tutorSession, setTutorSession] = useState(false);
+  const [tutorDate, setTutorDate] = useState(todayISO());
+  const [tutorTime, setTutorTime] = useState("16:00");
+  const [tutorRate, setTutorRate] = useState("");
+  const [tutorErr, setTutorErr] = useState("");
 
   // Edit form state
   const [editName, setEditName]       = useState("");
@@ -35,6 +40,7 @@ export function Patients({ patients, upcomingSessions, onRecordPayment, updatePa
     setSelected(p);
     setEditing(false);
     setConfirmDelete(false);
+    setTutorSession(false);
   };
 
   const startEdit = () => {
@@ -370,6 +376,57 @@ export function Patients({ patients, upcomingSessions, onRecordPayment, updatePa
                       <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                     </div>
                   ))}
+                  {/* Tutor session scheduling */}
+                  {selected.parent && !tutorSession && (
+                    <div style={{ marginTop:16, paddingTop:16, borderTop:"1px solid var(--border-lt)" }}>
+                      <button className="btn" style={{ width:"100%", height:44, fontSize:13, background:"var(--purple-bg)", color:"var(--purple)", boxShadow:"none", fontWeight:700 }}
+                        onClick={() => { setTutorRate(String(selected.rate)); setTutorDate(todayISO()); setTutorTime("16:00"); setTutorErr(""); setTutorSession(true); }}>
+                        Agendar sesión con tutor
+                      </button>
+                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6, textAlign:"center" }}>Tutor: {selected.parent}</div>
+                    </div>
+                  )}
+
+                  {tutorSession && (
+                    <div style={{ marginTop:16, paddingTop:16, borderTop:"1px solid var(--border-lt)" }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"var(--purple)", marginBottom:10 }}>Sesión con tutor: {selected.parent}</div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        <div className="input-group">
+                          <label className="input-label">Fecha</label>
+                          <input className="input" type="date" value={tutorDate} onChange={e => setTutorDate(e.target.value)} />
+                        </div>
+                        <div className="input-group">
+                          <label className="input-label">Hora</label>
+                          <input className="input" type="time" value={tutorTime} onChange={e => setTutorTime(e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">Tarifa de esta sesión</label>
+                        <input className="input" type="number" min="0" step="50" value={tutorRate} onChange={e => setTutorRate(e.target.value)} placeholder="Ej: 700" />
+                      </div>
+                      {tutorErr && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{tutorErr}</div>}
+                      <button className="btn" style={{ width:"100%", height:44, background:"var(--purple)", color:"white", boxShadow:"none", marginBottom:10, fontWeight:700 }}
+                        disabled={mutating}
+                        onClick={async () => {
+                          if (!tutorDate) { setTutorErr("Selecciona una fecha."); return; }
+                          if (!tutorTime) { setTutorErr("Selecciona una hora."); return; }
+                          setTutorErr("");
+                          const ok = await createSession({
+                            patientName: selected.name,
+                            date: isoToShortDate(tutorDate),
+                            time: tutorTime,
+                            isTutor: true,
+                            tutorName: selected.parent,
+                            customRate: Number(tutorRate) || selected.rate,
+                          });
+                          if (ok) { setTutorSession(false); }
+                        }}>
+                        {mutating ? "Agendando..." : `Confirmar · $${(Number(tutorRate) || selected.rate).toLocaleString()}`}
+                      </button>
+                      <button className="btn btn-secondary w-full" onClick={() => setTutorSession(false)}>Cancelar</button>
+                    </div>
+                  )}
+
                   <div style={{ marginTop:20, display:"flex", flexDirection:"column", gap:10 }}>
                     <button className="btn btn-primary" style={{ height:48 }} onClick={() => onRecordPayment(selected)} disabled={mutating}>
                       {mutating ? "Guardando..." : "Registrar pago"}
