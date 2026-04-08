@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { supabase } from "./supabaseClient";
 
 const styles = `
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@300;400;500;600&display=swap');
@@ -49,50 +50,56 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   height: 100%;
+  overflow: hidden;
 }
 #root { height: 100%; }
 
 .shell {
   display: flex; flex-direction: column;
   height: 100dvh;
-  max-width: 430px; margin: 0 auto;
+  width: 100%;
   background: var(--cream);
   position: relative; overflow: hidden;
 }
 .status-bar { height: var(--sat); background: var(--nav-bg); flex-shrink: 0; }
 
+/* Smooth page transitions */
+.page > .section, .page > div { animation: fadeInUp 0.25s ease-out; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
 /* TOPBAR */
 .topbar {
   background: var(--nav-bg);
-  padding: 12px 20px 16px;
+  padding: 8px 16px 10px;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
 }
-.topbar-left { display: flex; align-items: center; gap: 12px; }
-.topbar-center { flex: 1; padding: 0 8px; }
-.topbar-title { font-family: var(--font-d); font-size: 18px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; }
-.topbar-sub { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.topbar-center { flex: 1; padding: 0 6px; }
+.topbar-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; }
+.topbar-sub { display: none; }
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 
 .icon-btn {
   width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(255,255,255,0.12); border: none;
+  background: transparent; border: none;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; cursor: pointer; color: white;
   -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
 }
-.icon-btn:active { background: rgba(255,255,255,0.22); }
+.icon-btn:active { opacity: 0.6; }
 
 /* HAMBURGER */
 .hamburger {
   width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(255,255,255,0.12); border: none;
+  background: transparent; border: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 5px; cursor: pointer; padding: 0;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s;
+  transition: opacity 0.15s;
 }
-.hamburger:active { background: rgba(255,255,255,0.22); }
+.hamburger:active { opacity: 0.6; }
 .hamburger-line {
   width: 18px; height: 2px; background: white; border-radius: 2px;
   transition: all 0.22s ease;
@@ -119,9 +126,8 @@ html, body {
 
 /* DRAWER PANEL */
 .drawer {
-  position: fixed; top: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 100%; max-width: 430px;
+  position: fixed; top: 0; left: 0;
+  width: 100%;
   height: 100dvh;
   display: flex; flex-direction: column;
   pointer-events: none;
@@ -181,9 +187,9 @@ html, body {
   width: 36px; height: 36px; border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   font-size: 17px; flex-shrink: 0;
-  background: rgba(255,255,255,0.07);
+  background: transparent;
 }
-.drawer-item.active .drawer-item-icon { background: rgba(91,155,175,0.25); }
+.drawer-item.active .drawer-item-icon { background: transparent; }
 .drawer-item-label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.65); }
 .drawer-item.active .drawer-item-label { color: white; font-weight: 700; }
 
@@ -206,16 +212,16 @@ html, body {
 
 /* FAB */
 .fab {
-  position: fixed; bottom: calc(var(--sab) + 20px); right: 20px;
-  width: 54px; height: 54px; background: var(--teal); border-radius: 50%;
+  position: absolute; bottom: calc(var(--sab) + 20px); right: 20px;
+  width: 56px; height: 56px; background: linear-gradient(135deg, var(--teal-light), var(--teal-dark)); border-radius: 50%;
   border: none; display: flex; align-items: center; justify-content: center;
-  font-size: 24px; color: white;
-  box-shadow: 0 4px 20px rgba(91,155,175,0.5);
+  font-size: 26px; font-weight: 300; color: white;
+  box-shadow: 0 6px 24px rgba(74,135,153,0.45);
   cursor: pointer; z-index: 50;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.fab:active { transform: scale(0.93); }
+.fab:active { transform: scale(0.92); box-shadow: 0 2px 12px rgba(74,135,153,0.35); }
 
 /* CARDS & SECTIONS */
 .section { padding: 16px 16px 0; }
@@ -223,7 +229,7 @@ html, body {
 .section-title { font-family: var(--font-d); font-size: 15px; font-weight: 800; color: var(--charcoal); }
 .see-all { font-size: 13px; font-weight: 600; color: var(--teal-dark); background: none; border: none; cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent; }
 
-.card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); box-shadow: var(--shadow-sm); overflow: hidden; }
+.card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); box-shadow: var(--shadow-sm); overflow: hidden; transition: box-shadow 0.15s; }
 
 /* KPI ROW */
 .kpi-scroll {
@@ -295,15 +301,17 @@ html, body {
 .search-bar input::placeholder { color: var(--charcoal-xl); }
 
 /* INPUT */
-.input-group { margin-bottom: 14px; }
-.input-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--charcoal-md); margin-bottom: 5px; }
+.input-group { margin-bottom: 16px; }
+.input-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--charcoal-md); margin-bottom: 6px; }
 .input {
-  width: 100%; padding: 11px 13px;
+  width: 100%; padding: 13px 16px;
   border: 1.5px solid var(--border); border-radius: var(--radius);
   font-size: 16px; font-family: var(--font); color: var(--charcoal);
   background: var(--white); outline: none; -webkit-appearance: none;
   transition: border-color 0.15s, box-shadow 0.15s;
+  height: 48px;
 }
+select.input { height: 48px; }
 .input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(91,155,175,0.13); }
 .input::placeholder { color: var(--charcoal-xl); }
 
@@ -353,13 +361,13 @@ html, body {
 .balance-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.3s; }
 
 /* AUTH */
-.auth-screen { min-height: 100dvh; background: var(--cream); display: flex; flex-direction: column; }
-.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 24px) 24px 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
-.auth-wordmark { font-family: var(--font-d); font-size: 28px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
-.auth-tagline { font-size: 13.5px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 260px; }
-.auth-body { flex: 1; padding: 28px 20px calc(var(--sab) + 20px); }
-.auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 24px; }
-.auth-tab { flex: 1; padding: 10px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
+.auth-screen { min-height: 100dvh; width: 100%; background: var(--cream); display: flex; flex-direction: column; }
+.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 40px) 24px 48px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; border-radius: 0 0 28px 28px; }
+.auth-wordmark { font-family: var(--font-d); font-size: 32px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
+.auth-tagline { font-size: 14.5px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 280px; }
+.auth-body { flex: 1; padding: 24px 28px calc(var(--sab) + 28px); }
+.auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 28px; }
+.auth-tab { flex: 1; padding: 11px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
 .auth-tab.active { background: var(--white); color: var(--charcoal); box-shadow: var(--shadow-sm); }
 
 /* SETTINGS */
@@ -373,19 +381,20 @@ html, body {
 .settings-chevron { color: var(--border); font-size: 16px; margin-left: auto; }
 
 /* DETAIL SHEET */
-.sheet-overlay { position: fixed; inset: 0; background: rgba(46,46,46,0.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-overlay { position: fixed; inset: 0; background: rgba(20,35,40,0.45); backdrop-filter: blur(2px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.15s ease; }
 .sheet-panel {
-  background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  width: 100%; max-width: 430px;
+  background: var(--white); border-radius: 20px 20px 0 0;
+  width: 100%;
   padding-bottom: var(--sab);
-  max-height: 85dvh; overflow-y: auto;
-  animation: slideUp 0.25s ease;
+  max-height: 88dvh; overflow-y: auto;
+  animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 4px; }
-.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; }
-.sheet-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); }
-.sheet-close { width: 30px; height: 30px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 14px auto 6px; }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 18px; }
+.sheet-title { font-family: var(--font-d); font-size: 18px; font-weight: 800; color: var(--charcoal); }
+.sheet-close { width: 32px; height: 32px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; transition: background 0.12s; }
+.sheet-close:active { background: var(--cream-deeper); }
 
 /* AGENDA VIEW TOGGLE */
 .view-toggle {
@@ -522,104 +531,110 @@ html, body {
 `;
 
 /* ── LOGO ── */
-const LogoMark = ({ size = 24 }) => (
-  <svg width={size} height={size * 0.72} viewBox="0 0 100 72" fill="none">
-    <path d="M28 13C15.8 13 6 22.8 6 35C6 47.2 15.8 57 28 57C36.5 57 43.9 52.2 47.8 45.1L54.5 56.3C48.3 65.1 38.8 70 28 70C8.6 70-7 54.4-7 35C-7 15.6 8.6 0 28 0C38.8 0 48.3 4.9 54.5 13.7L47.8 24.9C43.9 17.8 36.5 13 28 13Z" fill="white"/>
-    <path d="M72 57C84.2 57 94 47.2 94 35C94 22.8 84.2 13 72 13C63.5 13 56.1 17.8 52.2 24.9L45.5 13.7C51.7 4.9 61.2 0 72 0C91.4 0 107 15.6 107 35C107 54.4 91.4 70 72 70C61.2 70 51.7 65.1 45.5 56.3L52.2 45.1C56.1 52.2 63.5 57 72 57Z" fill="white" opacity="0.55"/>
-  </svg>
-);
+const LogoMark = ({ size = 24, color = "#7AB5C7" }) => {
+  const w = size;
+  const h = size * 0.82;
+  return (
+    <svg width={w} height={h} viewBox="0 0 100 82" fill="none">
+      {/* Right loop — behind, lower opacity */}
+      <path d="M50 41 C56 28, 72 14, 82 20 C94 27, 92 48, 82 58 C72 68, 56 62, 50 41Z" fill={color} opacity="0.5"/>
+      {/* Left loop — front */}
+      <path d="M50 41 C44 54, 28 68, 18 62 C6 55, 8 34, 18 24 C28 14, 44 20, 50 41Z" fill={color}/>
+    </svg>
+  );
+};
 
 /* ── DATA ── */
 const clientColors = ["#5B9BAF","#7AB5C7","#4A8799","#3D6470","#84C5D4","#9E8BC4","#B08DC8"];
+const DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const DAY_NAMES_SHORT = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
+const FULL_DAY_NAMES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const FULL_MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-const seedPatients = [
-  { id:1,  name:"María Cordera",     parent:"Paola",      initials:"MC", rate:700, day:"Miércoles", time:"13:15", status:"active", billed:3500, paid:0,    sessions:5 },
-  { id:2,  name:"Emilia Romero",     parent:"María José", initials:"ER", rate:700, day:"Martes",    time:"19:15", status:"active", billed:3500, paid:2800, sessions:5 },
-  { id:3,  name:"Marina Nuñez",      parent:"Ana Belén",  initials:"MN", rate:700, day:"Martes",    time:"16:30", status:"active", billed:3500, paid:3500, sessions:5 },
-  { id:5,  name:"Inés Sagües",       parent:"Inés",       initials:"IS", rate:500, day:"Lunes",     time:"16:30", status:"active", billed:2500, paid:2000, sessions:5 },
-  { id:6,  name:"Regina Carrillo",   parent:"Guadalupe",  initials:"RC", rate:700, day:"Jueves",    time:"17:30", status:"active", billed:1400, paid:700,  sessions:2 },
-  { id:7,  name:"Olivia Rivera",     parent:"Kitsia",     initials:"OR", rate:700, day:"Miércoles", time:"19:15", status:"ended",  billed:3500, paid:2900, sessions:5 },
-  { id:8,  name:"Fernando Guerrero", parent:"Rossana",    initials:"FG", rate:700, day:"Martes",    time:"13:00", status:"active", billed:4200, paid:2100, sessions:6 },
-  { id:9,  name:"Elena González",    parent:"Mercedes",   initials:"EG", rate:700, day:"Lunes",     time:"17:15", status:"ended",  billed:1400, paid:700,  sessions:2 },
-  { id:10, name:"Eugenia Del Río",   parent:"Fernanda",   initials:"ED", rate:700, day:"Martes",    time:"20:15", status:"active", billed:0,    paid:0,    sessions:0 },
-];
+function getToday() { return new Date(); }
+function getTodayStr() { const d = getToday(); return `${d.getDate()} ${shortMonths[d.getMonth()]}`; }
+function getTodayLabel() { const d = getToday(); return `${FULL_DAY_NAMES[(d.getDay()+6)%7]} ${d.getDate()} ${shortMonths[d.getMonth()]}`; }
+function getCurrentMonthLabel() { const d = getToday(); return `${FULL_MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
 
-const seedUpcomingSessions = [
-  { id:1, patient:"Inés Sagües",       initials:"IS", time:"16:30", day:"Lunes",     date:"7 Abr",  status:"scheduled", colorIdx:3 },
-  { id:2, patient:"Fernando Guerrero", initials:"FG", time:"13:00", day:"Martes",    date:"8 Abr",  status:"scheduled", colorIdx:6 },
-  { id:3, patient:"Marina Nuñez",      initials:"MN", time:"16:30", day:"Martes",    date:"8 Abr",  status:"scheduled", colorIdx:2 },
-  { id:4, patient:"Emilia Romero",     initials:"ER", time:"19:15", day:"Martes",    date:"8 Abr",  status:"scheduled", colorIdx:1 },
-  { id:5, patient:"María Cordera",     initials:"MC", time:"13:15", day:"Miércoles", date:"9 Abr",  status:"scheduled", colorIdx:0 },
-  { id:6, patient:"Olivia Rivera",     initials:"OR", time:"19:15", day:"Miércoles", date:"9 Abr",  status:"cancelled", colorIdx:5 },
-  { id:7, patient:"Regina Carrillo",   initials:"RC", time:"17:30", day:"Jueves",    date:"10 Abr", status:"scheduled", colorIdx:4 },
-];
+function buildCurrentWeek(baseDate = getToday()) {
+  const d = new Date(baseDate);
+  const dayOfWeek = (d.getDay() + 6) % 7; // 0=Mon
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - dayOfWeek);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + i);
+    days.push({
+      name: DAY_NAMES_SHORT[i],
+      num: String(day.getDate()),
+      month: shortMonths[day.getMonth()],
+      dateStr: `${day.getDate()} ${shortMonths[day.getMonth()]}`,
+      fullDate: day,
+    });
+  }
+  return days;
+}
 
-const seedPayments = [
-  { id:1, patient:"Regina Carrillo",   initials:"RC", amount:700,  date:"15 Ene", method:"Transferencia", colorIdx:4 },
-  { id:2, patient:"Olivia Rivera",     initials:"OR", amount:1400, date:"21 Ene", method:"Transferencia", colorIdx:5 },
-  { id:3, patient:"Elena González",    initials:"EG", amount:700,  date:"26 Ene", method:"Efectivo",      colorIdx:7 },
-  { id:4, patient:"Fernando Guerrero", initials:"FG", amount:700,  date:"27 Ene", method:"Transferencia", colorIdx:6 },
-  { id:5, patient:"Marina Nuñez",      initials:"MN", amount:3500, date:"27 Ene", method:"Transferencia", colorIdx:2 },
-  { id:6, patient:"Emilia Romero",     initials:"ER", amount:2800, date:"9 Feb",  method:"Efectivo",      colorIdx:1 },
-  { id:7, patient:"Inés Sagües",       initials:"IS", amount:2000, date:"10 Feb", method:"Transferencia", colorIdx:3 },
-];
-
-const calDays = [
-  { name:"LUN", num:"7",  hasS:true  },
-  { name:"MAR", num:"8",  hasS:true  },
-  { name:"MIÉ", num:"9",  hasS:true  },
-  { name:"JUE", num:"10", hasS:true  },
-  { name:"VIE", num:"11", hasS:false },
-  { name:"SÁB", num:"12", hasS:false },
-  { name:"DOM", num:"13", hasS:false },
-];
-
-const monthlyData = [
-  { mes:"Sep", year:2025, cobrado:5600, sesiones:8,  pendiente:700  },
-  { mes:"Oct", year:2025, cobrado:7000, sesiones:10, pendiente:1400 },
-  { mes:"Nov", year:2025, cobrado:6300, sesiones:9,  pendiente:700  },
-  { mes:"Dic", year:2025, cobrado:4200, sesiones:6,  pendiente:0    },
-  { mes:"Ene", year:2026, cobrado:8400, sesiones:12, pendiente:2100 },
-  { mes:"Feb", year:2026, cobrado:9500, sesiones:14, pendiente:1600 },
-];
+function computeMonthlyData(payments) {
+  const byMonth = {};
+  payments.forEach(p => {
+    const parts = p.date.split(" ");
+    if (parts.length < 2) return;
+    const mon = parts[1];
+    const monIdx = shortMonths.indexOf(mon);
+    if (monIdx === -1) return;
+    // Infer year from current date context
+    const now = getToday();
+    const year = monIdx > now.getMonth() ? now.getFullYear() - 1 : now.getFullYear();
+    const key = `${year}-${String(monIdx).padStart(2,"0")}`;
+    if (!byMonth[key]) byMonth[key] = { mes: mon, year, cobrado: 0, sesiones: 0, pendiente: 0 };
+    byMonth[key].cobrado += p.amount;
+    byMonth[key].sesiones += 1;
+  });
+  return Object.values(byMonth).sort((a, b) => {
+    const aKey = a.year * 100 + shortMonths.indexOf(a.mes);
+    const bKey = b.year * 100 + shortMonths.indexOf(b.mes);
+    return aKey - bKey;
+  });
+}
 
 /* ── NAV ── */
+/* ── SVG ICONS ── */
+const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 1.8 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const ICONS = {
+  home: "M3 12L12 3l9 9M5 10v9a1 1 0 001 1h3v-5h6v5h3a1 1 0 001-1v-9",
+  agenda: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+  patients: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",
+  finances: "M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6",
+  settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z",
+  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+};
+
 const navItems = [
-  { id:"home",     label:"Inicio",   icon:"🏠", section:"principal" },
-  { id:"agenda",   label:"Agenda",   icon:"📅", section:"principal" },
-  { id:"patients", label:"Pacientes",icon:"👤", section:"principal" },
-  { id:"finances", label:"Finanzas", icon:"💰", section:"principal" },
-  { id:"settings", label:"Ajustes",  icon:"⚙️", section:"cuenta"    },
+  { id:"home",     label:"Inicio",    iconKey:"home",     section:"principal" },
+  { id:"agenda",   label:"Agenda",    iconKey:"agenda",   section:"principal" },
+  { id:"patients", label:"Pacientes", iconKey:"patients", section:"principal" },
+  { id:"finances", label:"Finanzas",  iconKey:"finances", section:"principal" },
+  { id:"settings", label:"Ajustes",   iconKey:"settings", section:"cuenta"    },
 ];
 
-const API_BASE = "http://localhost:4000/api";
-
-async function fetchJson(endpoint) {
-  const response = await fetch(`${API_BASE}${endpoint}`);
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}) for ${endpoint}`);
-  }
-  return response.json();
-}
-
-async function sendJson(endpoint, method, body) {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status}) for ${endpoint}`);
-  }
-  return response.json();
-}
+const shortMonths = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function formatShortDate(date = new Date()) {
-  const shortMonths = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   return `${date.getDate()} ${shortMonths[date.getMonth()]}`;
 }
 
-function useCardiganData() {
+function makeInitials(name) {
+  return name.split(/\s+/).filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+/* ── SUPABASE DATA HOOK ── */
+function useCardiganData(session) {
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -628,90 +643,170 @@ function useCardiganData() {
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadData = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
+    setError("");
+    try {
+      const [pRes, sRes, payRes] = await Promise.all([
+        supabase.from("patients").select("*"),
+        supabase.from("sessions").select("*, patients(name, initials, color_idx)").order("scheduled_at"),
+        supabase.from("payments").select("*, patients(name, initials, color_idx)").order("created_at", { ascending: false }),
+      ]);
 
-    async function loadData() {
-      setLoading(true);
-      setError("");
-      try {
-        const [patientsData, sessionsData, paymentsData] = await Promise.all([
-          fetchJson("/patients"),
-          fetchJson("/sessions/upcoming"),
-          fetchJson("/payments"),
-        ]);
-        if (cancelled) return;
-        setPatients(Array.isArray(patientsData) ? patientsData : []);
-        setUpcomingSessions(Array.isArray(sessionsData) ? sessionsData : []);
-        setPayments(Array.isArray(paymentsData) ? paymentsData : []);
-      } catch (err) {
-        if (cancelled) return;
-        // Keep the UI usable while backend endpoints are being connected.
-        setPatients(seedPatients);
-        setUpcomingSessions(seedUpcomingSessions);
-        setPayments(seedPayments);
-        setError(err instanceof Error ? err.message : "No se pudieron cargar los datos.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      if (pRes.error) throw pRes.error;
+      if (sRes.error) throw sRes.error;
+      if (payRes.error) throw payRes.error;
+
+      // Build patient rate lookup for billed computation
+      const rateByPatient = {};
+      (pRes.data || []).forEach(p => { rateByPatient[p.id] = Number(p.session_rate) || 700; });
+
+      // Compute billed/paid/sessions per patient
+      const sessionsCountByPatient = {};
+      const billedByPatient = {};
+      const paidByPatient = {};
+
+      (sRes.data || []).forEach(s => {
+        sessionsCountByPatient[s.patient_id] = (sessionsCountByPatient[s.patient_id] || 0) + 1;
+        billedByPatient[s.patient_id] = (billedByPatient[s.patient_id] || 0) + (rateByPatient[s.patient_id] || 700);
+      });
+
+      (payRes.data || []).forEach(p => {
+        paidByPatient[p.patient_id] = (paidByPatient[p.patient_id] || 0) + Number(p.amount);
+      });
+
+      const mappedPatients = (pRes.data || []).map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        parent: p.parent_guardian || "",
+        initials: p.initials || makeInitials(p.name),
+        rate: Number(p.session_rate) || 700,
+        day: p.preferred_day || "",
+        time: p.preferred_time || "",
+        status: p.status || "active",
+        phone: p.phone || "",
+        email: p.email || "",
+        billed: billedByPatient[p.id] || 0,
+        paid: paidByPatient[p.id] || 0,
+        sessions: sessionsCountByPatient[p.id] || 0,
+        colorIdx: p.color_idx ?? (i % clientColors.length),
+      }));
+
+      const mappedSessions = (sRes.data || []).map(s => {
+        const d = new Date(s.scheduled_at);
+        return {
+          id: s.id,
+          patient_id: s.patient_id,
+          patient: s.patients?.name || "",
+          initials: s.patients?.initials || "",
+          time: `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`,
+          day: DAY_ORDER[(d.getDay() + 6) % 7],
+          date: `${d.getDate()} ${shortMonths[d.getMonth()]}`,
+          status: s.status || "scheduled",
+          colorIdx: s.patients?.color_idx ?? 0,
+        };
+      });
+
+      const mappedPayments = (payRes.data || []).map((p, i) => {
+        const d = p.payment_date || formatShortDate(new Date(p.created_at));
+        return {
+          id: p.id,
+          patient_id: p.patient_id,
+          patient: p.patients?.name || "",
+          initials: p.patients?.initials || "",
+          amount: Number(p.amount),
+          date: d,
+          method: p.method || "Transferencia",
+          colorIdx: p.patients?.color_idx ?? (i % clientColors.length),
+        };
+      });
+
+      setPatients(mappedPatients);
+      setUpcomingSessions(mappedSessions);
+      setPayments(mappedPayments);
+    } catch (err) {
+      setError(err.message || "No se pudieron cargar los datos.");
+    } finally {
+      setLoading(false);
     }
+  }, [session]);
 
-    loadData();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const totals = useMemo(() => {
-    const totalBilled = patients.reduce((sum, p) => sum + p.billed, 0);
-    const totalPaid = patients.reduce((sum, p) => sum + p.paid, 0);
-    return {
-      totalBilled,
-      totalPaid,
-      totalOwed: totalBilled - totalPaid,
-    };
-  }, [patients]);
+  async function createSession({ patientId, date, time, notes }) {
+    if (!patientId || !date || !time || !session) return false;
+    setMutating(true);
+    setMutationError("");
+    try {
+      const scheduledAt = new Date(`${date}T${time}`);
+      if (isNaN(scheduledAt.getTime())) throw new Error("Fecha u hora inválida");
+      const { error: err } = await supabase.from("sessions").insert({
+        patient_id: patientId,
+        scheduled_at: scheduledAt.toISOString(),
+        status: "scheduled",
+        notes: notes || null,
+      });
+      if (err) throw err;
+      await loadData();
+      return true;
+    } catch (err) {
+      setMutationError(err.message || "No se pudo crear la sesión.");
+      return false;
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function createPatient({ name, parentGuardian, phone, email, rate, day, time }) {
+    if (!name.trim() || !session) return false;
+    setMutating(true);
+    setMutationError("");
+    try {
+      const { error: err } = await supabase.from("patients").insert({
+        user_id: session.user.id,
+        name: name.trim(),
+        initials: makeInitials(name),
+        parent_guardian: parentGuardian || null,
+        phone: phone || null,
+        email: email || null,
+        session_rate: rate || 700,
+        preferred_day: day || null,
+        preferred_time: time || null,
+        color_idx: patients.length % clientColors.length,
+        status: "active",
+      });
+      if (err) throw err;
+      await loadData();
+      return true;
+    } catch (err) {
+      setMutationError(err.message || "No se pudo crear el paciente.");
+      return false;
+    } finally {
+      setMutating(false);
+    }
+  }
 
   async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
     const parsedAmount = Number(amount);
     if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
-
-    const priorPatients = patients;
-    const priorPayments = payments;
     const targetPatient = patients.find(p => p.name === patientName);
-    const tempId = `tmp-${Date.now()}`;
-    const tempPayment = {
-      id: tempId,
-      patient: patientName,
-      initials: targetPatient?.initials || patientName.slice(0, 2).toUpperCase(),
-      amount: parsedAmount,
-      date,
-      method,
-      colorIdx: 0,
-    };
+    if (!targetPatient) return false;
 
     setMutationError("");
     setMutating(true);
-    setPayments(prev => [...prev, tempPayment]);
-    setPatients(prev => prev.map(p => (
-      p.name === patientName ? { ...p, paid: p.paid + parsedAmount } : p
-    )));
-
     try {
-      const created = await sendJson("/payments", "POST", {
-        patient: patientName,
+      const { error: err } = await supabase.from("payments").insert({
+        patient_id: targetPatient.id,
         amount: parsedAmount,
         method,
-        date,
+        payment_date: date,
       });
-      if (created && typeof created === "object") {
-        setPayments(prev => prev.map(p => (p.id === tempId ? { ...p, ...created } : p)));
-      }
+      if (err) throw err;
+      await loadData();
       return true;
     } catch (err) {
-      setPayments(priorPayments);
-      setPatients(priorPatients);
-      setMutationError(err instanceof Error ? err.message : "No se pudo registrar el pago.");
+      setMutationError(err.message || "No se pudo registrar el pago.");
       return false;
     } finally {
       setMutating(false);
@@ -719,18 +814,16 @@ function useCardiganData() {
   }
 
   async function updateSessionStatus(sessionId, status) {
-    const priorSessions = upcomingSessions;
     setMutationError("");
     setMutating(true);
-    setUpcomingSessions(prev => prev.map(s => (
-      s.id === sessionId ? { ...s, status } : s
-    )));
+    setUpcomingSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, status } : s)));
     try {
-      await sendJson(`/sessions/${sessionId}`, "PATCH", { status });
+      const { error: err } = await supabase.from("sessions").update({ status }).eq("id", sessionId);
+      if (err) throw err;
       return true;
     } catch (err) {
-      setUpcomingSessions(priorSessions);
-      setMutationError(err instanceof Error ? err.message : "No se pudo actualizar la sesión.");
+      setMutationError(err.message || "No se pudo actualizar la sesión.");
+      await loadData();
       return false;
     } finally {
       setMutating(false);
@@ -743,19 +836,28 @@ function useCardiganData() {
     payments,
     loading,
     error,
-    totals,
     mutating,
     mutationError,
+    createPatient,
+    createSession,
     createPayment,
     updateSessionStatus,
   };
 }
 
 /* ── DRAWER ── */
-function Drawer({ screen, setScreen, onClose }) {
+function Drawer({ screen, setScreen, onClose, session }) {
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Usuario";
+  const userEmail = session?.user?.email || "";
+  const userInitial = userName[0]?.toUpperCase() || "U";
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    onClose();
+  };
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
@@ -764,10 +866,10 @@ function Drawer({ screen, setScreen, onClose }) {
           <div className="drawer-header">
             <div className="drawer-logo">cardigan</div>
             <div className="drawer-user">
-              <div className="drawer-avatar">D</div>
+              <div className="drawer-avatar">{userInitial}</div>
               <div>
-                <div className="drawer-user-name">Daniela Kim</div>
-                <div className="drawer-user-sub">dani@cardigan.app · Psicóloga</div>
+                <div className="drawer-user-name">{userName}</div>
+                <div className="drawer-user-sub">{userEmail}</div>
               </div>
             </div>
           </div>
@@ -775,21 +877,25 @@ function Drawer({ screen, setScreen, onClose }) {
             <div className="drawer-section-label">Principal</div>
             {principal.map(item => (
               <button key={item.id} className={`drawer-item ${screen===item.id?"active":""}`} onClick={() => handleNav(item.id)}>
-                <div className="drawer-item-icon">{item.icon}</div>
+                <div className="drawer-item-icon"><Icon d={ICONS[item.iconKey]} color={screen===item.id ? "var(--teal-light)" : "rgba(255,255,255,0.55)"} /></div>
                 <span className="drawer-item-label">{item.label}</span>
               </button>
             ))}
             <div className="drawer-section-label" style={{ marginTop:8 }}>Cuenta</div>
             {cuenta.map(item => (
               <button key={item.id} className={`drawer-item ${screen===item.id?"active":""}`} onClick={() => handleNav(item.id)}>
-                <div className="drawer-item-icon">{item.icon}</div>
+                <div className="drawer-item-icon"><Icon d={ICONS[item.iconKey]} color={screen===item.id ? "var(--teal-light)" : "rgba(255,255,255,0.55)"} /></div>
                 <span className="drawer-item-label">{item.label}</span>
               </button>
             ))}
+            <button className="drawer-item" onClick={handleSignOut} style={{ marginTop:4 }}>
+              <div className="drawer-item-icon"><Icon d={ICONS.logout} color="var(--red)" /></div>
+              <span className="drawer-item-label" style={{ color:"var(--red)" }}>Cerrar sesión</span>
+            </button>
           </nav>
           <div className="drawer-footer">
             <div className="drawer-plan">
-              <div className="drawer-plan-icon">⭐</div>
+              <div className="drawer-plan-icon"><Icon d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" size={18} color="var(--teal-light)" /></div>
               <div>
                 <div className="drawer-plan-label">Plan activo</div>
                 <div className="drawer-plan-value">Cardigan Pro · $199/mes</div>
@@ -808,8 +914,14 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
   const totalPaid     = patients.reduce((s,p) => s+p.paid, 0);
   const totalOwed     = totalBilled - totalPaid;
   const activeCount   = patients.filter(p=>p.status==="active").length;
-  const todaySessions = upcomingSessions.filter(s => s.date === "7 Abr");
+  const todayStr      = getTodayStr();
+  const todaySessions = upcomingSessions.filter(s => s.date === todayStr);
   const [selected, setSelected] = useState(null);
+
+  // Compute current month's collected amount from payments
+  const now = getToday();
+  const curMonthStr = shortMonths[now.getMonth()];
+  const monthCollected = payments.filter(p => p.date.includes(curMonthStr)).reduce((s, p) => s + p.amount, 0);
 
   const openPatient = (name) => {
     const p = patients.find(p => p.name === name);
@@ -822,8 +934,8 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
         <div className="kpi-scroll">
           <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Cobrado (Mes)</div>
-            <div className="kpi-value">$9,500</div>
-            <div className="kpi-meta">Febrero 2026</div>
+            <div className="kpi-value">${monthCollected.toLocaleString()}</div>
+            <div className="kpi-meta">{getCurrentMonthLabel()}</div>
           </div>
           <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Por Cobrar</div>
@@ -833,7 +945,7 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
           <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Sesiones Hoy</div>
             <div className="kpi-value">{todaySessions.length}</div>
-            <div className="kpi-meta">Lunes 7 Abr</div>
+            <div className="kpi-meta">{getTodayLabel()}</div>
           </div>
           <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
             <div className="kpi-label">Pacientes</div>
@@ -845,7 +957,7 @@ function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment
 
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Hoy — Lunes 7 Abr</span>
+          <span className="section-title">Hoy — {getTodayLabel()}</span>
           <button className="see-all" onClick={() => setScreen("agenda")}>Ver semana</button>
         </div>
         <div className="card">
@@ -1026,7 +1138,6 @@ function SessionSheet({ session, onClose, onMarkCompleted, onCancelSession, muta
 }
 
 /* ── CALENDAR HELPERS ── */
-const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const DOW = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
 const HOURS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
 
@@ -1044,13 +1155,12 @@ function buildMonthGrid(year, month) {
 }
 
 /* ── DAY VIEW ── */
-function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSessions }) {
+function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSessions, weekDays }) {
   const daySessions = upcomingSessions.filter(s => s.date === selectedDay);
-  const dayNums = calDays.map(d => parseInt(d.num));
-  const curNum  = parseInt(selectedDay);
-  const curIdx  = dayNums.indexOf(curNum);
-  const goDay   = (delta) => { const next = dayNums[curIdx + delta]; if (next !== undefined) setSelectedDay(`${next} Abr`); };
-  const dayLabel = calDays.find(d => `${d.num} Abr` === selectedDay);
+  const curIdx = weekDays.findIndex(d => d.dateStr === selectedDay);
+  const goDay = (delta) => { const next = weekDays[curIdx + delta]; if (next) setSelectedDay(next.dateStr); };
+  const dayLabel = weekDays.find(d => d.dateStr === selectedDay);
+  const sessionDates = new Set(upcomingSessions.map(s => s.date));
 
   return (
     <div>
@@ -1060,19 +1170,16 @@ function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSession
           <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{dayLabel ? dayLabel.name : ""} {selectedDay}</div>
           <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>{daySessions.length===0 ? "Sin sesiones" : `${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
         </div>
-        <button className="month-nav-btn" onClick={() => goDay(1)} disabled={curIdx>=dayNums.length-1} style={{ opacity: curIdx>=dayNums.length-1?0.3:1 }}>›</button>
+        <button className="month-nav-btn" onClick={() => goDay(1)} disabled={curIdx>=weekDays.length-1} style={{ opacity: curIdx>=weekDays.length-1?0.3:1 }}>›</button>
       </div>
       <div style={{ paddingBottom:8 }}>
         <div className="cal-strip">
-          {calDays.map((d,i) => {
-            const dateStr = `${d.num} Abr`;
-            return (
-              <div key={i} className={`cal-day ${selectedDay===dateStr?"active":""} ${d.hasS?"has-sessions":""}`} onClick={() => setSelectedDay(dateStr)}>
-                <span className="cal-day-name">{d.name}</span>
-                <span className="cal-day-num">{d.num}</span>
-              </div>
-            );
-          })}
+          {weekDays.map((d,i) => (
+            <div key={i} className={`cal-day ${selectedDay===d.dateStr?"active":""} ${sessionDates.has(d.dateStr)?"has-sessions":""}`} onClick={() => setSelectedDay(d.dateStr)}>
+              <span className="cal-day-name">{d.name}</span>
+              <span className="cal-day-num">{d.num}</span>
+            </div>
+          ))}
         </div>
       </div>
       <div style={{ padding:"4px 16px 12px" }}>
@@ -1107,9 +1214,9 @@ function DayView({ selectedDay, setSelectedDay, onSelectSession, upcomingSession
 }
 
 /* ── WEEK VIEW ── */
-function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcomingSessions }) {
-  const weekDays = calDays.map(d => ({ ...d, dateStr:`${d.num} Abr` }));
+function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcomingSessions, weekDays }) {
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
+  const todayStr = getTodayStr();
 
   return (
     <div>
@@ -1118,7 +1225,7 @@ function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcoming
         {weekDays.map((d,i) => (
           <div key={i} className="week-day-head" style={{ cursor:"pointer" }} onClick={() => { onSelectDay(d.dateStr); setView("day"); }}>
             <span className="week-day-name">{d.name}</span>
-            <span className={`week-day-num ${d.dateStr===selectedDay?"active":""} ${d.num==="7"&&d.dateStr!==selectedDay?"today":""}`}>{d.num}</span>
+            <span className={`week-day-num ${d.dateStr===selectedDay?"active":""} ${d.dateStr===todayStr&&d.dateStr!==selectedDay?"today":""}`}>{d.num}</span>
           </div>
         ))}
       </div>
@@ -1148,33 +1255,41 @@ function WeekView({ selectedDay, onSelectDay, setView, onSelectSession, upcoming
 /* ── MONTH VIEW ── */
 function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions }) {
   const [monthOffset, setMonthOffset] = useState(0);
-  const base = new Date(2026, 3);
+  const now = getToday();
+  const base = new Date(now.getFullYear(), now.getMonth());
   base.setMonth(base.getMonth() + monthOffset);
   const displayMonth = base.getMonth();
   const displayYear  = base.getFullYear();
   const cells   = buildMonthGrid(displayYear, displayMonth);
-  const isApril = displayMonth === 3 && displayYear === 2026;
-  const daySessions = isApril ? upcomingSessions.filter(s => s.date === selectedDay) : [];
-  const sessionDays = useMemo(() => new Set(upcomingSessions.map(s => parseInt(s.date))), [upcomingSessions]);
-  const selectedNum  = parseInt(selectedDay);
+  const displayMonthStr = shortMonths[displayMonth];
+
+  // Filter sessions that belong to the displayed month
+  const monthSessions = upcomingSessions.filter(s => {
+    const parts = s.date.split(" ");
+    return parts[1] === displayMonthStr;
+  });
+  const daySessions = monthSessions.filter(s => s.date === selectedDay);
+  const sessionDays = useMemo(() => new Set(monthSessions.map(s => parseInt(s.date))), [monthSessions]);
+  const selectedNum = parseInt(selectedDay);
+  const isCurrentMonth = displayMonth === now.getMonth() && displayYear === now.getFullYear();
 
   return (
     <div>
       <div className="month-header">
         <button className="month-nav-btn" onClick={() => setMonthOffset(o => o-1)}>‹</button>
-        <span className="month-title">{MONTH_NAMES[displayMonth]} {displayYear}</span>
+        <span className="month-title">{FULL_MONTH_NAMES[displayMonth]} {displayYear}</span>
         <button className="month-nav-btn" onClick={() => setMonthOffset(o => o+1)}>›</button>
       </div>
       <div className="month-grid">
         <div className="month-dow-row">{DOW.map(d => <div key={d} className="month-dow">{d}</div>)}</div>
         <div className="month-days-grid">
           {cells.map((cell, i) => {
-            const isToday  = isApril && cell.current && cell.num === 7;
-            const isActive = isApril && cell.current && cell.num === selectedNum;
-            const hasSess  = isApril && cell.current && sessionDays.has(cell.num);
+            const isToday  = isCurrentMonth && cell.current && cell.num === now.getDate();
+            const isActive = cell.current && cell.num === selectedNum && selectedDay.includes(displayMonthStr);
+            const hasSess  = cell.current && sessionDays.has(cell.num);
             return (
               <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
-                onClick={() => cell.current && isApril && onSelectDay(`${cell.num} Abr`)}>
+                onClick={() => cell.current && onSelectDay(`${cell.num} ${displayMonthStr}`)}>
                 <span className="month-cell-num">{cell.num}</span>
                 {hasSess && <div className="month-dot" />}
               </div>
@@ -1218,8 +1333,9 @@ function MonthView({ onSelectSession, selectedDay, onSelectDay, upcomingSessions
 /* ── AGENDA ── */
 function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mutating }) {
   const [view, setView]               = useState("day");
-  const [selectedDay, setSelectedDay] = useState("7 Abr");
+  const [selectedDay, setSelectedDay] = useState(getTodayStr());
   const [selectedSession, setSelectedSession] = useState(null);
+  const weekDays = useMemo(() => buildCurrentWeek(), []);
 
   return (
     <div className="page">
@@ -1230,8 +1346,8 @@ function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mut
           ))}
         </div>
       </div>
-      {view==="day"   && <DayView   selectedDay={selectedDay} setSelectedDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
-      {view==="week"  && <WeekView  selectedDay={selectedDay} onSelectDay={setSelectedDay} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
+      {view==="day"   && <DayView   selectedDay={selectedDay} setSelectedDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} weekDays={weekDays} />}
+      {view==="week"  && <WeekView  selectedDay={selectedDay} onSelectDay={setSelectedDay} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} weekDays={weekDays} />}
       {view==="month" && <MonthView selectedDay={selectedDay} onSelectDay={setSelectedDay} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
       <SessionSheet
         session={selectedSession}
@@ -1251,9 +1367,8 @@ function Agenda({ upcomingSessions, onMarkSessionCompleted, onCancelSession, mut
 }
 
 /* ── PATIENTS ── */
-const DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 
-function Patients({ patients, onRecordPayment, mutating }) {
+function Patients({ patients, onRecordPayment, onAddPatient, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -1286,11 +1401,12 @@ function Patients({ patients, onRecordPayment, mutating }) {
 
   return (
     <div className="page">
-      <div style={{ padding:"16px 16px 10px" }}>
-        <div className="search-bar">
+      <div style={{ padding:"16px 16px 10px", display:"flex", gap:10 }}>
+        <div className="search-bar" style={{ flex:1 }}>
           <span style={{ color:"var(--charcoal-xl)", fontSize:16 }}>⌕</span>
           <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+        <button className="btn btn-primary" style={{ width:"auto", minWidth:48, height:42, padding:"0 16px", fontSize:13, borderRadius:"var(--radius-pill)", boxShadow:"none" }} onClick={onAddPatient}>+ Nuevo</button>
       </div>
       <div className="filter-chips">
         {filters.map(f => <button key={f.k} className={`chip ${filter===f.k?"active":""}`} onClick={() => setFilter(f.k)}>{f.l}</button>)}
@@ -1402,7 +1518,6 @@ function FinancesMiniChart({ data, valueKey, color }) {
 
 function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   const [groupByClient, setGroupByClient] = useState(false);
-  const [sortOrder, setSortOrder]         = useState("desc"); // desc = newest first
   const [filterMethod, setFilterMethod]   = useState("all");
   const [dateRange, setDateRange]         = useState("all"); // all | jan | feb
 
@@ -1417,7 +1532,7 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   if (filterMethod !== "all") filtered = filtered.filter(p => p.method === filterMethod);
   if (dateRange === "jan")    filtered = filtered.filter(p => p.date.includes("Ene"));
   if (dateRange === "feb")    filtered = filtered.filter(p => p.date.includes("Feb"));
-  filtered.sort((a,b) => sortOrder === "desc" ? parseDateKey(b.date)-parseDateKey(a.date) : parseDateKey(a.date)-parseDateKey(b.date));
+  filtered.sort((a,b) => parseDateKey(b.date)-parseDateKey(a.date));
 
   const totalFiltered = filtered.reduce((s,p) => s+p.amount, 0);
 
@@ -1466,18 +1581,6 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
           >
             <div style={{ width:18, height:18, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(18px)" : "translateX(0)", transition:"transform 0.2s" }} />
           </button>
-        </div>
-        {/* Sort */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>Orden</span>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2 }}>
-            {[{k:"desc",l:"Más reciente"},{k:"asc",l:"Más antiguo"}].map(o => (
-              <button key={o.k} onClick={() => setSortOrder(o.k)}
-                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none" }}>
-                {o.l}
-              </button>
-            ))}
-          </div>
         </div>
         {/* Method filter */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
@@ -1568,7 +1671,8 @@ function Finances({ patients, payments, onRecordPayment, mutating }) {
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+Math.max(0,p.billed-p.paid), 0);
   const owingPatients = patients.filter(p => p.billed>p.paid);
-  const currentMonth  = monthlyData[monthlyData.length-1];
+  const monthlyData   = useMemo(() => computeMonthlyData(payments), [payments]);
+  const currentMonth  = monthlyData.length > 0 ? monthlyData[monthlyData.length-1] : { mes: shortMonths[getToday().getMonth()], year: getToday().getFullYear(), cobrado: 0, sesiones: 0, pendiente: 0 };
 
   return (
     <div className="page">
@@ -1641,9 +1745,9 @@ function Finances({ patients, payments, onRecordPayment, mutating }) {
               <div>
                 <div className="stat-tile-label">Cobrado este mes</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:26, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.5px" }}>${currentMonth.cobrado.toLocaleString()}</div>
-                <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>Febrero 2026</div>
+                <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>{getCurrentMonthLabel()}</div>
               </div>
-              <span className="badge badge-green">+{Math.round(((currentMonth.cobrado-monthlyData[monthlyData.length-2].cobrado)/monthlyData[monthlyData.length-2].cobrado)*100)}% vs Ene</span>
+              {monthlyData.length >= 2 && <span className="badge badge-green">+{Math.round(((currentMonth.cobrado-monthlyData[monthlyData.length-2].cobrado)/Math.max(1,monthlyData[monthlyData.length-2].cobrado))*100)}% vs {monthlyData[monthlyData.length-2].mes}</span>}
             </div>
             <FinancesMiniChart data={monthlyData} valueKey="cobrado" color="var(--teal)" />
           </div>
@@ -1673,20 +1777,26 @@ function Finances({ patients, payments, onRecordPayment, mutating }) {
 }
 
 /* ── SETTINGS ── */
-function Settings() {
+function Settings({ session }) {
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Usuario";
+  const userEmail = session?.user?.email || "";
+  const userInitial = userName[0]?.toUpperCase() || "U";
+
+  const handleSignOut = async () => { await supabase.auth.signOut(); };
+
   const sections = [
     { label:"Mi práctica", rows:[
-      { icon:"👤", bg:"#EAF4F7", title:"Perfil profesional", sub:"Daniela · Psicóloga" },
-      { icon:"💱", bg:"#EDF7F2", title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
-      { icon:"🔔", bg:"#FDF6E8", title:"Recordatorios",      sub:"WhatsApp automático" },
+      { iconD:"M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z", bg:"var(--teal-pale)", color:"var(--teal-dark)", title:"Perfil profesional", sub:`${userName}` },
+      { iconD:"M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6", bg:"var(--green-bg)", color:"var(--green)", title:"Moneda y precios",   sub:"MXN — Peso Mexicano" },
+      { iconD:"M18 8A6 6 0 006 8c0 7-3 9-6 9s-6-2-6-9M13.73 21a2 2 0 01-3.46 0", bg:"var(--amber-bg)", color:"var(--amber)", title:"Recordatorios",      sub:"WhatsApp automático" },
     ]},
     { label:"Suscripción", rows:[
-      { icon:"⭐", bg:"#F0EEF9", title:"Plan actual",         sub:"Cardigan Pro · $199/mes" },
-      { icon:"📋", bg:"#EAF4F7", title:"Historial de pagos",  sub:"Ver facturas" },
+      { iconD:"M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z", bg:"var(--purple-bg)", color:"var(--purple)", title:"Plan actual",         sub:"Cardigan Pro · $199/mes" },
+      { iconD:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8", bg:"var(--teal-pale)", color:"var(--teal-dark)", title:"Historial de pagos",  sub:"Ver facturas" },
     ]},
     { label:"Cuenta", rows:[
-      { icon:"🔑", bg:"#FDF6E8", title:"Cambiar contraseña", sub:"" },
-      { icon:"🚪", bg:"#FDF1F1", title:"Cerrar sesión",       sub:"", danger:true },
+      { iconD:"M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4", bg:"var(--amber-bg)", color:"var(--amber)", title:"Cambiar contraseña", sub:"" },
+      { iconD:ICONS.logout, bg:"var(--red-bg)", color:"var(--red)", title:"Cerrar sesión",       sub:"", danger:true, action: handleSignOut },
     ]},
   ];
 
@@ -1695,10 +1805,10 @@ function Settings() {
       <div className="section" style={{ paddingTop:20 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
-            <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>D</div>
+            <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>{userInitial}</div>
             <div style={{ flex:1 }}>
-              <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>Daniela Kim</div>
-              <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>dani@cardigan.app · Psicóloga</div>
+              <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
+              <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
             </div>
             <button className="btn btn-ghost" style={{ fontSize:13,height:34 }}>Editar</button>
           </div>
@@ -1709,8 +1819,8 @@ function Settings() {
           <div className="settings-label">{s.label}</div>
           <div className="card" style={{ margin:"0 16px" }}>
             {s.rows.map((r,i) => (
-              <div className="settings-row" key={i}>
-                <div className="settings-row-icon" style={{ background:r.bg }}>{r.icon}</div>
+              <div className="settings-row" key={i} onClick={r.action} style={{ cursor:r.action?"pointer":undefined }}>
+                <div className="settings-row-icon" style={{ background:r.bg }}><Icon d={r.iconD} size={18} color={r.color || "var(--charcoal)"} /></div>
                 <div>
                   <div className="settings-row-title" style={{ color:r.danger?"var(--red)":undefined }}>{r.title}</div>
                   {r.sub && <div className="settings-row-sub">{r.sub}</div>}
@@ -1729,43 +1839,245 @@ function Settings() {
 /* ── AUTH ── */
 function AuthScreen() {
   const [mode, setMode] = useState("login");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (err) {
+      setAuthError(err.message || "Error de autenticación");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+    if (error) setAuthError(error.message);
+  };
+
   return (
     <div className="auth-screen">
       <div className="auth-header">
-        <LogoMark size={36} />
+        <LogoMark size={48} color="white" />
         <div className="auth-wordmark">cardigan</div>
         <div className="auth-tagline">Gestiona tu práctica. Sin complicaciones.</div>
       </div>
-      <div className="auth-body">
+      <form className="auth-body" onSubmit={handleSubmit}>
         <div className="auth-toggle">
-          <button className={`auth-tab ${mode==="login"?"active":""}`} onClick={()=>setMode("login")}>Entrar</button>
-          <button className={`auth-tab ${mode==="signup"?"active":""}`} onClick={()=>setMode("signup")}>Crear cuenta</button>
+          <button type="button" className={`auth-tab ${mode==="login"?"active":""}`} onClick={()=>{setMode("login");setAuthError("");}} >Entrar</button>
+          <button type="button" className={`auth-tab ${mode==="signup"?"active":""}`} onClick={()=>{setMode("signup");setAuthError("");}} >Crear cuenta</button>
         </div>
         {mode==="signup" && (
           <div className="input-group">
             <label className="input-label">Nombre completo</label>
-            <input className="input" placeholder="Daniela Kim" type="text" autoComplete="name" />
+            <input className="input" placeholder="Daniela Kim" type="text" autoComplete="name" value={fullName} onChange={e=>setFullName(e.target.value)} required />
           </div>
         )}
         <div className="input-group">
           <label className="input-label">Correo electrónico</label>
-          <input className="input" placeholder="tu@correo.com" type="email" autoComplete="email" inputMode="email" />
+          <input className="input" placeholder="tu@correo.com" type="email" autoComplete="email" inputMode="email" value={email} onChange={e=>setEmail(e.target.value)} required />
         </div>
         <div className="input-group">
           <label className="input-label">Contraseña</label>
-          <input className="input" placeholder="••••••••" type="password" autoComplete={mode==="login"?"current-password":"new-password"} />
+          <input className="input" placeholder="••••••••" type="password" autoComplete={mode==="login"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} required minLength={6} />
         </div>
+        {authError && (
+          <div style={{ fontSize:13, color:"var(--red)", textAlign:"center", marginBottom:8 }}>{authError}</div>
+        )}
         {mode==="login" && (
           <div style={{ textAlign:"right", marginBottom:18, marginTop:-6 }}>
-            <button className="btn btn-ghost" style={{ height:36,fontSize:13,color:"var(--teal-dark)" }}>¿Olvidaste tu contraseña?</button>
+            <button type="button" className="btn btn-ghost" style={{ height:36,fontSize:13,color:"var(--teal-dark)" }}>¿Olvidaste tu contraseña?</button>
           </div>
         )}
-        <button className="btn btn-primary">{mode==="login" ? "Entrar a Cardigan" : "Crear mi cuenta"}</button>
+        <button type="submit" className="btn btn-primary" disabled={authLoading}>
+          {authLoading ? "Cargando..." : (mode==="login" ? "Entrar a Cardigan" : "Crear mi cuenta")}
+        </button>
+        {/* Google login disabled for now
+        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"16px 0" }}>
+          <div style={{ flex:1, height:1, background:"var(--border)" }} />
+          <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>o</span>
+          <div style={{ flex:1, height:1, background:"var(--border)" }} />
+        </div>
+        <button type="button" className="btn btn-secondary" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }} onClick={handleGoogleLogin}>
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Continuar con Google
+        </button>
+        */}
         {mode==="signup" && (
           <div style={{ textAlign:"center",fontSize:12,color:"var(--charcoal-xl)",marginTop:14,lineHeight:1.6 }}>
             Al registrarte aceptas los <span style={{ color:"var(--teal-dark)",fontWeight:700 }}>Términos</span> y la <span style={{ color:"var(--teal-dark)",fontWeight:700 }}>Política de privacidad</span>.
           </div>
         )}
+      </form>
+    </div>
+  );
+}
+
+/* ── ADD PATIENT SHEET ── */
+function AddPatientSheet({ open, onClose, onSubmit, mutating }) {
+  const [name, setName] = useState("");
+  const [parentGuardian, setParentGuardian] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [rate, setRate] = useState("700");
+  const [day, setDay] = useState("");
+  const [time, setTime] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setName(""); setParentGuardian(""); setPhone(""); setEmail("");
+    setRate("700"); setDay(""); setTime(""); setFormError("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) { setFormError("El nombre es obligatorio."); return; }
+    setFormError("");
+    const ok = await onSubmit({ name: name.trim(), parentGuardian, phone, email, rate: Number(rate) || 700, day, time });
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"90vh", overflow:"auto" }}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span className="sheet-title">Nuevo paciente</span>
+          <button className="sheet-close" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={submit} style={{ padding:"0 20px 24px" }}>
+          <div className="input-group">
+            <label className="input-label">Nombre completo *</label>
+            <input className="input" placeholder="Nombre del paciente" value={name} onChange={e=>setName(e.target.value)} required />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Tutor / Responsable</label>
+            <input className="input" placeholder="Nombre del tutor" value={parentGuardian} onChange={e=>setParentGuardian(e.target.value)} />
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">Teléfono</label>
+              <input className="input" placeholder="55 1234 5678" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Correo</label>
+              <input className="input" placeholder="correo@ejemplo.com" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Tarifa por sesión</label>
+            <input className="input" placeholder="700" type="number" min="0" value={rate} onChange={e=>setRate(e.target.value)} />
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">Día de sesión</label>
+              <select className="input" value={day} onChange={e=>setDay(e.target.value)}>
+                <option value="">Seleccionar</option>
+                {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="input-group">
+              <label className="input-label">Hora</label>
+              <input className="input" placeholder="16:30" type="time" value={time} onChange={e=>setTime(e.target.value)} />
+            </div>
+          </div>
+          {formError && <div style={{ fontSize:13, color:"var(--red)", marginBottom:10 }}>{formError}</div>}
+          <button type="submit" className="btn btn-primary" style={{ height:48, marginTop:8 }} disabled={mutating}>
+            {mutating ? "Guardando..." : "Agregar paciente"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADD SESSION SHEET ── */
+function AddSessionSheet({ open, onClose, onSubmit, patients, mutating }) {
+  const [patientId, setPatientId] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setPatientId(""); setNotes(""); setFormError("");
+    // Default to today's date and a reasonable time
+    const now = getToday();
+    setDate(now.toISOString().split("T")[0]);
+    setTime("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!patientId) { setFormError("Selecciona un paciente."); return; }
+    if (!date) { setFormError("Selecciona una fecha."); return; }
+    if (!time) { setFormError("Selecciona una hora."); return; }
+    setFormError("");
+    const ok = await onSubmit({ patientId, date, time, notes });
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"90vh", overflow:"auto" }}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span className="sheet-title">Nueva sesión</span>
+          <button className="sheet-close" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={submit} style={{ padding:"0 20px 24px" }}>
+          <div className="input-group">
+            <label className="input-label">Paciente *</label>
+            <select className="input" value={patientId} onChange={e => setPatientId(e.target.value)} required>
+              <option value="">Seleccionar paciente</option>
+              {patients.filter(p => p.status === "active").map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">Fecha *</label>
+              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Hora *</label>
+              <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} required />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Notas</label>
+            <input className="input" placeholder="Notas opcionales" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+          {formError && <div style={{ fontSize:13, color:"var(--red)", marginBottom:10 }}>{formError}</div>}
+          <button type="submit" className="btn btn-primary" style={{ height:48, marginTop:8 }} disabled={mutating}>
+            {mutating ? "Guardando..." : "Agendar sesión"}
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -1860,17 +2172,33 @@ function PaymentModal({
 }
 
 /* ── ROOT ── */
-const topbarMeta = {
-  home:     { title:"Buenos días ☀️", sub:"Lunes 7 de Abril" },
-  agenda:   { title:"Agenda",          sub:"Semana del 7 Abr" },
-  patients: { title:"Pacientes",       sub:"9 en total · 7 activos" },
-  finances: { title:"Finanzas",        sub:"Febrero 2026" },
-  settings: { title:"Ajustes",         sub:"Cardigan Pro" },
-};
+function getTopbarMeta(patients) {
+  return {
+    home:     { title:"Inicio" },
+    agenda:   { title:"Agenda" },
+    patients: { title:`Pacientes (${patients.length})` },
+    finances: { title:"Finanzas" },
+    settings: { title:"Ajustes" },
+  };
+}
 
 export default function Cardigan() {
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [screen, setScreen]       = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setAuthReady(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const {
     patients,
     upcomingSessions,
@@ -1879,11 +2207,21 @@ export default function Cardigan() {
     error,
     mutating,
     mutationError,
+    createPatient,
+    createSession,
     createPayment,
     updateSessionStatus,
-  } = useCardiganData();
+  } = useCardiganData(session);
+
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
+  const [addPatientOpen, setAddPatientOpen] = useState(false);
+  const [addSessionOpen, setAddSessionOpen] = useState(false);
+
+  const handleFab = () => {
+    if (screen === "patients") setAddPatientOpen(true);
+    else setAddSessionOpen(true);
+  };
 
   const openRecordPaymentModal = (patient) => {
     setPaymentDraft({
@@ -1893,31 +2231,45 @@ export default function Cardigan() {
     setPaymentModalOpen(true);
   };
 
-  const handleMarkSessionCompleted = async (session) => {
-    if (!session || session.status === "completed") return true;
-    return updateSessionStatus(session.id, "completed");
+  const handleMarkSessionCompleted = async (sess) => {
+    if (!sess || sess.status === "completed") return true;
+    return updateSessionStatus(sess.id, "completed");
   };
 
-  const handleCancelSession = async (session) => {
-    if (!session || session.status === "cancelled") return true;
-    return updateSessionStatus(session.id, "cancelled");
+  const handleCancelSession = async (sess) => {
+    if (!sess || sess.status === "cancelled") return true;
+    return updateSessionStatus(sess.id, "cancelled");
   };
+
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Usuario";
+  const userInitial = userName[0]?.toUpperCase() || "U";
 
   const screenMap = {
     home:     <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     agenda:   <Agenda upcomingSessions={upcomingSessions} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
-    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
+    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} onAddPatient={() => setAddPatientOpen(true)} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
-    settings: <Settings />,
+    settings: <Settings session={session} />,
   };
 
-  const isAuth = screen === "auth";
-  const meta   = topbarMeta[screen] || topbarMeta.home;
+  const topbarMeta = getTopbarMeta(patients);
+  const meta = topbarMeta[screen] || topbarMeta.home;
+
+  if (!authReady) {
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="shell" style={{ alignItems:"center", justifyContent:"center" }}>
+          <LogoMark size={36} />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <style>{styles}</style>
-      {isAuth ? <AuthScreen /> : (
+      {!session ? <AuthScreen /> : (
         <div className="shell">
           <div className="status-bar" />
           <div className="topbar">
@@ -1933,8 +2285,8 @@ export default function Cardigan() {
               </div>
             </div>
             <div className="topbar-right">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio">🏠</button>
-              <div className="avatar-sm">D</div>
+              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><Icon d={ICONS.home} size={18} color="white" /></button>
+              <div className="avatar-sm">{userInitial}</div>
             </div>
           </div>
           {loading && (
@@ -1944,7 +2296,7 @@ export default function Cardigan() {
           )}
           {!loading && error && (
             <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--amber)" }}>
-              No se pudo conectar al API. Mostrando datos locales.
+              {error}
             </div>
           )}
           {!loading && mutationError && (
@@ -1962,8 +2314,21 @@ export default function Cardigan() {
             onSubmit={createPayment}
             mutating={mutating}
           />
-          <button className="fab" aria-label="Agregar">+</button>
-          {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} />}
+          <AddPatientSheet
+            open={addPatientOpen}
+            onClose={() => setAddPatientOpen(false)}
+            onSubmit={createPatient}
+            mutating={mutating}
+          />
+          <AddSessionSheet
+            open={addSessionOpen}
+            onClose={() => setAddSessionOpen(false)}
+            onSubmit={createSession}
+            patients={patients}
+            mutating={mutating}
+          />
+          <button className="fab" aria-label="Agregar" onClick={handleFab}>+</button>
+          {drawerOpen && <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)} session={session} />}
         </div>
       )}
     </>
