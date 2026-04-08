@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { formatShortDate } from "../data/api";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconEdit, IconCheck, IconX } from "./Icons";
 
 const ACTIONS = [
-  { key:"patient", icon:"👤", label:"Nuevo paciente",   color:"var(--teal)" },
-  { key:"payment", icon:"💰", label:"Registrar pago",   color:"var(--green)" },
-  { key:"session", icon:"📅", label:"Agendar sesión",   color:"var(--purple)" },
-  { key:"status",  icon:"✏️",  label:"Actualizar cita",  color:"var(--amber)" },
+  { key:"patient", Icon: IconUserPlus,     label:"Nuevo paciente",   color:"var(--teal)" },
+  { key:"payment", Icon: IconDollar,       label:"Registrar pago",   color:"var(--green)" },
+  { key:"session", Icon: IconCalendarPlus, label:"Agendar sesión",   color:"var(--purple)" },
+  { key:"status",  Icon: IconEdit,         label:"Actualizar cita",  color:"var(--amber)" },
 ];
 
 /* ── NEW PATIENT FORM ── */
@@ -32,7 +33,7 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Nuevo paciente</span>
-          <button className="sheet-close" onClick={onClose}>✕</button>
+          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
@@ -92,7 +93,7 @@ function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Agendar sesión</span>
-          <button className="sheet-close" onClick={onClose}>✕</button>
+          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
@@ -134,7 +135,7 @@ function UpdateStatusSheet({ onClose, upcomingSessions, onUpdateStatus, mutating
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Actualizar cita</span>
-          <button className="sheet-close" onClick={onClose}>✕</button>
+          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           {scheduled.length === 0
@@ -151,12 +152,12 @@ function UpdateStatusSheet({ onClose, upcomingSessions, onUpdateStatus, mutating
                     style={{ padding:"5px 10px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--green-bg)", color:"var(--green)", cursor:"pointer", fontFamily:"var(--font)" }}
                     onClick={() => onUpdateStatus(s.id, "completed")}
                     disabled={mutating}
-                  >✓</button>
+                  ><IconCheck size={14} /></button>
                   <button
                     style={{ padding:"5px 10px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", fontFamily:"var(--font)" }}
                     onClick={() => onUpdateStatus(s.id, "cancelled")}
                     disabled={mutating}
-                  >✕</button>
+                  ><IconX size={14} /></button>
                 </div>
               </div>
             ))
@@ -199,7 +200,7 @@ export function QuickActions({
           {ACTIONS.map((a, i) => (
             <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.04}s` }} onClick={() => handleAction(a.key)}>
               <span className="fab-action-label">{a.label}</span>
-              <span className="fab-action-icon" style={{ background: a.color }}>{a.icon}</span>
+              <span className="fab-action-icon" style={{ background: a.color }}><a.Icon size={20} /></span>
             </button>
           ))}
         </div>

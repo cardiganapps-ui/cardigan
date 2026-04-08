@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
+import { IconDollar, IconX } from "../components/Icons";
 
 export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating }) {
   const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -59,7 +60,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         </div>
         <div className="card">
           {todaySessions.length === 0
-            ? <div style={{ padding:"24px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>Sin sesiones hoy 🎉</div>
+            ? <div style={{ padding:"24px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>Sin sesiones hoy</div>
             : todaySessions.map(s => (
               <div className="row-item" key={s.id} onClick={() => openPatient(s.patient)}>
                 <div className="row-avatar" style={{ background: clientColors[s.colorIdx] }}>{s.initials}</div>
@@ -112,7 +113,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         <div className="card">
           {payments.slice(0,3).map(p => (
             <div className="row-item" key={p.id} onClick={() => openPatient(p.patient)}>
-              <div className="row-icon" style={{ background:"var(--green-bg)" }}>💰</div>
+              <div className="row-icon" style={{ background:"var(--green-bg)", color:"var(--green)" }}><IconDollar size={18} /></div>
               <div className="row-content">
                 <div className="row-title">{p.patient}</div>
                 <div className="row-sub">{p.date} · {p.method}</div>
@@ -131,7 +132,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{selected.name}</span>
-              <button className="sheet-close" onClick={() => setSelected(null)}>✕</button>
+              <button className="sheet-close" onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>
@@ -160,7 +161,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
               ))}
               <div style={{ marginTop:20, display:"flex", flexDirection:"column", gap:10 }}>
                 <button className="btn btn-primary" style={{ height:48 }} onClick={() => onRecordPayment(selected)} disabled={mutating}>
-                  {mutating ? "Guardando..." : "💰 Registrar pago"}
+                  {mutating ? "Guardando..." : "Registrar pago"}
                 </button>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <button className="btn btn-secondary" style={{ height:44, fontSize:13 }}>Ver sesiones</button>

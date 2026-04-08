@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatShortDate } from "../data/api";
+import { IconX } from "./Icons";
 
 export function PaymentModal({
   open,
@@ -54,7 +55,7 @@ export function PaymentModal({
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Registrar pago</span>
-          <button className="sheet-close" onClick={onClose}>✕</button>
+          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">

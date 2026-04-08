@@ -4,6 +4,7 @@ import { buildTopbarMeta } from "./data/seedData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
+import { IconHome } from "./components/Icons";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -79,7 +80,7 @@ export default function Cardigan() {
               </div>
             </div>
             <div className="topbar-right">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio">🏠</button>
+              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><IconHome size={18} /></button>
               <div className="avatar-sm">D</div>
             </div>
           </div>

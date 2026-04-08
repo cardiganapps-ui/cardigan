@@ -1,0 +1,114 @@
+/*
+ * Clean, thin-line SVG icons matching Cardigan brand aesthetic.
+ * All icons use currentColor so they inherit text color from context.
+ */
+
+const I = ({ children, size = 20, ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    {children}
+  </svg>
+);
+
+export const IconHome = (p) => (
+  <I {...p}><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z"/><path d="M9 22V12h6v10"/></I>
+);
+
+export const IconCalendar = (p) => (
+  <I {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></I>
+);
+
+export const IconUser = (p) => (
+  <I {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></I>
+);
+
+export const IconUsers = (p) => (
+  <I {...p}><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a6 6 0 0112 0v1"/><path d="M16 3.13a4 4 0 010 7.75M23 21v-1a4 4 0 00-3-3.87"/></I>
+);
+
+export const IconDollar = (p) => (
+  <I {...p}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></I>
+);
+
+export const IconCreditCard = (p) => (
+  <I {...p}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></I>
+);
+
+export const IconSettings = (p) => (
+  <I {...p}>
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+  </I>
+);
+
+export const IconSearch = (p) => (
+  <I {...p}><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></I>
+);
+
+export const IconBell = (p) => (
+  <I {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></I>
+);
+
+export const IconStar = (p) => (
+  <I {...p}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></I>
+);
+
+export const IconClipboard = (p) => (
+  <I {...p}><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></I>
+);
+
+export const IconKey = (p) => (
+  <I {...p}><circle cx="8" cy="15" r="5"/><path d="M12.6 11.4L17 7M15 9l2-2M21 3l-4 4"/></I>
+);
+
+export const IconLogOut = (p) => (
+  <I {...p}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></I>
+);
+
+export const IconCash = (p) => (
+  <I {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 10h2M20 10h2M2 14h2M20 14h2"/></I>
+);
+
+export const IconBank = (p) => (
+  <I {...p}><path d="M3 21h18M3 10h18M5 6l7-3 7 3"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/></I>
+);
+
+export const IconEdit = (p) => (
+  <I {...p}><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></I>
+);
+
+export const IconCheck = (p) => (
+  <I {...p}><path d="M20 6L9 17l-5-5"/></I>
+);
+
+export const IconX = (p) => (
+  <I {...p}><path d="M18 6L6 18M6 6l12 12"/></I>
+);
+
+export const IconLeaf = (p) => (
+  <I {...p}><path d="M6 21s1-8 6-13c5 5 6 13 6 13"/><path d="M12 8c3-3 7-4 10-4-1 3-2 7-4 10"/></I>
+);
+
+export const IconPlus = (p) => (
+  <I {...p}><path d="M12 5v14M5 12h14"/></I>
+);
+
+export const IconUserPlus = (p) => (
+  <I {...p}><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a6 6 0 0112 0v1M20 8v6M23 11h-6"/></I>
+);
+
+export const IconCalendarPlus = (p) => (
+  <I {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></I>
+);
+
+export const IconCurrency = (p) => (
+  <I {...p}><circle cx="12" cy="12" r="9"/><path d="M14.5 9h-3a2 2 0 000 4h1a2 2 0 010 4H9.5M12 6.5V9M12 17v-2"/></I>
+);
+
+export const IconChevron = (p) => (
+  <I size={16} {...p}><path d="M9 18l6-6-6-6"/></I>
+);
+
+export const IconSun = (p) => (
+  <I {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></I>
+);

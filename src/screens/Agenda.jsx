@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
+import { IconLeaf } from "../components/Icons";
 
 /* ── DATE HELPERS ── */
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -85,7 +86,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
       <div style={{ padding:"4px 16px 12px" }}>
         {daySessions.length === 0
           ? <div className="card" style={{ padding:32, textAlign:"center" }}>
-              <div style={{ fontSize:32, marginBottom:10 }}>🌿</div>
+              <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconLeaf size={32} /></div>
               <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>Día libre</div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>No hay sesiones este día.</div>
             </div>
@@ -211,7 +212,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
         </div>
         {daySessions.length === 0
           ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-              <div style={{ fontSize:24, marginBottom:6 }}>🌿</div>
+              <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconLeaf size={24} /></div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>Día libre</div>
             </div>
           : <div className="card">

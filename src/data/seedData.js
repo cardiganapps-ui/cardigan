@@ -52,11 +52,11 @@ export const monthlyData = [
 ];
 
 export const navItems = [
-  { id:"home",     label:"Inicio",   icon:"🏠", section:"principal" },
-  { id:"agenda",   label:"Agenda",   icon:"📅", section:"principal" },
-  { id:"patients", label:"Pacientes",icon:"👤", section:"principal" },
-  { id:"finances", label:"Finanzas", icon:"💰", section:"principal" },
-  { id:"settings", label:"Ajustes",  icon:"⚙️", section:"cuenta"    },
+  { id:"home",     label:"Inicio",    iconId:"home",     section:"principal" },
+  { id:"agenda",   label:"Agenda",    iconId:"calendar", section:"principal" },
+  { id:"patients", label:"Pacientes", iconId:"users",    section:"principal" },
+  { id:"finances", label:"Finanzas",  iconId:"dollar",   section:"principal" },
+  { id:"settings", label:"Ajustes",   iconId:"settings", section:"cuenta"    },
 ];
 
 export const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -71,9 +71,9 @@ const FULL_MONTHS_TOPBAR  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","J
 
 function todayGreeting() {
   const h = TODAY.getHours();
-  if (h < 12) return "Buenos días ☀️";
-  if (h < 19) return "Buenas tardes 🌤️";
-  return "Buenas noches 🌙";
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
 }
 
 function todayLabel() {
