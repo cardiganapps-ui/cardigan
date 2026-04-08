@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { clientColors } from "../data/seedData";
-import { formatShortDate } from "../data/api";
+import { shortDateToISO, isoToShortDate } from "../data/api";
 import { IconX } from "./Icons";
 
 export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, mutating }) {
@@ -15,14 +15,14 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const statusLabel = isCancelled ? (session.status === "charged" ? "Cancelada (cobrada)" : "Cancelada") : session.status === "completed" ? "Completada" : "Agendada";
 
   const startReschedule = () => {
-    setNewDate(session.date);
+    setNewDate(shortDateToISO(session.date));
     setNewTime(session.time);
     setRescheduling(true);
   };
 
   const submitReschedule = async () => {
-    if (!newDate.trim() || !newTime.trim()) return;
-    const ok = await onReschedule(session.id, newDate, newTime);
+    if (!newDate || !newTime.trim()) return;
+    const ok = await onReschedule(session.id, isoToShortDate(newDate), newTime);
     if (ok) setRescheduling(false);
   };
 
@@ -68,7 +68,7 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <div className="input-group">
                   <label className="input-label">Fecha</label>
-                  <input className="input" type="text" value={newDate} onChange={e => setNewDate(e.target.value)} placeholder="7 Abr" />
+                  <input className="input" type="date" value={newDate} onChange={e => setNewDate(e.target.value)} />
                 </div>
                 <div className="input-group">
                   <label className="input-label">Hora</label>

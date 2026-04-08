@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
-import { formatShortDate } from "../data/api";
+import { todayISO, isoToShortDate } from "../data/api";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconEdit, IconCheck, IconX } from "./Icons";
 
 const ACTIONS = [
@@ -9,8 +9,6 @@ const ACTIONS = [
   { key:"session", Icon: IconCalendarPlus, label:"Sesión" },
   { key:"status",  Icon: IconEdit,         label:"Estado" },
 ];
-
-const todayISO = () => new Date().toISOString().split("T")[0];
 
 const Toggle = ({ on, onToggle, type }) => (
   <button type={type || "button"} onClick={onToggle}
@@ -144,17 +142,17 @@ function NewPatientSheet({ onClose, onSubmit, mutating }) {
 /* ── NEW SESSION FORM ── */
 function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
   const [patientName, setPatientName] = useState("");
-  const [date, setDate] = useState(formatShortDate());
+  const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState("16:00");
   const [err, setErr]   = useState("");
 
   const submit = async (e) => {
     e.preventDefault();
     if (!patientName) { setErr("Selecciona un paciente."); return; }
-    if (!date.trim())  { setErr("Ingresa una fecha."); return; }
+    if (!date)  { setErr("Ingresa una fecha."); return; }
     if (!time.trim())  { setErr("Ingresa una hora."); return; }
     setErr("");
-    const ok = await onSubmit({ patientName, date, time });
+    const ok = await onSubmit({ patientName, date: isoToShortDate(date), time });
     if (ok) onClose();
   };
 
@@ -179,7 +177,7 @@ function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             <div className="input-group">
               <label className="input-label">Fecha</label>
-              <input className="input" type="text" value={date} onChange={e => setDate(e.target.value)} placeholder="7 Abr" />
+              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <div className="input-group">
               <label className="input-label">Hora</label>

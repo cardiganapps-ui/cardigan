@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
-
-const todayISO = () => new Date().toISOString().split("T")[0];
+import { todayISO } from "../data/api";
 const Toggle = ({ on, onToggle }) => (
   <button type="button" onClick={onToggle}
     style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: on ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}>

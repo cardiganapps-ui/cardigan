@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatShortDate } from "../data/api";
+import { todayISO, isoToShortDate } from "../data/api";
 import { IconX } from "./Icons";
 
 export function PaymentModal({
@@ -14,7 +14,7 @@ export function PaymentModal({
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState("Transferencia");
-  const [date, setDate] = useState(formatShortDate());
+  const [date, setDate] = useState(todayISO());
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function PaymentModal({
     setPatientName(initialPatientName || "");
     setAmount(initialAmount || "");
     setMethod("Transferencia");
-    setDate(formatShortDate());
+    setDate(todayISO());
     setFormError("");
   }, [open, initialPatientName, initialAmount]);
 
@@ -44,7 +44,7 @@ export function PaymentModal({
       patientName: patientName.trim(),
       amount: parsedAmount,
       method,
-      date,
+      date: isoToShortDate(date),
     });
     if (ok) onClose();
   };
@@ -78,7 +78,7 @@ export function PaymentModal({
           </div>
           <div className="input-group">
             <label className="input-label">Fecha</label>
-            <input className="input" type="text" value={date} onChange={(e) => setDate(e.target.value)} placeholder="7 Abr" />
+            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           {formError && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{formError}</div>}
           <button className="btn btn-primary" type="submit" disabled={mutating}>
