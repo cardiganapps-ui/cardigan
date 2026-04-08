@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData } from "./hooks/useCardiganData";
 import { Drawer } from "./components/Drawer";
@@ -34,18 +34,14 @@ export default function Cardigan() {
 function AppShell({ user, signOut }) {
   const [screen, setScreen] = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const data = useCardiganData();
   const {
-    patients,
-    upcomingSessions,
-    payments,
-    loading,
-    mutating,
-    mutationError,
-    createPayment,
-    createPatient,
-    createSession,
-    updateSessionStatus,
-  } = useCardiganData();
+    patients, upcomingSessions, payments,
+    loading, mutating, mutationError,
+    createPayment, createPatient, createSession,
+    updateSessionStatus, updatePatient, deletePatient,
+    deleteSession, deletePayment, refresh,
+  } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
 
@@ -60,21 +56,16 @@ function AppShell({ user, signOut }) {
     setPaymentModalOpen(true);
   };
 
-  const handleMarkSessionCompleted = async (session) => {
-    if (!session || session.status === "completed") return true;
-    return updateSessionStatus(session.id, "completed");
-  };
-
-  const handleCancelSession = async (session) => {
-    if (!session || session.status === "cancelled") return true;
-    return updateSessionStatus(session.id, "cancelled");
-  };
-
   const screenMap = {
-    home:     <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
-    agenda:   <Agenda upcomingSessions={upcomingSessions} patients={patients} onMarkSessionCompleted={handleMarkSessionCompleted} onCancelSession={handleCancelSession} mutating={mutating} />,
-    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
-    finances: <Finances patients={patients} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
+    home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
+    agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
+      onMarkSessionCompleted={async (s) => s?.status !== "completed" && await updateSessionStatus(s.id, "completed")}
+      onCancelSession={async (s) => s?.status !== "cancelled" && await updateSessionStatus(s.id, "cancelled")}
+      deleteSession={deleteSession} mutating={mutating} />,
+    patients: <Patients patients={patients} onRecordPayment={openRecordPaymentModal}
+      updatePatient={updatePatient} deletePatient={deletePatient} mutating={mutating} />,
+    finances: <Finances patients={patients} payments={payments}
+      onRecordPayment={openRecordPaymentModal} deletePayment={deletePayment} mutating={mutating} />,
     settings: <Settings user={user} signOut={signOut} />,
   };
 
@@ -94,14 +85,10 @@ function AppShell({ user, signOut }) {
         </div>
       </div>
       {loading && (
-        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>
-          Cargando datos...
-        </div>
+        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>Cargando datos...</div>
       )}
       {!loading && mutationError && (
-        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--red)" }}>
-          {mutationError}
-        </div>
+        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--red)" }}>{mutationError}</div>
       )}
       {screenMap[screen]}
       <PaymentModal

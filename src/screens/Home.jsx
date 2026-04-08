@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
-import { IconDollar, IconX } from "../components/Icons";
+import { IconDollar, IconX, IconPlus } from "../components/Icons";
 
-export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating }) {
+export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating, userName }) {
   const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const FULL_MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const todayStr     = `${TODAY.getDate()} ${SHORT_MONTHS[TODAY.getMonth()]}`;
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
-  const todayMonthName = FULL_MONTHS[TODAY.getMonth()];
 
   const totalBilled   = patients.reduce((s,p) => s+p.billed, 0);
   const totalPaid     = patients.reduce((s,p) => s+p.paid, 0);
@@ -28,6 +27,23 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
     if (p) setSelected(p);
   };
 
+  // Empty state
+  if (patients.length === 0 && payments.length === 0) {
+    return (
+      <div className="page" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"40px 24px" }}>
+        <div style={{ width:64, height:64, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
+          <IconPlus size={28} style={{ color:"var(--teal)" }} />
+        </div>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--charcoal)", marginBottom:8 }}>
+          Bienvenido{userName ? `, ${userName.split(" ")[0]}` : ""}
+        </div>
+        <div style={{ fontSize:14, color:"var(--charcoal-xl)", lineHeight:1.6, marginBottom:24, maxWidth:260 }}>
+          Empieza agregando tu primer paciente con el botón <strong>+</strong> abajo a la derecha.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
       <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -44,7 +60,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Cobrado (Mes)</div>
           <div className="kpi-value">${cobradoMes.toLocaleString()}</div>
-          <div className="kpi-meta">{todayMonthName} {TODAY.getFullYear()}</div>
+          <div className="kpi-meta">{FULL_MONTHS[TODAY.getMonth()]}</div>
         </div>
         <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Por Cobrar</div>
@@ -63,14 +79,14 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
             ? <div style={{ padding:"24px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>Sin sesiones hoy</div>
             : todaySessions.map(s => (
               <div className="row-item" key={s.id} onClick={() => openPatient(s.patient)}>
-                <div className="row-avatar" style={{ background: clientColors[s.colorIdx] }}>{s.initials}</div>
+                <div className="row-avatar" style={{ background: clientColors[s.colorIdx % clientColors.length] }}>{s.initials}</div>
                 <div className="row-content">
                   <div className="row-title">{s.patient}</div>
                   <div className="row-sub">{s.time} · {s.day}</div>
                 </div>
                 <div className="row-right">
                   <span className={`session-status ${s.status==="cancelled"?"status-cancelled":"status-scheduled"}`}>
-                    {s.status==="cancelled" ? "Cancelada" : "Agendada"}
+                    {s.status==="cancelled" ? "Cancelada" : s.status==="completed" ? "Completada" : "Agendada"}
                   </span>
                 </div>
               </div>
@@ -79,52 +95,56 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         </div>
       </div>
 
-      <div className="section" style={{ paddingTop:20 }}>
-        <div className="section-header">
-          <span className="section-title">Saldos Pendientes</span>
-          <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+      {patients.filter(p => p.billed > p.paid).length > 0 && (
+        <div className="section" style={{ paddingTop:20 }}>
+          <div className="section-header">
+            <span className="section-title">Saldos Pendientes</span>
+            <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+          </div>
+          <div className="card">
+            {patients.filter(p => p.billed > p.paid).slice(0,4).map((p,i) => {
+              const owed = p.billed - p.paid;
+              const pct  = p.billed > 0 ? (p.paid / p.billed) * 100 : 0;
+              return (
+                <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
+                  <div className="row-avatar" style={{ background: clientColors[i % clientColors.length] }}>{p.initials}</div>
+                  <div className="row-content">
+                    <div className="row-title">{p.name}</div>
+                    <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>
+                    <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} pagado de ${p.billed.toLocaleString()}</div>
+                  </div>
+                  <div className="row-right">
+                    <div className="row-amount amount-owe">-${owed.toLocaleString()}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="card">
-          {patients.filter(p => p.billed > p.paid).slice(0,4).map((p,i) => {
-            const owed = p.billed - p.paid;
-            const pct  = p.billed > 0 ? (p.paid / p.billed) * 100 : 0;
-            return (
-              <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
-                <div className="row-avatar" style={{ background: clientColors[i % clientColors.length] }}>{p.initials}</div>
+      )}
+
+      {payments.length > 0 && (
+        <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
+          <div className="section-header">
+            <span className="section-title">Últimos Pagos</span>
+            <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+          </div>
+          <div className="card">
+            {payments.slice(0,3).map(p => (
+              <div className="row-item" key={p.id} onClick={() => openPatient(p.patient)}>
+                <div className="row-icon" style={{ background:"var(--green-bg)", color:"var(--green)" }}><IconDollar size={18} /></div>
                 <div className="row-content">
-                  <div className="row-title">{p.name}</div>
-                  <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>
-                  <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} pagado de ${p.billed.toLocaleString()}</div>
+                  <div className="row-title">{p.patient}</div>
+                  <div className="row-sub">{p.date} · {p.method}</div>
                 </div>
                 <div className="row-right">
-                  <div className="row-amount amount-owe">-${owed.toLocaleString()}</div>
+                  <div className="row-amount amount-paid">+${p.amount.toLocaleString()}</div>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
-
-      <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
-        <div className="section-header">
-          <span className="section-title">Últimos Pagos</span>
-          <button className="see-all">Ver todos</button>
-        </div>
-        <div className="card">
-          {payments.slice(0,3).map(p => (
-            <div className="row-item" key={p.id} onClick={() => openPatient(p.patient)}>
-              <div className="row-icon" style={{ background:"var(--green-bg)", color:"var(--green)" }}><IconDollar size={18} /></div>
-              <div className="row-content">
-                <div className="row-title">{p.patient}</div>
-                <div className="row-sub">{p.date} · {p.method}</div>
-              </div>
-              <div className="row-right">
-                <div className="row-amount amount-paid">+${p.amount.toLocaleString()}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
       {selected && (
         <div className="sheet-overlay" onClick={() => setSelected(null)}>
@@ -148,7 +168,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                 ))}
               </div>
               {[
-                { label:"Tutor",            value: selected.parent },
+                { label:"Tutor",            value: selected.parent || "—" },
                 { label:"Sesión regular",   value:`${selected.day} a las ${selected.time}` },
                 { label:"Tarifa",           value:`$${selected.rate} por sesión` },
                 { label:"Sesiones totales", value:`${selected.sessions} sesiones` },
@@ -159,14 +179,10 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                 </div>
               ))}
-              <div style={{ marginTop:20, display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ marginTop:20 }}>
                 <button className="btn btn-primary" style={{ height:48 }} onClick={() => onRecordPayment(selected)} disabled={mutating}>
                   {mutating ? "Guardando..." : "Registrar pago"}
                 </button>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                  <button className="btn btn-secondary" style={{ height:44, fontSize:13 }}>Ver sesiones</button>
-                  <button className="btn btn-secondary" style={{ height:44, fontSize:13 }}>Editar</button>
-                </div>
               </div>
             </div>
           </div>
