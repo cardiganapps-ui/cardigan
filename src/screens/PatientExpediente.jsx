@@ -153,6 +153,10 @@ export function PatientExpediente({
               {patient.status === "active" ? "Activo" : "Finalizado"} · {patient.day} {patient.time}
             </div>
           </div>
+          <button onClick={() => onEdit(patient)}
+            style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
+            Editar
+          </button>
         </div>
         {/* Tabs */}
         <div style={{ display:"flex", gap:0, marginTop:16 }}>
@@ -286,21 +290,16 @@ export function PatientExpediente({
               ))}
             </div>
 
-            <div style={{ marginTop:16, display:"flex", flexDirection:"column", gap:10 }}>
-              <button className="btn btn-primary" style={{ height:44 }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
-                Registrar pago
+            <div style={{ marginTop:16, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+              <button className="btn btn-primary" style={{ height:44, fontSize:12 }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
+                Pago
               </button>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-                <button className="btn btn-secondary" style={{ height:44, fontSize:12 }} onClick={() => onEdit(patient)}>
-                  Editar
-                </button>
-                <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => onScheduleSession(patient)}>
-                  Sesión
-                </button>
-                <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-md)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
-                  Nota
-                </button>
-              </div>
+              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => onScheduleSession(patient)}>
+                Sesión
+              </button>
+              <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-md)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
+                Nota
+              </button>
             </div>
           </div>
         )}
