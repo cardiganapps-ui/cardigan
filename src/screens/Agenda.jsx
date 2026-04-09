@@ -277,7 +277,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 }
 
 /* ── AGENDA ROOT ── */
-export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating }) {
+export function Agenda({ upcomingSessions, patients, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating }) {
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
@@ -334,9 +334,14 @@ export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSess
         notes={notes}
         onClose={() => setSelectedSession(null)}
         onOpenNote={handleOpenNote}
-        onCancelSession={async (session, charge) => {
-          const ok = await onCancelSession(session, charge);
-          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled" } : prev));
+        onCancelSession={async (session, charge, reason) => {
+          const ok = await onCancelSession(session, charge, reason);
+          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
+        }}
+        onMarkCompleted={async (session, overrideStatus) => {
+          const st = overrideStatus || "completed";
+          const ok = await onMarkCompleted(session, overrideStatus);
+          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
         }}
         onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
         onReschedule={async (id, date, time) => {

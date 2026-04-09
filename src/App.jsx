@@ -132,7 +132,8 @@ function AppShell({ user, signOut, demo }) {
   const screenMap = {
     home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
-      onCancelSession={async (s, charge) => !readOnly && s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
+      onCancelSession={async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason)}
+      onMarkCompleted={async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed")}
       deleteSession={deleteSession} rescheduleSession={rescheduleSession}
       notes={notes} createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       mutating={mutating} />,

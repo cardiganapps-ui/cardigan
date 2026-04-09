@@ -63,15 +63,18 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  async function updateSessionStatus(sessionId, status, charge) {
+  async function updateSessionStatus(sessionId, status, charge, cancelReason) {
     setMutating(true);
     setMutationError("");
     const newStatus = (status === "cancelled" && charge) ? "charged" : status;
+    const update = { status: newStatus };
+    if (cancelReason !== undefined) update.cancel_reason = cancelReason || null;
+    if (newStatus === "scheduled" || newStatus === "completed") update.cancel_reason = null;
     const { error } = await supabase.from("sessions")
-      .update({ status: newStatus }).eq("id", sessionId);
+      .update(update).eq("id", sessionId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: newStatus } : s));
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...update } : s));
     return true;
   }
 

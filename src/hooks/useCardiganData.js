@@ -152,6 +152,8 @@ export function useCardiganData(user, viewAsUserId) {
     createNoteActions(userId, notes, setNotes);
 
   /* ── ENRICHMENT ── */
+  // Auto-complete is display-only — shows past scheduled sessions as "completed"
+  // but does NOT persist to DB. User can override any session status.
   const enrichedSessions = useMemo(() => {
     const now = new Date();
     return upcomingSessions.map(s => {
@@ -162,26 +164,10 @@ export function useCardiganData(user, viewAsUserId) {
         d.setHours(parseInt(h) || 0, parseInt(m) || 0);
       }
       d.setTime(d.getTime() + 60 * 60 * 1000);
-      if (now >= d) return { ...s, status: "completed" };
+      if (now >= d) return { ...s, status: "completed", _autoCompleted: true };
       return s;
     });
   }, [upcomingSessions]);
-
-  useEffect(() => {
-    const toComplete = enrichedSessions.filter((s, i) =>
-      s.status === "completed" && upcomingSessions[i]?.status === "scheduled" && s.id === upcomingSessions[i]?.id
-    );
-    if (toComplete.length > 0) {
-      Promise.all(toComplete.map(s =>
-        supabase.from("sessions").update({ status: "completed" }).eq("id", s.id)
-      )).then(() => {
-        setUpcomingSessions(prev => {
-          const ids = new Set(toComplete.map(s => s.id));
-          return prev.map(s => ids.has(s.id) ? { ...s, status: "completed" } : s);
-        });
-      });
-    }
-  }, [enrichedSessions, upcomingSessions]);
 
   const enrichedPatients = useMemo(() => {
     const now = new Date();

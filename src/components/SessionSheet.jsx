@@ -3,9 +3,12 @@ import { clientColors } from "../data/seedData";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconClipboard } from "./Icons";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onDelete, onReschedule, onOpenNote, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onOpenNote, mutating }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelCharge, setCancelCharge] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [rescheduleErr, setRescheduleErr] = useState("");
@@ -13,7 +16,9 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const patientData = patients?.find(p => p.name === session.patient);
   const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
   const isCancelled = session.status === "cancelled" || session.status === "charged";
-  const statusLabel = isCancelled ? (session.status === "charged" ? "Cancelada (cobrada)" : "Cancelada") : session.status === "completed" ? "Completada" : "Agendada";
+  const isCompleted = session.status === "completed";
+  const isScheduled = session.status === "scheduled";
+  const statusLabel = isCancelled ? (session.status === "charged" ? "Cancelada (cobrada)" : "Cancelada") : isCompleted ? "Completada" : "Agendada";
   const isTutor = session.initials?.startsWith("T·");
   const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
 
@@ -32,9 +37,20 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
     if (ok) setRescheduling(false);
   };
 
+  const startCancel = (charge) => {
+    setCancelCharge(charge);
+    setCancelReason("");
+    setCancelling(true);
+  };
+
+  const submitCancel = async () => {
+    const ok = await onCancelSession(session, cancelCharge, cancelReason.trim());
+    if (ok) setCancelling(false);
+  };
+
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Sesión</span>
@@ -53,7 +69,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
             {[
-              { label:"Estado", value: statusLabel, highlight: session.status==="scheduled" },
+              { label:"Estado", value: statusLabel, highlight: isScheduled },
               { label:"Tarifa", value: rate },
             ].map((item,i) => (
               <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
@@ -62,6 +78,14 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
               </div>
             ))}
           </div>
+
+          {/* Cancel reason display for already-cancelled sessions */}
+          {isCancelled && session.cancel_reason && (
+            <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"10px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", color:"var(--amber)", marginBottom:4 }}>Motivo de cancelación</div>
+              {session.cancel_reason}
+            </div>
+          )}
 
           {confirmDelete ? (
             <div style={{ textAlign:"center" }}>
@@ -88,21 +112,55 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
               <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>
                 {mutating ? "Guardando..." : "Confirmar"}
               </button>
-              <button className="btn btn-secondary w-full" onClick={() => setRescheduling(false)}>Cancelar</button>
+              <button className="btn btn-secondary w-full" onClick={() => setRescheduling(false)}>Volver</button>
+            </div>
+          ) : cancelling ? (
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>
+                {cancelCharge ? "Cancelar y cobrar" : "Cancelar sin cobrar"}
+              </div>
+              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:12, lineHeight:1.5 }}>
+                {cancelCharge ? "La sesión se cancelará pero se cobrará al paciente." : "La sesión se cancelará sin generar cargo."}
+              </div>
+              <div className="input-group">
+                <label className="input-label">Motivo (opcional)</label>
+                <textarea className="input" value={cancelReason} onChange={e => setCancelReason(e.target.value)}
+                  placeholder="Ej: Paciente no se presentó, aviso tardío..."
+                  rows={2} style={{ resize:"none", fontFamily:"var(--font)", fontSize:13 }} />
+              </div>
+              <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-lt)", color:"white", boxShadow:"none", fontWeight:700 }}
+                onClick={submitCancel} disabled={mutating}>
+                {mutating ? "Guardando..." : "Confirmar cancelación"}
+              </button>
+              <button className="btn btn-secondary w-full" onClick={() => setCancelling(false)}>Volver</button>
             </div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {session.status === "scheduled" && (
+              {/* Status change actions — available for ALL statuses */}
+              {!isCompleted && (
+                <button className="btn btn-primary" style={{ height:44 }}
+                  onClick={() => onMarkCompleted(session)} disabled={mutating}>
+                  Marcar como completada
+                </button>
+              )}
+              {!isCancelled && (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <button className="btn" style={{ height:44, fontSize:12, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
-                    onClick={() => onCancelSession(session, true)} disabled={mutating}>
+                    onClick={() => startCancel(true)} disabled={mutating}>
                     Cancelar y cobrar
                   </button>
                   <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-lt)", boxShadow:"none" }}
-                    onClick={() => onCancelSession(session, false)} disabled={mutating}>
+                    onClick={() => startCancel(false)} disabled={mutating}>
                     Cancelar sin cobrar
                   </button>
                 </div>
+              )}
+              {/* Revert cancelled/completed back to scheduled */}
+              {(isCompleted || isCancelled) && (
+                <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-mist)", color:"var(--teal-dark)", boxShadow:"none" }}
+                  onClick={() => onMarkCompleted(session, "scheduled")} disabled={mutating}>
+                  Marcar como agendada
+                </button>
               )}
               {onOpenNote && (() => {
                 const hasNote = notes?.some(n => n.session_id === session.id);

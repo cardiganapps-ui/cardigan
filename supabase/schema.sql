@@ -29,7 +29,8 @@ create table if not exists sessions (
   time text not null,
   day text not null,
   date text not null,
-  status text default 'scheduled' check (status in ('scheduled', 'completed', 'cancelled')),
+  status text default 'scheduled' check (status in ('scheduled', 'completed', 'cancelled', 'charged')),
+  cancel_reason text default null,
   color_idx integer default 0,
   created_at timestamptz default now()
 );
