@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { navItems } from "../data/seedData";
 import { IconHome, IconCalendar, IconUsers, IconDollar, IconSettings, IconStar, IconLogOut } from "./Icons";
+import { LogoIcon } from "./LogoMark";
 
 const NAV_ICONS = {
   home: IconHome,
@@ -92,7 +93,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeX
         <div className="drawer-panel" style={{ ...panelStyle, animation: "none" }}
           onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove} onTouchEnd={onPanelTouchEnd}>
           <div className="drawer-header">
-            <div className="drawer-logo">cardigan</div>
+            <div className="drawer-logo"><LogoIcon size={24} color="var(--teal-light)" /><span>cardigan</span></div>
             <div className="drawer-user">
               <div className="drawer-avatar">{userInitial}</div>
               <div>

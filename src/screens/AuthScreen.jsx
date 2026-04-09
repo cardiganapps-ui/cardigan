@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { LogoMark } from "../components/LogoMark";
+import { LogoIcon } from "../components/LogoMark";
 
 export function AuthScreen({ onSignIn, onSignUp }) {
   const [mode, setMode] = useState("login"); // login | signup | reset
@@ -45,7 +45,7 @@ export function AuthScreen({ onSignIn, onSignUp }) {
   return (
     <div className="auth-screen">
       <div className="auth-header">
-        <LogoMark size={36} />
+        <LogoIcon size={52} color="white" />
         <div className="auth-wordmark">cardigan</div>
         <div className="auth-tagline">Gestiona tu práctica. Sin complicaciones.</div>
       </div>

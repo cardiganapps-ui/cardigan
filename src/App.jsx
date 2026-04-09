@@ -6,6 +6,7 @@ import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { IconHome, IconSettings } from "./components/Icons";
+import { LogoIcon } from "./components/LogoMark";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -20,8 +21,9 @@ export default function Cardigan() {
 
   if (authLoading) {
     return (
-      <div className="shell" style={{ justifyContent:"center", alignItems:"center" }}>
-        <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--charcoal-xl)" }}>cardigan</div>
+      <div className="shell" style={{ justifyContent:"center", alignItems:"center", gap:12 }}>
+        <LogoIcon size={48} color="var(--teal)" />
+        <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.3px" }}>cardigan</div>
       </div>
     );
   }
@@ -155,7 +157,7 @@ function AppShell({ user, signOut }) {
           <div className="hamburger-line" />
           <div className="hamburger-line" />
         </button>
-        <div className="topbar-brand">cardigan</div>
+        <div className="topbar-brand"><LogoIcon size={20} color="white" /><span>cardigan</span></div>
         <div className="topbar-right">
           {admin && !readOnly && (
             <button className="icon-btn" onClick={() => setShowAdmin(true)} aria-label="Admin"

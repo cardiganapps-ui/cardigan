@@ -68,7 +68,7 @@ html, body {
   display: flex; align-items: center; justify-content: space-between;
   position: relative;
 }
-.topbar-brand { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); }
+.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 
 .icon-btn {
@@ -148,6 +148,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .drawer-logo {
+  display: flex; align-items: center; gap: 8px;
   font-family: var(--font-d); font-size: 22px; font-weight: 800;
   color: white; letter-spacing: -0.4px; margin-bottom: 16px;
 }
