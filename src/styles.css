@@ -435,6 +435,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   animation: slideUp 0.25s ease;
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes expedientePullUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 4px; }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; }
 .sheet-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); }
