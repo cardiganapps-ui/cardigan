@@ -243,12 +243,12 @@ export function PatientExpediente({
             {/* Financials — filtered */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16, alignItems:"stretch" }}>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Vendido</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Vendido</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
               </div>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Cobrado</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Cobrado</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
               </div>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center" }}>
                 <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Saldo</div>
