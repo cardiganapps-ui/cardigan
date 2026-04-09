@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { DAY_ORDER } from "../data/seedData";
 import { todayISO, isoToShortDate } from "../data/api";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconX } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconX } from "./Icons";
+import { NoteEditor } from "./NoteEditor";
 
 const ACTIONS = [
   { key:"patient", Icon: IconUserPlus,     label:"Paciente" },
   { key:"payment", Icon: IconDollar,       label:"Pago" },
   { key:"session", Icon: IconCalendarPlus, label:"Sesión" },
+  { key:"note",    Icon: IconClipboard,    label:"Nota" },
 ];
 
 const Toggle = ({ on, onToggle, type }) => (
@@ -241,12 +243,97 @@ function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
   );
 }
 
+/* ── NEW NOTE SHEET ── */
+function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateNote, deleteNote }) {
+  const [patientId, setPatientId] = useState("");
+  const [sessionId, setSessionId] = useState("");
+  const [editingNote, setEditingNote] = useState(null);
+
+  const selectedPatient = patients.find(p => p.id === patientId);
+  const patientSessions = patientId
+    ? (upcomingSessions || []).filter(s => s.patient_id === patientId).sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    : [];
+
+  const startNote = async () => {
+    const note = await createNote({
+      patientId: patientId || null,
+      sessionId: sessionId || null,
+    });
+    if (note) setEditingNote(note);
+  };
+
+  if (editingNote) {
+    return (
+      <NoteEditor
+        note={editingNote}
+        onSave={async ({ title, content }) => await updateNote(editingNote.id, { title, content })}
+        onDelete={async () => { await deleteNote(editingNote.id); }}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span className="sheet-title">Nueva nota</span>
+          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
+        </div>
+        <div style={{ padding:"0 20px 22px" }}>
+          <div className="input-group">
+            <label className="input-label">Vincular a paciente</label>
+            <select className="input" value={patientId} onChange={e => { setPatientId(e.target.value); setSessionId(""); }}>
+              <option value="">General (sin paciente)</option>
+              {patients.filter(p => p.status === "active").map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {patientId && patientSessions.length > 0 && (
+            <div className="input-group">
+              <label className="input-label">Vincular a sesión</label>
+              <select className="input" value={sessionId} onChange={e => setSessionId(e.target.value)}>
+                <option value="">Nota general del paciente</option>
+                {patientSessions.map(s => (
+                  <option key={s.id} value={s.id}>{s.date} · {s.time} — {s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : "Cancelada"}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {patientId && (
+            <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+              Paciente: <strong>{selectedPatient?.name}</strong>
+              {sessionId ? <><br />Sesión: <strong>{patientSessions.find(s => s.id === sessionId)?.date} · {patientSessions.find(s => s.id === sessionId)?.time}</strong></> : <><br />Nota general (sin sesión específica)</>}
+            </div>
+          )}
+
+          {!patientId && (
+            <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+              Nota rápida — no vinculada a ningún paciente
+            </div>
+          )}
+
+          <button className="btn btn-primary" onClick={startNote}>
+            Crear nota
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── QUICK ACTIONS (FAB + MENU + SHEETS) ── */
 export function QuickActions({
   patients,
+  upcomingSessions,
   onOpenPaymentModal,
   createPatient,
   createSession,
+  createNote, updateNote, deleteNote,
   mutating,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -287,6 +374,10 @@ export function QuickActions({
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} mutating={mutating} />
+      )}
+      {activeSheet === "note" && (
+        <NewNoteSheet onClose={closeSheet} patients={patients} upcomingSessions={upcomingSessions}
+          createNote={createNote} updateNote={updateNote} deleteNote={deleteNote} />
       )}
     </>
   );
