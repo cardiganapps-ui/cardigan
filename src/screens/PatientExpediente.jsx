@@ -265,9 +265,8 @@ export function PatientExpediente({
                 { label:"Tutor", value: patient.parent || "—" },
                 { label:"Sesión regular", value:`${patient.day} a las ${patient.time}` },
                 { label:"Tarifa", value:`$${patient.rate} por sesión` },
-                { label:"Total sesiones", value: String(pSessions.length) },
-              ].map((row, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", borderBottom: i < 3 ? "1px solid var(--border-lt)" : "none" }}>
+              ].map((row, i, arr) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
                   <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                 </div>
