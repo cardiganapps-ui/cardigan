@@ -71,3 +71,15 @@ create policy "Users manage own patients" on patients for all using (auth.uid() 
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
 create policy "Users manage own payments" on payments for all using (auth.uid() = user_id);
 create policy "Users manage own notes" on notes for all using (auth.uid() = user_id);
+
+-- Admin read-only access (can view all users' data)
+create or replace function is_admin() returns boolean as $$
+begin
+  return auth.jwt() ->> 'email' = 'gaxioladiego@gmail.com';
+end;
+$$ language plpgsql security definer;
+
+create policy "Admin reads all patients" on patients for select using (is_admin());
+create policy "Admin reads all sessions" on sessions for select using (is_admin());
+create policy "Admin reads all payments" on payments for select using (is_admin());
+create policy "Admin reads all notes" on notes for select using (is_admin());

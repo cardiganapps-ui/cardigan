@@ -1,17 +1,18 @@
 import { useState, useRef, useCallback } from "react";
 import { useAuth } from "./hooks/useAuth";
-import { useCardiganData } from "./hooks/useCardiganData";
+import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
-import { IconHome } from "./components/Icons";
+import { IconHome, IconSettings } from "./components/Icons";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
 import { Finances } from "./screens/Finances";
 import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
+import { AdminPanel } from "./screens/AdminPanel";
 import "./styles.css";
 
 export default function Cardigan() {
@@ -35,10 +36,14 @@ export default function Cardigan() {
 function AppShell({ user, signOut }) {
   const [screen, setScreen] = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const data = useCardiganData(user);
+  const [viewAsUserId, setViewAsUserId] = useState(null);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const admin = isAdmin(user);
+
+  const data = useCardiganData(user, viewAsUserId);
   const {
     patients, upcomingSessions, payments, notes,
-    loading, mutating, mutationError,
+    loading, mutating, mutationError, readOnly,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
     deleteSession, rescheduleSession, deletePayment,
@@ -53,6 +58,7 @@ function AppShell({ user, signOut }) {
   const userInitial = userName.charAt(0).toUpperCase();
 
   const openRecordPaymentModal = (patient) => {
+    if (readOnly) return;
     setPaymentDraft({
       patientName: patient?.name || "",
       amount: patient ? String(patient.amountDue || 0) : "",
@@ -106,7 +112,7 @@ function AppShell({ user, signOut }) {
   const screenMap = {
     home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
-      onCancelSession={async (s, charge) => s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
+      onCancelSession={async (s, charge) => !readOnly && s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
       deleteSession={deleteSession} rescheduleSession={rescheduleSession}
       notes={notes} createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       mutating={mutating} />,
@@ -122,6 +128,18 @@ function AppShell({ user, signOut }) {
   return (
     <div className="shell" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="status-bar" />
+
+      {/* Read-only banner when viewing as another user */}
+      {readOnly && (
+        <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>Modo lectura — viendo como otro usuario</span>
+          <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
+            style={{ fontSize:11, fontWeight:700, color:"var(--teal-light)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
+            Salir
+          </button>
+        </div>
+      )}
+
       <div className="topbar">
         <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
           <div className="hamburger-line" />
@@ -130,6 +148,12 @@ function AppShell({ user, signOut }) {
         </button>
         <div className="topbar-brand">cardigan</div>
         <div className="topbar-right">
+          {admin && !readOnly && (
+            <button className="icon-btn" onClick={() => setShowAdmin(true)} aria-label="Admin"
+              style={{ fontSize:10, fontWeight:800, color:"var(--charcoal-xl)", letterSpacing:"0.05em" }}>
+              <IconSettings size={16} />
+            </button>
+          )}
           <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Inicio"><IconHome size={18} /></button>
           <div className="avatar-sm">{userInitial}</div>
         </div>
@@ -143,26 +167,37 @@ function AppShell({ user, signOut }) {
       <PullToRefresh onRefresh={refresh}>
         {screenMap[screen]}
       </PullToRefresh>
-      <PaymentModal
-        open={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        patients={patients}
-        initialPatientName={paymentDraft.patientName}
-        initialAmount={paymentDraft.amount}
-        onSubmit={createPayment}
-        mutating={mutating}
-      />
-      <QuickActions
-        patients={patients}
-        upcomingSessions={upcomingSessions}
-        onOpenPaymentModal={() => openRecordPaymentModal(null)}
-        createPatient={createPatient}
-        createSession={createSession}
-        createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
-        mutating={mutating}
-      />
+      {!readOnly && (
+        <>
+          <PaymentModal
+            open={paymentModalOpen}
+            onClose={() => setPaymentModalOpen(false)}
+            patients={patients}
+            initialPatientName={paymentDraft.patientName}
+            initialAmount={paymentDraft.amount}
+            onSubmit={createPayment}
+            mutating={mutating}
+          />
+          <QuickActions
+            patients={patients}
+            upcomingSessions={upcomingSessions}
+            onOpenPaymentModal={() => openRecordPaymentModal(null)}
+            createPatient={createPatient}
+            createSession={createSession}
+            createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
+            mutating={mutating}
+          />
+        </>
+      )}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeX={swipeX} />
+
+      {showAdmin && (
+        <AdminPanel
+          onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
+          onClose={() => setShowAdmin(false)}
+        />
+      )}
     </div>
   );
 }

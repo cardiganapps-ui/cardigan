@@ -52,8 +52,29 @@ function parseShortDate(str) {
   return new Date(new Date().getFullYear(), mIdx >= 0 ? mIdx : 0, parseInt(dayNum) || 1);
 }
 
-export function useCardiganData(user) {
-  const userId = user?.id;
+const ADMIN_EMAIL = "gaxioladiego@gmail.com";
+
+export function isAdmin(user) {
+  return user?.email === ADMIN_EMAIL;
+}
+
+export async function fetchAllAccounts() {
+  // Admin-only: fetches all patients to derive unique user accounts
+  const { data } = await supabase.from("patients").select("user_id, name, created_at").order("created_at");
+  if (!data) return [];
+  const accounts = new Map();
+  data.forEach(p => {
+    if (!accounts.has(p.user_id)) {
+      accounts.set(p.user_id, { userId: p.user_id, patients: [], firstSeen: p.created_at });
+    }
+    accounts.get(p.user_id).patients.push(p.name);
+  });
+  return [...accounts.values()];
+}
+
+export function useCardiganData(user, viewAsUserId) {
+  const userId = viewAsUserId || user?.id;
+  const readOnly = !!viewAsUserId;
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -64,18 +85,23 @@ export function useCardiganData(user) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    const q = (table) => {
+      let query = supabase.from(table).select("*");
+      if (readOnly) query = query.eq("user_id", userId);
+      return query;
+    };
     const [pRes, sRes, pmRes, nRes] = await Promise.all([
-      supabase.from("patients").select("*").order("name"),
-      supabase.from("sessions").select("*").order("created_at"),
-      supabase.from("payments").select("*").order("created_at", { ascending: false }),
-      supabase.from("notes").select("*").order("updated_at", { ascending: false }),
+      q("patients").order("name"),
+      q("sessions").order("created_at"),
+      q("payments").order("created_at", { ascending: false }),
+      q("notes").order("updated_at", { ascending: false }),
     ]);
 
     let pData = mapRows(pRes.data);
     let sData = mapRows(sRes.data);
 
-    // Auto-extend recurring sessions for active patients
-    if (userId) {
+    // Auto-extend recurring sessions for active patients (skip in read-only)
+    if (userId && !readOnly) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const threshold = new Date(today);
@@ -145,7 +171,7 @@ export function useCardiganData(user) {
     setPayments(mapRows(pmRes.data));
     setNotes(nRes.data || []);
     setLoading(false);
-  }, [userId]);
+  }, [userId, readOnly]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -566,7 +592,7 @@ export function useCardiganData(user) {
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes,
-    loading, mutating, mutationError,
+    loading, mutating, mutationError, readOnly,
     createPatient, updatePatient, deletePatient,
     createSession, updateSessionStatus, deleteSession, rescheduleSession,
     generateRecurringSessions, applyScheduleChange,
