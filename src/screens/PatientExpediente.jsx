@@ -25,8 +25,11 @@ export function PatientExpediente({
 }) {
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 3);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  });
+  const [dateTo, setDateTo] = useState(todayISO());
 
   const pSessions = useMemo(() =>
     (upcomingSessions || [])
