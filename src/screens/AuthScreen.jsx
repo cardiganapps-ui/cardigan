@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { LogoIcon } from "../components/LogoMark";
 
-export function AuthScreen({ onSignIn, onSignUp }) {
+export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
   const [mode, setMode] = useState("login"); // login | signup | reset
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -104,6 +104,13 @@ export function AuthScreen({ onSignIn, onSignUp }) {
             )}
           </>
         )}
+        <div style={{ marginTop:24, paddingTop:20, borderTop:"1px solid var(--border-lt)", textAlign:"center" }}>
+          <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:10 }}>¿Quieres explorar primero?</div>
+          <button type="button" onClick={onDemo}
+            style={{ padding:"12px 28px", fontSize:13, fontWeight:700, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--teal)", background:"var(--white)", color:"var(--teal-dark)", cursor:"pointer", fontFamily:"var(--font)" }}>
+            Ver demo
+          </button>
+        </div>
       </div>
     </div>
   );

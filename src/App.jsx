@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
+import { useDemoData } from "./hooks/useDemoData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
@@ -19,8 +20,9 @@ import "./styles.css";
 
 export default function Cardigan() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
+  const [demoMode, setDemoMode] = useState(false);
 
-  if (authLoading) {
+  if (authLoading && !demoMode) {
     return (
       <div className="shell" style={{ justifyContent:"center", alignItems:"center", gap:12 }}>
         <LogoIcon size={48} color="var(--teal)" />
@@ -29,14 +31,18 @@ export default function Cardigan() {
     );
   }
 
+  if (demoMode) {
+    return <AppShell user={null} signOut={() => setDemoMode(false)} demo />;
+  }
+
   if (!user) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => setDemoMode(true)} />;
   }
 
   return <AppShell user={user} signOut={signOut} />;
 }
 
-function AppShell({ user, signOut }) {
+function AppShell({ user, signOut, demo }) {
   const validScreens = ["home", "agenda", "patients", "finances", "settings"];
   const [screen, setScreenRaw] = useState(() => {
     const hash = window.location.hash.replace("#", "");
@@ -50,9 +56,11 @@ function AppShell({ user, signOut }) {
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [hideFab, setHideFab] = useState(false);
-  const admin = isAdmin(user);
+  const admin = !demo && isAdmin(user);
 
-  const data = useCardiganData(user, viewAsUserId);
+  const liveData = useCardiganData(demo ? null : user, viewAsUserId);
+  const demoData = useDemoData();
+  const data = demo ? demoData : liveData;
   const {
     patients, upcomingSessions, payments, notes,
     loading, mutating, mutationError, readOnly,
@@ -66,7 +74,7 @@ function AppShell({ user, signOut }) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
 
-  const userName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuario";
+  const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
 
   const openRecordPaymentModal = (patient) => {
@@ -141,8 +149,19 @@ function AppShell({ user, signOut }) {
     <div className="shell" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="status-bar" />
 
+      {/* Demo banner */}
+      {demo && (
+        <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>Modo demo — datos ficticios</span>
+          <button onClick={signOut}
+            style={{ fontSize:11, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
+            Crear cuenta
+          </button>
+        </div>
+      )}
+
       {/* Read-only banner when viewing as another user */}
-      {readOnly && (
+      {readOnly && !demo && (
         <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
           <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>Modo lectura — viendo como otro usuario</span>
           <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
