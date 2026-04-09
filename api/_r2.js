@@ -12,14 +12,21 @@ export const r2 = new S3Client({
 
 export const BUCKET = process.env.R2_BUCKET_NAME || "cardigan-documents";
 
+// Validate file path: must belong to user and contain no traversal
+export function validatePath(path, userId) {
+  if (!path || typeof path !== "string" || path.length > 512) return false;
+  if (path.includes("..") || path.includes("//")) return false;
+  return path.startsWith(`${userId}/`);
+}
+
 // Verify Supabase JWT and extract user_id
 export async function getAuthUser(req) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) return null;
   const token = auth.slice(7);
   const supabase = createClient(
-    process.env.SUPABASE_URL || "https://axyuqfkmifcaupwhzfuw.supabase.co",
-    process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4eXVxZmttaWZjYXVwd2h6ZnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTMyODksImV4cCI6MjA5MTE4OTI4OX0.8T-_1k64HeNf8Xc4-2fODGG-2lZCPDE66pNXcsRe5YU"
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
   );
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;

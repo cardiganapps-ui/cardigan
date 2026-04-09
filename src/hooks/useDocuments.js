@@ -43,7 +43,15 @@ export function createDocumentActions(userId, documents, setDocuments) {
       file_type: file.type || "application/octet-stream",
       file_size: file.size,
     }).select().single();
-    if (error) return null;
+    if (error) {
+      // Clean up orphaned R2 file
+      const delHeaders = await authHeaders();
+      await fetch("/api/delete-document", {
+        method: "POST", headers: delHeaders,
+        body: JSON.stringify({ path }),
+      }).catch(() => {});
+      return null;
+    }
     setDocuments(prev => [data, ...prev]);
     return data;
   }
