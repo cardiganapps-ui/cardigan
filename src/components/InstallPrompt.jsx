@@ -21,7 +21,7 @@ export function InstallPrompt() {
   };
 
   return (
-    <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:600, padding:"0 12px 12px", animation:"fadeIn 0.3s ease" }}>
+    <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:"var(--z-install)", padding:"0 12px 12px", animation:"fadeIn 0.3s ease" }}>
       <div style={{ background:"var(--white)", borderRadius:16, boxShadow:"0 -2px 24px rgba(0,0,0,0.15)", padding:"18px 18px 14px", maxWidth:400, margin:"0 auto" }}>
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)", marginBottom:10 }}>

@@ -244,12 +244,12 @@ export function PatientExpediente({
     <>
     {/* Backdrop */}
     <div className="expediente-open" onClick={onClose}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:499, animation:"fadeIn 0.4s ease" }} />
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)", animation:"fadeIn 0.4s ease" }} />
 
     {/* Card */}
     <div className="expediente-open"
       style={{
-        position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:500,
+        position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--nav-bg)",
         borderRadius:"20px 20px 0 0",
@@ -641,10 +641,10 @@ export function PatientExpediente({
       const linkedSession = doc.session_id ? pSessions.find(s => s.id === doc.session_id) : null;
       return (
         <>
-          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:600, animation:"fadeIn 0.2s ease" }}
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:"var(--z-doc-viewer-bg)", animation:"fadeIn 0.2s ease" }}
             onClick={() => setViewingDoc(null)} />
           <div style={{
-            position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:601,
+            position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-doc-viewer)",
             display:"flex", flexDirection:"column", background:"var(--cream)",
             borderRadius:"20px 20px 0 0", overflow:"hidden",
             animation:"expedientePullUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",

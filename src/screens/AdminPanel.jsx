@@ -14,7 +14,7 @@ export function AdminPanel({ onViewAs, onClose }) {
   }, []);
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:500, display:"flex", flexDirection:"column" }}>
+    <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-expediente)", display:"flex", flexDirection:"column" }}>
       <div style={{ background:"#1a1a2e", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white" }}>Panel de Admin</div>

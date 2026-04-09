@@ -158,7 +158,7 @@ function AppShell({ user, signOut, demo }) {
 
       {/* Demo banner */}
       {demo && (
-        <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+        <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)" }}>
           <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>Modo demo — datos ficticios</span>
           <button onClick={signOut}
             style={{ fontSize:11, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
@@ -169,7 +169,7 @@ function AppShell({ user, signOut, demo }) {
 
       {/* Read-only banner when viewing as another user */}
       {readOnly && !demo && (
-        <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:10 }}>
+        <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)" }}>
           <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>Modo lectura — viendo como otro usuario</span>
           <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
             style={{ fontSize:11, fontWeight:700, color:"var(--teal-light)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>

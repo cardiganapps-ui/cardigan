@@ -37,6 +37,34 @@
   --font-d:      'Nunito', sans-serif;
   --sat: env(safe-area-inset-top, 44px);
   --sab: env(safe-area-inset-bottom, 34px);
+  /* ── Z-index scale ──
+     10   banners (demo, read-only)
+     50   fab-overlay
+     51   fab-menu
+     52   fab
+     100  sheets (payment, new patient/session/note/document)
+     200  drawer-overlay
+     201  drawer
+     300  expediente-backdrop
+     301  expediente-card / admin-panel
+     400  note-editor (full takeover)
+     500  doc-viewer-backdrop
+     501  doc-viewer-panel
+     600  install-prompt
+  */
+  --z-banner:         10;
+  --z-fab-overlay:    50;
+  --z-fab-menu:       51;
+  --z-fab:            52;
+  --z-sheet:          100;
+  --z-drawer-overlay: 200;
+  --z-drawer:         201;
+  --z-expediente-bg:  300;
+  --z-expediente:     301;
+  --z-note-editor:    400;
+  --z-doc-viewer-bg:  500;
+  --z-doc-viewer:     501;
+  --z-install:        600;
 }
 
 html, body {
@@ -108,7 +136,7 @@ html, body {
 /* DRAWER OVERLAY */
 .drawer-overlay {
   position: fixed; inset: 0; background: rgba(20,35,40,0.5);
-  z-index: 300; backdrop-filter: blur(2px);
+  z-index: var(--z-drawer-overlay); backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -129,7 +157,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   height: 100dvh;
   display: flex; flex-direction: column;
   pointer-events: none;
-  z-index: 301;
+  z-index: var(--z-drawer);
 }
 .drawer-panel {
   position: absolute; top: 0; left: 0;
@@ -216,7 +244,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   font-size: 28px; font-weight: 300; color: white;
   line-height: 54px; padding: 0; text-indent: 0;
   box-shadow: 0 3px 14px rgba(91,155,175,0.35);
-  cursor: pointer; z-index: 52;
+  cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s, background 0.2s;
 }
@@ -227,7 +255,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .fab-overlay {
   position: fixed; inset: 0;
   background: rgba(20,35,40,0.45);
-  z-index: 50; backdrop-filter: blur(3px);
+  z-index: var(--z-fab-overlay); backdrop-filter: blur(3px);
   animation: fadeIn 0.15s ease;
 }
 
@@ -237,7 +265,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   right: 20px;
   display: flex; flex-direction: column; gap: 10px;
   align-items: flex-end;
-  z-index: 51;
+  z-index: var(--z-fab-menu);
 }
 
 .fab-action {
@@ -426,7 +454,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .settings-chevron { color: var(--border); margin-left: auto; display: flex; align-items: center; }
 
 /* DETAIL SHEET */
-.sheet-overlay { position: fixed; inset: 0; background: rgba(46,46,46,0.4); z-index: 550; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-overlay { position: fixed; inset: 0; background: rgba(46,46,46,0.4); z-index: var(--z-sheet); display: flex; align-items: flex-end; justify-content: center; }
 .sheet-panel {
   background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%;
