@@ -335,6 +335,25 @@ export function Patients({ patients, upcomingSessions, notes, payments, onRecord
           payments={payments}
           onClose={() => setExpediente(null)}
           onRecordPayment={onRecordPayment}
+          onEdit={(p) => {
+            setExpediente(null);
+            setSelected(p);
+            const scheds = [{ day: p.day, time: p.time }];
+            setEditName(p.name);
+            setEditIsMinor(!!p.parent);
+            setEditParent(p.parent || "");
+            setEditRate(String(p.rate));
+            setEditStatus(p.status);
+            setEditSchedules(scheds);
+            setOrigRate(p.rate);
+            setOrigSchedules(JSON.stringify(scheds));
+            setEffectiveDate(todayISO());
+            setHasEndDate(false);
+            setEndDate("");
+            setEditing(true);
+            setConfirmDelete(false);
+          }}
+          onScheduleSession={() => { setExpediente(null); }}
           createSession={createSession}
           createNote={createNote}
           updateNote={updateNote}

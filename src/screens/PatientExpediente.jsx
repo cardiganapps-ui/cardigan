@@ -20,7 +20,7 @@ function statusClass(s) {
 
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments,
-  onClose, onRecordPayment, createSession, createNote, updateNote, deleteNote,
+  onClose, onRecordPayment, onEdit, onScheduleSession, createSession, createNote, updateNote, deleteNote,
   mutating,
 }) {
   const [tab, setTab] = useState("resumen");
@@ -286,9 +286,19 @@ export function PatientExpediente({
               ))}
             </div>
 
-            <button className="btn btn-primary" style={{ marginTop:16, height:48 }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
-              Registrar pago
-            </button>
+            <div style={{ marginTop:16, display:"flex", flexDirection:"column", gap:10 }}>
+              <button className="btn btn-primary" style={{ height:44 }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
+                Registrar pago
+              </button>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <button className="btn btn-secondary" style={{ height:44, fontSize:13 }} onClick={() => onEdit(patient)}>
+                  Editar paciente
+                </button>
+                <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => onScheduleSession(patient)}>
+                  Agendar sesión
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
