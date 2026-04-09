@@ -4,6 +4,7 @@ import { useCardiganData } from "./hooks/useCardiganData";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
+import { PullToRefresh } from "./components/PullToRefresh";
 import { IconHome } from "./components/Icons";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
@@ -43,6 +44,7 @@ function AppShell({ user, signOut }) {
     deleteSession, rescheduleSession, deletePayment,
     generateRecurringSessions, applyScheduleChange,
     createNote, updateNote, deleteNote,
+    refresh,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
@@ -138,7 +140,9 @@ function AppShell({ user, signOut }) {
       {!loading && mutationError && (
         <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--red)" }}>{mutationError}</div>
       )}
-      {screenMap[screen]}
+      <PullToRefresh onRefresh={refresh}>
+        {screenMap[screen]}
+      </PullToRefresh>
       <PaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
