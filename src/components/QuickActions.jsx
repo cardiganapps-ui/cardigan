@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { DAY_ORDER } from "../data/seedData";
-import { todayISO, isoToShortDate } from "../data/api";
+import { todayISO, isoToShortDate, shortDateToISO } from "../data/api";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconX } from "./Icons";
 import { NoteEditor } from "./NoteEditor";
 
@@ -244,15 +244,51 @@ function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
 }
 
 /* ── NEW NOTE SHEET ── */
+function findClosestPastSession(sessions) {
+  const now = todayISO();
+  let best = null;
+  for (const s of sessions) {
+    const iso = shortDateToISO(s.date);
+    if (iso > now) continue;
+    if (!best || iso > shortDateToISO(best.date) || (iso === shortDateToISO(best.date) && (s.time || "") > (best.time || ""))) {
+      best = s;
+    }
+  }
+  return best;
+}
+
+function sessionLabel(s) {
+  const st = s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : "Cancelada";
+  return `${s.date} · ${s.time} — ${st}`;
+}
+
 function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateNote, deleteNote }) {
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
+  const [autoLinked, setAutoLinked] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
 
   const selectedPatient = patients.find(p => p.id === patientId);
   const patientSessions = patientId
-    ? (upcomingSessions || []).filter(s => s.patient_id === patientId).sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    ? (upcomingSessions || []).filter(s => s.patient_id === patientId).sort((a, b) => {
+        const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
+        if (da !== db) return db.localeCompare(da);
+        return (b.time || "").localeCompare(a.time || "");
+      })
     : [];
+
+  const handlePatientChange = (newId) => {
+    setPatientId(newId);
+    if (newId) {
+      const pSess = (upcomingSessions || []).filter(s => s.patient_id === newId);
+      const closest = findClosestPastSession(pSess);
+      setSessionId(closest?.id || "");
+      setAutoLinked(!!closest);
+    } else {
+      setSessionId("");
+      setAutoLinked(false);
+    }
+  };
 
   const startNote = async () => {
     const note = await createNote({
@@ -273,6 +309,8 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
     );
   }
 
+  const linkedSession = sessionId ? patientSessions.find(s => s.id === sessionId) : null;
+
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
@@ -284,7 +322,7 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
         <div style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
             <label className="input-label">Vincular a paciente</label>
-            <select className="input" value={patientId} onChange={e => { setPatientId(e.target.value); setSessionId(""); }}>
+            <select className="input" value={patientId} onChange={e => handlePatientChange(e.target.value)}>
               <option value="">General (sin paciente)</option>
               {patients.filter(p => p.status === "active").map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -295,27 +333,32 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
           {patientId && patientSessions.length > 0 && (
             <div className="input-group">
               <label className="input-label">Vincular a sesión</label>
-              <select className="input" value={sessionId} onChange={e => setSessionId(e.target.value)}>
+              <select className="input" value={sessionId} onChange={e => { setSessionId(e.target.value); setAutoLinked(false); }}>
                 <option value="">Nota general del paciente</option>
                 {patientSessions.map(s => (
-                  <option key={s.id} value={s.id}>{s.date} · {s.time} — {s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : "Cancelada"}</option>
+                  <option key={s.id} value={s.id}>{sessionLabel(s)}</option>
                 ))}
               </select>
+              {autoLinked && linkedSession && (
+                <div style={{ fontSize:11, color:"var(--teal-dark)", marginTop:4 }}>
+                  Vinculada a la sesión más reciente
+                </div>
+              )}
             </div>
           )}
 
-          {patientId && (
-            <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-              Paciente: <strong>{selectedPatient?.name}</strong>
-              {sessionId ? <><br />Sesión: <strong>{patientSessions.find(s => s.id === sessionId)?.date} · {patientSessions.find(s => s.id === sessionId)?.time}</strong></> : <><br />Nota general (sin sesión específica)</>}
-            </div>
-          )}
-
-          {!patientId && (
-            <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-              Nota rápida — no vinculada a ningún paciente
-            </div>
-          )}
+          <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+            {patientId ? (
+              <>
+                Paciente: <strong>{selectedPatient?.name}</strong><br />
+                {linkedSession
+                  ? <>Sesión: <strong>{linkedSession.date} · {linkedSession.time}</strong></>
+                  : <>Nota general (sin sesión específica)</>}
+              </>
+            ) : (
+              <>Nota rápida — no vinculada a ningún paciente</>
+            )}
+          </div>
 
           <button className="btn btn-primary" onClick={startNote}>
             Crear nota
