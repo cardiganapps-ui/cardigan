@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { navItems } from "../data/seedData";
-import { IconHome, IconCalendar, IconUsers, IconDollar, IconSettings, IconStar, IconLogOut } from "./Icons";
+import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconSettings, IconStar, IconLogOut } from "./Icons";
 import { LogoIcon } from "./LogoMark";
 
 const NAV_ICONS = {
@@ -8,6 +8,7 @@ const NAV_ICONS = {
   calendar: IconCalendar,
   users: IconUsers,
   dollar: IconDollar,
+  document: IconDocument,
   settings: IconSettings,
 };
 

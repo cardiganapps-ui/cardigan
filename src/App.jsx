@@ -13,6 +13,7 @@ import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
 import { Finances } from "./screens/Finances";
+import { Documents } from "./screens/Documents";
 import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
@@ -145,6 +146,9 @@ function AppShell({ user, signOut, demo }) {
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} setHideFab={setHideFab} />,
     finances: <Finances patients={patients} payments={payments}
       onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />,
+    documents: <Documents documents={documents} patients={patients} upcomingSessions={upcomingSessions}
+      uploadDocument={uploadDocument} renameDocument={renameDocument} tagDocumentSession={tagDocumentSession}
+      deleteDocument={deleteDocument} getDocumentUrl={getDocumentUrl} mutating={mutating} />,
     settings: <Settings user={user} signOut={signOut} />,
   };
 
