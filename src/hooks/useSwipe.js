@@ -4,6 +4,7 @@ export function useSwipe(onLeft, onRight) {
   const ref = useRef(null);
   const [offset, setOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
+  const [animating, setAnimating] = useState(false);
 
   const onTouchStart = useCallback((e) => {
     if (e.touches[0].clientX < 30) return;
@@ -23,7 +24,7 @@ export function useSwipe(onLeft, onRight) {
         return;
       } else return;
     }
-    if (ref.current.active) setOffset(dx);
+    if (ref.current.active) setOffset(dx * 0.5);
   }, []);
 
   const onTouchEnd = useCallback((e) => {
@@ -31,14 +32,36 @@ export function useSwipe(onLeft, onRight) {
     const dx = e.changedTouches[0].clientX - ref.current.x;
     ref.current = null;
     setSwiping(false);
-    setOffset(0);
-    if (dx < -80) onLeft();
-    else if (dx > 80) onRight();
+
+    const triggered = Math.abs(dx) > 80;
+    const direction = dx < 0 ? -1 : 1;
+
+    if (triggered) {
+      // Slide off-screen, then navigate
+      setAnimating(true);
+      setOffset(direction * -window.innerWidth);
+      setTimeout(() => {
+        if (dx < -80) onLeft();
+        else onRight();
+        setOffset(0);
+        setAnimating(false);
+      }, 200);
+    } else {
+      // Snap back smoothly
+      setAnimating(true);
+      setOffset(0);
+      setTimeout(() => setAnimating(false), 200);
+    }
   }, [onLeft, onRight]);
 
-  const style = swiping
-    ? { transform: `translateX(${offset}px)`, transition: "none", willChange: "transform" }
-    : undefined;
+  let style;
+  if (swiping) {
+    style = { transform: `translateX(${offset}px)`, transition: "none", willChange: "transform" };
+  } else if (animating) {
+    style = { transform: `translateX(${offset}px)`, transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)", willChange: "transform" };
+  } else {
+    style = undefined;
+  }
 
   return { onTouchStart, onTouchMove, onTouchEnd, style };
 }
