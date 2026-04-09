@@ -114,6 +114,14 @@ html, body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Hide FAB when expediente is open */
+.expediente-open ~ .fab,
+.expediente-open ~ .fab-overlay,
+.expediente-open ~ .fab-menu,
+body:has(.expediente-open) .fab,
+body:has(.expediente-open) .fab-overlay,
+body:has(.expediente-open) .fab-menu { display: none !important; }
+
 /* DRAWER PANEL */
 .drawer {
   position: fixed; top: 0; left: 0;
