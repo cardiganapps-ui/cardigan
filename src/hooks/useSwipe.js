@@ -4,7 +4,7 @@ export function useSwipe(onLeft, onRight) {
   const ref = useRef(null);
   const [offset, setOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
-  const [animating, setAnimating] = useState(false);
+  const [settling, setSettling] = useState(false);
 
   const onTouchStart = useCallback((e) => {
     if (e.touches[0].clientX < 30) return;
@@ -24,7 +24,7 @@ export function useSwipe(onLeft, onRight) {
         return;
       } else return;
     }
-    if (ref.current.active) setOffset(dx * 0.5);
+    if (ref.current.active) setOffset(dx);
   }, []);
 
   const onTouchEnd = useCallback((e) => {
@@ -34,34 +34,49 @@ export function useSwipe(onLeft, onRight) {
     setSwiping(false);
 
     const triggered = Math.abs(dx) > 80;
-    const direction = dx < 0 ? -1 : 1;
 
     if (triggered) {
-      // Slide off-screen, then navigate
-      setAnimating(true);
-      setOffset(direction * -window.innerWidth);
+      // Animate to full panel width, then navigate
+      const dir = dx < 0 ? -1 : 1;
+      setSettling(true);
+      setOffset(dir * window.innerWidth);
       setTimeout(() => {
         if (dx < -80) onLeft();
         else onRight();
         setOffset(0);
-        setAnimating(false);
-      }, 200);
+        setSettling(false);
+      }, 250);
     } else {
-      // Snap back smoothly
-      setAnimating(true);
+      // Snap back
+      setSettling(true);
       setOffset(0);
-      setTimeout(() => setAnimating(false), 200);
+      setTimeout(() => setSettling(false), 250);
     }
   }, [onLeft, onRight]);
 
-  let style;
-  if (swiping) {
-    style = { transform: `translateX(${offset}px)`, transition: "none", willChange: "transform" };
-  } else if (animating) {
-    style = { transform: `translateX(${offset}px)`, transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)", willChange: "transform" };
-  } else {
-    style = undefined;
-  }
+  // The offset for the 3-panel strip: center panel starts at -100% (of container width / 3)
+  // Container is 300% wide, showing the middle third by default
+  const stripTranslate = swiping || settling ? offset : 0;
 
-  return { onTouchStart, onTouchMove, onTouchEnd, style };
+  const containerProps = {
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
+    style: { overflow: "hidden" },
+  };
+
+  const stripStyle = {
+    display: "flex",
+    width: "300%",
+    transform: `translateX(calc(-33.333% + ${stripTranslate}px))`,
+    transition: settling ? "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)" : swiping ? "none" : undefined,
+    willChange: swiping || settling ? "transform" : undefined,
+  };
+
+  const panelStyle = {
+    width: "33.333%",
+    flexShrink: 0,
+  };
+
+  return { containerProps, stripStyle, panelStyle };
 }
