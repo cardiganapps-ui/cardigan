@@ -209,11 +209,11 @@ export function PatientExpediente({
 
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (
-          <div style={{ padding:16 }}>
+          <div style={{ padding:"12px 14px" }}>
             {/* Date range filter */}
-            <div className="card" style={{ padding:"12px 14px", marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>Período</div>
-              <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+            <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Período</div>
+              <div style={{ display:"flex", gap:6, marginBottom:6, flexWrap:"wrap" }}>
                 {[{l:"1 mes",m:1},{l:"3 meses",m:3},{l:"6 meses",m:6},{l:"1 año",m:12}].map(p => {
                   const d = new Date(); d.setMonth(d.getMonth() - p.m);
                   const fromVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -242,16 +242,16 @@ export function PatientExpediente({
             </div>
 
             {/* Financials — filtered */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16, alignItems:"stretch" }}>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Vendido</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Vendido</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
               </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Cobrado</div>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Cobrado</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
               </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center" }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
                 <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Saldo</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: fPeriodSaldo > 0 ? "var(--red)" : "var(--charcoal-xl)" }}>${fPeriodSaldo.toLocaleString()}</div>
                 <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>período</div>
@@ -263,30 +263,30 @@ export function PatientExpediente({
             </div>
 
             {/* Attendance — filtered */}
-            <div className="card" style={{ padding:14, marginBottom:16 }}>
+            <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
               {(() => {
                 const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
                 const showTutor = !!patient.parent && fTutor > 0;
                 return (
                 <>
-                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Asistencia</div>
-                <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8, marginBottom:10 }}>
-                  <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>Asistencia</div>
+                <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8, marginBottom:8 }}>
+                  <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Programadas</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>Programadas</div>
                   </div>
-                  <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                  <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Asistió</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>Asistió</div>
                   </div>
-                  <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                  <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>No asistió</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>No asistió</div>
                   </div>
                   {showTutor && (
-                    <div style={{ background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                    <div style={{ background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                       <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--purple)" }}>{fTutor}</div>
-                      <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Tutor</div>
+                      <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>Tutor</div>
                     </div>
                   )}
                 </div>
@@ -313,14 +313,14 @@ export function PatientExpediente({
                 { label:"Sesión regular", value:`${patient.day} a las ${patient.time}` },
                 { label:"Tarifa", value:`$${patient.rate} por sesión` },
               ].map((row, i, arr) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"13px 16px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
                   <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop:16, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+            <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
                 Pago
               </button>
