@@ -106,7 +106,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
               const pct  = totalDue > 0 ? (p.paid / totalDue) * 100 : 0;
               return (
                 <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
-                  <div className="row-avatar" style={{ background: clientColors[i % clientColors.length] }}>{p.initials}</div>
+                  <div className="row-avatar" style={{ background: clientColors[(p.colorIdx || i) % clientColors.length] }}>{p.initials}</div>
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
                     <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>

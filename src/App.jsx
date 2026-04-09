@@ -40,7 +40,7 @@ function AppShell({ user, signOut }) {
     loading, mutating, mutationError,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
-    deleteSession, rescheduleSession, deletePayment, generateRecurringSessions, applyScheduleChange, refresh,
+    deleteSession, rescheduleSession, deletePayment, generateRecurringSessions, applyScheduleChange,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
@@ -108,7 +108,7 @@ function AppShell({ user, signOut }) {
       updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments}
-      onRecordPayment={openRecordPaymentModal} deletePayment={deletePayment} mutating={mutating} />,
+      onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     settings: <Settings user={user} signOut={signOut} />,
   };
 

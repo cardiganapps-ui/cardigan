@@ -314,8 +314,9 @@ export function Patients({ patients, upcomingSessions, onRecordPayment, updatePa
                   const charged = pSessions.filter(s => s.status === "charged").length;
                   const scheduled = pSessions.filter(s => s.status === "scheduled").length;
                   const total = pSessions.length;
-                  const attendanceRate = (completed + charged) > 0 && total > 0
-                    ? Math.round(completed / (completed + cancelled + charged) * 100) : null;
+                  const resolved = completed + cancelled + charged;
+                  const attendanceRate = resolved > 0
+                    ? Math.round(completed / resolved * 100) : null;
 
                   return (
                   <>
