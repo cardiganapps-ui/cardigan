@@ -399,10 +399,10 @@ export function PatientExpediente({
             </div>
 
             <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
+              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => { onClose(); setTimeout(() => onRecordPayment(patient), 50); }} disabled={mutating}>
                 Pago
               </button>
-              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-light)", color:"white", boxShadow:"none" }} onClick={() => onScheduleSession(patient)}>
+              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-light)", color:"white", boxShadow:"none" }} onClick={() => { onClose(); setTimeout(() => onScheduleSession(patient), 50); }}>
                 Sesión
               </button>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
