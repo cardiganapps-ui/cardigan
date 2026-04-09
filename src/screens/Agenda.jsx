@@ -1,60 +1,13 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { IconLeaf } from "../components/Icons";
-import { SHORT_MONTHS, formatShortDate } from "../utils/dates";
+import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isCancelledStatus, statusClass, statusLabel, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
-
-/* ── INTERACTIVE SWIPE HOOK ── */
-function useSwipe(onLeft, onRight) {
-  const ref = useRef(null);
-  const [offset, setOffset] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-
-  const onTouchStart = useCallback((e) => {
-    if (e.touches[0].clientX < 30) return; // reserve left edge for drawer
-    ref.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
-  }, []);
-
-  const onTouchMove = useCallback((e) => {
-    if (!ref.current) return;
-    const dx = e.touches[0].clientX - ref.current.x;
-    const dy = e.touches[0].clientY - ref.current.y;
-    if (!ref.current.active) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
-        ref.current.active = true;
-        setSwiping(true);
-      } else if (Math.abs(dy) > 10) {
-        ref.current = null;
-        return;
-      } else return;
-    }
-    if (ref.current.active) setOffset(dx);
-  }, []);
-
-  const onTouchEnd = useCallback((e) => {
-    if (!ref.current?.active) { ref.current = null; return; }
-    const dx = e.changedTouches[0].clientX - ref.current.x;
-    ref.current = null;
-    setSwiping(false);
-    setOffset(0);
-    if (dx < -80) onLeft();
-    else if (dx > 80) onRight();
-  }, [onLeft, onRight]);
-
-  const style = swiping
-    ? { transform: `translateX(${offset}px)`, transition: "none", willChange: "transform" }
-    : undefined;
-
-  return { onTouchStart, onTouchMove, onTouchEnd, style };
-}
+import { useSwipe } from "../hooks/useSwipe";
 
 /* ── DATE HELPERS ── */
-function formatDateStr(d) {
-  return formatShortDate(d);
-}
-
 function getMonday(d) {
   const m = new Date(d);
   const day = m.getDay();
@@ -123,7 +76,7 @@ function SessionRow({ s, onClick, compact }) {
 
 /* ── DAY VIEW ── */
 function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions }) {
-  const dateStr = formatDateStr(selectedDate);
+  const dateStr = formatShortDate(selectedDate);
   const daySessions = sortByTime(upcomingSessions.filter(s => s.date === dateStr));
   const weekDays = getWeekDays(selectedDate);
   const dayName = DOW[(selectedDate.getDay() + 6) % 7];
@@ -137,7 +90,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   const sunday = weekDays[6];
   const weekLabel = monday.getMonth() === sunday.getMonth()
     ? `${monday.getDate()}–${sunday.getDate()} ${SHORT_MONTHS[monday.getMonth()]}`
-    : `${formatDateStr(monday)} – ${formatDateStr(sunday)}`;
+    : `${formatShortDate(monday)} – ${formatShortDate(sunday)}`;
 
   return (
     <div onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove} onTouchEnd={swipe.onTouchEnd} style={{ overflow:"hidden" }}>
@@ -152,7 +105,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
       <div style={{ paddingBottom:4 }}>
         <div className="cal-strip">
           {weekDays.map((d,i) => {
-            const ds = formatDateStr(d);
+            const ds = formatShortDate(d);
             const isActive = isSameDay(d, selectedDate);
             const isToday = isSameDay(d, TODAY);
             const hasSess = sessionDateSet.has(ds);
@@ -193,7 +146,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
   const visibleDays = showWeekends ? weekDays : weekDays.slice(0, 5);
   const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
   const monday = weekDays[0];
-  const weekLabel = `Semana del ${formatDateStr(monday)}`;
+  const weekLabel = `Semana del ${formatShortDate(monday)}`;
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
   const gridCols = `44px repeat(${visibleDays.length}, 1fr)`;
   const swipe = useSwipe(
@@ -236,7 +189,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
           <div className="week-time-row" key={hour} style={{ gridTemplateColumns: gridCols }}>
             <div className="week-time-label">{hour}</div>
             {visibleDays.map((d, dIdx) => {
-              const ds = formatDateStr(d);
+              const ds = formatShortDate(d);
               const sess = upcomingSessions.filter(s => s.date===ds).find(s => hourIndex(s.time)===hIdx);
               return (
                 <div key={dIdx} className="week-cell" onClick={() => !sess && setSelectedDate(d)}>
@@ -269,7 +222,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
   }, [setSelectedDate]);
 
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
-  const selectedDateStr = formatDateStr(selectedDate);
+  const selectedDateStr = formatShortDate(selectedDate);
   const daySessions = sortByTime(upcomingSessions.filter(s => s.date === selectedDateStr));
   const swipe = useSwipe(
     useCallback(() => goMonth(1), [goMonth]),
@@ -289,7 +242,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
         <div className="month-days-grid">
           {cells.map((cell, i) => {
             const cellDate = new Date(displayYear, displayMonth + (cell.current ? 0 : (i < 7 ? -1 : 1)), cell.num);
-            const cellStr = formatDateStr(cellDate);
+            const cellStr = formatShortDate(cellDate);
             const isToday  = isSameDay(cellDate, TODAY);
             const isActive = cellStr === selectedDateStr;
             const hasSess  = sessionDateSet.has(cellStr);
