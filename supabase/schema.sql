@@ -48,11 +48,26 @@ create table if not exists payments (
   created_at timestamptz default now()
 );
 
+-- Notes (session notes and general patient notes)
+create table if not exists notes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null,
+  patient_id uuid references patients(id) on delete cascade,
+  session_id uuid references sessions(id) on delete set null,
+  title text default '',
+  content text default '',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- Row Level Security (each user only sees their own data)
 alter table patients enable row level security;
 alter table sessions enable row level security;
 alter table payments enable row level security;
 
+alter table notes enable row level security;
+
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
 create policy "Users manage own payments" on payments for all using (auth.uid() = user_id);
+create policy "Users manage own notes" on notes for all using (auth.uid() = user_id);

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
+import { NoteEditor } from "../components/NoteEditor";
 import { IconLeaf } from "../components/Icons";
 
 /* ── INTERACTIVE SWIPE HOOK ── */
@@ -347,12 +348,36 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 }
 
 /* ── AGENDA ROOT ── */
-export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSession, rescheduleSession, mutating }) {
+export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating }) {
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
+  const [editingNote, setEditingNote] = useState(null);
 
   const isToday = isSameDay(selectedDate, TODAY);
+
+  const handleOpenNote = async (session) => {
+    const existing = notes?.find(n => n.session_id === session.id);
+    if (existing) {
+      setEditingNote(existing);
+    } else {
+      const patient = patients?.find(p => p.name === session.patient);
+      const note = await createNote({ patientId: patient?.id || session.patient_id, sessionId: session.id });
+      if (note) setEditingNote(note);
+    }
+    setSelectedSession(null);
+  };
+
+  if (editingNote) {
+    return (
+      <NoteEditor
+        note={editingNote}
+        onSave={async ({ title, content }) => await updateNote(editingNote.id, { title, content })}
+        onDelete={async () => { await deleteNote(editingNote.id); }}
+        onClose={() => setEditingNote(null)}
+      />
+    );
+  }
 
   return (
     <div className="page">
@@ -377,7 +402,9 @@ export function Agenda({ upcomingSessions, patients, onCancelSession, deleteSess
       <SessionSheet
         session={selectedSession}
         patients={patients}
+        notes={notes}
         onClose={() => setSelectedSession(null)}
+        onOpenNote={handleOpenNote}
         onCancelSession={async (session, charge) => {
           const ok = await onCancelSession(session, charge);
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled" } : prev));

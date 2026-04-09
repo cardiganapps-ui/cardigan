@@ -36,11 +36,13 @@ function AppShell({ user, signOut }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const data = useCardiganData(user);
   const {
-    patients, upcomingSessions, payments,
+    patients, upcomingSessions, payments, notes,
     loading, mutating, mutationError,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
-    deleteSession, rescheduleSession, deletePayment, generateRecurringSessions, applyScheduleChange,
+    deleteSession, rescheduleSession, deletePayment,
+    generateRecurringSessions, applyScheduleChange,
+    createNote, updateNote, deleteNote,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
@@ -103,9 +105,12 @@ function AppShell({ user, signOut }) {
     home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
     agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
       onCancelSession={async (s, charge) => s?.status === "scheduled" && await updateSessionStatus(s.id, "cancelled", charge)}
-      deleteSession={deleteSession} rescheduleSession={rescheduleSession} mutating={mutating} />,
-    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} onRecordPayment={openRecordPaymentModal}
+      deleteSession={deleteSession} rescheduleSession={rescheduleSession}
+      notes={notes} createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
+      mutating={mutating} />,
+    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
+      createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} />,
     finances: <Finances patients={patients} payments={payments}
       onRecordPayment={openRecordPaymentModal} mutating={mutating} />,

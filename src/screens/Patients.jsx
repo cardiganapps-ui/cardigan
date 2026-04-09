@@ -2,6 +2,7 @@ import { useState } from "react";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
 import { todayISO, isoToShortDate } from "../data/api";
+import { PatientExpediente } from "./PatientExpediente";
 const Toggle = ({ on, onToggle }) => (
   <button type="button" onClick={onToggle}
     style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: on ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}>
@@ -9,13 +10,14 @@ const Toggle = ({ on, onToggle }) => (
   </button>
 );
 
-export function Patients({ patients, upcomingSessions, onRecordPayment, updatePatient, deletePatient, createSession, generateRecurringSessions, applyScheduleChange, mutating }) {
+export function Patients({ patients, upcomingSessions, notes, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, generateRecurringSessions, applyScheduleChange, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
   const [selected, setSelected] = useState(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expediente, setExpediente] = useState(null);
   const [tutorSession, setTutorSession] = useState(false);
   const [tutorDate, setTutorDate] = useState(todayISO());
   const [tutorTime, setTutorTime] = useState("16:00");
@@ -37,6 +39,11 @@ export function Patients({ patients, upcomingSessions, onRecordPayment, updatePa
   const [origSchedules, setOrigSchedules] = useState("[]");
 
   const openDetail = (p) => {
+    setExpediente(p);
+  };
+
+  const openEditSheet = (p) => {
+    setExpediente(null);
     setSelected(p);
     setEditing(false);
     setConfirmDelete(false);
@@ -306,144 +313,33 @@ export function Patients({ patients, upcomingSessions, onRecordPayment, updatePa
                   <button className="btn btn-secondary w-full" onClick={() => setConfirmDelete(false)}>Cancelar</button>
                 </div>
               ) : (
-                /* ── VIEW MODE ── */
-                (() => {
-                  const pSessions = upcomingSessions ? upcomingSessions.filter(s => s.patient_id === selected.id) : [];
-                  const completed = pSessions.filter(s => s.status === "completed").length;
-                  const cancelled = pSessions.filter(s => s.status === "cancelled").length;
-                  const charged = pSessions.filter(s => s.status === "charged").length;
-                  const scheduled = pSessions.filter(s => s.status === "scheduled").length;
-                  const total = pSessions.length;
-                  const resolved = completed + cancelled + charged;
-                  const attendanceRate = resolved > 0
-                    ? Math.round(completed / resolved * 100) : null;
-
-                  return (
-                  <>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>
-                    {[
-                      { label:"Vendido", value:`$${selected.billed.toLocaleString()}` },
-                      { label:"Cobrado", value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
-                      { label:"Saldo",   value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
-                    ].map((s,i) => (
-                      <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
-                        <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{s.label}</div>
-                        <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:s.color||"var(--charcoal)" }}>{s.value}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Session summary */}
-                  {total > 0 && (
-                    <div style={{ marginBottom:16 }}>
-                      <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Historial de sesiones</div>
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                        <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
-                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--green)" }}>{completed}</div>
-                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Completadas</div>
-                        </div>
-                        <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
-                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--teal-dark)" }}>{scheduled}</div>
-                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Agendadas</div>
-                        </div>
-                        <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
-                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--amber)" }}>{charged}</div>
-                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Canceladas (cobradas)</div>
-                        </div>
-                        <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
-                          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--red)" }}>{cancelled}</div>
-                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>Canceladas</div>
-                        </div>
-                      </div>
-                      {attendanceRate !== null && (
-                        <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8 }}>
-                          <div style={{ flex:1, height:6, background:"var(--cream-dark)", borderRadius:3, overflow:"hidden" }}>
-                            <div style={{ height:"100%", width:`${attendanceRate}%`, background:"var(--green)", borderRadius:3 }} />
-                          </div>
-                          <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{attendanceRate}% asistencia</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {[
-                    { label:"Tutor",            value: selected.parent || "—" },
-                    { label:"Sesión regular",   value:`${selected.day} a las ${selected.time}` },
-                    { label:"Tarifa",           value:`$${selected.rate} por sesión` },
-                    { label:"Estado",           value: selected.status==="active"?"Activo":"Finalizado" },
-                  ].map((row,i) => (
-                    <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
-                      <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                      <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
-                    </div>
-                  ))}
-                  {/* Tutor session scheduling */}
-                  {selected.parent && !tutorSession && (
-                    <div style={{ marginTop:16, paddingTop:16, borderTop:"1px solid var(--border-lt)" }}>
-                      <button className="btn" style={{ width:"100%", height:44, fontSize:13, background:"var(--purple-bg)", color:"var(--purple)", boxShadow:"none", fontWeight:700 }}
-                        onClick={() => { setTutorRate(String(selected.rate)); setTutorDate(todayISO()); setTutorTime("16:00"); setTutorErr(""); setTutorSession(true); }}>
-                        Agendar sesión con tutor
-                      </button>
-                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6, textAlign:"center" }}>Tutor: {selected.parent}</div>
-                    </div>
-                  )}
-
-                  {tutorSession && (
-                    <div style={{ marginTop:16, paddingTop:16, borderTop:"1px solid var(--border-lt)" }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:"var(--purple)", marginBottom:10 }}>Sesión con tutor: {selected.parent}</div>
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                        <div className="input-group">
-                          <label className="input-label">Fecha</label>
-                          <input className="input" type="date" value={tutorDate} onChange={e => setTutorDate(e.target.value)} />
-                        </div>
-                        <div className="input-group">
-                          <label className="input-label">Hora</label>
-                          <input className="input" type="time" value={tutorTime} onChange={e => setTutorTime(e.target.value)} />
-                        </div>
-                      </div>
-                      <div className="input-group">
-                        <label className="input-label">Tarifa de esta sesión</label>
-                        <input className="input" type="number" min="0" step="50" value={tutorRate} onChange={e => setTutorRate(e.target.value)} placeholder="Ej: 700" />
-                      </div>
-                      {tutorErr && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{tutorErr}</div>}
-                      <button className="btn" style={{ width:"100%", height:44, background:"var(--purple)", color:"white", boxShadow:"none", marginBottom:10, fontWeight:700 }}
-                        disabled={mutating}
-                        onClick={async () => {
-                          if (!tutorDate) { setTutorErr("Selecciona una fecha."); return; }
-                          if (!tutorTime) { setTutorErr("Selecciona una hora."); return; }
-                          setTutorErr("");
-                          const ok = await createSession({
-                            patientName: selected.name,
-                            date: isoToShortDate(tutorDate),
-                            time: tutorTime,
-                            isTutor: true,
-                            tutorName: selected.parent,
-                            customRate: Number(tutorRate) || selected.rate,
-                          });
-                          if (ok) { setTutorSession(false); }
-                        }}>
-                        {mutating ? "Agendando..." : `Confirmar · $${(Number(tutorRate) || selected.rate).toLocaleString()}`}
-                      </button>
-                      <button className="btn btn-secondary w-full" onClick={() => setTutorSession(false)}>Cancelar</button>
-                    </div>
-                  )}
-
-                  <div style={{ marginTop:20, display:"flex", flexDirection:"column", gap:10 }}>
-                    <button className="btn btn-primary" style={{ height:48 }} onClick={() => onRecordPayment(selected)} disabled={mutating}>
-                      {mutating ? "Guardando..." : "Registrar pago"}
-                    </button>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                      <button className="btn btn-secondary" style={{ height:44, fontSize:13 }} onClick={startEdit}>Editar</button>
-                      <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }} onClick={() => setConfirmDelete(true)}>Eliminar</button>
-                    </div>
-                  </div>
-                  </>
-                  );
-                })()
+                /* ── QUICK ACTIONS (from sheet) ── */
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  <button className="btn btn-primary" style={{ height:48 }} onClick={() => { setSelected(null); openDetail(selected); }}>
+                    Ver expediente
+                  </button>
+                  <button className="btn btn-secondary" style={{ height:44, fontSize:13 }} onClick={startEdit}>Editar</button>
+                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }} onClick={() => setConfirmDelete(true)}>Eliminar</button>
+                </div>
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {expediente && (
+        <PatientExpediente
+          patient={patients.find(p => p.id === expediente.id) || expediente}
+          upcomingSessions={upcomingSessions}
+          notes={notes}
+          onClose={() => setExpediente(null)}
+          onRecordPayment={onRecordPayment}
+          createSession={createSession}
+          createNote={createNote}
+          updateNote={updateNote}
+          deleteNote={deleteNote}
+          mutating={mutating}
+        />
       )}
     </div>
   );

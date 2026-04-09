@@ -57,16 +57,18 @@ export function useCardiganData(user) {
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [pRes, sRes, pmRes] = await Promise.all([
+    const [pRes, sRes, pmRes, nRes] = await Promise.all([
       supabase.from("patients").select("*").order("name"),
       supabase.from("sessions").select("*").order("created_at"),
       supabase.from("payments").select("*").order("created_at", { ascending: false }),
+      supabase.from("notes").select("*").order("updated_at", { ascending: false }),
     ]);
 
     let pData = mapRows(pRes.data);
@@ -141,6 +143,7 @@ export function useCardiganData(user) {
     setPatients(pData);
     setUpcomingSessions(sData);
     setPayments(mapRows(pmRes.data));
+    setNotes(nRes.data || []);
     setLoading(false);
   }, [userId]);
 
@@ -479,6 +482,35 @@ export function useCardiganData(user) {
     return true;
   }
 
+  /* ── NOTES ── */
+  async function createNote({ patientId, sessionId, title, content }) {
+    if (!patientId) return null;
+    const { data, error } = await supabase.from("notes").insert({
+      user_id: userId, patient_id: patientId,
+      session_id: sessionId || null,
+      title: title || "", content: content || "",
+    }).select().single();
+    if (error) return null;
+    setNotes(prev => [data, ...prev]);
+    return data;
+  }
+
+  async function updateNote(id, { title, content }) {
+    const { error } = await supabase.from("notes")
+      .update({ title, content, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return false;
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, title, content, updated_at: new Date().toISOString() } : n));
+    return true;
+  }
+
+  async function deleteNote(id) {
+    const { error } = await supabase.from("notes").delete().eq("id", id);
+    if (error) return false;
+    setNotes(prev => prev.filter(n => n.id !== id));
+    return true;
+  }
+
   // Auto-complete scheduled sessions that started > 1 hour ago
   const enrichedSessions = useMemo(() => {
     const now = new Date();
@@ -533,11 +565,13 @@ export function useCardiganData(user) {
   }, [patients, enrichedSessions]);
 
   return {
-    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, loading, mutating, mutationError,
+    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes,
+    loading, mutating, mutationError,
     createPatient, updatePatient, deletePatient,
     createSession, updateSessionStatus, deleteSession, rescheduleSession,
     generateRecurringSessions, applyScheduleChange,
     createPayment, deletePayment,
+    createNote, updateNote, deleteNote,
     refresh,
   };
 }

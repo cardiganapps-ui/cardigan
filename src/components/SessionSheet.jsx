@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { clientColors } from "../data/seedData";
 import { shortDateToISO, isoToShortDate } from "../data/api";
-import { IconX } from "./Icons";
+import { IconX, IconClipboard } from "./Icons";
 
-export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onDelete, onReschedule, onOpenNote, mutating }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [newDate, setNewDate] = useState("");
@@ -104,6 +104,15 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
                   </button>
                 </div>
               )}
+              {onOpenNote && (() => {
+                const hasNote = notes?.some(n => n.session_id === session.id);
+                return (
+                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+                    onClick={() => onOpenNote(session)}>
+                    <IconClipboard size={15} /> {hasNote ? "Ver nota" : "Agregar nota"}
+                  </button>
+                );
+              })()}
               <button className="btn btn-primary" style={{ height:44 }} onClick={startReschedule}>
                 Reagendar
               </button>
