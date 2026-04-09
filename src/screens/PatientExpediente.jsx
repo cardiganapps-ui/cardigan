@@ -230,21 +230,34 @@ export function PatientExpediente({
 
             {/* Attendance — filtered */}
             <div className="card" style={{ padding:14, marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Asistencia</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10 }}>
-                <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
-                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Programadas</div>
+              {(() => {
+                const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
+                const showTutor = !!patient.parent && fTutor > 0;
+                return (
+                <>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Asistencia</div>
+                <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8, marginBottom:10 }}>
+                  <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Programadas</div>
+                  </div>
+                  <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Asistió</div>
+                  </div>
+                  <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>No asistió</div>
+                  </div>
+                  {showTutor && (
+                    <div style={{ background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--purple)" }}>{fTutor}</div>
+                      <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Tutor</div>
+                    </div>
+                  )}
                 </div>
-                <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
-                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Asistió</div>
-                </div>
-                <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
-                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>No asistió</div>
-                </div>
-              </div>
+                </>);
+              })()}
               {fCharged > 0 && (
                 <div style={{ fontSize:11, color:"var(--amber)", marginBottom:8 }}>
                   {fCharged} cancelada{fCharged !== 1 ? "s" : ""} cobrada{fCharged !== 1 ? "s" : ""}
