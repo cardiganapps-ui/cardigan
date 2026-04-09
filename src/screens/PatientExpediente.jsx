@@ -19,7 +19,7 @@ function statusClass(s) {
 }
 
 export function PatientExpediente({
-  patient, upcomingSessions, notes,
+  patient, upcomingSessions, notes, payments,
   onClose, onRecordPayment, createSession, createNote, updateNote, deleteNote,
   mutating,
 }) {
@@ -72,7 +72,24 @@ export function PatientExpediente({
   const fScheduled = filteredSessions.filter(s => s.status === "scheduled").length;
   const fResolved = fCompleted + fCancelled + fCharged;
   const fAttendanceRate = fResolved > 0 ? Math.round(fCompleted / fResolved * 100) : null;
-  const hasFilter = !!(dateFrom || dateTo);
+
+  // Filtered financials
+  const fBillable = filteredSessions.filter(s => s.status === "completed" || s.status === "charged").length;
+  const fVendido = fBillable * patient.rate;
+
+  const pPayments = useMemo(() =>
+    (payments || []).filter(p => p.patient_id === patient.id),
+    [payments, patient.id]
+  );
+  const fCobrado = useMemo(() => {
+    return pPayments.reduce((sum, p) => {
+      const iso = shortDateToISO(p.date);
+      if (dateFrom && iso < dateFrom) return sum;
+      if (dateTo && iso > dateTo) return sum;
+      return sum + p.amount;
+    }, 0);
+  }, [pPayments, dateFrom, dateTo]);
+  const fPeriodSaldo = fVendido - fCobrado;
 
   const handleSaveNote = useCallback(async ({ title, content }) => {
     if (editingNote?.id) {
@@ -159,30 +176,20 @@ export function PatientExpediente({
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (
           <div style={{ padding:16 }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
-              {[
-                { label:"Vendido", value:`$${patient.billed.toLocaleString()}` },
-                { label:"Cobrado", value:`$${patient.paid.toLocaleString()}`, color:"var(--green)" },
-                { label:"Saldo", value:`$${patient.amountDue.toLocaleString()}`, color: patient.amountDue > 0 ? "var(--red)" : "var(--charcoal-xl)" },
-              ].map((s, i) => (
-                <div key={i} style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
-                  <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{s.label}</div>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color: s.color || "var(--charcoal)" }}>{s.value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="card" style={{ padding:14, marginBottom:16 }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>Asistencia</div>
-                {hasFilter && (
-                  <button onClick={() => { setDateFrom(""); setDateTo(""); }}
-                    style={{ fontSize:10, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
-                    Limpiar filtro
-                  </button>
-                )}
+            {/* Date range filter */}
+            <div className="card" style={{ padding:"12px 14px", marginBottom:16 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>Período</div>
+                <button onClick={() => {
+                  const d = new Date(); d.setMonth(d.getMonth() - 3);
+                  setDateFrom(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
+                  setDateTo(todayISO());
+                }}
+                  style={{ fontSize:10, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
+                  Últimos 3 meses
+                </button>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 <div>
                   <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>Desde</label>
                   <input type="date" className="input" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
@@ -194,7 +201,32 @@ export function PatientExpediente({
                     style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
                 </div>
               </div>
+            </div>
 
+            {/* Financials — filtered */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Vendido</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
+              </div>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Cobrado</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
+              </div>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Saldo</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color: fPeriodSaldo > 0 ? "var(--red)" : "var(--charcoal-xl)" }}>${fPeriodSaldo.toLocaleString()}</div>
+                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>período</div>
+                <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:6, paddingTop:5 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
+                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>actual</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Attendance — filtered */}
+            <div className="card" style={{ padding:14, marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Asistencia</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10 }}>
                 <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
                   <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
@@ -218,11 +250,11 @@ export function PatientExpediente({
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <div style={{ flex:1, height:6, background:"var(--cream-dark)", borderRadius:3, overflow:"hidden" }}>
                     <div style={{ height:"100%", width:`${fAttendanceRate}%`, background:"var(--green)", borderRadius:3 }} />
-                    </div>
-                    <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{fAttendanceRate}%</span>
                   </div>
-                )}
-              </div>
+                  <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{fAttendanceRate}%</span>
+                </div>
+              )}
+            </div>
 
             <div className="card" style={{ padding:0 }}>
               {[

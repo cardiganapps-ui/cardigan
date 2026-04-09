@@ -116,7 +116,7 @@ function AppShell({ user, signOut }) {
       deleteSession={deleteSession} rescheduleSession={rescheduleSession}
       notes={notes} createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       mutating={mutating} />,
-    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} onRecordPayment={openRecordPaymentModal}
+    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} payments={payments} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
       createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} />,

@@ -10,7 +10,7 @@ const Toggle = ({ on, onToggle }) => (
   </button>
 );
 
-export function Patients({ patients, upcomingSessions, notes, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, generateRecurringSessions, applyScheduleChange, mutating }) {
+export function Patients({ patients, upcomingSessions, notes, payments, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, generateRecurringSessions, applyScheduleChange, mutating }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -332,6 +332,7 @@ export function Patients({ patients, upcomingSessions, notes, onRecordPayment, u
           patient={patients.find(p => p.id === expediente.id) || expediente}
           upcomingSessions={upcomingSessions}
           notes={notes}
+          payments={payments}
           onClose={() => setExpediente(null)}
           onRecordPayment={onRecordPayment}
           createSession={createSession}
