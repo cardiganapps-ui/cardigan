@@ -121,7 +121,7 @@ export function PatientExpediente({
   ];
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:350, display:"flex", flexDirection:"column" }}>
+    <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:500, display:"flex", flexDirection:"column" }}>
       {/* Header */}
       <div style={{ background:"var(--nav-bg)", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>

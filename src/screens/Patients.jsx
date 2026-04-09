@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
 import { todayISO, isoToShortDate } from "../utils/dates";
@@ -323,7 +324,7 @@ export function Patients({ patients, upcomingSessions, notes, payments, onRecord
         </div>
       )}
 
-      {expediente && (
+      {expediente && createPortal(
         <PatientExpediente
           patient={patients.find(p => p.id === expediente.id) || expediente}
           upcomingSessions={upcomingSessions}
@@ -356,7 +357,8 @@ export function Patients({ patients, upcomingSessions, notes, payments, onRecord
           updateNote={updateNote}
           deleteNote={deleteNote}
           mutating={mutating}
-        />
+        />,
+        document.body
       )}
     </div>
   );
