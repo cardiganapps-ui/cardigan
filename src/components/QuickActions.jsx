@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { DAY_ORDER } from "../data/seedData";
-import { todayISO, isoToShortDate, shortDateToISO } from "../data/api";
+import { todayISO, isoToShortDate, shortDateToISO } from "../utils/dates";
+import { isTutorSession } from "../utils/sessions";
+import { Toggle } from "./Toggle";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconX } from "./Icons";
 import { NoteEditor } from "./NoteEditor";
 
@@ -10,13 +12,6 @@ const ACTIONS = [
   { key:"session", Icon: IconCalendarPlus, label:"Sesión" },
   { key:"note",    Icon: IconClipboard,    label:"Nota" },
 ];
-
-const Toggle = ({ on, onToggle, type }) => (
-  <button type={type || "button"} onClick={onToggle}
-    style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: on ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}>
-    <div style={{ width:16, height:16, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: on ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
-  </button>
-);
 
 /* ── NEW PATIENT FORM ── */
 function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
@@ -261,8 +256,6 @@ function sessionLabel(s) {
   const st = s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : "Cancelada";
   return `${s.date} · ${s.time} — ${st}`;
 }
-
-function isTutorSession(s) { return s.initials?.startsWith("T·"); }
 
 function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateNote, deleteNote }) {
   const [patientId, setPatientId] = useState("");

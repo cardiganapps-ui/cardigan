@@ -3,6 +3,8 @@ import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { IconLeaf } from "../components/Icons";
+import { SHORT_MONTHS, formatShortDate } from "../utils/dates";
+import { isCancelledStatus, statusClass, statusLabel, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
 
 /* ── INTERACTIVE SWIPE HOOK ── */
 function useSwipe(onLeft, onRight) {
@@ -49,10 +51,8 @@ function useSwipe(onLeft, onRight) {
 }
 
 /* ── DATE HELPERS ── */
-const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-
 function formatDateStr(d) {
-  return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`;
+  return formatShortDate(d);
 }
 
 function getMonday(d) {
@@ -97,30 +97,6 @@ function buildMonthGrid(year, month) {
   const remaining = 42 - cells.length;
   for (let i = 1; i <= remaining; i++) cells.push({ num: i, current: false });
   return cells;
-}
-
-function isCancelledStatus(s) {
-  return s === "cancelled" || s === "charged";
-}
-
-function statusClass(s) {
-  if (s === "scheduled") return "status-scheduled";
-  if (s === "completed") return "status-completed";
-  return "status-cancelled";
-}
-
-function statusLabel(s) {
-  if (isCancelledStatus(s)) return "Cancelada";
-  if (s === "completed") return "Completada";
-  return "Agendada";
-}
-
-function isTutorSession(s) {
-  return s.initials?.startsWith("T·");
-}
-
-function tutorDisplayInitials(s) {
-  return s.initials?.replace("T·", "") || "T";
 }
 
 /* ── SESSION ROW (shared) ── */

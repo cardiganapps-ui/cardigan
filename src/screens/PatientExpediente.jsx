@@ -1,22 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
 import { clientColors } from "../data/seedData";
-import { shortDateToISO, todayISO } from "../data/api";
+import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
-
-function isTutorSession(s) { return s.initials?.startsWith("T·"); }
-
-function statusLabel(s) {
-  if (s === "cancelled" || s === "charged") return "Cancelada";
-  if (s === "completed") return "Completada";
-  return "Agendada";
-}
-
-function statusClass(s) {
-  if (s === "scheduled") return "status-scheduled";
-  if (s === "completed") return "status-completed";
-  return "status-cancelled";
-}
+import { isTutorSession, statusLabel, statusClass } from "../utils/sessions";
 
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments,

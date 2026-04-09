@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { clientColors } from "../data/seedData";
-import { shortDateToISO, isoToShortDate } from "../data/api";
+import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconClipboard } from "./Icons";
 
 export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onDelete, onReschedule, onOpenNote, mutating }) {

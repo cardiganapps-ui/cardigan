@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconDollar, IconX, IconPlus } from "../components/Icons";
+import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 
 export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating, userName }) {
-  const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const FULL_MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  const todayStr     = `${TODAY.getDate()} ${SHORT_MONTHS[TODAY.getMonth()]}`;
+  const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
 
   const totalOwed     = patients.reduce((s,p) => s + p.amountDue, 0);
