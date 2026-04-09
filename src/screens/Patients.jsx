@@ -333,6 +333,7 @@ export function Patients({ patients, upcomingSessions, notes, payments, onRecord
           onRecordPayment={onRecordPayment}
           onEdit={(p) => {
             setExpediente(null);
+            setHideFab?.(false);
             setSelected(p);
             const scheds = [{ day: p.day, time: p.time }];
             setEditName(p.name);
@@ -349,7 +350,7 @@ export function Patients({ patients, upcomingSessions, notes, payments, onRecord
             setEditing(true);
             setConfirmDelete(false);
           }}
-          onScheduleSession={() => { setExpediente(null); }}
+          onScheduleSession={() => { setExpediente(null); setHideFab?.(false); }}
           createSession={createSession}
           createNote={createNote}
           updateNote={updateNote}
