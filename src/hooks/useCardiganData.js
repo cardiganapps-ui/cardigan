@@ -59,15 +59,25 @@ export function isAdmin(user) {
 }
 
 export async function fetchAllAccounts() {
-  // Admin-only: fetches all patients to derive unique user accounts
-  const { data } = await supabase.from("patients").select("user_id, name, created_at").order("created_at");
-  if (!data) return [];
+  // Admin-only: fetches all data to derive unique user accounts with stats
+  const [pRes, sRes, pmRes] = await Promise.all([
+    supabase.from("patients").select("user_id, name, created_at").order("created_at"),
+    supabase.from("sessions").select("user_id").order("created_at"),
+    supabase.from("payments").select("user_id, amount").order("created_at"),
+  ]);
+  if (!pRes.data) return [];
   const accounts = new Map();
-  data.forEach(p => {
+  (pRes.data || []).forEach(p => {
     if (!accounts.has(p.user_id)) {
-      accounts.set(p.user_id, { userId: p.user_id, patients: [], firstSeen: p.created_at });
+      accounts.set(p.user_id, { userId: p.user_id, patients: [], sessions: 0, totalPaid: 0, firstSeen: p.created_at });
     }
     accounts.get(p.user_id).patients.push(p.name);
+  });
+  (sRes.data || []).forEach(s => {
+    if (accounts.has(s.user_id)) accounts.get(s.user_id).sessions++;
+  });
+  (pmRes.data || []).forEach(p => {
+    if (accounts.has(p.user_id)) accounts.get(p.user_id).totalPaid += p.amount;
   });
   return [...accounts.values()];
 }
