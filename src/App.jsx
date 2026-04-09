@@ -34,7 +34,15 @@ export default function Cardigan() {
 }
 
 function AppShell({ user, signOut }) {
-  const [screen, setScreen] = useState("home");
+  const validScreens = ["home", "agenda", "patients", "finances", "settings"];
+  const [screen, setScreenRaw] = useState(() => {
+    const hash = window.location.hash.replace("#", "");
+    return validScreens.includes(hash) ? hash : "home";
+  });
+  const setScreen = (s) => {
+    setScreenRaw(s);
+    window.location.hash = s;
+  };
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
