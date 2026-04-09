@@ -59,6 +59,7 @@ export function useDemoData() {
     rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop,
     createPayment: noop, deletePayment: noop,
     createNote: noopNote, updateNote: noop, deleteNote: noop,
+    documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,
     refresh: async () => {},
   };
 }

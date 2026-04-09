@@ -1,13 +1,14 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { clientColors } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
-import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit } from "../components/Icons";
+import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit, IconDocument, IconUpload, IconTrash, IconTag, IconFilter } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { isTutorSession, statusLabel, statusClass } from "../utils/sessions";
 
 export function PatientExpediente({
-  patient, upcomingSessions, notes, payments,
+  patient, upcomingSessions, notes, payments, documents,
   onClose, onRecordPayment, onEdit, onScheduleSession, createSession, createNote, updateNote, deleteNote,
+  uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
   mutating,
 }) {
   const [tab, setTab] = useState("resumen");
@@ -114,10 +115,83 @@ export function PatientExpediente({
     );
   }
 
+  // ── Documents state ──
+  const pDocuments = useMemo(() =>
+    (documents || []).filter(d => d.patient_id === patient.id)
+      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")),
+    [documents, patient.id]
+  );
+  const [docSort, setDocSort] = useState("newest"); // newest | oldest | name
+  const [docFilter, setDocFilter] = useState("all"); // all | image | pdf | doc
+  const [renamingDoc, setRenamingDoc] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [taggingDoc, setTaggingDoc] = useState(null);
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const sortedFilteredDocs = useMemo(() => {
+    let docs = [...pDocuments];
+    // filter
+    if (docFilter === "image") docs = docs.filter(d => d.file_type?.startsWith("image/"));
+    else if (docFilter === "pdf") docs = docs.filter(d => d.file_type === "application/pdf");
+    else if (docFilter === "doc") docs = docs.filter(d => d.file_type?.includes("word") || d.file_type?.includes("document") || d.name?.endsWith(".doc") || d.name?.endsWith(".docx"));
+    // sort
+    if (docSort === "oldest") docs.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+    else if (docSort === "name") docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    // newest is default sort from pDocuments
+    return docs;
+  }, [pDocuments, docSort, docFilter]);
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    for (const file of files) {
+      await uploadDocument({ patientId: patient.id, file, sessionId: null, name: file.name });
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRename = async () => {
+    if (renamingDoc && renameValue.trim()) {
+      await renameDocument(renamingDoc, renameValue.trim());
+    }
+    setRenamingDoc(null);
+    setRenameValue("");
+  };
+
+  const handleTag = async (docId, sessionId) => {
+    await tagDocumentSession(docId, sessionId);
+    setTaggingDoc(null);
+  };
+
+  const handleDeleteDoc = async (id) => {
+    await deleteDocument(id);
+    setConfirmDeleteDoc(null);
+  };
+
+  const getFileIcon = (doc) => {
+    const t = doc.file_type || "";
+    if (t.startsWith("image/")) return "\u{1F5BC}";
+    if (t === "application/pdf") return "\u{1F4C4}";
+    if (t.includes("word") || t.includes("document")) return "\u{1F4DD}";
+    return "\u{1F4CE}";
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const tabs = [
     { k: "resumen", l: "Resumen", Icon: IconUser },
     { k: "sesiones", l: "Sesiones", Icon: IconCalendar },
     { k: "notas", l: "Notas", Icon: IconClipboard },
+    { k: "documentos", l: "Docs", Icon: IconDocument },
   ];
 
   // Swipe-to-dismiss
@@ -391,6 +465,138 @@ export function PatientExpediente({
                           </div>
                         )}
                         <NoteCard note={n} onClick={() => setEditingNote(n)} />
+                      </div>
+                    );
+                  })}
+                </div>
+            }
+          </div>
+        )}
+
+        {/* ── DOCUMENTOS ── */}
+        {tab === "documentos" && (
+          <div style={{ padding:16 }}>
+            {/* Upload button */}
+            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              style={{ display:"none" }} onChange={handleFileUpload} />
+            <button className="btn btn-primary" style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%" }}
+              onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <IconUpload size={16} />
+              {uploading ? "Subiendo..." : "Subir documento"}
+            </button>
+
+            {/* Sort & Filter bar */}
+            {pDocuments.length > 0 && (
+              <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+                {/* Sort */}
+                <select value={docSort} onChange={e => setDocSort(e.target.value)}
+                  style={{ flex:1, minWidth:0, fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>
+                  <option value="newest">Más reciente</option>
+                  <option value="oldest">Más antiguo</option>
+                  <option value="name">Nombre A-Z</option>
+                </select>
+                {/* Filter */}
+                <div style={{ display:"flex", gap:4 }}>
+                  {[
+                    { k:"all", l:"Todos" },
+                    { k:"image", l:"Imagen" },
+                    { k:"pdf", l:"PDF" },
+                    { k:"doc", l:"Word" },
+                  ].map(f => (
+                    <button key={f.k} onClick={() => setDocFilter(f.k)}
+                      style={{ padding:"5px 10px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
+                        background: docFilter === f.k ? "var(--teal)" : "var(--cream)", color: docFilter === f.k ? "white" : "var(--charcoal-md)" }}>
+                      {f.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Documents list */}
+            {sortedFilteredDocs.length === 0
+              ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+                  {pDocuments.length === 0 ? "Los documentos del paciente aparecerán aquí" : "Sin resultados para este filtro"}
+                </div>
+              : <div className="card" style={{ padding:0 }}>
+                  {sortedFilteredDocs.map((doc, i) => {
+                    const linkedSession = doc.session_id ? pSessions.find(s => s.id === doc.session_id) : null;
+                    const isRenaming = renamingDoc === doc.id;
+                    const isConfirmingDelete = confirmDeleteDoc === doc.id;
+                    const isTagging = taggingDoc === doc.id;
+                    return (
+                      <div key={doc.id} style={{ borderBottom: i < sortedFilteredDocs.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+                        {/* Session tag */}
+                        {linkedSession && (
+                          <div style={{ padding:"6px 14px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
+                            Sesión {linkedSession.date} · {linkedSession.time}
+                          </div>
+                        )}
+                        <div style={{ display:"flex", alignItems:"center", padding:"10px 14px", gap:10 }}>
+                          {/* File icon */}
+                          <div style={{ fontSize:24, lineHeight:1, flexShrink:0 }}>{getFileIcon(doc)}</div>
+                          {/* Name & info */}
+                          <div style={{ flex:1, minWidth:0 }}>
+                            {isRenaming ? (
+                              <div style={{ display:"flex", gap:4 }}>
+                                <input className="input" value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                                  onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") { setRenamingDoc(null); setRenameValue(""); } }}
+                                  autoFocus style={{ fontSize:12, padding:"4px 6px", flex:1 }} />
+                                <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:11, fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer" }}>OK</button>
+                              </div>
+                            ) : (
+                              <>
+                                <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}
+                                  onClick={() => { const url = getDocumentUrl(doc.file_path); if (url) window.open(url, "_blank"); }}>
+                                  {doc.name}
+                                </div>
+                                <div style={{ fontSize:10, color:"var(--charcoal-xl)", marginTop:2 }}>
+                                  {formatFileSize(doc.file_size)}
+                                  {doc.created_at && ` · ${new Date(doc.created_at).toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {/* Actions */}
+                          {!isRenaming && (
+                            <div style={{ display:"flex", gap:2, flexShrink:0 }}>
+                              <button onClick={() => { setRenamingDoc(doc.id); setRenameValue(doc.name || ""); }}
+                                style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)" }} title="Renombrar">
+                                <IconEdit size={14} />
+                              </button>
+                              <button onClick={() => setTaggingDoc(taggingDoc === doc.id ? null : doc.id)}
+                                style={{ padding:6, background:"none", border:"none", cursor:"pointer", color: doc.session_id ? "var(--teal-dark)" : "var(--charcoal-xl)" }} title="Vincular a sesión">
+                                <IconTag size={14} />
+                              </button>
+                              {isConfirmingDelete ? (
+                                <div style={{ display:"flex", gap:2 }}>
+                                  <button onClick={() => handleDeleteDoc(doc.id)}
+                                    style={{ padding:"4px 8px", fontSize:10, fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"white", cursor:"pointer" }}>Sí</button>
+                                  <button onClick={() => setConfirmDeleteDoc(null)}
+                                    style={{ padding:"4px 8px", fontSize:10, fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>No</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setConfirmDeleteDoc(doc.id)}
+                                  style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)" }} title="Eliminar">
+                                  <IconTrash size={14} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {/* Tag to session dropdown */}
+                        {isTagging && (
+                          <div style={{ padding:"0 14px 10px" }}>
+                            <div style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)", marginBottom:4 }}>Vincular a sesión:</div>
+                            <select value={doc.session_id || ""} onChange={e => handleTag(doc.id, e.target.value || null)}
+                              style={{ width:"100%", fontSize:11, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)" }}>
+                              <option value="">Sin vincular</option>
+                              {pSessions.map(s => (
+                                <option key={s.id} value={s.id}>{s.date} · {s.time} — {statusLabel(s.status)}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

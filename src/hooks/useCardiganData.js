@@ -5,6 +5,7 @@ import { createPatientActions } from "./usePatients";
 import { createSessionActions, getRecurringDates } from "./useSessions";
 import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
+import { createDocumentActions } from "./useDocuments";
 
 function mapRows(rows) {
   return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx }));
@@ -55,6 +56,7 @@ export function useCardiganData(user, viewAsUserId) {
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
@@ -63,11 +65,12 @@ export function useCardiganData(user, viewAsUserId) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const q = (table) => supabase.from(table).select("*").eq("user_id", userId);
-    const [pRes, sRes, pmRes, nRes] = await Promise.all([
+    const [pRes, sRes, pmRes, nRes, dRes] = await Promise.all([
       q("patients").order("name"),
       q("sessions").order("created_at"),
       q("payments").order("created_at", { ascending: false }),
       q("notes").order("updated_at", { ascending: false }),
+      q("documents").order("created_at", { ascending: false }),
     ]);
 
     let pData = mapRows(pRes.data);
@@ -135,6 +138,7 @@ export function useCardiganData(user, viewAsUserId) {
     setUpcomingSessions(sData);
     setPayments(mapRows(pmRes.data));
     setNotes(nRes.data || []);
+    setDocuments(dRes.data || []);
     setLoading(false);
   }, [userId, readOnly]);
 
@@ -150,6 +154,8 @@ export function useCardiganData(user, viewAsUserId) {
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
   const { createNote, updateNote, deleteNote } =
     createNoteActions(userId, notes, setNotes);
+  const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
+    createDocumentActions(userId, documents, setDocuments);
 
   /* ── ENRICHMENT ── */
   // Auto-complete is display-only — shows past scheduled sessions as "completed"
@@ -189,13 +195,14 @@ export function useCardiganData(user, viewAsUserId) {
   }, [patients, enrichedSessions]);
 
   return {
-    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes,
+    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents,
     loading, mutating, mutationError, readOnly,
     createPatient, updatePatient, deletePatient,
     createSession, updateSessionStatus, deleteSession, rescheduleSession,
     generateRecurringSessions, applyScheduleChange,
     createPayment, deletePayment,
     createNote, updateNote, deleteNote,
+    uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
     refresh,
   };
 }

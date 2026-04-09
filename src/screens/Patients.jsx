@@ -6,7 +6,7 @@ import { todayISO, isoToShortDate } from "../utils/dates";
 import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
 
-export function Patients({ patients, upcomingSessions, notes, payments, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, generateRecurringSessions, applyScheduleChange, mutating, setHideFab }) {
+export function Patients({ patients, upcomingSessions, notes, payments, documents, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, mutating, setHideFab }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -330,6 +330,12 @@ export function Patients({ patients, upcomingSessions, notes, payments, onRecord
           upcomingSessions={upcomingSessions}
           notes={notes}
           payments={payments}
+          documents={documents}
+          uploadDocument={uploadDocument}
+          renameDocument={renameDocument}
+          tagDocumentSession={tagDocumentSession}
+          deleteDocument={deleteDocument}
+          getDocumentUrl={getDocumentUrl}
           onClose={() => { setExpediente(null); setHideFab?.(false); }}
           onRecordPayment={onRecordPayment}
           onEdit={(p) => {

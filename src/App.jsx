@@ -62,13 +62,14 @@ function AppShell({ user, signOut, demo }) {
   const demoData = useDemoData();
   const data = demo ? demoData : liveData;
   const {
-    patients, upcomingSessions, payments, notes,
+    patients, upcomingSessions, payments, notes, documents,
     loading, mutating, mutationError, readOnly,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
     deleteSession, rescheduleSession, deletePayment,
     generateRecurringSessions, applyScheduleChange,
     createNote, updateNote, deleteNote,
+    uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
     refresh,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -137,9 +138,10 @@ function AppShell({ user, signOut, demo }) {
       deleteSession={deleteSession} rescheduleSession={rescheduleSession}
       notes={notes} createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       mutating={mutating} />,
-    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} payments={payments} onRecordPayment={openRecordPaymentModal}
+    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} payments={payments} documents={documents} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
       createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
+      uploadDocument={uploadDocument} renameDocument={renameDocument} tagDocumentSession={tagDocumentSession} deleteDocument={deleteDocument} getDocumentUrl={getDocumentUrl}
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} setHideFab={setHideFab} />,
     finances: <Finances patients={patients} payments={payments}
       onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />,
