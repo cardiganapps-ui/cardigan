@@ -199,21 +199,21 @@ export function PatientExpediente({
             </div>
 
             {/* Financials — filtered */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Vendido</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16, alignItems:"stretch" }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Vendido</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
               </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Cobrado</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Cobrado</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
               </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"14px 10px", textAlign:"center" }}>
                 <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Saldo</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color: fPeriodSaldo > 0 ? "var(--red)" : "var(--charcoal-xl)" }}>${fPeriodSaldo.toLocaleString()}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: fPeriodSaldo > 0 ? "var(--red)" : "var(--charcoal-xl)" }}>${fPeriodSaldo.toLocaleString()}</div>
                 <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>período</div>
-                <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:6, paddingTop:5 }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
+                <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:5, paddingTop:4 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
                   <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>actual</div>
                 </div>
               </div>
