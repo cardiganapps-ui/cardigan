@@ -5,9 +5,12 @@ import { IconX } from "../components/Icons";
 export function AdminPanel({ onViewAs, onClose }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchAllAccounts().then(a => { setAccounts(a); setLoading(false); });
+    fetchAllAccounts()
+      .then(a => { setAccounts(a); setLoading(false); })
+      .catch(e => { setError(e.message || "Error cargando cuentas"); setLoading(false); });
   }, []);
 
   return (
@@ -28,6 +31,8 @@ export function AdminPanel({ onViewAs, onClose }) {
       <div style={{ flex:1, overflowY:"auto", padding:16 }}>
         {loading ? (
           <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>Cargando cuentas...</div>
+        ) : error ? (
+          <div style={{ textAlign:"center", padding:40, color:"var(--red)", fontSize:13 }}>{error}</div>
         ) : accounts.length === 0 ? (
           <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>Sin cuentas registradas</div>
         ) : (

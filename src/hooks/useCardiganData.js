@@ -60,17 +60,22 @@ export function isAdmin(user) {
 
 export async function fetchAllAccounts() {
   // Admin-only: fetches patients to derive user accounts, plus user profiles
-  const [pRes, profileRes] = await Promise.all([
-    supabase.from("patients").select("user_id, name, created_at").order("created_at"),
-    supabase.rpc("get_user_profiles").catch(() => ({ data: null })),
-  ]);
-  if (!pRes.data) return [];
-  // Build profile lookup from RPC (may not exist yet, fallback gracefully)
+  let pData = [], profileData = [];
+  try {
+    const { data } = await supabase.from("patients").select("user_id, name, created_at").order("created_at");
+    pData = data || [];
+  } catch (e) { /* ignore */ }
+  try {
+    const { data } = await supabase.rpc("get_user_profiles");
+    profileData = data || [];
+  } catch (e) { /* ignore */ }
+
+  if (pData.length === 0) return [];
   const profiles = new Map();
-  (profileRes?.data || []).forEach(p => profiles.set(p.id, p));
+  profileData.forEach(p => profiles.set(p.id, p));
 
   const accounts = new Map();
-  (pRes.data || []).forEach(p => {
+  pData.forEach(p => {
     if (!accounts.has(p.user_id)) {
       const prof = profiles.get(p.user_id);
       accounts.set(p.user_id, {
