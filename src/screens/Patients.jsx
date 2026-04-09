@@ -14,12 +14,6 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expediente, setExpediente] = useState(null);
-  const [tutorSession, setTutorSession] = useState(false);
-  const [tutorDate, setTutorDate] = useState(todayISO());
-  const [tutorTime, setTutorTime] = useState("16:00");
-  const [tutorRate, setTutorRate] = useState("");
-  const [tutorErr, setTutorErr] = useState("");
-
   // Edit form state
   const [editName, setEditName]       = useState("");
   const [editIsMinor, setEditIsMinor] = useState(false);
@@ -45,7 +39,6 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
     setSelected(p);
     setEditing(false);
     setConfirmDelete(false);
-    setTutorSession(false);
   };
 
   const startEdit = () => {

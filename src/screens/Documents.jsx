@@ -2,7 +2,8 @@ import { useState, useMemo, useRef } from "react";
 import { clientColors } from "../data/seedData";
 import { IconSearch, IconUpload, IconEdit, IconTag, IconTrash, IconChevron, IconDocument } from "../components/Icons";
 import { shortDateToISO } from "../utils/dates";
-import { isTutorSession, statusLabel } from "../utils/sessions";
+import { statusLabel } from "../utils/sessions";
+import { getFileIcon, formatFileSize, isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
 
 export function Documents({
   documents, patients, upcomingSessions,
@@ -53,9 +54,9 @@ export function Documents({
     }
 
     // Type filter
-    if (filterType === "image") docs = docs.filter(d => d.file_type?.startsWith("image/"));
-    else if (filterType === "pdf") docs = docs.filter(d => d.file_type === "application/pdf");
-    else if (filterType === "doc") docs = docs.filter(d => d.file_type?.includes("word") || d.file_type?.includes("document") || d.name?.endsWith(".doc") || d.name?.endsWith(".docx"));
+    if (filterType === "image") docs = docs.filter(d => isImageDoc(d));
+    else if (filterType === "pdf") docs = docs.filter(d => isPdfDoc(d));
+    else if (filterType === "doc") docs = docs.filter(d => isWordDoc(d));
 
     // Sort
     if (sortBy === "oldest") docs.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
@@ -103,27 +104,11 @@ export function Documents({
   const openDocViewer = async (doc) => {
     const url = await getDocumentUrl(doc.file_path);
     if (!url) return;
-    const t = doc.file_type || "";
-    if (t.includes("word") || t.includes("document") || doc.name?.endsWith(".doc") || doc.name?.endsWith(".docx")) {
+    if (isWordDoc(doc)) {
       window.open(url, "_blank");
       return;
     }
     setViewingDoc({ doc, url });
-  };
-
-  const getFileIcon = (doc) => {
-    const t = doc.file_type || "";
-    if (t.startsWith("image/")) return "\u{1F5BC}";
-    if (t === "application/pdf") return "\u{1F4C4}";
-    if (t.includes("word") || t.includes("document")) return "\u{1F4DD}";
-    return "\u{1F4CE}";
-  };
-
-  const formatFileSize = (bytes) => {
-    if (!bytes) return "";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const getPatientSessions = (patientId) =>
@@ -136,8 +121,8 @@ export function Documents({
   // Document viewer overlay
   if (viewingDoc) {
     const { doc, url } = viewingDoc;
-    const isImage = doc.file_type?.startsWith("image/");
-    const isPdf = doc.file_type === "application/pdf";
+    const isImage = isImageDoc(doc);
+    const isPdf = isPdfDoc(doc);
     const p = patients.find(pt => pt.id === doc.patient_id);
     const linkedSession = doc.session_id ? (upcomingSessions || []).find(s => s.id === doc.session_id) : null;
     return (

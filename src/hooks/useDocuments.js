@@ -8,10 +8,12 @@ async function authHeaders() {
   };
 }
 
-export function createDocumentActions(userId, documents, setDocuments) {
+export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
 
   async function uploadDocument({ patientId, file, sessionId, name }) {
     if (!patientId || !file) return null;
+    setMutating(true);
+    setMutationError("");
     const ext = file.name.split(".").pop();
     const path = `${userId}/${patientId}/${Date.now()}.${ext}`;
 
@@ -22,7 +24,7 @@ export function createDocumentActions(userId, documents, setDocuments) {
       headers,
       body: JSON.stringify({ path, contentType: file.type || "application/octet-stream" }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) { setMutating(false); setMutationError("Error al generar URL de subida"); return null; }
     const { url } = await res.json();
 
     // Upload directly to R2
@@ -31,7 +33,7 @@ export function createDocumentActions(userId, documents, setDocuments) {
       body: file,
       headers: { "Content-Type": file.type || "application/octet-stream" },
     });
-    if (!uploadRes.ok) return null;
+    if (!uploadRes.ok) { setMutating(false); setMutationError("Error al subir archivo"); return null; }
 
     // Save metadata to Supabase
     const { data, error } = await supabase.from("documents").insert({
@@ -43,7 +45,9 @@ export function createDocumentActions(userId, documents, setDocuments) {
       file_type: file.type || "application/octet-stream",
       file_size: file.size,
     }).select().single();
+    setMutating(false);
     if (error) {
+      setMutationError(error.message);
       // Clean up orphaned R2 file
       const delHeaders = await authHeaders();
       await fetch("/api/delete-document", {
@@ -60,7 +64,7 @@ export function createDocumentActions(userId, documents, setDocuments) {
     const { error } = await supabase.from("documents")
       .update({ name, updated_at: new Date().toISOString() })
       .eq("id", id);
-    if (error) return false;
+    if (error) { setMutationError(error.message); return false; }
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: new Date().toISOString() } : d));
     return true;
   }
@@ -69,7 +73,7 @@ export function createDocumentActions(userId, documents, setDocuments) {
     const { error } = await supabase.from("documents")
       .update({ session_id: sessionId || null, updated_at: new Date().toISOString() })
       .eq("id", id);
-    if (error) return false;
+    if (error) { setMutationError(error.message); return false; }
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: sessionId || null, updated_at: new Date().toISOString() } : d));
     return true;
   }
@@ -85,7 +89,7 @@ export function createDocumentActions(userId, documents, setDocuments) {
       });
     }
     const { error } = await supabase.from("documents").delete().eq("id", id);
-    if (error) return false;
+    if (error) { setMutationError(error.message); return false; }
     setDocuments(prev => prev.filter(d => d.id !== id));
     return true;
   }

@@ -153,9 +153,9 @@ export function useCardiganData(user, viewAsUserId) {
   const { createPayment, deletePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
   const { createNote, updateNote, deleteNote } =
-    createNoteActions(userId, notes, setNotes);
+    createNoteActions(userId, notes, setNotes, setMutating, setMutationError);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
-    createDocumentActions(userId, documents, setDocuments);
+    createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
 
   /* ── ENRICHMENT ── */
   // Auto-complete is display-only — shows past scheduled sessions as "completed"

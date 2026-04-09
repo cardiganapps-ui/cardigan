@@ -4,6 +4,7 @@ import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit, IconDocument, IconUpload, IconTrash, IconTag, IconFilter, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { isTutorSession, statusLabel, statusClass } from "../utils/sessions";
+import { getFileIcon, formatFileSize, isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
 
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments, documents,
@@ -136,7 +137,7 @@ export function PatientExpediente({
     // filter
     if (docFilter === "image") docs = docs.filter(d => d.file_type?.startsWith("image/"));
     else if (docFilter === "pdf") docs = docs.filter(d => d.file_type === "application/pdf");
-    else if (docFilter === "doc") docs = docs.filter(d => d.file_type?.includes("word") || d.file_type?.includes("document") || d.name?.endsWith(".doc") || d.name?.endsWith(".docx"));
+    else if (docFilter === "doc") docs = docs.filter(d => isWordDoc(d));
     // sort
     if (docSort === "oldest") docs.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
     else if (docSort === "name") docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -184,28 +185,12 @@ export function PatientExpediente({
   const openDocViewer = async (doc) => {
     const url = await getDocumentUrl(doc.file_path);
     if (!url) return;
-    const t = doc.file_type || "";
     // Word docs can't be rendered in-browser — open externally
-    if (t.includes("word") || t.includes("document") || doc.name?.endsWith(".doc") || doc.name?.endsWith(".docx")) {
+    if (isWordDoc(doc)) {
       window.open(url, "_blank");
       return;
     }
     setViewingDoc({ doc, url });
-  };
-
-  const getFileIcon = (doc) => {
-    const t = doc.file_type || "";
-    if (t.startsWith("image/")) return "\u{1F5BC}";
-    if (t === "application/pdf") return "\u{1F4C4}";
-    if (t.includes("word") || t.includes("document")) return "\u{1F4DD}";
-    return "\u{1F4CE}";
-  };
-
-  const formatFileSize = (bytes) => {
-    if (!bytes) return "";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const tabs = [
@@ -636,8 +621,8 @@ export function PatientExpediente({
     {/* ── Document Viewer Overlay ── */}
     {viewingDoc && (() => {
       const { doc, url } = viewingDoc;
-      const isImage = doc.file_type?.startsWith("image/");
-      const isPdf = doc.file_type === "application/pdf";
+      const isImage = isImageDoc(doc);
+      const isPdf = isPdfDoc(doc);
       const linkedSession = doc.session_id ? pSessions.find(s => s.id === doc.session_id) : null;
       return (
         <>
