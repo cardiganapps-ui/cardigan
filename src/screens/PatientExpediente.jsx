@@ -143,11 +143,19 @@ export function PatientExpediente({
     return docs;
   }, [pDocuments, docSort, docFilter]);
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      alert(`${oversized.map(f => f.name).join(", ")} excede${oversized.length > 1 ? "n" : ""} el límite de 10 MB`);
+    }
+    const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
+    if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
     setUploading(true);
-    for (const file of files) {
+    for (const file of valid) {
       await uploadDocument({ patientId: patient.id, file, sessionId: null, name: file.name });
     }
     setUploading(false);
@@ -555,7 +563,7 @@ export function PatientExpediente({
                             ) : (
                               <>
                                 <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}
-                                  onClick={() => { const url = getDocumentUrl(doc.file_path); if (url) window.open(url, "_blank"); }}>
+                                  onClick={async () => { const url = await getDocumentUrl(doc.file_path); if (url) window.open(url, "_blank"); }}>
                                   {doc.name}
                                 </div>
                                 <div style={{ fontSize:10, color:"var(--charcoal-xl)", marginTop:2 }}>
