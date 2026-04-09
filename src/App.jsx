@@ -38,6 +38,7 @@ function AppShell({ user, signOut }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [hideFab, setHideFab] = useState(false);
   const admin = isAdmin(user);
 
   const data = useCardiganData(user, viewAsUserId);
@@ -119,7 +120,7 @@ function AppShell({ user, signOut }) {
     patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} payments={payments} onRecordPayment={openRecordPaymentModal}
       updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
       createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
-      generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} />,
+      generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} setHideFab={setHideFab} />,
     finances: <Finances patients={patients} payments={payments}
       onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
     settings: <Settings user={user} signOut={signOut} />,
@@ -167,7 +168,7 @@ function AppShell({ user, signOut }) {
       <PullToRefresh onRefresh={refresh}>
         {screenMap[screen]}
       </PullToRefresh>
-      {!readOnly && (
+      {!readOnly && !hideFab && (
         <>
           <PaymentModal
             open={paymentModalOpen}
