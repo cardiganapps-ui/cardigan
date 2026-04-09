@@ -83,3 +83,16 @@ create policy "Admin reads all patients" on patients for select using (is_admin(
 create policy "Admin reads all sessions" on sessions for select using (is_admin());
 create policy "Admin reads all payments" on payments for select using (is_admin());
 create policy "Admin reads all notes" on notes for select using (is_admin());
+
+-- Admin helper: fetch user profiles (email + name) from auth.users
+create or replace function get_user_profiles()
+returns table(id uuid, email text, full_name text) as $$
+begin
+  if not is_admin() then
+    return;
+  end if;
+  return query
+    select au.id, au.email::text, coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name
+    from auth.users au;
+end;
+$$ language plpgsql security definer;

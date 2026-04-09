@@ -59,25 +59,29 @@ export function isAdmin(user) {
 }
 
 export async function fetchAllAccounts() {
-  // Admin-only: fetches all data to derive unique user accounts with stats
-  const [pRes, sRes, pmRes] = await Promise.all([
+  // Admin-only: fetches patients to derive user accounts, plus user profiles
+  const [pRes, profileRes] = await Promise.all([
     supabase.from("patients").select("user_id, name, created_at").order("created_at"),
-    supabase.from("sessions").select("user_id").order("created_at"),
-    supabase.from("payments").select("user_id, amount").order("created_at"),
+    supabase.rpc("get_user_profiles").catch(() => ({ data: null })),
   ]);
   if (!pRes.data) return [];
+  // Build profile lookup from RPC (may not exist yet, fallback gracefully)
+  const profiles = new Map();
+  (profileRes?.data || []).forEach(p => profiles.set(p.id, p));
+
   const accounts = new Map();
   (pRes.data || []).forEach(p => {
     if (!accounts.has(p.user_id)) {
-      accounts.set(p.user_id, { userId: p.user_id, patients: [], sessions: 0, totalPaid: 0, firstSeen: p.created_at });
+      const prof = profiles.get(p.user_id);
+      accounts.set(p.user_id, {
+        userId: p.user_id,
+        fullName: prof?.full_name || "",
+        email: prof?.email || "",
+        patientCount: 0,
+        firstSeen: p.created_at,
+      });
     }
-    accounts.get(p.user_id).patients.push(p.name);
-  });
-  (sRes.data || []).forEach(s => {
-    if (accounts.has(s.user_id)) accounts.get(s.user_id).sessions++;
-  });
-  (pmRes.data || []).forEach(p => {
-    if (accounts.has(p.user_id)) accounts.get(p.user_id).totalPaid += p.amount;
+    accounts.get(p.user_id).patientCount++;
   });
   return [...accounts.values()];
 }
