@@ -223,7 +223,7 @@ export function PatientExpediente({
     <>
     {/* Backdrop */}
     <div className="expediente-open" onClick={onClose}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:499, animation:"fadeIn 0.2s ease" }} />
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:499, animation:"fadeIn 0.4s ease" }} />
 
     {/* Card */}
     <div className="expediente-open"
@@ -233,7 +233,7 @@ export function PatientExpediente({
         background:"var(--nav-bg)",
         borderRadius:"20px 20px 0 0",
         boxShadow:"0 -4px 30px rgba(0,0,0,0.25)",
-        animation: dragY > 0 ? undefined : "expedientePullUp 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+        animation: dragY > 0 ? undefined : "expedientePullUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
         transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
         overflow:"hidden",
