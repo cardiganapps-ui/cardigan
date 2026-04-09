@@ -142,7 +142,7 @@ function AppShell({ user, signOut, demo }) {
       createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} setHideFab={setHideFab} />,
     finances: <Finances patients={patients} payments={payments}
-      onRecordPayment={openRecordPaymentModal} mutating={mutating} />,
+      onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />,
     settings: <Settings user={user} signOut={signOut} />,
   };
 

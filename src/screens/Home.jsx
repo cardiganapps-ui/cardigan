@@ -2,6 +2,7 @@ import { useState } from "react";
 import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconDollar, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
+import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
 
 export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating, userName }) {
   const FULL_MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -74,20 +75,23 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
         <div className="card">
           {todaySessions.length === 0
             ? emptyHint("Las sesiones agendadas para hoy aparecerán aquí")
-            : todaySessions.map(s => (
+            : todaySessions.map(s => {
+              const tutor = isTutorSession(s);
+              return (
               <div className="row-item" key={s.id} onClick={() => openPatient(s.patient)}>
-                <div className="row-avatar" style={{ background: clientColors[s.colorIdx % clientColors.length] }}>{s.initials}</div>
+                <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : clientColors[s.colorIdx % clientColors.length], border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
+                  {tutor ? tutorDisplayInitials(s) : s.initials}
+                </div>
                 <div className="row-content">
-                  <div className="row-title">{s.patient}</div>
+                  <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}</div>
                   <div className="row-sub">{s.time} · {s.day}</div>
                 </div>
                 <div className="row-right">
-                  <span className={`session-status ${(s.status==="cancelled"||s.status==="charged")?"status-cancelled":s.status==="completed"?"status-completed":"status-scheduled"}`}>
-                    {(s.status==="cancelled"||s.status==="charged") ? "Cancelada" : s.status==="completed" ? "Completada" : "Agendada"}
-                  </span>
+                  <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
                 </div>
               </div>
-            ))
+              );
+            })
           }
         </div>
       </div>

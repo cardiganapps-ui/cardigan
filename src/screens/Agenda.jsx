@@ -282,8 +282,12 @@ export function Agenda({ upcomingSessions, patients, onCancelSession, onMarkComp
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
+  const [filterPatient, setFilterPatient] = useState("");
 
   const isToday = isSameDay(selectedDate, TODAY);
+  const filteredSessions = filterPatient
+    ? upcomingSessions.filter(s => s.patient_id === filterPatient)
+    : upcomingSessions;
 
   const handleOpenNote = async (session) => {
     const existing = notes?.find(n => n.session_id === session.id);
@@ -324,10 +328,28 @@ export function Agenda({ upcomingSessions, patients, onCancelSession, onMarkComp
             </button>
           )}
         </div>
+        {patients.length > 0 && (
+          <div style={{ padding:"0 16px 10px" }}>
+            <select className="input" value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
+              style={{ fontSize:12, padding:"7px 10px", color: filterPatient ? "var(--teal-dark)" : "var(--charcoal-xl)" }}>
+              <option value="">Todos los pacientes</option>
+              {patients.filter(p => p.status === "active").map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
-      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
-      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={upcomingSessions} />}
+      {upcomingSessions.length === 0 && (
+        <div style={{ padding:"32px 24px", textAlign:"center" }}>
+          <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconLeaf size={36} /></div>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>Sin sesiones</div>
+          <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>Agrega pacientes y citas recurrentes para ver tu agenda aquí.</div>
+        </div>
+      )}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}
       <SessionSheet
         session={selectedSession}
         patients={patients}

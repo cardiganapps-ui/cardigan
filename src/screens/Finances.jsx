@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { clientColors } from "../data/seedData";
 import { IconCheck } from "../components/Icons";
+import { exportPayments } from "../utils/export";
 
-function PagosTab({ payments, patients, onRecordPayment, mutating }) {
+function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutating }) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);
   const [sortOrder, setSortOrder]         = useState("desc");
   const [filterMethod, setFilterMethod]   = useState("all");
@@ -33,29 +35,52 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
 
   const renderRow = (p, i) => {
     const patient = patients.find(pt => pt.name === p.patient);
+    const isDeleting = confirmDeleteId === p.id;
     return (
-      <div className="bal-row" key={p.id}>
-        <div className="row-avatar" style={{ background: clientColors[(p.colorIdx||i)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>
-          {patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          {!groupByClient && <div className="bal-name">{p.patient}</div>}
-          <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
-            <span>{p.date}</span>
-            <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
-            <span>{p.method}</span>
+      <div key={p.id}>
+        <div className="bal-row" onClick={() => setConfirmDeleteId(isDeleting ? null : p.id)} style={{ cursor:"pointer" }}>
+          <div className="row-avatar" style={{ background: clientColors[(p.colorIdx||i)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>
+            {patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
           </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            {!groupByClient && <div className="bal-name">{p.patient}</div>}
+            <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
+              <span>{p.date}</span>
+              <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
+              <span>{p.method}</span>
+            </div>
+          </div>
+          <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
         </div>
-        <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
+        {isDeleting && (
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"6px 12px 10px", borderBottom:"1px solid var(--border-lt)" }}>
+            <button style={{ fontSize:11, fontWeight:600, color:"var(--red)", background:"var(--red-bg)", border:"none", borderRadius:"var(--radius-pill)", padding:"5px 14px", cursor:"pointer", fontFamily:"var(--font)" }}
+              disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setConfirmDeleteId(null); }}>
+              {mutating ? "..." : "Eliminar pago"}
+            </button>
+            <button style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-lt)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", padding:"5px 14px", cursor:"pointer", fontFamily:"var(--font)" }}
+              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}>
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div style={{ padding:"0 16px" }}>
-      <button className="btn btn-primary" style={{ marginBottom:14 }} onClick={() => onRecordPayment(null)} disabled={mutating}>
-        {mutating ? "Guardando..." : "+ Registrar pago"}
-      </button>
+      <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+        <button className="btn btn-primary" style={{ flex:1 }} onClick={() => onRecordPayment(null)} disabled={mutating}>
+          {mutating ? "Guardando..." : "+ Registrar pago"}
+        </button>
+        {filtered.length > 0 && (
+          <button className="btn" onClick={() => exportPayments(filtered)}
+            style={{ fontSize:11, fontWeight:600, padding:"0 14px", background:"var(--cream)", color:"var(--charcoal-md)", boxShadow:"none" }}>
+            Exportar
+          </button>
+        )}
+      </div>
 
       <div className="card" style={{ padding:"12px 14px", marginBottom:14 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
@@ -158,7 +183,7 @@ function PagosTab({ payments, patients, onRecordPayment, mutating }) {
   );
 }
 
-export function Finances({ patients, payments, onRecordPayment, mutating }) {
+export function Finances({ patients, payments, onRecordPayment, onDeletePayment, mutating }) {
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
@@ -266,7 +291,7 @@ export function Finances({ patients, payments, onRecordPayment, mutating }) {
         </div>
       )}
 
-      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={onRecordPayment} mutating={mutating} />}
+      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={onRecordPayment} onDeletePayment={onDeletePayment} mutating={mutating} />}
 
     </div>
   );
