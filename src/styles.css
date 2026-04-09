@@ -205,7 +205,7 @@ html, body {
   width: 54px; height: 54px; background: var(--teal); border-radius: 50%;
   border: none; display: flex; align-items: center; justify-content: center;
   font-size: 28px; font-weight: 300; color: white;
-  line-height: 1; padding: 0; padding-bottom: 2px;
+  line-height: 54px; padding: 0; text-indent: 0;
   box-shadow: 0 3px 14px rgba(91,155,175,0.35);
   cursor: pointer; z-index: 52;
   -webkit-tap-highlight-color: transparent;

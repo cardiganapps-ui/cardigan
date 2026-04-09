@@ -168,18 +168,19 @@ function AppShell({ user, signOut }) {
       <PullToRefresh onRefresh={refresh}>
         {screenMap[screen]}
       </PullToRefresh>
+      {!readOnly && (
+        <PaymentModal
+          open={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          patients={patients}
+          initialPatientName={paymentDraft.patientName}
+          initialAmount={paymentDraft.amount}
+          onSubmit={createPayment}
+          mutating={mutating}
+        />
+      )}
       {!readOnly && !hideFab && (
-        <>
-          <PaymentModal
-            open={paymentModalOpen}
-            onClose={() => setPaymentModalOpen(false)}
-            patients={patients}
-            initialPatientName={paymentDraft.patientName}
-            initialAmount={paymentDraft.amount}
-            onSubmit={createPayment}
-            mutating={mutating}
-          />
-          <QuickActions
+        <QuickActions
             patients={patients}
             upcomingSessions={upcomingSessions}
             onOpenPaymentModal={() => openRecordPaymentModal(null)}
@@ -188,7 +189,6 @@ function AppShell({ user, signOut }) {
             createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
             mutating={mutating}
           />
-        </>
       )}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeX={swipeX} />
