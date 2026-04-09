@@ -403,7 +403,6 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
             setEditing(true);
             setConfirmDelete(false);
           }}
-          onScheduleSession={() => { setExpediente(null); setHideFab?.(false); }}
           createSession={createSession}
           createNote={createNote}
           updateNote={updateNote}
