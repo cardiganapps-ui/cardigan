@@ -7,6 +7,7 @@ import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { IconHome, IconSettings } from "./components/Icons";
 import { LogoIcon } from "./components/LogoMark";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -209,6 +210,7 @@ function AppShell({ user, signOut }) {
           onClose={() => setShowAdmin(false)}
         />
       )}
+      <InstallPrompt />
     </div>
   );
 }
