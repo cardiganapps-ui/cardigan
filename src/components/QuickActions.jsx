@@ -262,23 +262,42 @@ function sessionLabel(s) {
   return `${s.date} · ${s.time} — ${st}`;
 }
 
+function isTutorSession(s) { return s.initials?.startsWith("T·"); }
+
 function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateNote, deleteNote }) {
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
+  const [isTutorNote, setIsTutorNote] = useState(false);
   const [autoLinked, setAutoLinked] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
 
   const selectedPatient = patients.find(p => p.id === patientId);
+  const isMinor = selectedPatient && !!selectedPatient.parent;
+  const now = todayISO();
+
   const patientSessions = patientId
-    ? (upcomingSessions || []).filter(s => s.patient_id === patientId).sort((a, b) => {
-        const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
-        if (da !== db) return db.localeCompare(da);
-        return (b.time || "").localeCompare(a.time || "");
-      })
+    ? (upcomingSessions || []).filter(s => s.patient_id === patientId)
     : [];
+
+  // Past sessions: recent first. Future sessions: earliest first.
+  const pastSessions = patientSessions
+    .filter(s => shortDateToISO(s.date) <= now)
+    .sort((a, b) => {
+      const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
+      if (da !== db) return db.localeCompare(da);
+      return (b.time || "").localeCompare(a.time || "");
+    });
+  const futureSessions = patientSessions
+    .filter(s => shortDateToISO(s.date) > now)
+    .sort((a, b) => {
+      const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
+      if (da !== db) return da.localeCompare(db);
+      return (a.time || "").localeCompare(b.time || "");
+    });
 
   const handlePatientChange = (newId) => {
     setPatientId(newId);
+    setIsTutorNote(false);
     if (newId) {
       const pSess = (upcomingSessions || []).filter(s => s.patient_id === newId);
       const closest = findClosestPastSession(pSess);
@@ -291,9 +310,11 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
   };
 
   const startNote = async () => {
+    const titlePrefix = isTutorNote ? `[Tutor: ${selectedPatient.parent}] ` : "";
     const note = await createNote({
       patientId: patientId || null,
       sessionId: sessionId || null,
+      title: titlePrefix,
     });
     if (note) setEditingNote(note);
   };
@@ -325,18 +346,23 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
             <select className="input" value={patientId} onChange={e => handlePatientChange(e.target.value)}>
               <option value="">General (sin paciente)</option>
               {patients.filter(p => p.status === "active").map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>{p.name}{p.parent ? " (menor)" : ""}</option>
               ))}
             </select>
           </div>
 
-          {patientId && patientSessions.length > 0 && (
+          {patientId && (pastSessions.length > 0 || futureSessions.length > 0) && (
             <div className="input-group">
               <label className="input-label">Vincular a sesión</label>
               <select className="input" value={sessionId} onChange={e => { setSessionId(e.target.value); setAutoLinked(false); }}>
                 <option value="">Nota general del paciente</option>
-                {patientSessions.map(s => (
-                  <option key={s.id} value={s.id}>{sessionLabel(s)}</option>
+                {pastSessions.length > 0 && <option disabled>— Pasadas —</option>}
+                {pastSessions.map(s => (
+                  <option key={s.id} value={s.id}>{isTutorSession(s) ? "🔹 " : ""}{sessionLabel(s)}</option>
+                ))}
+                {futureSessions.length > 0 && <option disabled>— Próximas —</option>}
+                {futureSessions.map(s => (
+                  <option key={s.id} value={s.id}>{isTutorSession(s) ? "🔹 " : ""}{sessionLabel(s)}</option>
                 ))}
               </select>
               {autoLinked && linkedSession && (
@@ -347,10 +373,19 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
             </div>
           )}
 
+          {isMinor && patientId && (
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+              <span style={{ fontSize:12, fontWeight:600, color:"var(--purple)" }}>Nota de sesión con tutor ({selectedPatient.parent})</span>
+              <Toggle on={isTutorNote} onToggle={() => setIsTutorNote(v => !v)} />
+            </div>
+          )}
+
           <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
             {patientId ? (
               <>
-                Paciente: <strong>{selectedPatient?.name}</strong><br />
+                Paciente: <strong>{selectedPatient?.name}</strong>
+                {isTutorNote && <span style={{ color:"var(--purple)", fontWeight:700 }}> (Tutor)</span>}
+                <br />
                 {linkedSession
                   ? <>Sesión: <strong>{linkedSession.date} · {linkedSession.time}</strong></>
                   : <>Nota general (sin sesión específica)</>}
@@ -360,7 +395,8 @@ function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateN
             )}
           </div>
 
-          <button className="btn btn-primary" onClick={startNote}>
+          <button className={`btn ${isTutorNote ? "" : "btn-primary"}`} onClick={startNote}
+            style={isTutorNote ? { background:"var(--purple)", color:"white", boxShadow:"none", width:"100%" } : undefined}>
             Crear nota
           </button>
         </div>
