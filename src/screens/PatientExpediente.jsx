@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { clientColors } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit } from "../components/Icons";
@@ -120,17 +120,59 @@ export function PatientExpediente({
     { k: "notas", l: "Notas", Icon: IconClipboard },
   ];
 
+  // Swipe-to-dismiss
+  const dragRef = useRef(null);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  const onDragStart = (e) => {
+    dragRef.current = { y: e.touches[0].clientY, active: false };
+  };
+  const onDragMove = (e) => {
+    if (!dragRef.current) return;
+    const dy = e.touches[0].clientY - dragRef.current.y;
+    if (!dragRef.current.active) {
+      if (dy > 8) { dragRef.current.active = true; setDragging(true); }
+      else return;
+    }
+    if (dragRef.current.active && dy > 0) setDragY(dy * 0.6);
+  };
+  const onDragEnd = () => {
+    if (!dragRef.current?.active) { dragRef.current = null; return; }
+    dragRef.current = null;
+    setDragging(false);
+    if (dragY > 120) { onClose(); }
+    setDragY(0);
+  };
+
   return (
-    <div className="expediente-open" style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:500, display:"flex", flexDirection:"column" }}>
+    <>
+    {/* Backdrop */}
+    <div className="expediente-open" onClick={onClose}
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:499, animation:"fadeIn 0.2s ease" }} />
+
+    {/* Card */}
+    <div className="expediente-open"
+      style={{
+        position:"fixed", top: 44, left:0, right:0, bottom:0, zIndex:500,
+        display:"flex", flexDirection:"column",
+        background:"var(--nav-bg)",
+        borderRadius:"20px 20px 0 0",
+        boxShadow:"0 -4px 30px rgba(0,0,0,0.25)",
+        transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+        transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+        overflow:"hidden",
+      }}>
+
+      {/* Drag handle */}
+      <div onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+        style={{ padding:"10px 0 0", cursor:"grab", flexShrink:0 }}>
+        <div style={{ width:36, height:4, borderRadius:2, background:"rgba(255,255,255,0.3)", margin:"0 auto 8px" }} />
+      </div>
+
       {/* Header */}
-      <div style={{ background:"var(--nav-bg)", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <button onClick={onClose}
-            style={{ fontSize:14, color:"rgba(255,255,255,0.7)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", fontWeight:600, padding:"4px 0" }}>
-            ‹ Pacientes
-          </button>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:14 }}>
+      <div style={{ padding:"0 16px 0", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <div className="row-avatar" style={{ background: clientColors[(patient.colorIdx || 0) % clientColors.length], width:48, height:48, fontSize:16 }}>
             {patient.initials}
           </div>
@@ -146,7 +188,7 @@ export function PatientExpediente({
           </button>
         </div>
         {/* Tabs */}
-        <div style={{ display:"flex", gap:0, marginTop:16 }}>
+        <div style={{ display:"flex", gap:0, marginTop:14 }}>
           {tabs.map(t => (
             <button key={t.k} onClick={() => setTab(t.k)}
               style={{
@@ -162,7 +204,7 @@ export function PatientExpediente({
       </div>
 
       {/* Content */}
-      <div style={{ flex:1, overflowY:"auto", background:"var(--cream)" }}>
+      <div style={{ flex:1, overflowY:"auto", background:"var(--cream)", borderRadius:0 }}>
 
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (
@@ -357,5 +399,6 @@ export function PatientExpediente({
         )}
       </div>
     </div>
+    </>
   );
 }
