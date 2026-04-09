@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { clientColors } from "../data/seedData";
+import { shortDateToISO, todayISO } from "../data/api";
 import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 
@@ -23,15 +24,16 @@ export function PatientExpediente({
   mutating,
 }) {
   const [tab, setTab] = useState("resumen");
-  const [editingNote, setEditingNote] = useState(null); // note object or "new" or {sessionId}
+  const [editingNote, setEditingNote] = useState(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const pSessions = useMemo(() =>
     (upcomingSessions || [])
       .filter(s => s.patient_id === patient.id)
       .sort((a, b) => {
-        // Sort by date descending, then time descending
-        const da = a.date, db = b.date;
-        if (da !== db) return db.localeCompare(da); // rough sort, good enough
+        const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
+        if (da !== db) return db.localeCompare(da);
         return (b.time || "").localeCompare(a.time || "");
       }),
     [upcomingSessions, patient.id]
@@ -42,12 +44,32 @@ export function PatientExpediente({
     [notes, patient.id]
   );
 
-  const completed = pSessions.filter(s => s.status === "completed").length;
-  const cancelled = pSessions.filter(s => s.status === "cancelled").length;
-  const charged = pSessions.filter(s => s.status === "charged").length;
-  const scheduled = pSessions.filter(s => s.status === "scheduled").length;
-  const resolved = completed + cancelled + charged;
-  const attendanceRate = resolved > 0 ? Math.round(completed / resolved * 100) : null;
+  // All-time stats
+  const allCompleted = pSessions.filter(s => s.status === "completed").length;
+  const allCancelled = pSessions.filter(s => s.status === "cancelled").length;
+  const allCharged = pSessions.filter(s => s.status === "charged").length;
+  const allScheduled = pSessions.filter(s => s.status === "scheduled").length;
+
+  // Date-filtered stats for the Resumen attendance card
+  const filteredSessions = useMemo(() => {
+    const now = todayISO();
+    return pSessions.filter(s => {
+      const iso = shortDateToISO(s.date);
+      if (iso > now) return false; // only past/today
+      if (dateFrom && iso < dateFrom) return false;
+      if (dateTo && iso > dateTo) return false;
+      return true;
+    });
+  }, [pSessions, dateFrom, dateTo]);
+
+  const fTotal = filteredSessions.length;
+  const fCompleted = filteredSessions.filter(s => s.status === "completed").length;
+  const fCancelled = filteredSessions.filter(s => s.status === "cancelled").length;
+  const fCharged = filteredSessions.filter(s => s.status === "charged").length;
+  const fScheduled = filteredSessions.filter(s => s.status === "scheduled").length;
+  const fResolved = fCompleted + fCancelled + fCharged;
+  const fAttendanceRate = fResolved > 0 ? Math.round(fCompleted / fResolved * 100) : null;
+  const hasFilter = !!(dateFrom || dateTo);
 
   const handleSaveNote = useCallback(async ({ title, content }) => {
     if (editingNote?.id) {
@@ -147,32 +169,57 @@ export function PatientExpediente({
               ))}
             </div>
 
-            {resolved > 0 && (
-              <div className="card" style={{ padding:14, marginBottom:16 }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:10 }}>Asistencia</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:6, marginBottom:10, textAlign:"center" }}>
-                  {[
-                    { n: completed, l: "Completadas", c: "var(--green)" },
-                    { n: scheduled, l: "Agendadas", c: "var(--teal-dark)" },
-                    { n: charged, l: "Cobradas", c: "var(--amber)" },
-                    { n: cancelled, l: "Canceladas", c: "var(--red)" },
-                  ].map((s, i) => (
-                    <div key={i}>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color: s.c }}>{s.n}</div>
-                      <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2, lineHeight:1.3 }}>{s.l}</div>
-                    </div>
-                  ))}
+            <div className="card" style={{ padding:14, marginBottom:16 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>Asistencia</div>
+                {hasFilter && (
+                  <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+                    style={{ fontSize:10, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
+                    Limpiar filtro
+                  </button>
+                )}
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>Desde</label>
+                  <input type="date" className="input" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                    style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
                 </div>
-                {attendanceRate !== null && (
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <div style={{ flex:1, height:6, background:"var(--cream-dark)", borderRadius:3, overflow:"hidden" }}>
-                      <div style={{ height:"100%", width:`${attendanceRate}%`, background:"var(--green)", borderRadius:3 }} />
+                <div>
+                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>Hasta</label>
+                  <input type="date" className="input" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                    style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
+                </div>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10 }}>
+                <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
+                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Programadas</div>
+                </div>
+                <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
+                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>Asistió</div>
+                </div>
+                <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
+                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:2 }}>No asistió</div>
+                </div>
+              </div>
+              {fCharged > 0 && (
+                <div style={{ fontSize:11, color:"var(--amber)", marginBottom:8 }}>
+                  {fCharged} cancelada{fCharged !== 1 ? "s" : ""} cobrada{fCharged !== 1 ? "s" : ""}
+                </div>
+              )}
+              {fAttendanceRate !== null && (
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ flex:1, height:6, background:"var(--cream-dark)", borderRadius:3, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:`${fAttendanceRate}%`, background:"var(--green)", borderRadius:3 }} />
                     </div>
-                    <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{attendanceRate}%</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{fAttendanceRate}%</span>
                   </div>
                 )}
               </div>
-            )}
 
             <div className="card" style={{ padding:0 }}>
               {[
