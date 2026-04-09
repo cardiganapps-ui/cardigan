@@ -178,16 +178,20 @@ export function PatientExpediente({
           <div style={{ padding:16 }}>
             {/* Date range filter */}
             <div className="card" style={{ padding:"12px 14px", marginBottom:16 }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>Período</div>
-                <button onClick={() => {
-                  const d = new Date(); d.setMonth(d.getMonth() - 3);
-                  setDateFrom(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
-                  setDateTo(todayISO());
-                }}
-                  style={{ fontSize:10, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
-                  Últimos 3 meses
-                </button>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>Período</div>
+              <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+                {[{l:"1 mes",m:1},{l:"3 meses",m:3},{l:"6 meses",m:6},{l:"1 año",m:12}].map(p => {
+                  const d = new Date(); d.setMonth(d.getMonth() - p.m);
+                  const fromVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+                  const isActive = dateFrom === fromVal && dateTo === todayISO();
+                  return (
+                    <button key={p.m} onClick={() => { setDateFrom(fromVal); setDateTo(todayISO()); }}
+                      style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
+                        background: isActive ? "var(--teal)" : "var(--cream)", color: isActive ? "white" : "var(--charcoal-md)" }}>
+                      {p.l}
+                    </button>
+                  );
+                })}
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 <div>
