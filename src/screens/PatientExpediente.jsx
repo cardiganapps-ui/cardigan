@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { clientColors } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
-import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit, IconDocument, IconUpload, IconTrash, IconTag, IconFilter } from "../components/Icons";
+import { IconX, IconClipboard, IconCalendar, IconUser, IconEdit, IconDocument, IconUpload, IconTrash, IconTag, IconFilter, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { isTutorSession, statusLabel, statusClass } from "../utils/sessions";
 
@@ -228,7 +228,7 @@ export function PatientExpediente({
     {/* Card */}
     <div className="expediente-open"
       style={{
-        position:"fixed", top: 44, left:0, right:0, bottom:0, zIndex:500,
+        position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:500,
         display:"flex", flexDirection:"column",
         background:"var(--nav-bg)",
         borderRadius:"20px 20px 0 0",
@@ -247,7 +247,11 @@ export function PatientExpediente({
 
       {/* Header */}
       <div style={{ padding:"0 16px 0", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={onClose}
+            style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
+            <IconChevron size={20} />
+          </button>
           <div className="row-avatar" style={{ background: clientColors[(patient.colorIdx || 0) % clientColors.length], width:48, height:48, fontSize:16 }}>
             {patient.initials}
           </div>
