@@ -104,11 +104,7 @@ export function useCardiganData(user, viewAsUserId) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const q = (table) => {
-      let query = supabase.from(table).select("*");
-      if (readOnly) query = query.eq("user_id", userId);
-      return query;
-    };
+    const q = (table) => supabase.from(table).select("*").eq("user_id", userId);
     const [pRes, sRes, pmRes, nRes] = await Promise.all([
       q("patients").order("name"),
       q("sessions").order("created_at"),
