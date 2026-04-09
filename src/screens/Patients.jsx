@@ -2,11 +2,11 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
-import { todayISO, isoToShortDate } from "../utils/dates";
+import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
 
-export function Patients({ patients, upcomingSessions, notes, payments, documents, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, mutating, setHideFab }) {
+export function Patients({ patients, upcomingSessions, notes, payments, documents, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab }) {
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -30,6 +30,7 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate]       = useState(false);
   const [endDate, setEndDate]             = useState("");
+  const [finishDate, setFinishDate]         = useState(todayISO());
   // Track originals to detect changes
   const [origRate, setOrigRate]           = useState(0);
   const [origSchedules, setOrigSchedules] = useState("[]");
@@ -60,6 +61,7 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
     setEffectiveDate(todayISO());
     setHasEndDate(false);
     setEndDate("");
+    setFinishDate(todayISO());
     setEditing(true);
   };
 
@@ -71,7 +73,24 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
     return rateChanged || schedChanged;
   };
 
+  const isFinalizingPatient = editStatus === "ended" && selected?.status === "active";
+
   const saveEdit = async () => {
+    // Finalizing a patient — delete future sessions and set inactive
+    if (isFinalizingPatient) {
+      const ok = await finalizePatient(selected.id, finishDate);
+      if (ok) {
+        // Also save any basic info changes
+        await updatePatient(selected.id, {
+          name: editName.trim(),
+          parent: editIsMinor ? editParent.trim() : "",
+        });
+        setSelected(null);
+        setEditing(false);
+      }
+      return;
+    }
+
     if (scheduleOrRateChanged()) {
       // Schedule or rate changed — apply with effective date
       const ok = await applyScheduleChange(selected.id, {
@@ -228,7 +247,33 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
                     </select>
                   </div>
 
-                  {/* Rate */}
+                  {/* Finalize patient */}
+                  {isFinalizingPatient && (() => {
+                    const cutoff = parseLocalDate(finishDate);
+                    const sessionsToRemove = upcomingSessions.filter(s =>
+                      s.patient_id === selected.id && s.status === "scheduled" && new Date(shortDateToISO(s.date)) > cutoff
+                    ).length;
+                    return (
+                      <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:6 }}>Finalizar relación</div>
+                        <div style={{ fontSize:11, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
+                          Las sesiones agendadas después de esta fecha serán eliminadas. Las sesiones pasadas y completadas se conservan.
+                        </div>
+                        <div className="input-group" style={{ marginBottom:6 }}>
+                          <label className="input-label">Última sesión</label>
+                          <input className="input" type="date" value={finishDate} onChange={e => setFinishDate(e.target.value)} />
+                        </div>
+                        {sessionsToRemove > 0 && (
+                          <div style={{ fontSize:11, fontWeight:600, color:"var(--red)", marginTop:4 }}>
+                            Se eliminarán {sessionsToRemove} sesión{sessionsToRemove !== 1 ? "es" : ""} agendada{sessionsToRemove !== 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Rate & Schedules — hidden when finalizing */}
+                  {!isFinalizingPatient && <>
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
                     <div className="input-group">
                       <label className="input-label">Tarifa por sesión</label>
@@ -293,9 +338,10 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
                       )}
                     </div>
                   )}
+                  </>}
 
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
-                    {mutating ? "Guardando..." : scheduleOrRateChanged() ? "Aplicar cambios" : "Guardar cambios"}
+                    {mutating ? "Guardando..." : isFinalizingPatient ? "Finalizar paciente" : scheduleOrRateChanged() ? "Aplicar cambios" : "Guardar cambios"}
                   </button>
                   <button className="btn btn-secondary w-full" onClick={() => setEditing(false)}>Cancelar</button>
                 </div>

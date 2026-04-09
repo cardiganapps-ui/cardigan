@@ -68,7 +68,7 @@ function AppShell({ user, signOut, demo }) {
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
     deleteSession, rescheduleSession, deletePayment,
-    generateRecurringSessions, applyScheduleChange,
+    generateRecurringSessions, applyScheduleChange, finalizePatient,
     createNote, updateNote, deleteNote,
     uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
     refresh,
@@ -143,7 +143,7 @@ function AppShell({ user, signOut, demo }) {
       updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
       createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
       uploadDocument={uploadDocument} renameDocument={renameDocument} tagDocumentSession={tagDocumentSession} deleteDocument={deleteDocument} getDocumentUrl={getDocumentUrl}
-      generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} mutating={mutating} setHideFab={setHideFab} />,
+      generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} finalizePatient={finalizePatient} mutating={mutating} setHideFab={setHideFab} />,
     finances: <Finances patients={patients} payments={payments}
       onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />,
     documents: <Documents documents={documents} patients={patients} upcomingSessions={upcomingSessions}

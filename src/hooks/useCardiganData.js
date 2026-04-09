@@ -148,7 +148,7 @@ export function useCardiganData(user, viewAsUserId) {
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, helpers);
-  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange } =
+  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
@@ -199,7 +199,7 @@ export function useCardiganData(user, viewAsUserId) {
     loading, mutating, mutationError, readOnly,
     createPatient, updatePatient, deletePatient,
     createSession, updateSessionStatus, deleteSession, rescheduleSession,
-    generateRecurringSessions, applyScheduleChange,
+    generateRecurringSessions, applyScheduleChange, finalizePatient,
     createPayment, deletePayment,
     createNote, updateNote, deleteNote,
     uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,

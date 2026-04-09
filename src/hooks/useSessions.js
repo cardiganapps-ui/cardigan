@@ -216,5 +216,40 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange };
+  async function finalizePatient(patientId, finishDate) {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient || !finishDate) return false;
+    setMutating(true);
+    setMutationError("");
+    const cutoff = parseLocalDate(finishDate);
+
+    // Find scheduled sessions after the finish date
+    const toDelete = upcomingSessions.filter(s => {
+      if (s.patient_id !== patientId || s.status !== "scheduled") return false;
+      return parseShortDate(s.date) > cutoff;
+    });
+
+    let adjustedBilled = patient.billed;
+    let adjustedSessions = patient.sessions;
+
+    if (toDelete.length > 0) {
+      const ids = toDelete.map(s => s.id);
+      const { error } = await supabase.from("sessions").delete().in("id", ids);
+      if (error) { setMutating(false); setMutationError(error.message); return false; }
+      adjustedBilled -= toDelete.length * patient.rate;
+      adjustedSessions -= toDelete.length;
+      setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
+    }
+
+    const { data: updated, error: pErr } = await supabase.from("patients")
+      .update({ status: "ended", billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) })
+      .eq("id", patientId).select().single();
+    if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
+    setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
+
+    setMutating(false);
+    return true;
+  }
+
+  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient };
 }
