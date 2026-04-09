@@ -128,6 +128,7 @@ export function PatientExpediente({
   const [taggingDoc, setTaggingDoc] = useState(null);
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState(null); // { doc, url }
   const fileInputRef = useRef(null);
 
   const sortedFilteredDocs = useMemo(() => {
@@ -178,6 +179,18 @@ export function PatientExpediente({
   const handleDeleteDoc = async (id) => {
     await deleteDocument(id);
     setConfirmDeleteDoc(null);
+  };
+
+  const openDocViewer = async (doc) => {
+    const url = await getDocumentUrl(doc.file_path);
+    if (!url) return;
+    const t = doc.file_type || "";
+    // Word docs can't be rendered in-browser — open externally
+    if (t.includes("word") || t.includes("document") || doc.name?.endsWith(".doc") || doc.name?.endsWith(".docx")) {
+      window.open(url, "_blank");
+      return;
+    }
+    setViewingDoc({ doc, url });
   };
 
   const getFileIcon = (doc) => {
@@ -562,8 +575,8 @@ export function PatientExpediente({
                               </div>
                             ) : (
                               <>
-                                <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}
-                                  onClick={async () => { const url = await getDocumentUrl(doc.file_path); if (url) window.open(url, "_blank"); }}>
+                                <div style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", cursor:"pointer" }}
+                                  onClick={() => openDocViewer(doc)}>
                                   {doc.name}
                                 </div>
                                 <div style={{ fontSize:10, color:"var(--charcoal-xl)", marginTop:2 }}>
@@ -622,6 +635,70 @@ export function PatientExpediente({
         )}
       </div>
     </div>
+
+    {/* ── Document Viewer Overlay ── */}
+    {viewingDoc && (() => {
+      const { doc, url } = viewingDoc;
+      const isImage = doc.file_type?.startsWith("image/");
+      const isPdf = doc.file_type === "application/pdf";
+      const linkedSession = doc.session_id ? pSessions.find(s => s.id === doc.session_id) : null;
+      return (
+        <>
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:600, animation:"fadeIn 0.2s ease" }}
+            onClick={() => setViewingDoc(null)} />
+          <div style={{
+            position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:601,
+            display:"flex", flexDirection:"column", background:"var(--cream)",
+            borderRadius:"20px 20px 0 0", overflow:"hidden",
+            animation:"expedientePullUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}>
+            {/* Header */}
+            <div style={{ background:"var(--nav-bg)", padding:"12px 16px", flexShrink:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={() => setViewingDoc(null)}
+                  style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
+                  <IconChevron size={20} />
+                </button>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"white", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {doc.name}
+                  </div>
+                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginTop:1 }}>
+                    {formatFileSize(doc.file_size)}
+                    {linkedSession && ` · Sesión ${linkedSession.date}`}
+                  </div>
+                </div>
+                <a href={url} target="_blank" rel="noopener noreferrer"
+                  style={{ padding:"6px 12px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", cursor:"pointer", fontFamily:"var(--font)", textDecoration:"none", flexShrink:0 }}>
+                  Abrir
+                </a>
+              </div>
+            </div>
+            {/* Content */}
+            <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "#1a1a1a" : "var(--cream)" }}>
+              {isImage && (
+                <img src={url} alt={doc.name}
+                  style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
+              )}
+              {isPdf && (
+                <iframe src={url} title={doc.name}
+                  style={{ width:"100%", height:"100%", border:"none" }} />
+              )}
+              {!isImage && !isPdf && (
+                <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>{getFileIcon(doc)}</div>
+                  <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:4 }}>{doc.name}</div>
+                  <div style={{ fontSize:12, marginBottom:16 }}>Vista previa no disponible</div>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display:"inline-flex", textDecoration:"none" }}>
+                    Descargar archivo
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      );
+    })()}
     </>
   );
 }
