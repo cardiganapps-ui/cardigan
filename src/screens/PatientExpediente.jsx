@@ -239,15 +239,18 @@ export function PatientExpediente({
         overflow:"hidden",
       }}>
 
-      {/* Drag handle */}
+      {/* Drag zone — covers handle + header */}
       <div onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
-        style={{ padding:"10px 0 0", cursor:"grab", flexShrink:0 }}>
-        <div style={{ width:36, height:4, borderRadius:2, background:"rgba(255,255,255,0.3)", margin:"0 auto 8px" }} />
-      </div>
+        style={{ flexShrink:0, cursor:"grab" }}>
 
-      {/* Header */}
-      <div style={{ padding:"0 16px 0", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        {/* Drag handle (visual only) */}
+        <div style={{ padding:"10px 0 0" }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:"rgba(255,255,255,0.3)", margin:"0 auto 8px" }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ padding:"0 16px 0" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={onClose}
             style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
@@ -280,6 +283,7 @@ export function PatientExpediente({
             </button>
           ))}
         </div>
+      </div>
       </div>
 
       {/* Content */}
