@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewNoteSheet } from "./sheets/NewNoteSheet";
+import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 
 const ACTIONS = [
-  { key:"patient", Icon: IconUserPlus,     label:"Paciente" },
-  { key:"payment", Icon: IconDollar,       label:"Pago" },
-  { key:"session", Icon: IconCalendarPlus, label:"Sesión" },
-  { key:"note",    Icon: IconClipboard,    label:"Nota" },
+  { key:"patient",  Icon: IconUserPlus,     label:"Paciente" },
+  { key:"payment",  Icon: IconDollar,       label:"Pago" },
+  { key:"session",  Icon: IconCalendarPlus, label:"Sesión" },
+  { key:"note",     Icon: IconClipboard,    label:"Nota" },
+  { key:"document", Icon: IconDocument,     label:"Documento" },
 ];
 
 export function QuickActions({
   patients, upcomingSessions,
   onOpenPaymentModal, createPatient, createSession,
-  createNote, updateNote, deleteNote, mutating,
+  createNote, updateNote, deleteNote, uploadDocument, mutating,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
@@ -55,6 +57,10 @@ export function QuickActions({
       {activeSheet === "note" && (
         <NewNoteSheet onClose={closeSheet} patients={patients} upcomingSessions={upcomingSessions}
           createNote={createNote} updateNote={updateNote} deleteNote={deleteNote} />
+      )}
+      {activeSheet === "document" && (
+        <NewDocumentSheet onClose={closeSheet} patients={patients} upcomingSessions={upcomingSessions}
+          uploadDocument={uploadDocument} />
       )}
     </>
   );

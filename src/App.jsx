@@ -224,7 +224,7 @@ function AppShell({ user, signOut, demo }) {
             createPatient={createPatient}
             createSession={createSession}
             createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
-            mutating={mutating}
+            uploadDocument={uploadDocument} mutating={mutating}
           />
       )}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
