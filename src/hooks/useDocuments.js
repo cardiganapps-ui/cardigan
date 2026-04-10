@@ -15,7 +15,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     setMutating(true);
     setMutationError("");
     const ext = file.name.split(".").pop();
-    const folder = patientId || "general";
+    const folder = patientId || "_general";
     const path = `${userId}/${folder}/${Date.now()}.${ext}`;
 
     // Get presigned upload URL from API
