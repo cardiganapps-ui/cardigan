@@ -124,14 +124,13 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
           transition: dragging || swipeProgress > 0 ? "none" : "opacity 0.28s",
           pointerEvents: visible ? "auto" : "none",
           visibility: visible || open ? "visible" : "hidden",
-          animation: "none",
         }} />
 
       {/* Panel */}
       <div className="drawer" style={{ pointerEvents: visible ? "auto" : "none" }} onClick={open ? onClose : undefined}
         onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove} onTouchEnd={onPanelTouchEnd}>
         <div className="drawer-panel" onClick={e => e.stopPropagation()}
-          style={{ transform: `translateX(${translateX}px)`, transition, animation: "none" }}>
+          style={{ transform: `translateX(${translateX}px)`, transition }}>
           <div className="drawer-header">
             <div className="drawer-logo"><LogoIcon size={24} color="var(--teal-light)" /><span>cardigan</span></div>
             <div className="drawer-user">

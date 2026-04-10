@@ -179,10 +179,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   pointer-events: all;
   display: flex; flex-direction: column;
   will-change: transform;
-  animation: slideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   box-shadow: 4px 0 40px rgba(0,0,0,0.3);
 }
-@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 
 .drawer-header {
   padding: calc(var(--sat) + 20px) 24px 24px;
