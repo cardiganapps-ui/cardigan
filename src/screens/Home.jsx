@@ -73,7 +73,8 @@ export function Home({ setScreen, userName }) {
         </div>
       </div>
 
-      <div className="section">
+      <div className="home-columns">
+      <div className="section home-col-main">
         <div className="section-header">
           <span className="section-title">{t("sessions.today")} — {todayDayName} {todayStr}</span>
           <button className="see-all" onClick={() => setScreen("agenda")}>{t("home.seeWeek")}</button>
@@ -102,7 +103,8 @@ export function Home({ setScreen, userName }) {
         </div>
       </div>
 
-      <div className="section" style={{ paddingTop:20 }}>
+      <div className="home-col-side">
+      <div className="section">
         <div className="section-header">
           <span className="section-title">{t("home.pendingBalances")}</span>
           <button className="see-all" onClick={() => setScreen("finances")}>{t("home.seeAll")}</button>
@@ -152,6 +154,8 @@ export function Home({ setScreen, userName }) {
               </div>
             ))}
         </div>
+      </div>
+      </div>
       </div>
 
       {selected && (

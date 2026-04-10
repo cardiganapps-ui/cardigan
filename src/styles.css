@@ -773,6 +773,33 @@ button, a, select { min-height: 44px; }
   /* KPI grid: 4 columns on desktop */
   .kpi-grid-desktop { grid-template-columns: repeat(4, 1fr) !important; }
 
+  /* Desktop topbar: light, warm */
+  .topbar {
+    background: var(--white); border-bottom: 1px solid var(--border-lt);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .topbar-brand { color: var(--charcoal); }
+  .topbar-right .avatar-sm { background: var(--teal); }
+  .admin-btn { color: var(--charcoal-xl); }
+
+  /* Multi-column Home dashboard */
+  .home-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
+  .home-col-main { padding-right: 0; }
+  .home-col-side { padding-left: 0; }
+
+  /* Spacious cards on desktop */
+  .card { border-radius: var(--radius-lg); }
+  .kpi-card { padding: 18px 20px; }
+  .kpi-value { font-size: 24px; }
+  .row-item { padding: 14px 18px; min-height: 66px; }
+  .section-title { font-size: 16px; }
+
+  /* Appointment card color accents on desktop */
+  .row-item { border-left: 3px solid transparent; }
+  .row-item:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .row-item:last-child { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .row-item:only-child { border-radius: var(--radius-lg); }
+
   /* Landing page: wider hero, 3-col features, wider compare */
   .landing-hero { padding: 64px 32px 72px; }
   .landing-hero-title { font-size: 42px; }
