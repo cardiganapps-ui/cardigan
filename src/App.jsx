@@ -3,7 +3,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { useDemoData } from "./hooks/useDemoData";
 import { CardiganProvider } from "./context/CardiganContext";
-import { I18nProvider } from "./i18n/index";
+import { I18nProvider, useT } from "./i18n/index";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
@@ -51,6 +51,7 @@ export default function Cardigan() {
 }
 
 function AppShell({ user, signOut, demo }) {
+  const { t } = useT();
   const validScreens = ["home", "agenda", "patients", "finances", "settings"];
   const [screen, setScreenRaw] = useState(() => {
     const hash = window.location.hash.replace("#", "");
@@ -161,10 +162,10 @@ function AppShell({ user, signOut, demo }) {
       {/* Demo banner */}
       {demo && (
         <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)" }}>
-          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>Modo demo — datos ficticios</span>
+          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>{t("demo.banner")}</span>
           <button onClick={signOut}
             style={{ fontSize:11, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
-            Crear cuenta
+            {t("demo.createAccount")}
           </button>
         </div>
       )}
@@ -172,10 +173,10 @@ function AppShell({ user, signOut, demo }) {
       {/* Read-only banner when viewing as another user */}
       {readOnly && !demo && (
         <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)" }}>
-          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>Modo lectura — viendo como otro usuario</span>
+          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>{t("admin.readOnly")}</span>
           <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
             style={{ fontSize:11, fontWeight:700, color:"var(--teal-light)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
-            Salir
+            {t("admin.exit")}
           </button>
         </div>
       )}
@@ -199,7 +200,7 @@ function AppShell({ user, signOut, demo }) {
         </div>
       </div>
       {loading && (
-        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>Cargando datos...</div>
+        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>{t("loading")}</div>
       )}
       <Toast message={mutationError} type="error" />
       <PullToRefresh onRefresh={refresh}>

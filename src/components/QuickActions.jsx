@@ -5,16 +5,18 @@ import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewNoteSheet } from "./sheets/NewNoteSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 const ACTIONS = [
-  { key:"patient",  Icon: IconUserPlus,     label:"Paciente" },
-  { key:"payment",  Icon: IconDollar,       label:"Pago" },
-  { key:"session",  Icon: IconCalendarPlus, label:"Sesión" },
-  { key:"note",     Icon: IconClipboard,    label:"Nota" },
-  { key:"document", Icon: IconDocument,     label:"Documento" },
+  { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },
+  { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
+  { key:"session",  Icon: IconCalendarPlus, tKey:"fab.session" },
+  { key:"note",     Icon: IconClipboard,    tKey:"fab.note" },
+  { key:"document", Icon: IconDocument,     tKey:"fab.document" },
 ];
 
 export function QuickActions() {
+  const { t } = useT();
   const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating } = useCardigan();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
@@ -34,7 +36,7 @@ export function QuickActions() {
         <div className="fab-menu">
           {ACTIONS.map((a, i) => (
             <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.04}s` }} onClick={() => handleAction(a.key)}>
-              <span className="fab-action-label">{a.label}</span>
+              <span className="fab-action-label">{t(a.tKey)}</span>
               <span className="fab-action-icon"><a.Icon size={16} /></span>
             </button>
           ))}
