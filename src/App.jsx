@@ -9,7 +9,6 @@ import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
-import { IconSettings } from "./components/Icons";
 import { LogoIcon } from "./components/LogoMark";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { Toast } from "./components/Toast";
@@ -189,8 +188,8 @@ function AppShell({ user, signOut, demo }) {
         <div className="topbar-brand"><LogoIcon size={20} color="white" /><span>cardigan</span></div>
         <div className="topbar-right">
           {admin && !readOnly && (
-            <button className="icon-btn" onClick={() => setShowAdmin(true)} aria-label="Admin">
-              <IconSettings size={16} />
+            <button className="admin-btn" onClick={() => setShowAdmin(true)}>
+              Admin
             </button>
           )}
           <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
