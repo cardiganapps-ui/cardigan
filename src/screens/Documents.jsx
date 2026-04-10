@@ -1,9 +1,8 @@
 import { useState, useMemo, useRef } from "react";
-import { clientColors } from "../data/seedData";
-import { IconSearch, IconUpload, IconEdit, IconTag, IconTrash, IconChevron, IconDocument } from "../components/Icons";
-import { shortDateToISO } from "../utils/dates";
-import { statusLabel } from "../utils/sessions";
-import { getFileIcon, formatFileSize, isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
+import { IconSearch, IconUpload } from "../components/Icons";
+import { isWordDoc } from "../utils/files";
+import { DocumentList } from "../components/DocumentList";
+import { DocumentViewer } from "../components/DocumentViewer";
 
 export function Documents({
   documents, patients, upcomingSessions,
@@ -14,10 +13,6 @@ export function Documents({
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name
   const [filterPatient, setFilterPatient] = useState("all");
   const [filterType, setFilterType] = useState("all"); // all | image | pdf | doc
-  const [renamingDoc, setRenamingDoc] = useState(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [taggingDoc, setTaggingDoc] = useState(null);
-  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadPatientId, setUploadPatientId] = useState("");
   const [viewingDoc, setViewingDoc] = useState(null);
@@ -83,24 +78,6 @@ export function Documents({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleRename = async () => {
-    if (renamingDoc && renameValue.trim()) {
-      await renameDocument(renamingDoc, renameValue.trim());
-    }
-    setRenamingDoc(null);
-    setRenameValue("");
-  };
-
-  const handleTag = async (docId, sessionId) => {
-    await tagDocumentSession(docId, sessionId);
-    setTaggingDoc(null);
-  };
-
-  const handleDeleteDoc = async (id) => {
-    await deleteDocument(id);
-    setConfirmDeleteDoc(null);
-  };
-
   const openDocViewer = async (doc) => {
     const url = await getDocumentUrl(doc.file_path);
     if (!url) return;
@@ -111,64 +88,16 @@ export function Documents({
     setViewingDoc({ doc, url });
   };
 
-  const getPatientSessions = (patientId) =>
-    (upcomingSessions || []).filter(s => s.patient_id === patientId)
-      .sort((a, b) => {
-        const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
-        return db.localeCompare(da);
-      });
-
-  // Document viewer overlay
-  if (viewingDoc) {
-    const { doc, url } = viewingDoc;
-    const isImage = isImageDoc(doc);
-    const isPdf = isPdfDoc(doc);
-    const p = patients.find(pt => pt.id === doc.patient_id);
-    const linkedSession = doc.session_id ? (upcomingSessions || []).find(s => s.id === doc.session_id) : null;
-    return (
-      <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"var(--cream)" }}>
-        {/* Header */}
-        <div style={{ background:"var(--nav-bg)", padding:"12px 16px", flexShrink:0 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <button onClick={() => setViewingDoc(null)}
-              style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
-              <IconChevron size={20} />
-            </button>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"white", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {doc.name}
-              </div>
-              <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginTop:1 }}>
-                {p?.name} · {formatFileSize(doc.file_size)}
-                {linkedSession && ` · Sesión ${linkedSession.date}`}
-              </div>
-            </div>
-            <a href={url} target="_blank" rel="noopener noreferrer"
-              style={{ padding:"6px 12px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", cursor:"pointer", fontFamily:"var(--font)", textDecoration:"none", flexShrink:0 }}>
-              Abrir
-            </a>
-          </div>
-        </div>
-        {/* Content */}
-        <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "#1a1a1a" : "var(--cream)" }}>
-          {isImage && <img src={url} alt={doc.name} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
-          {isPdf && <iframe src={url} title={doc.name} style={{ width:"100%", height:"100%", border:"none" }} />}
-          {!isImage && !isPdf && (
-            <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
-              <div style={{ fontSize:48, marginBottom:12 }}>{getFileIcon(doc)}</div>
-              <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:4 }}>{doc.name}</div>
-              <div style={{ fontSize:12, marginBottom:16 }}>Vista previa no disponible</div>
-              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display:"inline-flex", textDecoration:"none" }}>
-                Descargar archivo
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
+    <>
+    {viewingDoc && (
+      <DocumentViewer
+        doc={viewingDoc.doc} url={viewingDoc.url}
+        patientName={(patients || []).find(pt => pt.id === viewingDoc.doc.patient_id)?.name}
+        linkedSession={viewingDoc.doc.session_id ? (upcomingSessions || []).find(s => s.id === viewingDoc.doc.session_id) : null}
+        onClose={() => setViewingDoc(null)}
+      />
+    )}
     <div style={{ padding:16 }}>
       <div className="section-title" style={{ marginBottom:12 }}>Documentos</div>
 
@@ -241,98 +170,18 @@ export function Documents({
         {filterPatient !== "all" && (() => { const p = patients.find(pt => pt.id === filterPatient); return p ? ` · ${p.name}` : ""; })()}
       </div>
 
-      {/* Document list */}
-      {filteredDocs.length === 0
-        ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-            {(documents || []).length === 0 ? "Aún no hay documentos subidos" : "Sin resultados para este filtro"}
-          </div>
-        : <div className="card" style={{ padding:0 }}>
-            {filteredDocs.map((doc, i) => {
-              const p = patients.find(pt => pt.id === doc.patient_id);
-              const linkedSession = doc.session_id ? (upcomingSessions || []).find(s => s.id === doc.session_id) : null;
-              const isRenaming = renamingDoc === doc.id;
-              const isConfirmingDelete = confirmDeleteDoc === doc.id;
-              const isTagging = taggingDoc === doc.id;
-              const patientSessions = isTagging ? getPatientSessions(doc.patient_id) : [];
-              return (
-                <div key={doc.id} style={{ borderBottom: i < filteredDocs.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
-                  {/* Session tag */}
-                  {linkedSession && (
-                    <div style={{ padding:"6px 14px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
-                      Sesión {linkedSession.date} · {linkedSession.time}
-                    </div>
-                  )}
-                  <div style={{ display:"flex", alignItems:"center", padding:"10px 14px", gap:10 }}>
-                    {/* File icon */}
-                    <div style={{ fontSize:24, lineHeight:1, flexShrink:0 }}>{getFileIcon(doc)}</div>
-                    {/* Name & info */}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      {isRenaming ? (
-                        <div style={{ display:"flex", gap:4 }}>
-                          <input className="input" value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") { setRenamingDoc(null); setRenameValue(""); } }}
-                            autoFocus style={{ fontSize:12, padding:"4px 6px", flex:1 }} />
-                          <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:11, fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer" }}>OK</button>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", cursor:"pointer" }}
-                            onClick={() => openDocViewer(doc)}>
-                            {doc.name}
-                          </div>
-                          <div style={{ fontSize:10, color:"var(--charcoal-xl)", marginTop:2 }}>
-                            {p && <span style={{ fontWeight:600 }}>{p.name} · </span>}
-                            {formatFileSize(doc.file_size)}
-                            {doc.created_at && ` · ${new Date(doc.created_at).toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    {/* Actions */}
-                    {!isRenaming && (
-                      <div style={{ display:"flex", gap:2, flexShrink:0 }}>
-                        <button onClick={() => { setRenamingDoc(doc.id); setRenameValue(doc.name || ""); }}
-                          style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)" }} title="Renombrar">
-                          <IconEdit size={14} />
-                        </button>
-                        <button onClick={() => setTaggingDoc(taggingDoc === doc.id ? null : doc.id)}
-                          style={{ padding:6, background:"none", border:"none", cursor:"pointer", color: doc.session_id ? "var(--teal-dark)" : "var(--charcoal-xl)" }} title="Vincular a sesión">
-                          <IconTag size={14} />
-                        </button>
-                        {isConfirmingDelete ? (
-                          <div style={{ display:"flex", gap:2 }}>
-                            <button onClick={() => handleDeleteDoc(doc.id)}
-                              style={{ padding:"4px 8px", fontSize:10, fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"white", cursor:"pointer" }}>Sí</button>
-                            <button onClick={() => setConfirmDeleteDoc(null)}
-                              style={{ padding:"4px 8px", fontSize:10, fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>No</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setConfirmDeleteDoc(doc.id)}
-                            style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)" }} title="Eliminar">
-                            <IconTrash size={14} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {/* Tag to session dropdown */}
-                  {isTagging && (
-                    <div style={{ padding:"0 14px 10px" }}>
-                      <div style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)", marginBottom:4 }}>Vincular a sesión:</div>
-                      <select value={doc.session_id || ""} onChange={e => handleTag(doc.id, e.target.value || null)}
-                        style={{ width:"100%", fontSize:11, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)" }}>
-                        <option value="">Sin vincular</option>
-                        {patientSessions.map(s => (
-                          <option key={s.id} value={s.id}>{s.date} · {s.time} — {statusLabel(s.status)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-      }
+      <DocumentList
+        documents={filteredDocs}
+        sessions={upcomingSessions}
+        patients={patients}
+        showPatientName
+        onOpen={openDocViewer}
+        onRename={renameDocument}
+        onTag={tagDocumentSession}
+        onDelete={deleteDocument}
+        emptyMessage={(documents || []).length === 0 ? "Aún no hay documentos subidos" : "Sin resultados para este filtro"}
+      />
     </div>
+    </>
   );
 }
