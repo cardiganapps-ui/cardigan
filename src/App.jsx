@@ -10,6 +10,7 @@ import { PullToRefresh } from "./components/PullToRefresh";
 import { IconHome, IconSettings } from "./components/Icons";
 import { LogoIcon } from "./components/LogoMark";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { Toast } from "./components/Toast";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -195,9 +196,7 @@ function AppShell({ user, signOut, demo }) {
       {loading && (
         <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>Cargando datos...</div>
       )}
-      {!loading && mutationError && (
-        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--red)" }}>{mutationError}</div>
-      )}
+      <Toast message={mutationError} type="error" />
       <PullToRefresh onRefresh={refresh}>
         {screenMap[screen]}
       </PullToRefresh>

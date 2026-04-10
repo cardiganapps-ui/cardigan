@@ -140,6 +140,8 @@ html, body {
   animation: fadeIn 0.2s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Hide FAB when expediente is open */
@@ -601,3 +603,38 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .w-full { width: 100%; }
 .text-muted { color: var(--charcoal-xl); }
 .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
+
+/* ── ACCESSIBILITY ── */
+*:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+button:focus-visible, a:focus-visible, select:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+.input:focus-visible { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(91,155,175,0.2); }
+
+/* ── TOUCH TARGETS ── */
+button, a, select { min-height: 44px; }
+.icon-btn { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.fab-action { min-height: 44px; }
+.chip { min-height: 36px; }
+.seg-btn, .view-btn, .fin-tab { min-height: 36px; }
+.cal-day { min-height: 48px; }
+.month-cell { min-height: 40px; }
+.month-nav-btn { min-width: 44px; min-height: 44px; }
+/* Exempt inline small buttons */
+.sheet-close, .row-chevron { min-height: unset; }
+
+/* ── RESPONSIVE ── */
+@media (min-width: 768px) {
+  .shell { max-width: 768px; margin: 0 auto; box-shadow: 0 0 40px rgba(0,0,0,0.08); }
+  .page { padding: 16px 24px; }
+  .topbar { border-radius: 0; }
+  .drawer-panel { max-width: 320px; }
+  .sheet-panel { max-width: 500px; }
+}
+@media (min-width: 1024px) {
+  .shell { max-width: 480px; }
+}
