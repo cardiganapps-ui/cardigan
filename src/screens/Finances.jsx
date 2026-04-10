@@ -39,7 +39,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
     const isDeleting = confirmDeleteId === p.id;
     return (
       <div key={p.id}>
-        <div className="bal-row" onClick={() => setConfirmDeleteId(isDeleting ? null : p.id)} style={{ cursor:"pointer" }}>
+        <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeleteId(isDeleting ? null : p.id)} style={{ cursor:"pointer" }}>
           <div className="row-avatar" style={{ background: clientColors[(p.colorIdx||i)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>
             {patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
           </div>
@@ -194,9 +194,9 @@ export function Finances() {
   return (
     <div className="page">
       <div style={{ paddingTop:16 }}>
-        <div className="fin-tab-row">
+        <div className="fin-tab-row" role="tablist">
           {[{k:"balances",l:"Saldos"},{k:"pagos",l:"Pagos"},{k:"ingresos",l:"Ingresos"}].map(t => (
-            <button key={t.k} className={`fin-tab ${tab===t.k?"active":""}`} onClick={() => setTab(t.k)}>{t.l}</button>
+            <button key={t.k} role="tab" aria-selected={tab===t.k} className={`fin-tab ${tab===t.k?"active":""}`} onClick={() => setTab(t.k)}>{t.l}</button>
           ))}
         </div>
       </div>

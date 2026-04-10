@@ -108,7 +108,7 @@ function DayPanel({ baseDate, selectedDate, setSelectedDate, onSelectSession, up
             const isToday = isSameDay(d, TODAY);
             const hasSess = sessionDateSet.has(ds);
             return (
-              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} onClick={() => setSelectedDate(d)}>
+              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} role="button" tabIndex={0} onClick={() => setSelectedDate(d)}>
                 <span className="cal-day-name">{DOW[i]}</span>
                 <span className="cal-day-num">{d.getDate()}</span>
               </div>
@@ -196,7 +196,7 @@ function WeekPanel({ baseDate, selectedDate, setSelectedDate, setView, onSelectS
               const ds = formatShortDate(d);
               const sess = upcomingSessions.filter(s => s.date===ds).find(s => hourIndex(s.time)===hIdx);
               return (
-                <div key={dIdx} className="week-cell" onClick={() => !sess && setSelectedDate(d)}>
+                <div key={dIdx} className="week-cell" role="button" tabIndex={0} onClick={() => !sess && setSelectedDate(d)}>
                   {sess && (
                     <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
                       style={isTutorSession(sess) ? { background:"var(--purple)", borderStyle:"dashed" } : undefined}
@@ -270,7 +270,7 @@ function MonthPanel({ year, month, selectedDate, setSelectedDate, onSelectSessio
             const hasSess  = sessionDateSet.has(cellStr);
             return (
               <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
-                onClick={() => setSelectedDate(cellDate)}>
+                role="button" tabIndex={0} onClick={() => setSelectedDate(cellDate)}>
                 <span className="month-cell-num">{cell.num}</span>
                 {hasSess && <div className="month-dot" />}
               </div>

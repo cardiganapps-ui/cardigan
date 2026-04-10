@@ -57,11 +57,11 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Registrar pago</span>
-          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label="Cerrar" onClick={onClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">

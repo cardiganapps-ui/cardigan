@@ -47,22 +47,22 @@ export function Home({ setScreen, userName }) {
       )}
 
       <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        <div className="kpi-card" onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
+        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Sesiones Hoy</div>
           <div className="kpi-value">{todaySessions.length}</div>
           <div className="kpi-meta">{todayDayName} {todayStr}</div>
         </div>
-        <div className="kpi-card" onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
+        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Pacientes</div>
           <div className="kpi-value">{activeCount}</div>
           <div className="kpi-meta">{activeCount === 0 ? "sin pacientes" : "activos"}</div>
         </div>
-        <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
+        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Cobrado (Mes)</div>
           <div className="kpi-value">${cobradoMes.toLocaleString()}</div>
           <div className="kpi-meta">{FULL_MONTHS[TODAY.getMonth()]}</div>
         </div>
-        <div className="kpi-card" onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
+        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">Por Cobrar</div>
           <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
           <div className="kpi-meta">{owingPatients.length} paciente{owingPatients.length !== 1 ? "s" : ""}</div>
@@ -152,11 +152,11 @@ export function Home({ setScreen, userName }) {
 
       {selected && (
         <div className="sheet-overlay" onClick={() => setSelected(null)}>
-          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{selected.name}</span>
-              <button className="sheet-close" onClick={() => setSelected(null)}><IconX size={14} /></button>
+              <button className="sheet-close" aria-label="Cerrar" onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>

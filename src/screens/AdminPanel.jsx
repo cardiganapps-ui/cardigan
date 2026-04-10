@@ -18,7 +18,7 @@ export function AdminPanel({ onViewAs, onClose }) {
       <div style={{ background:"#1a1a2e", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white" }}>Panel de Admin</div>
-          <button onClick={onClose}
+          <button onClick={onClose} aria-label="Cerrar"
             style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", cursor:"pointer" }}>
             <IconX size={18} />
           </button>

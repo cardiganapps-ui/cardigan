@@ -237,7 +237,7 @@ export function PatientExpediente({
         {/* Header */}
         <div style={{ padding:"0 16px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={onClose}
+          <button onClick={onClose} aria-label="Volver"
             style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
           </button>
@@ -256,9 +256,9 @@ export function PatientExpediente({
           </button>
         </div>
         {/* Tabs */}
-        <div style={{ display:"flex", gap:0, marginTop:14 }}>
+        <div role="tablist" style={{ display:"flex", gap:0, marginTop:14 }}>
           {tabs.map(t => (
-            <button key={t.k} onClick={() => setTab(t.k)}
+            <button key={t.k} role="tab" aria-selected={tab === t.k} onClick={() => setTab(t.k)}
               style={{
                 flex:1, padding:"10px 0 12px", fontSize:12, fontWeight:700,
                 fontFamily:"var(--font)", color: tab === t.k ? "white" : "rgba(255,255,255,0.4)",

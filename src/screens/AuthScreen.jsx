@@ -59,9 +59,9 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
         ) : (
           <>
             {mode !== "reset" && (
-              <div className="auth-toggle">
-                <button className={`auth-tab ${mode==="login"?"active":""}`} onClick={() => switchMode("login")}>Entrar</button>
-                <button className={`auth-tab ${mode==="signup"?"active":""}`} onClick={() => switchMode("signup")}>Crear cuenta</button>
+              <div className="auth-toggle" role="tablist">
+                <button role="tab" aria-selected={mode==="login"} className={`auth-tab ${mode==="login"?"active":""}`} onClick={() => switchMode("login")}>Entrar</button>
+                <button role="tab" aria-selected={mode==="signup"} className={`auth-tab ${mode==="signup"?"active":""}`} onClick={() => switchMode("signup")}>Crear cuenta</button>
               </div>
             )}
             {mode === "reset" && (

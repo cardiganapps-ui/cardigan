@@ -108,11 +108,11 @@ export function Settings({ user, signOut }) {
       {/* ── PROFILE SHEET ── */}
       {activeSheet === "profile" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">Editar perfil</span>
-              <button className="sheet-close" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <button className="sheet-close" aria-label="Cerrar" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
               <div className="input-group">
@@ -135,11 +135,11 @@ export function Settings({ user, signOut }) {
       {/* ── CURRENCY SHEET ── */}
       {activeSheet === "currency" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">Moneda</span>
-              <button className="sheet-close" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <button className="sheet-close" aria-label="Cerrar" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
               <div className="card" style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -160,11 +160,11 @@ export function Settings({ user, signOut }) {
       {/* ── PLAN SHEET ── */}
       {activeSheet === "plan" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">Tu plan</span>
-              <button className="sheet-close" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <button className="sheet-close" aria-label="Cerrar" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px", textAlign:"center" }}>
               <div style={{ width:48, height:48, background:"var(--amber-bg)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", color:"var(--amber)" }}>

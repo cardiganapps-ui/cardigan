@@ -17,7 +17,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose }
       }}>
         <div style={{ background:"var(--nav-bg)", padding:"12px 16px", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <button onClick={onClose}
+            <button onClick={onClose} aria-label="Volver"
               style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
               <IconChevron size={20} />
             </button>

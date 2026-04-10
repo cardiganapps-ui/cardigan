@@ -50,11 +50,11 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Sesión</span>
-          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label="Cerrar" onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20 }}>

@@ -47,11 +47,11 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">Subir documento</span>
-          <button className="sheet-close" onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label="Cerrar" onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           {done ? (

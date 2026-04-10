@@ -127,7 +127,7 @@ export function NoteCard({ note, onClick }) {
     ? new Date(note.updated_at).toLocaleDateString("es-MX", { day:"numeric", month:"short" })
     : "";
   return (
-    <div className="row-item" onClick={onClick} style={{ cursor:"pointer" }}>
+    <div className="row-item" role="button" tabIndex={0} onClick={onClick} style={{ cursor:"pointer" }}>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
           {note.title || "Sin título"}

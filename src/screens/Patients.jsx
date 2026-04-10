@@ -209,11 +209,11 @@ export function Patients() {
 
       {selected && (
         <div className="sheet-overlay" onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}>
-          <div className="sheet-panel" onClick={e => e.stopPropagation()}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{editing ? "Editar paciente" : selected.name}</span>
-              <button className="sheet-close" onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}><IconX size={14} /></button>
+              <button className="sheet-close" aria-label="Cerrar" onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               {editing ? (
