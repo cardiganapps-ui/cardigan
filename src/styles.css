@@ -760,6 +760,24 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .chip.active { background: var(--teal); border-color: var(--teal); color: white; }
 .chip:active { opacity: 0.8; }
 
+/* Note long-press feedback */
+.note-card-pressing {
+  background: var(--teal-mist) !important;
+  transform: scale(0.985);
+}
+.note-longpress-progress {
+  position: absolute; left: 0; bottom: 0;
+  height: 3px; width: 0;
+  background: var(--teal);
+  border-radius: 0 2px 2px 0;
+  animation: noteLongPressFill 0.5s linear forwards;
+  pointer-events: none;
+}
+@keyframes noteLongPressFill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
 /* EMPTY STATE */
 .empty-hint {
   padding: 28px 20px;

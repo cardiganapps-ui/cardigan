@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { IconX, IconCheck, IconUser, IconCalendar, IconStar } from "./Icons";
+import { IconX, IconCheck, IconUser, IconCalendar, IconStar, IconTrash } from "./Icons";
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
@@ -245,15 +245,29 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
         </div>
       </div>
 
-      {/* Delete confirmation */}
+      {/* Delete confirmation modal */}
       {confirmDelete && (
-        <div style={{ padding:"10px 16px", background:"var(--red-bg)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <span style={{ fontSize:12, color:"var(--red)", fontWeight:600 }}>{t("notes.deleteConfirm")}</span>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={async () => { await onDelete(); onClose(); }}
-              style={{ fontSize:12, fontWeight:700, color:"var(--red)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>{t("yes")}</button>
-            <button onClick={() => setConfirmDelete(false)}
-              style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>{t("no")}</button>
+        <div className="sheet-overlay" onClick={() => setConfirmDelete(false)} style={{ alignItems:"center" }}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+            style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.2s ease" }}>
+            <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
+              <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
+                <IconTrash size={24} />
+              </div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>
+                {t("notes.deleteConfirm")}
+              </div>
+              <div style={{ fontSize:13, color:"var(--charcoal-lt)", lineHeight:1.5, marginBottom:20 }}>
+                {t("notes.deleteWarning") || "Esta acción no se puede deshacer."}
+              </div>
+              <button className="btn btn-danger" onClick={async () => { await onDelete(); onClose(); }}>
+                {t("delete")}
+              </button>
+              <button className="btn btn-secondary" style={{ marginTop:8, width:"100%" }}
+                onClick={() => setConfirmDelete(false)}>
+                {t("cancel")}
+              </button>
+            </div>
           </div>
         </div>
       )}
