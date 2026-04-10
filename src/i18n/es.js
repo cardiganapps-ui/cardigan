@@ -50,6 +50,53 @@ export default {
     menu: "Men\u00fa",
   },
 
+  // ── Landing page ──
+  landing: {
+    heroTitle: "Tu práctica, organizada.",
+    heroTitleAccent: "Sin complicaciones.",
+    heroSub: "La herramienta simple que reemplaza tus hojas de Excel, notas sueltas y mensajes de WhatsApp.",
+    cta: "Comenzar gratis",
+    ctaDemo: "Ver demo",
+    painTitle: "Deja atrás el caos",
+    painBefore: "Antes",
+    painAfter: "Con Cardigan",
+    painItems: [
+      "Hojas de Excel que nadie actualiza",
+      "Pagos anotados en WhatsApp",
+      "Notas en papel que se pierden",
+      "Horarios en la cabeza",
+    ],
+    afterItems: [
+      "Agenda, pagos y notas en un solo lugar",
+      "Saldos calculados automáticamente",
+      "Expediente digital por paciente",
+      "Acceso desde cualquier dispositivo",
+    ],
+    featuresTitle: "Todo lo que necesitas",
+    featureTitles: [
+      "Agenda inteligente",
+      "Expedientes completos",
+      "Control financiero",
+      "Notas clínicas",
+      "Documentos seguros",
+      "Desde tu celular",
+    ],
+    featureDescs: [
+      "Sesiones recurrentes, vista día/semana/mes, y extensión automática.",
+      "Perfil, historial, asistencia y finanzas por paciente.",
+      "Facturación, pagos, saldos y exportación a CSV.",
+      "Por sesión, buscables y vinculadas al expediente.",
+      "Sube, organiza y etiqueta archivos por paciente.",
+      "Instala como app. Funciona offline, siempre disponible.",
+    ],
+    trustTitle: "Diseñado por terapeutas, para terapeutas",
+    trustSub: "Sabemos lo que es manejar una práctica privada. Cardigan nació de esa experiencia — simple, rápido, sin funciones que nunca vas a usar.",
+    trustBadge: "Gratis durante beta",
+    finalCta: "Empieza a organizar tu práctica hoy",
+    finalCtaSub: "Crea tu cuenta en segundos. Sin tarjeta de crédito.",
+    login: "Ya tengo cuenta",
+  },
+
   // ── Auth ──
   auth: {
     signIn: "Entrar",
