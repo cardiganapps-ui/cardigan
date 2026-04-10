@@ -284,7 +284,7 @@ export function Patients() {
                     {editSchedules.map((s, i) => (
                       <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
                         <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">{strings.days[0].slice(0,3)}</label>}
+                          {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                           <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
                             {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
                           </select>
