@@ -7,6 +7,7 @@ import { isTutorSession, statusClass } from "../utils/sessions";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { useLayer } from "../hooks/useLayer";
 import { useT } from "../i18n/index";
 
 export function PatientExpediente({
@@ -16,6 +17,7 @@ export function PatientExpediente({
   mutating,
 }) {
   const { t, strings } = useT();
+  useLayer("expediente", onClose);
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
   const [dateFrom, setDateFrom] = useState(() => {

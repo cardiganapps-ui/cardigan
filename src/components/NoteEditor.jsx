@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { IconX, IconCheck, IconUser, IconCalendar, IconStar } from "./Icons";
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
+import { useLayer } from "../hooks/useLayer";
 
 function relativeTime(dateStr) {
   if (!dateStr) return "";
@@ -84,6 +85,7 @@ function ToolSep() {
 export function NoteEditor({ note, onSave, onDelete, onClose }) {
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote } = useCardigan();
+  useLayer("noteEditor", onClose);
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");

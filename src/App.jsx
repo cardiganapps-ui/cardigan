@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { useDemoData } from "./hooks/useDemoData";
+import { useNavigation } from "./hooks/useNavigation";
 import { CardiganProvider } from "./context/CardiganContext";
 import { I18nProvider, useT } from "./i18n/index";
 import { Drawer } from "./components/Drawer";
@@ -53,15 +54,8 @@ export default function Cardigan() {
 
 function AppShell({ user, signOut, demo }) {
   const { t } = useT();
-  const validScreens = ["home", "agenda", "patients", "finances", "settings"];
-  const [screen, setScreenRaw] = useState(() => {
-    const hash = window.location.hash.replace("#", "");
-    return validScreens.includes(hash) ? hash : "home";
-  });
-  const setScreen = (s) => {
-    setScreenRaw(s);
-    window.location.hash = s;
-  };
+  const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
+  const setScreen = navigate; // alias for compatibility
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -144,9 +138,10 @@ function AppShell({ user, signOut, demo }) {
 
   const ctxValue = useMemo(() => ({
     ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
+    navigate, pushLayer, popLayer, removeLayer,
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
