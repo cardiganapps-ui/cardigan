@@ -3,11 +3,10 @@ import { supabase } from "../supabaseClient";
 export function createNoteActions(userId, notes, setNotes, setMutating, setMutationError) {
 
   async function createNote({ patientId, sessionId, title, content }) {
-    if (!patientId) return null;
     setMutating(true);
     setMutationError("");
     const { data, error } = await supabase.from("notes").insert({
-      user_id: userId, patient_id: patientId,
+      user_id: userId, patient_id: patientId || null,
       session_id: sessionId || null,
       title: title || "", content: content || "",
     }).select().single();

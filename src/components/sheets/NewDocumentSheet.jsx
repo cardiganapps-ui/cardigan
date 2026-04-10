@@ -34,7 +34,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
     setUploading(true);
     let count = 0;
     for (const file of valid) {
-      const result = await uploadDocument({ patientId, file, sessionId: sessionId || null, name: file.name });
+      const result = await uploadDocument({ patientId: patientId || null, file, sessionId: sessionId || null, name: file.name });
       if (result) count++;
     }
     setUploading(false);
@@ -77,7 +77,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
               <div className="input-group">
                 <label className="input-label">Paciente</label>
                 <select className="input" value={patientId} onChange={e => { setPatientId(e.target.value); setSessionId(""); }}>
-                  <option value="">Seleccionar paciente...</option>
+                  <option value="">General (sin paciente)</option>
                   {(patients || []).filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -94,16 +94,14 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                   </select>
                 </div>
               )}
-              {patientId && (
-                <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-                  Paciente: <strong>{selectedPatient?.name}</strong><br />
-                  Formatos: imágenes, PDF, Word · Máx. 10 MB por archivo
-                </div>
-              )}
+              <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+                {patientId ? <>Paciente: <strong>{selectedPatient?.name}</strong></> : <strong>Documento general</strong>}<br />
+                Formatos: imágenes, PDF, Word · Máx. 10 MB por archivo
+              </div>
               <input ref={fileInputRef} type="file" multiple
                 accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 style={{ display:"none" }} onChange={handleUpload} />
-              <button className="btn btn-primary" disabled={!patientId || uploading}
+              <button className="btn btn-primary" disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
                 style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 <IconUpload size={16} />

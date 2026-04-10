@@ -11,11 +11,12 @@ async function authHeaders() {
 export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
 
   async function uploadDocument({ patientId, file, sessionId, name }) {
-    if (!patientId || !file) return null;
+    if (!file) return null;
     setMutating(true);
     setMutationError("");
     const ext = file.name.split(".").pop();
-    const path = `${userId}/${patientId}/${Date.now()}.${ext}`;
+    const folder = patientId || "general";
+    const path = `${userId}/${folder}/${Date.now()}.${ext}`;
 
     // Get presigned upload URL from API
     const headers = await authHeaders();
@@ -38,7 +39,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     // Save metadata to Supabase
     const { data, error } = await supabase.from("documents").insert({
       user_id: userId,
-      patient_id: patientId,
+      patient_id: patientId || null,
       session_id: sessionId || null,
       name: name || file.name,
       file_path: path,

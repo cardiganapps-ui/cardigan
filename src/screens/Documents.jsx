@@ -1,18 +1,20 @@
-import { useState, useMemo, useRef } from "react";
-import { IconSearch, IconUpload } from "../components/Icons";
-import { isWordDoc } from "../utils/files";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { IconSearch, IconUpload, IconClipboard } from "../components/Icons";
+import { isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
+import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating } = useCardigan();
+  const { documents, patients, upcomingSessions, notes, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const [editingNote, setEditingNote] = useState(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name
   const [filterPatient, setFilterPatient] = useState("all");
   const [filterType, setFilterType] = useState("all"); // all | image | pdf | doc
   const [uploading, setUploading] = useState(false);
-  const [uploadPatientId, setUploadPatientId] = useState("");
+  const [uploadPatientId, setUploadPatientId] = useState("general");
   const [viewingDoc, setViewingDoc] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -28,6 +30,19 @@ export function Documents() {
     return (patients || []).filter(p => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [documents, patients]);
 
+  const generalNotes = useMemo(() =>
+    (notes || []).filter(n => !n.patient_id).sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || "")),
+    [notes]
+  );
+
+  const handleSaveNote = useCallback(async ({ title, content }) => {
+    if (editingNote?.id) await updateNote(editingNote.id, { title, content });
+  }, [editingNote, updateNote]);
+
+  const handleDeleteNote = useCallback(async () => {
+    if (editingNote?.id) await deleteNote(editingNote.id);
+  }, [editingNote, deleteNote]);
+
   // Filter & sort
   const filteredDocs = useMemo(() => {
     let docs = [...(documents || [])];
@@ -42,7 +57,9 @@ export function Documents() {
     }
 
     // Patient filter
-    if (filterPatient !== "all") {
+    if (filterPatient === "general") {
+      docs = docs.filter(d => !d.patient_id);
+    } else if (filterPatient !== "all") {
       docs = docs.filter(d => d.patient_id === filterPatient);
     }
 
@@ -61,7 +78,8 @@ export function Documents() {
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0 || !uploadPatientId) return;
+    if (files.length === 0) return;
+    const patientId = uploadPatientId === "general" ? null : uploadPatientId;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       alert(`${oversized.map(f => f.name).join(", ")} excede${oversized.length > 1 ? "n" : ""} el límite de 10 MB`);
@@ -70,7 +88,7 @@ export function Documents() {
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
     setUploading(true);
     for (const file of valid) {
-      await uploadDocument({ patientId: uploadPatientId, file, sessionId: null, name: file.name });
+      await uploadDocument({ patientId, file, sessionId: null, name: file.name });
     }
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -85,6 +103,17 @@ export function Documents() {
     }
     setViewingDoc({ doc, url });
   };
+
+  if (editingNote) {
+    return (
+      <NoteEditor
+        note={editingNote}
+        onSave={handleSaveNote}
+        onDelete={editingNote.id ? handleDeleteNote : undefined}
+        onClose={() => setEditingNote(null)}
+      />
+    );
+  }
 
   return (
     <>
@@ -110,8 +139,8 @@ export function Documents() {
         <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>Subir documento</div>
         <div style={{ display:"flex", gap:8 }}>
           <select value={uploadPatientId} onChange={e => setUploadPatientId(e.target.value)}
-            style={{ flex:1, fontSize:12, fontFamily:"var(--font)", padding:"8px 10px", borderRadius:"var(--radius)", border:"1.5px solid var(--border)", background:"var(--white)", color: uploadPatientId ? "var(--charcoal)" : "var(--charcoal-xl)" }}>
-            <option value="">Seleccionar paciente...</option>
+            style={{ flex:1, fontSize:12, fontFamily:"var(--font)", padding:"8px 10px", borderRadius:"var(--radius)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal)" }}>
+            <option value="general">General (sin paciente)</option>
             {activePatients.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -119,7 +148,7 @@ export function Documents() {
           <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             style={{ display:"none" }} onChange={handleFileUpload} />
           <button className="btn btn-primary" style={{ padding:"8px 16px", fontSize:12, display:"flex", alignItems:"center", gap:5, width:"auto" }}
-            onClick={() => { if (!uploadPatientId) { alert("Selecciona un paciente primero"); return; } fileInputRef.current?.click(); }}
+            onClick={() => fileInputRef.current?.click()}
             disabled={uploading}>
             <IconUpload size={14} />
             {uploading ? "..." : "Subir"}
@@ -139,7 +168,8 @@ export function Documents() {
         {/* Patient filter */}
         <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
           style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", flex:1, minWidth:0 }}>
-          <option value="all">Todos los pacientes</option>
+          <option value="all">Todos</option>
+          <option value="general">General</option>
           {patientsWithDocs.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -179,6 +209,32 @@ export function Documents() {
         onDelete={deleteDocument}
         emptyMessage={(documents || []).length === 0 ? "Aún no hay documentos subidos" : "Sin resultados para este filtro"}
       />
+
+      {/* ── General Notes ── */}
+      {(filterPatient === "all" || filterPatient === "general") && (
+        <div style={{ marginTop:20 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <IconClipboard size={16} style={{ color:"var(--charcoal-xl)" }} />
+              <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>Notas generales</span>
+            </div>
+            <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={async () => {
+              const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
+              if (note) setEditingNote(note);
+            }}>+ Nueva nota</button>
+          </div>
+          {generalNotes.length === 0
+            ? <div className="card" style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+                Las notas generales aparecerán aquí
+              </div>
+            : <div className="card">
+                {generalNotes.map(n => (
+                  <NoteCard key={n.id} note={n} onClick={() => setEditingNote(n)} />
+                ))}
+              </div>
+          }
+        </div>
+      )}
     </div>
     </>
   );
