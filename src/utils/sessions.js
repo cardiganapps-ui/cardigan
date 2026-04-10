@@ -24,6 +24,13 @@ export function statusLabel(status) {
   return "Agendada";
 }
 
+export function shortName(name) {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
+
 export function sessionDisplayLabel(s) {
   return `${s.date} · ${s.time} — ${statusLabel(s.status)}`;
 }

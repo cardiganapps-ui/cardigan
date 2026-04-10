@@ -4,7 +4,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { IconLeaf } from "../components/Icons";
 import { formatShortDate } from "../utils/dates";
-import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
+import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -208,7 +208,7 @@ function WeekPanel({ baseDate, selectedDate, setSelectedDate, setView, onSelectS
                     <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
                       style={isTutorSession(sess) ? { background:"var(--purple)", borderStyle:"dashed" } : undefined}
                       onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
-                      {isTutorSession(sess) ? tutorDisplayInitials(sess) : sess.initials}
+                      {shortName(sess.patient)}
                     </div>
                   )}
                 </div>
