@@ -456,7 +456,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .auth-tab.active { background: var(--white); color: var(--charcoal); box-shadow: var(--shadow-sm); }
 
 /* LANDING PAGE */
-.landing { min-height: 100dvh; background: var(--cream); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.landing { height: 100dvh; background: var(--cream); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
 .landing-nav {
   position: sticky; top: 0; z-index: 20;
