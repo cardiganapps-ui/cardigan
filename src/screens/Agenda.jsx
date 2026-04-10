@@ -1,9 +1,10 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { clientColors, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
+import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { IconLeaf } from "../components/Icons";
-import { formatShortDate } from "../utils/dates";
+import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
 import { useCardigan } from "../context/CardiganContext";
@@ -165,7 +166,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
 }
 
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
-function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions, showWeekends, hours }) {
+function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, showWeekends, hours }) {
   const { strings } = useT();
   const DOW = strings.daysShort;
   const weekDays = getWeekDays(weekDate);
@@ -194,11 +195,18 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
             {visibleDays.map((d, dIdx) => {
               const ds = formatShortDate(d);
               const sess = upcomingSessions.filter(s => s.date===ds).find(s => hourIndex(s.time)===hIdx);
+              const eventStyle = sess ? (() => {
+                if (isCancelledStatus(sess.status)) return undefined; // .cancelled class handles it
+                if (isTutorSession(sess)) return { background:"var(--purple)", borderStyle:"dashed", color:"white", borderLeftColor:"var(--purple)" };
+                const c = clientColors[(sess.colorIdx || 0) % clientColors.length];
+                return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
+              })() : undefined;
               return (
-                <div key={dIdx} className="week-cell" role="button" tabIndex={0} onClick={() => !sess && setSelectedDate(d)}>
+                <div key={dIdx} className="week-cell" role="button" tabIndex={0}
+                  onClick={() => !sess && onCellTap && onCellTap(d, hour)}>
                   {sess && (
                     <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
-                      style={isTutorSession(sess) ? { background:"var(--purple)", borderStyle:"dashed" } : undefined}
+                      style={eventStyle}
                       onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
                       <span className="week-event-time">{sess.time}</span> {shortName(sess.patient)}
                     </div>
@@ -214,7 +222,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
 }
 
 /* ── WEEK VIEW ── */
-function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions }) {
+function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, now }) {
   const { t, strings } = useT();
   const HOURS = strings.hours;
   const [showWeekends, setShowWeekends] = useState(false);
@@ -226,7 +234,13 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
   const nextWeek = addDays(selectedDate, 7);
   const monday = getWeekDays(selectedDate)[0];
   const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
-  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions, showWeekends, hours: HOURS };
+  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, showWeekends, hours: HOURS };
+
+  // "Ahora" line: only when today is in the visible week and within work hours
+  const visibleDays = (showWeekends ? getWeekDays(selectedDate) : getWeekDays(selectedDate).slice(0, 5));
+  const todayInWeek = visibleDays.some(d => isSameDay(d, now));
+  const nowHourFloat = now.getHours() + now.getMinutes() / 60;
+  const showNow = todayInWeek && nowHourFloat >= 8 && nowHourFloat <= 21;
 
   return (
     <>
@@ -239,7 +253,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
         <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</div>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>›</button>
       </div>
-      <div style={{ display:"flex", padding:"0 16px" }}>
+      <div style={{ display:"flex", padding:"0 16px", position:"relative" }}>
         <div style={{ width:44, flexShrink:0 }}>
           <div className="week-header-spacer" />
           {HOURS.map(hour => (
@@ -253,6 +267,15 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
             <div style={swipe.panelStyle}><WeekDaysPanel weekDate={nextWeek} {...shared} /></div>
           </div>
         </div>
+        {showNow && (
+          <div className="week-now-line"
+            aria-hidden="true"
+            style={{
+              left: 44,
+              right: 0,
+              top: `calc(52px + var(--week-row-h) * ${nowHourFloat - 8})`,
+            }} />
+        )}
       </div>
     </>
   );
@@ -349,18 +372,30 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
   const { t } = useT();
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
   const [filterPatient, setFilterPatient] = useState("");
+  const [newSessionPrefill, setNewSessionPrefill] = useState(null);
+
+  // "Ahora" tick — re-render every minute so the now-line stays current
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const isToday = isSameDay(selectedDate, TODAY);
   const filteredSessions = filterPatient
     ? upcomingSessions.filter(s => s.patient_id === filterPatient)
     : upcomingSessions;
+
+  const handleCellTap = useCallback((date, hour) => {
+    setNewSessionPrefill({ date: toISODate(date), time: hour });
+  }, []);
 
   const handleOpenNote = async (session) => {
     const existing = notes?.find(n => n.session_id === session.id);
@@ -419,8 +454,18 @@ export function Agenda() {
         </div>
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} upcomingSessions={filteredSessions} now={now} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}
+      {newSessionPrefill && (
+        <NewSessionSheet
+          onClose={() => setNewSessionPrefill(null)}
+          onSubmit={createSession}
+          patients={patients}
+          mutating={mutating}
+          initialDate={newSessionPrefill.date}
+          initialTime={newSessionPrefill.time}
+        />
+      )}
       <SessionSheet
         session={selectedSession}
         patients={patients}

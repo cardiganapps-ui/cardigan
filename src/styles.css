@@ -37,6 +37,7 @@
   --font-d:      'Nunito', sans-serif;
   --sat: env(safe-area-inset-top, 44px);
   --sab: env(safe-area-inset-bottom, 34px);
+  --week-row-h: 48px;
   /* ── Z-index scale ──
      10   banners (demo, read-only)
      50   fab-overlay
@@ -640,9 +641,23 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; height: 50px; box-sizing: border-box; }
 .week-header-spacer { height: 50px; margin-bottom: 2px; }
 .week-time-label-static {
-  min-height: 48px;
+  min-height: var(--week-row-h);
   font-size: 10px; color: var(--charcoal-xl); font-weight: 600;
   padding: 6px 8px 0 0; text-align: right; line-height: 1;
+}
+
+/* Week "ahora" line */
+.week-now-line {
+  position: absolute;
+  height: 2px; background: var(--red);
+  pointer-events: none; z-index: 2;
+  border-radius: 2px;
+}
+.week-now-line::before {
+  content: ''; position: absolute;
+  left: -4px; top: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%; background: var(--red);
 }
 .week-day-name { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--charcoal-xl); }
 .week-day-num {
@@ -875,7 +890,7 @@ button, a, select { min-height: 44px; }
   .week-event-time { display: inline; font-weight: 800; margin-right: 2px; }
   .week-time-row { min-height: 56px; }
   .week-cell { min-height: 56px; }
-  .week-time-label-static { min-height: 56px; }
+  :root { --week-row-h: 56px; }
 }
 
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
