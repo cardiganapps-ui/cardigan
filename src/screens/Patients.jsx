@@ -5,8 +5,10 @@ import { IconSearch, IconX, IconUsers } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
+import { useCardigan } from "../context/CardiganContext";
 
-export function Patients({ patients, upcomingSessions, notes, payments, documents, onRecordPayment, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab }) {
+export function Patients() {
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab } = useCardigan();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -376,7 +378,7 @@ export function Patients({ patients, upcomingSessions, notes, payments, document
           deleteDocument={deleteDocument}
           getDocumentUrl={getDocumentUrl}
           onClose={() => { setExpediente(null); setHideFab?.(false); }}
-          onRecordPayment={onRecordPayment}
+          onRecordPayment={openRecordPaymentModal}
           onEdit={(p) => {
             setExpediente(null);
             setHideFab?.(false);

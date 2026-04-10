@@ -3,12 +3,10 @@ import { IconSearch, IconUpload } from "../components/Icons";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { useCardigan } from "../context/CardiganContext";
 
-export function Documents({
-  documents, patients, upcomingSessions,
-  uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
-  mutating,
-}) {
+export function Documents() {
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating } = useCardigan();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name
   const [filterPatient, setFilterPatient] = useState("all");

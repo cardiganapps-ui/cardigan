@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { useDemoData } from "./hooks/useDemoData";
+import { CardiganProvider } from "./context/CardiganContext";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
@@ -131,28 +132,23 @@ function AppShell({ user, signOut, demo }) {
     if (finalX > 120) setDrawerOpen(true);
   }, []);
 
+  const ctxValue = useMemo(() => ({
+    ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
+    onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
+    onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
+  }), [data, userName, userInitial, readOnly, updateSessionStatus]);
+
   const screenMap = {
-    home: <Home setScreen={setScreen} patients={patients} upcomingSessions={upcomingSessions} payments={payments} onRecordPayment={openRecordPaymentModal} mutating={mutating} userName={userName} />,
-    agenda: <Agenda upcomingSessions={upcomingSessions} patients={patients}
-      onCancelSession={async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason)}
-      onMarkCompleted={async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed")}
-      deleteSession={deleteSession} rescheduleSession={rescheduleSession}
-      notes={notes} createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
-      mutating={mutating} />,
-    patients: <Patients patients={patients} upcomingSessions={upcomingSessions} notes={notes} payments={payments} documents={documents} onRecordPayment={openRecordPaymentModal}
-      updatePatient={updatePatient} deletePatient={deletePatient} createSession={createSession}
-      createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
-      uploadDocument={uploadDocument} renameDocument={renameDocument} tagDocumentSession={tagDocumentSession} deleteDocument={deleteDocument} getDocumentUrl={getDocumentUrl}
-      generateRecurringSessions={generateRecurringSessions} applyScheduleChange={applyScheduleChange} finalizePatient={finalizePatient} mutating={mutating} setHideFab={setHideFab} />,
-    finances: <Finances patients={patients} payments={payments}
-      onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />,
-    documents: <Documents documents={documents} patients={patients} upcomingSessions={upcomingSessions}
-      uploadDocument={uploadDocument} renameDocument={renameDocument} tagDocumentSession={tagDocumentSession}
-      deleteDocument={deleteDocument} getDocumentUrl={getDocumentUrl} mutating={mutating} />,
+    home: <Home setScreen={setScreen} userName={userName} />,
+    agenda: <Agenda />,
+    patients: <Patients />,
+    finances: <Finances />,
+    documents: <Documents />,
     settings: <Settings user={user} signOut={signOut} />,
   };
 
   return (
+    <CardiganProvider value={ctxValue}>
     <div className="shell" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="status-bar" />
 
@@ -206,27 +202,10 @@ function AppShell({ user, signOut, demo }) {
         {screenMap[screen]}
       </PullToRefresh>
       {!readOnly && (
-        <PaymentModal
-          open={paymentModalOpen}
-          onClose={() => setPaymentModalOpen(false)}
-          patients={patients}
-          initialPatientName={paymentDraft.patientName}
-          initialAmount={paymentDraft.amount}
-          onSubmit={createPayment}
-          mutating={mutating}
-        />
+        <PaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}
+          initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} />
       )}
-      {!readOnly && !hideFab && (
-        <QuickActions
-            patients={patients}
-            upcomingSessions={upcomingSessions}
-            onOpenPaymentModal={() => openRecordPaymentModal(null)}
-            createPatient={createPatient}
-            createSession={createSession}
-            createNote={createNote} updateNote={updateNote} deleteNote={deleteNote}
-            uploadDocument={uploadDocument} mutating={mutating}
-          />
-      )}
+      {!readOnly && !hideFab && <QuickActions />}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeX={swipeX} />
 
@@ -238,5 +217,6 @@ function AppShell({ user, signOut, demo }) {
       )}
       <InstallPrompt />
     </div>
+    </CardiganProvider>
   );
 }

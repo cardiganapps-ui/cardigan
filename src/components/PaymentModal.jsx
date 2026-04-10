@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
 import { todayISO, isoToShortDate } from "../utils/dates";
 import { IconX } from "./Icons";
+import { useCardigan } from "../context/CardiganContext";
 
-export function PaymentModal({
-  open,
-  onClose,
-  patients,
-  initialPatientName,
-  initialAmount,
-  onSubmit,
-  mutating,
-}) {
+export function PaymentModal({ open, onClose, initialPatientName, initialAmount }) {
+  const { patients, createPayment, mutating } = useCardigan();
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState("Transferencia");
@@ -52,7 +46,7 @@ export function PaymentModal({
     }
     const finalMethod = method === "Otro" ? (customMethod.trim() || "Otro") : method;
     setFormError("");
-    const ok = await onSubmit({
+    const ok = await createPayment({
       patientName: patientName.trim(),
       amount: parsedAmount,
       method: finalMethod,

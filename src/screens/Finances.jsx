@@ -2,6 +2,7 @@ import { useState } from "react";
 import { clientColors } from "../data/seedData";
 import { IconCheck } from "../components/Icons";
 import { exportPayments } from "../utils/export";
+import { useCardigan } from "../context/CardiganContext";
 
 function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutating }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -183,7 +184,8 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
   );
 }
 
-export function Finances({ patients, payments, onRecordPayment, onDeletePayment, mutating }) {
+export function Finances() {
+  const { patients, payments, openRecordPaymentModal, deletePayment, mutating } = useCardigan();
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
@@ -291,7 +293,7 @@ export function Finances({ patients, payments, onRecordPayment, onDeletePayment,
         </div>
       )}
 
-      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={onRecordPayment} onDeletePayment={onDeletePayment} mutating={mutating} />}
+      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />}
 
     </div>
   );

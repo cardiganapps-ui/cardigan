@@ -6,6 +6,7 @@ import { IconLeaf } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isCancelledStatus, statusClass, statusLabel, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
+import { useCardigan } from "../context/CardiganContext";
 
 /* ── DATE HELPERS ── */
 function getMonday(d) {
@@ -331,7 +332,8 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 }
 
 /* ── AGENDA ROOT ── */
-export function Agenda({ upcomingSessions, patients, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating }) {
+export function Agenda() {
+  const { upcomingSessions, patients, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);

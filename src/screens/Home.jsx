@@ -3,8 +3,10 @@ import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconDollar, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
+import { useCardigan } from "../context/CardiganContext";
 
-export function Home({ setScreen, patients, upcomingSessions, payments, onRecordPayment, mutating, userName }) {
+export function Home({ setScreen, userName }) {
+  const { patients, upcomingSessions, payments, openRecordPaymentModal, mutating } = useCardigan();
   const FULL_MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -182,7 +184,7 @@ export function Home({ setScreen, patients, upcomingSessions, payments, onRecord
                 </div>
               ))}
               <div style={{ marginTop:20 }}>
-                <button className="btn btn-primary" style={{ height:48 }} onClick={() => onRecordPayment(selected)} disabled={mutating}>
+                <button className="btn btn-primary" style={{ height:48 }} onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
                   {mutating ? "Guardando..." : "Registrar pago"}
                 </button>
               </div>

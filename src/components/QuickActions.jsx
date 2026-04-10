@@ -4,6 +4,7 @@ import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewNoteSheet } from "./sheets/NewNoteSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
+import { useCardigan } from "../context/CardiganContext";
 
 const ACTIONS = [
   { key:"patient",  Icon: IconUserPlus,     label:"Paciente" },
@@ -13,17 +14,14 @@ const ACTIONS = [
   { key:"document", Icon: IconDocument,     label:"Documento" },
 ];
 
-export function QuickActions({
-  patients, upcomingSessions,
-  onOpenPaymentModal, createPatient, createSession,
-  createNote, updateNote, deleteNote, uploadDocument, mutating,
-}) {
+export function QuickActions() {
+  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating } = useCardigan();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
 
   const handleAction = (key) => {
     setMenuOpen(false);
-    if (key === "payment") onOpenPaymentModal();
+    if (key === "payment") openRecordPaymentModal(null);
     else setActiveSheet(key);
   };
 
