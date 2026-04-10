@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false, // we handle registration in main.jsx
       manifest: false, // we use our own public/manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
