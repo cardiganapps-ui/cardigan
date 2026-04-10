@@ -57,12 +57,12 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
           <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
         </div>
         {isDeleting && (
-          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"6px 12px 10px", borderBottom:"1px solid var(--border-lt)" }}>
-            <button style={{ fontSize:11, fontWeight:600, color:"var(--red)", background:"var(--red-bg)", border:"none", borderRadius:"var(--radius-pill)", padding:"5px 14px", cursor:"pointer", fontFamily:"var(--font)" }}
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
+            <button style={{ fontSize:12, fontWeight:600, color:"var(--red)", background:"var(--red-bg)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
               disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setConfirmDeleteId(null); }}>
               {mutating ? "..." : t("finances.deletePayment")}
             </button>
-            <button style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-lt)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", padding:"5px 14px", cursor:"pointer", fontFamily:"var(--font)" }}
+            <button style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-lt)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
               onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}>
               {t("cancel")}
             </button>
@@ -100,17 +100,17 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
           <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
             {[{k:"desc",l:t("finances.newest")},{k:"asc",l:t("finances.oldest")}].map(o => (
               <button key={o.k} onClick={() => setSortOrder(o.k)}
-                style={{ padding:"3px 8px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none" }}>
+                style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none", minHeight:32 }}>
                 {o.l}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
           <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
             {[{k:"all",l:t("finances.allMethods")},{k:"Transferencia",l:t("finances.transferShort")},{k:"Efectivo",l:t("finances.cashShort")}].map(o => (
               <button key={o.k} onClick={() => setFilterMethod(o.k)}
-                style={{ padding:"3px 8px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none" }}>
+                style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none", minHeight:32 }}>
                 {o.l}
               </button>
             ))}
@@ -118,7 +118,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
           <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1, overflowX:"auto" }}>
             {periodOptions.map(o => (
               <button key={o.k} onClick={() => setDateRange(o.k)}
-                style={{ padding:"3px 8px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none", whiteSpace:"nowrap", flexShrink:0 }}>
+                style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none", whiteSpace:"nowrap", flexShrink:0, minHeight:32 }}>
                 {o.l}
               </button>
             ))}
@@ -132,7 +132,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
       </div>
 
       {filtered.length === 0
-        ? <div className="card" style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("finances.noPaymentsInPeriod")}</div>
+        ? <div className="card empty-hint">{t("finances.noPaymentsInPeriod")}</div>
         : groupByClient
           ? Object.entries(grouped).map(([name, pList], gi) => {
               const total = pList.reduce((s,p)=>s+p.amount,0);
@@ -166,7 +166,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <div className="bal-amt amount-owe">-${owed.toLocaleString()}</div>
                   <button
-                    style={{ padding:"5px 12px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer", fontFamily:"var(--font)", whiteSpace:"nowrap" }}
+                    style={{ padding:"8px 16px", fontSize:12, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer", fontFamily:"var(--font)", whiteSpace:"nowrap", minHeight:36 }}
                     onClick={() => onRecordPayment(p)}
                     disabled={mutating}
                   >
@@ -268,7 +268,7 @@ export function Finances() {
             </div>
           </div>
           {payments.length === 0
-            ? <div className="card" style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+            ? <div className="card empty-hint">
                 {t("finances.noPayments")}
               </div>
             : <div>

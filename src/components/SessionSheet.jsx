@@ -112,7 +112,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                   <input className="input" type="time" value={newTime} onChange={e => setNewTime(e.target.value)} />
                 </div>
               </div>
-              {rescheduleErr && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{rescheduleErr}</div>}
+              {rescheduleErr && <div className="form-error">{rescheduleErr}</div>}
               <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>
                 {mutating ? t("saving") : t("sessions.confirm")}
               </button>

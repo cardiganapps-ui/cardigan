@@ -34,7 +34,7 @@ export function Home({ setScreen, userName }) {
   };
 
   const emptyHint = (text) => (
-    <div style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:12, lineHeight:1.5 }}>{text}</div>
+    <div className="empty-hint">{text}</div>
   );
 
   return (
