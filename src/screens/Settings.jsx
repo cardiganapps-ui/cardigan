@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
+import { useT } from "../i18n/index";
 
 export function Settings({ user, signOut }) {
+  const { lang, switchLang } = useT();
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -93,6 +95,17 @@ export function Settings({ user, signOut }) {
             {message && activeSheet === null && <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>}
           </div>
           <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor:"default" }}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>🌐</div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">Idioma / Language</div>
+          </div>
+          <select value={lang} onChange={e => switchLang(e.target.value)}
+            style={{ fontSize:13, fontFamily:"var(--font)", padding:"6px 10px", borderRadius:"var(--radius)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal)", cursor:"pointer" }}>
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
         </div>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={signOut}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>

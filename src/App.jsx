@@ -3,6 +3,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { useDemoData } from "./hooks/useDemoData";
 import { CardiganProvider } from "./context/CardiganContext";
+import { I18nProvider } from "./i18n/index";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
@@ -21,7 +22,7 @@ import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
 import "./styles.css";
 
-export default function Cardigan() {
+function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
 
@@ -43,6 +44,10 @@ export default function Cardigan() {
   }
 
   return <AppShell user={user} signOut={signOut} />;
+}
+
+export default function Cardigan() {
+  return <I18nProvider><CardiganApp /></I18nProvider>;
 }
 
 function AppShell({ user, signOut, demo }) {
