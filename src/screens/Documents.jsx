@@ -28,7 +28,7 @@ export function Documents() {
     [patients]
   );
   const patientsWithDocs = useMemo(() => {
-    const ids = new Set((documents || []).map(d => d.patient_id));
+    const ids = new Set((documents || []).map(d => d.patient_id).filter(Boolean));
     return (patients || []).filter(p => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [documents, patients]);
 
