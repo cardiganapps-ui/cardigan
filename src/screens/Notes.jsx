@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { IconSearch, IconClipboard, IconX } from "../components/Icons";
+import { IconSearch, IconClipboard, IconX, IconStar } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -51,7 +51,7 @@ function SwipeableRow({ children, onDelete }) {
 }
 
 export function Notes() {
-  const { notes, patients, upcomingSessions, createNote, updateNote, deleteNote, deleteNotes } = useCardigan();
+  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes } = useCardigan();
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
@@ -59,6 +59,8 @@ export function Notes() {
   const [selectMode, setSelectMode] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [propsNote, setPropsNote] = useState(null); // note being edited via long-press
+  const longPressRef = useRef(null);
 
   const patientsWithNotes = useMemo(() => {
     const ids = new Set((notes || []).filter(n => n.patient_id).map(n => n.patient_id));
@@ -110,6 +112,27 @@ export function Notes() {
     setSelectMode(false);
     setSelected(new Set());
   };
+
+  const startLongPress = (note) => {
+    longPressRef.current = setTimeout(() => {
+      longPressRef.current = "fired";
+      setPropsNote({ ...note, _patientId: note.patient_id || "", _sessionId: note.session_id || "" });
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressRef.current && longPressRef.current !== "fired") clearTimeout(longPressRef.current);
+    longPressRef.current = null;
+  };
+  const handleNoteClick = (note) => {
+    if (longPressRef.current === "fired") { longPressRef.current = null; return; }
+    cancelLongPress();
+    if (selectMode) toggleSelect(note.id); else setEditingNote(note);
+  };
+
+  const propsNoteSessions = propsNote?._patientId
+    ? (upcomingSessions || []).filter(s => s.patient_id === propsNote._patientId)
+        .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    : [];
 
   if (editingNote) {
     return (
@@ -223,8 +246,10 @@ export function Notes() {
                         </div>
                       </div>
                     )}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <NoteCard note={n} onClick={() => selectMode ? toggleSelect(n.id) : setEditingNote(n)} />
+                    <div style={{ flex:1, minWidth:0 }}
+                      onTouchStart={() => !selectMode && startLongPress(n)}
+                      onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}>
+                      <NoteCard note={n} onClick={() => handleNoteClick(n)} />
                     </div>
                   </div>
                 </div>
@@ -257,6 +282,59 @@ export function Notes() {
             style={{ padding:"8px 16px", fontSize:12, fontWeight:700, borderRadius:"var(--radius-pill)", border:"2px solid white", background:"transparent", color:"white", cursor:"pointer", fontFamily:"var(--font)" }}>
             {t("delete")}
           </button>
+        </div>
+      )}
+
+      {/* Long-press properties sheet */}
+      {propsNote && (
+        <div className="sheet-overlay" onClick={() => setPropsNote(null)}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{propsNote.title || t("notes.noTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setPropsNote(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div className="input-group">
+                <label className="input-label">{t("sessions.patient")}</label>
+                <select className="input" value={propsNote._patientId}
+                  onChange={e => setPropsNote(prev => ({ ...prev, _patientId: e.target.value, _sessionId: "" }))}>
+                  <option value="">{t("notes.generalNote")}</option>
+                  {(patients || []).filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              {propsNote._patientId && propsNoteSessions.length > 0 && (
+                <div className="input-group">
+                  <label className="input-label">{t("notes.linkToSession")}</label>
+                  <select className="input" value={propsNote._sessionId}
+                    onChange={e => setPropsNote(prev => ({ ...prev, _sessionId: e.target.value }))}>
+                    <option value="">{t("notes.generalPatientNote")}</option>
+                    {propsNoteSessions.map(s => (
+                      <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                <button className="btn btn-primary" style={{ flex:1 }}
+                  onClick={async () => {
+                    await updateNoteLink(propsNote.id, { patientId: propsNote._patientId, sessionId: propsNote._sessionId });
+                    setPropsNote(null);
+                  }}>
+                  {t("save")}
+                </button>
+                <button className="btn" style={{ flex:0, padding:"0 16px", background: propsNote.pinned ? "var(--amber)" : "var(--cream)", color: propsNote.pinned ? "white" : "var(--charcoal-md)", boxShadow:"none" }}
+                  onClick={async () => {
+                    await togglePinNote(propsNote.id);
+                    setPropsNote(prev => ({ ...prev, pinned: !prev.pinned }));
+                  }}>
+                  <IconStar size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
