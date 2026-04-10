@@ -290,7 +290,7 @@ export function Patients() {
                           </select>
                         </div>
                         <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">Hora</label>}
+                          {i === 0 && <label className="input-label">{t("patients.time")}</label>}
                           <input className="input" type="time" value={s.time} onChange={e => updateEditSched(i, "time", e.target.value)} />
                         </div>
                         {editSchedules.length > 1 && (
