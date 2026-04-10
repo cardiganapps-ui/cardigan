@@ -637,7 +637,13 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 
 /* WEEK GRID */
 .week-header-row { display: grid; grid-template-columns: 44px repeat(7, 1fr); padding: 0 16px; margin-bottom: 2px; }
-.week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; }
+.week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; height: 50px; box-sizing: border-box; }
+.week-header-spacer { height: 50px; margin-bottom: 2px; }
+.week-time-label-static {
+  min-height: 48px;
+  font-size: 10px; color: var(--charcoal-xl); font-weight: 600;
+  padding: 6px 8px 0 0; text-align: right; line-height: 1;
+}
 .week-day-name { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--charcoal-xl); }
 .week-day-num {
   font-family: var(--font-d); font-size: 14px; font-weight: 800; color: var(--charcoal);
@@ -869,6 +875,7 @@ button, a, select { min-height: 44px; }
   .week-event-time { display: inline; font-weight: 800; margin-right: 2px; }
   .week-time-row { min-height: 56px; }
   .week-cell { min-height: 56px; }
+  .week-time-label-static { min-height: 56px; }
 }
 
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
