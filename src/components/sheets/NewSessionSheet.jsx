@@ -4,13 +4,13 @@ import { IconX } from "../Icons";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 
-export function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
+export function NewSessionSheet({ onClose, onSubmit, patients, mutating, initialDate, initialTime }) {
   const { t } = useT();
   useEscape(onClose);
   const [patientName, setPatientName] = useState("");
   const [sessionType, setSessionType] = useState("patient");
-  const [date, setDate] = useState(todayISO());
-  const [time, setTime] = useState("16:00");
+  const [date, setDate] = useState(initialDate || todayISO());
+  const [time, setTime] = useState(initialTime || "16:00");
   const [customRate, setCustomRate] = useState("");
   const [err, setErr]   = useState("");
 

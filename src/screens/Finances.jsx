@@ -92,7 +92,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
             <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
             <button
               onClick={() => setGroupByClient(g => !g)}
-              style={{ width:34, height:18, borderRadius:9, border:"none", cursor:"pointer", padding:2, background: groupByClient ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}
+              style={{ width:34, height:18, minHeight:18, borderRadius:9, border:"none", cursor:"pointer", padding:2, background: groupByClient ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}
             >
               <div style={{ width:14, height:14, borderRadius:"50%", background:"white", boxShadow:"0 1px 2px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
             </button>

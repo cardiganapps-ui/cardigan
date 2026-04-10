@@ -37,6 +37,7 @@
   --font-d:      'Nunito', sans-serif;
   --sat: env(safe-area-inset-top, 44px);
   --sab: env(safe-area-inset-bottom, 34px);
+  --week-row-h: 48px;
   /* ── Z-index scale ──
      10   banners (demo, read-only)
      50   fab-overlay
@@ -634,10 +635,90 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .month-cell.today:not(.active) .month-cell-num { color: var(--teal-dark); }
 .month-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--teal); position: absolute; bottom: 4px; }
 .month-cell.active .month-dot { background: rgba(255,255,255,0.7); }
+.month-dots { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.month-dot-color { width: 5px; height: 5px; border-radius: 50%; }
+.month-dot-extra { font-size: 8px; font-weight: 800; color: var(--charcoal-xl); margin-left: 1px; line-height: 1; }
+.month-cell.active .month-dot-color { box-shadow: 0 0 0 1px rgba(255,255,255,0.7); }
+.month-cell.active .month-dot-extra { color: rgba(255,255,255,0.8); }
 
 /* WEEK GRID */
 .week-header-row { display: grid; grid-template-columns: 44px repeat(7, 1fr); padding: 0 16px; margin-bottom: 2px; }
-.week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; }
+.week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; height: 50px; box-sizing: border-box; }
+.week-header-spacer { height: 50px; margin-bottom: 2px; }
+.week-time-label-static {
+  min-height: var(--week-row-h);
+  font-size: 10px; color: var(--charcoal-xl); font-weight: 600;
+  padding: 6px 8px 0 0; text-align: right; line-height: 1;
+}
+
+/* Agenda patient filter pill */
+.agenda-filter-pill {
+  display: inline-flex; align-items: center;
+  background: var(--cream-dark);
+  border-radius: var(--radius-pill);
+  padding: 0 4px 0 12px;
+  height: 32px; min-height: 32px;
+  transition: background 0.15s;
+  position: relative;
+}
+.agenda-filter-pill.active {
+  background: var(--teal-pale);
+}
+.agenda-filter-pill select {
+  font-family: var(--font);
+  font-size: 12px; font-weight: 700;
+  color: var(--charcoal-lt);
+  background: transparent;
+  border: none; outline: none; min-height: unset;
+  -webkit-appearance: none; appearance: none;
+  padding: 0 22px 0 0; cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+}
+.agenda-filter-pill.active select {
+  color: var(--teal-dark);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234A8799' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+}
+.agenda-filter-clear {
+  width: 22px; height: 22px; min-height: 22px;
+  border-radius: 50%; border: none;
+  background: var(--teal); color: white;
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; margin-left: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.agenda-filter-clear:active { opacity: 0.7; }
+
+/* Agenda header label (tappable to jump to today) */
+.agenda-label-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: none; border: none; padding: 4px 8px; min-height: 32px;
+  border-radius: var(--radius-pill); cursor: pointer;
+  font-family: var(--font); -webkit-tap-highlight-color: transparent;
+}
+.agenda-label-btn:active { background: var(--cream); }
+.agenda-today-pill {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--teal-dark); background: var(--teal-pale);
+  padding: 3px 8px; border-radius: var(--radius-pill);
+}
+
+/* Week "ahora" line */
+.week-now-line {
+  position: absolute;
+  height: 2px; background: var(--red);
+  pointer-events: none; z-index: 2;
+  border-radius: 2px;
+}
+.week-now-line::before {
+  content: ''; position: absolute;
+  left: -4px; top: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%; background: var(--red);
+}
 .week-day-name { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--charcoal-xl); }
 .week-day-num {
   font-family: var(--font-d); font-size: 14px; font-weight: 800; color: var(--charcoal);
@@ -869,6 +950,7 @@ button, a, select { min-height: 44px; }
   .week-event-time { display: inline; font-weight: 800; margin-right: 2px; }
   .week-time-row { min-height: 56px; }
   .week-cell { min-height: 56px; }
+  :root { --week-row-h: 56px; }
 }
 
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
