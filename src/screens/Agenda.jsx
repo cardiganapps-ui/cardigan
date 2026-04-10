@@ -3,8 +3,8 @@ import { clientColors, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { IconLeaf } from "../components/Icons";
-import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
-import { isCancelledStatus, statusClass, statusLabel, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
+import { formatShortDate } from "../utils/dates";
+import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -56,6 +56,7 @@ function buildMonthGrid(year, month) {
 
 /* ── SESSION ROW (shared) ── */
 function SessionRow({ s, onClick, compact }) {
+  const { t } = useT();
   const tutor = isTutorSession(s);
   const sz = compact ? 34 : 36;
   return (
@@ -67,10 +68,10 @@ function SessionRow({ s, onClick, compact }) {
         {tutor ? tutorDisplayInitials(s) : s.initials}
       </div>
       <div className="row-content">
-        <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>Tutor</span>}</div>
+        <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}</div>
         <div className="row-sub">{s.day}</div>
       </div>
-      <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
+      <span className={`session-status ${statusClass(s.status)}`}>{t(`sessions.${s.status}`)}</span>
       {!compact && <span className="row-chevron">›</span>}
     </div>
   );
@@ -91,7 +92,7 @@ function DayPanel({ baseDate, selectedDate, setSelectedDate, onSelectSession, up
   const monday = weekDays[0];
   const sunday = weekDays[6];
   const weekLabel = monday.getMonth() === sunday.getMonth()
-    ? `${monday.getDate()}–${sunday.getDate()} ${SHORT_MONTHS[monday.getMonth()]}`
+    ? `${monday.getDate()}–${sunday.getDate()} ${strings.monthsShort[monday.getMonth()]}`
     : `${formatShortDate(monday)} – ${formatShortDate(sunday)}`;
 
   return (
@@ -171,7 +172,7 @@ function WeekPanel({ baseDate, selectedDate, setSelectedDate, setView, onSelectS
   const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
   const monday = weekDays[0];
   const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
-  const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
+  const hourIndex = (time) => parseInt(time.split(":")[0]) - 8;
   const gridCols = `44px repeat(${visibleDays.length}, 1fr)`;
 
   return (
@@ -222,6 +223,7 @@ function WeekPanel({ baseDate, selectedDate, setSelectedDate, setView, onSelectS
 
 /* ── WEEK VIEW ── */
 function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions }) {
+  const { t } = useT();
   const [showWeekends, setShowWeekends] = useState(false);
   const swipe = useSwipe(
     useCallback(() => setSelectedDate(d => addDays(d, 7)), [setSelectedDate]),
@@ -343,10 +345,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 /* ── AGENDA ROOT ── */
 export function Agenda() {
   const { upcomingSessions, patients, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
-  const { t, strings } = useT();
-  const MONTH_NAMES = strings.months;
-  const DOW = strings.daysShort;
-  const HOURS = strings.hours;
+  const { t } = useT();
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
@@ -412,7 +411,7 @@ export function Agenda() {
       {upcomingSessions.length === 0 && (
         <div style={{ padding:"32px 24px", textAlign:"center" }}>
           <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconLeaf size={36} /></div>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>Sin sesiones</div>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
           <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>Agrega pacientes y citas recurrentes para ver tu agenda aquí.</div>
         </div>
       )}

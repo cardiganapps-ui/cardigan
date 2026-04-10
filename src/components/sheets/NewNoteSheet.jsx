@@ -4,6 +4,7 @@ import { isTutorSession } from "../../utils/sessions";
 import { Toggle } from "../Toggle";
 import { NoteEditor } from "../NoteEditor";
 import { IconX } from "../Icons";
+import { useT } from "../../i18n/index";
 
 function findClosestPastSession(sessions) {
   const now = todayISO();
@@ -18,12 +19,13 @@ function findClosestPastSession(sessions) {
   return best;
 }
 
-function sessionLabel(s) {
-  const st = s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : "Cancelada";
+function sessionLabel(s, t) {
+  const st = t(`sessions.${s.status}`);
   return `${s.date} · ${s.time} — ${st}`;
 }
 
 export function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, updateNote, deleteNote }) {
+  const { t } = useT();
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [isTutorNote, setIsTutorNote] = useState(false);
@@ -95,61 +97,61 @@ export function NewNoteSheet({ onClose, patients, upcomingSessions, createNote, 
       <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">Nueva nota</span>
-          <button className="sheet-close" aria-label="Cerrar" onClick={onClose}><IconX size={14} /></button>
+          <span className="sheet-title">{t("notes.createNote")}</span>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
-            <label className="input-label">Vincular a paciente</label>
+            <label className="input-label">{t("notes.linkToPatient")}</label>
             <select className="input" value={patientId} onChange={e => handlePatientChange(e.target.value)}>
-              <option value="">General (sin paciente)</option>
+              <option value="">{t("notes.generalNote")}</option>
               {patients.filter(p => p.status === "active").map(p => (
-                <option key={p.id} value={p.id}>{p.name}{p.parent ? " (menor)" : ""}</option>
+                <option key={p.id} value={p.id}>{p.name}{p.parent ? ` ${t("patients.minor")}` : ""}</option>
               ))}
             </select>
           </div>
           {patientId && (pastSessions.length > 0 || futureSessions.length > 0) && (
             <div className="input-group">
-              <label className="input-label">Vincular a sesión</label>
+              <label className="input-label">{t("notes.linkToSession")}</label>
               <select className="input" value={sessionId} onChange={e => { setSessionId(e.target.value); setAutoLinked(false); }}>
-                <option value="">Nota general del paciente</option>
-                {pastSessions.length > 0 && <option disabled>— Pasadas —</option>}
+                <option value="">{t("notes.generalPatientNote")}</option>
+                {pastSessions.length > 0 && <option disabled>— {t("notes.past")} —</option>}
                 {pastSessions.map(s => (
-                  <option key={s.id} value={s.id}>{isTutorSession(s) ? "🔹 " : ""}{sessionLabel(s)}</option>
+                  <option key={s.id} value={s.id}>{isTutorSession(s) ? "🔹 " : ""}{sessionLabel(s, t)}</option>
                 ))}
-                {futureSessions.length > 0 && <option disabled>— Próximas —</option>}
+                {futureSessions.length > 0 && <option disabled>— {t("notes.upcoming")} —</option>}
                 {futureSessions.map(s => (
-                  <option key={s.id} value={s.id}>{isTutorSession(s) ? "🔹 " : ""}{sessionLabel(s)}</option>
+                  <option key={s.id} value={s.id}>{isTutorSession(s) ? "🔹 " : ""}{sessionLabel(s, t)}</option>
                 ))}
               </select>
               {autoLinked && linkedSession && (
-                <div style={{ fontSize:11, color:"var(--teal-dark)", marginTop:4 }}>Vinculada a la sesión más reciente</div>
+                <div style={{ fontSize:11, color:"var(--teal-dark)", marginTop:4 }}>{t("notes.linkedToRecent")}</div>
               )}
             </div>
           )}
           {isMinor && patientId && (
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"var(--purple)" }}>Nota de sesión con tutor ({selectedPatient.parent})</span>
+              <span style={{ fontSize:12, fontWeight:600, color:"var(--purple)" }}>{t("notes.tutorNote", { name: selectedPatient.parent })}</span>
               <Toggle on={isTutorNote} onToggle={() => setIsTutorNote(v => !v)} />
             </div>
           )}
           <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
             {patientId ? (
               <>
-                Paciente: <strong>{selectedPatient?.name}</strong>
-                {isTutorNote && <span style={{ color:"var(--purple)", fontWeight:700 }}> (Tutor)</span>}
+                {t("notes.patientLabel")} <strong>{selectedPatient?.name}</strong>
+                {isTutorNote && <span style={{ color:"var(--purple)", fontWeight:700 }}> ({t("sessions.tutor")})</span>}
                 <br />
                 {linkedSession
-                  ? <>Sesión: <strong>{linkedSession.date} · {linkedSession.time}</strong></>
-                  : <>Nota general (sin sesión específica)</>}
+                  ? <>{t("notes.sessionLabel")} <strong>{linkedSession.date} · {linkedSession.time}</strong></>
+                  : <>{t("notes.generalNoSession")}</>}
               </>
             ) : (
-              <>Nota rápida — no vinculada a ningún paciente</>
+              <>{t("notes.generalUnlinked")}</>
             )}
           </div>
           <button className={`btn ${isTutorNote ? "" : "btn-primary"}`} onClick={startNote}
             style={isTutorNote ? { background:"var(--purple)", color:"white", boxShadow:"none", width:"100%" } : undefined}>
-            Crear nota
+            {t("notes.createNote")}
           </button>
         </div>
       </div>

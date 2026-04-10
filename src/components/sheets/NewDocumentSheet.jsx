@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
 import { IconX, IconUpload } from "../Icons";
 import { shortDateToISO, todayISO } from "../../utils/dates";
-import { statusLabel } from "../../utils/sessions";
+import { useT } from "../../i18n/index";
 
 export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }) {
+  const { t } = useT();
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -27,7 +28,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
     if (files.length === 0 || !patientId) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(`${oversized.map(f => f.name).join(", ")} excede${oversized.length > 1 ? "n" : ""} el límite de 10 MB`);
+      alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
@@ -50,34 +51,34 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
       <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">Subir documento</span>
-          <button className="sheet-close" aria-label="Cerrar" onClick={onClose}><IconX size={14} /></button>
+          <span className="sheet-title">{t("docs.upload")}</span>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           {done ? (
             <div style={{ textAlign:"center", padding:"16px 0" }}>
               <div style={{ fontSize:36, marginBottom:8 }}>&#10003;</div>
               <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:4 }}>
-                {uploadedCount} documento{uploadedCount !== 1 ? "s" : ""} subido{uploadedCount !== 1 ? "s" : ""}
+                {t("docs.uploaded", { count: uploadedCount })}
               </div>
               <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:16 }}>
                 {selectedPatient?.name}
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button className="btn btn-secondary" style={{ flex:1 }} onClick={() => { setDone(false); setUploadedCount(0); }}>
-                  Subir más
+                  {t("uploadMore")}
                 </button>
                 <button className="btn btn-primary" style={{ flex:1 }} onClick={onClose}>
-                  Listo
+                  {t("done")}
                 </button>
               </div>
             </div>
           ) : (
             <>
               <div className="input-group">
-                <label className="input-label">Paciente</label>
+                <label className="input-label">{t("sessions.patient")}</label>
                 <select className="input" value={patientId} onChange={e => { setPatientId(e.target.value); setSessionId(""); }}>
-                  <option value="">General (sin paciente)</option>
+                  <option value="">{t("docs.general")}</option>
                   {(patients || []).filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -85,18 +86,18 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
               </div>
               {patientId && patientSessions.length > 0 && (
                 <div className="input-group">
-                  <label className="input-label">Vincular a sesión (opcional)</label>
+                  <label className="input-label">{t("notes.linkToSession")}</label>
                   <select className="input" value={sessionId} onChange={e => setSessionId(e.target.value)}>
-                    <option value="">Sin vincular</option>
+                    <option value="">{t("docs.unlink")}</option>
                     {patientSessions.map(s => (
-                      <option key={s.id} value={s.id}>{s.date} · {s.time} — {statusLabel(s.status)}</option>
+                      <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`)}</option>
                     ))}
                   </select>
                 </div>
               )}
               <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-                {patientId ? <>Paciente: <strong>{selectedPatient?.name}</strong></> : <strong>Documento general</strong>}<br />
-                Formatos: imágenes, PDF, Word · Máx. 10 MB por archivo
+                {patientId ? <>{t("notes.patientLabel")} <strong>{selectedPatient?.name}</strong></> : <strong>{t("docs.generalDoc")}</strong>}<br />
+                {t("docs.formats")}
               </div>
               <input ref={fileInputRef} type="file" multiple
                 accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -105,7 +106,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                 onClick={() => fileInputRef.current?.click()}
                 style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 <IconUpload size={16} />
-                {uploading ? "Subiendo..." : "Seleccionar archivos"}
+                {uploading ? t("docs.uploading") : t("docs.selectFiles")}
               </button>
             </>
           )}
