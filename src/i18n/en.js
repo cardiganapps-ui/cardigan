@@ -112,6 +112,7 @@ export default {
     finalizeWarning: "Scheduled sessions after this date will be deleted. Past and completed sessions are preserved.",
     sessionsToRemove: "{count} scheduled session{plural} will be removed",
     duplicateName: "A patient with that name already exists.",
+    count: "{count} patient{plural}",
     namePlaceholder: "Jane Smith",
     tutorPlaceholder: "Guardian name",
     ratePlaceholder: "e.g. 700",
@@ -122,6 +123,15 @@ export default {
     time: "Time",
     minor: "(minor)",
     enterName: "Enter the patient's name.",
+  },
+
+  // ── Agenda ──
+  agenda: {
+    dayView: "Day",
+    weekView: "Week",
+    monthView: "Month",
+    allPatients: "All patients",
+    emptyHint: "Add patients and recurring appointments to see your agenda here.",
   },
 
   // ── Sessions ──

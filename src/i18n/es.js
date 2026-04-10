@@ -112,6 +112,7 @@ export default {
     finalizeWarning: "Las sesiones agendadas despu\u00e9s de esta fecha ser\u00e1n eliminadas. Las sesiones pasadas y completadas se conservan.",
     sessionsToRemove: "Se eliminar\u00e1n {count} sesi\u00f3n{plural} agendada{plural}",
     duplicateName: "Ya existe un paciente con ese nombre.",
+    count: "{count} paciente{plural}",
     namePlaceholder: "Mar\u00eda L\u00f3pez",
     tutorPlaceholder: "Nombre del tutor",
     ratePlaceholder: "Ej: 700",
@@ -122,6 +123,15 @@ export default {
     time: "Hora",
     minor: "(menor)",
     enterName: "Ingresa el nombre del paciente.",
+  },
+
+  // ── Agenda ──
+  agenda: {
+    dayView: "Día",
+    weekView: "Semana",
+    monthView: "Mes",
+    allPatients: "Todos los pacientes",
+    emptyHint: "Agrega pacientes y citas recurrentes para ver tu agenda aquí.",
   },
 
   // ── Sessions ──

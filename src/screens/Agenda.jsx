@@ -385,7 +385,7 @@ export function Agenda() {
       <div style={{ paddingTop:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 16px 14px" }}>
           <div className="view-toggle" style={{ flex:1, margin:0 }}>
-            {[{k:"day",l:"Día"},{k:"week",l:"Semana"},{k:"month",l:"Mes"}].map(v => (
+            {[{k:"day",l:t("agenda.dayView")},{k:"week",l:t("agenda.weekView")},{k:"month",l:t("agenda.monthView")}].map(v => (
               <button key={v.k} className={`view-btn ${view===v.k?"active":""}`} onClick={() => setView(v.k)}>{v.l}</button>
             ))}
           </div>
@@ -400,7 +400,7 @@ export function Agenda() {
           <div style={{ padding:"0 16px 10px" }}>
             <select className="input" value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
               style={{ fontSize:12, padding:"7px 10px", color: filterPatient ? "var(--teal-dark)" : "var(--charcoal-xl)" }}>
-              <option value="">Todos los pacientes</option>
+              <option value="">{t("agenda.allPatients")}</option>
               {patients.filter(p => p.status === "active").map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -412,7 +412,7 @@ export function Agenda() {
         <div style={{ padding:"32px 24px", textAlign:"center" }}>
           <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconLeaf size={36} /></div>
           <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
-          <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>Agrega pacientes y citas recurrentes para ver tu agenda aquí.</div>
+          <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
         </div>
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} />}

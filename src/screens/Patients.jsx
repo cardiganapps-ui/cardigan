@@ -179,7 +179,7 @@ export function Patients() {
         {filters.map(f => <button key={f.k} className={`chip ${filter===f.k?"active":""}`} onClick={() => setFilter(f.k)}>{f.l}</button>)}
       </div>
       <div className="sort-row">
-        <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{filtered.length} paciente{filtered.length!==1?"s":""}</span>
+        <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{t("patients.count", { count: filtered.length })}</span>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <span className="sort-label">{t("patients.sortBy")}</span>
           <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)}>
