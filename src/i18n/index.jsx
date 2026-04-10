@@ -1,21 +1,11 @@
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useCallback, useMemo } from "react";
 import es from "./es";
-import en from "./en";
 
-const locales = { es, en };
 const I18nContext = createContext(null);
 
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState(() => localStorage.getItem("cardigan-lang") || "es");
+  const strings = es;
 
-  const switchLang = useCallback((l) => {
-    if (locales[l]) { setLang(l); localStorage.setItem("cardigan-lang", l); }
-  }, []);
-
-  const strings = locales[lang] || es;
-
-  // t("nav.home") → "Inicio"
-  // t("docs.count", { count: 5 }) → "5 documentos"
   const t = useCallback((key, vars) => {
     const parts = key.split(".");
     let val = strings;
@@ -34,7 +24,7 @@ export function I18nProvider({ children }) {
     });
   }, [strings]);
 
-  const value = useMemo(() => ({ lang, switchLang, t, strings }), [lang, switchLang, t, strings]);
+  const value = useMemo(() => ({ lang: "es", switchLang: () => {}, t, strings }), [t, strings]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
