@@ -35,15 +35,15 @@ function SwipeableRow({ children, onDelete }) {
   }, [offset]);
 
   return (
-    <div style={{ position:"relative", overflow:"hidden" }}>
+    <div style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
       {/* Delete button behind */}
-      <div style={{ position:"absolute", top:0, right:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--red)", color:"white", fontSize:11, fontWeight:700, cursor:"pointer" }}
+      <div style={{ position:"absolute", top:0, right:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--red)", color:"white", fontSize:11, fontWeight:700, cursor:"pointer", borderRadius:"0 var(--radius) var(--radius) 0" }}
         onClick={() => { setOffset(0); onDelete(); }}>
         Eliminar
       </div>
       {/* Content */}
       <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.2s ease", background:"var(--white)", position:"relative", zIndex:1 }}>
+        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.2s ease", position:"relative", zIndex:1 }}>
         {children}
       </div>
     </div>
@@ -223,7 +223,7 @@ export function Notes() {
               const isSelected = selected.has(n.id);
 
               const noteContent = (
-                <div style={{ background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", overflow:"hidden" }}>
+                <div style={{ background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden" }}>
                   {(p || linkedSession) && (
                     <div style={{ padding:"6px 12px", fontSize:10, color:"var(--teal-dark)", fontWeight:600, background:"var(--teal-mist)", borderBottom:"1px solid var(--border-lt)" }}>
                       {p && p.name}

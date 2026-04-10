@@ -385,7 +385,6 @@ export function NoteCard({ note, onClick }) {
     <div role="button" tabIndex={0} onClick={onClick}
       style={{
         padding:"12px 16px", cursor:"pointer",
-        borderBottom:"1px solid var(--border-lt)",
         WebkitTapHighlightColor:"transparent",
       }}>
       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
