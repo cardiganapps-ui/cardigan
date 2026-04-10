@@ -379,10 +379,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
   );
 }
 
-export function NoteCard({ note, onClick }) {
+export function NoteCard({ note, onClick, patientName, sessionLabel }) {
   const { t } = useT();
   const preview = note.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 100) || t("notes.noContent");
   const timeAgo = relativeTime(note.updated_at);
+  const hasLink = patientName || sessionLabel;
   return (
     <div role="button" tabIndex={0} onClick={onClick}
       style={{
@@ -396,8 +397,10 @@ export function NoteCard({ note, onClick }) {
         </div>
         <span style={{ fontSize:11, color:"var(--charcoal-xl)", flexShrink:0, fontWeight:500 }}>{timeAgo}</span>
       </div>
-      <div style={{ fontSize:13, color:"var(--charcoal-lt)", lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-        {preview}
+      <div style={{ fontSize:12, color: hasLink ? "var(--teal-dark)" : "var(--charcoal-lt)", lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight: hasLink ? 600 : 400 }}>
+        {hasLink
+          ? [patientName && `${t("sessions.patient")}: ${patientName}`, sessionLabel && `${t("sessions.session")}: ${sessionLabel}`].filter(Boolean).join(" | ")
+          : preview}
       </div>
     </div>
   );

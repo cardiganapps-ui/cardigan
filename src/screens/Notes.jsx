@@ -222,13 +222,6 @@ export function Notes() {
 
               const noteContent = (
                 <div style={{ background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden" }}>
-                  {(p || linkedSession) && (
-                    <div style={{ padding:"6px 12px", fontSize:10, color:"var(--teal-dark)", fontWeight:600, background:"var(--teal-mist)", borderBottom:"1px solid var(--border-lt)" }}>
-                      {p && p.name}
-                      {p && linkedSession && " · "}
-                      {linkedSession && `${t("sessions.session")} ${linkedSession.date}`}
-                    </div>
-                  )}
                   <div style={{ display:"flex", alignItems:"center" }}>
                     {selectMode && (
                       <div onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}
@@ -247,7 +240,8 @@ export function Notes() {
                     <div style={{ flex:1, minWidth:0 }}
                       onTouchStart={() => !selectMode && startLongPress(n)}
                       onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}>
-                      <NoteCard note={n} onClick={() => handleNoteClick(n)} />
+                      <NoteCard note={n} onClick={() => handleNoteClick(n)}
+                        patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null} />
                     </div>
                   </div>
                 </div>
