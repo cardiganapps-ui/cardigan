@@ -48,5 +48,15 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  return { createNote, updateNote, updateNoteLink, deleteNote, deleteNotes };
+  async function togglePinNote(id) {
+    const note = notes.find(n => n.id === id);
+    if (!note) return false;
+    const pinned = !note.pinned;
+    const { error } = await supabase.from("notes").update({ pinned }).eq("id", id);
+    if (error) { setMutationError(error.message); return false; }
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned } : n));
+    return true;
+  }
+
+  return { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes };
 }

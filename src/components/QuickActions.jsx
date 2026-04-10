@@ -2,8 +2,8 @@ import { useState } from "react";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
-import { NewNoteSheet } from "./sheets/NewNoteSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
+import { NoteEditor } from "./NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
@@ -20,10 +20,16 @@ export function QuickActions() {
   const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating } = useCardigan();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
+  const [quickNote, setQuickNote] = useState(null);
 
-  const handleAction = (key) => {
+  const handleAction = async (key) => {
     setMenuOpen(false);
     if (key === "payment") openRecordPaymentModal(null);
+    else if (key === "note") {
+      // Quick-capture: skip the sheet, go straight to editor
+      const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
+      if (note) setQuickNote(note);
+    }
     else setActiveSheet(key);
   };
 
@@ -54,9 +60,13 @@ export function QuickActions() {
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} mutating={mutating} />
       )}
-      {activeSheet === "note" && (
-        <NewNoteSheet onClose={closeSheet} patients={patients} upcomingSessions={upcomingSessions}
-          createNote={createNote} updateNote={updateNote} deleteNote={deleteNote} />
+      {quickNote && (
+        <NoteEditor
+          note={quickNote}
+          onSave={async ({ title, content }) => await updateNote(quickNote.id, { title, content })}
+          onDelete={async () => { await deleteNote(quickNote.id); }}
+          onClose={() => setQuickNote(null)}
+        />
       )}
       {activeSheet === "document" && (
         <NewDocumentSheet onClose={closeSheet} patients={patients} upcomingSessions={upcomingSessions}

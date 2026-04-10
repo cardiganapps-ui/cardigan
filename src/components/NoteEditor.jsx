@@ -1,7 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { IconX, IconCheck, IconUser, IconCalendar } from "./Icons";
+import { IconX, IconCheck, IconUser, IconCalendar, IconStar } from "./Icons";
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
+
+function relativeTime(dateStr) {
+  if (!dateStr) return "";
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = now - then;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "ahora";
+  if (mins < 60) return `hace ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "ayer";
+  if (days < 7) return `hace ${days}d`;
+  return new Date(dateStr).toLocaleDateString("es-MX", { day:"numeric", month:"short" });
+}
 
 /* ── List prefix detection ── */
 const LIST_PATTERNS = [
@@ -65,7 +81,8 @@ function ToolBtn({ label, onClick, active }) {
 /* ── Main Editor ── */
 export function NoteEditor({ note, onSave, onDelete, onClose }) {
   const { t } = useT();
-  const { patients, upcomingSessions } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote } = useCardigan();
+  const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
   const [linkedPatientId, setLinkedPatientId] = useState(note?.patient_id || "");
@@ -205,10 +222,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
           style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 0" }}>
           ‹ {t("back")}
         </button>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
           {saved
             ? <span style={{ fontSize:11, color:"var(--charcoal-xl)" }}>{t("notes.saved")}</span>
             : <span style={{ fontSize:11, color:"var(--amber)" }}>{t("notes.saving")}</span>}
+          {note?.id && (
+            <button onClick={async () => { await togglePinNote(note.id); setPinned(p => !p); }}
+              style={{ padding:"4px 6px", background:"none", border:"none", cursor:"pointer", color: pinned ? "var(--amber)" : "var(--charcoal-xl)" }}>
+              <IconStar size={16} />
+            </button>
+          )}
           {onDelete && (
             <button onClick={() => setConfirmDelete(true)}
               style={{ fontSize:11, fontWeight:600, color:"var(--red)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 8px" }}>
@@ -327,17 +350,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
 export function NoteCard({ note, onClick }) {
   const { t } = useT();
   const preview = note.content?.replace(/[*~#\[\]]/g, "").slice(0, 80) || t("notes.noContent");
-  const dateStr = note.updated_at
-    ? new Date(note.updated_at).toLocaleDateString("es-MX", { day:"numeric", month:"short" })
-    : "";
+  const timeAgo = relativeTime(note.updated_at);
   return (
     <div className="row-item" role="button" tabIndex={0} onClick={onClick} style={{ cursor:"pointer" }}>
+      {note.pinned && <IconStar size={12} style={{ color:"var(--amber)", flexShrink:0 }} />}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
           {note.title || t("notes.noTitle")}
         </div>
         <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:3, display:"flex", gap:6, alignItems:"center" }}>
-          <span>{dateStr}</span>
+          <span style={{ flexShrink:0 }}>{timeAgo}</span>
           <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{preview}</span>
         </div>
       </div>

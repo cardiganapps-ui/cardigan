@@ -3,6 +3,7 @@ import { IconSearch, IconClipboard, IconX } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
 /* ── Swipeable wrapper for note cards ── */
 function SwipeableRow({ children, onDelete }) {
@@ -56,6 +57,7 @@ export function Notes() {
   const [filterPatient, setFilterPatient] = useState("all");
   const [editingNote, setEditingNote] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [selected, setSelected] = useState(new Set());
 
   const patientsWithNotes = useMemo(() => {
@@ -74,7 +76,11 @@ export function Notes() {
     }
     if (filterPatient === "general") list = list.filter(n => !n.patient_id);
     else if (filterPatient !== "all") list = list.filter(n => n.patient_id === filterPatient);
-    return list.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+    return list.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return (b.updated_at || "").localeCompare(a.updated_at || "");
+    });
   }, [notes, search, filterPatient, patients]);
 
   const handleSaveNote = useCallback(async ({ title, content }) => {
@@ -137,11 +143,26 @@ export function Notes() {
       </div>
 
       {!selectMode && (
-        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <button className="btn btn-primary" style={{ flex:1, fontSize:12 }} onClick={async () => {
-            const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
-            if (note) setEditingNote(note);
-          }}>{t("notes.newNote")}</button>
+        <div style={{ marginBottom:12 }}>
+          <button className="btn btn-primary" style={{ width:"100%", fontSize:12 }}
+            onClick={() => setShowTemplates(!showTemplates)}>
+            {t("notes.newNote")}
+          </button>
+          {showTemplates && (
+            <div className="card" style={{ marginTop:8, padding:0 }}>
+              {NOTE_TEMPLATES.map(tmpl => (
+                <div key={tmpl.id} className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
+                  onClick={async () => {
+                    setShowTemplates(false);
+                    const note = await createNote({ patientId: null, sessionId: null, title: tmpl.title, content: tmpl.content });
+                    if (note) setEditingNote(note);
+                  }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>{tmpl.icon}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{tmpl.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
