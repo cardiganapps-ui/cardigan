@@ -98,6 +98,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
           onChange={handleTitleChange}
           onKeyDown={handleTitleKeyDown}
           placeholder="Título"
+          autoFocus
           style={{
             width:"100%", border:"none", outline:"none", padding:0, marginBottom:12,
             fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)",

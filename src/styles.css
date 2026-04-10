@@ -42,11 +42,11 @@
      50   fab-overlay
      51   fab-menu
      52   fab
-     100  sheets (payment, new patient/session/note/document)
      200  drawer-overlay
      201  drawer
      300  expediente-backdrop
      301  expediente-card / admin-panel
+     350  sheets (payment, new patient/session/note/document)
      400  note-editor (full takeover)
      500  doc-viewer-backdrop
      501  doc-viewer-panel
@@ -56,7 +56,7 @@
   --z-fab-overlay:    50;
   --z-fab-menu:       51;
   --z-fab:            52;
-  --z-sheet:          100;
+  --z-sheet:          350;
   --z-drawer-overlay: 200;
   --z-drawer:         201;
   --z-expediente-bg:  300;
