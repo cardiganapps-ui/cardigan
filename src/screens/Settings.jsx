@@ -4,7 +4,7 @@ import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, I
 import { useT } from "../i18n/index";
 
 export function Settings({ user, signOut }) {
-  const { lang, switchLang } = useT();
+  const { lang, switchLang, t } = useT();
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -19,8 +19,8 @@ export function Settings({ user, signOut }) {
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
     setSaving(false);
-    if (error) { setMessage("Error al guardar."); return; }
-    setMessage("Perfil actualizado.");
+    if (error) { setMessage(t("settings.saveError")); return; }
+    setMessage(t("settings.linkSent"));
     setTimeout(() => { setMessage(""); setActiveSheet(null); }, 1200);
   };
 
@@ -28,8 +28,8 @@ export function Settings({ user, signOut }) {
     setSaving(true);
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
     setSaving(false);
-    if (error) { setMessage("Error al enviar correo."); return; }
-    setMessage("Correo enviado. Revisa tu bandeja.");
+    if (error) { setMessage(t("settings.emailError")); return; }
+    setMessage(t("settings.linkSent"));
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -49,17 +49,17 @@ export function Settings({ user, signOut }) {
               <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
               <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
             </div>
-            <button className="btn btn-ghost" style={{ fontSize:13,height:34 }} onClick={() => openSheet("profile")}>Editar</button>
+            <button className="btn btn-ghost" style={{ fontSize:13,height:34 }} onClick={() => openSheet("profile")}>{t("edit")}</button>
           </div>
         </div>
       </div>
 
-      <div className="settings-label">Mi práctica</div>
+      <div className="settings-label">{t("nav.principal")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("profile")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUser size={18} /></div>
           <div style={{ flex:1 }}>
-            <div className="settings-row-title">Perfil</div>
+            <div className="settings-row-title">{t("settings.profile")}</div>
             <div className="settings-row-sub">{userName}</div>
           </div>
           <IconChevron />
@@ -67,31 +67,31 @@ export function Settings({ user, signOut }) {
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("currency")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCurrency size={18} /></div>
           <div style={{ flex:1 }}>
-            <div className="settings-row-title">Moneda</div>
+            <div className="settings-row-title">{t("settings.currency")}</div>
             <div className="settings-row-sub">MXN — Peso Mexicano</div>
           </div>
           <IconChevron />
         </div>
       </div>
 
-      <div className="settings-label">Suscripción</div>
+      <div className="settings-label">{t("settings.plan")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("plan")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
           <div style={{ flex:1 }}>
-            <div className="settings-row-title">Plan actual</div>
-            <div className="settings-row-sub">Cardigan Pro</div>
+            <div className="settings-row-title">{t("settings.planActive")}</div>
+            <div className="settings-row-sub">{t("settings.planValue")}</div>
           </div>
           <IconChevron />
         </div>
       </div>
 
-      <div className="settings-label">Cuenta</div>
+      <div className="settings-label">{t("nav.account")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={resetPassword}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
           <div style={{ flex:1 }}>
-            <div className="settings-row-title">Cambiar contraseña</div>
+            <div className="settings-row-title">{t("settings.changePassword")}</div>
             {message && activeSheet === null && <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>}
           </div>
           <IconChevron />
@@ -110,7 +110,7 @@ export function Settings({ user, signOut }) {
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={signOut}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
           <div style={{ flex:1 }}>
-            <div className="settings-row-title" style={{ color:"var(--red)" }}>Cerrar sesión</div>
+            <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("nav.signOut")}</div>
           </div>
           <IconChevron />
         </div>
@@ -124,21 +124,21 @@ export function Settings({ user, signOut }) {
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">Editar perfil</span>
-              <button className="sheet-close" aria-label="Cerrar" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <span className="sheet-title">{t("settings.editProfile")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
               <div className="input-group">
-                <label className="input-label">Nombre completo</label>
+                <label className="input-label">{t("settings.fullName")}</label>
                 <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
               </div>
               <div className="input-group">
-                <label className="input-label">Correo electrónico</label>
+                <label className="input-label">{t("settings.email")}</label>
                 <input className="input" value={userEmail} disabled style={{ opacity:0.5 }} />
               </div>
               {message && <div style={{ fontSize:12, color:"var(--green)", marginBottom:10, display:"flex", alignItems:"center", gap:4 }}><IconCheck size={14} /> {message}</div>}
               <button className="btn btn-primary" onClick={saveProfile} disabled={saving || !editName.trim()}>
-                {saving ? "Guardando..." : "Guardar"}
+                {saving ? t("saving") : t("save")}
               </button>
             </div>
           </div>
@@ -151,8 +151,8 @@ export function Settings({ user, signOut }) {
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">Moneda</span>
-              <button className="sheet-close" aria-label="Cerrar" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <span className="sheet-title">{t("settings.currency")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
               <div className="card" style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -163,7 +163,7 @@ export function Settings({ user, signOut }) {
                 <div style={{ color:"var(--teal)" }}><IconCheck size={18} /></div>
               </div>
               <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:12, lineHeight:1.5, textAlign:"center" }}>
-                Próximamente más monedas disponibles.
+                {t("settings.currencySoon")}
               </div>
             </div>
           </div>
@@ -176,16 +176,16 @@ export function Settings({ user, signOut }) {
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">Tu plan</span>
-              <button className="sheet-close" aria-label="Cerrar" onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <span className="sheet-title">{t("settings.plan")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px", textAlign:"center" }}>
               <div style={{ width:48, height:48, background:"var(--amber-bg)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", color:"var(--amber)" }}>
                 <IconStar size={22} />
               </div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>Cardigan Pro</div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>{t("settings.planValue")}</div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
-                Acceso completo a todas las funciones de Cardigan.
+                {t("settings.planDescription")}
               </div>
             </div>
           </div>

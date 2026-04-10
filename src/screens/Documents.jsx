@@ -5,9 +5,11 @@ import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 export function Documents() {
   const { documents, patients, upcomingSessions, notes, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { t } = useT();
   const [editingNote, setEditingNote] = useState(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name
@@ -126,21 +128,21 @@ export function Documents() {
       />
     )}
     <div style={{ padding:16 }}>
-      <div className="section-title" style={{ marginBottom:12 }}>Documentos</div>
+      <div className="section-title" style={{ marginBottom:12 }}>{t("docs.title")}</div>
 
       {/* Search bar */}
       <div className="search-bar" style={{ marginBottom:12 }}>
         <IconSearch size={16} style={{ color:"var(--charcoal-xl)" }} />
-        <input placeholder="Buscar por nombre o paciente..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input placeholder={t("docs.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {/* Upload area */}
       <div className="card" style={{ padding:"12px 14px", marginBottom:12 }}>
-        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>Subir documento</div>
+        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>{t("docs.upload")}</div>
         <div style={{ display:"flex", gap:8 }}>
           <select value={uploadPatientId} onChange={e => setUploadPatientId(e.target.value)}
             style={{ flex:1, fontSize:12, fontFamily:"var(--font)", padding:"8px 10px", borderRadius:"var(--radius)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal)" }}>
-            <option value="general">General (sin paciente)</option>
+            <option value="general">{t("docs.general")}</option>
             {activePatients.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -151,7 +153,7 @@ export function Documents() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}>
             <IconUpload size={14} />
-            {uploading ? "..." : "Subir"}
+            {uploading ? "..." : t("docs.uploadBtn")}
           </button>
         </div>
       </div>
@@ -161,15 +163,15 @@ export function Documents() {
         {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}
           style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>
-          <option value="newest">Más reciente</option>
-          <option value="oldest">Más antiguo</option>
-          <option value="name">Nombre A-Z</option>
+          <option value="newest">{t("docs.newest")}</option>
+          <option value="oldest">{t("docs.oldest")}</option>
+          <option value="name">{t("docs.nameAZ")}</option>
         </select>
         {/* Patient filter */}
         <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
           style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", flex:1, minWidth:0 }}>
-          <option value="all">Todos</option>
-          <option value="general">General</option>
+          <option value="all">{t("docs.allPatients")}</option>
+          <option value="general">{t("docs.generalFilter")}</option>
           {patientsWithDocs.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -178,10 +180,10 @@ export function Documents() {
       {/* Type filter pills */}
       <div style={{ display:"flex", gap:4, marginBottom:14 }}>
         {[
-          { k:"all", l:"Todos" },
-          { k:"image", l:"Imagen" },
-          { k:"pdf", l:"PDF" },
-          { k:"doc", l:"Word" },
+          { k:"all", l:t("docs.allTypes") },
+          { k:"image", l:t("docs.image") },
+          { k:"pdf", l:t("docs.pdf") },
+          { k:"doc", l:t("docs.word") },
         ].map(f => (
           <button key={f.k} onClick={() => setFilterType(f.k)}
             style={{ padding:"5px 12px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
@@ -194,7 +196,7 @@ export function Documents() {
 
       {/* Results count */}
       <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
-        {filteredDocs.length} documento{filteredDocs.length !== 1 ? "s" : ""}
+        {t("docs.count", { count: filteredDocs.length })}
         {filterPatient !== "all" && (() => { const p = patients.find(pt => pt.id === filterPatient); return p ? ` · ${p.name}` : ""; })()}
       </div>
 
@@ -207,7 +209,7 @@ export function Documents() {
         onRename={renameDocument}
         onTag={tagDocumentSession}
         onDelete={deleteDocument}
-        emptyMessage={(documents || []).length === 0 ? "Aún no hay documentos subidos" : "Sin resultados para este filtro"}
+        emptyMessage={(documents || []).length === 0 ? t("docs.noDocuments") : t("docs.noResults")}
       />
 
       {/* ── General Notes ── */}
@@ -216,16 +218,16 @@ export function Documents() {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <IconClipboard size={16} style={{ color:"var(--charcoal-xl)" }} />
-              <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>Notas generales</span>
+              <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>{t("notes.generalNotes")}</span>
             </div>
             <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={async () => {
               const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
               if (note) setEditingNote(note);
-            }}>+ Nueva nota</button>
+            }}>{t("notes.newNote")}</button>
           </div>
           {generalNotes.length === 0
             ? <div className="card" style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-                Las notas generales aparecerán aquí
+                {t("notes.generalNotesEmpty")}
               </div>
             : <div className="card">
                 {generalNotes.map(n => (

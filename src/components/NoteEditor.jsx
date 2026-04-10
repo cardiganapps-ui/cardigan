@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconX, IconCheck } from "./Icons";
+import { useT } from "../i18n/index";
 
 export function NoteEditor({ note, onSave, onDelete, onClose }) {
+  const { t } = useT();
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
   const [saved, setSaved] = useState(true);
@@ -59,16 +61,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"calc(var(--sat, 0px) + 12px) 16px 12px", borderBottom:"1px solid var(--border-lt)", flexShrink:0 }}>
         <button onClick={() => { if (saveTimer.current) { clearTimeout(saveTimer.current); onSave({ title, content }); } onClose(); }}
           style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 0" }}>
-          ‹ Volver
+          ‹ {t("back")}
         </button>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           {saved
-            ? <span style={{ fontSize:11, color:"var(--charcoal-xl)" }}>Guardado</span>
-            : <span style={{ fontSize:11, color:"var(--amber)" }}>Guardando...</span>}
+            ? <span style={{ fontSize:11, color:"var(--charcoal-xl)" }}>{t("notes.saved")}</span>
+            : <span style={{ fontSize:11, color:"var(--amber)" }}>{t("notes.saving")}</span>}
           {onDelete && (
             <button onClick={() => setConfirmDelete(true)}
               style={{ fontSize:11, fontWeight:600, color:"var(--red)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 8px" }}>
-              Eliminar
+              {t("delete")}
             </button>
           )}
         </div>
@@ -77,12 +79,12 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
       {/* Delete confirmation */}
       {confirmDelete && (
         <div style={{ padding:"12px 16px", background:"var(--red-bg)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <span style={{ fontSize:12, color:"var(--red)", fontWeight:600 }}>¿Eliminar esta nota?</span>
+          <span style={{ fontSize:12, color:"var(--red)", fontWeight:600 }}>{t("notes.deleteConfirm")}</span>
           <div style={{ display:"flex", gap:8 }}>
             <button onClick={async () => { await onDelete(); onClose(); }}
-              style={{ fontSize:12, fontWeight:700, color:"var(--red)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>Sí</button>
+              style={{ fontSize:12, fontWeight:700, color:"var(--red)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>{t("yes")}</button>
             <button onClick={() => setConfirmDelete(false)}
-              style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>No</button>
+              style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>{t("no")}</button>
           </div>
         </div>
       )}
@@ -97,7 +99,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
           value={title}
           onChange={handleTitleChange}
           onKeyDown={handleTitleKeyDown}
-          placeholder="Título"
+          placeholder={t("notes.titlePlaceholder")}
           autoFocus
           style={{
             width:"100%", border:"none", outline:"none", padding:0, marginBottom:12,
@@ -109,7 +111,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
           ref={bodyRef}
           value={content}
           onChange={handleContentChange}
-          placeholder="Escribe aquí..."
+          placeholder={t("notes.bodyPlaceholder")}
           style={{
             width:"100%", border:"none", outline:"none", padding:0, resize:"none",
             fontFamily:"var(--font)", fontSize:15, fontWeight:400, color:"var(--charcoal)",
@@ -122,7 +124,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
 }
 
 export function NoteCard({ note, onClick }) {
-  const preview = note.content?.slice(0, 80) || "Sin contenido";
+  const { t } = useT();
+  const preview = note.content?.slice(0, 80) || t("notes.noContent");
   const dateStr = note.updated_at
     ? new Date(note.updated_at).toLocaleDateString("es-MX", { day:"numeric", month:"short" })
     : "";
@@ -130,7 +133,7 @@ export function NoteCard({ note, onClick }) {
     <div className="row-item" role="button" tabIndex={0} onClick={onClick} style={{ cursor:"pointer" }}>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-          {note.title || "Sin título"}
+          {note.title || t("notes.noTitle")}
         </div>
         <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:3, display:"flex", gap:6, alignItems:"center" }}>
           <span>{dateStr}</span>

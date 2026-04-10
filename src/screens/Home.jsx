@@ -4,10 +4,11 @@ import { IconDollar, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
   const { patients, upcomingSessions, payments, openRecordPaymentModal, mutating } = useCardigan();
-  const FULL_MONTHS  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
 
@@ -38,45 +39,45 @@ export function Home({ setScreen, userName }) {
       {patients.length === 0 && (
         <div style={{ padding:"18px 16px 2px", textAlign:"center" }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
-            Bienvenido{userName ? `, ${userName.split(" ")[0]}` : ""}
+            {userName ? `${t("home.welcome")}, ${userName.split(" ")[0]}` : t("home.welcome")}
           </div>
           <div style={{ fontSize:12, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
-            Usa el botón <strong>+</strong> para agregar tu primer paciente
+            {t("patients.addFirst")}
           </div>
         </div>
       )}
 
       <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
-          <div className="kpi-label">Sesiones Hoy</div>
+          <div className="kpi-label">{t("home.sessionsToday")}</div>
           <div className="kpi-value">{todaySessions.length}</div>
           <div className="kpi-meta">{todayDayName} {todayStr}</div>
         </div>
         <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
-          <div className="kpi-label">Pacientes</div>
+          <div className="kpi-label">{t("patients.title")}</div>
           <div className="kpi-value">{activeCount}</div>
-          <div className="kpi-meta">{activeCount === 0 ? "sin pacientes" : "activos"}</div>
+          <div className="kpi-meta">{activeCount === 0 ? t("patients.noPatients").toLowerCase() : t("patients.active").toLowerCase()}</div>
         </div>
         <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
-          <div className="kpi-label">Cobrado (Mes)</div>
+          <div className="kpi-label">{t("finances.monthlyCollected")}</div>
           <div className="kpi-value">${cobradoMes.toLocaleString()}</div>
-          <div className="kpi-meta">{FULL_MONTHS[TODAY.getMonth()]}</div>
+          <div className="kpi-meta">{strings.months[TODAY.getMonth()]}</div>
         </div>
         <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
-          <div className="kpi-label">Por Cobrar</div>
+          <div className="kpi-label">{t("finances.outstanding")}</div>
           <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
-          <div className="kpi-meta">{owingPatients.length} paciente{owingPatients.length !== 1 ? "s" : ""}</div>
+          <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
         </div>
       </div>
 
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Hoy — {todayDayName} {todayStr}</span>
-          <button className="see-all" onClick={() => setScreen("agenda")}>Ver semana</button>
+          <span className="section-title">{t("sessions.today")} — {todayDayName} {todayStr}</span>
+          <button className="see-all" onClick={() => setScreen("agenda")}>{t("home.seeWeek")}</button>
         </div>
         <div className="card">
           {todaySessions.length === 0
-            ? emptyHint("Las sesiones agendadas para hoy aparecerán aquí")
+            ? emptyHint(t("home.emptyToday"))
             : todaySessions.map(s => {
               const tutor = isTutorSession(s);
               return (
@@ -85,7 +86,7 @@ export function Home({ setScreen, userName }) {
                   {tutor ? tutorDisplayInitials(s) : s.initials}
                 </div>
                 <div className="row-content">
-                  <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}</div>
+                  <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>{t("sessions.tutor").toUpperCase()}</span>}</div>
                   <div className="row-sub">{s.time} · {s.day}</div>
                 </div>
                 <div className="row-right">
@@ -100,12 +101,12 @@ export function Home({ setScreen, userName }) {
 
       <div className="section" style={{ paddingTop:20 }}>
         <div className="section-header">
-          <span className="section-title">Saldos Pendientes</span>
-          <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+          <span className="section-title">{t("home.pendingBalances")}</span>
+          <button className="see-all" onClick={() => setScreen("finances")}>{t("home.seeAll")}</button>
         </div>
         <div className="card">
           {owingPatients.length === 0
-            ? emptyHint("Aquí verás los saldos pendientes de tus pacientes")
+            ? emptyHint(t("home.emptyBalances"))
             : owingPatients.slice(0,4).map((p,i) => {
               const owed = p.amountDue;
               const totalDue = owed + p.paid;
@@ -116,7 +117,7 @@ export function Home({ setScreen, userName }) {
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
                     <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>
-                    <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} pagado de ${totalDue.toLocaleString()}</div>
+                    <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} {t("home.paidOf")} ${totalDue.toLocaleString()}</div>
                   </div>
                   <div className="row-right">
                     <div className="row-amount amount-owe">-${owed.toLocaleString()}</div>
@@ -129,12 +130,12 @@ export function Home({ setScreen, userName }) {
 
       <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
         <div className="section-header">
-          <span className="section-title">Últimos Pagos</span>
-          <button className="see-all" onClick={() => setScreen("finances")}>Ver todos</button>
+          <span className="section-title">{t("home.recentPayments")}</span>
+          <button className="see-all" onClick={() => setScreen("finances")}>{t("home.seeAll")}</button>
         </div>
         <div className="card">
           {payments.length === 0
-            ? emptyHint("Los pagos registrados se mostrarán aquí")
+            ? emptyHint(t("home.emptyPayments"))
             : payments.slice(0,3).map(p => (
               <div className="row-item" key={p.id} onClick={() => openPatient(p.patient)}>
                 <div className="row-icon" style={{ background:"var(--green-bg)", color:"var(--green)" }}><IconDollar size={18} /></div>
@@ -156,14 +157,14 @@ export function Home({ setScreen, userName }) {
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{selected.name}</span>
-              <button className="sheet-close" aria-label="Cerrar" onClick={() => setSelected(null)}><IconX size={14} /></button>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>
                 {[
-                  { label:"Vendido", value:`$${selected.billed.toLocaleString()}` },
-                  { label:"Cobrado", value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
-                  { label:"Saldo",   value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
+                  { label: t("finances.billed"), value:`$${selected.billed.toLocaleString()}` },
+                  { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
+                  { label: t("finances.balance"), value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                 ].map((s,i) => (
                   <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
                     <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{s.label}</div>
@@ -172,11 +173,11 @@ export function Home({ setScreen, userName }) {
                 ))}
               </div>
               {[
-                { label:"Tutor",            value: selected.parent || "—" },
-                { label:"Sesión regular",   value:`${selected.day} a las ${selected.time}` },
-                { label:"Tarifa",           value:`$${selected.rate} por sesión` },
-                { label:"Sesiones totales", value:`${selected.sessions} sesiones` },
-                { label:"Estado",           value: selected.status==="active"?"Activo":"Finalizado" },
+                { label: t("patients.tutor"),           value: selected.parent || "—" },
+                { label: t("sessions.regular"),         value:`${selected.day} ${t("home.atTime")} ${selected.time}` },
+                { label: t("patients.rate"),            value:`$${selected.rate} ${t("expediente.perSession")}` },
+                { label: t("home.totalSessions"),       value: t("sessions.sessionsCount", { count: selected.sessions }) },
+                { label: t("patients.status"),          value: selected.status==="active" ? t("patients.statusActive") : t("patients.statusEnded") },
               ].map((row,i) => (
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
                   <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
@@ -185,7 +186,7 @@ export function Home({ setScreen, userName }) {
               ))}
               <div style={{ marginTop:20 }}>
                 <button className="btn btn-primary" style={{ height:48 }} onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
-                  {mutating ? "Guardando..." : "Registrar pago"}
+                  {mutating ? t("saving") : t("finances.recordPayment")}
                 </button>
               </div>
             </div>

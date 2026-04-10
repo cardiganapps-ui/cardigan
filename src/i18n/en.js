@@ -18,6 +18,23 @@ export default {
   loading: "Loading data...",
   uploadMore: "Upload more",
 
+  // ── Home ──
+  home: {
+    welcome: "Welcome",
+    sessionsToday: "Sessions today",
+    patientCount: "patient{plural}",
+    seeWeek: "See week",
+    seeAll: "See all",
+    emptyToday: "No sessions today. Day off!",
+    pendingBalances: "Pending balances",
+    emptyBalances: "All patients are up to date.",
+    paidOf: "of",
+    recentPayments: "Recent payments",
+    emptyPayments: "Payments will appear here.",
+    atTime: "at",
+    totalSessions: "Total sessions",
+  },
+
   // ── Navigation ──
   nav: {
     home: "Home",
@@ -47,6 +64,7 @@ export default {
     enterName: "Enter your name",
     enterPassword: "Enter your password",
     demo: "View demo",
+    tagline: "Manage your practice. Without complications.",
   },
 
   // ── Patients ──
@@ -97,6 +115,13 @@ export default {
     namePlaceholder: "Jane Smith",
     tutorPlaceholder: "Guardian name",
     ratePlaceholder: "e.g. 700",
+    addPatient: "Add patient",
+    recurringAppts: "Recurring appointments",
+    start: "Start",
+    day: "Day",
+    time: "Time",
+    minor: "(minor)",
+    enterName: "Enter the patient's name.",
   },
 
   // ── Sessions ──
@@ -124,6 +149,24 @@ export default {
     tutor: "Tutor",
     weekOf: "Week of",
     weekends: "Weekends",
+    session: "Session",
+    status: "Status",
+    rate: "Rate",
+    cancelMotivo: "Cancellation reason",
+    deleteConfirm: "Delete this session?",
+    yesDelete: "Yes, delete",
+    confirm: "Confirm",
+    cancelAndCharge: "Cancel and charge",
+    cancelNoCharge: "Cancel without charge",
+    cancelChargeExplain: "The session will be cancelled but the patient will be charged.",
+    cancelNoChargeExplain: "The session will be cancelled without generating a charge.",
+    confirmCancel: "Confirm cancellation",
+    sessionType: "Session type",
+    sessionRate: "Rate for this session",
+    scheduleWithTutor: "Schedule with tutor",
+    selectDate: "Select a date.",
+    selectTime: "Select a time.",
+    patient: "Patient",
   },
 
   // ── Finances ──
@@ -154,6 +197,32 @@ export default {
     selectPatient: "Select a patient",
     exportCsv: "Export CSV",
     noPayments: "No payments recorded",
+    savePayment: "Save payment",
+    specifyMethod: "Specify method",
+    deletePayment: "Delete payment",
+    groupByClient: "Group by client",
+    sortOrder: "Order",
+    newest: "Newest",
+    oldest: "Oldest",
+    methodLabel: "Method",
+    allMethods: "All",
+    transferShort: "Transfer",
+    cashShort: "Cash",
+    period: "Period",
+    periodAll: "All",
+    paymentCount: "{count} payment{plural}",
+    noPaymentsInPeriod: "No payments in this period",
+    pendingCollection: "Pending collection",
+    perSession: "session",
+    collect: "Collect",
+    patientBalance: "Balance per patient",
+    patientCount: "{count} patient{plural}",
+    patientsLabel: "patients",
+    paidAmount: "paid",
+    recentPayments: "Recent payments",
+    of: "of",
+    registerPayment: "+ Record payment",
+    export: "Export",
   },
 
   // ── Notes ──
@@ -177,6 +246,15 @@ export default {
     linkedToRecent: "Linked to most recent session",
     linkToPatient: "Link to patient",
     linkToSession: "Link to session (optional)",
+    viewNote: "View note",
+    addNote: "Add note",
+    noContent: "No content",
+    noTitle: "No title",
+    patientLabel: "Patient:",
+    sessionLabel: "Session:",
+    generalNoSession: "General note (no specific session)",
+    past: "Past",
+    upcoming: "Upcoming",
   },
 
   // ── Documents ──
@@ -228,6 +306,8 @@ export default {
     linkSent: "Link sent to your email",
     saveError: "Error saving",
     emailError: "Error sending email",
+    currencySoon: "More currencies coming soon.",
+    planDescription: "Full access to all Cardigan features.",
   },
 
   // ── Expediente ──
@@ -277,13 +357,21 @@ export default {
     viewAs: "View as",
     accounts: "{count} registered account{plural}",
     loadError: "Error loading accounts",
+    loadingAccounts: "Loading accounts...",
+    noAccounts: "No registered accounts",
+    noName: "No name",
+    view: "View",
   },
 
   // ── Install prompt ──
   install: {
-    title: "Add Cardigan to your home screen",
+    title: "Install Cardigan",
+    addToHome: "Add Cardigan to your home screen for faster access:",
+    safariButton: "in Safari",
+    selectAdd: "Add to Home Screen",
     instructions: 'Tap {icon} then "Add to Home Screen"',
     dismiss: "Not now",
+    dontShowAgain: "Don't show again",
   },
 
   // ── Date names ──

@@ -6,9 +6,11 @@ import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../uti
 import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab } = useCardigan();
+  const { t, strings } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [sort, setSort]         = useState("name");
@@ -128,12 +130,12 @@ export function Patients() {
   };
 
   const filters = [
-    {k:"all",l:"Todos"},{k:"active",l:"Activos"},{k:"ended",l:"Finalizados"},
-    {k:"owes",l:"Con saldo"},{k:"paid",l:"Al corriente"},
+    {k:"all",l:t("patients.all")},{k:"active",l:t("patients.active")},{k:"ended",l:t("patients.ended")},
+    {k:"owes",l:t("patients.withBalance")},{k:"paid",l:t("patients.upToDate")},
   ];
   const sorts = [
-    {k:"name",l:"Nombre"},{k:"day",l:"Día de sesión"},
-    {k:"sessions",l:"Sesiones"},{k:"rate",l:"Tarifa"},
+    {k:"name",l:t("patients.name")},{k:"day",l:t("patients.sessionDay")},
+    {k:"sessions",l:t("patients.sessions")},{k:"rate",l:t("patients.rate")},
   ];
 
   const applyFilter = (p) => {
@@ -159,8 +161,8 @@ export function Patients() {
         <div style={{ width:56, height:56, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, color:"var(--teal)" }}>
           <IconUsers size={26} />
         </div>
-        <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>Sin pacientes</div>
-        <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>Usa el botón + para agregar tu primer paciente.</div>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>{t("patients.noPatients")}</div>
+        <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("patients.addFirst")}</div>
       </div>
     );
   }
@@ -170,7 +172,7 @@ export function Patients() {
       <div style={{ padding:"16px 16px 10px" }}>
         <div className="search-bar">
           <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
-          <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder={t("patients.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
       <div className="filter-chips">
@@ -179,7 +181,7 @@ export function Patients() {
       <div className="sort-row">
         <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{filtered.length} paciente{filtered.length!==1?"s":""}</span>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <span className="sort-label">Ordenar:</span>
+          <span className="sort-label">{t("patients.sortBy")}</span>
           <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)}>
             {sorts.map(s => <option key={s.k} value={s.k}>{s.l}</option>)}
           </select>
@@ -188,7 +190,7 @@ export function Patients() {
       <div style={{ padding:"0 16px 12px" }}>
         <div className="card">
           {filtered.length === 0
-            ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>Sin resultados</div>
+            ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
             : filtered.map((p,i) => (
               <div className="row-item" key={p.id} onClick={() => openDetail(p)}>
                 <div className="row-avatar" style={{ background: clientColors[i%clientColors.length] }}>{p.initials}</div>
@@ -197,7 +199,7 @@ export function Patients() {
                   <div className="row-sub">{p.day} · {p.time}</div>
                 </div>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
-                  <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?"Activo":"Finalizado"}</span>
+                  <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
                   <span style={{ fontSize:11, color:"var(--charcoal-xl)", fontWeight:600 }}>{p.sessions} ses. · ${p.rate}/ses</span>
                 </div>
                 <span className="row-chevron">›</span>
@@ -212,8 +214,8 @@ export function Patients() {
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">{editing ? "Editar paciente" : selected.name}</span>
-              <button className="sheet-close" aria-label="Cerrar" onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}><IconX size={14} /></button>
+              <span className="sheet-title">{editing ? t("patients.editPatient") : selected.name}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               {editing ? (
@@ -221,24 +223,24 @@ export function Patients() {
                 <div>
                   {/* Basic info */}
                   <div className="input-group">
-                    <label className="input-label">Nombre</label>
+                    <label className="input-label">{t("patients.name")}</label>
                     <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
                   </div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: editIsMinor ? 6 : 14 }}>
-                    <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Es menor de edad</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.isMinor")}</span>
                     <Toggle on={editIsMinor} onToggle={() => setEditIsMinor(v => !v)} />
                   </div>
                   {editIsMinor && (
                     <div className="input-group">
-                      <label className="input-label">Tutor / contacto</label>
+                      <label className="input-label">{t("patients.tutor")}</label>
                       <input className="input" value={editParent} onChange={e => setEditParent(e.target.value)} />
                     </div>
                   )}
                   <div className="input-group">
-                    <label className="input-label">Estado</label>
+                    <label className="input-label">{t("patients.status")}</label>
                     <select className="input" value={editStatus} onChange={e => setEditStatus(e.target.value)}>
-                      <option value="active">Activo</option>
-                      <option value="ended">Finalizado</option>
+                      <option value="active">{t("patients.statusActive")}</option>
+                      <option value="ended">{t("patients.statusEnded")}</option>
                     </select>
                   </div>
 
@@ -250,17 +252,17 @@ export function Patients() {
                     ).length;
                     return (
                       <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
-                        <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:6 }}>Finalizar relación</div>
+                        <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:6 }}>{t("patients.finalizeTitle")}</div>
                         <div style={{ fontSize:11, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
-                          Las sesiones agendadas después de esta fecha serán eliminadas. Las sesiones pasadas y completadas se conservan.
+                          {t("patients.finalizeWarning")}
                         </div>
                         <div className="input-group" style={{ marginBottom:6 }}>
-                          <label className="input-label">Última sesión</label>
+                          <label className="input-label">{t("patients.lastSession")}</label>
                           <input className="input" type="date" value={finishDate} onChange={e => setFinishDate(e.target.value)} />
                         </div>
                         {sessionsToRemove > 0 && (
                           <div style={{ fontSize:11, fontWeight:600, color:"var(--red)", marginTop:4 }}>
-                            Se eliminarán {sessionsToRemove} sesión{sessionsToRemove !== 1 ? "es" : ""} agendada{sessionsToRemove !== 1 ? "s" : ""}
+                            {t("patients.sessionsToRemove", { count: sessionsToRemove })}
                           </div>
                         )}
                       </div>
@@ -271,18 +273,18 @@ export function Patients() {
                   {!isFinalizingPatient && <>
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
                     <div className="input-group">
-                      <label className="input-label">Tarifa por sesión</label>
-                      <input className="input" type="number" min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Ej: 700" />
+                      <label className="input-label">{t("patients.ratePerSession")}</label>
+                      <input className="input" type="number" min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
                     </div>
                   </div>
 
                   {/* Schedules */}
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:8 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>Horarios de sesión</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>{t("patients.schedules")}</div>
                     {editSchedules.map((s, i) => (
                       <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
                         <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">Día</label>}
+                          {i === 0 && <label className="input-label">{strings.days[0].slice(0,3)}</label>}
                           <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
                             {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
                           </select>
@@ -301,7 +303,7 @@ export function Patients() {
                     ))}
                     <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00" }])}
                       style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 8px", fontFamily:"var(--font)" }}>
-                      + Agregar otro horario
+                      {t("patients.addSchedule")}
                     </button>
                   </div>
 
@@ -310,18 +312,18 @@ export function Patients() {
                     <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
                       <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:8 }}>
                         {Number(editRate) !== origRate && JSON.stringify(editSchedules) !== origSchedules
-                          ? "Tarifa y horario modificados"
-                          : Number(editRate) !== origRate ? "Tarifa modificada" : "Horario modificado"}
+                          ? t("patients.bothChanged")
+                          : Number(editRate) !== origRate ? t("patients.rateChanged") : t("patients.scheduleChanged")}
                       </div>
                       <div style={{ fontSize:11, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
-                        Las sesiones futuras desde la fecha indicada serán reemplazadas con el nuevo horario y tarifa. Las sesiones anteriores no se verán afectadas.
+                        {t("patients.changeWarning")}
                       </div>
                       <div className="input-group" style={{ marginBottom:8 }}>
-                        <label className="input-label">Efectivo desde</label>
+                        <label className="input-label">{t("patients.effectiveFrom")}</label>
                         <input className="input" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
                       </div>
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: hasEndDate ? 8 : 0 }}>
-                        <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Fecha de fin</span>
+                        <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.endDate")}</span>
                         <Toggle on={hasEndDate} onToggle={() => setHasEndDate(v => !v)} />
                       </div>
                       {hasEndDate ? (
@@ -329,35 +331,35 @@ export function Patients() {
                           <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                         </div>
                       ) : (
-                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Permanente — se renuevan automáticamente</div>
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
                       )}
                     </div>
                   )}
                   </>}
 
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
-                    {mutating ? "Guardando..." : isFinalizingPatient ? "Finalizar paciente" : scheduleOrRateChanged() ? "Aplicar cambios" : "Guardar cambios"}
+                    {mutating ? t("saving") : isFinalizingPatient ? t("patients.finalize") : scheduleOrRateChanged() ? t("apply") : t("save")}
                   </button>
-                  <button className="btn btn-secondary w-full" onClick={() => setEditing(false)}>Cancelar</button>
+                  <button className="btn btn-secondary w-full" onClick={() => setEditing(false)}>{t("cancel")}</button>
                 </div>
               ) : confirmDelete ? (
                 /* ── DELETE CONFIRMATION ── */
                 <div style={{ textAlign:"center" }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", marginBottom:8 }}>¿Eliminar a {selected.name}?</div>
-                  <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:20 }}>Se eliminarán también todas sus sesiones. Los pagos se conservarán.</div>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", marginBottom:8 }}>{t("patients.deleteConfirm", { name: selected.name })}</div>
+                  <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:20 }}>{t("patients.deleteWarning")}</div>
                   <button className="btn btn-danger" style={{ marginBottom:10 }} onClick={handleDelete} disabled={mutating}>
-                    {mutating ? "Eliminando..." : "Sí, eliminar paciente"}
+                    {mutating ? t("patients.deleting") : t("patients.yesDelete")}
                   </button>
-                  <button className="btn btn-secondary w-full" onClick={() => setConfirmDelete(false)}>Cancelar</button>
+                  <button className="btn btn-secondary w-full" onClick={() => setConfirmDelete(false)}>{t("cancel")}</button>
                 </div>
               ) : (
                 /* ── QUICK ACTIONS (from sheet) ── */
                 <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                   <button className="btn btn-primary" style={{ height:48 }} onClick={() => { setSelected(null); openDetail(selected); }}>
-                    Ver expediente
+                    {t("patients.viewExpediente")}
                   </button>
-                  <button className="btn btn-secondary" style={{ height:44, fontSize:13 }} onClick={startEdit}>Editar</button>
-                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }} onClick={() => setConfirmDelete(true)}>Eliminar</button>
+                  <button className="btn btn-secondary" style={{ height:44, fontSize:13 }} onClick={startEdit}>{t("edit")}</button>
+                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }} onClick={() => setConfirmDelete(true)}>{t("delete")}</button>
                 </div>
               )}
             </div>

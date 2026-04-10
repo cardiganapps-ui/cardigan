@@ -3,10 +3,11 @@ import { clientColors } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconClipboard, IconCalendar, IconUser, IconDocument, IconUpload, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
-import { isTutorSession, statusLabel, statusClass } from "../utils/sessions";
+import { isTutorSession, statusClass } from "../utils/sessions";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { useT } from "../i18n/index";
 
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments, documents,
@@ -14,6 +15,7 @@ export function PatientExpediente({
   uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
   mutating,
 }) {
+  const { t, strings } = useT();
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
   const [dateFrom, setDateFrom] = useState(() => {
@@ -174,10 +176,10 @@ export function PatientExpediente({
   };
 
   const tabs = [
-    { k: "resumen", l: "Resumen", Icon: IconUser },
-    { k: "sesiones", l: "Sesiones", Icon: IconCalendar },
-    { k: "notas", l: "Notas", Icon: IconClipboard },
-    { k: "documentos", l: "Docs", Icon: IconDocument },
+    { k: "resumen", l: t("expediente.resumen"), Icon: IconUser },
+    { k: "sesiones", l: t("expediente.sesiones"), Icon: IconCalendar },
+    { k: "notas", l: t("expediente.notas"), Icon: IconClipboard },
+    { k: "documentos", l: t("expediente.docs"), Icon: IconDocument },
   ];
 
   // Swipe-to-dismiss
@@ -237,7 +239,7 @@ export function PatientExpediente({
         {/* Header */}
         <div style={{ padding:"0 16px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={onClose} aria-label="Volver"
+          <button onClick={onClose} aria-label={t("back")}
             style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
           </button>
@@ -247,12 +249,12 @@ export function PatientExpediente({
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white" }}>{patient.name}</div>
             <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>
-              {patient.status === "active" ? "Activo" : "Finalizado"} · {patient.day} {patient.time}
+              {patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")} · {patient.day} {patient.time}
             </div>
           </div>
           <button onClick={() => onEdit(patient)}
             style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
-            Editar
+            {t("edit")}
           </button>
         </div>
         {/* Tabs */}
@@ -280,9 +282,9 @@ export function PatientExpediente({
           <div style={{ padding:"12px 14px" }}>
             {/* Date range filter */}
             <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>Período</div>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>{t("expediente.period")}</div>
               <div style={{ display:"flex", gap:6, marginBottom:6, flexWrap:"wrap" }}>
-                {[{l:"1 mes",m:1},{l:"3 meses",m:3},{l:"6 meses",m:6},{l:"1 año",m:12}].map(p => {
+                {[{l:t("periods.1m"),m:1},{l:t("periods.3m"),m:3},{l:t("periods.6m"),m:6},{l:t("periods.1y"),m:12}].map(p => {
                   const d = new Date(); d.setMonth(d.getMonth() - p.m);
                   const fromVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
                   const isActive = dateFrom === fromVal && dateTo === todayISO();
@@ -297,12 +299,12 @@ export function PatientExpediente({
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 <div>
-                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>Desde</label>
+                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>{t("periods.from")}</label>
                   <input type="date" className="input" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                     style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
                 </div>
                 <div>
-                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>Hasta</label>
+                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>{t("periods.to")}</label>
                   <input type="date" className="input" value={dateTo} onChange={e => setDateTo(e.target.value)}
                     style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
                 </div>
@@ -312,20 +314,20 @@ export function PatientExpediente({
             {/* Financials — filtered */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Vendido</div>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.billed")}</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
               </div>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Cobrado</div>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.collected")}</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
               </div>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>Saldo</div>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.balance")}</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: fPeriodSaldo > 0 ? "var(--red)" : "var(--charcoal-xl)" }}>${fPeriodSaldo.toLocaleString()}</div>
-                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>período</div>
+                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("finances.balancePeriod")}</div>
                 <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:5, paddingTop:4 }}>
                   <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
-                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>actual</div>
+                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("finances.balanceCurrent")}</div>
                 </div>
               </div>
             </div>
@@ -337,24 +339,24 @@ export function PatientExpediente({
                 const showTutor = !!patient.parent && fTutor > 0;
                 return (
                 <>
-                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>Asistencia</div>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>{t("expediente.attendance")}</div>
                 <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8, marginBottom:8 }}>
                   <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>Programadas</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.programmed")}</div>
                   </div>
                   <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>Asistió</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.attended")}</div>
                   </div>
                   <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>No asistió</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.missed")}</div>
                   </div>
                   {showTutor && (
                     <div style={{ background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                       <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--purple)" }}>{fTutor}</div>
-                      <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>Tutor</div>
+                      <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("sessions.tutor")}</div>
                     </div>
                   )}
                 </div>
@@ -362,7 +364,7 @@ export function PatientExpediente({
               })()}
               {fCharged > 0 && (
                 <div style={{ fontSize:11, color:"var(--amber)", marginBottom:8 }}>
-                  {fCharged} cancelada{fCharged !== 1 ? "s" : ""} cobrada{fCharged !== 1 ? "s" : ""}
+                  {t("expediente.chargedCancelled", { count: fCharged })}
                 </div>
               )}
               {fAttendanceRate !== null && (
@@ -377,9 +379,9 @@ export function PatientExpediente({
 
             <div className="card" style={{ padding:0 }}>
               {[
-                { label:"Tutor", value: patient.parent || "—" },
-                { label:"Sesión regular", value:`${patient.day} a las ${patient.time}` },
-                { label:"Tarifa", value:`$${patient.rate} por sesión` },
+                { label: t("sessions.tutor"), value: patient.parent || "—" },
+                { label: t("sessions.regular"), value:`${patient.day} ${patient.time}` },
+                { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
               ].map((row, i, arr) => (
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
                   <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>

@@ -3,6 +3,7 @@ import { clientColors } from "../data/seedData";
 import { IconCheck } from "../components/Icons";
 import { exportPayments } from "../utils/export";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutating }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -186,6 +187,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
 
 export function Finances() {
   const { patients, payments, openRecordPaymentModal, deletePayment, mutating } = useCardigan();
+  const { t } = useT();
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
@@ -195,8 +197,8 @@ export function Finances() {
     <div className="page">
       <div style={{ paddingTop:16 }}>
         <div className="fin-tab-row" role="tablist">
-          {[{k:"balances",l:"Saldos"},{k:"pagos",l:"Pagos"},{k:"ingresos",l:"Ingresos"}].map(t => (
-            <button key={t.k} role="tab" aria-selected={tab===t.k} className={`fin-tab ${tab===t.k?"active":""}`} onClick={() => setTab(t.k)}>{t.l}</button>
+          {[{k:"balances",l:t("finances.balances")},{k:"pagos",l:t("finances.payments")},{k:"ingresos",l:t("finances.income")}].map(tb => (
+            <button key={tb.k} role="tab" aria-selected={tab===tb.k} className={`fin-tab ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>{tb.l}</button>
           ))}
         </div>
       </div>

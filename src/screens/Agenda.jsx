@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { clientColors, MONTH_NAMES, DOW, HOURS, TODAY } from "../data/seedData";
+import { clientColors, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { IconLeaf } from "../components/Icons";
@@ -7,6 +7,7 @@ import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isCancelledStatus, statusClass, statusLabel, isTutorSession, tutorDisplayInitials } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 /* ── DATE HELPERS ── */
 function getMonday(d) {
@@ -77,6 +78,8 @@ function SessionRow({ s, onClick, compact }) {
 
 /* ── DAY PANEL (renders one week's day-view content) ── */
 function DayPanel({ baseDate, selectedDate, setSelectedDate, onSelectSession, upcomingSessions, sessionDateSet }) {
+  const { t, strings } = useT();
+  const DOW = strings.daysShort;
   const weekDays = getWeekDays(baseDate);
   // In the current panel, show the selected day; in prev/next panels show the same weekday
   const dayIdx = (selectedDate.getDay() + 6) % 7;
@@ -118,14 +121,14 @@ function DayPanel({ baseDate, selectedDate, setSelectedDate, onSelectSession, up
       </div>
       <div style={{ padding:"0 16px 4px" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)", marginBottom:2 }}>{dayName} {dateStr}</div>
-        <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? "Sin sesiones" : `${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
+        <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? t("sessions.noSessions") : t("sessions.sessionsCount", { count: daySessions.length })}</div>
       </div>
       <div style={{ padding:"0 16px 12px" }}>
         {daySessions.length === 0
           ? <div className="card" style={{ padding:32, textAlign:"center" }}>
               <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconLeaf size={32} /></div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>Día libre</div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>No hay sesiones este día.</div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+              <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
             </div>
           : <div className="card">
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} />)}
@@ -160,11 +163,14 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
 
 /* ── WEEK PANEL (renders one week's grid) ── */
 function WeekPanel({ baseDate, selectedDate, setSelectedDate, setView, onSelectSession, upcomingSessions, showWeekends }) {
+  const { t, strings } = useT();
+  const DOW = strings.daysShort;
+  const HOURS = strings.hours;
   const weekDays = getWeekDays(baseDate);
   const visibleDays = showWeekends ? weekDays : weekDays.slice(0, 5);
   const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
   const monday = weekDays[0];
-  const weekLabel = `Semana del ${formatShortDate(monday)}`;
+  const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
   const hourIndex = (t) => parseInt(t.split(":")[0]) - 8;
   const gridCols = `44px repeat(${visibleDays.length}, 1fr)`;
 
@@ -228,7 +234,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
   return (
     <div {...swipe.containerProps}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", padding:"0 16px 8px", gap:8 }}>
-        <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-xl)" }}>Fines de semana</span>
+        <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-xl)" }}>{t("sessions.weekends")}</span>
         <button
           onClick={() => setShowWeekends(v => !v)}
           style={{ width:36, height:20, borderRadius:10, border:"none", cursor:"pointer", padding:2, background: showWeekends ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}
@@ -247,6 +253,9 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, upc
 
 /* ── MONTH PANEL (renders one month's calendar grid) ── */
 function MonthPanel({ year, month, selectedDate, setSelectedDate, onSelectSession, upcomingSessions, sessionDateSet, goMonth }) {
+  const { t, strings } = useT();
+  const MONTH_NAMES = strings.months;
+  const DOW = strings.daysShort;
   const cells = buildMonthGrid(year, month);
   const selectedDateStr = formatShortDate(selectedDate);
   const isCurrentMonth = selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
@@ -282,12 +291,12 @@ function MonthPanel({ year, month, selectedDate, setSelectedDate, onSelectSessio
         <div style={{ padding:"16px 16px 0" }}>
           <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:10 }}>
             <div className="section-title">{selectedDateStr}</div>
-            <div style={{ fontSize:12, color:"var(--charcoal-xl)" }}>{daySessions.length===0?"Sin sesiones":`${daySessions.length} sesión${daySessions.length>1?"es":""}`}</div>
+            <div style={{ fontSize:12, color:"var(--charcoal-xl)" }}>{daySessions.length===0?t("sessions.noSessions"):t("sessions.sessionsCount", { count: daySessions.length })}</div>
           </div>
           {daySessions.length === 0
             ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
                 <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconLeaf size={24} /></div>
-                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>Día libre</div>
+                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
               </div>
             : <div className="card">
                 {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}
@@ -334,6 +343,10 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 /* ── AGENDA ROOT ── */
 export function Agenda() {
   const { upcomingSessions, patients, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { t, strings } = useT();
+  const MONTH_NAMES = strings.months;
+  const DOW = strings.daysShort;
+  const HOURS = strings.hours;
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
@@ -380,7 +393,7 @@ export function Agenda() {
           {!isToday && (
             <button onClick={() => setSelectedDate(new Date(TODAY))}
               style={{ padding:"7px 12px", fontSize:11, fontWeight:700, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--teal)", background:"var(--white)", color:"var(--teal-dark)", cursor:"pointer", fontFamily:"var(--font)", whiteSpace:"nowrap", flexShrink:0 }}>
-              Hoy
+              {t("sessions.today")}
             </button>
           )}
         </div>
