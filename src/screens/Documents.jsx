@@ -84,7 +84,7 @@ export function Documents() {
     const patientId = uploadPatientId === "general" ? null : uploadPatientId;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(`${oversized.map(f => f.name).join(", ")} excede${oversized.length > 1 ? "n" : ""} el límite de 10 MB`);
+      alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }

@@ -392,10 +392,10 @@ export function PatientExpediente({
 
             <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
-                Pago
+                {t("fab.payment")}
               </button>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
-                Nota
+                {t("fab.note")}
               </button>
             </div>
           </div>
@@ -406,7 +406,7 @@ export function PatientExpediente({
           <div style={{ padding:16 }}>
             {pSessions.length === 0
               ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-                  Sin sesiones registradas
+                  {t("expediente.noSessions")}
                 </div>
               : <div className="card">
                   {pSessions.map(s => {
@@ -420,10 +420,10 @@ export function PatientExpediente({
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)", display:"flex", alignItems:"center", gap:4 }}>
-                            {tutor && <span style={{ fontSize:9, fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>Tutor</span>}
-                            <span className={`session-status ${statusClass(s.status)}`} style={{ fontSize:10 }}>{statusLabel(s.status)}</span>
+                            {tutor && <span style={{ fontSize:9, fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+                            <span className={`session-status ${statusClass(s.status)}`} style={{ fontSize:10 }}>{t(`sessions.${s.status}`)}</span>
                           </div>
-                          {hasNote && <div style={{ fontSize:11, color:"var(--teal-dark)", marginTop:2 }}>Nota adjunta</div>}
+                          {hasNote && <div style={{ fontSize:11, color:"var(--teal-dark)", marginTop:2 }}>{t("notes.noteAttached")}</div>}
                         </div>
                         <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
                           <IconClipboard size={14} style={{ color: hasNote ? "var(--teal-dark)" : "var(--charcoal-xl)" }} />
@@ -441,11 +441,11 @@ export function PatientExpediente({
         {tab === "notas" && (
           <div style={{ padding:16 }}>
             <button className="btn btn-primary" style={{ marginBottom:16 }} onClick={() => openNewNote(null)}>
-              + Nueva nota
+              {t("notes.newNote")}
             </button>
             {pNotes.length === 0
               ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-                  Las notas del paciente aparecerán aquí
+                  {t("notes.noNotes")}
                 </div>
               : <div className="card">
                   {pNotes.map(n => {

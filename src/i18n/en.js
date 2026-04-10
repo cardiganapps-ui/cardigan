@@ -367,7 +367,9 @@ export default {
   install: {
     title: "Install Cardigan",
     addToHome: "Add Cardigan to your home screen for faster access:",
-    safariButton: "in Safari",
+    tapButton: "Tap the",
+    safariButton: "button in Safari",
+    selectLabel: "Select",
     selectAdd: "Add to Home Screen",
     instructions: 'Tap {icon} then "Add to Home Screen"',
     dismiss: "Not now",

@@ -41,7 +41,7 @@ export function InstallPrompt() {
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:24, height:24, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, flexShrink:0 }}>1</div>
             <div style={{ fontSize:13, color:"var(--charcoal)" }}>
-              Toca el botón <span style={{ display:"inline-flex", verticalAlign:"middle", padding:"1px 5px", fontSize:16 }}>
+              {t("install.tapButton")} <span style={{ display:"inline-flex", verticalAlign:"middle", padding:"1px 5px", fontSize:16 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
                 </svg>
@@ -51,7 +51,7 @@ export function InstallPrompt() {
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ width:24, height:24, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, flexShrink:0 }}>2</div>
             <div style={{ fontSize:13, color:"var(--charcoal)" }}>
-              Selecciona <strong>"{t("install.selectAdd")}"</strong>
+              {t("install.selectLabel")} <strong>"{t("install.selectAdd")}"</strong>
             </div>
           </div>
         </div>
