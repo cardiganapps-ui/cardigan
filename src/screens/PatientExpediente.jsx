@@ -108,18 +108,6 @@ export function PatientExpediente({
     }
   };
 
-  // Note editor overlay
-  if (editingNote) {
-    return (
-      <NoteEditor
-        note={editingNote}
-        onSave={handleSaveNote}
-        onDelete={editingNote.id ? handleDeleteNote : undefined}
-        onClose={() => setEditingNote(null)}
-      />
-    );
-  }
-
   // ── Documents state ──
   const pDocuments = useMemo(() =>
     (documents || []).filter(d => d.patient_id === patient.id)
@@ -525,6 +513,14 @@ export function PatientExpediente({
         doc={viewingDoc.doc} url={viewingDoc.url}
         linkedSession={viewingDoc.doc.session_id ? pSessions.find(s => s.id === viewingDoc.doc.session_id) : null}
         onClose={() => setViewingDoc(null)}
+      />
+    )}
+    {editingNote && (
+      <NoteEditor
+        note={editingNote}
+        onSave={handleSaveNote}
+        onDelete={editingNote.id ? handleDeleteNote : undefined}
+        onClose={() => setEditingNote(null)}
       />
     )}
     </>

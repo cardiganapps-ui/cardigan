@@ -55,7 +55,7 @@ export function Notes() {
 
       <div className="search-bar" style={{ marginBottom:12 }}>
         <IconSearch size={16} style={{ color:"var(--charcoal-xl)" }} />
-        <input placeholder={t("notes.searchPlaceholder") || `${t("search")}...`} value={search} onChange={e => setSearch(e.target.value)} />
+        <input placeholder={t("notes.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div style={{ display:"flex", gap:8, marginBottom:12 }}>
@@ -77,7 +77,7 @@ export function Notes() {
       </div>
 
       <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
-        {filteredNotes.length} {filteredNotes.length === 1 ? t("notes.noteCount1") || "nota" : t("notes.noteCountN") || "notas"}
+        {t("notes.count", { count: filteredNotes.length })}
       </div>
 
       {filteredNotes.length === 0

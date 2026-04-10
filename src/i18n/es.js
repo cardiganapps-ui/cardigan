@@ -240,6 +240,8 @@ export default {
   notes: {
     title: "Notas",
     newNote: "+ Nueva nota",
+    searchPlaceholder: "Buscar nota...",
+    count: "{count} nota{plural}",
     createNote: "Crear nota",
     generalNote: "General (sin paciente)",
     generalPatientNote: "Nota general del paciente",

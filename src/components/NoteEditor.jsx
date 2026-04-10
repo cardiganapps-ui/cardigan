@@ -59,7 +59,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
     <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-note-editor)", display:"flex", flexDirection:"column" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"calc(var(--sat, 0px) + 12px) 16px 12px", borderBottom:"1px solid var(--border-lt)", flexShrink:0 }}>
-        <button onClick={() => { if (saveTimer.current) { clearTimeout(saveTimer.current); onSave({ title, content }); } onClose(); }}
+        <button onClick={async () => { if (saveTimer.current) { clearTimeout(saveTimer.current); await onSave({ title, content }); } onClose(); }}
           style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 0" }}>
           ‹ {t("back")}
         </button>
