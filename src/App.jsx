@@ -185,7 +185,7 @@ function AppShell({ user, signOut, demo }) {
           <div className="hamburger-line" />
           <div className="hamburger-line" />
         </button>
-        <div className="topbar-brand"><LogoIcon size={20} color="white" /><span>cardigan</span></div>
+        <div className="topbar-brand" onClick={() => navigate("home")} style={{ cursor:"pointer" }}><LogoIcon size={20} color="white" /><span>cardigan</span></div>
         <div className="topbar-right">
           {admin && !readOnly && (
             <button className="admin-btn" onClick={() => setShowAdmin(true)}>
