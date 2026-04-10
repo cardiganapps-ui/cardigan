@@ -36,8 +36,8 @@ export function BugReportFab({ user, screen }) {
         aria-label={t("bugReport.title")}
         style={{
           position: "fixed", bottom: "calc(var(--sab) + 24px)", left: 16,
-          width: 40, height: 40, borderRadius: "50%",
-          background: "rgba(0,0,0,0.45)", border: "none",
+          width: 44, height: 44, minHeight: 44, borderRadius: "50%",
+          background: "rgba(0,0,0,0.45)", border: "none", padding: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
           color: "white", cursor: "pointer", zIndex: "var(--z-fab)",
           WebkitTapHighlightColor: "transparent", opacity: 0.7,
