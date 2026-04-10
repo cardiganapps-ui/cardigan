@@ -203,7 +203,13 @@ function AppShell({ user, signOut, demo }) {
       )}
       <Toast message={mutationError} type="error" />
       <PullToRefresh onRefresh={refresh}>
-        {screenMap[screen]}
+        <div style={{
+          transition: direction ? "none" : undefined,
+          animation: direction === "left" ? "screenSlideLeft 0.25s cubic-bezier(0.32, 0.72, 0, 1)" :
+                     direction === "right" ? "screenSlideRight 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : undefined,
+        }}>
+          {screenMap[screen]}
+        </div>
       </PullToRefresh>
       {!readOnly && (
         <PaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}
