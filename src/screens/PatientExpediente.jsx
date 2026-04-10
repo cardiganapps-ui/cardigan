@@ -152,7 +152,7 @@ export function PatientExpediente({
     if (files.length === 0) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(`${oversized.map(f => f.name).join(", ")} excede${oversized.length > 1 ? "n" : ""} el límite de 10 MB`);
+      alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
@@ -454,7 +454,7 @@ export function PatientExpediente({
                       <div key={n.id}>
                         {linkedSession && (
                           <div style={{ padding:"6px 16px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
-                            Sesión {linkedSession.date} · {linkedSession.time}
+                            {t("expediente.sesiones")} {linkedSession.date} · {linkedSession.time}
                           </div>
                         )}
                         <NoteCard note={n} onClick={() => setEditingNote(n)} />
@@ -475,7 +475,7 @@ export function PatientExpediente({
             <button className="btn btn-primary" style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%" }}
               onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               <IconUpload size={16} />
-              {uploading ? "Subiendo..." : "Subir documento"}
+              {uploading ? t("docs.uploading") : t("docs.upload")}
             </button>
 
             {/* Sort & Filter bar */}
@@ -484,17 +484,17 @@ export function PatientExpediente({
                 {/* Sort */}
                 <select value={docSort} onChange={e => setDocSort(e.target.value)}
                   style={{ flex:1, minWidth:0, fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>
-                  <option value="newest">Más reciente</option>
-                  <option value="oldest">Más antiguo</option>
-                  <option value="name">Nombre A-Z</option>
+                  <option value="newest">{t("docs.newest")}</option>
+                  <option value="oldest">{t("docs.oldest")}</option>
+                  <option value="name">{t("docs.nameAZ")}</option>
                 </select>
                 {/* Filter */}
                 <div style={{ display:"flex", gap:4 }}>
                   {[
-                    { k:"all", l:"Todos" },
-                    { k:"image", l:"Imagen" },
-                    { k:"pdf", l:"PDF" },
-                    { k:"doc", l:"Word" },
+                    { k:"all", l:t("docs.allTypes") },
+                    { k:"image", l:t("docs.image") },
+                    { k:"pdf", l:t("docs.pdf") },
+                    { k:"doc", l:t("docs.word") },
                   ].map(f => (
                     <button key={f.k} onClick={() => setDocFilter(f.k)}
                       style={{ padding:"5px 10px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
@@ -513,7 +513,7 @@ export function PatientExpediente({
               onRename={renameDocument}
               onTag={tagDocumentSession}
               onDelete={deleteDocument}
-              emptyMessage={pDocuments.length === 0 ? "Los documentos del paciente aparecerán aquí" : "Sin resultados para este filtro"}
+              emptyMessage={pDocuments.length === 0 ? t("docs.patientDocsEmpty") : t("docs.noResults")}
             />
           </div>
         )}
