@@ -3,9 +3,11 @@ import { clientColors } from "../data/seedData";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconClipboard } from "./Icons";
 import { useT } from "../i18n/index";
+import { useEscape } from "../hooks/useEscape";
 
 export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onOpenNote, mutating }) {
   const { t } = useT();
+  useEscape(session ? onClose : null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [cancelling, setCancelling] = useState(false);

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconDollar, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
+import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
@@ -23,6 +24,8 @@ export function Home({ setScreen, userName }) {
   const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
 
   const [selected, setSelected] = useState(null);
+  const closeSelected = useCallback(() => setSelected(null), []);
+  useEscape(selected ? closeSelected : null);
   const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {
@@ -47,7 +50,7 @@ export function Home({ setScreen, userName }) {
         </div>
       )}
 
-      <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      <div className="kpi-grid-desktop" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">{t("home.sessionsToday")}</div>
           <div className="kpi-value">{todaySessions.length}</div>

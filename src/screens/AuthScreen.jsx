@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { LogoIcon } from "../components/LogoMark";
 import { IconCalendar, IconUsers, IconDollar, IconClipboard, IconDocument, IconHome, IconX } from "../components/Icons";
 import { useT } from "../i18n/index";
+import { useEscape } from "../hooks/useEscape";
 
 const FEATURE_ICONS = [IconCalendar, IconUsers, IconDollar, IconClipboard, IconDocument, IconHome];
 
@@ -110,6 +111,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
 export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
   const { t, strings } = useT();
   const [showAuth, setShowAuth] = useState(false);
+  useEscape(showAuth ? () => setShowAuth(false) : null);
   const [authMode, setAuthMode] = useState("signup");
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };

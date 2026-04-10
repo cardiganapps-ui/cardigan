@@ -3,10 +3,12 @@ import { todayISO, isoToShortDate } from "../utils/dates";
 import { IconX } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { useEscape } from "../hooks/useEscape";
 
 export function PaymentModal({ open, onClose, initialPatientName, initialAmount }) {
   const { patients, createPayment, mutating } = useCardigan();
   const { t } = useT();
+  useEscape(open ? onClose : null);
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState("Transferencia");

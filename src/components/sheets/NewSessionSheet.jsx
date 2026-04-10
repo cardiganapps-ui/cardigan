@@ -2,9 +2,11 @@ import { useState } from "react";
 import { todayISO, isoToShortDate } from "../../utils/dates";
 import { IconX } from "../Icons";
 import { useT } from "../../i18n/index";
+import { useEscape } from "../../hooks/useEscape";
 
 export function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
   const { t } = useT();
+  useEscape(onClose);
   const [patientName, setPatientName] = useState("");
   const [sessionType, setSessionType] = useState("patient");
   const [date, setDate] = useState(todayISO());

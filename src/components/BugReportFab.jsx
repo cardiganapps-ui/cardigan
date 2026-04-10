@@ -3,10 +3,12 @@ import { IconBug, IconX } from "./Icons";
 import { supabase } from "../supabaseClient";
 import { getLogs } from "../utils/logBuffer";
 import { useT } from "../i18n/index";
+import { useEscape } from "../hooks/useEscape";
 
 export function BugReportFab({ user, screen }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  useEscape(open ? () => { setOpen(false); setDescription(""); } : null);
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);

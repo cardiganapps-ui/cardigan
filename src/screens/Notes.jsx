@@ -3,6 +3,7 @@ import { IconSearch, IconClipboard, IconX, IconStar } from "../components/Icons"
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { useEscape } from "../hooks/useEscape";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
 /* ── Swipeable wrapper for note cards ── */
@@ -60,6 +61,7 @@ export function Notes() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [propsNote, setPropsNote] = useState(null); // note being edited via long-press
+  useEscape(propsNote ? () => setPropsNote(null) : null);
   const longPressRef = useRef(null);
 
   const patientsWithNotes = useMemo(() => {

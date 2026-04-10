@@ -768,4 +768,41 @@ button, a, select { min-height: 44px; }
 
   /* Sheets: slightly wider */
   .sheet-panel { max-width: 520px; }
+
+  /* KPI grid: 4 columns on desktop */
+  .kpi-grid-desktop { grid-template-columns: repeat(4, 1fr) !important; }
+
+  /* Landing page: wider hero, 3-col features, wider compare */
+  .landing-hero { padding: 64px 32px 72px; }
+  .landing-hero-title { font-size: 42px; }
+  .landing-hero-sub { font-size: 16px; max-width: 460px; }
+  .landing-section { padding: 56px 32px; }
+  .landing-section-dark { padding: 56px 32px; }
+  .landing-compare { max-width: 600px; }
+  .landing-grid { grid-template-columns: repeat(3, 1fr); max-width: 680px; }
+  .landing-trust { max-width: 500px; }
+  .landing-trust-title { font-size: 24px; }
+  .landing-nav { padding: calc(var(--sat) + 12px) 32px 12px; }
+}
+
+/* ── HOVER STATES (pointer devices only) ── */
+@media (hover: hover) {
+  .row-item:hover { background: var(--teal-mist); }
+  .settings-row:hover { background: var(--teal-mist); }
+  .drawer-item:hover { background: rgba(255,255,255,0.06); }
+  .btn:hover { transform: scale(0.98); }
+  .btn-primary:hover { box-shadow: 0 4px 16px rgba(91,155,175,0.4); }
+  .fab:hover { transform: scale(1.05); }
+  .fab-action:hover { background: var(--cream); }
+  .icon-btn:hover { opacity: 0.7; }
+  .admin-btn:hover { opacity: 0.8; }
+  .month-nav-btn:hover { background: var(--teal-pale); }
+  .month-cell:hover { background: var(--teal-pale); }
+  .week-cell:hover { background: var(--teal-mist); }
+  .chip:hover { opacity: 0.85; }
+  .landing-cta-btn:hover { transform: scale(1.02); box-shadow: 0 4px 18px rgba(91,155,175,0.4); }
+  .landing-cta-ghost:hover { background: var(--teal-pale); }
+  .landing-card:hover { box-shadow: 0 2px 12px rgba(46,46,46,0.12); border-color: var(--teal-light); }
+  .landing-footer-link:hover { color: rgba(255,255,255,0.9); }
+  .kpi-card:hover { box-shadow: 0 2px 12px rgba(46,46,46,0.12); }
 }

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
 import { useT } from "../i18n/index";
+import { useEscape } from "../hooks/useEscape";
 
 export function Settings({ user, signOut }) {
   const { t } = useT();
@@ -10,6 +11,8 @@ export function Settings({ user, signOut }) {
   const userInitial = userName.charAt(0).toUpperCase();
 
   const [activeSheet, setActiveSheet] = useState(null);
+  const closeSheet = useCallback(() => setActiveSheet(null), []);
+  useEscape(activeSheet ? closeSheet : null);
   const [editName, setEditName] = useState(userName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");

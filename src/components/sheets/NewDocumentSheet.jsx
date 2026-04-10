@@ -2,9 +2,11 @@ import { useState, useRef } from "react";
 import { IconX, IconUpload } from "../Icons";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
+import { useEscape } from "../../hooks/useEscape";
 
 export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }) {
   const { t } = useT();
+  useEscape(onClose);
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [uploading, setUploading] = useState(false);

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { clientColors, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
+import { useEscape } from "../hooks/useEscape";
 import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
@@ -17,6 +18,8 @@ export function Patients() {
   const [selected, setSelected] = useState(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); }, []);
+  useEscape(selected ? closeSheet : null);
   const [expediente, setExpediente] = useState(null);
   // Edit form state
   const [editName, setEditName]       = useState("");

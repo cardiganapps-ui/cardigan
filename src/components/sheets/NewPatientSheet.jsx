@@ -3,10 +3,12 @@ import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
+import { useEscape } from "../../hooks/useEscape";
 import { useT } from "../../i18n/index";
 
 export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
   const { t, strings } = useT();
+  useEscape(onClose);
   const [name, setName]       = useState("");
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
