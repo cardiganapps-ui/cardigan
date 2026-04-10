@@ -61,13 +61,14 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("finances.recordPayment")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1 }}>
           <div className="input-group">
             <label className="input-label">{t("sessions.patient")}</label>
             <select className="input" value={patientName} onChange={(e) => handlePatientChange(e.target.value)}>
@@ -97,10 +98,13 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
             <label className="input-label">{t("finances.paymentDate")}</label>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          {formError && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{formError}</div>}
-          <button className="btn btn-primary" type="submit" disabled={mutating}>
-            {mutating ? t("saving") : t("finances.savePayment")}
-          </button>
+          {formError && <div className="form-error">{formError}</div>}
+          </div>
+          <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
+            <button className="btn btn-primary" type="submit" disabled={mutating}>
+              {mutating ? t("saving") : t("finances.savePayment")}
+            </button>
+          </div>
         </form>
       </div>
     </div>

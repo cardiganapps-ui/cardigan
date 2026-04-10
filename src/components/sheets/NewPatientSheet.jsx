@@ -41,13 +41,14 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.newPatient")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1 }}>
           <div className="input-group">
             <label className="input-label">{t("settings.fullName")}</label>
             <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
@@ -113,10 +114,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
               )}
             </div>
           )}
-          {err && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{err}</div>}
-          <button className="btn btn-primary" type="submit" disabled={mutating}>
-            {mutating ? t("saving") : t("patients.addPatient")}
-          </button>
+          {err && <div className="form-error">{err}</div>}
+          </div>
+          <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
+            <button className="btn btn-primary" type="submit" disabled={mutating}>
+              {mutating ? t("saving") : t("patients.addPatient")}
+            </button>
+          </div>
         </form>
       </div>
     </div>

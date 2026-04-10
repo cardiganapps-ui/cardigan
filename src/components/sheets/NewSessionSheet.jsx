@@ -43,13 +43,14 @@ export function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.schedule")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1 }}>
           <div className="input-group">
             <label className="input-label">{t("sessions.patient")}</label>
             <select className="input" value={patientName} onChange={e => handlePatientChange(e.target.value)}>
@@ -90,11 +91,14 @@ export function NewSessionSheet({ onClose, onSubmit, patients, mutating }) {
               <input className="input" type="number" min="0" step="50" value={customRate} onChange={e => setCustomRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
             </div>
           )}
-          {err && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{err}</div>}
-          <button className={`btn ${isTutor ? "" : "btn-primary"}`} type="submit" disabled={mutating}
-            style={isTutor ? { background:"var(--purple)", color:"white", boxShadow:"none", width:"100%" } : undefined}>
-            {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${(Number(customRate) || selectedPatient?.rate || 0).toLocaleString()}` : t("sessions.schedule")}
-          </button>
+          {err && <div className="form-error">{err}</div>}
+          </div>
+          <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
+            <button className={`btn ${isTutor ? "" : "btn-primary"}`} type="submit" disabled={mutating}
+              style={isTutor ? { background:"var(--purple)", color:"white", boxShadow:"none", width:"100%" } : undefined}>
+              {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${(Number(customRate) || selectedPatient?.rate || 0).toLocaleString()}` : t("sessions.schedule")}
+            </button>
+          </div>
         </form>
       </div>
     </div>
