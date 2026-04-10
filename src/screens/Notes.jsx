@@ -134,18 +134,16 @@ export function Notes() {
         .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
     : [];
 
-  if (editingNote) {
-    return (
+  return (
+    <>
+    {editingNote && (
       <NoteEditor
         note={editingNote}
         onSave={handleSaveNote}
         onDelete={editingNote.id ? handleDeleteNote : undefined}
         onClose={() => setEditingNote(null)}
       />
-    );
-  }
-
-  return (
+    )}
     <div style={{ padding:16 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
         <div className="section-title">{t("notes.title")}</div>
@@ -338,5 +336,6 @@ export function Notes() {
         </div>
       )}
     </div>
+    </>
   );
 }

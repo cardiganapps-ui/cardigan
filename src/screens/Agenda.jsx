@@ -369,18 +369,16 @@ export function Agenda() {
     setSelectedSession(null);
   };
 
-  if (editingNote) {
-    return (
+  return (
+    <>
+    {editingNote && (
       <NoteEditor
         note={editingNote}
         onSave={async ({ title, content }) => await updateNote(editingNote.id, { title, content })}
         onDelete={async () => { await deleteNote(editingNote.id); }}
         onClose={() => setEditingNote(null)}
       />
-    );
-  }
-
-  return (
+    )}
     <div className="page">
       <div style={{ paddingTop:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"0 16px 14px" }}>
@@ -442,5 +440,6 @@ export function Agenda() {
         mutating={mutating}
       />
     </div>
+    </>
   );
 }

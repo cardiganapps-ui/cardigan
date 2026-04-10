@@ -106,19 +106,16 @@ export function Documents() {
     setViewingDoc({ doc, url });
   };
 
-  if (editingNote) {
-    return (
+  return (
+    <>
+    {editingNote && (
       <NoteEditor
         note={editingNote}
         onSave={handleSaveNote}
         onDelete={editingNote.id ? handleDeleteNote : undefined}
         onClose={() => setEditingNote(null)}
       />
-    );
-  }
-
-  return (
-    <>
+    )}
     {viewingDoc && (
       <DocumentViewer
         doc={viewingDoc.doc} url={viewingDoc.url}
