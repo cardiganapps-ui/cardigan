@@ -137,7 +137,6 @@ html, body {
 .drawer-overlay {
   position: fixed; inset: 0; background: rgba(20,35,40,0.5);
   z-index: var(--z-drawer-overlay); backdrop-filter: blur(2px);
-  animation: fadeIn 0.2s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
@@ -168,6 +167,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   background: var(--nav-bg);
   pointer-events: all;
   display: flex; flex-direction: column;
+  will-change: transform;
   animation: slideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   box-shadow: 4px 0 40px rgba(0,0,0,0.3);
 }

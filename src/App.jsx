@@ -99,12 +99,12 @@ function AppShell({ user, signOut, demo }) {
 
   /* ── Edge swipe to open drawer ── */
   const edgeRef = useRef(null);
-  const [swipeX, setSwipeX] = useState(null);
+  const [swipeProgress, setSwipeProgress] = useState(0);
 
   const onTouchStart = useCallback((e) => {
     if (drawerOpen) return;
-    if (e.touches[0].clientX < 24) {
-      edgeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, active: false };
+    if (e.touches[0].clientX < 20) {
+      edgeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, time: Date.now(), active: false };
     } else {
       edgeRef.current = null;
     }
@@ -115,17 +115,15 @@ function AppShell({ user, signOut, demo }) {
     const dx = e.touches[0].clientX - edgeRef.current.startX;
     const dy = e.touches[0].clientY - edgeRef.current.startY;
     if (!edgeRef.current.active) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
         edgeRef.current.active = true;
-      } else if (Math.abs(dy) > 10) {
+      } else if (Math.abs(dy) > 10 || dx < -5) {
         edgeRef.current = null;
         return;
-      } else {
-        return;
-      }
+      } else return;
     }
     if (edgeRef.current.active) {
-      setSwipeX(Math.max(0, e.touches[0].clientX));
+      setSwipeProgress(Math.max(0, dx));
     }
   }, [drawerOpen]);
 
@@ -134,10 +132,14 @@ function AppShell({ user, signOut, demo }) {
       edgeRef.current = null;
       return;
     }
-    const finalX = e.changedTouches[0].clientX;
+    const dx = e.changedTouches[0].clientX - edgeRef.current.startX;
+    const elapsed = Date.now() - edgeRef.current.time;
+    const velocity = dx / elapsed;
     edgeRef.current = null;
-    setSwipeX(null);
-    if (finalX > 120) setDrawerOpen(true);
+    if (dx > 100 || velocity > 0.3) {
+      setDrawerOpen(true);
+    }
+    setSwipeProgress(0);
   }, []);
 
   const ctxValue = useMemo(() => ({
@@ -214,7 +216,7 @@ function AppShell({ user, signOut, demo }) {
       )}
       {!readOnly && !hideFab && <QuickActions />}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
-        user={user} signOut={signOut} open={drawerOpen} swipeX={swipeX} />
+        user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress} />
 
       {showAdmin && (
         <AdminPanel
