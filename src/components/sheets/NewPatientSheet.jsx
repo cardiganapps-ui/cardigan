@@ -3,8 +3,10 @@ import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
+import { useT } from "../../i18n/index";
 
 export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
+  const { t, strings } = useT();
   const [name, setName]       = useState("");
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
@@ -21,9 +23,9 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) { setErr("Ingresa el nombre del paciente."); return; }
+    if (!name.trim()) { setErr(t("patients.enterName")); return; }
     if (patients?.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
-      setErr("Ya existe un paciente con ese nombre."); return;
+      setErr(t("patients.duplicateName")); return;
     }
     setErr("");
     const ok = await onSubmit({
@@ -40,42 +42,42 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
       <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">Nuevo paciente</span>
-          <button className="sheet-close" aria-label="Cerrar" onClick={onClose}><IconX size={14} /></button>
+          <span className="sheet-title">{t("patients.newPatient")}</span>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 22px" }}>
           <div className="input-group">
-            <label className="input-label">Nombre completo</label>
-            <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="María López" />
+            <label className="input-label">{t("settings.fullName")}</label>
+            <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
           </div>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: isMinor ? 6 : 14 }}>
-            <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Es menor de edad</span>
+            <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.isMinor")}</span>
             <Toggle on={isMinor} onToggle={() => setIsMinor(v => !v)} />
           </div>
           {isMinor && (
             <div className="input-group">
-              <label className="input-label">Tutor / contacto</label>
-              <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder="Nombre del tutor" />
+              <label className="input-label">{t("patients.tutor")}</label>
+              <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
             </div>
           )}
           <div className="input-group">
-            <label className="input-label">Tarifa por sesión</label>
-            <input className="input" type="number" min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder="Ej: 700" />
+            <label className="input-label">{t("patients.ratePerSession")}</label>
+            <input className="input" type="number" min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
           </div>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>Citas recurrentes</span>
+            <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>{t("patients.recurringAppts")}</span>
             <Toggle on={recurring} onToggle={() => setRecurring(v => !v)} />
           </div>
           {schedules.map((s, i) => (
             <div key={i} style={{ display:"grid", gridTemplateColumns: schedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
               <div className="input-group" style={{ marginBottom:0 }}>
-                {i === 0 && <label className="input-label">Día</label>}
+                {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                 <select className="input" value={s.day} onChange={e => updateSched(i, "day", e.target.value)}>
                   {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className="input-group" style={{ marginBottom:0 }}>
-                {i === 0 && <label className="input-label">Hora</label>}
+                {i === 0 && <label className="input-label">{t("patients.time")}</label>}
                 <input className="input" type="time" value={s.time} onChange={e => updateSched(i, "time", e.target.value)} />
               </div>
               {schedules.length > 1 && (
@@ -88,16 +90,16 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
           ))}
           <button type="button" onClick={() => setSchedules(prev => [...prev, { day: "Lunes", time: "16:00" }])}
             style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 12px", fontFamily:"var(--font)" }}>
-            + Agregar otro horario
+            {t("patients.addSchedule")}
           </button>
           {recurring && (
             <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14 }}>
               <div className="input-group" style={{ marginBottom:10 }}>
-                <label className="input-label">Inicio</label>
+                <label className="input-label">{t("patients.start")}</label>
                 <input className="input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
               </div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: hasEndDate ? 8 : 0 }}>
-                <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>Fecha de fin</span>
+                <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.endDate")}</span>
                 <Toggle on={hasEndDate} onToggle={() => setHasEndDate(v => !v)} />
               </div>
               {hasEndDate ? (
@@ -105,13 +107,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
                   <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
               ) : (
-                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>Permanente — se renuevan automáticamente</div>
+                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
               )}
             </div>
           )}
           {err && <div style={{ fontSize:12, color:"var(--red)", marginBottom:10 }}>{err}</div>}
           <button className="btn btn-primary" type="submit" disabled={mutating}>
-            {mutating ? "Guardando..." : "Agregar paciente"}
+            {mutating ? t("saving") : t("patients.addPatient")}
           </button>
         </form>
       </div>
