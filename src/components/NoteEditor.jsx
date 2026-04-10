@@ -379,21 +379,25 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
 
 export function NoteCard({ note, onClick }) {
   const { t } = useT();
-  const preview = note.content?.replace(/[*~#\[\]]/g, "").slice(0, 80) || t("notes.noContent");
+  const preview = note.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 100) || t("notes.noContent");
   const timeAgo = relativeTime(note.updated_at);
   return (
-    <div className="row-item" role="button" tabIndex={0} onClick={onClick} style={{ cursor:"pointer" }}>
-      {note.pinned && <IconStar size={12} style={{ color:"var(--amber)", flexShrink:0 }} />}
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+    <div role="button" tabIndex={0} onClick={onClick}
+      style={{
+        padding:"12px 16px", cursor:"pointer",
+        borderBottom:"1px solid var(--border-lt)",
+        WebkitTapHighlightColor:"transparent",
+      }}>
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+        {note.pinned && <IconStar size={11} style={{ color:"var(--amber)", flexShrink:0 }} />}
+        <div style={{ fontSize:15, fontWeight:700, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>
           {note.title || t("notes.noTitle")}
         </div>
-        <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:3, display:"flex", gap:6, alignItems:"center" }}>
-          <span style={{ flexShrink:0 }}>{timeAgo}</span>
-          <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{preview}</span>
-        </div>
+        <span style={{ fontSize:11, color:"var(--charcoal-xl)", flexShrink:0, fontWeight:500 }}>{timeAgo}</span>
       </div>
-      <span className="row-chevron">›</span>
+      <div style={{ fontSize:13, color:"var(--charcoal-lt)", lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+        {preview}
+      </div>
     </div>
   );
 }

@@ -216,16 +216,16 @@ export function Notes() {
               </div>
             )}
           </div>
-        : <div className="card">
+        : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {filteredNotes.map(n => {
               const p = n.patient_id ? patients.find(pt => pt.id === n.patient_id) : null;
               const linkedSession = n.session_id ? (upcomingSessions || []).find(s => s.id === n.session_id) : null;
               const isSelected = selected.has(n.id);
 
               const noteContent = (
-                <div>
+                <div style={{ background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", overflow:"hidden" }}>
                   {(p || linkedSession) && (
-                    <div style={{ padding:"6px 16px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
+                    <div style={{ padding:"6px 12px", fontSize:10, color:"var(--teal-dark)", fontWeight:600, background:"var(--teal-mist)", borderBottom:"1px solid var(--border-lt)" }}>
                       {p && p.name}
                       {p && linkedSession && " · "}
                       {linkedSession && `${t("sessions.session")} ${linkedSession.date}`}
@@ -234,7 +234,7 @@ export function Notes() {
                   <div style={{ display:"flex", alignItems:"center" }}>
                     {selectMode && (
                       <div onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}
-                        style={{ padding:"12px 0 12px 16px", cursor:"pointer", flexShrink:0 }}>
+                        style={{ padding:"12px 0 12px 12px", cursor:"pointer", flexShrink:0 }}>
                         <div style={{
                           width:22, height:22, borderRadius:"50%",
                           border: isSelected ? "none" : "2px solid var(--border)",
