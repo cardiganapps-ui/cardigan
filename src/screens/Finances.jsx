@@ -86,44 +86,39 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
         )}
       </div>
 
-      <div className="card" style={{ padding:"12px 14px", marginBottom:14 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
-          <button
-            onClick={() => setGroupByClient(g => !g)}
-            style={{ width:40, height:22, borderRadius:11, border:"none", cursor:"pointer", padding:2, background: groupByClient ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative" }}
-          >
-            <div style={{ width:18, height:18, borderRadius:"50%", background:"white", boxShadow:"0 1px 3px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(18px)" : "translateX(0)", transition:"transform 0.2s" }} />
-          </button>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>{t("finances.sortOrder")}</span>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2 }}>
+      <div className="card" style={{ padding:"8px 12px", marginBottom:10 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
+            <button
+              onClick={() => setGroupByClient(g => !g)}
+              style={{ width:34, height:18, borderRadius:9, border:"none", cursor:"pointer", padding:2, background: groupByClient ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}
+            >
+              <div style={{ width:14, height:14, borderRadius:"50%", background:"white", boxShadow:"0 1px 2px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
+            </button>
+          </div>
+          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
             {[{k:"desc",l:t("finances.newest")},{k:"asc",l:t("finances.oldest")}].map(o => (
               <button key={o.k} onClick={() => setSortOrder(o.k)}
-                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none" }}>
+                style={{ padding:"3px 8px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none" }}>
                 {o.l}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)" }}>{t("finances.methodLabel")}</span>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
             {[{k:"all",l:t("finances.allMethods")},{k:"Transferencia",l:t("finances.transferShort")},{k:"Efectivo",l:t("finances.cashShort")}].map(o => (
               <button key={o.k} onClick={() => setFilterMethod(o.k)}
-                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none" }}>
+                style={{ padding:"3px 8px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none" }}>
                 {o.l}
               </button>
             ))}
           </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)", flexShrink:0 }}>{t("finances.period")}</span>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:2, overflowX:"auto", marginLeft:10 }}>
+          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1, overflowX:"auto" }}>
             {periodOptions.map(o => (
               <button key={o.k} onClick={() => setDateRange(o.k)}
-                style={{ padding:"4px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none", whiteSpace:"nowrap", flexShrink:0 }}>
+                style={{ padding:"3px 8px", fontSize:10, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none", whiteSpace:"nowrap", flexShrink:0 }}>
                 {o.l}
               </button>
             ))}
