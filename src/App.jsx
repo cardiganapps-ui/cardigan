@@ -21,6 +21,8 @@ import { Documents } from "./screens/Documents";
 import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
+import { BugReportFab } from "./components/BugReportFab";
+import "./utils/logBuffer";
 import "./styles.css";
 
 function CardiganApp() {
@@ -223,6 +225,7 @@ function AppShell({ user, signOut, demo }) {
         />
       )}
       <InstallPrompt />
+      <BugReportFab user={user} screen={screen} />
     </div>
     </CardiganProvider>
   );

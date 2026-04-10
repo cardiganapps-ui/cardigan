@@ -389,6 +389,14 @@ export default {
     dontShowAgain: "No volver a mostrar",
   },
 
+  // ── Bug reports ──
+  bugReport: {
+    title: "Reportar problema",
+    placeholder: "Describe el problema (opcional)",
+    submit: "Enviar",
+    sent: "Reporte enviado",
+  },
+
   // ── Date names ──
   months: ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
   monthsShort: ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
