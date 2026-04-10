@@ -204,7 +204,7 @@ export function PatientExpediente({
       style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)", animation:"fadeIn 0.4s ease" }} />
 
     {/* Card */}
-    <div className="expediente-open"
+    <div className="expediente-open expediente-desktop-panel"
       style={{
         position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",

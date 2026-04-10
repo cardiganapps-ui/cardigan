@@ -642,6 +642,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   font-size: 9px; font-weight: 700; color: var(--teal-dark);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer;
 }
+.week-event-time { display: none; }
 .week-event.cancelled { background: var(--cream-dark); border-left-color: var(--charcoal-xl); color: var(--charcoal-lt); }
 
 /* FINANCES */
@@ -783,13 +784,44 @@ button, a, select { min-height: 44px; }
   .landing-trust { max-width: 500px; }
   .landing-trust-title { font-size: 24px; }
   .landing-nav { padding: calc(var(--sat) + 12px) 32px 12px; }
+
+  /* Landing hero: side-by-side layout on wide screens */
+  .landing-hero { padding: 56px 40px 64px; max-width: 800px; margin: 0 auto; }
+
+  /* Expediente: two-panel on desktop (list stays visible behind) */
+  .expediente-desktop-panel {
+    left: 240px !important;    /* offset by sidebar width */
+    max-width: 640px !important;
+    right: auto !important;
+    width: calc(100% - 240px) !important;
+  }
+
+  /* NoteEditor: centered panel instead of full-screen */
+  .note-editor-desktop {
+    left: 240px !important;
+    max-width: 680px !important;
+    right: auto !important;
+    width: calc(100% - 240px) !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+
+  /* Wider week event cells: show time + name */
+  .week-event { font-size: 10px; padding: 3px 6px; }
+  .week-event-time { display: inline; font-weight: 800; margin-right: 2px; }
+  .week-time-row { min-height: 56px; }
+  .week-cell { min-height: 56px; }
 }
+
+/* ── CURSOR + TRANSITIONS (pointer devices) ── */
+.row-item, .settings-row, .kpi-card, .month-cell, .week-cell, .chip, .landing-card { cursor: pointer; }
+.row-item, .settings-row, .drawer-item, .kpi-card, .landing-card, .month-cell, .week-cell, .chip,
+.btn, .landing-cta-btn, .landing-cta-ghost, .fab, .fab-action { transition: all 0.15s ease; }
 
 /* ── HOVER STATES (pointer devices only) ── */
 @media (hover: hover) {
   .row-item:hover { background: var(--teal-mist); }
   .settings-row:hover { background: var(--teal-mist); }
-  .drawer-item:hover { background: rgba(255,255,255,0.06); }
+  .drawer-item:hover { background: rgba(255,255,255,0.08); }
   .btn:hover { transform: scale(0.98); }
   .btn-primary:hover { box-shadow: 0 4px 16px rgba(91,155,175,0.4); }
   .fab:hover { transform: scale(1.05); }
@@ -799,10 +831,36 @@ button, a, select { min-height: 44px; }
   .month-nav-btn:hover { background: var(--teal-pale); }
   .month-cell:hover { background: var(--teal-pale); }
   .week-cell:hover { background: var(--teal-mist); }
+  .week-event:hover { background: var(--teal-pale); filter: brightness(0.97); }
   .chip:hover { opacity: 0.85; }
   .landing-cta-btn:hover { transform: scale(1.02); box-shadow: 0 4px 18px rgba(91,155,175,0.4); }
   .landing-cta-ghost:hover { background: var(--teal-pale); }
   .landing-card:hover { box-shadow: 0 2px 12px rgba(46,46,46,0.12); border-color: var(--teal-light); }
   .landing-footer-link:hover { color: rgba(255,255,255,0.9); }
   .kpi-card:hover { box-shadow: 0 2px 12px rgba(46,46,46,0.12); }
+}
+
+/* ── FOCUS-VISIBLE (keyboard navigation) ── */
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+.btn:focus-visible, .landing-cta-btn:focus-visible, .landing-cta-ghost:focus-visible { outline-offset: 3px; }
+.drawer-item:focus-visible { outline-color: var(--teal-light); outline-offset: -2px; }
+
+/* ── DESKTOP DRAWER: stronger active state ── */
+@media (min-width: 768px) {
+  .drawer-item.active { background: rgba(91,155,175,0.25); }
+  .drawer-item.active::before { width: 4px; }
+  .drawer-item.active .drawer-item-label { font-size: 14.5px; }
+}
+
+/* ── CUSTOM SCROLLBAR (desktop) ── */
+@media (min-width: 768px) {
+  .page::-webkit-scrollbar { width: 6px; }
+  .page::-webkit-scrollbar-track { background: transparent; }
+  .page::-webkit-scrollbar-thumb { background: var(--cream-deeper); border-radius: 3px; }
+  .page::-webkit-scrollbar-thumb:hover { background: var(--border); }
+  .page { scrollbar-width: thin; scrollbar-color: var(--cream-deeper) transparent; }
+  .drawer-nav::-webkit-scrollbar { width: 4px; }
+  .drawer-nav::-webkit-scrollbar-track { background: transparent; }
+  .drawer-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  .drawer-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
 }

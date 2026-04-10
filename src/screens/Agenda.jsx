@@ -208,7 +208,7 @@ function WeekPanel({ baseDate, selectedDate, setSelectedDate, setView, onSelectS
                     <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
                       style={isTutorSession(sess) ? { background:"var(--purple)", borderStyle:"dashed" } : undefined}
                       onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
-                      {shortName(sess.patient)}
+                      <span className="week-event-time">{sess.time}</span> {shortName(sess.patient)}
                     </div>
                   )}
                 </div>
