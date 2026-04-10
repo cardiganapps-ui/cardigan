@@ -86,7 +86,10 @@ export const IconX = (p) => (
 );
 
 export const IconLeaf = (p) => (
-  <I {...p}><path d="M6 21s1-8 6-13c5 5 6 13 6 13"/><path d="M12 8c3-3 7-4 10-4-1 3-2 7-4 10"/></I>
+  <I {...p}>
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2.96a1 1 0 0 1 1.8.5c.5 4-1.5 12-9 19a1 1 0 0 1-1.7-.4"/>
+    <path d="M2 21c0-3 1.85-5.36 5.08-6"/>
+  </I>
 );
 
 export const IconPlus = (p) => (

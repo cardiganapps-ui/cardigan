@@ -3,7 +3,7 @@ import { clientColors, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
-import { IconLeaf } from "../components/Icons";
+import { IconLeaf, IconSearch, IconX } from "../components/Icons";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
@@ -88,33 +88,16 @@ function SessionRow({ s, onClick, compact }) {
   );
 }
 
-/* ── DAY PANEL (renders one day's content + its week strip) ── */
-function DayPanel({ panelDate, setSelectedDate, onSelectSession, upcomingSessions, sessionDateSet }) {
+/* ── DAY PANEL (just one day's session list, no week strip) ── */
+function DayPanel({ panelDate, onSelectSession, upcomingSessions }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
-  const weekDays = getWeekDays(panelDate);
   const dateStr = formatShortDate(panelDate);
   const daySessions = sortByTime(upcomingSessions.filter(s => s.date === dateStr));
   const dayName = DOW[(panelDate.getDay() + 6) % 7];
 
   return (
     <>
-      <div style={{ paddingBottom:4 }}>
-        <div className="cal-strip">
-          {weekDays.map((d,i) => {
-            const ds = formatShortDate(d);
-            const isActive = isSameDay(d, panelDate);
-            const isToday = isSameDay(d, TODAY);
-            const hasSess = sessionDateSet.has(ds);
-            return (
-              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} role="button" tabIndex={0} onClick={() => setSelectedDate(d)}>
-                <span className="cal-day-name">{DOW[i]}</span>
-                <span className="cal-day-num">{d.getDate()}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
       <div style={{ padding:"0 16px 4px" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)", marginBottom:2 }}>{dayName} {dateStr}</div>
         <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? t("sessions.noSessions") : t("sessions.sessionsCount", { count: daySessions.length })}</div>
@@ -153,6 +136,7 @@ function HeaderLabel({ children, isCurrent, onJumpToday, t }) {
 /* ── DAY VIEW ── */
 function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday }) {
   const { t, strings } = useT();
+  const DOW = strings.daysShort;
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
   const swipe = useSwipe(
     useCallback(() => setSelectedDate(d => addDays(d, 1)), [setSelectedDate]),
@@ -160,7 +144,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
   const prevDay = addDays(selectedDate, -1);
   const nextDay = addDays(selectedDate, 1);
-  const shared = { setSelectedDate, onSelectSession, upcomingSessions, sessionDateSet };
+  const shared = { onSelectSession, upcomingSessions };
 
   const weekDays = getWeekDays(selectedDate);
   const monday = weekDays[0];
@@ -178,6 +162,23 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
           <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{weekLabel}</span>
         </HeaderLabel>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>›</button>
+      </div>
+      {/* Static week strip — does NOT swipe with the day list */}
+      <div style={{ paddingBottom:8 }}>
+        <div className="cal-strip">
+          {weekDays.map((d,i) => {
+            const ds = formatShortDate(d);
+            const isActive = isSameDay(d, selectedDate);
+            const isToday = isSameDay(d, TODAY);
+            const hasSess = sessionDateSet.has(ds);
+            return (
+              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} role="button" tabIndex={0} onClick={() => setSelectedDate(d)}>
+                <span className="cal-day-name">{DOW[i]}</span>
+                <span className="cal-day-num">{d.getDate()}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div {...swipe.containerProps}>
         <div style={swipe.stripStyle}>
@@ -265,9 +266,10 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
 
   // "Ahora" line: only when today is in the visible week and within work hours
   const visibleDays = (showWeekends ? weekDays : weekDays.slice(0, 5));
-  const todayInWeek = visibleDays.some(d => isSameDay(d, now));
+  const todayIdx = visibleDays.findIndex(d => isSameDay(d, now));
   const nowHourFloat = now.getHours() + now.getMinutes() / 60;
-  const showNow = todayInWeek && nowHourFloat >= 8 && nowHourFloat <= 21;
+  const showNow = todayIdx >= 0 && nowHourFloat >= 8 && nowHourFloat <= 21;
+  const dayCount = visibleDays.length;
 
   return (
     <>
@@ -300,8 +302,8 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
           <div className="week-now-line"
             aria-hidden="true"
             style={{
-              left: 44,
-              right: 0,
+              left: `calc(44px + (100% - 44px) * ${todayIdx} / ${dayCount})`,
+              width: `calc((100% - 44px) / ${dayCount})`,
               top: `calc(52px + var(--week-row-h) * ${nowHourFloat - 8})`,
             }} />
         )}
@@ -426,7 +428,7 @@ export function Agenda() {
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
-  const [filterPatient, setFilterPatient] = useState("");
+  const [search, setSearch] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState(null);
 
   // "Ahora" tick — re-render every minute so the now-line stays current
@@ -436,9 +438,11 @@ export function Agenda() {
     return () => clearInterval(id);
   }, []);
 
-  const filteredSessions = filterPatient
-    ? upcomingSessions.filter(s => s.patient_id === filterPatient)
-    : upcomingSessions;
+  const filteredSessions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return upcomingSessions;
+    return upcomingSessions.filter(s => (s.patient || "").toLowerCase().includes(q));
+  }, [upcomingSessions, search]);
 
   const handleCellTap = useCallback((date, hour) => {
     setNewSessionPrefill({ date: toISODate(date), time: hour });
@@ -480,16 +484,21 @@ export function Agenda() {
           </div>
         </div>
         {patients.length > 0 && (
-          <div style={{ padding:"0 16px 10px", display:"flex", justifyContent:"flex-start" }}>
-            <div className={`agenda-filter-pill ${filterPatient ? "active" : ""}`}>
-              <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} aria-label={t("agenda.allPatients")}>
-                <option value="">{t("agenda.allPatients")}</option>
-                {patients.filter(p => p.status === "active").map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              {filterPatient && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); setFilterPatient(""); }} aria-label={t("close")} className="agenda-filter-clear">×</button>
+          <div style={{ padding:"0 16px 10px" }}>
+            <div className="search-bar">
+              <IconSearch size={16} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={t("patients.searchPlaceholder")}
+                aria-label={t("patients.searchPlaceholder")}
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch("")} aria-label={t("close")}
+                  style={{ background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)", padding:0, display:"flex", alignItems:"center", minHeight:"unset" }}>
+                  <IconX size={14} />
+                </button>
               )}
             </div>
           </div>
