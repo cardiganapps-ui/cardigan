@@ -67,15 +67,17 @@ function insertLinePrefix(textarea, prefix) {
 }
 
 /* ── Toolbar button ── */
-function ToolBtn({ label, onClick, active }) {
+function ToolBtn({ children, onClick, title }) {
   return (
-    <button onClick={onClick} style={{
-      padding:"6px 10px", fontSize:14, fontWeight: active ? 800 : 500,
-      fontFamily:"var(--font)", color: active ? "var(--teal-dark)" : "var(--charcoal-md)",
-      background:"none", border:"none", cursor:"pointer", minHeight:36,
-      borderBottom: active ? "2px solid var(--teal)" : "2px solid transparent",
-    }}>{label}</button>
+    <button onClick={onClick} title={title} style={{
+      width:40, height:40, display:"flex", alignItems:"center", justifyContent:"center",
+      background:"none", border:"none", cursor:"pointer", borderRadius:8,
+      color:"var(--charcoal-md)", WebkitTapHighlightColor:"transparent",
+    }}>{children}</button>
   );
+}
+function ToolSep() {
+  return <div style={{ width:1, height:20, background:"var(--border-lt)", margin:"0 2px", flexShrink:0 }} />;
 }
 
 /* ── Main Editor ── */
@@ -255,14 +257,42 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
       )}
 
       {/* Formatting toolbar */}
-      <div style={{ display:"flex", gap:0, padding:"0 8px", borderBottom:"1px solid var(--border-lt)", flexShrink:0, overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
-        <ToolBtn label="B" onClick={() => applyFormat("bold")} />
-        <ToolBtn label="I" onClick={() => applyFormat("italic")} />
-        <ToolBtn label="S" onClick={() => applyFormat("strike")} />
-        <ToolBtn label="H" onClick={() => applyFormat("heading")} />
-        <ToolBtn label="•" onClick={() => applyFormat("bullet")} />
-        <ToolBtn label="1." onClick={() => applyFormat("numbered")} />
-        <ToolBtn label="☐" onClick={() => applyFormat("checklist")} />
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:2, padding:"4px 12px", borderBottom:"1px solid var(--border-lt)", flexShrink:0, background:"var(--cream)" }}>
+        {/* Inline formatting */}
+        <ToolBtn onClick={() => applyFormat("bold")} title="Negrita">
+          <span style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:900 }}>B</span>
+        </ToolBtn>
+        <ToolBtn onClick={() => applyFormat("italic")} title="Cursiva">
+          <span style={{ fontFamily:"Georgia, serif", fontSize:16, fontStyle:"italic" }}>I</span>
+        </ToolBtn>
+        <ToolBtn onClick={() => applyFormat("strike")} title="Tachado">
+          <span style={{ fontFamily:"var(--font)", fontSize:14, textDecoration:"line-through" }}>S</span>
+        </ToolBtn>
+        <ToolSep />
+        {/* Block formatting */}
+        <ToolBtn onClick={() => applyFormat("heading")} title="Título">
+          <span style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800 }}>H</span>
+        </ToolBtn>
+        <ToolBtn onClick={() => applyFormat("bullet")} title="Lista">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="4" cy="7" r="1.5" fill="currentColor" stroke="none"/><line x1="9" y1="7" x2="20" y2="7"/>
+            <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><line x1="9" y1="12" x2="20" y2="12"/>
+            <circle cx="4" cy="17" r="1.5" fill="currentColor" stroke="none"/><line x1="9" y1="17" x2="20" y2="17"/>
+          </svg>
+        </ToolBtn>
+        <ToolBtn onClick={() => applyFormat("numbered")} title="Lista numerada">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <text x="2" y="9" fill="currentColor" stroke="none" fontSize="8" fontWeight="700" fontFamily="var(--font-d)">1</text><line x1="9" y1="7" x2="20" y2="7"/>
+            <text x="2" y="14.5" fill="currentColor" stroke="none" fontSize="8" fontWeight="700" fontFamily="var(--font-d)">2</text><line x1="9" y1="12" x2="20" y2="12"/>
+            <text x="2" y="20" fill="currentColor" stroke="none" fontSize="8" fontWeight="700" fontFamily="var(--font-d)">3</text><line x1="9" y1="17" x2="20" y2="17"/>
+          </svg>
+        </ToolBtn>
+        <ToolBtn onClick={() => applyFormat("checklist")} title="Checklist">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="5" width="5" height="5" rx="1"/><line x1="11" y1="7.5" x2="21" y2="7.5"/>
+            <rect x="3" y="14" width="5" height="5" rx="1"/><path d="M4.5 16.5l1.5 1.5 2.5-3"/><line x1="11" y1="16.5" x2="21" y2="16.5"/>
+          </svg>
+        </ToolBtn>
       </div>
 
       {/* Patient/Session context bar */}
