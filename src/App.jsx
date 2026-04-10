@@ -157,75 +157,78 @@ function AppShell({ user, signOut, demo }) {
   return (
     <CardiganProvider value={ctxValue}>
     <div className="shell" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <div className="status-bar" />
-
-      {/* Demo banner */}
-      {demo && (
-        <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)" }}>
-          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>{t("demo.banner")}</span>
-          <button onClick={signOut}
-            style={{ fontSize:11, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
-            {t("demo.createAccount")}
-          </button>
-        </div>
-      )}
-
-      {/* Read-only banner when viewing as another user */}
-      {readOnly && !demo && (
-        <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)" }}>
-          <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>{t("admin.readOnly")}</span>
-          <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
-            style={{ fontSize:11, fontWeight:700, color:"var(--teal-light)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
-            {t("admin.exit")}
-          </button>
-        </div>
-      )}
-
-      <div className="topbar">
-        <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
-          <div className="hamburger-line" />
-          <div className="hamburger-line" />
-          <div className="hamburger-line" />
-        </button>
-        <div className="topbar-brand" onClick={() => navigate("home")} style={{ cursor:"pointer" }}><LogoIcon size={20} color="white" /><span>cardigan</span></div>
-        <div className="topbar-right">
-          {admin && !readOnly && (
-            <button className="admin-btn" onClick={() => setShowAdmin(true)}>
-              Admin
-            </button>
-          )}
-          <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
-        </div>
-      </div>
-      {loading && (
-        <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>{t("loading")}</div>
-      )}
-      <Toast message={mutationError} type="error" />
-      <PullToRefresh onRefresh={refresh}>
-        <div style={{
-          transition: direction ? "none" : undefined,
-          animation: direction === "left" ? "screenSlideLeft 0.25s cubic-bezier(0.32, 0.72, 0, 1)" :
-                     direction === "right" ? "screenSlideRight 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : undefined,
-        }}>
-          {screenMap[screen]}
-        </div>
-      </PullToRefresh>
-      {!readOnly && (
-        <PaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}
-          initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} />
-      )}
-      {!readOnly && !hideFab && <QuickActions />}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress} />
 
-      {showAdmin && (
-        <AdminPanel
-          onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
-          onClose={() => setShowAdmin(false)}
-        />
-      )}
-      <InstallPrompt />
-      <BugReportFab user={user} screen={screen} />
+      <div className="main-content">
+        <div className="status-bar" />
+
+        {/* Demo banner */}
+        {demo && (
+          <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
+            <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>{t("demo.banner")}</span>
+            <button onClick={signOut}
+              style={{ fontSize:11, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
+              {t("demo.createAccount")}
+            </button>
+          </div>
+        )}
+
+        {/* Read-only banner when viewing as another user */}
+        {readOnly && !demo && (
+          <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
+            <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>{t("admin.readOnly")}</span>
+            <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
+              style={{ fontSize:11, fontWeight:700, color:"var(--teal-light)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
+              {t("admin.exit")}
+            </button>
+          </div>
+        )}
+
+        <div className="topbar">
+          <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
+            <div className="hamburger-line" />
+            <div className="hamburger-line" />
+            <div className="hamburger-line" />
+          </button>
+          <div className="topbar-brand" onClick={() => navigate("home")} style={{ cursor:"pointer" }}><LogoIcon size={20} color="white" /><span>cardigan</span></div>
+          <div className="topbar-right">
+            {admin && !readOnly && (
+              <button className="admin-btn" onClick={() => setShowAdmin(true)}>
+                Admin
+              </button>
+            )}
+            <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
+          </div>
+        </div>
+        {loading && (
+          <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>{t("loading")}</div>
+        )}
+        <Toast message={mutationError} type="error" />
+        <PullToRefresh onRefresh={refresh}>
+          <div style={{
+            transition: direction ? "none" : undefined,
+            animation: direction === "left" ? "screenSlideLeft 0.25s cubic-bezier(0.32, 0.72, 0, 1)" :
+                       direction === "right" ? "screenSlideRight 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : undefined,
+          }}>
+            {screenMap[screen]}
+          </div>
+        </PullToRefresh>
+        {!readOnly && (
+          <PaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}
+            initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} />
+        )}
+        {!readOnly && !hideFab && <QuickActions />}
+
+        {showAdmin && (
+          <AdminPanel
+            onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
+            onClose={() => setShowAdmin(false)}
+          />
+        )}
+        <InstallPrompt />
+        <BugReportFab user={user} screen={screen} />
+      </div>
     </div>
     </CardiganProvider>
   );

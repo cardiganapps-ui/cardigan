@@ -86,6 +86,7 @@ html, body {
   background: var(--cream);
   position: relative; overflow: hidden;
 }
+.main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
 .status-bar { height: var(--sat); background: var(--nav-bg); flex-shrink: 0; }
 
 /* TOPBAR */
@@ -732,14 +733,39 @@ button, a, select { min-height: 44px; }
 /* Exempt inline small buttons */
 .sheet-close, .row-chevron { min-height: unset; }
 
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE: DESKTOP (768px+) ── */
 @media (min-width: 768px) {
-  .shell { max-width: 768px; margin: 0 auto; box-shadow: 0 0 40px rgba(0,0,0,0.08); }
-  .page { padding: 16px 24px; }
-  .topbar { border-radius: 0; }
-  .drawer-panel { max-width: 320px; }
-  .sheet-panel { max-width: 500px; }
-}
-@media (min-width: 1024px) {
-  .shell { max-width: 480px; }
+  /* Override safe area insets for desktop (no notch) */
+  :root { --sat: 0px; --sab: 0px; }
+
+  /* Shell: horizontal layout (sidebar | main) */
+  .shell { flex-direction: row; max-width: none; margin: 0; }
+  .status-bar { display: none; }
+
+  /* Drawer: persistent sidebar */
+  .drawer-overlay { display: none !important; }
+  .drawer {
+    position: static !important; width: 240px; height: auto;
+    flex-shrink: 0; pointer-events: auto !important;
+    z-index: auto;
+  }
+  .drawer-panel {
+    position: static !important; width: 240px; max-width: none;
+    transform: none !important; transition: none !important;
+    animation: none !important;
+  }
+  .drawer-header { padding: 20px 16px 16px; }
+
+  /* Main content area: constrain height on desktop */
+  .main-content { height: 100dvh; }
+
+  /* Topbar: hide hamburger, un-center logo */
+  .hamburger { display: none; }
+  .topbar-brand { position: static; transform: none; }
+
+  /* Page: wider padding */
+  .page { padding: 20px 32px; max-width: 900px; }
+
+  /* Sheets: slightly wider */
+  .sheet-panel { max-width: 520px; }
 }
