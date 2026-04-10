@@ -41,6 +41,7 @@ export default {
     agenda: "Agenda",
     patients: "Pacientes",
     finances: "Finanzas",
+    notes: "Notas",
     documents: "Documentos",
     settings: "Ajustes",
     principal: "Principal",

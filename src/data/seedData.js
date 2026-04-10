@@ -5,6 +5,7 @@ export const navItems = [
   { id:"agenda",   label:"Agenda",    iconId:"calendar", section:"principal" },
   { id:"patients", label:"Pacientes", iconId:"users",    section:"principal" },
   { id:"finances",  label:"Finanzas",    iconId:"dollar",   section:"principal" },
+  { id:"notes",     label:"Notas",       iconId:"clipboard",section:"principal" },
   { id:"documents", label:"Documentos", iconId:"document", section:"principal" },
   { id:"settings",  label:"Ajustes",    iconId:"settings", section:"cuenta"    },
 ];

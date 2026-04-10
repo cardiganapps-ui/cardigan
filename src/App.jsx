@@ -16,6 +16,7 @@ import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
 import { Finances } from "./screens/Finances";
+import { Notes } from "./screens/Notes";
 import { Documents } from "./screens/Documents";
 import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
@@ -150,6 +151,7 @@ function AppShell({ user, signOut, demo }) {
     agenda: <Agenda />,
     patients: <Patients />,
     finances: <Finances />,
+    notes: <Notes />,
     documents: <Documents />,
     settings: <Settings user={user} signOut={signOut} />,
   };

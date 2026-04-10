@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { navItems } from "../data/seedData";
-import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconSettings, IconStar, IconLogOut } from "./Icons";
+import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut } from "./Icons";
 import { LogoIcon } from "./LogoMark";
 import { useT } from "../i18n/index";
 
@@ -9,6 +9,7 @@ const NAV_ICONS = {
   calendar: IconCalendar,
   users: IconUsers,
   dollar: IconDollar,
+  clipboard: IconClipboard,
   document: IconDocument,
   settings: IconSettings,
 };
