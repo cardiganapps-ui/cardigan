@@ -62,7 +62,10 @@ export function useSwipe(onLeft, onRight) {
     onTouchStart,
     onTouchMove,
     onTouchEnd,
-    style: { overflow: "hidden" },
+    // touch-action: pan-y reserves vertical pans for native scroll while
+    // letting our JS handle horizontal swipes — keeps the page scrollable
+    // even when the swipeable region covers the full viewport.
+    style: { overflow: "hidden", touchAction: "pan-y" },
   };
 
   const stripStyle = {

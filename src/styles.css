@@ -179,10 +179,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   pointer-events: all;
   display: flex; flex-direction: column;
   will-change: transform;
-  animation: slideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   box-shadow: 4px 0 40px rgba(0,0,0,0.3);
 }
-@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 
 .drawer-header {
   padding: calc(var(--sat) + 20px) 24px 24px;
@@ -650,46 +648,6 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   font-size: 10px; color: var(--charcoal-xl); font-weight: 600;
   padding: 6px 8px 0 0; text-align: right; line-height: 1;
 }
-
-/* Agenda patient filter pill */
-.agenda-filter-pill {
-  display: inline-flex; align-items: center;
-  background: var(--cream-dark);
-  border-radius: var(--radius-pill);
-  padding: 0 4px 0 12px;
-  height: 32px; min-height: 32px;
-  transition: background 0.15s;
-  position: relative;
-}
-.agenda-filter-pill.active {
-  background: var(--teal-pale);
-}
-.agenda-filter-pill select {
-  font-family: var(--font);
-  font-size: 12px; font-weight: 700;
-  color: var(--charcoal-lt);
-  background: transparent;
-  border: none; outline: none; min-height: unset;
-  -webkit-appearance: none; appearance: none;
-  padding: 0 22px 0 0; cursor: pointer;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 4px center;
-}
-.agenda-filter-pill.active select {
-  color: var(--teal-dark);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234A8799' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-}
-.agenda-filter-clear {
-  width: 22px; height: 22px; min-height: 22px;
-  border-radius: 50%; border: none;
-  background: var(--teal); color: white;
-  font-size: 14px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; padding: 0; margin-left: 4px;
-  -webkit-tap-highlight-color: transparent;
-}
-.agenda-filter-clear:active { opacity: 0.7; }
 
 /* Agenda header label (tappable to jump to today) */
 .agenda-label-btn {
