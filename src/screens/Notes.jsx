@@ -237,7 +237,7 @@ export function Notes() {
                         </div>
                       </div>
                     )}
-                    <div style={{ flex:1, minWidth:0 }}
+                    <div style={{ flex:1, minWidth:0, WebkitUserSelect:"none", userSelect:"none" }}
                       onTouchStart={() => !selectMode && startLongPress(n)}
                       onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}>
                       <NoteCard note={n} onClick={() => handleNoteClick(n)}
