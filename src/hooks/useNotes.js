@@ -25,6 +25,22 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
+  async function updateNoteLink(id, { patientId, sessionId }) {
+    const patch = { patient_id: patientId || null, session_id: sessionId || null, updated_at: new Date().toISOString() };
+    const { error } = await supabase.from("notes").update(patch).eq("id", id);
+    if (error) { setMutationError(error.message); return false; }
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch } : n));
+    return true;
+  }
+
+  async function deleteNotes(ids) {
+    if (!ids?.length) return false;
+    const { error } = await supabase.from("notes").delete().in("id", ids);
+    if (error) { setMutationError(error.message); return false; }
+    setNotes(prev => prev.filter(n => !ids.includes(n.id)));
+    return true;
+  }
+
   async function deleteNote(id) {
     const { error } = await supabase.from("notes").delete().eq("id", id);
     if (error) { setMutationError(error.message); return false; }
@@ -32,5 +48,5 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  return { createNote, updateNote, deleteNote };
+  return { createNote, updateNote, updateNoteLink, deleteNote, deleteNotes };
 }

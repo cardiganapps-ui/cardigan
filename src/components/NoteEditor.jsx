@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { IconX, IconCheck } from "./Icons";
+import { IconX, IconCheck, IconUser, IconCalendar } from "./Icons";
 import { useT } from "../i18n/index";
+import { useCardigan } from "../context/CardiganContext";
 
 /* ── List prefix detection ── */
 const LIST_PATTERNS = [
@@ -64,8 +65,12 @@ function ToolBtn({ label, onClick, active }) {
 /* ── Main Editor ── */
 export function NoteEditor({ note, onSave, onDelete, onClose }) {
   const { t } = useT();
+  const { patients, upcomingSessions } = useCardigan();
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
+  const [linkedPatientId, setLinkedPatientId] = useState(note?.patient_id || "");
+  const [linkedSessionId, setLinkedSessionId] = useState(note?.session_id || "");
+  const [showContext, setShowContext] = useState(false);
   const [saved, setSaved] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const saveTimer = useRef(null);
@@ -175,6 +180,19 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
+  const linkedPatient = linkedPatientId ? (patients || []).find(p => p.id === linkedPatientId) : null;
+  const linkedSession = linkedSessionId ? (upcomingSessions || []).find(s => s.id === linkedSessionId) : null;
+  const patientSessions = linkedPatientId
+    ? (upcomingSessions || []).filter(s => s.patient_id === linkedPatientId).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    : [];
+
+  const { updateNoteLink } = useCardigan();
+  const handleLinkChange = async (newPatientId, newSessionId) => {
+    setLinkedPatientId(newPatientId);
+    setLinkedSessionId(newSessionId);
+    if (note?.id) await updateNoteLink(note.id, { patientId: newPatientId, sessionId: newSessionId });
+  };
+
   const dateStr = note?.updated_at
     ? new Date(note.updated_at).toLocaleDateString("es-MX", { day:"numeric", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" })
     : "";
@@ -223,6 +241,48 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
         <ToolBtn label="1." onClick={() => applyFormat("numbered")} />
         <ToolBtn label="☐" onClick={() => applyFormat("checklist")} />
       </div>
+
+      {/* Patient/Session context bar */}
+      <div onClick={() => setShowContext(!showContext)}
+        style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 16px", borderBottom:"1px solid var(--border-lt)", flexShrink:0, cursor:"pointer", background:"var(--cream)" }}>
+        <IconUser size={14} style={{ color:"var(--charcoal-xl)", flexShrink:0 }} />
+        <span style={{ fontSize:12, fontWeight:600, color: linkedPatient ? "var(--charcoal)" : "var(--charcoal-xl)", flex:1 }}>
+          {linkedPatient ? linkedPatient.name : t("notes.generalNote")}
+        </span>
+        {linkedSession && (
+          <>
+            <IconCalendar size={12} style={{ color:"var(--charcoal-xl)", flexShrink:0 }} />
+            <span style={{ fontSize:11, color:"var(--teal-dark)" }}>{linkedSession.date} · {linkedSession.time}</span>
+          </>
+        )}
+        <span style={{ fontSize:10, color:"var(--charcoal-xl)" }}>{showContext ? "▲" : "▼"}</span>
+      </div>
+      {showContext && (
+        <div style={{ padding:"10px 16px", borderBottom:"1px solid var(--border-lt)", background:"var(--cream)", flexShrink:0 }}>
+          <div style={{ marginBottom:8 }}>
+            <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)", display:"block", marginBottom:3 }}>{t("sessions.patient")}</label>
+            <select className="input" value={linkedPatientId} onChange={e => handleLinkChange(e.target.value, e.target.value ? linkedSessionId : "")}
+              style={{ fontSize:12, padding:"6px 8px" }}>
+              <option value="">{t("notes.generalNote")}</option>
+              {(patients || []).filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          {linkedPatientId && patientSessions.length > 0 && (
+            <div>
+              <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)", display:"block", marginBottom:3 }}>{t("notes.linkToSession")}</label>
+              <select className="input" value={linkedSessionId} onChange={e => handleLinkChange(linkedPatientId, e.target.value)}
+                style={{ fontSize:12, padding:"6px 8px" }}>
+                <option value="">{t("notes.generalPatientNote")}</option>
+                {patientSessions.map(s => (
+                  <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Editor body */}
       <div style={{ flex:1, overflowY:"auto", padding:"16px 20px 60px" }}>
