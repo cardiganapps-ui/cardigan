@@ -49,6 +49,21 @@ export async function fetchAllAccounts() {
   return [...accounts.values()];
 }
 
+export async function fetchBugReports() {
+  const { data, error } = await supabase
+    .from("bug_reports")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function deleteBugReport(id) {
+  const { error } = await supabase.from("bug_reports").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export function useCardiganData(user, viewAsUserId) {
   const userId = viewAsUserId || user?.id;
   const readOnly = !!viewAsUserId;
