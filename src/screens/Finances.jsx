@@ -4,6 +4,7 @@ import { IconCheck } from "../components/Icons";
 import { exportPayments } from "../utils/export";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { HelpTip } from "../components/HelpTip";
 
 function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutating }) {
   const { t, strings } = useT();
@@ -192,8 +193,11 @@ export function Finances() {
 
   return (
     <div className="page">
-      <div style={{ paddingTop:16 }}>
-        <div className="fin-tab-row" role="tablist">
+      <div style={{ display:"flex", justifyContent:"flex-end", padding:"10px 16px 0" }}>
+        <HelpTip tipsKey="help.finances" />
+      </div>
+      <div style={{ paddingTop:6 }}>
+        <div className="fin-tab-row" role="tablist" data-tour="finances-tabs">
           {[{k:"balances",l:t("finances.balances")},{k:"pagos",l:t("finances.payments")},{k:"ingresos",l:t("finances.income")}].map(tb => (
             <button key={tb.k} role="tab" aria-selected={tab===tb.k} className={`fin-tab ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>{tb.l}</button>
           ))}

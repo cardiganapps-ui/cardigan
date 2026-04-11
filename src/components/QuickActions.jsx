@@ -50,6 +50,7 @@ export function QuickActions() {
       )}
       <button
         className={`fab ${menuOpen ? "fab-open" : ""}`}
+        data-tour="fab"
         onClick={() => setMenuOpen(o => !o)}
         aria-label={menuOpen ? "Cerrar" : "Agregar"}
       >+</button>

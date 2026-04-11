@@ -6,6 +6,7 @@ import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { HelpTip } from "../components/HelpTip";
 
 export function Documents() {
   const { documents, patients, upcomingSessions, notes, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, createNote, updateNote, deleteNote, mutating } = useCardigan();
@@ -125,7 +126,10 @@ export function Documents() {
       />
     )}
     <div style={{ padding:16 }}>
-      <div className="section-title" style={{ marginBottom:12 }}>{t("docs.title")}</div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, gap:8 }}>
+        <div className="section-title">{t("docs.title")}</div>
+        <HelpTip tipsKey="help.documents" />
+      </div>
 
       {/* Search bar */}
       <div className="search-bar" style={{ marginBottom:12 }}>

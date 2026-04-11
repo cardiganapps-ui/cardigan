@@ -452,6 +452,74 @@ export default {
     dontShowAgain: "No volver a mostrar",
   },
 
+  // ── Tutorial / onboarding ──
+  tutorial: {
+    welcomeTitle: "\u00a1Bienvenido a Cardigan!",
+    welcomeBody: "\u00bfQuieres un recorrido r\u00e1pido para conocer lo esencial? Puedes hacerlo despu\u00e9s desde Ajustes.",
+    welcomeYes: "S\u00ed, ens\u00e9\u00f1ame",
+    welcomeNo: "Ahora no",
+    next: "Siguiente",
+    prev: "Atr\u00e1s",
+    skip: "Saltar",
+    finish: "Finalizar",
+    stepOf: "Paso {current} de {total}",
+    settingsRow: "Tutorial",
+    settingsRowSub: "Vuelve a ver el recorrido guiado",
+    steps: {
+      welcomeTitle: "\u00a1Bienvenido a Cardigan!",
+      welcomeBody: "Tu espacio para organizar pacientes, agenda y cobros. \u00bfTe muestro lo esencial en un minuto?",
+      kpisTitle: "Tu d\u00eda de un vistazo",
+      kpisBody: "Aqu\u00ed ves sesiones de hoy, ingresos del mes y saldos pendientes. Se actualiza solo.",
+      fabTitle: "Crea desde aqu\u00ed",
+      fabBody: "Toca el bot\u00f3n + para agregar pacientes, sesiones, pagos o notas. Es tu atajo principal.",
+      agendaTitle: "Tu agenda",
+      agendaBody: "Cambia entre d\u00eda, semana y mes. Desliza para navegar y toca una sesi\u00f3n para ver detalles.",
+      patientsTitle: "Tus pacientes",
+      patientsBody: "Ficha completa, historial de sesiones y notas privadas por paciente.",
+      financesTitle: "Finanzas claras",
+      financesBody: "Saldos, pagos e ingresos en un solo lugar. Exporta a CSV cuando lo necesites.",
+      drawerTitle: "Explora m\u00e1s",
+      drawerBody: "Abre el men\u00fa para notas, documentos y ajustes. Tambi\u00e9n puedes deslizar desde el borde izquierdo.",
+      doneTitle: "\u00a1Listo!",
+      doneBody: "Puedes volver a ver este recorrido desde Ajustes \u2192 Tutorial. Cada pantalla tambi\u00e9n tiene un ? con consejos r\u00e1pidos.",
+    },
+  },
+
+  // ── Contextual help tips ──
+  help: {
+    title: "Consejos",
+    home: [
+      "Toca una tarjeta para saltar al detalle",
+      "Los saldos se calculan autom\u00e1ticamente",
+      "Usa el bot\u00f3n + para crear r\u00e1pido",
+    ],
+    agenda: [
+      "Desliza para cambiar de d\u00eda o semana",
+      "Toca una sesi\u00f3n para ver detalles y reprogramar",
+      "Usa 'Hoy' para volver al d\u00eda actual",
+    ],
+    patients: [
+      "Toca un paciente para abrir su expediente",
+      "Cambios de horario y tarifa tienen fecha efectiva",
+      "Usa el filtro para ver solo activos o finalizados",
+    ],
+    finances: [
+      "Cambia entre saldos, pagos e ingresos",
+      "Exporta a CSV cualquier lista filtrada",
+      "Toca un paciente para registrar un pago",
+    ],
+    notes: [
+      "Las notas se guardan solas mientras escribes",
+      "Vincula una nota a una sesi\u00f3n espec\u00edfica desde el selector",
+    ],
+    documents: [
+      "Etiqueta cada documento a una sesi\u00f3n para encontrarlo f\u00e1cil",
+    ],
+    settings: [
+      "Aqu\u00ed puedes volver a ver el tutorial o cerrar sesi\u00f3n",
+    ],
+  },
+
   // ── Bug reports ──
   bugReport: {
     title: "Reportar problema",

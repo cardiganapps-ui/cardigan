@@ -10,6 +10,7 @@ import { useSwipe } from "../hooks/useSwipe";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
+import { HelpTip } from "../components/HelpTip";
 
 /* ── DATE HELPERS ── */
 function getMonday(d) {
@@ -475,9 +476,12 @@ export function Agenda() {
       />
     )}
     <div className="page">
-      <div style={{ paddingTop:16 }}>
+      <div style={{ paddingTop:10 }}>
+        <div style={{ display:"flex", justifyContent:"flex-end", padding:"0 16px 6px" }}>
+          <HelpTip tipsKey="help.agenda" />
+        </div>
         <div style={{ padding:"0 16px 14px" }}>
-          <div className="view-toggle" style={{ margin:0 }}>
+          <div className="view-toggle" data-tour="agenda-toggle" style={{ margin:0 }}>
             {[{k:"day",l:t("agenda.dayView")},{k:"week",l:t("agenda.weekView")},{k:"month",l:t("agenda.monthView")}].map(v => (
               <button key={v.k} className={`view-btn ${view===v.k?"active":""}`} onClick={() => setView(v.k)}>{v.l}</button>
             ))}
