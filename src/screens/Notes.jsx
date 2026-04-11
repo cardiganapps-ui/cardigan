@@ -179,7 +179,7 @@ export function Notes() {
         onClose={() => setEditingNote(null)}
       />
     )}
-    <div style={{ padding:16 }}>
+    <div className="page" style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, gap:8 }}>
         <div className="section-title">{t("notes.title")}</div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
