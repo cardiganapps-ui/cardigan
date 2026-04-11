@@ -762,20 +762,22 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 
 /* Note long-press feedback */
 .note-card-pressing {
-  background: var(--teal-mist) !important;
-  transform: scale(0.985);
+  background: var(--cream) !important;
+  transform: scale(0.97);
+  box-shadow: inset 0 0 0 1px var(--border) !important;
 }
 .note-longpress-progress {
-  position: absolute; left: 0; bottom: 0;
-  height: 3px; width: 0;
-  background: var(--teal);
-  border-radius: 0 2px 2px 0;
-  animation: noteLongPressFill 0.5s linear forwards;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--charcoal-xl);
+  opacity: 0.35;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: noteLongPressFill 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;
 }
 @keyframes noteLongPressFill {
-  from { width: 0; }
-  to { width: 100%; }
+  to { transform: scaleX(1); }
 }
 
 /* EMPTY STATE */
