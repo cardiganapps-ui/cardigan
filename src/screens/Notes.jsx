@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { IconSearch, IconClipboard, IconX, IconStar } from "../components/Icons";
+import { IconSearch, IconClipboard, IconX, IconStar, IconTrash } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -56,11 +56,13 @@ export function Notes() {
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [propsNote, setPropsNote] = useState(null); // note being edited via long-press
+  const [longPressingId, setLongPressingId] = useState(null);
   useEscape(propsNote ? () => setPropsNote(null) : null);
   const longPressRef = useRef(null);
 
@@ -78,6 +80,7 @@ export function Notes() {
         return n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q) || p?.name?.toLowerCase().includes(q);
       });
     }
+    if (favoritesOnly) list = list.filter(n => n.pinned);
     if (filterPatient === "general") list = list.filter(n => !n.patient_id);
     else if (filterPatient !== "all") list = list.filter(n => n.patient_id === filterPatient);
     return list.sort((a, b) => {
@@ -85,7 +88,7 @@ export function Notes() {
       if (!a.pinned && b.pinned) return 1;
       return (b.updated_at || "").localeCompare(a.updated_at || "");
     });
-  }, [notes, search, filterPatient, patients]);
+  }, [notes, search, filterPatient, favoritesOnly, patients]);
 
   const handleSaveNote = useCallback(async ({ title, content }) => {
     if (editingNote?.id) await updateNote(editingNote.id, { title, content });
@@ -116,14 +119,17 @@ export function Notes() {
   };
 
   const startLongPress = (note) => {
+    setLongPressingId(note.id);
     longPressRef.current = setTimeout(() => {
       longPressRef.current = "fired";
+      setLongPressingId(null);
       setPropsNote({ ...note, _patientId: note.patient_id || "", _sessionId: note.session_id || "" });
     }, 500);
   };
   const cancelLongPress = () => {
     if (longPressRef.current && longPressRef.current !== "fired") clearTimeout(longPressRef.current);
     longPressRef.current = null;
+    setLongPressingId(null);
   };
   const handleNoteClick = (note) => {
     if (longPressRef.current === "fired") { longPressRef.current = null; return; }
@@ -189,7 +195,7 @@ export function Notes() {
         </div>
       )}
 
-      <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
+      <div style={{ display:"flex", gap:8, marginBottom:14, alignItems:"center" }}>
         <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
           style={{ flex:1, fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>
           <option value="all">{t("docs.allPatients")}</option>
@@ -198,6 +204,22 @@ export function Notes() {
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
+        <button type="button"
+          onClick={() => setFavoritesOnly(v => !v)}
+          aria-pressed={favoritesOnly}
+          aria-label={t("notes.onlyFavorites")}
+          title={t("notes.onlyFavorites")}
+          style={{
+            display:"flex", alignItems:"center", justifyContent:"center",
+            width:34, height:34, minHeight:34, borderRadius:"var(--radius)",
+            border: `1px solid ${favoritesOnly ? "var(--amber)" : "var(--border)"}`,
+            background: favoritesOnly ? "var(--amber-bg)" : "var(--white)",
+            color: favoritesOnly ? "var(--amber)" : "var(--charcoal-xl)",
+            cursor:"pointer", padding:0, flexShrink:0,
+            transition:"all 0.15s",
+          }}>
+          <IconStar size={16} />
+        </button>
       </div>
 
       <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
@@ -222,8 +244,9 @@ export function Notes() {
               const linkedSession = n.session_id ? (upcomingSessions || []).find(s => s.id === n.session_id) : null;
               const isSelected = selected.has(n.id);
 
+              const isLongPressing = longPressingId === n.id;
               const noteContent = (
-                <div style={{ background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden" }}>
+                <div className={isLongPressing ? "note-card-pressing" : ""} style={{ position:"relative", background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden", transition:"transform 0.15s ease, background 0.15s ease" }}>
                   <div style={{ display:"flex", alignItems:"center" }}>
                     {selectMode && (
                       <div onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}
@@ -241,11 +264,13 @@ export function Notes() {
                     )}
                     <div style={{ flex:1, minWidth:0, WebkitUserSelect:"none", userSelect:"none" }}
                       onTouchStart={() => !selectMode && startLongPress(n)}
-                      onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}>
+                      onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}
+                      onTouchCancel={cancelLongPress}>
                       <NoteCard note={n} onClick={() => handleNoteClick(n)}
                         patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null} />
                     </div>
                   </div>
+                  {isLongPressing && <div className="note-longpress-progress" aria-hidden="true" />}
                 </div>
               );
 
@@ -320,11 +345,20 @@ export function Notes() {
                   {t("save")}
                 </button>
                 <button className="btn" style={{ flex:0, padding:"0 16px", background: propsNote.pinned ? "var(--amber)" : "var(--cream)", color: propsNote.pinned ? "white" : "var(--charcoal-md)", boxShadow:"none" }}
+                  aria-label={t("favorite") || "Favorito"}
                   onClick={async () => {
                     await togglePinNote(propsNote.id);
                     setPropsNote(prev => ({ ...prev, pinned: !prev.pinned }));
                   }}>
                   <IconStar size={16} />
+                </button>
+                <button className="btn" style={{ flex:0, padding:"0 16px", background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
+                  aria-label={t("delete")}
+                  onClick={async () => {
+                    await deleteNote(propsNote.id);
+                    setPropsNote(null);
+                  }}>
+                  <IconTrash size={16} />
                 </button>
               </div>
             </div>

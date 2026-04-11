@@ -299,6 +299,8 @@ export default {
     saved: "Guardado",
     saving: "Guardando...",
     deleteConfirm: "\u00bfEliminar esta nota?",
+    deleteWarning: "Esta acci\u00f3n no se puede deshacer.",
+    onlyFavorites: "Solo favoritos",
     noNotes: "Las notas del paciente aparecer\u00e1n aqu\u00ed",
     generalNotes: "Notas generales",
     generalNotesEmpty: "Las notas generales aparecer\u00e1n aqu\u00ed",
