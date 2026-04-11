@@ -88,7 +88,8 @@ export function Notes() {
   const [selected, setSelected] = useState(new Set());
   const [propsNote, setPropsNote] = useState(null); // note being edited via long-press
   const [longPressingId, setLongPressingId] = useState(null);
-  useEscape(propsNote ? () => setPropsNote(null) : null);
+  const [confirmDeleteProps, setConfirmDeleteProps] = useState(false);
+  useEscape(confirmDeleteProps ? () => setConfirmDeleteProps(false) : (propsNote ? () => setPropsNote(null) : null));
   const longPressRef = useRef(null);
 
   const patientsWithNotes = useMemo(() => {
@@ -379,13 +380,43 @@ export function Notes() {
                 </button>
                 <button className="btn" style={{ flex:0, padding:"0 16px", background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
                   aria-label={t("delete")}
-                  onClick={async () => {
-                    await deleteNote(propsNote.id);
-                    setPropsNote(null);
-                  }}>
+                  onClick={() => setConfirmDeleteProps(true)}>
                   <IconTrash size={16} />
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal (long-press sheet) */}
+      {confirmDeleteProps && propsNote && (
+        <div className="sheet-overlay" onClick={() => setConfirmDeleteProps(false)} style={{ alignItems:"center" }}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+            style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.2s ease" }}>
+            <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
+              <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
+                <IconTrash size={24} />
+              </div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>
+                {t("notes.deleteConfirm")}
+              </div>
+              <div style={{ fontSize:13, color:"var(--charcoal-lt)", lineHeight:1.5, marginBottom:20 }}>
+                {t("notes.deleteWarning")}
+              </div>
+              <button className="btn btn-danger"
+                onClick={async () => {
+                  const id = propsNote.id;
+                  setConfirmDeleteProps(false);
+                  setPropsNote(null);
+                  await deleteNote(id);
+                }}>
+                {t("delete")}
+              </button>
+              <button className="btn btn-secondary" style={{ marginTop:8, width:"100%" }}
+                onClick={() => setConfirmDeleteProps(false)}>
+                {t("cancel")}
+              </button>
             </div>
           </div>
         </div>
