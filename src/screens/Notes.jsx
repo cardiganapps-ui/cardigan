@@ -7,33 +7,58 @@ import { useEscape } from "../hooks/useEscape";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
 /* ── Swipeable wrapper for note cards ── */
+const SWIPE_REVEALED = -80;
+const SWIPE_THRESHOLD = -40;
+
 function SwipeableRow({ children, onDelete }) {
   const ref = useRef(null);
   const [offset, setOffset] = useState(0);
+  const offsetRef = useRef(0);
   const [swiping, setSwiping] = useState(false);
 
+  // Keep ref in sync so touch handlers see the latest committed offset
+  // without needing to re-bind on every render.
+  offsetRef.current = offset;
+
   const onTouchStart = useCallback((e) => {
-    ref.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
+    ref.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      startOffset: offsetRef.current,
+      active: false,
+    };
   }, []);
 
   const onTouchMove = useCallback((e) => {
     if (!ref.current) return;
     const dx = e.touches[0].clientX - ref.current.x;
     const dy = e.touches[0].clientY - ref.current.y;
+    const revealed = ref.current.startOffset < 0;
     if (!ref.current.active) {
-      if (dx < -8 && Math.abs(dx) > Math.abs(dy)) { ref.current.active = true; setSwiping(true); }
-      else if (Math.abs(dy) > 8 || dx > 5) { ref.current = null; return; }
-      else return;
+      // Activate horizontal swipe in both directions when revealed,
+      // only leftward when hidden.
+      const horizontal = Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
+      const leftward = dx < 0;
+      if (horizontal && (revealed || leftward)) {
+        ref.current.active = true;
+        setSwiping(true);
+      } else if (Math.abs(dy) > 8 || (!revealed && dx > 5)) {
+        ref.current = null;
+        return;
+      } else return;
     }
-    if (ref.current.active) setOffset(Math.min(0, Math.max(-80, dx)));
+    if (ref.current.active) {
+      const next = ref.current.startOffset + dx;
+      setOffset(Math.min(0, Math.max(SWIPE_REVEALED, next)));
+    }
   }, []);
 
   const onTouchEnd = useCallback(() => {
     if (!ref.current?.active) { ref.current = null; return; }
     ref.current = null;
     setSwiping(false);
-    setOffset(offset < -40 ? -80 : 0);
-  }, [offset]);
+    setOffset(prev => (prev < SWIPE_THRESHOLD ? SWIPE_REVEALED : 0));
+  }, []);
 
   return (
     <div style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
