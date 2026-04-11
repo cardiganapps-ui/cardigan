@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
@@ -53,7 +53,9 @@ export function QuickActions() {
         data-tour="fab"
         onClick={() => setMenuOpen(o => !o)}
         aria-label={menuOpen ? "Cerrar" : "Agregar"}
-      >+</button>
+      >
+        <IconPlus size={26} strokeWidth={2.2} />
+      </button>
 
       {activeSheet === "patient" && (
         <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} />
