@@ -9,10 +9,10 @@ import { useT } from "../i18n/index";
 
 const ACTIONS = [
   { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },
-  { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
-  { key:"session",  Icon: IconCalendarPlus, tKey:"fab.session" },
   { key:"note",     Icon: IconClipboard,    tKey:"fab.note" },
   { key:"document", Icon: IconDocument,     tKey:"fab.document" },
+  { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
+  { key:"session",  Icon: IconCalendarPlus, tKey:"fab.session" },
 ];
 
 export function QuickActions() {
