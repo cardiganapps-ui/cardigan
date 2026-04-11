@@ -3,9 +3,12 @@ import { supabase } from "../supabaseClient";
 import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useCardigan } from "../context/CardiganContext";
+import { HelpTip } from "../components/HelpTip";
 
 export function Settings({ user, signOut }) {
   const { t } = useT();
+  const { tutorial, navigate } = useCardigan();
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -42,9 +45,17 @@ export function Settings({ user, signOut }) {
     setActiveSheet(key);
   };
 
+  const restartTutorial = () => {
+    navigate("home");
+    setTimeout(() => { tutorial?.reset?.(); }, 340);
+  };
+
   return (
     <div className="page">
-      <div className="section" style={{ paddingTop:20 }}>
+      <div style={{ display:"flex", justifyContent:"flex-end", padding:"10px 16px 0" }}>
+        <HelpTip tipsKey="help.settings" />
+      </div>
+      <div className="section" style={{ paddingTop:10 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
             <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>{userInitial}</div>
@@ -72,6 +83,14 @@ export function Settings({ user, signOut }) {
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.currency")}</div>
             <div className="settings-row-sub">MXN — Peso Mexicano</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={restartTutorial}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
+            <div className="settings-row-sub">{t("tutorial.settingsRowSub")}</div>
           </div>
           <IconChevron />
         </div>

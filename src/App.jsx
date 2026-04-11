@@ -11,6 +11,8 @@ import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { LogoIcon } from "./components/LogoMark";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { Tutorial } from "./components/Tutorial/Tutorial";
+import { useTutorial } from "./hooks/useTutorial";
 import { Toast } from "./components/Toast";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
@@ -80,6 +82,8 @@ function AppShell({ user, signOut, demo }) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
 
+  const tutorial = useTutorial({ user, demo, readOnly });
+
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
 
@@ -140,9 +144,10 @@ function AppShell({ user, signOut, demo }) {
   const ctxValue = useMemo(() => ({
     ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
+    screen, drawerOpen, tutorial,
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
@@ -186,7 +191,7 @@ function AppShell({ user, signOut, demo }) {
         )}
 
         <div className="topbar">
-          <button className={`hamburger ${drawerOpen?"open":""}`} onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
+          <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
             <div className="hamburger-line" />
             <div className="hamburger-line" />
             <div className="hamburger-line" />
@@ -228,6 +233,7 @@ function AppShell({ user, signOut, demo }) {
         )}
         <InstallPrompt />
         <BugReportFab user={user} screen={screen} />
+        {!demo && !readOnly && <Tutorial />}
       </div>
     </div>
     </CardiganProvider>

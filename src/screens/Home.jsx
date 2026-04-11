@@ -6,6 +6,7 @@ import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { HelpTip } from "../components/HelpTip";
 
 export function Home({ setScreen, userName }) {
   const { patients, upcomingSessions, payments, openRecordPaymentModal, mutating } = useCardigan();
@@ -50,7 +51,11 @@ export function Home({ setScreen, userName }) {
         </div>
       )}
 
-      <div className="kpi-grid-desktop" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      <div style={{ display:"flex", justifyContent:"flex-end", padding:"10px 16px 0" }}>
+        <HelpTip tipsKey="help.home" />
+      </div>
+
+      <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"8px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
           <div className="kpi-label">{t("home.sessionsToday")}</div>
           <div className="kpi-value">{todaySessions.length}</div>

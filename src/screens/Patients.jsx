@@ -8,6 +8,7 @@ import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { HelpTip } from "../components/HelpTip";
 
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab } = useCardigan();
@@ -160,7 +161,7 @@ export function Patients() {
   // Empty state
   if (patients.length === 0) {
     return (
-      <div className="page" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"40px 24px" }}>
+      <div className="page" data-tour="patients-list" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"40px 24px" }}>
         <div style={{ width:56, height:56, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, color:"var(--teal)" }}>
           <IconUsers size={26} />
         </div>
@@ -171,8 +172,11 @@ export function Patients() {
   }
 
   return (
-    <div className="page">
-      <div style={{ padding:"16px 16px 10px" }}>
+    <div className="page" data-tour="patients-list">
+      <div style={{ display:"flex", justifyContent:"flex-end", padding:"10px 16px 0" }}>
+        <HelpTip tipsKey="help.patients" />
+      </div>
+      <div style={{ padding:"8px 16px 10px" }}>
         <div className="search-bar">
           <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
           <input placeholder={t("patients.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />

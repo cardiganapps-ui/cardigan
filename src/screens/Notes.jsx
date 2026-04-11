@@ -5,6 +5,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
+import { HelpTip } from "../components/HelpTip";
 
 /* ── Swipeable wrapper for note cards ── */
 const SWIPE_REVEALED = -80;
@@ -179,17 +180,20 @@ export function Notes() {
       />
     )}
     <div style={{ padding:16 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, gap:8 }}>
         <div className="section-title">{t("notes.title")}</div>
-        {selectMode ? (
-          <button onClick={exitSelectMode} style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
-            {t("done")}
-          </button>
-        ) : filteredNotes.length > 0 && (
-          <button onClick={() => setSelectMode(true)} style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
-            Seleccionar
-          </button>
-        )}
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          {selectMode ? (
+            <button onClick={exitSelectMode} style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
+              {t("done")}
+            </button>
+          ) : filteredNotes.length > 0 && (
+            <button onClick={() => setSelectMode(true)} style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
+              Seleccionar
+            </button>
+          )}
+          <HelpTip tipsKey="help.notes" />
+        </div>
       </div>
 
       <div className="search-bar" style={{ marginBottom:12 }}>
