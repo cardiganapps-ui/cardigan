@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { clientColors, TODAY } from "../data/seedData";
+import { getClientColor, TODAY } from "../data/seedData";
+import { SESSION_STATUS } from "../data/constants";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
@@ -59,10 +60,10 @@ function buildMonthGrid(year, month) {
 
 /* ── SESSION ROW (shared) ── */
 const STATUS_BORDER = {
-  scheduled: "var(--teal)",
-  completed: "var(--green)",
-  cancelled: "var(--charcoal-xl)",
-  charged:   "var(--amber)",
+  [SESSION_STATUS.SCHEDULED]: "var(--teal)",
+  [SESSION_STATUS.COMPLETED]: "var(--green)",
+  [SESSION_STATUS.CANCELLED]: "var(--charcoal-xl)",
+  [SESSION_STATUS.CHARGED]:   "var(--amber)",
 };
 
 function SessionRow({ s, onClick, compact }) {
@@ -76,7 +77,7 @@ function SessionRow({ s, onClick, compact }) {
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? 13 : 14, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
       </div>
-      <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : clientColors[s.colorIdx], width:sz, height:sz, fontSize:11, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
+      <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : getClientColor(s.colorIdx), width:sz, height:sz, fontSize:11, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
         {tutor ? tutorDisplayInitials(s) : s.initials}
       </div>
       <div className="row-content">
@@ -225,7 +226,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
               const eventStyle = sess ? (() => {
                 if (isCancelledStatus(sess.status)) return undefined; // .cancelled class handles it
                 if (isTutorSession(sess)) return { background:"var(--purple)", borderStyle:"dashed", color:"white", borderLeftColor:"var(--purple)" };
-                const c = clientColors[(sess.colorIdx || 0) % clientColors.length];
+                const c = getClientColor(sess.colorIdx);
                 return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
               })() : undefined;
               return (
@@ -336,7 +337,7 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
             {visibleDots.length > 0 && (
               <div className="month-dots">
                 {visibleDots.map((s, di) => (
-                  <span key={di} className="month-dot-color" style={{ background: clientColors[(s.colorIdx || 0) % clientColors.length] }} />
+                  <span key={di} className="month-dot-color" style={{ background: getClientColor(s.colorIdx) }} />
                 ))}
                 {extraCount > 0 && <span className="month-dot-extra">+{extraCount}</span>}
               </div>

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { clientColors, TODAY, DAY_ORDER } from "../data/seedData";
+import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconDollar, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
@@ -91,7 +91,7 @@ export function Home({ setScreen, userName }) {
               const tutor = isTutorSession(s);
               return (
               <div className="row-item" key={s.id} onClick={() => openPatient(s.patient)}>
-                <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : clientColors[s.colorIdx % clientColors.length], border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
+                <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : getClientColor(s.colorIdx), border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
                   {tutor ? tutorDisplayInitials(s) : s.initials}
                 </div>
                 <div className="row-content">
@@ -123,7 +123,7 @@ export function Home({ setScreen, userName }) {
               const pct  = totalDue > 0 ? (p.paid / totalDue) * 100 : 0;
               return (
                 <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
-                  <div className="row-avatar" style={{ background: clientColors[(p.colorIdx || i) % clientColors.length] }}>{p.initials}</div>
+                  <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i) }}>{p.initials}</div>
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
                     <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>

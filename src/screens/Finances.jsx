@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { clientColors } from "../data/seedData";
+import { getClientColor } from "../data/seedData";
+import { PAYMENT_METHOD } from "../data/constants";
 import { IconCheck } from "../components/Icons";
 import { exportPayments } from "../utils/export";
 import { useCardigan } from "../context/CardiganContext";
@@ -44,7 +45,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
     return (
       <div key={p.id}>
         <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeleteId(isDeleting ? null : p.id)} style={{ cursor:"pointer" }}>
-          <div className="row-avatar" style={{ background: clientColors[(p.colorIdx||i)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>
+          <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i), width:36, height:36, fontSize:11, flexShrink:0 }}>
             {patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
@@ -109,7 +110,11 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
         </div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
           <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
-            {[{k:"all",l:t("finances.allMethods")},{k:"Transferencia",l:t("finances.transferShort")},{k:"Efectivo",l:t("finances.cashShort")}].map(o => (
+            {[
+              { k: "all", l: t("finances.allMethods") },
+              { k: PAYMENT_METHOD.TRANSFER, l: t("finances.transferShort") },
+              { k: PAYMENT_METHOD.CASH,     l: t("finances.cashShort") },
+            ].map(o => (
               <button key={o.k} onClick={() => setFilterMethod(o.k)}
                 style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none", minHeight:32 }}>
                 {o.l}
@@ -159,7 +164,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
             const owed = p.amountDue;
             return (
               <div className="bal-row" key={p.id}>
-                <div className="row-avatar" style={{ background:clientColors[i%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div className="bal-name">{p.name}</div>
                   <div className="bal-sub">{p.day} · ${p.rate}/{t("finances.perSession")}</div>
@@ -227,7 +232,7 @@ export function Finances() {
                 const pct  = totalDue > 0 ? Math.round((p.paid/totalDue)*100) : 0;
                 return (
                   <div className="bal-row" key={p.id}>
-                    <div className="row-avatar" style={{ background:clientColors[i%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                    <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div className="bal-name">{p.name}</div>
                       <div className="balance-bar" style={{ marginTop:5 }}><div className="balance-fill" style={{ width:`${pct}%`, background:"var(--teal)" }} /></div>
@@ -244,7 +249,7 @@ export function Finances() {
             <div className="card">
               {patients.filter(p=>p.amountDue<=0).map((p,i) => (
                 <div className="bal-row" key={p.id}>
-                  <div className="row-avatar" style={{ background:clientColors[(i+4)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                  <div className="row-avatar" style={{ background: getClientColor(i + 4), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                   <div style={{ flex:1 }}>
                     <div className="bal-name">{p.name}</div>
                     <div className="bal-sub">${p.paid.toLocaleString()} {t("finances.paidAmount")}</div>
@@ -280,7 +285,7 @@ export function Finances() {
                 <div className="card">
                   {[...payments].reverse().slice(0,10).map((p,i) => (
                     <div className="bal-row" key={p.id}>
-                      <div className="row-avatar" style={{ background:clientColors[(p.colorIdx||i)%clientColors.length], width:36, height:36, fontSize:11, flexShrink:0 }}>
+                      <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i), width:36, height:36, fontSize:11, flexShrink:0 }}>
                         {p.initials || p.patient?.slice(0,2).toUpperCase()}
                       </div>
                       <div style={{ flex:1 }}>

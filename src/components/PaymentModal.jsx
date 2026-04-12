@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { todayISO, isoToShortDate } from "../utils/dates";
+import { PAYMENT_METHOD } from "../data/constants";
 import { IconX } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -11,7 +12,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
   useEscape(open ? onClose : null);
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
-  const [method, setMethod] = useState("Transferencia");
+  const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
   const [customMethod, setCustomMethod] = useState("");
   const [date, setDate] = useState(todayISO());
   const [formError, setFormError] = useState("");
@@ -20,7 +21,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
     if (!open) return;
     setPatientName(initialPatientName || "");
     setAmount(initialAmount || "");
-    setMethod("Transferencia");
+    setMethod(PAYMENT_METHOD.TRANSFER);
     setCustomMethod("");
     setDate(todayISO());
     setFormError("");
@@ -48,7 +49,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
       setFormError(t("finances.enterAmount"));
       return;
     }
-    const finalMethod = method === "Otro" ? (customMethod.trim() || t("finances.other")) : method;
+    const finalMethod = method === PAYMENT_METHOD.OTHER ? (customMethod.trim() || t("finances.other")) : method;
     setFormError("");
     const ok = await createPayment({
       patientName: patientName.trim(),
@@ -83,12 +84,12 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
           <div className="input-group">
             <label className="input-label">{t("finances.method")}</label>
             <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>
-              <option value="Transferencia">{t("finances.transfer")}</option>
-              <option value="Efectivo">{t("finances.cash")}</option>
-              <option value="Otro">{t("finances.other")}</option>
+              <option value={PAYMENT_METHOD.TRANSFER}>{t("finances.transfer")}</option>
+              <option value={PAYMENT_METHOD.CASH}>{t("finances.cash")}</option>
+              <option value={PAYMENT_METHOD.OTHER}>{t("finances.other")}</option>
             </select>
           </div>
-          {method === "Otro" && (
+          {method === PAYMENT_METHOD.OTHER && (
             <div className="input-group">
               <label className="input-label">{t("finances.specifyMethod")}</label>
               <input className="input" type="text" value={customMethod} onChange={(e) => setCustomMethod(e.target.value)} placeholder={t("finances.otherPlaceholder")} />

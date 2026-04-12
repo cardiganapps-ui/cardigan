@@ -1,5 +1,7 @@
 /* ── Session display helpers used across Cardigan ── */
 
+import { SESSION_STATUS } from "../data/constants";
+
 export function isTutorSession(s) {
   return s.initials?.startsWith("T·");
 }
@@ -9,18 +11,18 @@ export function tutorDisplayInitials(s) {
 }
 
 export function isCancelledStatus(status) {
-  return status === "cancelled" || status === "charged";
+  return status === SESSION_STATUS.CANCELLED || status === SESSION_STATUS.CHARGED;
 }
 
 export function statusClass(status) {
-  if (status === "scheduled") return "status-scheduled";
-  if (status === "completed") return "status-completed";
+  if (status === SESSION_STATUS.SCHEDULED) return "status-scheduled";
+  if (status === SESSION_STATUS.COMPLETED) return "status-completed";
   return "status-cancelled";
 }
 
 export function statusLabel(status) {
   if (isCancelledStatus(status)) return "Cancelada";
-  if (status === "completed") return "Completada";
+  if (status === SESSION_STATUS.COMPLETED) return "Completada";
   return "Agendada";
 }
 
