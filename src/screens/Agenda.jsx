@@ -4,7 +4,7 @@ import { SESSION_STATUS } from "../data/constants";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
-import { IconLeaf, IconSearch, IconX } from "../components/Icons";
+import { IconSun, IconSearch, IconX } from "../components/Icons";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
@@ -106,7 +106,7 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions }) {
       <div style={{ padding:"0 16px 12px" }}>
         {daySessions.length === 0
           ? <div className="card" style={{ padding:32, textAlign:"center" }}>
-              <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconLeaf size={32} /></div>
+              <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
               <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
             </div>
@@ -409,7 +409,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
         </div>
         {daySessions.length === 0
           ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-              <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconLeaf size={24} /></div>
+              <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={24} /></div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
             </div>
           : <div className="card">
@@ -507,7 +507,7 @@ export function Agenda() {
       </div>
       {upcomingSessions.length === 0 && (
         <div style={{ padding:"32px 24px", textAlign:"center" }}>
-          <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconLeaf size={36} /></div>
+          <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconSun size={36} /></div>
           <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
           <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
         </div>
