@@ -1006,8 +1006,15 @@ button, a, select { min-height: 44px; }
   box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
   pointer-events: none;
-  transition: top 0.24s ease, left 0.24s ease, width 0.24s ease, height 0.24s ease;
-  animation: fadeIn 0.2s ease;
+  transition: top 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+              left 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+              width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+              height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: tutSpotlightIn 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tutSpotlightIn {
+  from { opacity: 0; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0); }
+  to   { opacity: 1; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62); }
 }
 /* Transparent click-blockers around the spotlight cutout. They intercept
    taps on everything except the highlighted element, so the user can only
@@ -1023,29 +1030,65 @@ button, a, select { min-height: 44px; }
   border-radius: calc(var(--radius-lg) + 4px);
   border: 2px solid rgba(255, 255, 255, 0.5);
   pointer-events: none;
+  animation: tutRingPulse 2.4s ease-in-out 0.3s infinite;
 }
+@keyframes tutRingPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.9; transform: scale(1.02); }
+}
+
+/* ── Tooltip bubble ── */
 .tut-bubble {
   position: fixed;
   z-index: calc(var(--z-tutorial) + 1);
   background: var(--white);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
-  padding: 16px 18px 14px;
+  box-shadow: 0 10px 36px rgba(0,0,0,0.24);
+  padding: 18px 18px 14px;
   max-width: min(320px, calc(100vw - 24px));
   width: calc(100vw - 24px);
-  animation: fadeIn 0.22s ease;
+  transition: top 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+              left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
+/* Directional entrance animations — the tooltip slides from the side of the
+   spotlight so the connection between element and tooltip feels deliberate. */
+.tut-bubble--enter-from-above {
+  animation: tutBubbleFromAbove 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tut-bubble--enter-from-below {
+  animation: tutBubbleFromBelow 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tut-bubble--enter-center {
+  animation: tutBubbleCenter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tutBubbleFromAbove {
+  from { opacity: 0; transform: translateY(-14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes tutBubbleFromBelow {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes tutBubbleCenter {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* Centered variant: the translate is part of the anchor, so override the
+   enter animation to use a center-scale form. */
 .tut-bubble--center {
   left: 50% !important; top: 50% !important;
   transform: translate(-50%, -50%);
   max-width: min(340px, calc(100vw - 32px));
+  animation: tutBubbleCenter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 .tut-bubble-title {
   font-family: var(--font-d);
   font-size: 16px; font-weight: 800;
   color: var(--charcoal);
   margin-bottom: 6px;
   letter-spacing: -0.2px;
+  padding-right: 26px; /* room for the × close button */
 }
 .tut-bubble-body {
   font-size: 13.5px;
@@ -1053,35 +1096,135 @@ button, a, select { min-height: 44px; }
   color: var(--charcoal-md);
   margin-bottom: 14px;
 }
-.tut-bubble-footer {
-  display: flex; align-items: center; justify-content: space-between;
+
+/* Close / skip — top-right icon button. Takes the Skip action out of the
+   footer row so the progress dots + Atrás + Siguiente always fit. */
+.tut-bubble-close {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 26px; height: 26px; min-height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--cream);
+  color: var(--charcoal-lt);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+}
+.tut-bubble-close:hover,
+.tut-bubble-close:active {
+  background: var(--cream-dark);
+  color: var(--charcoal-md);
+}
+
+/* Dot-based progress — replaces the "Paso X de Y" text so the footer can
+   hold buttons without wrapping. */
+.tut-bubble-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 0 12px;
+}
+.tut-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cream-dark);
+  transition: width 0.22s ease, background 0.22s ease;
+}
+.tut-dot--done {
+  background: var(--teal-light);
+}
+.tut-dot--active {
+  width: 18px;
+  border-radius: 100px;
+  background: var(--teal);
+}
+
+.tut-bubble-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
-.tut-bubble-progress {
-  font-size: 11px; font-weight: 700;
-  color: var(--charcoal-xl);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.tut-bubble-actions { display: flex; align-items: center; gap: 6px; }
 .tut-btn {
-  height: 34px; padding: 0 14px;
+  height: 38px; padding: 0 18px;
   border-radius: var(--radius-pill);
   border: none; cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-d);
   font-size: 13px; font-weight: 700;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
 }
 .tut-btn-primary {
   background: var(--teal); color: var(--white);
-  box-shadow: 0 2px 8px rgba(91,155,175,0.35);
+  box-shadow: 0 2px 10px rgba(91,155,175,0.4);
 }
 .tut-btn-primary:active { transform: scale(0.96); }
+.tut-btn-primary:hover  { background: var(--teal-dark); }
 .tut-btn-ghost {
-  background: transparent; color: var(--charcoal-lt);
-  padding: 0 10px;
+  background: var(--cream); color: var(--charcoal-md);
+  padding: 0 16px;
 }
-.tut-btn-ghost:hover { color: var(--charcoal-md); }
+.tut-btn-ghost:hover  { background: var(--cream-dark); }
+.tut-btn-ghost:active { transform: scale(0.96); }
+
+/* ── Screen-change chip ── */
+/* Fills the role of the "user tapped the hamburger" feedback. Shown
+   full-bleed-centered while the Tutorial orchestrator switches screens. */
+.tut-dim--transition {
+  background: rgba(20, 20, 20, 0.48);
+  animation: fadeIn 0.2s ease;
+  pointer-events: auto;
+}
+.tut-nav-chip {
+  position: fixed;
+  /* Sit below the topbar so it doesn't collide with the pulsing hamburger. */
+  top: calc(var(--sat) + 60px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--z-tutorial) + 2);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  color: var(--teal-dark);
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 16px 10px 14px;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+  animation: tutChipIn 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+@keyframes tutChipIn {
+  from { opacity: 0; transform: translate(-50%, -14px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ── Hamburger "tapped" pulse ── */
+/* Applied briefly by the orchestrator via JS while a screen change is
+   pending, so the user sees the button that "did" the navigation. The
+   z-index bump lifts the hamburger above the transition dim so it reads
+   clearly; the background pill makes it visible against the dimmed topbar. */
+.hamburger.tut-nav-pulse {
+  position: relative;
+  z-index: calc(var(--z-tutorial) + 3);
+  background: var(--nav-bg);
+  border-radius: 50%;
+  animation: tutHamburgerPulse 0.55s cubic-bezier(0.4, 0, 0.6, 1);
+}
+@keyframes tutHamburgerPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(122, 181, 199, 0.0); transform: scale(1); }
+  30%  { box-shadow: 0 0 0 8px rgba(122, 181, 199, 0.7); transform: scale(1.12); }
+  100% { box-shadow: 0 0 0 20px rgba(122, 181, 199, 0); transform: scale(1); }
+}
 .tut-welcome-overlay {
   position: fixed; inset: 0;
   background: rgba(20, 20, 20, 0.55);
@@ -1097,7 +1240,11 @@ button, a, select { min-height: 44px; }
   padding: 26px 22px 20px;
   max-width: 340px; width: 100%;
   text-align: center;
-  animation: fadeIn 0.24s ease;
+  animation: tutWelcomeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tutWelcomeIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .tut-welcome-logo {
   width: 56px; height: 56px;
