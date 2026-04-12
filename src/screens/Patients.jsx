@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { clientColors, DAY_ORDER } from "../data/seedData";
+import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { useEscape } from "../hooks/useEscape";
@@ -200,7 +200,7 @@ export function Patients() {
             ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
             : filtered.map((p,i) => (
               <div className="row-item" key={p.id} onClick={() => openDetail(p)}>
-                <div className="row-avatar" style={{ background: clientColors[i%clientColors.length] }}>{p.initials}</div>
+                <div className="row-avatar" style={{ background: getClientColor(i) }}>{p.initials}</div>
                 <div className="row-content">
                   <div className="row-title">{p.name}</div>
                   <div className="row-sub">{p.day} · {p.time}</div>

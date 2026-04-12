@@ -1,5 +1,10 @@
 import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
+import {
+  PATIENT_STATUS,
+  RECURRENCE_WINDOW_WEEKS,
+  SESSION_STATUS,
+} from "../data/constants";
 import { SHORT_MONTHS, getInitials, formatShortDate, parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
@@ -11,7 +16,7 @@ export function getRecurringDates(dayName, startDateStr, endDateStr) {
   let diff = target - start.getDay();
   if (diff < 0) diff += 7;
   const end = endDateStr ? parseLocalDate(endDateStr) : new Date(start);
-  if (!endDateStr) end.setDate(end.getDate() + 12 * 7);
+  if (!endDateStr) end.setDate(end.getDate() + RECURRENCE_WINDOW_WEEKS * 7);
   const dates = [];
   const current = new Date(start);
   current.setDate(start.getDate() + diff);
@@ -66,10 +71,10 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   async function updateSessionStatus(sessionId, status, charge, cancelReason) {
     setMutating(true);
     setMutationError("");
-    const newStatus = (status === "cancelled" && charge) ? "charged" : status;
+    const newStatus = (status === SESSION_STATUS.CANCELLED && charge) ? SESSION_STATUS.CHARGED : status;
     const update = { status: newStatus };
     if (cancelReason !== undefined) update.cancel_reason = cancelReason || null;
-    if (newStatus === "scheduled" || newStatus === "completed") update.cancel_reason = null;
+    if (newStatus === SESSION_STATUS.SCHEDULED || newStatus === SESSION_STATUS.COMPLETED) update.cancel_reason = null;
     const { error } = await supabase.from("sessions")
       .update(update).eq("id", sessionId);
     setMutating(false);
@@ -113,12 +118,12 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     setMutating(true);
     setMutationError("");
     const { error } = await supabase.from("sessions")
-      .update({ date: newDate.trim(), time: newTime.trim(), day: dayName, status: "scheduled" })
+      .update({ date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED })
       .eq("id", sessionId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId
-      ? { ...s, date: newDate.trim(), time: newTime.trim(), day: dayName, status: "scheduled" } : s));
+      ? { ...s, date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED } : s));
     return true;
   }
 
@@ -164,7 +169,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const primary = schedules[0];
 
     const toDelete = upcomingSessions.filter(s => {
-      if (s.patient_id !== patientId || s.status !== "scheduled") return false;
+      if (s.patient_id !== patientId || s.status !== SESSION_STATUS.SCHEDULED) return false;
       return parseShortDate(s.date) >= effDate;
     });
 
@@ -225,7 +230,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     // Find scheduled sessions after the finish date
     const toDelete = upcomingSessions.filter(s => {
-      if (s.patient_id !== patientId || s.status !== "scheduled") return false;
+      if (s.patient_id !== patientId || s.status !== SESSION_STATUS.SCHEDULED) return false;
       return parseShortDate(s.date) > cutoff;
     });
 
@@ -242,7 +247,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }
 
     const { data: updated, error: pErr } = await supabase.from("patients")
-      .update({ status: "ended", billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) })
+      .update({ status: PATIENT_STATUS.ENDED, billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) })
       .eq("id", patientId).select().single();
     if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
     setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));

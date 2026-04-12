@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 import { formatShortDate, parseShortDate, toISODate } from "../utils/dates";
+import {
+  ADMIN_EMAIL,
+  PATIENT_STATUS,
+  RECURRENCE_EXTEND_THRESHOLD_DAYS,
+  RECURRENCE_WINDOW_WEEKS,
+  SESSION_STATUS,
+} from "../data/constants";
 import { createPatientActions } from "./usePatients";
 import { createSessionActions, getRecurringDates } from "./useSessions";
 import { createPaymentActions } from "./usePayments";
@@ -10,8 +17,6 @@ import { createDocumentActions } from "./useDocuments";
 function mapRows(rows) {
   return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx }));
 }
-
-const ADMIN_EMAIL = "gaxioladiego@gmail.com";
 
 export function isAdmin(user) {
   return user?.email === ADMIN_EMAIL;
@@ -96,15 +101,19 @@ export function useCardiganData(user, viewAsUserId) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const threshold = new Date(today);
-      threshold.setDate(today.getDate() + 28);
-      const extendEnd = toISODate(new Date(today.getTime() + 12 * 7 * 86400000));
+      threshold.setDate(today.getDate() + RECURRENCE_EXTEND_THRESHOLD_DAYS);
+      const extendEnd = toISODate(
+        new Date(today.getTime() + RECURRENCE_WINDOW_WEEKS * 7 * 86400000)
+      );
       let didExtend = false;
 
       for (const patient of pData) {
-        if (patient.status !== "active") continue;
+        if (patient.status !== PATIENT_STATUS.ACTIVE) continue;
         const allPSess = sData.filter(s => s.patient_id === patient.id);
         if (allPSess.length === 0) continue;
-        const activePSess = allPSess.filter(s => s.status !== "cancelled" && s.status !== "charged");
+        const activePSess = allPSess.filter(
+          s => s.status !== SESSION_STATUS.CANCELLED && s.status !== SESSION_STATUS.CHARGED
+        );
         const schedMap = new Map();
         allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time }));
         const existingDates = new Set(allPSess.map(s => s.date));
@@ -178,14 +187,14 @@ export function useCardiganData(user, viewAsUserId) {
   const enrichedSessions = useMemo(() => {
     const now = new Date();
     return upcomingSessions.map(s => {
-      if (s.status !== "scheduled") return s;
+      if (s.status !== SESSION_STATUS.SCHEDULED) return s;
       const d = parseShortDate(s.date);
       if (s.time) {
         const [h, m] = s.time.split(":");
         d.setHours(parseInt(h) || 0, parseInt(m) || 0);
       }
       d.setTime(d.getTime() + 60 * 60 * 1000);
-      if (now >= d) return { ...s, status: "completed", _autoCompleted: true };
+      if (now >= d) return { ...s, status: SESSION_STATUS.COMPLETED, _autoCompleted: true };
       return s;
     });
   }, [upcomingSessions]);
@@ -196,7 +205,7 @@ export function useCardiganData(user, viewAsUserId) {
       let futureCount = 0;
       enrichedSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
-        if (s.status === "cancelled") return;
+        if (s.status === SESSION_STATUS.CANCELLED) return;
         const d = parseShortDate(s.date);
         if (s.time) {
           const [h, m] = s.time.split(":");

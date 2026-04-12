@@ -1,9 +1,10 @@
 import { supabase } from "../supabaseClient";
+import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 
 export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
 
-  async function createPayment({ patientName, amount, method = "Transferencia", date = formatShortDate() }) {
+  async function createPayment({ patientName, amount, method = PAYMENT_METHOD.TRANSFER, date = formatShortDate() }) {
     const parsedAmount = Number(amount);
     if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
     const patient = patients.find(p => p.name === patientName);

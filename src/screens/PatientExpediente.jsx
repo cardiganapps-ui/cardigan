@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { clientColors } from "../data/seedData";
+import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconClipboard, IconCalendar, IconUser, IconDocument, IconUpload, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
@@ -209,7 +209,7 @@ export function PatientExpediente({
         position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--nav-bg)",
-        borderRadius:"20px 20px 0 0",
+        borderRadius:"var(--radius-lg) var(--radius-lg) 0 0",
         boxShadow:"0 -4px 30px rgba(0,0,0,0.25)",
         animation: dragY > 0 ? undefined : "expedientePullUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
@@ -233,7 +233,7 @@ export function PatientExpediente({
             style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
           </button>
-          <div className="row-avatar" style={{ background: clientColors[(patient.colorIdx || 0) % clientColors.length], width:48, height:48, fontSize:16 }}>
+          <div className="row-avatar" style={{ background: getClientColor(patient.colorIdx), width:48, height:48, fontSize:16 }}>
             {patient.initials}
           </div>
           <div style={{ flex:1 }}>

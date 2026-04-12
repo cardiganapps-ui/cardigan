@@ -14,7 +14,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose }
       <div style={{
         position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-doc-viewer)",
         display:"flex", flexDirection:"column", background:"var(--cream)",
-        borderRadius:"20px 20px 0 0", overflow:"hidden",
+        borderRadius:"var(--radius-lg) var(--radius-lg) 0 0", overflow:"hidden",
         animation:"expedientePullUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
         <div style={{ background:"var(--nav-bg)", padding:"12px 16px", flexShrink:0 }}>

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { clientColors } from "../data/seedData";
+import { getClientColor } from "../data/seedData";
+import { SESSION_STATUS } from "../data/constants";
+import { isCancelledStatus } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconClipboard } from "./Icons";
 import { useT } from "../i18n/index";
@@ -19,9 +21,9 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   if (!session) return null;
   const patientData = patients?.find(p => p.name === session.patient);
   const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
-  const isCancelled = session.status === "cancelled" || session.status === "charged";
-  const isCompleted = session.status === "completed";
-  const isScheduled = session.status === "scheduled";
+  const isCancelled = isCancelledStatus(session.status);
+  const isCompleted = session.status === SESSION_STATUS.COMPLETED;
+  const isScheduled = session.status === SESSION_STATUS.SCHEDULED;
   const statusLbl = t(`sessions.${session.status}`);
   const isTutor = session.initials?.startsWith("T·");
   const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
@@ -62,7 +64,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20 }}>
-            <div className="row-avatar" style={{ background: isTutor ? "var(--purple)" : clientColors[(session.colorIdx || 0) % clientColors.length], width:52, height:52, fontSize:16, border: isTutor ? "2px dashed var(--purple-bg)" : undefined }}>{displayInitials}</div>
+            <div className="row-avatar" style={{ background: isTutor ? "var(--purple)" : getClientColor(session.colorIdx), width:52, height:52, fontSize:16, border: isTutor ? "2px dashed var(--purple-bg)" : undefined }}>{displayInitials}</div>
             <div>
               <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)" }}>
                 {session.patient}
