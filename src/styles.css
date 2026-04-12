@@ -248,7 +248,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .drawer-plan-value { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); margin-top: 1px; }
 
 /* PAGE */
-.page { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; padding-bottom: 24px; }
+.page { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+.page > *:last-child { margin-bottom: 80px; } /* guarantees scroll room below FAB */
 .page::-webkit-scrollbar { display: none; }
 
 /* FAB — charcoal primary button, matching landing .lp-btn--primary */
