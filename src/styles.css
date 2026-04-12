@@ -1009,6 +1009,15 @@ button, a, select { min-height: 44px; }
   transition: top 0.24s ease, left 0.24s ease, width 0.24s ease, height 0.24s ease;
   animation: fadeIn 0.2s ease;
 }
+/* Transparent click-blockers around the spotlight cutout. They intercept
+   taps on everything except the highlighted element, so the user can only
+   interact with the feature being showcased. */
+.tut-blocker {
+  position: fixed;
+  background: transparent;
+  z-index: var(--z-tutorial);
+  pointer-events: auto;
+}
 .tut-spotlight::after {
   content: ""; position: absolute; inset: -4px;
   border-radius: 16px;
