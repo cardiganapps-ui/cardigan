@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchAllAccounts, fetchBugReports, deleteBugReport } from "../hooks/useCardiganData";
-import { IconX, IconTrash } from "../components/Icons";
+import { IconX, IconTrash, IconDownload } from "../components/Icons";
 import { useT } from "../i18n/index";
 
 function relativeTime(dateStr) {
@@ -137,6 +137,32 @@ function BugReportRow({ report, onDelete }) {
   );
 }
 
+function formatReportText(r) {
+  const date = r.created_at ? new Date(r.created_at).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—";
+  const logs = Array.isArray(r.logs)
+    ? r.logs.map(l => typeof l === "string" ? l : `[${l.level}] ${l.timestamp || ""} ${l.message}`).join("\n")
+    : typeof r.logs === "string" ? r.logs : r.logs ? JSON.stringify(r.logs, null, 2) : "";
+
+  let text = `## Bug Report — ${date}\n`;
+  text += `User: ${r.user_email || "Anónimo"}\n`;
+  text += `Screen: ${r.screen || "—"}\n`;
+  text += `Description: ${r.description || "(sin descripción)"}\n`;
+  if (r.user_agent) text += `User-Agent: ${r.user_agent}\n`;
+  if (logs) text += `\nLogs:\n${logs}\n`;
+  return text;
+}
+
+function downloadBugReports(reports) {
+  const text = reports.map(formatReportText).join("\n---\n\n");
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bug-reports-${new Date().toISOString().slice(0, 10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function BugsTab() {
   const { t } = useT();
   const [reports, setReports] = useState([]);
@@ -163,8 +189,14 @@ function BugsTab() {
 
   return (
     <>
-      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
-        {t("admin.bugsCount", { count: reports.length })}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+        <div style={{ fontSize:11, color:"var(--charcoal-xl)" }}>
+          {t("admin.bugsCount", { count: reports.length })}
+        </div>
+        <button onClick={() => downloadBugReports(reports)}
+          style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", fontSize:11, fontWeight:700, color:"var(--teal-dark)", background:"var(--teal-pale)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+          <IconDownload size={13} /> .txt
+        </button>
       </div>
       {reports.map(r => <BugReportRow key={r.id} report={r} onDelete={handleDelete} />)}
     </>
