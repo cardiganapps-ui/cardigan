@@ -3,6 +3,7 @@ import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
+import { MoneyInput } from "../MoneyInput";
 import { useEscape } from "../../hooks/useEscape";
 import { useT } from "../../i18n/index";
 
@@ -65,7 +66,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
           )}
           <div className="input-group">
             <label className="input-label">{t("patients.ratePerSession")}</label>
-            <input className="input" type="number" min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+            <MoneyInput min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
           </div>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
             <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>{t("patients.recurringAppts")}</span>

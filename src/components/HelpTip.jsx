@@ -9,19 +9,20 @@ import { useEscape } from "../hooks/useEscape";
  *  - tipsKey: i18n key resolving to an array of bullet strings (e.g. "help.home").
  *              If the array is empty or missing, the component renders nothing —
  *              this is how we suppress the button on screens without useful tips.
- *  - title: optional string — falls back to t("help.title")
  *  - variant: "default" (default) for light backgrounds,
  *             "dark" for dark surfaces (topbar, expediente header)
  *
  * Tap the button to open; tap outside, press ESC, or tap again to close.
+ * The popover shows only the bullet list — no title header — so each tip
+ * stays front-and-center.
  */
-export function HelpTip({ tipsKey, title, variant = "default" }) {
+export function HelpTip({ tipsKey, variant = "default" }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
   const tips = t(tipsKey);
-  const resolvedTitle = title ?? t("help.title");
+  const ariaLabel = t("help.ariaLabel");
 
   // Close on route change — the screen that rendered us is going away.
   useEffect(() => {
@@ -53,15 +54,14 @@ export function HelpTip({ tipsKey, title, variant = "default" }) {
       <button
         type="button"
         className={btnClass}
-        aria-label={resolvedTitle}
+        aria-label={ariaLabel}
         aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
       >
         ?
       </button>
       {open && (
-        <div className="help-tip" role="dialog" aria-label={resolvedTitle}>
-          <div className="help-tip-title">{resolvedTitle}</div>
+        <div className="help-tip" role="dialog" aria-label={ariaLabel}>
           <ul className="help-tip-list">
             {tips.map((tip, i) => <li key={i}>{tip}</li>)}
           </ul>

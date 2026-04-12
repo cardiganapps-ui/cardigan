@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { todayISO, isoToShortDate } from "../../utils/dates";
 import { IconX } from "../Icons";
+import { MoneyInput } from "../MoneyInput";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 
@@ -88,7 +89,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, mutating, initial
           {isTutor && (
             <div className="input-group">
               <label className="input-label">{t("sessions.sessionRate")}</label>
-              <input className="input" type="number" min="0" step="50" value={customRate} onChange={e => setCustomRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+              <MoneyInput min="0" step="50" value={customRate} onChange={e => setCustomRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
             </div>
           )}
           {err && <div className="form-error">{err}</div>}

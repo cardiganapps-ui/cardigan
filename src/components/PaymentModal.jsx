@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { todayISO, isoToShortDate } from "../utils/dates";
 import { PAYMENT_METHOD } from "../data/constants";
 import { IconX } from "./Icons";
+import { MoneyInput } from "./MoneyInput";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -79,7 +80,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
           </div>
           <div className="input-group">
             <label className="input-label">{t("finances.amount")}</label>
-            <input className="input" type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+            <MoneyInput min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
           </div>
           <div className="input-group">
             <label className="input-label">{t("finances.method")}</label>

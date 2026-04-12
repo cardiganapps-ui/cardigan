@@ -263,9 +263,9 @@ export function PatientExpediente({
       style={{
         position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
-        background:"var(--nav-bg)",
+        background:"var(--white)",
         borderRadius:"var(--radius-lg) var(--radius-lg) 0 0",
-        boxShadow:"0 -4px 30px rgba(0,0,0,0.25)",
+        boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
         animation: dragY > 0 ? undefined : "expedientePullUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
         transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -274,34 +274,34 @@ export function PatientExpediente({
 
       {/* Drag zone — covers handle + header */}
       <div onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
-        style={{ flexShrink:0, cursor:"grab" }}>
+        style={{ flexShrink:0, cursor:"grab", borderBottom:"1px solid var(--border-lt)" }}>
 
         {/* Drag handle (visual only) */}
         <div style={{ padding:"10px 0 0" }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:"rgba(255,255,255,0.3)", margin:"0 auto 8px" }} />
+          <div style={{ width:36, height:4, borderRadius:2, background:"var(--cream-deeper)", margin:"0 auto 8px" }} />
         </div>
 
         {/* Header */}
         <div style={{ padding:"0 16px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={onClose} aria-label={t("back")}
-            style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", flexShrink:0, transform:"rotate(180deg)" }}>
+            style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
           </button>
           <div className="row-avatar" style={{ background: getClientColor(patient.colorIdx), width:48, height:48, fontSize:16 }}>
             {patient.initials}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+            <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
+            <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
               {patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")} · {patient.day} {patient.time}
             </div>
           </div>
           <button onClick={() => onEdit(patient)}
-            style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
+            style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
             {t("edit")}
           </button>
-          <HelpTip tipsKey="help.expediente" variant="dark" />
+          <HelpTip tipsKey="help.expediente" />
         </div>
         {/* Tabs */}
         <div role="tablist" style={{ display:"flex", gap:0, marginTop:14 }}>
@@ -309,8 +309,8 @@ export function PatientExpediente({
             <button key={t.k} role="tab" aria-selected={tab === t.k} onClick={() => setTab(t.k)}
               style={{
                 flex:1, padding:"10px 0 12px", fontSize:12, fontWeight:700,
-                fontFamily:"var(--font)", color: tab === t.k ? "white" : "rgba(255,255,255,0.4)",
-                background:"none", border:"none", borderBottom: tab === t.k ? "2px solid white" : "2px solid transparent",
+                fontFamily:"var(--font)", color: tab === t.k ? "var(--charcoal)" : "var(--charcoal-xl)",
+                background:"none", border:"none", borderBottom: tab === t.k ? "2px solid var(--charcoal)" : "2px solid transparent",
                 cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5,
               }}>
               <t.Icon size={14} /> {t.l}
@@ -321,7 +321,7 @@ export function PatientExpediente({
       </div>
 
       {/* Content */}
-      <div style={{ flex:1, overflowY:"auto", background:"var(--cream)", borderRadius:0 }}>
+      <div style={{ flex:1, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
 
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (
