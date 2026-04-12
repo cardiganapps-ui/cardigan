@@ -45,7 +45,7 @@ export function PullToRefresh({ onRefresh, children }) {
   }, [pullY, onRefresh]);
 
   return (
-    <div ref={wrapRef} style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", overflow:"hidden" }}
+    <div ref={wrapRef} style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", overflow:"clip" }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       {(pullY > 0 || refreshing) && (
         <div style={{

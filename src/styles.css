@@ -87,9 +87,9 @@ html, body {
   height: 100dvh;
   width: 100%;
   background: var(--white);
-  position: relative; overflow: hidden;
+  position: relative; overflow: clip;
 }
-.main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
+.main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: clip; }
 .status-bar { height: var(--sat); background: var(--white); flex-shrink: 0; }
 
 /* TOPBAR — minimal white bar matching the landing .lp-nav */
