@@ -222,6 +222,7 @@ export default {
     sessionType: "Tipo de sesi\u00f3n",
     sessionRate: "Tarifa de esta sesi\u00f3n",
     scheduleWithTutor: "Agendar con tutor",
+    attachDoc: "Adjuntar documento",
     selectDate: "Selecciona una fecha.",
     selectTime: "Selecciona una hora.",
     patient: "Paciente",
@@ -379,6 +380,7 @@ export default {
     notas: "Notas",
     docs: "Docs",
     period: "Per\u00edodo",
+    periodFilterSub: "Filtra finanzas y asistencia del paciente",
     attendance: "Asistencia",
     programmed: "Programadas",
     attended: "Asisti\u00f3",
@@ -386,6 +388,10 @@ export default {
     chargedCancelled: "{count} cancelada{plural} cobrada{plural}",
     perSession: "por sesi\u00f3n",
     noSessions: "Sin sesiones registradas",
+    upcomingSessions: "Pr\u00f3ximas",
+    pastSessions: "Anteriores",
+    noUpcomingSessions: "Sin sesiones pr\u00f3ximas",
+    noPastSessions: "Sin sesiones anteriores",
   },
 
   // ── Time periods ──

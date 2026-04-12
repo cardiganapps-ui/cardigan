@@ -3,10 +3,12 @@ import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconClipboard, IconCalendar, IconUser, IconDocument, IconUpload, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
+import { SessionSheet } from "../components/SessionSheet";
 import { isTutorSession, statusClass } from "../utils/sessions";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useT } from "../i18n/index";
 
@@ -17,15 +19,25 @@ export function PatientExpediente({
   mutating,
 }) {
   const { t, strings } = useT();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession } = useCardigan();
   useLayer("expediente", onClose);
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
+  // Session currently shown in the edit overlay (Sesiones tab).
+  const [selectedSession, setSelectedSession] = useState(null);
+  // When the user chooses "Adjuntar documento" from the session sheet we
+  // stash the target session id here; the file input's onChange consumes it
+  // so the upload is tagged to that session.
+  const [pendingDocSessionId, setPendingDocSessionId] = useState(null);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 3);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   });
   const [dateTo, setDateTo] = useState(todayISO());
 
+  // All sessions for this patient, sorted descending (most recent first) —
+  // used by the Resumen stats which are order-independent. The Sesiones tab
+  // derives its own upcoming/past split below.
   const pSessions = useMemo(() =>
     (upcomingSessions || [])
       .filter(s => s.patient_id === patient.id)
@@ -36,6 +48,28 @@ export function PatientExpediente({
       }),
     [upcomingSessions, patient.id]
   );
+
+  // Sesiones tab: upcoming ascending (nearest first), past descending
+  // (most recent first). Date + time are compared as ISO strings so ordering
+  // is stable across days.
+  const { upcomingPSessions, pastPSessions } = useMemo(() => {
+    const todayIso = todayISO();
+    const byDateTimeAsc = (a, b) => {
+      const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
+      if (da !== db) return da.localeCompare(db);
+      return (a.time || "").localeCompare(b.time || "");
+    };
+    const byDateTimeDesc = (a, b) => byDateTimeAsc(b, a);
+    const upcoming = [];
+    const past = [];
+    for (const s of pSessions) {
+      if (shortDateToISO(s.date) >= todayIso) upcoming.push(s);
+      else past.push(s);
+    }
+    upcoming.sort(byDateTimeAsc);
+    past.sort(byDateTimeDesc);
+    return { upcomingPSessions: upcoming, pastPSessions: past };
+  }, [pSessions]);
 
   const pNotes = useMemo(() =>
     (notes || []).filter(n => n.patient_id === patient.id),
@@ -139,7 +173,11 @@ export function PatientExpediente({
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    // Capture + clear the pending session id up front so subsequent uploads
+    // (triggered from other entry points) don't inherit it.
+    const sessionId = pendingDocSessionId;
+    setPendingDocSessionId(null);
+    if (files.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
@@ -148,11 +186,27 @@ export function PatientExpediente({
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
     setUploading(true);
     for (const file of valid) {
-      await uploadDocument({ patientId: patient.id, file, sessionId: null, name: file.name });
+      await uploadDocument({ patientId: patient.id, file, sessionId, name: file.name });
     }
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  // Trigger the file input. Used by the Resumen "Documento" button, the
+  // Documentos tab upload button, and the per-session "Adjuntar documento"
+  // action in the session sheet (which also sets pendingDocSessionId).
+  const triggerUpload = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const attachDocToSession = useCallback((session) => {
+    setPendingDocSessionId(session.id);
+    // Close the session sheet while the native file picker is up — on
+    // return, the user sees the uploaded file reflected in whatever tab
+    // they were on.
+    setSelectedSession(null);
+    triggerUpload();
+  }, [triggerUpload]);
 
   const openDocViewer = async (doc) => {
     const url = await getDocumentUrl(doc.file_path);
@@ -270,9 +324,13 @@ export function PatientExpediente({
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (
           <div style={{ padding:"12px 14px" }}>
-            {/* Date range filter */}
+            {/* Date range filter — explicitly labeled so users understand it
+                scopes the financials + attendance cards right below. */}
             <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>{t("expediente.period")}</div>
+              <div style={{ marginBottom:8 }}>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>{t("expediente.period")}</div>
+                <div style={{ fontSize:11, color:"var(--charcoal-lt)", marginTop:2 }}>{t("expediente.periodFilterSub")}</div>
+              </div>
               <div style={{ display:"flex", gap:6, marginBottom:6, flexWrap:"wrap" }}>
                 {[{l:t("periods.1m"),m:1},{l:t("periods.3m"),m:3},{l:t("periods.6m"),m:6},{l:t("periods.1y"),m:12}].map(p => {
                   const d = new Date(); d.setMonth(d.getMonth() - p.m);
@@ -380,12 +438,15 @@ export function PatientExpediente({
               ))}
             </div>
 
-            <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
                 {t("fab.payment")}
               </button>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
                 {t("fab.note")}
+              </button>
+              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={triggerUpload} disabled={uploading}>
+                {uploading ? t("docs.uploading") : t("fab.document")}
               </button>
             </div>
           </div>
@@ -394,36 +455,36 @@ export function PatientExpediente({
         {/* ── SESIONES ── */}
         {tab === "sesiones" && (
           <div style={{ padding:16 }}>
-            {pSessions.length === 0
-              ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-                  {t("expediente.noSessions")}
-                </div>
-              : <div className="card">
-                  {pSessions.map(s => {
-                    const tutor = isTutorSession(s);
-                    const hasNote = pNotes.some(n => n.session_id === s.id);
-                    return (
-                      <div className="row-item" key={s.id} onClick={() => openSessionNote(s)} style={{ cursor:"pointer" }}>
-                        <div style={{ width:44, textAlign:"center", flex:"none" }}>
-                          <div style={{ fontFamily:"var(--font-d)", fontSize:13, fontWeight:800, color:"var(--charcoal)" }}>{s.date}</div>
-                          <div style={{ fontSize:10, color:"var(--charcoal-xl)" }}>{s.time}</div>
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)", display:"flex", alignItems:"center", gap:4 }}>
-                            {tutor && <span style={{ fontSize:9, fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
-                            <span className={`session-status ${statusClass(s.status)}`} style={{ fontSize:10 }}>{t(`sessions.${s.status}`)}</span>
-                          </div>
-                          {hasNote && <div style={{ fontSize:11, color:"var(--teal-dark)", marginTop:2 }}>{t("notes.noteAttached")}</div>}
-                        </div>
-                        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-                          <IconClipboard size={14} style={{ color: hasNote ? "var(--teal-dark)" : "var(--charcoal-xl)" }} />
-                          <span className="row-chevron">›</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-            }
+            {pSessions.length === 0 ? (
+              <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+                {t("expediente.noSessions")}
+              </div>
+            ) : (
+              <>
+                {/* Upcoming — nearest first */}
+                <SessionsSection
+                  title={t("expediente.upcomingSessions")}
+                  emptyLabel={t("expediente.noUpcomingSessions")}
+                  sessions={upcomingPSessions}
+                  pNotes={pNotes}
+                  onSelect={setSelectedSession}
+                  t={t}
+                />
+                {/* Past — most recent first */}
+                {pastPSessions.length > 0 && (
+                  <div style={{ marginTop:16 }}>
+                    <SessionsSection
+                      title={t("expediente.pastSessions")}
+                      emptyLabel={t("expediente.noPastSessions")}
+                      sessions={pastPSessions}
+                      pNotes={pNotes}
+                      onSelect={setSelectedSession}
+                      t={t}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -437,17 +498,16 @@ export function PatientExpediente({
               ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
                   {t("notes.noNotes")}
                 </div>
-              : <div className="card">
+              : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {pNotes.map(n => {
                     const linkedSession = n.session_id ? pSessions.find(s => s.id === n.session_id) : null;
                     return (
-                      <div key={n.id}>
-                        {linkedSession && (
-                          <div style={{ padding:"6px 16px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
-                            {t("expediente.sesiones")} {linkedSession.date} · {linkedSession.time}
-                          </div>
-                        )}
-                        <NoteCard note={n} onClick={() => setEditingNote(n)} />
+                      <div key={n.id} className="card" style={{ overflow:"hidden" }}>
+                        <NoteCard
+                          note={n}
+                          onClick={() => setEditingNote(n)}
+                          sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null}
+                        />
                       </div>
                     );
                   })}
@@ -459,11 +519,8 @@ export function PatientExpediente({
         {/* ── DOCUMENTOS ── */}
         {tab === "documentos" && (
           <div style={{ padding:16 }}>
-            {/* Upload button */}
-            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              style={{ display:"none" }} onChange={handleFileUpload} />
             <button className="btn btn-primary" style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%" }}
-              onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              onClick={triggerUpload} disabled={uploading}>
               <IconUpload size={16} />
               {uploading ? t("docs.uploading") : t("docs.upload")}
             </button>
@@ -504,11 +561,54 @@ export function PatientExpediente({
               onTag={tagDocumentSession}
               onDelete={deleteDocument}
               emptyMessage={pDocuments.length === 0 ? t("docs.patientDocsEmpty") : t("docs.noResults")}
+              variant="cards"
             />
           </div>
         )}
       </div>
     </div>
+
+    {/* Always-mounted file input so Resumen/Sesiones/Docs can all trigger it. */}
+    <input
+      ref={fileInputRef}
+      type="file"
+      multiple
+      accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      style={{ display:"none" }}
+      onChange={handleFileUpload}
+    />
+
+    {/* Session edit sheet — opened from the Sesiones tab rows. Reuses the
+        same SessionSheet used from Agenda, with an extra "Adjuntar
+        documento" action wired to the shared file input. */}
+    {selectedSession && (
+      <SessionSheet
+        session={selectedSession}
+        patients={[patient]}
+        notes={pNotes}
+        onClose={() => setSelectedSession(null)}
+        onOpenNote={(s) => { openSessionNote(s); setSelectedSession(null); }}
+        onAttachDocument={attachDocToSession}
+        onCancelSession={async (session, charge, reason) => {
+          const ok = await onCancelSession(session, charge, reason);
+          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
+          return ok;
+        }}
+        onMarkCompleted={async (session, overrideStatus) => {
+          const st = overrideStatus || "completed";
+          const ok = await onMarkCompleted(session, overrideStatus);
+          if (ok) setSelectedSession(prev => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
+          return ok;
+        }}
+        onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
+        onReschedule={async (id, date, time) => {
+          const ok = await rescheduleSession(id, date, time);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, status: "scheduled" } : prev);
+          return ok;
+        }}
+        mutating={mutating}
+      />
+    )}
 
     {viewingDoc && (
       <DocumentViewer
@@ -525,6 +625,65 @@ export function PatientExpediente({
         onClose={() => setEditingNote(null)}
       />
     )}
+    </>
+  );
+}
+
+/* ── SESSIONS SECTION ──
+   Renders one labeled block of session rows in the Sesiones tab. Each row
+   shows the date + time on a single line, a status pill, and a "note
+   attached" hint when applicable. Tapping a row opens the SessionSheet
+   edit overlay via `onSelect`. */
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, t }) {
+  if (sessions.length === 0) {
+    return (
+      <>
+        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>{title}</div>
+        <div className="card" style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:12 }}>
+          {emptyLabel}
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:6 }}>{title}</div>
+      <div className="card">
+        {sessions.map(s => {
+          const tutor = isTutorSession(s);
+          const hasNote = pNotes.some(n => n.session_id === s.id);
+          return (
+            <div className="row-item" key={s.id} onClick={() => onSelect(s)} style={{ cursor:"pointer" }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                {/* Date + time on a single line, always. */}
+                <div style={{
+                  fontFamily:"var(--font-d)", fontSize:13, fontWeight:700, color:"var(--charcoal)",
+                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                }}>
+                  {s.date} · {s.time}
+                </div>
+                <div style={{ marginTop:3, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                  <span className={`session-status ${statusClass(s.status)}`} style={{ fontSize:10 }}>
+                    {t(`sessions.${s.status}`)}
+                  </span>
+                  {tutor && (
+                    <span style={{ fontSize:9, fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
+                      {t("sessions.tutor")}
+                    </span>
+                  )}
+                  {hasNote && (
+                    <span style={{ fontSize:10, color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
+                      <IconClipboard size={11} />
+                      {t("notes.noteAttached")}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="row-chevron" style={{ flexShrink:0 }}>›</span>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }
