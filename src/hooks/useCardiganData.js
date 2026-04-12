@@ -215,7 +215,7 @@ export function useCardiganData(user, viewAsUserId) {
       let futureCount = 0;
       enrichedSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
-        if (s.status === SESSION_STATUS.CANCELLED) return;
+        if (s.status === SESSION_STATUS.CANCELLED || s.status === SESSION_STATUS.CHARGED) return;
         const d = parseShortDate(s.date);
         if (s.time) {
           const [h, m] = s.time.split(":");

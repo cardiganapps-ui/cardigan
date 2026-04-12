@@ -75,11 +75,30 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const update = { status: newStatus };
     if (cancelReason !== undefined) update.cancel_reason = cancelReason || null;
     if (newStatus === SESSION_STATUS.SCHEDULED || newStatus === SESSION_STATUS.COMPLETED) update.cancel_reason = null;
+
+    const session = upcomingSessions.find(s => s.id === sessionId);
+    const oldStatus = session?.status;
+    const wasCancelled = oldStatus === SESSION_STATUS.CANCELLED;
+    const nowCancelled = newStatus === SESSION_STATUS.CANCELLED;
+
     const { error } = await supabase.from("sessions")
       .update(update).eq("id", sessionId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...update } : s));
+
+    // Adjust billed when cancelling without charge or reverting a cancellation
+    if (session?.patient_id && wasCancelled !== nowCancelled) {
+      const patient = patients.find(p => p.id === session.patient_id);
+      if (patient) {
+        const newBilled = nowCancelled
+          ? Math.max(0, patient.billed - patient.rate)   // cancelling: remove from billed
+          : patient.billed + patient.rate;                // reverting: add back to billed
+        await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id);
+        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
+      }
+    }
+
     return true;
   }
 
