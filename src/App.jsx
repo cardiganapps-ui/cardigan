@@ -11,6 +11,7 @@ import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { LogoIcon } from "./components/LogoMark";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { HelpTip } from "./components/HelpTip";
 import { Tutorial } from "./components/Tutorial/Tutorial";
 import { useTutorial } from "./hooks/useTutorial";
 import { Toast } from "./components/Toast";
@@ -239,6 +240,10 @@ function AppShell({ user, signOut, demo }) {
                 Admin
               </button>
             )}
+            {/* Contextual help for the current screen. Lives in the topbar
+                so it doesn't eat vertical space on each page. HelpTip
+                returns null when the screen's tip array is empty. */}
+            <HelpTip tipsKey={`help.${screen}`} variant="dark" />
             <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
           </div>
         </div>

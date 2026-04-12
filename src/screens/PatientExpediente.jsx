@@ -8,6 +8,7 @@ import { isTutorSession, statusClass } from "../utils/sessions";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { HelpTip } from "../components/HelpTip";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useT } from "../i18n/index";
@@ -290,9 +291,9 @@ export function PatientExpediente({
           <div className="row-avatar" style={{ background: getClientColor(patient.colorIdx), width:48, height:48, fontSize:16 }}>
             {patient.initials}
           </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white" }}>{patient.name}</div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
               {patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")} · {patient.day} {patient.time}
             </div>
           </div>
@@ -300,6 +301,7 @@ export function PatientExpediente({
             style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
             {t("edit")}
           </button>
+          <HelpTip tipsKey="help.expediente" variant="dark" />
         </div>
         {/* Tabs */}
         <div role="tablist" style={{ display:"flex", gap:0, marginTop:14 }}>

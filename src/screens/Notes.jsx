@@ -5,7 +5,6 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
-import { HelpTip } from "../components/HelpTip";
 
 /* ── Swipeable wrapper for note cards ── */
 const SWIPE_REVEALED = -80;
@@ -192,7 +191,6 @@ export function Notes() {
               Seleccionar
             </button>
           )}
-          <HelpTip tipsKey="help.notes" />
         </div>
       </div>
 

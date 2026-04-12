@@ -4,7 +4,6 @@ import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, I
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
-import { HelpTip } from "../components/HelpTip";
 
 export function Settings({ user, signOut }) {
   const { t } = useT();
@@ -52,10 +51,7 @@ export function Settings({ user, signOut }) {
 
   return (
     <div className="page">
-      <div style={{ display:"flex", justifyContent:"flex-end", padding:"10px 16px 0" }}>
-        <HelpTip tipsKey="help.settings" />
-      </div>
-      <div className="section" style={{ paddingTop:10 }}>
+      <div className="section" style={{ paddingTop:16 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
             <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>{userInitial}</div>

@@ -875,6 +875,18 @@ button, a, select { min-height: 44px; }
   .topbar-brand { color: var(--charcoal); }
   .topbar-right .avatar-sm { background: var(--teal); }
   .admin-btn { color: var(--charcoal-xl); }
+  /* Dark help button variant is used for the mobile topbar; swap it back
+     to the light styling inside the desktop (white) topbar. */
+  .topbar .help-icon-btn--dark {
+    border-color: var(--border);
+    color: var(--charcoal-xl);
+  }
+  .topbar .help-icon-btn--dark:hover,
+  .topbar .help-icon-btn--dark[aria-expanded="true"] {
+    background: var(--teal-pale);
+    color: var(--teal-dark);
+    border-color: var(--teal-light);
+  }
 
   /* Multi-column Home dashboard */
   .home-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
@@ -1273,7 +1285,7 @@ button, a, select { min-height: 44px; }
 
 /* ── CONTEXTUAL HELP TIPS ── */
 .help-icon-btn {
-  width: 26px; height: 26px;
+  width: 28px; height: 28px;
   border-radius: 50%;
   background: transparent;
   border: 1.5px solid var(--border);
@@ -1281,10 +1293,11 @@ button, a, select { min-height: 44px; }
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer;
   font-family: var(--font-d);
-  font-size: 13px; font-weight: 800;
+  font-size: 14px; font-weight: 800;
   line-height: 1;
   padding: 0;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
   transition: all 0.15s ease;
 }
 .help-icon-btn:hover,
@@ -1292,6 +1305,18 @@ button, a, select { min-height: 44px; }
   color: var(--teal-dark);
   border-color: var(--teal-light);
   background: var(--teal-pale);
+}
+/* Dark variant — for the topbar and expediente header where the
+   background is nav-bg. Uses white-on-dark styling. */
+.help-icon-btn--dark {
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.85);
+}
+.help-icon-btn--dark:hover,
+.help-icon-btn--dark[aria-expanded="true"] {
+  background: rgba(255,255,255,0.12);
+  color: var(--white);
+  border-color: rgba(255,255,255,0.55);
 }
 .help-tip-wrap { position: relative; display: inline-flex; }
 .help-tip {

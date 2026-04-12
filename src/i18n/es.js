@@ -494,37 +494,44 @@ export default {
   },
 
   // ── Contextual help tips ──
+  // Each array lists 2-3 things that are NOT obvious from the UI itself.
+  // Avoid stating what a tap/label already says — focus on behaviors the
+  // user can't see (historical rates, auto-extend, swipe-to-delete, etc.).
+  // An empty array hides the help button on that screen.
   help: {
-    title: "Consejos",
+    title: "\u00bfSab\u00edas que...?",
     home: [
-      "Toca una tarjeta para saltar al detalle",
-      "Los saldos se calculan autom\u00e1ticamente",
-      "Usa el bot\u00f3n + para crear r\u00e1pido",
+      "Los saldos usan tu tarifa actual. Las sesiones pasadas conservan el precio al que se facturaron.",
+      "Cada tarjeta KPI es un atajo: t\u00f3cala para abrir la pantalla correspondiente.",
     ],
     agenda: [
-      "Desliza para cambiar de d\u00eda o semana",
-      "Toca una sesi\u00f3n para ver detalles y reprogramar",
-      "Usa 'Hoy' para volver al d\u00eda actual",
+      "Las sesiones recurrentes se extienden 12 semanas hacia adelante de forma autom\u00e1tica.",
+      "Una sesi\u00f3n pasada sin marcar se muestra como completada. T\u00f3cala para corregir su estado.",
+      "Cancelar \u201ccon cobro\u201d mantiene el cargo (\u00fatil para faltas sin aviso); \u201csin cobro\u201d lo descuenta.",
     ],
     patients: [
-      "Toca un paciente para abrir su expediente",
-      "Cambios de horario y tarifa tienen fecha efectiva",
-      "Usa el filtro para ver solo activos o finalizados",
+      "Al cambiar horario o tarifa eliges una fecha efectiva. Las sesiones anteriores a esa fecha mantienen sus datos originales.",
+      "Finalizar un paciente conserva todo su historial y s\u00f3lo elimina las sesiones a\u00fan agendadas.",
+      "Marca a un paciente como menor para registrar un tutor y agendar sesiones con \u00e9l (se ven en morado).",
     ],
     finances: [
-      "Cambia entre saldos, pagos e ingresos",
-      "Exporta a CSV cualquier lista filtrada",
-      "Toca un paciente para registrar un pago",
+      "La exportaci\u00f3n CSV respeta los filtros activos (m\u00e9todo, per\u00edodo y orden).",
+      "Una \u201ccancelada cobrada\u201d suma al total facturado; una \u201ccancelada\u201d normal no.",
     ],
     notes: [
-      "Las notas se guardan solas mientras escribes",
-      "Vincula una nota a una sesi\u00f3n espec\u00edfica desde el selector",
+      "Las notas se guardan solas poco despu\u00e9s de que dejas de escribir.",
+      "Mant\u00e9n presionada una nota para cambiar a qu\u00e9 paciente o sesi\u00f3n est\u00e1 vinculada.",
+      "Desliza una nota a la izquierda para borrarla r\u00e1pido.",
     ],
     documents: [
-      "Etiqueta cada documento a una sesi\u00f3n para encontrarlo f\u00e1cil",
+      "Vincula un documento a una sesi\u00f3n para que aparezca tambi\u00e9n en el detalle de esa sesi\u00f3n.",
+      "Tama\u00f1o m\u00e1ximo 10 MB. Formatos admitidos: im\u00e1genes, PDF y Word.",
     ],
-    settings: [
-      "Aqu\u00ed puedes volver a ver el tutorial o cerrar sesi\u00f3n",
+    // Settings screen is self-explanatory — empty array hides the ? button.
+    settings: [],
+    expediente: [
+      "El per\u00edodo del Resumen filtra finanzas y asistencia del paciente. El \u201csaldo actual\u201d no se ve afectado.",
+      "Desde una sesi\u00f3n (pesta\u00f1a Sesiones) puedes cambiar su estado, reagendarla o adjuntarle una nota o documento.",
     ],
   },
 
