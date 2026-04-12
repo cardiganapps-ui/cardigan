@@ -403,6 +403,11 @@ export default {
     bugHideDetails: "Ocultar",
     bugDeleteConfirm: "\u00bfEliminar este reporte?",
     bugNoDescription: "Sin descripci\u00f3n",
+    bugsActive: "Pendientes",
+    bugsArchived: "Archivo",
+    bugsArchivedEmpty: "Sin reportes archivados",
+    bugsArchiveAll: "Completar todos",
+    bugsArchiveConfirm: "Archivar",
   },
 
   // ── Install prompt ──

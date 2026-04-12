@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport } from "../hooks/useCardiganData";
-import { IconX, IconTrash, IconDownload } from "../components/Icons";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports } from "../hooks/useCardiganData";
+import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { useT } from "../i18n/index";
 
 function relativeTime(dateStr) {
@@ -168,13 +168,16 @@ function BugsTab() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    fetchBugReports()
+    fetchBugReports({ archived: showArchived })
       .then(r => { setReports(r); setError(""); setLoading(false); })
       .catch(e => { setError(e.message || t("admin.bugsLoadError")); setLoading(false); });
-  }, [t]);
+  }, [t, showArchived]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -183,22 +186,81 @@ function BugsTab() {
     setReports(prev => prev.filter(r => r.id !== id));
   };
 
+  const handleArchiveAll = async () => {
+    setArchiving(true);
+    try {
+      await archiveBugReports(reports.map(r => r.id));
+      setReports([]);
+      setConfirmArchive(false);
+    } catch (e) {
+      setError(e.message || "Error");
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   if (loading) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>{t("admin.bugsLoading")}</div>;
   if (error) return <div style={{ textAlign:"center", padding:40, color:"var(--red)", fontSize:13 }}>{error}</div>;
-  if (reports.length === 0) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>{t("admin.bugsEmpty")}</div>;
 
   return (
     <>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-        <div style={{ fontSize:11, color:"var(--charcoal-xl)" }}>
-          {t("admin.bugsCount", { count: reports.length })}
-        </div>
-        <button onClick={() => downloadBugReports(reports)}
-          style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", fontSize:11, fontWeight:700, color:"var(--teal-dark)", background:"var(--teal-pale)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
-          <IconDownload size={13} /> .txt
-        </button>
+      {/* Toggle active / archived */}
+      <div style={{ display:"flex", background:"var(--cream)", borderRadius:"var(--radius-pill)", padding:3, gap:2, marginBottom:12 }}>
+        {[{ k: false, l: t("admin.bugsActive") }, { k: true, l: t("admin.bugsArchived") }].map(tb => (
+          <button key={String(tb.k)} onClick={() => { setShowArchived(tb.k); setConfirmArchive(false); }}
+            style={{
+              flex:1, padding:"5px 10px", fontSize:11, fontWeight:700,
+              borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer",
+              fontFamily:"var(--font)", minHeight:28,
+              background: showArchived === tb.k ? "var(--white)" : "transparent",
+              color: showArchived === tb.k ? "var(--charcoal)" : "var(--charcoal-xl)",
+              boxShadow: showArchived === tb.k ? "var(--shadow-sm)" : "none",
+              transition: "all 0.15s",
+            }}>
+            {tb.l}
+          </button>
+        ))}
       </div>
-      {reports.map(r => <BugReportRow key={r.id} report={r} onDelete={handleDelete} />)}
+
+      {reports.length === 0 ? (
+        <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>
+          {showArchived ? t("admin.bugsArchivedEmpty") : t("admin.bugsEmpty")}
+        </div>
+      ) : (
+        <>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8, gap:6 }}>
+            <div style={{ fontSize:11, color:"var(--charcoal-xl)" }}>
+              {t("admin.bugsCount", { count: reports.length })}
+            </div>
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={() => downloadBugReports(reports)}
+                style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", fontSize:11, fontWeight:700, color:"var(--teal-dark)", background:"var(--teal-pale)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+                <IconDownload size={13} /> .txt
+              </button>
+              {!showArchived && (
+                confirmArchive ? (
+                  <div style={{ display:"flex", gap:4 }}>
+                    <button onClick={handleArchiveAll} disabled={archiving}
+                      style={{ padding:"4px 10px", fontSize:11, fontWeight:700, color:"white", background:"var(--green)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+                      {archiving ? "..." : t("admin.bugsArchiveConfirm")}
+                    </button>
+                    <button onClick={() => setConfirmArchive(false)}
+                      style={{ padding:"4px 10px", fontSize:11, fontWeight:600, color:"var(--charcoal-md)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+                      {t("cancel")}
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmArchive(true)}
+                    style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", fontSize:11, fontWeight:700, color:"var(--green)", background:"var(--green-bg)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+                    <IconCheck size={13} /> {t("admin.bugsArchiveAll")}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+          {reports.map(r => <BugReportRow key={r.id} report={r} onDelete={handleDelete} />)}
+        </>
+      )}
     </>
   );
 }

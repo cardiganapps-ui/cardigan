@@ -54,14 +54,24 @@ export async function fetchAllAccounts() {
   return [...accounts.values()];
 }
 
-export async function fetchBugReports() {
-  const { data, error } = await supabase
+export async function fetchBugReports({ archived = false } = {}) {
+  let q = supabase
     .from("bug_reports")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(200);
+  q = archived ? q.not("archived_at", "is", null) : q.is("archived_at", null);
+  const { data, error } = await q;
   if (error) throw error;
   return data || [];
+}
+
+export async function archiveBugReports(ids) {
+  const { error } = await supabase
+    .from("bug_reports")
+    .update({ archived_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw error;
 }
 
 export async function deleteBugReport(id) {
