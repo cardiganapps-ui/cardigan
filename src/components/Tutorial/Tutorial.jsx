@@ -10,8 +10,12 @@ import { STEP_IDS_REQUIRING_FAB } from "./tutorialSteps";
 
 // Viewport padding around the tooltip so it never hugs the edge.
 const EDGE_PAD = 12;
+// How long the "Abriendo X" chip stays up before we actually navigate — this
+// is also the window where the hamburger pulses, so the user sees the button
+// that "did" the navigation before the screen slides in.
+const NAV_HINT_MS = 550;
 // Delay between nav and spotlight measurement (matches screenSlide animation).
-const NAV_SETTLE_MS = 340;
+const NAV_SETTLE_MS = 360;
 
 function computeTooltipStyle(rect, placement, tooltipEl) {
   // Center fallback: place tooltip in the middle of the viewport.
@@ -83,6 +87,10 @@ export function Tutorial() {
   const [tooltipStyle, setTooltipStyle] = useState(null);
   const [centered, setCentered] = useState(false);
   const [ready, setReady] = useState(false);
+  // While navigating between screens: chip target ("agenda") or null. When
+  // non-null, we suppress the spotlight/tooltip and show only the nav chip +
+  // a pulse on the hamburger.
+  const [navigating, setNavigating] = useState(null);
   const tooltipRef = useRef(null);
   const retryRef = useRef(0);
 
@@ -91,12 +99,50 @@ export function Tutorial() {
   const isWelcome = tutorial?.isWelcome;
 
   // ── Navigate to the step's screen when needed ──
+  //
+  // When a step targets a different screen than the one currently shown, we
+  // don't teleport the user silently. Instead:
+  //   1. Show a floating "Abriendo Agenda" chip at the top of the viewport.
+  //   2. Pulse the hamburger button via a CSS class, so the user sees which
+  //      element would have triggered the navigation.
+  //   3. After NAV_HINT_MS, call navigate() — the app's existing screen-slide
+  //      animation plays naturally.
+  //   4. After NAV_SETTLE_MS, clear `navigating` so the spotlight measurement
+  //      effect runs and the new step's target gets highlighted.
+  //
+  // We key this effect on `step?.id` alone (not on `screen`) so that the
+  // effect doesn't re-run mid-navigation when `navigate()` itself flips the
+  // `screen` state — which would otherwise kill the chip early.
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+
   useEffect(() => {
-    if (!isActive || !step) return;
-    if (step.screen && step.screen !== screen) {
-      navigate(step.screen);
+    if (!isActive || !step) { setNavigating(null); return; }
+    if (!step.screen || step.screen === screenRef.current) {
+      setNavigating(null);
+      return;
     }
-  }, [isActive, step, screen, navigate]);
+
+    setNavigating(step.screen);
+    const hamburger = document.querySelector('[data-tour="hamburger"]');
+    hamburger?.classList.add("tut-nav-pulse");
+
+    const t1 = setTimeout(() => {
+      navigateRef.current(step.screen);
+    }, NAV_HINT_MS);
+    const t2 = setTimeout(() => {
+      hamburger?.classList.remove("tut-nav-pulse");
+      setNavigating(null);
+    }, NAV_HINT_MS + NAV_SETTLE_MS);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      hamburger?.classList.remove("tut-nav-pulse");
+    };
+  }, [isActive, step?.id]);
 
   // ── Hide FAB during the tour except on the FAB step ──
   useEffect(() => {
@@ -134,16 +180,18 @@ export function Tutorial() {
     setReady(true);
   }, [step, tutorial]);
 
-  // Initial measurement for each step — wait for screen transition to settle.
+  // Initial measurement for each step — wait for the nav hint + screen
+  // transition to settle before measuring. Re-runs when the `navigating`
+  // sentinel clears so we measure against the newly-mounted target.
   useLayoutEffect(() => {
     if (!isActive || !step) { setReady(false); setRect(null); return; }
+    if (navigating) { setReady(false); setRect(null); return; }
     setReady(false);
     retryRef.current = 0;
-    const delay = step.screen && step.screen !== screen ? NAV_SETTLE_MS : 40;
-    const timer = setTimeout(measure, delay);
+    const timer = setTimeout(measure, 40);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, step?.id]);
+  }, [isActive, step?.id, navigating]);
 
   // Re-measure on resize/scroll/orientation change, throttled via rAF.
   useEffect(() => {
@@ -228,24 +276,48 @@ export function Tutorial() {
 
   const title = t(step.titleKey);
   const body = t(step.bodyKey);
+  // While the nav chip is up, hide the spotlight + tooltip entirely so the
+  // user sees a clean screen slide with only the chip.
+  const inTransition = !!navigating;
 
   return createPortal(
     <>
-      <TutorialSpotlight rect={rect} padding={step.padding} />
-      <TutorialTooltip
-        ref={tooltipRef}
-        title={title}
-        body={body}
-        stepIndex={tutorial.stepIndex}
-        totalSteps={tutorial.totalSteps}
-        isFirst={tutorial.isFirst}
-        isLast={tutorial.isLast}
-        onPrev={tutorial.prev}
-        onNext={tutorial.next}
-        onSkip={tutorial.skip}
-        style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
-        centered={centered}
-      />
+      {inTransition && (
+        <>
+          {/* Dim the entire viewport while the screen change happens so the
+              transition reads as "something important is happening". */}
+          <div className="tut-dim tut-dim--transition" />
+          <div className="tut-nav-chip" role="status" aria-live="polite">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span>{t("tutorial.navigatingTo", { screen: t(`nav.${navigating}`) })}</span>
+          </div>
+        </>
+      )}
+      {!inTransition && (
+        <>
+          <TutorialSpotlight rect={rect} padding={step.padding} />
+          {/* key={step.id} forces a remount on step change so the directional
+              enter animation on .tut-bubble replays instead of snapping. */}
+          <TutorialTooltip
+            key={step.id}
+            ref={tooltipRef}
+            title={title}
+            body={body}
+            stepIndex={tutorial.stepIndex}
+            totalSteps={tutorial.totalSteps}
+            isFirst={tutorial.isFirst}
+            isLast={tutorial.isLast}
+            onPrev={tutorial.prev}
+            onNext={tutorial.next}
+            onSkip={tutorial.skip}
+            style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+            centered={centered}
+            placement={step.placement}
+          />
+        </>
+      )}
     </>,
     document.body
   );

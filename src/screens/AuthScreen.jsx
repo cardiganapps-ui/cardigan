@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { LogoIcon } from "../components/LogoMark";
-import { IconCalendar, IconUsers, IconDollar, IconClipboard, IconDocument, IconHome, IconX } from "../components/Icons";
+import { LandingPage } from "../components/landing/LandingPage";
+import { IconX } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
-const FEATURE_ICONS = [IconCalendar, IconUsers, IconDollar, IconClipboard, IconDocument, IconHome];
-
-/* ── Auth form (reused inside sheet) ── */
+/* ── Auth form (reused inside sheet) ──
+   The landing page is English; the auth form stays in Spanish to match
+   the rest of the app, which is Spanish-only per CLAUDE.md. */
 function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -107,123 +107,34 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
   );
 }
 
-/* ── Landing page ── */
+/* ── Auth screen ──
+   Thin shell: renders the marketing landing page, and wires the landing
+   CTAs to either the auth sheet (signup / sign in) or demo mode (the
+   "See how it works" secondary CTA). */
 export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
-  const { t, strings } = useT();
+  const { t } = useT();
   const [showAuth, setShowAuth] = useState(false);
-  useEscape(showAuth ? () => setShowAuth(false) : null);
   const [authMode, setAuthMode] = useState("signup");
+  useEscape(showAuth ? () => setShowAuth(false) : null);
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
 
-  const painItems = strings.landing?.painItems || [];
-  const afterItems = strings.landing?.afterItems || [];
-  const featureTitles = strings.landing?.featureTitles || [];
-  const featureDescs = strings.landing?.featureDescs || [];
-
   return (
-    <div className="landing">
-      {/* ── Nav ── */}
-      <div className="landing-nav">
-        <div className="landing-nav-brand">
-          <LogoIcon size={24} color="var(--teal-dark)" />
-          <span>cardigan</span>
-        </div>
-        <div className="landing-nav-actions">
-          <button className="landing-cta-ghost" style={{ padding: "8px 16px", fontSize: 12 }} onClick={onDemo}>
-            {t("landing.ctaDemo")}
-          </button>
-          <button className="landing-cta-btn" style={{ padding: "8px 16px", fontSize: 12 }} onClick={() => openAuth("signup")}>
-            {t("landing.cta")}
-          </button>
-        </div>
-      </div>
+    <>
+      <LandingPage
+        onPrimary={() => openAuth("signup")}
+        onSecondary={onDemo}
+        onLogin={() => openAuth("login")}
+      />
 
-      {/* ── Hero ── */}
-      <div className="landing-hero">
-        <div className="landing-hero-title">
-          {t("landing.heroTitle")}
-          <br />
-          <span className="landing-hero-accent">{t("landing.heroTitleAccent")}</span>
-        </div>
-        <div className="landing-hero-sub">{t("landing.heroSub")}</div>
-        <div className="landing-hero-ctas">
-          <button className="landing-cta-btn" onClick={() => openAuth("signup")}>{t("landing.cta")}</button>
-          <button className="landing-cta-ghost" onClick={onDemo}>{t("landing.ctaDemo")}</button>
-        </div>
-      </div>
-
-      {/* ── Pain points: Before vs After ── */}
-      <div className="landing-section">
-        <div className="landing-heading">{t("landing.painTitle")}</div>
-        <div className="landing-compare">
-          <div className="landing-compare-col before">
-            <div className="landing-compare-label">{t("landing.painBefore")}</div>
-            {painItems.map((item, i) => (
-              <div key={i} className="landing-compare-item">
-                <span style={{ color: "var(--red)", flexShrink: 0, fontWeight: 700 }}>✕</span>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-          <div className="landing-compare-col after">
-            <div className="landing-compare-label">{t("landing.painAfter")}</div>
-            {afterItems.map((item, i) => (
-              <div key={i} className="landing-compare-item">
-                <span style={{ color: "var(--green)", flexShrink: 0, fontWeight: 700 }}>✓</span>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Features grid ── */}
-      <div className="landing-section" style={{ background: "var(--teal-mist)" }}>
-        <div className="landing-heading">{t("landing.featuresTitle")}</div>
-        <div className="landing-grid">
-          {featureTitles.map((title, i) => {
-            const Icon = FEATURE_ICONS[i];
-            return (
-              <div key={i} className="landing-card">
-                <div className="landing-card-icon">{Icon && <Icon size={20} />}</div>
-                <div className="landing-card-title">{title}</div>
-                <div className="landing-card-desc">{featureDescs[i]}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Trust / social proof ── */}
-      <div className="landing-section">
-        <div className="landing-trust">
-          <div className="landing-trust-title">{t("landing.trustTitle")}</div>
-          <div className="landing-trust-sub">{t("landing.trustSub")}</div>
-          <div className="landing-badge">{t("landing.trustBadge")}</div>
-        </div>
-      </div>
-
-      {/* ── Final CTA ── */}
-      <div className="landing-section-dark">
-        <div className="landing-footer-heading">{t("landing.finalCta")}</div>
-        <div className="landing-footer-sub">{t("landing.finalCtaSub")}</div>
-        <div className="landing-footer-ctas">
-          <button className="landing-cta-btn" onClick={() => openAuth("signup")}>{t("landing.cta")}</button>
-          <button className="landing-footer-link" onClick={onDemo}>{t("landing.ctaDemo")}</button>
-        </div>
-        <div style={{ marginTop: 20 }}>
-          <button className="landing-footer-link" onClick={() => openAuth("login")}>{t("landing.login")}</button>
-        </div>
-      </div>
-
-      {/* ── Auth sheet ── */}
       {showAuth && (
         <div className="sheet-overlay" onClick={() => setShowAuth(false)}>
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">{authMode === "login" ? t("auth.signIn") : authMode === "signup" ? t("auth.signUp") : t("auth.resetPassword")}</span>
+              <span className="sheet-title">
+                {authMode === "login" ? t("auth.signIn") : authMode === "signup" ? t("auth.signUp") : t("auth.resetPassword")}
+              </span>
               <button className="sheet-close" aria-label={t("close")} onClick={() => setShowAuth(false)}>
                 <IconX size={14} />
               </button>
@@ -234,6 +145,6 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

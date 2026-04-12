@@ -7,6 +7,7 @@ export function DocumentList({
   documents, sessions, patients,
   onOpen, onRename, onTag, onDelete,
   emptyMessage, showPatientName,
+  variant = "list", // "list" (single card with dividers) | "cards" (individual cards with gaps)
 }) {
   const { t } = useT();
   const [renamingDoc, setRenamingDoc] = useState(null);
@@ -40,8 +41,13 @@ export function DocumentList({
     );
   }
 
+  const isCards = variant === "cards";
+  const Container = ({ children }) => isCards
+    ? <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{children}</div>
+    : <div className="card" style={{ padding:0 }}>{children}</div>;
+
   return (
-    <div className="card" style={{ padding:0 }}>
+    <Container>
       {documents.map((doc, i) => {
         const p = showPatientName ? (patients || []).find(pt => pt.id === doc.patient_id) : null;
         const linkedSession = doc.session_id ? (sessions || []).find(s => s.id === doc.session_id) : null;
@@ -52,8 +58,13 @@ export function DocumentList({
           ? (sessions || []).filter(s => s.patient_id === doc.patient_id).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
           : [];
 
+        const itemClass = isCards ? "card" : "";
+        const itemStyle = isCards
+          ? { overflow: "hidden" }
+          : { borderBottom: i < documents.length - 1 ? "1px solid var(--border-lt)" : "none" };
+
         return (
-          <div key={doc.id} style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+          <div key={doc.id} className={itemClass} style={itemStyle}>
             {linkedSession && (
               <div style={{ padding:"6px 14px 0", fontSize:10, color:"var(--teal-dark)", fontWeight:600 }}>
                 {t("sessions.session")} {linkedSession.date} · {linkedSession.time}
@@ -124,6 +135,6 @@ export function DocumentList({
           </div>
         );
       })}
-    </div>
+    </Container>
   );
 }

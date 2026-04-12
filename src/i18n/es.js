@@ -50,52 +50,10 @@ export default {
     menu: "Men\u00fa",
   },
 
-  // ── Landing page ──
-  landing: {
-    heroTitle: "Tu práctica, organizada.",
-    heroTitleAccent: "Sin complicaciones.",
-    heroSub: "La herramienta simple que reemplaza tus hojas de Excel, notas sueltas y mensajes de WhatsApp.",
-    cta: "Comenzar gratis",
-    ctaDemo: "Ver demo",
-    painTitle: "Deja atrás el caos",
-    painBefore: "Antes",
-    painAfter: "Con Cardigan",
-    painItems: [
-      "Hojas de Excel que nadie actualiza",
-      "Pagos anotados en WhatsApp",
-      "Notas en papel que se pierden",
-      "Horarios en la cabeza",
-    ],
-    afterItems: [
-      "Agenda, pagos y notas en un solo lugar",
-      "Saldos calculados automáticamente",
-      "Expediente digital por paciente",
-      "Acceso desde cualquier dispositivo",
-    ],
-    featuresTitle: "Todo lo que necesitas",
-    featureTitles: [
-      "Agenda inteligente",
-      "Expedientes completos",
-      "Control financiero",
-      "Notas clínicas",
-      "Documentos seguros",
-      "Desde tu celular",
-    ],
-    featureDescs: [
-      "Sesiones recurrentes, vista día/semana/mes, y extensión automática.",
-      "Perfil, historial, asistencia y finanzas por paciente.",
-      "Facturación, pagos, saldos y exportación a CSV.",
-      "Por sesión, buscables y vinculadas al expediente.",
-      "Sube, organiza y etiqueta archivos por paciente.",
-      "Instala como app. Funciona offline, siempre disponible.",
-    ],
-    trustTitle: "Diseñado por terapeutas, para terapeutas",
-    trustSub: "Sabemos lo que es manejar una práctica privada. Cardigan nació de esa experiencia — simple, rápido, sin funciones que nunca vas a usar.",
-    trustBadge: "Gratis durante beta",
-    finalCta: "Empieza a organizar tu práctica hoy",
-    finalCtaSub: "Crea tu cuenta en segundos. Sin tarjeta de crédito.",
-    login: "Ya tengo cuenta",
-  },
+  // Landing page copy lives directly in src/components/landing/LandingPage.jsx
+  // because it's English (marketing-facing) while the rest of the app is
+  // Spanish-only. Mixing languages inside the same i18n bundle would be
+  // confusing, so we keep it out of here entirely.
 
   // ── Auth ──
   auth: {
@@ -222,6 +180,7 @@ export default {
     sessionType: "Tipo de sesi\u00f3n",
     sessionRate: "Tarifa de esta sesi\u00f3n",
     scheduleWithTutor: "Agendar con tutor",
+    attachDoc: "Adjuntar documento",
     selectDate: "Selecciona una fecha.",
     selectTime: "Selecciona una hora.",
     patient: "Paciente",
@@ -379,6 +338,7 @@ export default {
     notas: "Notas",
     docs: "Docs",
     period: "Per\u00edodo",
+    periodFilterSub: "Filtra finanzas y asistencia del paciente",
     attendance: "Asistencia",
     programmed: "Programadas",
     attended: "Asisti\u00f3",
@@ -386,6 +346,10 @@ export default {
     chargedCancelled: "{count} cancelada{plural} cobrada{plural}",
     perSession: "por sesi\u00f3n",
     noSessions: "Sin sesiones registradas",
+    upcomingSessions: "Pr\u00f3ximas",
+    pastSessions: "Anteriores",
+    noUpcomingSessions: "Sin sesiones pr\u00f3ximas",
+    noPastSessions: "Sin sesiones anteriores",
   },
 
   // ── Time periods ──
@@ -461,62 +425,71 @@ export default {
     next: "Siguiente",
     prev: "Atr\u00e1s",
     skip: "Saltar",
+    skipAria: "Saltar el recorrido",
     finish: "Finalizar",
-    stepOf: "Paso {current} de {total}",
+    // Chip shown when the tutorial auto-navigates between screens.
+    navigatingTo: "Abriendo {screen}",
     settingsRow: "Tutorial",
     settingsRowSub: "Vuelve a ver el recorrido guiado",
     steps: {
       welcomeTitle: "\u00a1Bienvenido a Cardigan!",
-      welcomeBody: "Tu espacio para organizar pacientes, agenda y cobros. \u00bfTe muestro lo esencial en un minuto?",
+      welcomeBody: "Tu espacio para organizar pacientes, agenda y cobros. Te muestro lo esencial en menos de un minuto.",
       kpisTitle: "Tu d\u00eda de un vistazo",
-      kpisBody: "Aqu\u00ed ves sesiones de hoy, ingresos del mes y saldos pendientes. Se actualiza solo.",
+      kpisBody: "Sesiones de hoy, ingresos del mes y saldos pendientes. Todo se actualiza solo.",
       fabTitle: "Crea desde aqu\u00ed",
-      fabBody: "Toca el bot\u00f3n + para agregar pacientes, sesiones, pagos o notas. Es tu atajo principal.",
+      fabBody: "El bot\u00f3n + es tu atajo principal: pacientes, sesiones, pagos y notas. Lo encontrar\u00e1s en todas las pantallas.",
+      drawerTitle: "Men\u00fa de navegaci\u00f3n",
+      drawerBody: "Toca estas tres l\u00edneas (o desliza desde el borde izquierdo) para moverte entre pantallas. As\u00ed llegar\u00e1s a Agenda, Pacientes, Finanzas y m\u00e1s.",
       agendaTitle: "Tu agenda",
-      agendaBody: "Cambia entre d\u00eda, semana y mes. Desliza para navegar y toca una sesi\u00f3n para ver detalles.",
+      agendaBody: "Alterna entre d\u00eda, semana y mes. Desliza para avanzar y toca una sesi\u00f3n para ver sus detalles.",
       patientsTitle: "Tus pacientes",
-      patientsBody: "Ficha completa, historial de sesiones y notas privadas por paciente.",
+      patientsBody: "Toca un paciente para abrir su expediente completo: historial de sesiones, pagos y notas privadas.",
       financesTitle: "Finanzas claras",
-      financesBody: "Saldos, pagos e ingresos en un solo lugar. Exporta a CSV cuando lo necesites.",
-      drawerTitle: "Explora m\u00e1s",
-      drawerBody: "Abre el men\u00fa para notas, documentos y ajustes. Tambi\u00e9n puedes deslizar desde el borde izquierdo.",
-      doneTitle: "\u00a1Listo!",
-      doneBody: "Puedes volver a ver este recorrido desde Ajustes \u2192 Tutorial. Cada pantalla tambi\u00e9n tiene un ? con consejos r\u00e1pidos.",
+      financesBody: "Saldos, pagos e ingresos en un solo lugar. Puedes exportar a CSV cuando lo necesites.",
+      doneTitle: "\u00a1Listo, ya puedes empezar!",
+      doneBody: "Puedes volver a ver este recorrido desde Ajustes \u2192 Tutorial. Cada pantalla tambi\u00e9n tiene un \u00bf? con consejos r\u00e1pidos.",
     },
   },
 
   // ── Contextual help tips ──
+  // Each array lists 2-3 things that are NOT obvious from the UI itself.
+  // Avoid stating what a tap/label already says — focus on behaviors the
+  // user can't see (historical rates, auto-extend, swipe-to-delete, etc.).
+  // An empty array hides the help button on that screen.
   help: {
-    title: "Consejos",
+    title: "\u00bfSab\u00edas que...?",
     home: [
-      "Toca una tarjeta para saltar al detalle",
-      "Los saldos se calculan autom\u00e1ticamente",
-      "Usa el bot\u00f3n + para crear r\u00e1pido",
+      "Los saldos usan tu tarifa actual. Las sesiones pasadas conservan el precio al que se facturaron.",
+      "Cada tarjeta KPI es un atajo: t\u00f3cala para abrir la pantalla correspondiente.",
     ],
     agenda: [
-      "Desliza para cambiar de d\u00eda o semana",
-      "Toca una sesi\u00f3n para ver detalles y reprogramar",
-      "Usa 'Hoy' para volver al d\u00eda actual",
+      "Las sesiones recurrentes se extienden 12 semanas hacia adelante de forma autom\u00e1tica.",
+      "Una sesi\u00f3n pasada sin marcar se muestra como completada. T\u00f3cala para corregir su estado.",
+      "Cancelar \u201ccon cobro\u201d mantiene el cargo (\u00fatil para faltas sin aviso); \u201csin cobro\u201d lo descuenta.",
     ],
     patients: [
-      "Toca un paciente para abrir su expediente",
-      "Cambios de horario y tarifa tienen fecha efectiva",
-      "Usa el filtro para ver solo activos o finalizados",
+      "Al cambiar horario o tarifa eliges una fecha efectiva. Las sesiones anteriores a esa fecha mantienen sus datos originales.",
+      "Finalizar un paciente conserva todo su historial y s\u00f3lo elimina las sesiones a\u00fan agendadas.",
+      "Marca a un paciente como menor para registrar un tutor y agendar sesiones con \u00e9l (se ven en morado).",
     ],
     finances: [
-      "Cambia entre saldos, pagos e ingresos",
-      "Exporta a CSV cualquier lista filtrada",
-      "Toca un paciente para registrar un pago",
+      "La exportaci\u00f3n CSV respeta los filtros activos (m\u00e9todo, per\u00edodo y orden).",
+      "Una \u201ccancelada cobrada\u201d suma al total facturado; una \u201ccancelada\u201d normal no.",
     ],
     notes: [
-      "Las notas se guardan solas mientras escribes",
-      "Vincula una nota a una sesi\u00f3n espec\u00edfica desde el selector",
+      "Las notas se guardan solas poco despu\u00e9s de que dejas de escribir.",
+      "Mant\u00e9n presionada una nota para cambiar a qu\u00e9 paciente o sesi\u00f3n est\u00e1 vinculada.",
+      "Desliza una nota a la izquierda para borrarla r\u00e1pido.",
     ],
     documents: [
-      "Etiqueta cada documento a una sesi\u00f3n para encontrarlo f\u00e1cil",
+      "Vincula un documento a una sesi\u00f3n para que aparezca tambi\u00e9n en el detalle de esa sesi\u00f3n.",
+      "Tama\u00f1o m\u00e1ximo 10 MB. Formatos admitidos: im\u00e1genes, PDF y Word.",
     ],
-    settings: [
-      "Aqu\u00ed puedes volver a ver el tutorial o cerrar sesi\u00f3n",
+    // Settings screen is self-explanatory — empty array hides the ? button.
+    settings: [],
+    expediente: [
+      "El per\u00edodo del Resumen filtra finanzas y asistencia del paciente. El \u201csaldo actual\u201d no se ve afectado.",
+      "Desde una sesi\u00f3n (pesta\u00f1a Sesiones) puedes cambiar su estado, reagendarla o adjuntarle una nota o documento.",
     ],
   },
 

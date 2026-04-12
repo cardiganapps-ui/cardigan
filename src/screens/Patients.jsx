@@ -8,7 +8,6 @@ import { Toggle } from "../components/Toggle";
 import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
-import { HelpTip } from "../components/HelpTip";
 
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab } = useCardigan();
@@ -173,10 +172,7 @@ export function Patients() {
 
   return (
     <div className="page" data-tour="patients-list">
-      <div style={{ display:"flex", justifyContent:"flex-end", padding:"10px 16px 0" }}>
-        <HelpTip tipsKey="help.patients" />
-      </div>
-      <div style={{ padding:"8px 16px 10px" }}>
+      <div style={{ padding:"16px 16px 10px" }}>
         <div className="search-bar">
           <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
           <input placeholder={t("patients.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />

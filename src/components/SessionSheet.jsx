@@ -3,11 +3,11 @@ import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
 import { isCancelledStatus } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
-import { IconX, IconClipboard } from "./Icons";
+import { IconX, IconClipboard, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onOpenNote, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onOpenNote, onAttachDocument, mutating }) {
   const { t } = useT();
   useEscape(session ? onClose : null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -177,6 +177,12 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                   </button>
                 );
               })()}
+              {onAttachDocument && (
+                <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+                  onClick={() => onAttachDocument(session)}>
+                  <IconUpload size={15} /> {t("sessions.attachDoc")}
+                </button>
+              )}
               <button className="btn btn-primary" style={{ height:44 }} onClick={startReschedule}>
                 {t("sessions.reschedule")}
               </button>

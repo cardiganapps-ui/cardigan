@@ -2,6 +2,12 @@
 // Each step either targets an element via a CSS selector, or is a centered
 // "card" step (no selector) shown in the middle of the screen.
 //
+// Flow: home orientation first (kpis + fab), then the menu/hamburger so the
+// user knows HOW to navigate, THEN the screen-specific stops (agenda,
+// patients, finances). The orchestrator auto-navigates between screens while
+// showing a "screen change" chip and pulsing the hamburger, so the user sees
+// where the navigation comes from instead of being teleported silently.
+//
 // Shape:
 //   id           — stable identifier
 //   screen       — which screen must be active; the orchestrator navigates there before showing
@@ -40,6 +46,15 @@ export const TUTORIAL_STEPS = [
     padding: 10,
   },
   {
+    id: "drawer",
+    screen: "home",
+    selector: '[data-tour="hamburger"]',
+    placement: "bottom",
+    titleKey: "tutorial.steps.drawerTitle",
+    bodyKey: "tutorial.steps.drawerBody",
+    padding: 6,
+  },
+  {
     id: "agenda",
     screen: "agenda",
     selector: '[data-tour="agenda-toggle"]',
@@ -65,15 +80,6 @@ export const TUTORIAL_STEPS = [
     titleKey: "tutorial.steps.financesTitle",
     bodyKey: "tutorial.steps.financesBody",
     padding: 8,
-  },
-  {
-    id: "drawer",
-    screen: "home",
-    selector: '[data-tour="hamburger"]',
-    placement: "bottom",
-    titleKey: "tutorial.steps.drawerTitle",
-    bodyKey: "tutorial.steps.drawerBody",
-    padding: 6,
   },
   {
     id: "done",
