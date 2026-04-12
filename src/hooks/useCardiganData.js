@@ -142,7 +142,7 @@ export function useCardiganData(user, viewAsUserId) {
             if (!existingDates.has(ds)) {
               rows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
                 initials: patient.initials, time: sched.time, day: sched.day,
-                date: ds, color_idx: patient.color_idx || 0 });
+                date: ds, rate: patient.rate, color_idx: patient.color_idx || 0 });
               existingDates.add(ds);
             }
           });
@@ -212,7 +212,7 @@ export function useCardiganData(user, viewAsUserId) {
   const enrichedPatients = useMemo(() => {
     const now = new Date();
     return patients.map(p => {
-      let futureCount = 0;
+      let futureBilled = 0;
       enrichedSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
         if (s.status === SESSION_STATUS.CANCELLED || s.status === SESSION_STATUS.CHARGED) return;
@@ -221,9 +221,9 @@ export function useCardiganData(user, viewAsUserId) {
           const [h, m] = s.time.split(":");
           d.setHours(parseInt(h) || 0, parseInt(m) || 0);
         }
-        if (d > now) futureCount++;
+        if (d > now) futureBilled += (s.rate != null ? s.rate : p.rate);
       });
-      const pastBilled = p.billed - (futureCount * p.rate);
+      const pastBilled = p.billed - futureBilled;
       return { ...p, amountDue: Math.max(0, pastBilled - p.paid) };
     });
   }, [patients, enrichedSessions]);

@@ -51,6 +51,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       user_id: userId, patient_id: patient.id,
       patient: patientName.trim(), initials: sessionInitials,
       time: time.trim(), day: dayName, date: date.trim(),
+      rate: sessionRate,
       color_idx: patient.colorIdx || 0,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -91,9 +92,10 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (session?.patient_id && wasCancelled !== nowCancelled) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
+        const sessRate = session.rate != null ? session.rate : patient.rate;
         const newBilled = nowCancelled
-          ? Math.max(0, patient.billed - patient.rate)   // cancelling: remove from billed
-          : patient.billed + patient.rate;                // reverting: add back to billed
+          ? Math.max(0, patient.billed - sessRate)   // cancelling: remove from billed
+          : patient.billed + sessRate;                // reverting: add back to billed
         await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id);
         setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
       }
@@ -114,8 +116,9 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (session?.patient_id) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
+        const sessRate = session.rate != null ? session.rate : patient.rate;
         const newSessions = Math.max(0, patient.sessions - 1);
-        const newBilled = Math.max(0, patient.billed - patient.rate);
+        const newBilled = Math.max(0, patient.billed - sessRate);
         await supabase.from("patients")
           .update({ sessions: newSessions, billed: newBilled })
           .eq("id", patient.id);
@@ -155,7 +158,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       getRecurringDates(s.day, startDate, endDate).forEach(d =>
         allRows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
           initials: patient.initials, time: s.time, day: s.day,
-          date: formatShortDate(d), color_idx: patient.colorIdx || 0 }));
+          date: formatShortDate(d), rate: patient.rate,
+          color_idx: patient.colorIdx || 0 }));
     }
     if (allRows.length === 0) return false;
 
@@ -199,7 +203,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const ids = toDelete.map(s => s.id);
       const { error } = await supabase.from("sessions").delete().in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
-      adjustedBilled -= toDelete.length * patient.rate;
+      adjustedBilled -= toDelete.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
       adjustedSessions -= toDelete.length;
       setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
     }
@@ -219,7 +223,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         if (!existingDates.has(ds)) {
           allRows.push({ user_id: userId, patient_id: patientId, patient: updated.name,
             initials: updated.initials, time: s.time, day: s.day,
-            date: ds, color_idx: updated.color_idx || 0 });
+            date: ds, rate: newRate, color_idx: updated.color_idx || 0 });
           existingDates.add(ds);
         }
       });
@@ -260,7 +264,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const ids = toDelete.map(s => s.id);
       const { error } = await supabase.from("sessions").delete().in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
-      adjustedBilled -= toDelete.length * patient.rate;
+      adjustedBilled -= toDelete.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
       adjustedSessions -= toDelete.length;
       setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
     }
