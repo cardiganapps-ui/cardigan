@@ -1,10 +1,15 @@
+import { forwardRef } from "react";
 import { useT } from "../../i18n/index";
 
 // Tooltip bubble with title, body, progress indicator and action buttons.
 // Positioning is handled by the orchestrator via the `style` prop; this
 // component only renders content and fires callbacks.
+//
+// Uses forwardRef so the orchestrator can measure the actual `.tut-bubble`
+// element. A wrapper div won't work because `.tut-bubble` is `position: fixed`
+// and would report `offsetHeight: 0` on its parent.
 
-export function TutorialTooltip({
+export const TutorialTooltip = forwardRef(function TutorialTooltip({
   title,
   body,
   stepIndex,
@@ -16,11 +21,12 @@ export function TutorialTooltip({
   onSkip,
   style,
   centered,
-}) {
+}, ref) {
   const { t } = useT();
   const className = `tut-bubble${centered ? " tut-bubble--center" : ""}`;
   return (
     <div
+      ref={ref}
       className={className}
       style={centered ? undefined : style}
       role="dialog"
@@ -52,4 +58,4 @@ export function TutorialTooltip({
       </div>
     </div>
   );
-}
+});

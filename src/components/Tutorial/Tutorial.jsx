@@ -19,9 +19,14 @@ function computeTooltipStyle(rect, placement, tooltipEl) {
     return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
   }
   const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const tooltipH = tooltipEl?.offsetHeight ?? 180;
-  const tooltipW = tooltipEl?.offsetWidth ?? Math.min(vw - 24, 320);
+  // Prefer visualViewport when available — on iOS Safari it gives the actual
+  // visible area (excluding overlaying browser chrome), so the clamp below
+  // keeps the tooltip clear of the bottom bar.
+  const vh = (typeof window !== "undefined" && window.visualViewport?.height)
+    || window.innerHeight;
+  // Use `||` (not `??`) so a measured height/width of 0 falls back to defaults.
+  const tooltipH = tooltipEl?.offsetHeight || 180;
+  const tooltipW = tooltipEl?.offsetWidth || Math.min(vw - 24, 320);
 
   // Auto-flip: if preferred placement doesn't fit, flip.
   let actual = placement;
@@ -180,8 +185,9 @@ export function Tutorial() {
     const style = computeTooltipStyle(rect, step.placement, tooltipRef.current);
     // Narrow-screen fallback: if the tooltip would overlap the spotlight, center it.
     const vw = window.innerWidth;
-    const bubbleW = tooltipRef.current?.offsetWidth ?? Math.min(vw - 24, 320);
-    const bubbleH = tooltipRef.current?.offsetHeight ?? 180;
+    // `||` so a measured 0 (e.g. pre-mount) falls back to defaults.
+    const bubbleW = tooltipRef.current?.offsetWidth || Math.min(vw - 24, 320);
+    const bubbleH = tooltipRef.current?.offsetHeight || 180;
     if (
       typeof style.top === "number" &&
       typeof style.left === "number" &&
@@ -226,21 +232,20 @@ export function Tutorial() {
   return createPortal(
     <>
       <TutorialSpotlight rect={rect} padding={step.padding} />
-      <div ref={tooltipRef}>
-        <TutorialTooltip
-          title={title}
-          body={body}
-          stepIndex={tutorial.stepIndex}
-          totalSteps={tutorial.totalSteps}
-          isFirst={tutorial.isFirst}
-          isLast={tutorial.isLast}
-          onPrev={tutorial.prev}
-          onNext={tutorial.next}
-          onSkip={tutorial.skip}
-          style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
-          centered={centered}
-        />
-      </div>
+      <TutorialTooltip
+        ref={tooltipRef}
+        title={title}
+        body={body}
+        stepIndex={tutorial.stepIndex}
+        totalSteps={tutorial.totalSteps}
+        isFirst={tutorial.isFirst}
+        isLast={tutorial.isLast}
+        onPrev={tutorial.prev}
+        onNext={tutorial.next}
+        onSkip={tutorial.skip}
+        style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+        centered={centered}
+      />
     </>,
     document.body
   );
