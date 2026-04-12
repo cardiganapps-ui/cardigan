@@ -318,7 +318,6 @@ export default {
     editProfile: "Editar perfil",
     fullName: "Nombre completo",
     email: "Correo electr\u00f3nico",
-    currency: "Moneda",
     plan: "Plan",
     planActive: "Plan activo",
     planValue: "Cardigan Pro",
@@ -327,7 +326,6 @@ export default {
     linkSent: "Enlace enviado a tu correo",
     saveError: "Error al guardar",
     emailError: "Error al enviar correo",
-    currencySoon: "Pr\u00f3ximamente m\u00e1s monedas disponibles.",
     planDescription: "Acceso completo a todas las funciones de Cardigan.",
   },
 

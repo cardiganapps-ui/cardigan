@@ -5,6 +5,7 @@ import { IconSearch, IconX, IconUsers } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { useEscape } from "../hooks/useEscape";
 import { Toggle } from "../components/Toggle";
+import { MoneyInput } from "../components/MoneyInput";
 import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -277,7 +278,7 @@ export function Patients() {
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
                     <div className="input-group">
                       <label className="input-label">{t("patients.ratePerSession")}</label>
-                      <input className="input" type="number" min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+                      <MoneyInput min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
                     </div>
                   </div>
 

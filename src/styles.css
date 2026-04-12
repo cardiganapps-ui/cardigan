@@ -402,6 +402,29 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .input.input-error { border-color: var(--red); }
 .input.input-error:focus { box-shadow: 0 0 0 3px rgba(217,107,107,0.15); }
 
+/* Money input — standard .input with a "$" prefix sitting inside the
+   field. The input itself gets extra left padding so the number doesn't
+   sit under the symbol. */
+.money-input-wrap {
+  position: relative;
+  width: 100%;
+}
+.money-input-symbol {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--charcoal-lt);
+  pointer-events: none;
+  line-height: 1;
+}
+.input.money-input {
+  padding-left: 26px;
+}
+
 /* FORM ERROR MESSAGE */
 .form-error {
   display: flex; align-items: center; gap: 6px;

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconCurrency, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
+import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
@@ -74,14 +74,6 @@ export function Settings({ user, signOut }) {
           </div>
           <IconChevron />
         </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("currency")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCurrency size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.currency")}</div>
-            <div className="settings-row-sub">MXN — Peso Mexicano</div>
-          </div>
-          <IconChevron />
-        </div>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={restartTutorial}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
           <div style={{ flex:1 }}>
@@ -147,31 +139,6 @@ export function Settings({ user, signOut }) {
               <button className="btn btn-primary" onClick={saveProfile} disabled={saving || !editName.trim()}>
                 {saving ? t("saving") : t("save")}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── CURRENCY SHEET ── */}
-      {activeSheet === "currency" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <span className="sheet-title">{t("settings.currency")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
-            </div>
-            <div style={{ padding:"0 20px 22px" }}>
-              <div className="card" style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <div>
-                  <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)" }}>MXN — Peso Mexicano</div>
-                  <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2 }}>$1,000.00</div>
-                </div>
-                <div style={{ color:"var(--teal)" }}><IconCheck size={18} /></div>
-              </div>
-              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:12, lineHeight:1.5, textAlign:"center" }}>
-                {t("settings.currencySoon")}
-              </div>
             </div>
           </div>
         </div>
