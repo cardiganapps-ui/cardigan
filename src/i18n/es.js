@@ -327,6 +327,10 @@ export default {
     saveError: "Error al guardar",
     emailError: "Error al enviar correo",
     planDescription: "Acceso completo a todas las funciones de Cardigan.",
+    appearance: "Apariencia",
+    themeLight: "Claro",
+    themeDark: "Oscuro",
+    themeSystem: "Sistema",
   },
 
   // ── Expediente ──

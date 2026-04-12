@@ -1778,3 +1778,127 @@ button, a, select { min-height: 44px; }
   border-radius: 50%;
   background: var(--teal);
 }
+
+/* ══════════════════════════════════════════════════════
+   DARK / NIGHT MODE
+   Override CSS variables when data-theme="dark" is set
+   on <html>. Everything that uses var(--*) adapts
+   automatically; component-specific overrides follow.
+   ══════════════════════════════════════════════════════ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Primary teal ── */
+  --teal:        #6DB8CC;
+  --teal-dark:   #8ACDE0;
+  --teal-light:  #5BA3B5;
+  --teal-pale:   rgba(91,155,175,0.15);
+  --teal-mist:   rgba(91,155,175,0.08);
+
+  /* ── Neutrals ── */
+  --cream:       #2A2A2A;
+  --cream-dark:  #333333;
+  --cream-deeper:#3D3D3D;
+
+  /* ── Text ── */
+  --charcoal:    #EAEAEA;
+  --charcoal-md: #B8B8B8;
+  --charcoal-lt: #8E8E8E;
+  --charcoal-xl: #6E6E6E;
+
+  /* ── Borders ── */
+  --border:      #3A3A3A;
+  --border-lt:   #2E2E2E;
+
+  /* ── Surfaces ── */
+  --white:       #1A1A1A;
+
+  /* ── Status colors ── */
+  --green:       #4EC98A;
+  --green-bg:    rgba(61,171,116,0.12);
+  --red:         #E57777;
+  --red-bg:      rgba(217,107,107,0.12);
+  --amber:       #E0B050;
+  --amber-bg:    rgba(212,160,64,0.12);
+  --purple:      #A08FD8;
+  --purple-bg:   rgba(139,126,200,0.12);
+
+  /* ── Navigation ── */
+  --nav-bg:      #141E22;
+
+  /* ── Shadows ── */
+  --shadow-sm:   0 1px 4px rgba(0,0,0,0.3);
+  --shadow:      0 2px 12px rgba(0,0,0,0.4);
+}
+
+/* ── Buttons: invert primary in dark mode ── */
+html[data-theme="dark"] .btn-primary {
+  background: #EAEAEA;
+  color: #1A1A1A;
+}
+html[data-theme="dark"] .fab {
+  background: #EAEAEA;
+  color: #1A1A1A;
+}
+
+/* ── Overlays: slightly stronger for dark backgrounds ── */
+html[data-theme="dark"] .drawer-overlay {
+  background: rgba(0,0,0,0.6);
+}
+html[data-theme="dark"] .sheet-overlay {
+  background: rgba(0,0,0,0.55);
+}
+html[data-theme="dark"] .fab-overlay {
+  background: rgba(0,0,0,0.55);
+}
+
+/* ── Scrollbar ── */
+html[data-theme="dark"] .page::-webkit-scrollbar-thumb {
+  background: #444;
+}
+html[data-theme="dark"] .page::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* ── Autofill ── */
+html[data-theme="dark"] input:-webkit-autofill,
+html[data-theme="dark"] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #2A2A2A inset;
+  -webkit-text-fill-color: #EAEAEA;
+}
+
+/* ── Landing page dark overrides ── */
+html[data-theme="dark"] .lp-nav {
+  background: rgba(26,26,26,0.88);
+}
+html[data-theme="dark"] .lp-preview-chrome {
+  background: #2A2A2A;
+}
+html[data-theme="dark"] .lp-preview-dot {
+  background: #444;
+}
+html[data-theme="dark"] .lp-section--dark {
+  background: #111111;
+}
+html[data-theme="dark"] .lp-btn--primary {
+  background: #EAEAEA;
+  color: #1A1A1A;
+}
+html[data-theme="dark"] .lp-section--dark .lp-btn--primary {
+  background: #EAEAEA;
+  color: #1A1A1A;
+}
+
+/* ── Hover overrides for dark mode (pointer devices) ── */
+@media (hover: hover) {
+  html[data-theme="dark"] .btn-primary:hover {
+    background: #FFFFFF;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  html[data-theme="dark"] .fab:hover {
+    background: #FFFFFF;
+  }
+  html[data-theme="dark"] .lp-btn--primary:hover {
+    background: #FFFFFF;
+  }
+}

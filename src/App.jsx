@@ -25,12 +25,14 @@ import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
 import { BugReportFab } from "./components/BugReportFab";
+import { useTheme } from "./hooks/useTheme";
 import "./utils/logBuffer";
 import "./styles.css";
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
+  const theme = useTheme();
 
   if (authLoading && !demoMode) {
     return (
@@ -42,21 +44,21 @@ function CardiganApp() {
   }
 
   if (demoMode) {
-    return <AppShell user={null} signOut={() => setDemoMode(false)} demo />;
+    return <AppShell user={null} signOut={() => setDemoMode(false)} demo theme={theme} />;
   }
 
   if (!user) {
     return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => setDemoMode(true)} />;
   }
 
-  return <AppShell user={user} signOut={signOut} />;
+  return <AppShell user={user} signOut={signOut} theme={theme} />;
 }
 
 export default function Cardigan() {
   return <I18nProvider><CardiganApp /></I18nProvider>;
 }
 
-function AppShell({ user, signOut, demo }) {
+function AppShell({ user, signOut, demo, theme }) {
   const { t } = useT();
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
@@ -181,10 +183,10 @@ function AppShell({ user, signOut, demo }) {
   const ctxValue = useMemo(() => ({
     ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
-    screen, drawerOpen, tutorial,
+    screen, drawerOpen, tutorial, theme,
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial, theme]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,

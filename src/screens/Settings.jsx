@@ -1,13 +1,13 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck } from "../components/Icons";
+import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 
 export function Settings({ user, signOut }) {
   const { t } = useT();
-  const { tutorial, navigate } = useCardigan();
+  const { tutorial, navigate, theme } = useCardigan();
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -82,6 +82,14 @@ export function Settings({ user, signOut }) {
           </div>
           <IconChevron />
         </div>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("theme")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{theme?.resolvedTheme === "dark" ? <IconMoon size={18} /> : <IconSun size={18} />}</div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.appearance")}</div>
+            <div className="settings-row-sub">{theme?.preference === "light" ? t("settings.themeLight") : theme?.preference === "dark" ? t("settings.themeDark") : t("settings.themeSystem")}</div>
+          </div>
+          <IconChevron />
+        </div>
       </div>
 
       <div className="settings-label">{t("settings.plan")}</div>
@@ -139,6 +147,35 @@ export function Settings({ user, signOut }) {
               <button className="btn btn-primary" onClick={saveProfile} disabled={saving || !editName.trim()}>
                 {saving ? t("saving") : t("save")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── THEME SHEET ── */}
+      {activeSheet === "theme" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.appearance")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {[
+                { key: "light", label: t("settings.themeLight"), icon: <IconSun size={18} /> },
+                { key: "dark", label: t("settings.themeDark"), icon: <IconMoon size={18} /> },
+                { key: "system", label: t("settings.themeSystem"), icon: <IconSmartphone size={18} /> },
+              ].map(opt => (
+                <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
+                  onClick={() => { theme?.setPreference(opt.key); setActiveSheet(null); }}>
+                  <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{opt.icon}</div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">{opt.label}</div>
+                  </div>
+                  {theme?.preference === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
+                </div>
+              ))}
             </div>
           </div>
         </div>
