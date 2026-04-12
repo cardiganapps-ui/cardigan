@@ -58,7 +58,7 @@ export function QuickActions() {
       </button>
 
       {activeSheet === "patient" && (
-        <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} />
+        <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} sessions={upcomingSessions} />
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} sessions={upcomingSessions} mutating={mutating} />

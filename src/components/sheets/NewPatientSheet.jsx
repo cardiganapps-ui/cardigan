@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { Toggle } from "../Toggle";
@@ -7,7 +7,7 @@ import { MoneyInput } from "../MoneyInput";
 import { useEscape } from "../../hooks/useEscape";
 import { useT } from "../../i18n/index";
 
-export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
+export function NewPatientSheet({ onClose, onSubmit, mutating, patients, sessions }) {
   const { t, strings } = useT();
   useEscape(onClose);
   const [name, setName]       = useState("");
@@ -22,6 +22,15 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
   const [hasEndDate, setHasEndDate] = useState(false);
   const [endDate, setEndDate] = useState("");
   const [err, setErr]         = useState("");
+
+  // Check for schedule conflicts with existing sessions
+  const conflicts = useMemo(() => {
+    if (!sessions || !schedules.length) return [];
+    return schedules.map(sched => {
+      const match = sessions.find(s => s.day === sched.day && s.time === sched.time && s.status === "scheduled");
+      return match || null;
+    }).filter(Boolean);
+  }, [schedules, sessions]);
 
   const updateSched = (i, f, v) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
   const removeSched = (i) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
@@ -109,6 +118,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
             style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 12px", fontFamily:"var(--font)" }}>
             {t("patients.addSchedule")}
           </button>
+          {conflicts.length > 0 && (
+            <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>
+              {conflicts.map((c, i) => (
+                <div key={i}>{t("sessions.conflict", { patient: c.patient })}</div>
+              ))}
+            </div>
+          )}
           {recurring && (
             <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14 }}>
               <div className="input-group" style={{ marginBottom:10 }}>
