@@ -71,7 +71,7 @@
 
 html, body {
   font-family: var(--font);
-  background: var(--cream);
+  background: var(--white);
   color: var(--charcoal);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
@@ -85,35 +85,37 @@ html, body {
   display: flex; flex-direction: column;
   height: 100dvh;
   width: 100%;
-  background: var(--cream);
+  background: var(--white);
   position: relative; overflow: hidden;
 }
 .main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
-.status-bar { height: var(--sat); background: var(--nav-bg); flex-shrink: 0; }
+.status-bar { height: var(--sat); background: var(--white); flex-shrink: 0; }
 
-/* TOPBAR */
+/* TOPBAR — minimal white bar matching the landing .lp-nav */
 .topbar {
-  background: var(--nav-bg);
+  background: var(--white);
   padding: 6px 14px;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   position: relative;
+  border-bottom: 1px solid var(--border-lt);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); }
+.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); }
 .topbar-right { display: flex; align-items: center; gap: 6px; }
 
 .icon-btn {
   width: 38px; height: 38px; border-radius: 50%;
   background: none; border: none;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: white;
+  cursor: pointer; color: var(--charcoal);
   -webkit-tap-highlight-color: transparent;
 }
 .icon-btn:active { opacity: 0.6; }
 
 .admin-btn {
   background: none; border: none; border-radius: var(--radius-sm);
-  color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 600; padding: 2px 6px;
+  color: var(--charcoal-xl); font-size: 10px; font-weight: 600; padding: 2px 6px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .admin-btn:active { opacity: 0.6; }
@@ -128,7 +130,7 @@ html, body {
 }
 .hamburger:active { opacity: 0.6; }
 .hamburger-line {
-  width: 18px; height: 2px; background: white; border-radius: 2px;
+  width: 18px; height: 2px; background: var(--charcoal); border-radius: 2px;
   transition: all 0.22s ease;
   transform-origin: center;
 }
@@ -137,9 +139,9 @@ html, body {
 .hamburger.open .hamburger-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 .avatar-sm {
-  width: 28px; height: 28px; background: var(--teal-light); border-radius: 50%;
+  width: 28px; height: 28px; background: var(--teal-pale); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-d); font-size: 11px; font-weight: 800; color: var(--white);
+  font-family: var(--font-d); font-size: 11px; font-weight: 800; color: var(--teal-dark);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 
@@ -248,20 +250,20 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .page { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; padding-bottom: 24px; }
 .page::-webkit-scrollbar { display: none; }
 
-/* FAB */
+/* FAB — charcoal primary button, matching landing .lp-btn--primary */
 .fab {
   position: fixed; bottom: calc(var(--sab) + 20px); right: 20px;
-  width: 54px; height: 54px; background: var(--teal); border-radius: 50%;
+  width: 54px; height: 54px; background: var(--charcoal); border-radius: 50%;
   border: none; display: flex; align-items: center; justify-content: center;
   color: white;
   padding: 0;
-  box-shadow: 0 3px 14px rgba(91,155,175,0.35);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
   cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s, background 0.2s;
 }
 .fab:active { transform: scale(0.93); }
-.fab.fab-open { transform: rotate(45deg); background: var(--charcoal); }
+.fab.fab-open { transform: rotate(45deg); }
 .fab.fab-open:active { transform: rotate(45deg) scale(0.93); }
 
 .fab-overlay {
@@ -315,9 +317,9 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .section-title { font-family: var(--font-d); font-size: 15px; font-weight: 800; color: var(--charcoal); }
 .see-all { font-size: 13px; font-weight: 600; color: var(--teal-dark); background: none; border: none; cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent; }
 
-.card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); box-shadow: var(--shadow-sm); overflow: hidden; }
+.card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); overflow: hidden; }
 
-/* KPI ROW */
+/* KPI ROW — plain white tiles with a subtle border, matching .lp-preview-kpi */
 .kpi-scroll {
   display: flex; gap: 10px; overflow-x: auto; padding: 0 16px 4px;
   -webkit-overflow-scrolling: touch; scrollbar-width: none; scroll-snap-type: x mandatory;
@@ -326,10 +328,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .kpi-card {
   background: var(--white); border-radius: var(--radius-lg);
   padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-lt); position: relative; overflow: hidden;
 }
-.kpi-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--teal-light), var(--teal)); }
 .kpi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--charcoal-xl); margin-bottom: 6px; }
 .kpi-value { font-family: var(--font-d); font-size: 22px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.4px; }
 .kpi-meta { font-size: 11px; color: var(--charcoal-xl); margin-top: 4px; }
@@ -442,7 +442,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   transition: transform 0.12s; white-space: nowrap;
 }
 .btn:active { transform: scale(0.97); }
-.btn-primary { background: var(--teal); color: var(--white); box-shadow: 0 3px 12px rgba(91,155,175,0.4); width: 100%; }
+.btn-primary { background: var(--charcoal); color: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.08); width: 100%; }
 .btn-secondary { background: var(--white); color: var(--charcoal-md); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
 .btn-ghost { background: transparent; color: var(--teal-dark); height: 38px; padding: 0 10px; font-size: 13px; }
 .btn-danger { background: var(--red-bg); color: var(--red); box-shadow: none; width: 100%; }
@@ -484,11 +484,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .bal-row[role="button"]:active { background: var(--teal-mist); }
 
 /* AUTH */
-.auth-screen { height: 100dvh; background: var(--cream); display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.auth-header { background: var(--nav-bg); padding: calc(var(--sat) + 24px) 24px 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
-.auth-wordmark { font-family: var(--font-d); font-size: 28px; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
-.auth-tagline { font-size: 13.5px; color: rgba(255,255,255,0.6); line-height: 1.5; max-width: 260px; }
-.auth-body { flex: 1; padding: 28px 20px calc(var(--sab) + 20px); }
+/* Auth toggle (used inside the sign-in/sign-up sheet on the landing). */
 .auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 24px; }
 .auth-tab { flex: 1; padding: 10px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
 .auth-tab.active { background: var(--white); color: var(--charcoal); box-shadow: var(--shadow-sm); }
@@ -1181,13 +1177,12 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .bal-sub  { font-size: 11px; color: var(--charcoal-xl); margin-top: 2px; }
 .bal-amt  { font-family: var(--font-d); font-size: 14px; font-weight: 800; }
 
-/* Stat tile */
+/* Stat tile — plain white, subtle border, no accent strip */
 .stat-tile {
   background: var(--white); border-radius: var(--radius-lg);
-  border: 1px solid var(--border-lt); box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-lt);
   padding: 14px 16px; position: relative; overflow: hidden;
 }
-.stat-tile::after { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: linear-gradient(90deg, var(--teal-light), var(--teal)); }
 .stat-tile-label { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--charcoal-xl); margin-bottom:5px; }
 .stat-tile-val { font-family:var(--font-d); font-size:20px; font-weight:800; color:var(--charcoal); letter-spacing:-0.3px; }
 .stat-tile-sub { font-size:11px; color:var(--charcoal-xl); margin-top:3px; }
@@ -1390,7 +1385,7 @@ button, a, select { min-height: 44px; }
   .settings-row:hover { background: var(--teal-mist); }
   .drawer-item:hover { background: rgba(255,255,255,0.08); }
   .btn:hover { transform: scale(0.98); }
-  .btn-primary:hover { box-shadow: 0 4px 16px rgba(91,155,175,0.4); }
+  .btn-primary:hover { background: #000; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
   .fab:hover { transform: scale(1.05); }
   .fab-action:hover { background: var(--cream); }
   .icon-btn:hover { opacity: 0.7; }
@@ -1400,7 +1395,7 @@ button, a, select { min-height: 44px; }
   .week-cell:hover { background: var(--teal-mist); }
   .week-event:hover { background: var(--teal-pale); filter: brightness(0.97); }
   .chip:hover { opacity: 0.85; }
-  .kpi-card:hover { box-shadow: 0 2px 12px rgba(46,46,46,0.12); }
+  .kpi-card:hover { border-color: var(--teal-light); }
 }
 
 /* ── FOCUS-VISIBLE (keyboard navigation) ── */
@@ -1657,7 +1652,7 @@ button, a, select { min-height: 44px; }
 .hamburger.tut-nav-pulse {
   position: relative;
   z-index: calc(var(--z-tutorial) + 3);
-  background: var(--nav-bg);
+  background: var(--white);
   border-radius: 50%;
   animation: tutHamburgerPulse 0.55s cubic-bezier(0.4, 0, 0.6, 1);
 }

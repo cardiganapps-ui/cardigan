@@ -243,7 +243,7 @@ function AppShell({ user, signOut, demo }) {
             {/* Contextual help for the current screen. Lives in the topbar
                 so it doesn't eat vertical space on each page. HelpTip
                 returns null when the screen's tip array is empty. */}
-            <HelpTip tipsKey={`help.${screen}`} variant="dark" />
+            <HelpTip tipsKey={`help.${screen}`} />
             <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
           </div>
         </div>
