@@ -4,7 +4,7 @@ import { formatShortDate, getInitials } from "../utils/dates";
 
 export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
 
-  async function createPayment({ patientName, amount, method = PAYMENT_METHOD.TRANSFER, date = formatShortDate() }) {
+  async function createPayment({ patientName, amount, method = PAYMENT_METHOD.TRANSFER, date = formatShortDate(), note = "" }) {
     const parsedAmount = Number(amount);
     if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
     const patient = patients.find(p => p.name === patientName);
@@ -17,6 +17,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       patient: patientName,
       initials: patient?.initials || getInitials(patientName),
       amount: parsedAmount, date, method,
+      note: note || null,
       color_idx: patient?.colorIdx || 0,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }

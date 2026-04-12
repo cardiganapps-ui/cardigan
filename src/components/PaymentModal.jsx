@@ -16,6 +16,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
   const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
   const [customMethod, setCustomMethod] = useState("");
   const [date, setDate] = useState(todayISO());
+  const [paymentNote, setPaymentNote] = useState("");
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
     setMethod(PAYMENT_METHOD.TRANSFER);
     setCustomMethod("");
     setDate(todayISO());
+    setPaymentNote("");
     setFormError("");
   }, [open, initialPatientName, initialAmount]);
 
@@ -57,6 +59,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
       amount: parsedAmount,
       method: finalMethod,
       date: isoToShortDate(date),
+      note: paymentNote.trim(),
     });
     if (ok) onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
   };
@@ -99,6 +102,10 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
           <div className="input-group">
             <label className="input-label">{t("finances.paymentDate")}</label>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayISO()} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">{t("finances.paymentNote")}</label>
+            <input className="input" type="text" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} placeholder={t("finances.paymentNotePlaceholder")} />
           </div>
           {formError && <div className="form-error">{formError}</div>}
           </div>

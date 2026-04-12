@@ -358,6 +358,24 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
         {dateStr && (
           <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginBottom:12 }}>{dateStr}</div>
         )}
+        {/* Templates — shown only for brand new empty notes */}
+        {!title && !content && !note?.title && !note?.content && (
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-xl)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>{t("notes.templates")}</div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {[
+                { title: t("notes.tplSession"), content: "- Tema principal:\n- Observaciones:\n- Plan para siguiente sesión:\n" },
+                { title: t("notes.tplIntake"), content: "- Motivo de consulta:\n- Antecedentes relevantes:\n- Objetivos del tratamiento:\n- Frecuencia sugerida:\n" },
+                { title: t("notes.tplPlan"), content: "- Objetivos a corto plazo:\n- Objetivos a largo plazo:\n- Técnicas/intervenciones:\n- Indicadores de progreso:\n" },
+              ].map((tpl, i) => (
+                <button key={i} type="button" onClick={() => { setTitle(tpl.title); updateContent(tpl.content); bodyRef.current?.focus(); }}
+                  style={{ padding:"8px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)" }}>
+                  {tpl.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <input
           type="text"
           value={title}

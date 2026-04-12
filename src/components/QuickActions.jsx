@@ -61,7 +61,7 @@ export function QuickActions() {
         <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} />
       )}
       {activeSheet === "session" && (
-        <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} mutating={mutating} />
+        <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} sessions={upcomingSessions} mutating={mutating} />
       )}
       {quickNote && (
         <NoteEditor

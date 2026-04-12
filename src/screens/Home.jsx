@@ -1,14 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
-import { IconDollar, IconX, IconPlus } from "../components/Icons";
-import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
+import { IconDollar, IconX, IconPlus, IconCalendar } from "../components/Icons";
+import { formatShortDate, SHORT_MONTHS, parseShortDate } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, openRecordPaymentModal, mutating } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, openRecordPaymentModal, mutating } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -16,6 +16,38 @@ export function Home({ setScreen, userName }) {
   const totalOwed     = patients.reduce((s,p) => s + p.amountDue, 0);
   const activeCount   = patients.filter(p=>p.status==="active").length;
   const todaySessions = upcomingSessions.filter(s => s.date === todayStr);
+
+  // Find next upcoming session (scheduled, today or future)
+  const nextSession = useMemo(() => {
+    const now = new Date();
+    const nowH = now.getHours(), nowM = now.getMinutes();
+    return upcomingSessions
+      .filter(s => s.status === "scheduled")
+      .filter(s => {
+        const d = parseShortDate(s.date);
+        if (!d) return false;
+        if (d > TODAY) return true;
+        if (d.toDateString() === TODAY.toDateString()) {
+          const [h, m] = (s.time || "00:00").split(":").map(Number);
+          return h > nowH || (h === nowH && m > nowM);
+        }
+        return false;
+      })
+      .sort((a, b) => {
+        const da = parseShortDate(a.date), db = parseShortDate(b.date);
+        if (!da || !db) return 0;
+        const diff = da - db;
+        return diff !== 0 ? diff : (a.time || "").localeCompare(b.time || "");
+      })[0] || null;
+  }, [upcomingSessions]);
+
+  // Last note for the next session's patient
+  const nextSessionNote = useMemo(() => {
+    if (!nextSession) return null;
+    return (notes || [])
+      .filter(n => n.patient_id === nextSession.patient_id && n.content)
+      .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""))[0] || null;
+  }, [nextSession, notes]);
 
   const currentMonthPayments = payments.filter(p => {
     const parts = p.date.split(" ");
@@ -78,6 +110,30 @@ export function Home({ setScreen, userName }) {
           <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
         </div>
       </div>
+
+      {nextSession && (
+        <div className="section" style={{ paddingBottom:0 }}>
+          <div className="card" style={{ padding:"14px 16px", cursor:"pointer", background:"var(--teal-mist)", border:"1.5px solid var(--teal-pale)" }}
+            onClick={() => setScreen("agenda")}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:40, height:40, borderRadius:"50%", background: isTutorSession(nextSession) ? "var(--purple)" : getClientColor(nextSession.colorIdx), display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"var(--font-d)", fontSize:13, fontWeight:800, color:"white", flexShrink:0 }}>
+                {isTutorSession(nextSession) ? tutorDisplayInitials(nextSession) : nextSession.initials}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", color:"var(--teal-dark)", marginBottom:2 }}>{t("home.nextSession")}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)" }}>{nextSession.patient}</div>
+                <div style={{ fontSize:12, color:"var(--charcoal-md)", marginTop:1 }}>{nextSession.time} · {nextSession.date} · {nextSession.day}</div>
+                {nextSessionNote && (
+                  <div style={{ fontSize:11, color:"var(--charcoal-lt)", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {nextSessionNote.title || nextSessionNote.content.slice(0, 60)}
+                  </div>
+                )}
+              </div>
+              <IconCalendar size={18} style={{ color:"var(--teal)", flexShrink:0 }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="home-columns">
       <div className="section home-col-main">

@@ -27,6 +27,8 @@ export function Patients() {
   const [editIsMinor, setEditIsMinor] = useState(false);
   const [editParent, setEditParent]   = useState("");
   const [editRate, setEditRate]       = useState("");
+  const [editPhone, setEditPhone]     = useState("");
+  const [editEmail, setEditEmail]     = useState("");
   const [editStatus, setEditStatus]   = useState("");
   const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
@@ -55,6 +57,8 @@ export function Patients() {
     setEditIsMinor(!!selected.parent);
     setEditParent(selected.parent || "");
     setEditRate(String(selected.rate));
+    setEditPhone(selected.phone || "");
+    setEditEmail(selected.email || "");
     setEditStatus(selected.status);
     setEditSchedules(scheds);
     setOrigRate(selected.rate);
@@ -85,6 +89,7 @@ export function Patients() {
         await updatePatient(selected.id, {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
+          phone: editPhone.trim(), email: editEmail.trim(),
         });
         setSelected(null);
         setEditing(false);
@@ -105,6 +110,7 @@ export function Patients() {
         await updatePatient(selected.id, {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
+          phone: editPhone.trim(), email: editEmail.trim(),
           status: editStatus,
         });
         setSelected(null);
@@ -115,6 +121,7 @@ export function Patients() {
       const ok = await updatePatient(selected.id, {
         name: editName.trim(),
         parent: editIsMinor ? editParent.trim() : "",
+        phone: editPhone.trim(), email: editEmail.trim(),
         rate: Number(editRate) || 0,
         status: editStatus,
       });
@@ -240,6 +247,16 @@ export function Patients() {
                       <input className="input" value={editParent} onChange={e => setEditParent(e.target.value)} />
                     </div>
                   )}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.phone")}</label>
+                      <input className="input" type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("settings.email")}</label>
+                      <input className="input" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                    </div>
+                  </div>
                   <div className="input-group">
                     <label className="input-label">{t("patients.status")}</label>
                     <select className="input" value={editStatus} onChange={e => setEditStatus(e.target.value)}>

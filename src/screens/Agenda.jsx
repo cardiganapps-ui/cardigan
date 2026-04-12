@@ -520,6 +520,7 @@ export function Agenda() {
           onClose={() => setNewSessionPrefill(null)}
           onSubmit={createSession}
           patients={patients}
+          sessions={upcomingSessions}
           mutating={mutating}
           initialDate={newSessionPrefill.date}
           initialTime={newSessionPrefill.time}

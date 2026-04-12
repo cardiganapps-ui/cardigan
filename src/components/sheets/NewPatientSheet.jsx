@@ -13,6 +13,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
   const [name, setName]       = useState("");
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
+  const [phone, setPhone]     = useState("");
+  const [email, setEmail]     = useState("");
   const [rate, setRate]       = useState("");
   const [recurring, setRecurring] = useState(true);
   const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
@@ -33,6 +35,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
     setErr("");
     const ok = await onSubmit({
       name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
+      phone: phone.trim(), email: email.trim(),
       schedules, recurring,
       startDate: recurring ? startDate : null,
       endDate: recurring && hasEndDate ? endDate : null,
@@ -64,6 +67,16 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients }) {
               <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
             </div>
           )}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">{t("patients.phone")}</label>
+              <input className="input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t("settings.email")}</label>
+              <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+            </div>
+          </div>
           <div className="input-group">
             <label className="input-label">{t("patients.ratePerSession")}</label>
             <MoneyInput min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />

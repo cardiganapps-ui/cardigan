@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { todayISO, isoToShortDate } from "../../utils/dates";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 
-export function NewSessionSheet({ onClose, onSubmit, patients, mutating, initialDate, initialTime }) {
+export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime }) {
   const { t } = useT();
   useEscape(onClose);
   const [patientName, setPatientName] = useState("");
@@ -25,6 +25,13 @@ export function NewSessionSheet({ onClose, onSubmit, patients, mutating, initial
     setSessionType("patient");
     setCustomRate(p ? String(p.rate) : "");
   };
+
+  // Conflict detection: check if any session exists at same date+time
+  const conflict = useMemo(() => {
+    if (!date || !time || !sessions) return null;
+    const shortDate = isoToShortDate(date);
+    return sessions.find(s => s.date === shortDate && s.time === time && s.status === "scheduled");
+  }, [date, time, sessions]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -78,7 +85,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, mutating, initial
           )}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             <div className="input-group">
-              <label className="input-label">{t("finances.paymentDate")}</label>
+              <label className="input-label">{t("sessions.date")}</label>
               <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <div className="input-group">
@@ -86,6 +93,11 @@ export function NewSessionSheet({ onClose, onSubmit, patients, mutating, initial
               <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
             </div>
           </div>
+          {conflict && (
+            <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>
+              {t("sessions.conflict", { patient: conflict.patient })}
+            </div>
+          )}
           {isTutor && (
             <div className="input-group">
               <label className="input-label">{t("sessions.sessionRate")}</label>
