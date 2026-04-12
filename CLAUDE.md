@@ -175,6 +175,17 @@ npm run dev     # Local dev server
 npm run build   # Production build
 ```
 
+## CLI Scripts
+
+### Bug Reports
+```bash
+npm run bugs -- list              # List all bug reports
+npm run bugs -- show <id>         # View a specific bug report
+npm run bugs -- delete <id>       # Delete a specific bug report
+npm run bugs -- clear             # Delete all bug reports
+```
+Requires `.env.local` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
 ## Deployment
 - Push to `main` branch triggers Vercel deploy
 - Free tier: 100 deploys/day limit — batch changes
