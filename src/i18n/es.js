@@ -51,9 +51,7 @@ export default {
   },
 
   // Landing page copy lives directly in src/components/landing/LandingPage.jsx
-  // because it's English (marketing-facing) while the rest of the app is
-  // Spanish-only. Mixing languages inside the same i18n bundle would be
-  // confusing, so we keep it out of here entirely.
+  // (hardcoded Spanish strings, no i18n keys needed since the app is Spanish-only).
 
   // ── Auth ──
   auth: {
@@ -465,37 +463,38 @@ export default {
   help: {
     ariaLabel: "Consejos r\u00e1pidos",
     home: [
-      "Saldos calculados con tu tarifa actual.",
-      "Toca un KPI para abrir esa pantalla.",
+      "Los saldos se calculan con la tarifa actual de cada paciente.",
+      "Toca cualquier KPI para ir directo a esa pantalla.",
     ],
     agenda: [
-      "Sesiones recurrentes se extienden 12 semanas solas.",
-      "Una sesi\u00f3n pasada se marca completada autom\u00e1ticamente.",
-      "\u201cCancelar con cobro\u201d mantiene el cargo.",
+      "Las sesiones recurrentes se extienden 12 semanas solitas.",
+      "Si una sesi\u00f3n ya pas\u00f3, se marca como completada autom\u00e1ticamente.",
+      "\u00bfCancelar pero s\u00ed cobrar? Usa \u201ccancelar con cobro\u201d.",
     ],
     patients: [
-      "Cambios de horario o tarifa usan fecha efectiva.",
-      "Finalizar conserva el historial del paciente.",
-      "Los menores pueden tener tutor (sesiones en morado).",
+      "\u00bfCambio de horario o tarifa? Elige la fecha desde cu\u00e1ndo aplica.",
+      "\u201cFinalizar\u201d cierra al paciente pero conserva todo su historial.",
+      "Los menores pueden tener tutor \u2014 sus sesiones se ven en morado.",
+      "Para eliminar un paciente, t\u00f3calo y usa el bot\u00f3n rojo en sus acciones.",
     ],
     finances: [
-      "El CSV respeta los filtros activos.",
-      "\u201cCancelada cobrada\u201d suma al facturado; \u201ccancelada\u201d no.",
+      "El CSV se exporta con los filtros que tengas activos.",
+      "\u201cCancelada cobrada\u201d s\u00ed suma al facturado; \u201ccancelada\u201d normal, no.",
     ],
     notes: [
-      "Se guardan solas al dejar de escribir.",
-      "Manten\u00e9 presionada una nota para cambiar su v\u00ednculo.",
-      "Desliza a la izquierda para borrarla.",
+      "Se guardan solitas cuando dejas de escribir.",
+      "Mant\u00e9n presionada una nota para cambiarle el v\u00ednculo.",
+      "Desliza a la izquierda sobre una nota para borrarla.",
     ],
     documents: [
-      "Vincula un doc a una sesi\u00f3n para verlo en su detalle.",
-      "M\u00e1ximo 10 MB. Im\u00e1genes, PDF y Word.",
+      "Vincula un documento a una sesi\u00f3n para verlo en su detalle.",
+      "M\u00e1ximo 10 MB por archivo. Acepta im\u00e1genes, PDF y Word.",
     ],
     // Settings screen is self-explanatory — empty array hides the ? button.
     settings: [],
     expediente: [
-      "El per\u00edodo filtra finanzas y asistencia, no el saldo actual.",
-      "Toca una sesi\u00f3n para editarla o adjuntar nota y documento.",
+      "El per\u00edodo filtra finanzas y asistencia \u2014 el saldo actual no cambia.",
+      "Toca una sesi\u00f3n para editarla o adjuntarle una nota o documento.",
     ],
   },
 

@@ -266,6 +266,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .fab.fab-open { transform: rotate(45deg); }
 .fab.fab-open:active { transform: rotate(45deg) scale(0.93); }
 
+.bug-fab { bottom: calc(var(--sab) + 24px); }
+
 .fab-overlay {
   position: fixed; inset: 0;
   background: rgba(20,35,40,0.45);
@@ -1777,6 +1779,13 @@ button, a, select { min-height: 44px; }
   width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--teal);
+}
+
+/* ── PWA Standalone: tighter bottom spacing (no Safari bar) ── */
+@media (display-mode: standalone) {
+  .fab      { bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .fab-menu { bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+  .bug-fab  { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
 }
 
 /* ══════════════════════════════════════════════════════

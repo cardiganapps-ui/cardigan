@@ -1,16 +1,14 @@
-import { useState, useMemo, useRef, useCallback } from "react";
-import { IconSearch, IconUpload, IconClipboard } from "../components/Icons";
+import { useState, useMemo, useRef } from "react";
+import { IconSearch, IconUpload } from "../components/Icons";
 import { isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
-import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, notes, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating } = useCardigan();
   const { t } = useT();
-  const [editingNote, setEditingNote] = useState(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name
   const [filterPatient, setFilterPatient] = useState("all");
@@ -31,19 +29,6 @@ export function Documents() {
     const ids = new Set((documents || []).map(d => d.patient_id).filter(Boolean));
     return (patients || []).filter(p => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [documents, patients]);
-
-  const generalNotes = useMemo(() =>
-    (notes || []).filter(n => !n.patient_id).sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || "")),
-    [notes]
-  );
-
-  const handleSaveNote = useCallback(async ({ title, content }) => {
-    if (editingNote?.id) await updateNote(editingNote.id, { title, content });
-  }, [editingNote, updateNote]);
-
-  const handleDeleteNote = useCallback(async () => {
-    if (editingNote?.id) await deleteNote(editingNote.id);
-  }, [editingNote, deleteNote]);
 
   // Filter & sort
   const filteredDocs = useMemo(() => {
@@ -108,14 +93,6 @@ export function Documents() {
 
   return (
     <>
-    {editingNote && (
-      <NoteEditor
-        note={editingNote}
-        onSave={handleSaveNote}
-        onDelete={editingNote.id ? handleDeleteNote : undefined}
-        onClose={() => setEditingNote(null)}
-      />
-    )}
     {viewingDoc && (
       <DocumentViewer
         doc={viewingDoc.doc} url={viewingDoc.url}
@@ -211,31 +188,6 @@ export function Documents() {
         emptyMessage={(documents || []).length === 0 ? t("docs.noDocuments") : t("docs.noResults")}
       />
 
-      {/* ── General Notes ── */}
-      {(filterPatient === "all" || filterPatient === "general") && (
-        <div style={{ marginTop:20 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <IconClipboard size={16} style={{ color:"var(--charcoal-xl)" }} />
-              <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>{t("notes.generalNotes")}</span>
-            </div>
-            <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={async () => {
-              const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
-              if (note) setEditingNote(note);
-            }}>{t("notes.newNote")}</button>
-          </div>
-          {generalNotes.length === 0
-            ? <div className="card" style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-                {t("notes.generalNotesEmpty")}
-              </div>
-            : <div className="card">
-                {generalNotes.map(n => (
-                  <NoteCard key={n.id} note={n} onClick={() => setEditingNote(n)} />
-                ))}
-              </div>
-          }
-        </div>
-      )}
     </div>
     </>
   );

@@ -29,22 +29,22 @@ export function ProductPreview() {
           <div className="lp-preview-avatar">D</div>
         </div>
         <div className="lp-preview-content">
-          <div className="lp-preview-greeting">Today</div>
+          <div className="lp-preview-greeting">Hoy</div>
           <div className="lp-preview-kpis">
             <div className="lp-preview-kpi">
-              <div className="lp-preview-kpi-label">Sessions</div>
+              <div className="lp-preview-kpi-label">Sesiones</div>
               <div className="lp-preview-kpi-value">6</div>
             </div>
             <div className="lp-preview-kpi">
-              <div className="lp-preview-kpi-label">Active clients</div>
+              <div className="lp-preview-kpi-label">Pacientes activos</div>
               <div className="lp-preview-kpi-value">24</div>
             </div>
             <div className="lp-preview-kpi">
-              <div className="lp-preview-kpi-label">Collected</div>
+              <div className="lp-preview-kpi-label">Cobrado</div>
               <div className="lp-preview-kpi-value">$4,820</div>
             </div>
           </div>
-          <div className="lp-preview-list-title">Upcoming sessions</div>
+          <div className="lp-preview-list-title">Próximas sesiones</div>
           <div className="lp-preview-list">
             {PREVIEW_SESSIONS.map((row, i) => (
               <div key={i} className="lp-preview-row">

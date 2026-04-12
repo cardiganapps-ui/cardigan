@@ -47,16 +47,16 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* Nav */}
       <nav className="lp-nav" aria-label="Primary">
         <div className="lp-container lp-nav-inner">
-          <a href="#hero" className="lp-nav-brand" aria-label="Cardigan home">
+          <a href="#hero" className="lp-nav-brand" aria-label="Inicio de Cardigan">
             <LogoIcon size={22} color="var(--charcoal)" />
             <span>cardigan</span>
           </a>
           <div className="lp-nav-actions">
             <button type="button" className="lp-nav-link" onClick={onLogin}>
-              Sign in
+              Iniciar sesión
             </button>
             <CTAButton variant="primary" onClick={onPrimary}>
-              Get early access
+              Comenzar gratis
             </CTAButton>
           </div>
         </div>
@@ -65,18 +65,18 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 1. Hero */}
       <Section id="hero" ariaLabelledBy="lp-hero-title">
         <h1 id="lp-hero-title" className="lp-hero-title">
-          Run your practice without the chaos.
+          Gestiona tu consultorio sin complicaciones.
         </h1>
         <p className="lp-hero-sub">
-          Appointments, clients, and payments — all in one simple system.
-          No training. No bloat. Just what you need to operate.
+          Citas, pacientes y cobros — todo en un solo lugar.
+          Sin capacitación. Sin complejidad. Solo lo que necesitas.
         </p>
         <div className="lp-hero-ctas">
           <CTAButton variant="primary" onClick={onPrimary}>
-            Get early access
+            Comenzar gratis
           </CTAButton>
           <CTAButton variant="secondary" onClick={onSecondary}>
-            See how it works
+            Ver cómo funciona
           </CTAButton>
         </div>
       </Section>
@@ -84,17 +84,17 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 2. Problem */}
       <Section id="problem" ariaLabelledBy="lp-problem-title">
         <h2 id="lp-problem-title" className="lp-section-title">
-          Most tools make simple things harder.
+          La mayoría de las herramientas complican lo simple.
         </h2>
         <div className="lp-body">
           <p>
-            You end up juggling calendars, spreadsheets, payment links, and
-            notes — trying to keep everything in sync.
+            Terminas haciendo malabares entre calendarios, hojas de cálculo,
+            links de pago y notas — tratando de mantener todo sincronizado.
           </p>
-          <p className="lp-body-emphasis">It works… until it doesn’t.</p>
+          <p className="lp-body-emphasis">Funciona… hasta que deja de funcionar.</p>
           <p>
-            Missed payments. Double bookings. No clear picture of your
-            business.
+            Cobros olvidados. Citas duplicadas. Sin una vista clara de tu
+            negocio.
           </p>
         </div>
       </Section>
@@ -102,23 +102,23 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 3. Solution */}
       <Section id="solution" ariaLabelledBy="lp-solution-title">
         <h2 id="lp-solution-title" className="lp-section-title">
-          Cardigan keeps everything in one place.
+          Cardigan mantiene todo en un solo lugar.
         </h2>
         <p className="lp-section-sub">
-          Built for small practices that don’t need complexity — just control.
+          Hecho para consultorios que no necesitan complejidad — solo control.
         </p>
         <div className="lp-features">
           <FeatureCard
-            title="Your day, clearly organized"
-            desc="See your schedule, availability, and upcoming sessions at a glance. No overlaps. No confusion."
+            title="Tu día, claramente organizado"
+            desc="Revisa tu agenda, disponibilidad y próximas sesiones de un vistazo. Sin traslapes. Sin confusión."
           />
           <FeatureCard
-            title="Every client in one view"
-            desc="Access history, notes, and payments instantly. No digging through messages or files."
+            title="Cada paciente en una sola vista"
+            desc="Accede al historial, notas y pagos al instante. Sin buscar entre mensajes o archivos."
           />
           <FeatureCard
-            title="Know exactly where you stand"
-            desc="Track payments, pending balances, and revenue in real time. No spreadsheets required."
+            title="Sabe exactamente cómo vas"
+            desc="Lleva el control de pagos, saldos pendientes e ingresos en tiempo real. Sin hojas de cálculo."
           />
         </div>
       </Section>
@@ -126,38 +126,38 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 4. Differentiation */}
       <Section id="differentiation" ariaLabelledBy="lp-diff-title">
         <h2 id="lp-diff-title" className="lp-section-title">
-          Everything you need. Nothing you don’t.
+          Todo lo que necesitas. Nada que no.
         </h2>
         <ul className="lp-diff-list">
-          <li>Set up in minutes</li>
-          <li>No training required</li>
-          <li>Works from day one</li>
-          <li>Built for speed and clarity</li>
+          <li>Configúralo en minutos</li>
+          <li>Sin capacitación</li>
+          <li>Funciona desde el día uno</li>
+          <li>Diseñado para ser rápido y claro</li>
         </ul>
       </Section>
 
       {/* 5. Use cases */}
       <Section id="use-cases" ariaLabelledBy="lp-usecases-title">
         <h2 id="lp-usecases-title" className="lp-section-title">
-          Built for operators like you
+          Hecho para profesionales como tú
         </h2>
         <ul className="lp-usecase-list">
-          <li>Therapists</li>
-          <li>Consultants</li>
+          <li>Terapeutas</li>
+          <li>Consultores</li>
           <li>Coaches</li>
-          <li>Small clinics</li>
-          <li>Independent professionals</li>
+          <li>Clínicas pequeñas</li>
+          <li>Profesionistas independientes</li>
         </ul>
       </Section>
 
       {/* 6. Product preview */}
       <Section id="preview" ariaLabelledBy="lp-preview-title">
         <h2 id="lp-preview-title" className="lp-section-title">
-          Simple by design
+          Simple por diseño
         </h2>
         <p className="lp-section-sub">
-          A clean dashboard that shows exactly what matters — your schedule,
-          your clients, and your cash flow.
+          Un tablero limpio que muestra justo lo que importa — tu agenda,
+          tus pacientes y tus ingresos.
         </p>
         <ProductPreview />
       </Section>
@@ -165,12 +165,12 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 7. Final CTA */}
       <Section id="final-cta" ariaLabelledBy="lp-final-title" dark>
         <h2 id="lp-final-title" className="lp-final-title">
-          Take control of your practice.
+          Toma el control de tu consultorio.
         </h2>
-        <p className="lp-final-sub">No chaos. No clutter. Just clarity.</p>
+        <p className="lp-final-sub">Sin caos. Sin desorden. Solo claridad.</p>
         <div className="lp-hero-ctas">
           <CTAButton variant="primary" onClick={onPrimary}>
-            Get early access
+            Comenzar gratis
           </CTAButton>
         </div>
       </Section>
@@ -182,7 +182,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             <LogoIcon size={14} color="var(--charcoal-xl)" />
             <span>cardigan</span>
           </div>
-          <div className="lp-footer-tag">Practice management, made simple.</div>
+          <div className="lp-footer-tag">Gestión de consultorio, simplificada.</div>
         </div>
       </footer>
     </div>

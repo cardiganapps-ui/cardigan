@@ -98,7 +98,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
           )}
           <div className="input-group">
             <label className="input-label">{t("finances.paymentDate")}</label>
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayISO()} />
           </div>
           {formError && <div className="form-error">{formError}</div>}
           </div>
