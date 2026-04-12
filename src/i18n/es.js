@@ -47,6 +47,7 @@ export default {
     principal: "Principal",
     account: "Cuenta",
     signOut: "Cerrar sesi\u00f3n",
+    signOutConfirm: "\u00bfSeguro que quieres cerrar sesi\u00f3n?",
     menu: "Men\u00fa",
   },
 

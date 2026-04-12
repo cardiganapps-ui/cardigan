@@ -146,7 +146,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
             {principal.map(renderItem)}
             <div className="drawer-section-label" style={{ marginTop:8 }}>{t("nav.account")}</div>
             {cuenta.map(renderItem)}
-            <button className="drawer-item" onClick={() => { signOut(); onClose(); }}>
+            <button className="drawer-item" onClick={() => { if (window.confirm(t("nav.signOutConfirm"))) { signOut(); onClose(); } }}>
               <div className="drawer-item-icon"><IconLogOut size={18} /></div>
               <span className="drawer-item-label">{t("nav.signOut")}</span>
             </button>

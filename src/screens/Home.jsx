@@ -33,8 +33,11 @@ export function Home({ setScreen, userName }) {
     if (p) setSelected(p);
   };
 
-  const emptyHint = (text) => (
-    <div className="empty-hint">{text}</div>
+  const emptyHint = (text, action) => (
+    <div className="empty-hint">
+      {text}
+      {action && <div style={{ marginTop:8 }}>{action}</div>}
+    </div>
   );
 
   return (
@@ -44,8 +47,11 @@ export function Home({ setScreen, userName }) {
           <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
             {userName ? `${t("home.welcome")}, ${userName.split(" ")[0]}` : t("home.welcome")}
           </div>
-          <div style={{ fontSize:12, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
+          <div style={{ fontSize:12, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:10 }}>
             {t("patients.addFirst")}
+          </div>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"var(--teal-pale)", color:"var(--teal-dark)", padding:"6px 14px", borderRadius:"var(--radius-pill)", fontSize:12, fontWeight:700 }}>
+            <IconPlus size={14} /> {t("fab.patient")}
           </div>
         </div>
       )}
@@ -81,7 +87,9 @@ export function Home({ setScreen, userName }) {
         </div>
         <div className="card">
           {todaySessions.length === 0
-            ? emptyHint(t("home.emptyToday"))
+            ? emptyHint(t("home.emptyToday"),
+                <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => setScreen("agenda")}>{t("home.seeWeek")}</button>
+              )
             : todaySessions.map(s => {
               const tutor = isTutorSession(s);
               return (
@@ -124,8 +132,12 @@ export function Home({ setScreen, userName }) {
                     <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>
                     <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} {t("home.paidOf")} ${totalDue.toLocaleString()}</div>
                   </div>
-                  <div className="row-right">
+                  <div className="row-right" style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
                     <div className="row-amount amount-owe">-${owed.toLocaleString()}</div>
+                    <button className="btn btn-ghost" style={{ fontSize:11, height:26, padding:"0 8px", minHeight:26 }}
+                      onClick={(e) => { e.stopPropagation(); openRecordPaymentModal(p); }}>
+                      {t("finances.collect")}
+                    </button>
                   </div>
                 </div>
               );

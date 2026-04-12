@@ -33,6 +33,7 @@
   --radius-pill: 100px;
   --shadow-sm:   0 1px 4px rgba(46,46,46,0.07);
   --shadow:      0 2px 12px rgba(46,46,46,0.09);
+  --shadow-lg:   0 8px 28px rgba(46,46,46,0.12);
   --font:        'Nunito Sans', sans-serif;
   --font-d:      'Nunito', sans-serif;
   --sat: env(safe-area-inset-top, 44px);
@@ -1038,7 +1039,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .sheet-handle { width: 40px; height: 5px; background: var(--cream-deeper); border-radius: 3px; margin: 12px auto 4px; }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; }
 .sheet-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); }
-.sheet-close { width: 30px; height: 30px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.sheet-close { width: 30px; height: 30px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; position: relative; }
+.sheet-close::after { content: ""; position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
 /* AGENDA VIEW TOGGLE */
 .view-toggle {
@@ -1712,6 +1714,9 @@ button, a, select { min-height: 44px; }
 /* ── CONTEXTUAL HELP TIPS ── */
 .help-icon-btn {
   width: 28px; height: 28px;
+  /* Visual size stays 28px but a 44px tap area is ensured by the
+     transparent padding region around the button (via the ::after pseudo-element). */
+  position: relative;
   /* Override the global `button { min-height: 44px }` touch-target rule
      so the button stays a perfect circle instead of stretching into an
      oval. The 28x28 size is still comfortably tappable on mobile. */
@@ -1729,6 +1734,12 @@ button, a, select { min-height: 44px; }
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
   transition: all 0.15s ease;
+}
+.help-icon-btn::after {
+  content: ""; position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .help-icon-btn:hover,
 .help-icon-btn[aria-expanded="true"] {
@@ -1838,6 +1849,7 @@ html[data-theme="dark"] {
   /* ── Shadows ── */
   --shadow-sm:   0 1px 4px rgba(0,0,0,0.3);
   --shadow:      0 2px 12px rgba(0,0,0,0.4);
+  --shadow-lg:   0 8px 28px rgba(0,0,0,0.5);
 }
 
 /* ── Buttons: invert primary in dark mode ── */

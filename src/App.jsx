@@ -84,6 +84,7 @@ function AppShell({ user, signOut, demo, theme }) {
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
+  const [successMsg, setSuccessMsg] = useState("");
 
   const tutorial = useTutorial({ user, demo, readOnly });
 
@@ -183,10 +184,10 @@ function AppShell({ user, signOut, demo, theme }) {
   const ctxValue = useMemo(() => ({
     ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
-    screen, drawerOpen, tutorial, theme,
+    screen, drawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial, theme]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial, theme, setSuccessMsg]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
@@ -253,6 +254,7 @@ function AppShell({ user, signOut, demo, theme }) {
           <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>{t("loading")}</div>
         )}
         <Toast message={mutationError} type="error" />
+        <Toast message={successMsg} type="success" onDismiss={() => setSuccessMsg("")} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{
             transition: direction ? "none" : undefined,
@@ -263,7 +265,7 @@ function AppShell({ user, signOut, demo, theme }) {
           </div>
         </PullToRefresh>
         {!readOnly && (
-          <PaymentModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}
+          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); if (msg) setSuccessMsg(msg); }}
             initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} />
         )}
         {!readOnly && !hideFab && <QuickActions />}

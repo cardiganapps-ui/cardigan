@@ -58,7 +58,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
       method: finalMethod,
       date: isoToShortDate(date),
     });
-    if (ok) onClose();
+    if (ok) onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
   };
 
   return (
