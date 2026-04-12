@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { useDemoData } from "./hooks/useDemoData";
@@ -96,49 +96,85 @@ function AppShell({ user, signOut, demo }) {
     setPaymentModalOpen(true);
   };
 
-  /* ── Edge swipe to open drawer ── */
+  /* ── Edge swipe to open drawer ──
+     These handlers are attached via a native addEventListener with
+     `passive: false` so that once we detect an intentional horizontal swipe
+     from the left edge we can call e.preventDefault() on the touchmove.
+     That prevents iOS Safari's native "edge-swipe-back" gesture from racing
+     with our drawer open (the combo the user reported as "the drawer opens
+     AND the screen goes back"). React's synthetic touch handlers are always
+     passive, so this has to go through addEventListener directly. */
+  const shellRef = useRef(null);
   const edgeRef = useRef(null);
+  const drawerOpenRef = useRef(drawerOpen);
+  drawerOpenRef.current = drawerOpen;
   const [swipeProgress, setSwipeProgress] = useState(0);
 
-  const onTouchStart = useCallback((e) => {
-    if (drawerOpen) return;
-    if (e.touches[0].clientX < 20) {
-      edgeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, time: Date.now(), active: false };
-    } else {
-      edgeRef.current = null;
-    }
-  }, [drawerOpen]);
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
 
-  const onTouchMove = useCallback((e) => {
-    if (!edgeRef.current || drawerOpen) return;
-    const dx = e.touches[0].clientX - edgeRef.current.startX;
-    const dy = e.touches[0].clientY - edgeRef.current.startY;
-    if (!edgeRef.current.active) {
-      if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
-        edgeRef.current.active = true;
-      } else if (Math.abs(dy) > 10 || dx < -5) {
+    const onTouchStart = (e) => {
+      if (drawerOpenRef.current) return;
+      if (e.touches[0].clientX < 20) {
+        edgeRef.current = {
+          startX: e.touches[0].clientX,
+          startY: e.touches[0].clientY,
+          time: Date.now(),
+          active: false,
+        };
+      } else {
+        edgeRef.current = null;
+      }
+    };
+
+    const onTouchMove = (e) => {
+      if (!edgeRef.current || drawerOpenRef.current) return;
+      const dx = e.touches[0].clientX - edgeRef.current.startX;
+      const dy = e.touches[0].clientY - edgeRef.current.startY;
+      if (!edgeRef.current.active) {
+        if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
+          edgeRef.current.active = true;
+        } else if (Math.abs(dy) > 10 || dx < -5) {
+          edgeRef.current = null;
+          return;
+        } else return;
+      }
+      if (edgeRef.current.active) {
+        // Suppress iOS Safari's native back-peek while the user is dragging
+        // the drawer in. This is the key to resolving the drawer-vs-back
+        // conflict on non-standalone mobile browsers.
+        if (e.cancelable) e.preventDefault();
+        setSwipeProgress(Math.max(0, dx));
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      if (!edgeRef.current?.active) {
         edgeRef.current = null;
         return;
-      } else return;
-    }
-    if (edgeRef.current.active) {
-      setSwipeProgress(Math.max(0, dx));
-    }
-  }, [drawerOpen]);
-
-  const onTouchEnd = useCallback((e) => {
-    if (!edgeRef.current?.active) {
+      }
+      const dx = e.changedTouches[0].clientX - edgeRef.current.startX;
+      const elapsed = Date.now() - edgeRef.current.time;
+      const velocity = dx / elapsed;
       edgeRef.current = null;
-      return;
-    }
-    const dx = e.changedTouches[0].clientX - edgeRef.current.startX;
-    const elapsed = Date.now() - edgeRef.current.time;
-    const velocity = dx / elapsed;
-    edgeRef.current = null;
-    if (dx > 100 || velocity > 0.3) {
-      setDrawerOpen(true);
-    }
-    setSwipeProgress(0);
+      if (dx > 100 || velocity > 0.3) {
+        setDrawerOpen(true);
+      }
+      setSwipeProgress(0);
+    };
+
+    shell.addEventListener("touchstart", onTouchStart, { passive: true });
+    shell.addEventListener("touchmove", onTouchMove, { passive: false });
+    shell.addEventListener("touchend", onTouchEnd, { passive: true });
+    shell.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    return () => {
+      shell.removeEventListener("touchstart", onTouchStart);
+      shell.removeEventListener("touchmove", onTouchMove);
+      shell.removeEventListener("touchend", onTouchEnd);
+      shell.removeEventListener("touchcancel", onTouchEnd);
+    };
   }, []);
 
   const ctxValue = useMemo(() => ({
@@ -161,7 +197,7 @@ function AppShell({ user, signOut, demo }) {
 
   return (
     <CardiganProvider value={ctxValue}>
-    <div className="shell" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+    <div className="shell" ref={shellRef}>
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress} />
 

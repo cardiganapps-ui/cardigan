@@ -29,6 +29,18 @@ export function useNavigation() {
   }, []);
 
   // ── Navigate to a main screen ──
+  //
+  // Uses history.replaceState (not `location.hash = ...`) so that screen
+  // changes do NOT add browser history entries. This is intentional: the
+  // drawer is the primary navigation surface, and the app's left-edge swipe
+  // gesture opens it. If each screen change pushed a history entry, iOS
+  // Safari's native edge-swipe-back would trigger history.back() in parallel
+  // with our drawer open, firing popstate and teleporting the user to the
+  // previous screen at the same time as the drawer opens. Using replaceState
+  // means browser back from a main screen exits the app (or closes any open
+  // modal, which pushes its own entry via pushLayer) — no in-app navigation
+  // conflict. The URL hash still reflects the current screen for deep links
+  // and reloads.
   const navigate = useCallback((newScreen) => {
     if (!VALID_SCREENS.includes(newScreen) || newScreen === screen) return;
     saveScroll(screen);
@@ -41,7 +53,14 @@ export function useNavigation() {
     const dir = SCREEN_ORDER[newScreen] > SCREEN_ORDER[screen] ? "left" : "right";
     setDirection(dir);
     setScreen(newScreen);
-    window.location.hash = newScreen;
+    suppressPopState.current = true;
+    try {
+      history.replaceState({ screen: newScreen }, "", "#" + newScreen);
+    } catch {
+      // Fallback for environments without History API access.
+      window.location.hash = newScreen;
+    }
+    suppressPopState.current = false;
     restoreScroll(newScreen);
     setTimeout(() => setDirection(null), 300);
   }, [screen]);
@@ -65,32 +84,24 @@ export function useNavigation() {
   }, []);
 
   // ── Browser back button ──
+  //
+  // We only use popstate to close open layers (modals/sheets) that were
+  // pushed via pushLayer(). Main screens do NOT push history entries
+  // (see navigate() above), so a popstate that arrives while no layer is
+  // open means the user is trying to exit the app via back/edge-swipe —
+  // we let the browser handle that itself.
   useEffect(() => {
-    const handlePopState = (e) => {
+    const handlePopState = () => {
       if (suppressPopState.current) return;
-
-      // If layers are open, close the top one
       if (layerStack.current.length > 0) {
         const layer = layerStack.current.pop();
         layer.closeFn();
-        return;
-      }
-
-      // Otherwise, sync screen from hash
-      const hashScreen = getHashScreen();
-      if (hashScreen !== screen) {
-        saveScroll(screen);
-        const dir = SCREEN_ORDER[hashScreen] > SCREEN_ORDER[screen] ? "left" : "right";
-        setDirection(dir);
-        setScreen(hashScreen);
-        restoreScroll(hashScreen);
-        setTimeout(() => setDirection(null), 300);
       }
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [screen]);
+  }, []);
 
   // ── Hash change sync (for manual URL changes) ──
   useEffect(() => {
