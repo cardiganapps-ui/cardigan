@@ -112,7 +112,7 @@ html, body {
 .icon-btn:active { opacity: 0.6; }
 
 .admin-btn {
-  background: none; border: none; border-radius: 4px;
+  background: none; border: none; border-radius: var(--radius-sm);
   color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 600; padding: 2px 6px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
@@ -220,7 +220,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .drawer-item.active { background: rgba(91,155,175,0.18); }
 .drawer-item.active::before {
   content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
-  width: 3px; background: var(--teal-light); border-radius: 0 2px 2px 0;
+  width: 3px; background: var(--teal-light); border-radius: 0 3px 3px 0;
 }
 .drawer-item-icon {
   width: 28px; height: 28px;
@@ -696,7 +696,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .week-event {
   position: absolute; left: 2px; right: 2px; top: 4px;
   background: var(--teal-pale); border-left: 2px solid var(--teal);
-  border-radius: 4px; padding: 2px 4px;
+  border-radius: 6px; padding: 2px 4px;
   font-size: 9px; font-weight: 700; color: var(--teal-dark);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer;
 }
@@ -721,8 +721,8 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 /* Mini bar chart */
 .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; padding: 0 4px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.bar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; overflow: hidden; }
-.bar-fill { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.3s; }
+.bar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; border-radius: 6px 6px 0 0; overflow: hidden; }
+.bar-fill { width: 100%; border-radius: 6px 6px 0 0; transition: height 0.3s; }
 .bar-label { font-size: 9px; font-weight: 700; color: var(--charcoal-xl); text-transform: uppercase; }
 .bar-val { font-size: 9px; font-weight: 700; color: var(--charcoal-md); }
 
@@ -923,7 +923,7 @@ button, a, select { min-height: 44px; }
     max-width: 680px !important;
     right: auto !important;
     width: calc(100% - 240px) !important;
-    border-radius: 16px 16px 0 0 !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
   }
 
   /* Wider week event cells: show time + name */
@@ -963,7 +963,7 @@ button, a, select { min-height: 44px; }
 }
 
 /* ── FOCUS-VISIBLE (keyboard navigation) ── */
-:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: var(--radius-sm); }
 .btn:focus-visible, .landing-cta-btn:focus-visible, .landing-cta-ghost:focus-visible { outline-offset: 3px; }
 .drawer-item:focus-visible { outline-color: var(--teal-light); outline-offset: -2px; }
 
@@ -1002,7 +1002,7 @@ button, a, select { min-height: 44px; }
 }
 .tut-spotlight {
   position: fixed;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
   pointer-events: none;
@@ -1020,7 +1020,7 @@ button, a, select { min-height: 44px; }
 }
 .tut-spotlight::after {
   content: ""; position: absolute; inset: -4px;
-  border-radius: 16px;
+  border-radius: calc(var(--radius-lg) + 4px);
   border: 2px solid rgba(255, 255, 255, 0.5);
   pointer-events: none;
 }

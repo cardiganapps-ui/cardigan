@@ -209,7 +209,7 @@ export function PatientExpediente({
         position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--nav-bg)",
-        borderRadius:"20px 20px 0 0",
+        borderRadius:"var(--radius-lg) var(--radius-lg) 0 0",
         boxShadow:"0 -4px 30px rgba(0,0,0,0.25)",
         animation: dragY > 0 ? undefined : "expedientePullUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
