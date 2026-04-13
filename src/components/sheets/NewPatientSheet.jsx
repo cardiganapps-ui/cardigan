@@ -89,7 +89,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               {/* Name */}
               <div className="input-group">
                 <label className="input-label">{t("settings.fullName")}</label>
-                <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} autoFocus />
+                <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
               </div>
 
               {/* Rate */}
