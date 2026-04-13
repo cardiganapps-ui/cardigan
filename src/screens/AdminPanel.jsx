@@ -190,7 +190,9 @@ function BugsTab() {
     setArchiving(true);
     try {
       await archiveBugReports(reports.map(r => r.id));
-      setReports([]);
+      // Re-fetch to confirm archive persisted
+      const fresh = await fetchBugReports({ archived: false });
+      setReports(fresh);
       setConfirmArchive(false);
     } catch (e) {
       setError(e.message || "Error");
