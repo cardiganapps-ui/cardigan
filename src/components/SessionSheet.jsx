@@ -61,7 +61,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.session")}</span>
