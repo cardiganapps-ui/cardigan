@@ -210,10 +210,10 @@ function AppShell({ user, signOut, demo, theme }) {
 
         {/* Demo banner */}
         {demo && (
-          <div style={{ background:"var(--teal-dark)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)" }}>{t("demo.banner")}</span>
+          <div style={{ background:"#3A7A8A", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
+            <span style={{ fontSize:11, fontWeight:600, color:"#FFFFFF" }}>{t("demo.banner")}</span>
             <button onClick={signOut}
-              style={{ fontSize:11, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
+              style={{ fontSize:11, fontWeight:700, color:"#FFFFFF", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
               {t("demo.createAccount")}
             </button>
           </div>
@@ -221,10 +221,10 @@ function AppShell({ user, signOut, demo, theme }) {
 
         {/* Read-only banner when viewing as another user */}
         {readOnly && !demo && (
-          <div style={{ background:"var(--charcoal)", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
+          <div style={{ background:"#2E2E2E", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
             <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>{t("admin.readOnly")}</span>
             <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
-              style={{ fontSize:11, fontWeight:700, color:"var(--teal-light)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
+              style={{ fontSize:11, fontWeight:700, color:"#6DB8CC", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
               {t("admin.exit")}
             </button>
           </div>

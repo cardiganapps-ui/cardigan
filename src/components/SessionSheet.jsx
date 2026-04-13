@@ -134,7 +134,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                   placeholder={t("sessions.cancelReasonPlaceholder")}
                   rows={2} style={{ resize:"none", fontFamily:"var(--font)", fontSize:13 }} />
               </div>
-              <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-lt)", color:"white", boxShadow:"none", fontWeight:700 }}
+              <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-md)", color:"white", boxShadow:"none", fontWeight:700 }}
                 onClick={submitCancel} disabled={mutating}>
                 {mutating ? t("saving") : t("sessions.confirmCancel")}
               </button>
