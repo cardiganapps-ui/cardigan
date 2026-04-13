@@ -129,7 +129,6 @@ export function Home({ setScreen, userName }) {
                   <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i) }}>{p.initials}</div>
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
-                    <div className="row-sub">{p.day} · {p.time}</div>
                   </div>
                   <div className="row-right">
                     <div className="row-amount amount-owe">-${p.amountDue.toLocaleString()}</div>
