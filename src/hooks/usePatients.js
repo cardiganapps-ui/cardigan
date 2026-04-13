@@ -4,7 +4,7 @@ import { getInitials } from "../utils/dates";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
-  async function createPatient({ name, parent, rate, phone, email, schedules, recurring, startDate, endDate }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, schedules, recurring, startDate, endDate }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un paciente con ese nombre.");
@@ -27,6 +27,8 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       day: sched[0].day,
       time: sched[0].time,
       color_idx: colorIdx,
+      start_date: recurring && startDate ? startDate : null,
+      birthdate: birthdate || null,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 

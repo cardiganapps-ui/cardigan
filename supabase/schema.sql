@@ -16,6 +16,8 @@ create table if not exists patients (
   paid integer default 0,
   sessions integer default 0,
   color_idx integer default 0,
+  start_date date,
+  birthdate date,
   created_at timestamptz default now()
 );
 

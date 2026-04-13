@@ -1,4 +1,4 @@
-export const clientColors = ["#5B9BAF","#7AB5C7","#4A8799","#3D6470","#84C5D4","#9E8BC4","#B08DC8"];
+export const clientColors = ["#5B9BAF"];
 
 // Safe lookup for a client avatar color. Always returns a valid color even if
 // `idx` is nullish, negative, or out of range — use this instead of

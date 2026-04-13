@@ -257,6 +257,7 @@ function AppShell({ user, signOut, demo, theme }) {
         <Toast message={successMsg} type="success" onDismiss={() => setSuccessMsg("")} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{
+            flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
             transition: direction ? "none" : undefined,
             animation: direction === "left" ? "screenSlideLeft 0.25s cubic-bezier(0.32, 0.72, 0, 1)" :
                        direction === "right" ? "screenSlideRight 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : undefined,

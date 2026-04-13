@@ -104,8 +104,8 @@ export function PatientExpediente({
   const fAttendanceRate = fResolved > 0 ? Math.round(fCompleted / fResolved * 100) : null;
 
   // Filtered financials
-  const fBillable = filteredSessions.filter(s => s.status === "completed" || s.status === "charged").length;
-  const fVendido = fBillable * patient.rate;
+  const fBillableSessions = filteredSessions.filter(s => s.status === "completed" || s.status === "charged");
+  const fVendido = fBillableSessions.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
 
   const pPayments = useMemo(() =>
     (payments || []).filter(p => p.patient_id === patient.id),
@@ -296,6 +296,20 @@ export function PatientExpediente({
             <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
               {patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")} · {patient.day} {patient.time}
             </div>
+            {(patient.birthdate || patient.start_date) && (
+              <div style={{ fontSize:11, color:"var(--charcoal-lt)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                {patient.birthdate && (() => {
+                  const birth = new Date(patient.birthdate + "T00:00:00");
+                  const today = new Date();
+                  let age = today.getFullYear() - birth.getFullYear();
+                  const m = today.getMonth() - birth.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                  return `${age} ${t("patients.yearsOld")} · ${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`;
+                })()}
+                {patient.birthdate && patient.start_date && " · "}
+                {patient.start_date && `${t("patients.startDate")}: ${new Date(patient.start_date + "T00:00:00").toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`}
+              </div>
+            )}
           </div>
           <button onClick={() => onEdit(patient)}
             style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
@@ -362,23 +376,14 @@ export function PatientExpediente({
             </div>
 
             {/* Financials — filtered */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.billed")}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>${fVendido.toLocaleString()}</div>
-              </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
               <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
                 <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.collected")}</div>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
               </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.balance")}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: fPeriodSaldo > 0 ? "var(--red)" : "var(--charcoal-xl)" }}>${fPeriodSaldo.toLocaleString()}</div>
-                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("finances.balancePeriod")}</div>
-                <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:5, paddingTop:4 }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
-                  <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("finances.balanceCurrent")}</div>
-                </div>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.balance")}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
               </div>
             </div>
 

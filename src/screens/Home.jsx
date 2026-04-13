@@ -55,6 +55,18 @@ export function Home({ setScreen, userName }) {
   });
   const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
 
+  const totalCobrado = payments.reduce((s, p) => s + p.amount, 0);
+
+  const sessionStats = useMemo(() => {
+    return {
+      completed: upcomingSessions.filter(s => s.status === "completed").length,
+      cancelled: upcomingSessions.filter(s => s.status === "cancelled").length,
+      charged: upcomingSessions.filter(s => s.status === "charged").length,
+      scheduled: upcomingSessions.filter(s => s.status === "scheduled").length,
+      total: upcomingSessions.length,
+    };
+  }, [upcomingSessions]);
+
   const [selected, setSelected] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), []);
   useEscape(selected ? closeSelected : null);
@@ -108,6 +120,11 @@ export function Home({ setScreen, userName }) {
           <div className="kpi-label">{t("finances.outstanding")}</div>
           <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
           <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
+        </div>
+        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer", gridColumn:"1 / -1" }}>
+          <div className="kpi-label">{t("home.totalCollectedAllTime")}</div>
+          <div className="kpi-value" style={{ color:"var(--green)" }}>${totalCobrado.toLocaleString()}</div>
+          <div className="kpi-meta">{t("home.allTime")}</div>
         </div>
       </div>
 
@@ -165,6 +182,34 @@ export function Home({ setScreen, userName }) {
             })
           }
         </div>
+
+        {upcomingSessions.length > 0 && (
+        <div className="section" style={{ paddingTop:20 }}>
+          <div className="section-header">
+            <span className="section-title">{t("home.sessionStats")}</span>
+          </div>
+          <div className="card" style={{ padding:"12px 14px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+              <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--green)" }}>{sessionStats.completed}</div>
+                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("home.completedSessions")}</div>
+              </div>
+              <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--red)" }}>{sessionStats.cancelled}</div>
+                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("home.cancelledSessions")}</div>
+              </div>
+              <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--amber)" }}>{sessionStats.charged}</div>
+                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("home.chargedCancelled")}</div>
+              </div>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, padding:"6px 4px 0", borderTop:"1px solid var(--border-lt)", fontSize:12, color:"var(--charcoal-xl)" }}>
+              <span>{t("home.totalSessions")}: <strong style={{ color:"var(--charcoal)" }}>{sessionStats.total}</strong></span>
+              <span>{t("home.scheduledSessions")}: <strong style={{ color:"var(--charcoal)" }}>{sessionStats.scheduled}</strong></span>
+            </div>
+          </div>
+        </div>
+        )}
       </div>
 
       <div className="home-col-side">
@@ -235,9 +280,8 @@ export function Home({ setScreen, userName }) {
               <button className="sheet-close" aria-label={t("close")} onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:20 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
                 {[
-                  { label: t("finances.billed"), value:`$${selected.billed.toLocaleString()}` },
                   { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
                   { label: t("finances.balance"), value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                 ].map((s,i) => (

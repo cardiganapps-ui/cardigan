@@ -212,18 +212,17 @@ export function useCardiganData(user, viewAsUserId) {
   const enrichedPatients = useMemo(() => {
     const now = new Date();
     return patients.map(p => {
-      let futureBilled = 0;
+      let pastBilled = 0;
       enrichedSessions.forEach(s => {
         if (s.patient_id !== p.id) return;
-        if (s.status === SESSION_STATUS.CANCELLED || s.status === SESSION_STATUS.CHARGED) return;
+        if (s.status !== SESSION_STATUS.COMPLETED && s.status !== SESSION_STATUS.CHARGED) return;
         const d = parseShortDate(s.date);
         if (s.time) {
           const [h, m] = s.time.split(":");
           d.setHours(parseInt(h) || 0, parseInt(m) || 0);
         }
-        if (d > now) futureBilled += (s.rate != null ? s.rate : p.rate);
+        if (d <= now) pastBilled += (s.rate != null ? s.rate : p.rate);
       });
-      const pastBilled = p.billed - futureBilled;
       return { ...p, amountDue: Math.max(0, pastBilled - p.paid) };
     });
   }, [patients, enrichedSessions]);

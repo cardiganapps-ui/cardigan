@@ -16,6 +16,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [phone, setPhone]     = useState("");
   const [email, setEmail]     = useState("");
   const [rate, setRate]       = useState("");
+  const [birthdate, setBirthdate] = useState("");
   const [recurring, setRecurring] = useState(true);
   const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
   const [startDate, setStartDate] = useState(todayISO());
@@ -44,7 +45,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     setErr("");
     const ok = await onSubmit({
       name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
-      phone: phone.trim(), email: email.trim(),
+      phone: phone.trim(), email: email.trim(), birthdate: birthdate || null,
       schedules, recurring,
       startDate: recurring ? startDate : null,
       endDate: recurring && hasEndDate ? endDate : null,
@@ -86,9 +87,15 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
             </div>
           </div>
-          <div className="input-group">
-            <label className="input-label">{t("patients.ratePerSession")}</label>
-            <MoneyInput min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">{t("patients.ratePerSession")}</label>
+              <MoneyInput min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t("patients.birthdate")}</label>
+              <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
+            </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
             <span style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)" }}>{t("patients.recurringAppts")}</span>

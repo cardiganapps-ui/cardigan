@@ -29,6 +29,8 @@ export function Patients() {
   const [editRate, setEditRate]       = useState("");
   const [editPhone, setEditPhone]     = useState("");
   const [editEmail, setEditEmail]     = useState("");
+  const [editBirthdate, setEditBirthdate] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
   const [editStatus, setEditStatus]   = useState("");
   const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
@@ -59,6 +61,8 @@ export function Patients() {
     setEditRate(String(selected.rate));
     setEditPhone(selected.phone || "");
     setEditEmail(selected.email || "");
+    setEditBirthdate(selected.birthdate || "");
+    setEditStartDate(selected.start_date || "");
     setEditStatus(selected.status);
     setEditSchedules(scheds);
     setOrigRate(selected.rate);
@@ -90,6 +94,7 @@ export function Patients() {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
           phone: editPhone.trim(), email: editEmail.trim(),
+          birthdate: editBirthdate || null, start_date: editStartDate || null,
         });
         setSelected(null);
         setEditing(false);
@@ -111,6 +116,7 @@ export function Patients() {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
           phone: editPhone.trim(), email: editEmail.trim(),
+          birthdate: editBirthdate || null, start_date: editStartDate || null,
           status: editStatus,
         });
         setSelected(null);
@@ -122,6 +128,7 @@ export function Patients() {
         name: editName.trim(),
         parent: editIsMinor ? editParent.trim() : "",
         phone: editPhone.trim(), email: editEmail.trim(),
+        birthdate: editBirthdate || null, start_date: editStartDate || null,
         rate: Number(editRate) || 0,
         status: editStatus,
       });
@@ -255,6 +262,16 @@ export function Patients() {
                     <div className="input-group">
                       <label className="input-label">{t("settings.email")}</label>
                       <input className="input" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                    </div>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.birthdate")}</label>
+                      <input className="input" type="date" value={editBirthdate} onChange={e => setEditBirthdate(e.target.value)} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.startDate")}</label>
+                      <input className="input" type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} />
                     </div>
                   </div>
                   <div className="input-group">
@@ -411,6 +428,10 @@ export function Patients() {
             setEditIsMinor(!!p.parent);
             setEditParent(p.parent || "");
             setEditRate(String(p.rate));
+            setEditPhone(p.phone || "");
+            setEditEmail(p.email || "");
+            setEditBirthdate(p.birthdate || "");
+            setEditStartDate(p.start_date || "");
             setEditStatus(p.status);
             setEditSchedules(scheds);
             setOrigRate(p.rate);
