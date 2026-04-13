@@ -152,7 +152,6 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
                 <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div className="bal-name">{p.name}</div>
-                  <div className="bal-sub">{p.day} · ${p.rate}/{t("finances.perSession")}</div>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <div className="bal-amt amount-owe">-${owed.toLocaleString()}</div>
@@ -213,7 +212,6 @@ export function Finances() {
                   <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="bal-name">{p.name}</div>
-                    <div className="bal-sub">{p.day} · ${p.rate.toLocaleString()}/{t("finances.perSession")}</div>
                   </div>
                   <div className="bal-amt amount-owe">-${p.amountDue.toLocaleString()}</div>
                 </div>
