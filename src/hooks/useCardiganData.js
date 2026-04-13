@@ -71,13 +71,11 @@ export async function fetchBugReports({ archived = false } = {}) {
 }
 
 export async function archiveBugReports(ids) {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("bug_reports")
     .update({ archived_at: new Date().toISOString() })
-    .in("id", ids)
-    .select("id");
+    .in("id", ids);
   if (error) throw error;
-  if (!data || data.length === 0) throw new Error("No se pudieron archivar los reportes. Intenta de nuevo.");
 }
 
 export async function deleteBugReport(id) {

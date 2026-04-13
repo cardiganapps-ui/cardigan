@@ -190,9 +190,12 @@ function BugsTab() {
     setArchiving(true);
     setError("");
     try {
-      await archiveBugReports(reports.map(r => r.id));
+      const ids = reports.map(r => r.id);
+      await archiveBugReports(ids);
       // Re-fetch to confirm archive persisted
       const fresh = await fetchBugReports({ archived: false });
+      const stillPending = fresh.filter(r => ids.includes(r.id));
+      if (stillPending.length > 0) throw new Error("No se pudieron archivar los reportes. Intenta de nuevo.");
       setReports(fresh);
       setConfirmArchive(false);
     } catch (e) {
