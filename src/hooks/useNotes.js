@@ -17,19 +17,25 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
   }
 
   async function updateNote(id, { title, content }) {
-    const { error } = await supabase.from("notes")
-      .update({ title, content, updated_at: new Date().toISOString() })
-      .eq("id", id);
+    setMutating(true);
+    setMutationError("");
+    const { data, error } = await supabase.from("notes")
+      .update({ title, content })
+      .eq("id", id).select("updated_at").single();
+    setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, title, content, updated_at: new Date().toISOString() } : n));
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, title, content, updated_at: data.updated_at } : n));
     return true;
   }
 
   async function updateNoteLink(id, { patientId, sessionId }) {
-    const patch = { patient_id: patientId || null, session_id: sessionId || null, updated_at: new Date().toISOString() };
-    const { error } = await supabase.from("notes").update(patch).eq("id", id);
+    setMutating(true);
+    setMutationError("");
+    const patch = { patient_id: patientId || null, session_id: sessionId || null };
+    const { data, error } = await supabase.from("notes").update(patch).eq("id", id).select("updated_at").single();
+    setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch } : n));
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updated_at: data.updated_at } : n));
     return true;
   }
 

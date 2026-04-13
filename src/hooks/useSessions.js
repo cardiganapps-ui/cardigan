@@ -5,7 +5,8 @@ import {
   RECURRENCE_WINDOW_WEEKS,
   SESSION_STATUS,
 } from "../data/constants";
-import { SHORT_MONTHS, getInitials, formatShortDate, parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
+import { getInitials, formatShortDate, parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
+import { recalcPatientCounters } from "../utils/patients";
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
 
@@ -34,10 +35,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patient = patients.find(p => p.name === patientName);
     if (!patient) return false;
 
-    const [dayNum, monthStr] = date.split(" ");
-    const monthIdx = SHORT_MONTHS.indexOf(monthStr);
-    const year = new Date().getFullYear();
-    const dateObj = new Date(year, monthIdx >= 0 ? monthIdx : 0, parseInt(dayNum) || 1);
+    const dateObj = parseShortDate(date);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
 
     const sessionInitials = isTutor
@@ -58,13 +56,18 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     const newSessions = patient.sessions + 1;
     const newBilled = patient.billed + sessionRate;
-    await supabase.from("patients")
+    const { error: pErr } = await supabase.from("patients")
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id);
 
     setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx }]);
-    setPatients(prev => prev.map(p => p.id === patient.id
-      ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    if (pErr) {
+      const fixed = await recalcPatientCounters(patient.id);
+      if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+    } else {
+      setPatients(prev => prev.map(p => p.id === patient.id
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    }
     setMutating(false);
     return true;
   }
@@ -96,8 +99,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const newBilled = nowCancelled
           ? Math.max(0, patient.billed - sessRate)   // cancelling: remove from billed
           : patient.billed + sessRate;                // reverting: add back to billed
-        await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id);
-        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
+        const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id);
+        if (pErr) {
+          const fixed = await recalcPatientCounters(patient.id);
+          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+        } else {
+          setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
+        }
       }
     }
 
@@ -119,11 +127,16 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const sessRate = session.rate != null ? session.rate : patient.rate;
         const newSessions = Math.max(0, patient.sessions - 1);
         const newBilled = Math.max(0, patient.billed - sessRate);
-        await supabase.from("patients")
+        const { error: pErr } = await supabase.from("patients")
           .update({ sessions: newSessions, billed: newBilled })
           .eq("id", patient.id);
-        setPatients(prev => prev.map(p => p.id === patient.id
-          ? { ...p, sessions: newSessions, billed: newBilled } : p));
+        if (pErr) {
+          const fixed = await recalcPatientCounters(patient.id);
+          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+        } else {
+          setPatients(prev => prev.map(p => p.id === patient.id
+            ? { ...p, sessions: newSessions, billed: newBilled } : p));
+        }
       }
     }
     return true;
@@ -131,10 +144,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
   async function rescheduleSession(sessionId, newDate, newTime) {
     if (!newDate?.trim() || !newTime?.trim()) return false;
-    const [dayNum, monthStr] = newDate.split(" ");
-    const monthIdx = SHORT_MONTHS.indexOf(monthStr);
-    const year = new Date().getFullYear();
-    const dateObj = new Date(year, monthIdx >= 0 ? monthIdx : 0, parseInt(dayNum) || 1);
+    const dateObj = parseShortDate(newDate);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
 
     setMutating(true);
@@ -170,13 +180,18 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     const newSessions = patient.sessions + data.length;
     const newBilled = patient.billed + patient.rate * data.length;
-    await supabase.from("patients")
+    const { error: pErr } = await supabase.from("patients")
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id);
 
     setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx }))]);
-    setPatients(prev => prev.map(p => p.id === patientId
-      ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    if (pErr) {
+      const fixed = await recalcPatientCounters(patient.id);
+      if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
+    } else {
+      setPatients(prev => prev.map(p => p.id === patientId
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    }
     setMutating(false);
     return true;
   }
@@ -234,9 +249,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       if (!sErr && sessData) {
         const finalSessions = (updated.sessions || 0) + sessData.length;
         const finalBilled = (updated.billed || 0) + newRate * sessData.length;
-        await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId);
+        const { error: pErr2 } = await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId);
         setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
-        setPatients(prev => prev.map(p => p.id === patientId ? { ...p, sessions: finalSessions, billed: finalBilled } : p));
+        if (pErr2) {
+          const fixed = await recalcPatientCounters(patientId);
+          if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
+        } else {
+          setPatients(prev => prev.map(p => p.id === patientId ? { ...p, sessions: finalSessions, billed: finalBilled } : p));
+        }
       }
     }
 

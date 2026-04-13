@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient";
 import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
+import { recalcPatientCounters } from "../utils/patients";
 
 export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
 
@@ -24,9 +25,14 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
 
     if (patient) {
       const newPaid = patient.paid + parsedAmount;
-      await supabase.from("patients")
+      const { error: pErr } = await supabase.from("patients")
         .update({ paid: newPaid }).eq("id", patient.id);
-      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
+      if (pErr) {
+        const fixed = await recalcPatientCounters(patient.id);
+        if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+      } else {
+        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
+      }
     }
 
     setPayments(prev => [{ ...data, colorIdx: data.color_idx }, ...prev]);
@@ -47,9 +53,14 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       const patient = patients.find(p => p.id === payment.patient_id);
       if (patient) {
         const newPaid = Math.max(0, patient.paid - payment.amount);
-        await supabase.from("patients")
+        const { error: pErr } = await supabase.from("patients")
           .update({ paid: newPaid }).eq("id", patient.id);
-        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
+        if (pErr) {
+          const fixed = await recalcPatientCounters(patient.id);
+          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+        } else {
+          setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
+        }
       }
     }
     return true;

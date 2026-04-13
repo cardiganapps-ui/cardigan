@@ -62,20 +62,26 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
   }
 
   async function renameDocument(id, name) {
-    const { error } = await supabase.from("documents")
-      .update({ name, updated_at: new Date().toISOString() })
-      .eq("id", id);
+    setMutating(true);
+    setMutationError("");
+    const { data, error } = await supabase.from("documents")
+      .update({ name })
+      .eq("id", id).select("updated_at").single();
+    setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: new Date().toISOString() } : d));
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: data.updated_at } : d));
     return true;
   }
 
   async function tagDocumentSession(id, sessionId) {
-    const { error } = await supabase.from("documents")
-      .update({ session_id: sessionId || null, updated_at: new Date().toISOString() })
-      .eq("id", id);
+    setMutating(true);
+    setMutationError("");
+    const { data, error } = await supabase.from("documents")
+      .update({ session_id: sessionId || null })
+      .eq("id", id).select("updated_at").single();
+    setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: sessionId || null, updated_at: new Date().toISOString() } : d));
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: sessionId || null, updated_at: data.updated_at } : d));
     return true;
   }
 

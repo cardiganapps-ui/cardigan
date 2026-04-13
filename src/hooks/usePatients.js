@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import { getInitials } from "../utils/dates";
+import { recalcPatientCounters } from "../utils/patients";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
@@ -48,8 +49,13 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         if (!sessErr && sessData) {
           const n = sessData.length;
           const billed = patientRate * n;
-          await supabase.from("patients").update({ sessions: n, billed }).eq("id", data.id);
-          updatedPatient = { ...newPatient, sessions: n, billed };
+          const { error: pErr } = await supabase.from("patients").update({ sessions: n, billed }).eq("id", data.id);
+          if (pErr) {
+            const fixed = await recalcPatientCounters(data.id);
+            if (fixed) updatedPatient = { ...newPatient, ...fixed };
+          } else {
+            updatedPatient = { ...newPatient, sessions: n, billed };
+          }
           setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
         }
       }
