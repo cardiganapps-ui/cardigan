@@ -378,6 +378,12 @@ export default {
     pastSessions: "Anteriores",
     noUpcomingSessions: "Sin sesiones pr\u00f3ximas",
     noPastSessions: "Sin sesiones anteriores",
+    allTypes: "Todas",
+    patientType: "Paciente",
+    tutorType: "Tutor",
+    allStatuses: "Todos",
+    type: "Tipo",
+    filterStatus: "Estado",
   },
 
   // ── Time periods ──

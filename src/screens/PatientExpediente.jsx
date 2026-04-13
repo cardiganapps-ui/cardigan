@@ -36,6 +36,10 @@ export function PatientExpediente({
   });
   const [dateTo, setDateTo] = useState(todayISO());
 
+  // Session filter state (sesiones tab)
+  const [sessTypeFilter, setSessTypeFilter] = useState("all"); // all | patient | tutor
+  const [sessStatusFilter, setSessStatusFilter] = useState("all"); // all | completed | cancelled | charged | scheduled
+
   // All sessions for this patient, sorted descending (most recent first) —
   // used by the Resumen stats which are order-independent. The Sesiones tab
   // derives its own upcoming/past split below.
@@ -50,6 +54,29 @@ export function PatientExpediente({
     [upcomingSessions, patient.id]
   );
 
+  // Session counts by status and type (always based on full unfiltered set)
+  const sessCounts = useMemo(() => {
+    let completed = 0, cancelled = 0, charged = 0, scheduled = 0, tutor = 0, regular = 0;
+    for (const s of pSessions) {
+      if (s.status === "completed") completed++;
+      else if (s.status === "cancelled") cancelled++;
+      else if (s.status === "charged") charged++;
+      else if (s.status === "scheduled") scheduled++;
+      if (isTutorSession(s)) tutor++; else regular++;
+    }
+    return { completed, cancelled, charged, scheduled, tutor, regular, total: pSessions.length };
+  }, [pSessions]);
+
+  // Filtered sessions for the sesiones tab
+  const filteredPSessions = useMemo(() => {
+    return pSessions.filter(s => {
+      if (sessTypeFilter === "patient" && isTutorSession(s)) return false;
+      if (sessTypeFilter === "tutor" && !isTutorSession(s)) return false;
+      if (sessStatusFilter !== "all" && s.status !== sessStatusFilter) return false;
+      return true;
+    });
+  }, [pSessions, sessTypeFilter, sessStatusFilter]);
+
   // Sesiones tab: upcoming ascending (nearest first), past descending
   // (most recent first). Date + time are compared as ISO strings so ordering
   // is stable across days.
@@ -63,14 +90,14 @@ export function PatientExpediente({
     const byDateTimeDesc = (a, b) => byDateTimeAsc(b, a);
     const upcoming = [];
     const past = [];
-    for (const s of pSessions) {
+    for (const s of filteredPSessions) {
       if (shortDateToISO(s.date) >= todayIso) upcoming.push(s);
       else past.push(s);
     }
     upcoming.sort(byDateTimeAsc);
     past.sort(byDateTimeDesc);
     return { upcomingPSessions: upcoming, pastPSessions: past };
-  }, [pSessions]);
+  }, [filteredPSessions]);
 
   const pNotes = useMemo(() =>
     (notes || []).filter(n => n.patient_id === patient.id),
@@ -468,27 +495,90 @@ export function PatientExpediente({
               </div>
             ) : (
               <>
-                {/* Upcoming — nearest first */}
-                <SessionsSection
-                  title={t("expediente.upcomingSessions")}
-                  emptyLabel={t("expediente.noUpcomingSessions")}
-                  sessions={upcomingPSessions}
-                  pNotes={pNotes}
-                  onSelect={setSelectedSession}
-                  t={t}
-                />
-                {/* Past — most recent first */}
-                {pastPSessions.length > 0 && (
-                  <div style={{ marginTop:16 }}>
-                    <SessionsSection
-                      title={t("expediente.pastSessions")}
-                      emptyLabel={t("expediente.noPastSessions")}
-                      sessions={pastPSessions}
-                      pNotes={pNotes}
-                      onSelect={setSelectedSession}
-                      t={t}
-                    />
+                {/* Summary stats */}
+                <div className="card" style={{ padding:"12px 14px", marginBottom:12 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:6, textAlign:"center" }}>
+                    {[
+                      { label: t("expediente.attended"), value: sessCounts.completed, color: "var(--green)" },
+                      { label: t("expediente.missed"), value: sessCounts.cancelled, color: "var(--charcoal-xl)" },
+                      { label: t("sessions.charged"), value: sessCounts.charged, color: "var(--amber)" },
+                      { label: t("expediente.programmed"), value: sessCounts.scheduled, color: "var(--teal)" },
+                    ].map((s, i) => (
+                      <div key={i}>
+                        <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize:9, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--charcoal-xl)", marginTop:2 }}>{s.label}</div>
+                      </div>
+                    ))}
                   </div>
+                </div>
+
+                {/* Filters */}
+                <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+                  {/* Type filter */}
+                  {sessCounts.tutor > 0 && (
+                    <div style={{ display:"flex", gap:4 }}>
+                      {[
+                        { key: "all", label: t("expediente.allTypes") },
+                        { key: "patient", label: t("expediente.patientType") },
+                        { key: "tutor", label: t("expediente.tutorType") },
+                      ].map(f => (
+                        <button key={f.key} type="button"
+                          className={`chip ${sessTypeFilter === f.key ? "active" : ""}`}
+                          style={sessTypeFilter === f.key && f.key === "tutor" ? { background:"var(--purple)", borderColor:"var(--purple)", color:"white" } : undefined}
+                          onClick={() => setSessTypeFilter(f.key)}>
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Status filter */}
+                  <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                    {[
+                      { key: "all", label: t("expediente.allStatuses") },
+                      { key: "completed", label: t("sessions.completed") },
+                      { key: "cancelled", label: t("sessions.cancelled") },
+                      { key: "charged", label: t("sessions.charged") },
+                      { key: "scheduled", label: t("sessions.scheduled") },
+                    ].map(f => (
+                      <button key={f.key} type="button"
+                        className={`chip ${sessStatusFilter === f.key ? "active" : ""}`}
+                        onClick={() => setSessStatusFilter(f.key)}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Session lists */}
+                {filteredPSessions.length === 0 ? (
+                  <div className="card" style={{ padding:"20px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:12 }}>
+                    {t("sessions.noSessions")}
+                  </div>
+                ) : (
+                  <>
+                    {upcomingPSessions.length > 0 && (
+                      <SessionsSection
+                        title={t("expediente.upcomingSessions")}
+                        emptyLabel={t("expediente.noUpcomingSessions")}
+                        sessions={upcomingPSessions}
+                        pNotes={pNotes}
+                        onSelect={setSelectedSession}
+                        t={t}
+                      />
+                    )}
+                    {pastPSessions.length > 0 && (
+                      <div style={{ marginTop: upcomingPSessions.length > 0 ? 16 : 0 }}>
+                        <SessionsSection
+                          title={t("expediente.pastSessions")}
+                          emptyLabel={t("expediente.noPastSessions")}
+                          sessions={pastPSessions}
+                          pNotes={pNotes}
+                          onSelect={setSelectedSession}
+                          t={t}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
