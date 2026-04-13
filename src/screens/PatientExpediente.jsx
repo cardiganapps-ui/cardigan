@@ -291,12 +291,11 @@ export function PatientExpediente({
     {/* Card */}
     <div className="expediente-open expediente-desktop-panel"
       style={{
-        position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-expediente)",
+        position:"fixed", top:"calc(var(--sat, 44px))", bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--white)",
-        borderRadius:"var(--radius-lg) var(--radius-lg) 0 0",
         boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
-        animation: dragY > 0 ? undefined : "expedientePullUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+        animation: dragY > 0 ? "none" : undefined,
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
         transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
         overflow:"hidden",
@@ -306,8 +305,8 @@ export function PatientExpediente({
       <div onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
         style={{ flexShrink:0, cursor:"grab", borderBottom:"1px solid var(--border-lt)" }}>
 
-        {/* Drag handle (visual only) */}
-        <div style={{ padding:"10px 0 0" }}>
+        {/* Drag handle (visual only, hidden on desktop) */}
+        <div className="expediente-drag-handle" style={{ padding:"10px 0 0" }}>
           <div style={{ width:36, height:4, borderRadius:2, background:"var(--cream-deeper)", margin:"0 auto 8px" }} />
         </div>
 

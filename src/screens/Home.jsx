@@ -125,7 +125,7 @@ export function Home({ setScreen, userName }) {
           <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
           <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
         </div>
-        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer", gridColumn:"1 / -1" }}>
+        <div className="kpi-card kpi-card--highlight" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer", gridColumn:"1 / -1" }}>
           <div className="kpi-label">{t("home.totalCollectedAllTime")}</div>
           <div className="kpi-value" style={{ color:"var(--green)" }}>${totalCobrado.toLocaleString()}</div>
           <div className="kpi-meta">{t("home.allTime")}</div>

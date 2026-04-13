@@ -313,7 +313,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>›</button>
       </div>
       <div style={{ display:"flex", padding:"0 16px", position:"relative" }}>
-        <div style={{ width:44, flexShrink:0 }}>
+        <div className="week-time-col">
           <div className="week-header-spacer" />
           {HOURS.map(hour => (
             <div key={hour} className="week-time-label-static">{hour}</div>

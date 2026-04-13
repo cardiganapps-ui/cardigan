@@ -207,7 +207,7 @@ export function Finances() {
 
       {tab==="balances" && (
         <div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, padding:"0 16px 16px" }}>
+          <div className="fin-stats-grid">
             <div className="stat-tile">
               <div className="stat-tile-label">{t("finances.outstanding")}</div>
               <div className="stat-tile-val" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
@@ -254,7 +254,7 @@ export function Finances() {
 
       {tab==="ingresos" && (
         <div style={{ padding:"0 16px" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+          <div className="fin-stats-grid" style={{ marginBottom:14, paddingBottom:0 }}>
             <div className="stat-tile">
               <div className="stat-tile-label">{t("finances.totalCollected")}</div>
               <div className="stat-tile-val" style={{ color:"var(--green)" }}>${totalCollected.toLocaleString()}</div>

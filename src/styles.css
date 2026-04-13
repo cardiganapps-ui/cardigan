@@ -158,6 +158,13 @@ html, body {
 @keyframes screenSlideRight { from { opacity: 0.5; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
 
+/* Expediente panel: mobile base (fullscreen bottom-up) */
+.expediente-desktop-panel {
+  left: 0; right: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  animation: expedientePullUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Hide FAB when expediente is open */
 .expediente-open ~ .fab,
 .expediente-open ~ .fab-overlay,
@@ -1036,7 +1043,9 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   animation: slideUp 0.25s ease;
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetScaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 @keyframes expedientePullUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .sheet-handle { width: 40px; height: 5px; background: var(--cream-deeper); border-radius: 3px; margin: 12px auto 4px; }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; }
 .sheet-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); }
@@ -1090,6 +1099,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .month-cell.active .month-dot-color { box-shadow: 0 0 0 1px rgba(255,255,255,0.7); }
 
 /* WEEK GRID */
+.week-time-col { width: 44px; flex-shrink: 0; }
 .week-header-row { display: grid; grid-template-columns: 44px repeat(7, 1fr); padding: 0 16px; margin-bottom: 2px; }
 .week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; height: 50px; box-sizing: border-box; }
 .week-header-spacer { height: 50px; margin-bottom: 2px; }
@@ -1183,6 +1193,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .bal-amt  { font-family: var(--font-d); font-size: 14px; font-weight: 800; }
 
 /* Stat tile — plain white, subtle border, no accent strip */
+.fin-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px 16px; }
 .stat-tile {
   background: var(--white); border-radius: var(--radius-lg);
   border: 1px solid var(--border-lt);
@@ -1276,6 +1287,9 @@ button, a, select { min-height: 44px; }
 /* Exempt inline small buttons */
 .sheet-close, .row-chevron { min-height: unset; }
 
+/* Desktop-only elements: hidden on mobile */
+.topbar-screen-name, .topbar-refresh-btn { display: none; }
+
 /* ── RESPONSIVE: DESKTOP (768px+) ── */
 @media (min-width: 768px) {
   /* Override safe area insets for desktop (no notch) */
@@ -1305,21 +1319,41 @@ button, a, select { min-height: 44px; }
   .hamburger { display: none; }
   .topbar-brand { position: static; transform: none; }
 
-  /* Page: wider padding */
-  .page { padding: 20px 32px; max-width: 900px; }
+  /* Page: wider padding, centered */
+  .page { padding: 20px 32px; max-width: 900px; margin: 0 auto; }
 
-  /* Sheets: slightly wider */
-  .sheet-panel { max-width: 520px; }
+  /* Sheets: centered modal instead of bottom sheet */
+  .sheet-overlay { align-items: center; }
+  .sheet-panel {
+    max-width: 520px;
+    border-radius: var(--radius-lg);
+    animation: sheetScaleIn 0.2s ease;
+    max-height: 80dvh;
+  }
+  .sheet-handle { display: none; }
 
-  /* KPI grid: 4 columns on desktop */
+  /* KPI grid: 4 columns on desktop, highlight card spans 2 */
   .kpi-grid-desktop { grid-template-columns: repeat(4, 1fr) !important; }
+  .kpi-card--highlight { grid-column: span 2 !important; }
 
   /* Desktop topbar: light, warm */
   .topbar {
     background: var(--white); border-bottom: 1px solid var(--border-lt);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); padding: 10px 24px;
   }
   .topbar-brand { color: var(--charcoal); }
+  .topbar-screen-name {
+    display: inline; font-size: 14px; color: var(--charcoal-lt);
+    margin-left: 12px; font-weight: 600; font-family: var(--font);
+  }
+  .topbar-refresh-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: none; border: 1.5px solid var(--border);
+    cursor: pointer; color: var(--charcoal-xl);
+    transition: all 0.15s; min-height: unset;
+  }
+  .topbar-refresh-btn:hover { background: var(--teal-pale); color: var(--teal-dark); border-color: var(--teal-light); }
   .topbar-right .avatar-sm { background: var(--teal); }
   .admin-btn { color: var(--charcoal-xl); }
   /* Dark help button variant is used for the mobile topbar; swap it back
@@ -1353,13 +1387,16 @@ button, a, select { min-height: 44px; }
   .row-item:last-child { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .row-item:only-child { border-radius: var(--radius-lg); }
 
-  /* Expediente: two-panel on desktop (list stays visible behind) */
+  /* Expediente: right-side panel on desktop */
   .expediente-desktop-panel {
-    left: 240px !important;    /* offset by sidebar width */
-    max-width: 640px !important;
-    right: auto !important;
-    width: calc(100% - 240px) !important;
+    left: auto !important;
+    right: 0 !important;
+    width: 580px !important;
+    max-width: 50vw !important;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg) !important;
+    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
+  .expediente-desktop-panel .expediente-drag-handle { display: none; }
 
   /* NoteEditor: centered panel instead of full-screen */
   .note-editor-desktop {
@@ -1376,6 +1413,20 @@ button, a, select { min-height: 44px; }
   .week-time-row { min-height: 56px; }
   .week-cell { min-height: 56px; }
   :root { --week-row-h: 56px; }
+}
+
+/* ── DESKTOP POINTER: tighter sizing ── */
+@media (hover: hover) and (min-width: 768px) {
+  button, a, select { min-height: 36px; }
+  .icon-btn { min-width: 36px; min-height: 36px; }
+  .btn { height: 42px; font-size: 14px; }
+  .search-bar { height: 38px; }
+  .fab { width: 48px; height: 48px; bottom: 24px; right: 24px; }
+  .fab-action { min-height: 38px; }
+  .chip { min-height: 30px; }
+  .cal-day { min-height: 40px; }
+  .month-cell { min-height: 36px; }
+  .month-nav-btn { min-width: 36px; min-height: 36px; }
 }
 
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
@@ -1430,6 +1481,38 @@ button, a, select { min-height: 44px; }
   .drawer-nav::-webkit-scrollbar-track { background: transparent; }
   .drawer-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
   .drawer-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+}
+
+/* ── RESPONSIVE: LAPTOP (1024px+) ── */
+@media (min-width: 1024px) {
+  .page { max-width: 1040px; padding: 24px 40px; }
+  .drawer { width: 260px; }
+  .drawer-panel { width: 260px; }
+  .sheet-panel { max-width: 560px; }
+  .expediente-desktop-panel {
+    width: 620px !important;
+  }
+  .note-editor-desktop {
+    left: 260px !important;
+    width: calc(100% - 260px) !important;
+  }
+  .week-time-col { width: 56px; }
+  .week-header-row { grid-template-columns: 56px repeat(7, 1fr); }
+  :root { --week-row-h: 60px; }
+  .week-time-row, .week-cell { min-height: 60px; }
+  .week-event { font-size: 11px; padding: 4px 8px; }
+  .fin-stats-grid { gap: 14px; }
+}
+
+/* ── RESPONSIVE: LARGE DESKTOP (1280px+) ── */
+@media (min-width: 1280px) {
+  .page { max-width: 1120px; padding: 28px 48px; }
+  .home-columns { grid-template-columns: 1.3fr 0.7fr; gap: 12px; }
+}
+
+/* ── RESPONSIVE: WIDE DESKTOP (1440px+) ── */
+@media (min-width: 1440px) {
+  .page { max-width: 1200px; }
 }
 
 /* ── TUTORIAL / ONBOARDING TOUR ── */

@@ -12,6 +12,7 @@ import { PullToRefresh } from "./components/PullToRefresh";
 import { LogoIcon } from "./components/LogoMark";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { HelpTip } from "./components/HelpTip";
+import { IconRefresh } from "./components/Icons";
 import { Tutorial } from "./components/Tutorial/Tutorial";
 import { useTutorial } from "./hooks/useTutorial";
 import { Toast } from "./components/Toast";
@@ -237,7 +238,9 @@ function AppShell({ user, signOut, demo, theme }) {
             <div className="hamburger-line" />
           </button>
           <div className="topbar-brand" onClick={() => navigate("home")} style={{ cursor:"pointer" }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></div>
+          <span className="topbar-screen-name">{t(`nav.${screen}`)}</span>
           <div className="topbar-right">
+            <button className="topbar-refresh-btn" onClick={refresh} aria-label="Refresh"><IconRefresh size={16} /></button>
             {admin && !readOnly && (
               <button className="admin-btn" onClick={() => setShowAdmin(true)}>
                 Admin
