@@ -144,6 +144,17 @@ create policy "Admin reads all notes" on notes for select using (is_admin());
 create policy "Admin reads all documents" on documents for select using (is_admin());
 create policy "Admin manages all bug reports" on bug_reports for all using (is_admin());
 
+-- Admin helper: archive bug reports (bypasses RLS via security definer)
+create or replace function archive_bug_reports(report_ids uuid[])
+returns void as $$
+begin
+  if not is_admin() then
+    raise exception 'Unauthorized';
+  end if;
+  update bug_reports set archived_at = now() where id = any(report_ids);
+end;
+$$ language plpgsql security definer;
+
 -- Admin helper: fetch user profiles (email + name) from auth.users
 create or replace function get_user_profiles()
 returns table(id uuid, email text, full_name text) as $$

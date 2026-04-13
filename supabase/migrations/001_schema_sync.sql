@@ -140,3 +140,14 @@ begin
     create policy "Admin manages all bug reports" on bug_reports for all using (is_admin());
   end if;
 end $$;
+
+-- Admin helper: archive bug reports (bypasses RLS via security definer)
+create or replace function archive_bug_reports(report_ids uuid[])
+returns void as $$
+begin
+  if not is_admin() then
+    raise exception 'Unauthorized';
+  end if;
+  update bug_reports set archived_at = now() where id = any(report_ids);
+end;
+$$ language plpgsql security definer;

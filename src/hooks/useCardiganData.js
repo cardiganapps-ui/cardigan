@@ -71,10 +71,7 @@ export async function fetchBugReports({ archived = false } = {}) {
 }
 
 export async function archiveBugReports(ids) {
-  const { error } = await supabase
-    .from("bug_reports")
-    .update({ archived_at: new Date().toISOString() })
-    .in("id", ids);
+  const { error } = await supabase.rpc("archive_bug_reports", { report_ids: ids });
   if (error) throw error;
 }
 
