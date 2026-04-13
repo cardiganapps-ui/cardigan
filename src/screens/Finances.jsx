@@ -222,22 +222,16 @@ export function Finances() {
           <div style={{ padding:"0 16px 8px" }}>
             <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
             <div className="card">
-              {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => {
-                const owed = p.amountDue;
-                const totalDue = owed + p.paid;
-                const pct  = totalDue > 0 ? Math.round((p.paid/totalDue)*100) : 0;
-                return (
-                  <div className="bal-row" key={p.id}>
-                    <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div className="bal-name">{p.name}</div>
-                      <div className="balance-bar" style={{ marginTop:5 }}><div className="balance-fill" style={{ width:`${pct}%`, background:"var(--teal)" }} /></div>
-                      <div className="bal-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} {t("finances.of")} ${totalDue.toLocaleString()} · {pct}%</div>
-                    </div>
-                    <div className="bal-amt amount-owe">-${owed.toLocaleString()}</div>
+              {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
+                <div className="bal-row" key={p.id}>
+                  <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div className="bal-name">{p.name}</div>
+                    <div className="bal-sub">{p.day} · ${p.rate.toLocaleString()}/{t("finances.perSession")}</div>
                   </div>
-                );
-              })}
+                  <div className="bal-amt amount-owe">-${p.amountDue.toLocaleString()}</div>
+                </div>
+              ))}
             </div>
           </div>
           <div style={{ padding:"16px 16px 0" }}>
