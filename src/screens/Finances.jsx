@@ -154,7 +154,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
                   <div className="bal-name">{p.name}</div>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div className="bal-amt amount-owe">-${owed.toLocaleString()}</div>
+                  <div className="bal-amt amount-owe">${owed.toLocaleString()}</div>
                   <button
                     style={{ padding:"8px 16px", fontSize:12, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer", fontFamily:"var(--font)", whiteSpace:"nowrap", minHeight:36 }}
                     onClick={() => onRecordPayment(p)}
@@ -213,7 +213,7 @@ export function Finances() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="bal-name">{p.name}</div>
                   </div>
-                  <div className="bal-amt amount-owe">-${p.amountDue.toLocaleString()}</div>
+                  <div className="bal-amt amount-owe">${p.amountDue.toLocaleString()}</div>
                 </div>
               ))}
             </div>

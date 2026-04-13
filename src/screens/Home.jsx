@@ -133,7 +133,7 @@ export function Home({ setScreen, userName }) {
                     <div className="row-title">{p.name}</div>
                   </div>
                   <div className="row-right">
-                    <div className="row-amount amount-owe">-${p.amountDue.toLocaleString()}</div>
+                    <div className="row-amount amount-owe">${p.amountDue.toLocaleString()}</div>
                   </div>
                 </div>
               ))}
