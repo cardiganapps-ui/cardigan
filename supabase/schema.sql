@@ -20,6 +20,7 @@ create table if not exists patients (
   birthdate date,
   phone text default '',
   email text default '',
+  tutor_frequency integer default null,
   created_at timestamptz default now()
 );
 

@@ -19,6 +19,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
   const [rate, setRate]       = useState("");
+  const [tutorFrequency, setTutorFrequency] = useState("");
   const [phone, setPhone]     = useState("");
   const [email, setEmail]     = useState("");
   const [birthdate, setBirthdate] = useState("");
@@ -56,6 +57,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     setErr("");
     const ok = await onSubmit({
       name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
+      tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
       phone: phone.trim(), email: email.trim(), birthdate: birthdate || null,
       schedules, recurring: true,
       startDate,
@@ -117,12 +119,23 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                 </div>
                 <Toggle on={isMinor} onToggle={() => {}} />
               </div>
-              {isMinor && (
+              {isMinor && (<>
                 <div className="input-group">
                   <label className="input-label">{t("patients.tutor")}</label>
                   <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
                 </div>
-              )}
+                <div className="input-group">
+                  <label className="input-label">{t("patients.tutorFrequency")}</label>
+                  <select className="input" value={tutorFrequency} onChange={e => setTutorFrequency(e.target.value)}>
+                    <option value="">{t("patients.frequencyNone")}</option>
+                    <option value="4">{t("patients.everyNWeeks", { count: 4 })}</option>
+                    <option value="6">{t("patients.everyNWeeks", { count: 6 })}</option>
+                    <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
+                    <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
+                  </select>
+                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.tutorFrequencyHint")}</div>
+                </div>
+              </>)}
 
               {/* Contact info */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>

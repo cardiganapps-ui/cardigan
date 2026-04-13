@@ -14,6 +14,7 @@ import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
 import { createDocumentActions } from "./useDocuments";
 import { recalcPatientCounters } from "../utils/patients";
+import { getTutorReminders } from "../utils/sessions";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -256,11 +257,17 @@ export function useCardiganData(user, viewAsUserId) {
     });
   }, [patients, enrichedSessions]);
 
+  const tutorReminders = useMemo(() =>
+    getTutorReminders(enrichedPatients, enrichedSessions),
+    [enrichedPatients, enrichedSessions]
+  );
+
   // Defense-in-depth: prevent mutations in read-only mode
   const guard = (fn) => readOnly ? async () => false : fn;
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents,
+    tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     createPatient: guard(createPatient), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),

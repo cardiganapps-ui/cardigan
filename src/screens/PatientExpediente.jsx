@@ -4,7 +4,7 @@ import { shortDateToISO, todayISO } from "../utils/dates";
 import { IconClipboard, IconCalendar, IconUser, IconDocument, IconUpload, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
-import { isTutorSession, statusClass } from "../utils/sessions";
+import { isTutorSession, statusClass, getLastTutorSession } from "../utils/sessions";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
@@ -471,9 +471,44 @@ export function PatientExpediente({
               )}
             </div>
 
+            {/* Tutor reminder card — only for minors with tutor_frequency */}
+            {!!patient.parent && !!patient.tutor_frequency && (() => {
+              const lastTutor = getLastTutorSession(upcomingSessions, patient.id);
+              const DAY_MS = 86400000;
+              const todayMs = new Date(todayISO() + "T00:00:00").getTime();
+              let daysSince = null;
+              let daysUntilDue = null;
+              if (lastTutor) {
+                const lastMs = new Date(shortDateToISO(lastTutor.date) + "T00:00:00").getTime();
+                daysSince = Math.round((todayMs - lastMs) / DAY_MS);
+                daysUntilDue = (patient.tutor_frequency * 7) - daysSince;
+              }
+              const overdue = lastTutor ? daysUntilDue < 0 : true;
+              const dueSoon = lastTutor && daysUntilDue >= 0 && daysUntilDue <= 7;
+              const upToDate = lastTutor && daysUntilDue > 7;
+              return (
+                <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)", borderRadius:"var(--radius)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                    <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--purple)" }}>
+                      {t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}
+                    </div>
+                    {overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
+                    {dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
+                    {upToDate && <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>}
+                  </div>
+                  <div style={{ fontSize:12, color:"var(--charcoal-md)" }}>
+                    {lastTutor
+                      ? `${t("home.lastTutorSession")}: ${lastTutor.date}`
+                      : t("home.noTutorSession")}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="card" style={{ padding:0 }}>
               {[
-                { label: t("sessions.tutor"), value: patient.parent || "—" },
+                ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
+                ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
                 { label: t("sessions.regular"), value:`${patient.day} ${patient.time}` },
                 { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
               ].map((row, i, arr) => (

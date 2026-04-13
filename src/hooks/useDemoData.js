@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { generateDemoData } from "../data/demoData";
 import { parseShortDate } from "../utils/dates";
+import { getTutorReminders } from "../utils/sessions";
 
 const noop = async () => false;
 const noopNote = async () => null;
@@ -44,11 +45,17 @@ export function useDemoData() {
     });
   }, [data.patients, enrichedSessions]);
 
+  const tutorReminders = useMemo(() =>
+    getTutorReminders(enrichedPatients, enrichedSessions),
+    [enrichedPatients, enrichedSessions]
+  );
+
   return {
     patients: enrichedPatients,
     upcomingSessions: enrichedSessions,
     payments: data.payments,
     notes: data.notes,
+    tutorReminders,
     loading: false,
     mutating: false,
     mutationError: "",

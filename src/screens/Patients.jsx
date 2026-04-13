@@ -26,6 +26,7 @@ export function Patients() {
   const [editIsMinor, setEditIsMinor] = useState(false);
   const [editParent, setEditParent]   = useState("");
   const [editRate, setEditRate]       = useState("");
+  const [editTutorFrequency, setEditTutorFrequency] = useState("");
   const [editPhone, setEditPhone]     = useState("");
   const [editEmail, setEditEmail]     = useState("");
   const [editBirthdate, setEditBirthdate] = useState("");
@@ -58,6 +59,7 @@ export function Patients() {
     setEditIsMinor(!!selected.parent);
     setEditParent(selected.parent || "");
     setEditRate(String(selected.rate));
+    setEditTutorFrequency(selected.tutor_frequency ? String(selected.tutor_frequency) : "");
     setEditPhone(selected.phone || "");
     setEditEmail(selected.email || "");
     setEditBirthdate(selected.birthdate || "");
@@ -92,6 +94,7 @@ export function Patients() {
         await updatePatient(selected.id, {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
+          tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
           phone: editPhone.trim(), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
         });
@@ -114,6 +117,7 @@ export function Patients() {
         await updatePatient(selected.id, {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
+          tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
           phone: editPhone.trim(), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
           status: editStatus,
@@ -126,6 +130,7 @@ export function Patients() {
       const ok = await updatePatient(selected.id, {
         name: editName.trim(),
         parent: editIsMinor ? editParent.trim() : "",
+        tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
         phone: editPhone.trim(), email: editEmail.trim(),
         birthdate: editBirthdate || null, start_date: editStartDate || null,
         rate: Number(editRate) || 0,
@@ -236,12 +241,23 @@ export function Patients() {
                     <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.isMinor")}</span>
                     <Toggle on={editIsMinor} onToggle={() => setEditIsMinor(v => !v)} />
                   </div>
-                  {editIsMinor && (
+                  {editIsMinor && (<>
                     <div className="input-group">
                       <label className="input-label">{t("patients.tutor")}</label>
                       <input className="input" value={editParent} onChange={e => setEditParent(e.target.value)} />
                     </div>
-                  )}
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.tutorFrequency")}</label>
+                      <select className="input" value={editTutorFrequency} onChange={e => setEditTutorFrequency(e.target.value)}>
+                        <option value="">{t("patients.frequencyNone")}</option>
+                        <option value="4">{t("patients.everyNWeeks", { count: 4 })}</option>
+                        <option value="6">{t("patients.everyNWeeks", { count: 6 })}</option>
+                        <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
+                        <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
+                      </select>
+                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.tutorFrequencyHint")}</div>
+                    </div>
+                  </>)}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                     <div className="input-group">
                       <label className="input-label">{t("patients.phone")}</label>

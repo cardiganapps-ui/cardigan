@@ -8,7 +8,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, openRecordPaymentModal, mutating } = useCardigan();
+  const { patients, upcomingSessions, payments, tutorReminders, openRecordPaymentModal, mutating } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -148,6 +148,52 @@ export function Home({ setScreen, userName }) {
             })}
         </div>
       </div>
+
+      {/* Tutor reminders — only shown when at least one minor has tutor_frequency set */}
+      {patients.some(p => p.tutor_frequency) && (
+      <div className="section" style={{ paddingTop:20, paddingBottom:0 }}>
+        <div className="section-header">
+          <span className="section-title">{t("home.tutorReminders")}</span>
+          {tutorReminders.length > 3 && <button className="see-all" onClick={() => setScreen("patients")}>{t("home.seeAll")}</button>}
+        </div>
+        <div className="card">
+          {tutorReminders.length === 0
+            ? emptyHint(t("home.tutorRemindersEmpty"))
+            : tutorReminders.slice(0, 3).map(r => {
+              const overdue = r.daysUntilDue < 0;
+              const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
+              return (
+                <div className="row-item" key={r.patient.id} onClick={() => openPatient(r.patient.name)}>
+                  <div className="row-avatar" style={{ background:"var(--purple)", border:"2px dashed var(--purple-bg)" }}>
+                    {r.patient.initials}
+                  </div>
+                  <div className="row-content">
+                    <div className="row-title">{r.patient.name}</div>
+                    <div className="row-sub">
+                      {r.lastTutorSession
+                        ? `${t("home.lastTutorSession")}: ${r.lastTutorSession.date}`
+                        : t("home.noTutorSession")}
+                    </div>
+                  </div>
+                  <div className="row-right">
+                    {overdue && (
+                      <span className="badge badge-red" style={{ fontSize:10, whiteSpace:"nowrap" }}>
+                        {r.daysSince != null ? t("home.overdueDays", { count: Math.abs(r.daysUntilDue) }) : t("home.noTutorSession")}
+                      </span>
+                    )}
+                    {dueSoon && (
+                      <span className="badge badge-amber" style={{ fontSize:10, whiteSpace:"nowrap" }}>
+                        {t("home.dueThisWeek")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+      </div>
+      )}
 
       <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
         <div className="section-header">

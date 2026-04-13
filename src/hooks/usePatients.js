@@ -5,7 +5,7 @@ import { recalcPatientCounters } from "../utils/patients";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, schedules, recurring, startDate, endDate }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un paciente con ese nombre.");
@@ -30,6 +30,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       color_idx: colorIdx,
       start_date: recurring && startDate ? startDate : null,
       birthdate: birthdate || null,
+      tutor_frequency: tutorFrequency || null,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
