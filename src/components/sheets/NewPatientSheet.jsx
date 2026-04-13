@@ -19,6 +19,9 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
   const [rate, setRate]       = useState("");
+  const [phone, setPhone]     = useState("");
+  const [email, setEmail]     = useState("");
+  const [birthdate, setBirthdate] = useState("");
 
   // Step 2 fields
   const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00", duration: "60" }]);
@@ -53,7 +56,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     setErr("");
     const ok = await onSubmit({
       name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
-      phone: "", email: "", birthdate: null,
+      phone: phone.trim(), email: email.trim(), birthdate: birthdate || null,
       schedules, recurring: true,
       startDate,
       endDate: hasEndDate ? endDate : null,
@@ -120,6 +123,22 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
                 </div>
               )}
+
+              {/* Contact info */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div className="input-group">
+                  <label className="input-label">{t("patients.phone")}</label>
+                  <input className="input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">{t("settings.email")}</label>
+                  <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">{t("patients.birthdate")}</label>
+                <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
+              </div>
             </>
           ) : (
             <>
