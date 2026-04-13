@@ -369,14 +369,83 @@ export function PatientExpediente({
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (
           <div style={{ padding:"12px 14px" }}>
-            {/* Date range filter — explicitly labeled so users understand it
-                scopes the financials + attendance cards right below. */}
-            <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
-              <div style={{ marginBottom:8 }}>
-                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>{t("expediente.period")}</div>
-                <div style={{ fontSize:11, color:"var(--charcoal-lt)", marginTop:2 }}>{t("expediente.periodFilterSub")}</div>
+            {/* General info */}
+            <div className="card" style={{ padding:0, marginBottom:10 }}>
+              {[
+                { label: t("sessions.regular"), value:`${patient.day} ${patient.time}` },
+                { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
+                ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
+                ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
+                ...(patient.birthdate ? [{ label: t("patients.birthdate"), value: (() => {
+                  const birth = new Date(patient.birthdate + "T00:00:00");
+                  const today = new Date();
+                  let age = today.getFullYear() - birth.getFullYear();
+                  const m = today.getMonth() - birth.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                  return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
+                })() }] : []),
+                ...(patient.phone ? [{ label: t("patients.phone"), value: patient.phone }] : []),
+                ...(patient.email ? [{ label: t("settings.email"), value: patient.email }] : []),
+              ].map((row, i, arr) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+                  <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Tutor reminder card — only for minors with tutor_frequency */}
+            {!!patient.parent && !!patient.tutor_frequency && (() => {
+              const lastTutor = getLastTutorSession(upcomingSessions, patient.id);
+              const DAY_MS = 86400000;
+              const todayMs = new Date(todayISO() + "T00:00:00").getTime();
+              let daysSince = null;
+              let daysUntilDue = null;
+              if (lastTutor) {
+                const lastMs = new Date(shortDateToISO(lastTutor.date) + "T00:00:00").getTime();
+                daysSince = Math.round((todayMs - lastMs) / DAY_MS);
+                daysUntilDue = (patient.tutor_frequency * 7) - daysSince;
+              }
+              const overdue = lastTutor ? daysUntilDue < 0 : true;
+              const dueSoon = lastTutor && daysUntilDue >= 0 && daysUntilDue <= 7;
+              const upToDate = lastTutor && daysUntilDue > 7;
+              return (
+                <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)", borderRadius:"var(--radius)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                    <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--purple)" }}>
+                      {t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}
+                    </div>
+                    {overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
+                    {dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
+                    {upToDate && <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>}
+                  </div>
+                  <div style={{ fontSize:12, color:"var(--charcoal-md)" }}>
+                    {lastTutor
+                      ? `${t("home.lastTutorSession")}: ${lastTutor.date}`
+                      : t("home.noTutorSession")}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Financials — all-time totals */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.collected")}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${patient.paid.toLocaleString()}</div>
               </div>
-              <div style={{ display:"flex", gap:6, marginBottom:6, flexWrap:"wrap" }}>
+              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.balance")}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
+              </div>
+            </div>
+
+            {/* Attendance — with time filter */}
+            <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>{t("expediente.attendance")}</div>
+              </div>
+              <div style={{ display:"flex", gap:4, marginBottom:10, flexWrap:"wrap" }}>
                 {earliestISO && (() => {
                   const isActive = dateFrom === earliestISO && dateTo === todayISO();
                   return (
@@ -400,40 +469,11 @@ export function PatientExpediente({
                   );
                 })}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                <div>
-                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>{t("periods.from")}</label>
-                  <input type="date" className="input" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                    style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
-                </div>
-                <div>
-                  <label style={{ fontSize:10, fontWeight:600, color:"var(--charcoal-xl)" }}>{t("periods.to")}</label>
-                  <input type="date" className="input" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                    style={{ fontSize:12, padding:"6px 8px", marginTop:2 }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Financials — filtered */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.collected")}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${fCobrado.toLocaleString()}</div>
-              </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.balance")}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
-              </div>
-            </div>
-
-            {/* Attendance — filtered */}
-            <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
               {(() => {
                 const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
                 const showTutor = !!patient.parent && fTutor > 0;
                 return (
                 <>
-                <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>{t("expediente.attendance")}</div>
                 <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8, marginBottom:8 }}>
                   <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
@@ -471,55 +511,7 @@ export function PatientExpediente({
               )}
             </div>
 
-            {/* Tutor reminder card — only for minors with tutor_frequency */}
-            {!!patient.parent && !!patient.tutor_frequency && (() => {
-              const lastTutor = getLastTutorSession(upcomingSessions, patient.id);
-              const DAY_MS = 86400000;
-              const todayMs = new Date(todayISO() + "T00:00:00").getTime();
-              let daysSince = null;
-              let daysUntilDue = null;
-              if (lastTutor) {
-                const lastMs = new Date(shortDateToISO(lastTutor.date) + "T00:00:00").getTime();
-                daysSince = Math.round((todayMs - lastMs) / DAY_MS);
-                daysUntilDue = (patient.tutor_frequency * 7) - daysSince;
-              }
-              const overdue = lastTutor ? daysUntilDue < 0 : true;
-              const dueSoon = lastTutor && daysUntilDue >= 0 && daysUntilDue <= 7;
-              const upToDate = lastTutor && daysUntilDue > 7;
-              return (
-                <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)", borderRadius:"var(--radius)" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                    <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--purple)" }}>
-                      {t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}
-                    </div>
-                    {overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
-                    {dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
-                    {upToDate && <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>}
-                  </div>
-                  <div style={{ fontSize:12, color:"var(--charcoal-md)" }}>
-                    {lastTutor
-                      ? `${t("home.lastTutorSession")}: ${lastTutor.date}`
-                      : t("home.noTutorSession")}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="card" style={{ padding:0 }}>
-              {[
-                ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
-                ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
-                { label: t("sessions.regular"), value:`${patient.day} ${patient.time}` },
-                { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
-              ].map((row, i, arr) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
-                  <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
               <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
                 {t("fab.payment")}
               </button>
