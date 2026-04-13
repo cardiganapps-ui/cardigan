@@ -87,7 +87,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const nowCancelled = newStatus === SESSION_STATUS.CANCELLED;
 
     const { error } = await supabase.from("sessions")
-      .update(update).eq("id", sessionId);
+      .update(update).eq("id", sessionId).eq("user_id", userId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...update } : s));
@@ -100,7 +100,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const newBilled = nowCancelled
           ? Math.max(0, patient.billed - sessRate)   // cancelling: remove from billed
           : patient.billed + sessRate;                // reverting: add back to billed
-        const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id);
+        const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id).eq("user_id", userId);
         if (pErr) {
           const fixed = await recalcPatientCounters(patient.id);
           if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
@@ -117,7 +117,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const session = upcomingSessions.find(s => s.id === sessionId);
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+    const { error } = await supabase.from("sessions").delete().eq("id", sessionId).eq("user_id", userId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
@@ -130,7 +130,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const newBilled = Math.max(0, patient.billed - sessRate);
         const { error: pErr } = await supabase.from("patients")
           .update({ sessions: newSessions, billed: newBilled })
-          .eq("id", patient.id);
+          .eq("id", patient.id).eq("user_id", userId);
         if (pErr) {
           const fixed = await recalcPatientCounters(patient.id);
           if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
@@ -152,7 +152,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     setMutationError("");
     const patch = { date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED };
     if (newDuration != null && Number(newDuration) > 0) patch.duration = Number(newDuration);
-    const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId);
+    const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...patch } : s));
@@ -183,7 +183,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const newBilled = patient.billed + patient.rate * data.length;
     const { error: pErr } = await supabase.from("patients")
       .update({ sessions: newSessions, billed: newBilled })
-      .eq("id", patient.id);
+      .eq("id", patient.id).eq("user_id", userId);
 
     setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx }))]);
     if (pErr) {
@@ -217,7 +217,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     if (toDelete.length > 0) {
       const ids = toDelete.map(s => s.id);
-      const { error } = await supabase.from("sessions").delete().in("id", ids);
+      const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
       adjustedBilled -= toDelete.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
       adjustedSessions -= toDelete.length;
@@ -227,7 +227,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patch = { rate: newRate, day: primary.day, time: primary.time,
       billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) };
     const { data: updated, error: pErr } = await supabase.from("patients")
-      .update(patch).eq("id", patientId).select().single();
+      .update(patch).eq("id", patientId).eq("user_id", userId).select().single();
     if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
     setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
 
@@ -251,7 +251,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       if (!sErr && sessData) {
         const finalSessions = (updated.sessions || 0) + sessData.length;
         const finalBilled = (updated.billed || 0) + newRate * sessData.length;
-        const { error: pErr2 } = await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId);
+        const { error: pErr2 } = await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId).eq("user_id", userId);
         setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
         if (pErr2) {
           const fixed = await recalcPatientCounters(patientId);
@@ -284,7 +284,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     if (toDelete.length > 0) {
       const ids = toDelete.map(s => s.id);
-      const { error } = await supabase.from("sessions").delete().in("id", ids);
+      const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
       adjustedBilled -= toDelete.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
       adjustedSessions -= toDelete.length;
@@ -293,7 +293,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     const { data: updated, error: pErr } = await supabase.from("patients")
       .update({ status: PATIENT_STATUS.ENDED, billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) })
-      .eq("id", patientId).select().single();
+      .eq("id", patientId).eq("user_id", userId).select().single();
     if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
     setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
 

@@ -26,7 +26,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     if (patient) {
       const newPaid = patient.paid + parsedAmount;
       const { error: pErr } = await supabase.from("patients")
-        .update({ paid: newPaid }).eq("id", patient.id);
+        .update({ paid: newPaid }).eq("id", patient.id).eq("user_id", userId);
       if (pErr) {
         const fixed = await recalcPatientCounters(patient.id);
         if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
@@ -44,7 +44,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     const payment = payments.find(p => p.id === paymentId);
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("payments").delete().eq("id", paymentId);
+    const { error } = await supabase.from("payments").delete().eq("id", paymentId).eq("user_id", userId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setPayments(prev => prev.filter(p => p.id !== paymentId));
@@ -54,7 +54,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       if (patient) {
         const newPaid = Math.max(0, patient.paid - payment.amount);
         const { error: pErr } = await supabase.from("patients")
-          .update({ paid: newPaid }).eq("id", patient.id);
+          .update({ paid: newPaid }).eq("id", patient.id).eq("user_id", userId);
         if (pErr) {
           const fixed = await recalcPatientCounters(patient.id);
           if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));

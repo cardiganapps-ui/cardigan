@@ -41,7 +41,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose }
         </div>
         <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "#1a1a1a" : "var(--white)" }}>
           {isImage && <img src={url} alt={doc.name} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
-          {isPdf && <iframe src={url} title={doc.name} style={{ width:"100%", height:"100%", border:"none" }} />}
+          {isPdf && <iframe src={url} title={doc.name} sandbox="allow-same-origin allow-scripts" style={{ width:"100%", height:"100%", border:"none" }} />}
           {!isImage && !isPdf && (
             <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
               <div style={{ fontSize:48, marginBottom:12 }}>{getFileIcon(doc)}</div>

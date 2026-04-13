@@ -21,7 +21,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     setMutationError("");
     const { data, error } = await supabase.from("notes")
       .update({ title, content })
-      .eq("id", id).select("updated_at").single();
+      .eq("id", id).eq("user_id", userId).select("updated_at").single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setNotes(prev => prev.map(n => n.id === id ? { ...n, title, content, updated_at: data.updated_at } : n));
@@ -32,7 +32,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     setMutating(true);
     setMutationError("");
     const patch = { patient_id: patientId || null, session_id: sessionId || null };
-    const { data, error } = await supabase.from("notes").update(patch).eq("id", id).select("updated_at").single();
+    const { data, error } = await supabase.from("notes").update(patch).eq("id", id).eq("user_id", userId).select("updated_at").single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updated_at: data.updated_at } : n));
@@ -41,14 +41,14 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
 
   async function deleteNotes(ids) {
     if (!ids?.length) return false;
-    const { error } = await supabase.from("notes").delete().in("id", ids);
+    const { error } = await supabase.from("notes").delete().eq("user_id", userId).in("id", ids);
     if (error) { setMutationError(error.message); return false; }
     setNotes(prev => prev.filter(n => !ids.includes(n.id)));
     return true;
   }
 
   async function deleteNote(id) {
-    const { error } = await supabase.from("notes").delete().eq("id", id);
+    const { error } = await supabase.from("notes").delete().eq("id", id).eq("user_id", userId);
     if (error) { setMutationError(error.message); return false; }
     setNotes(prev => prev.filter(n => n.id !== id));
     return true;
@@ -58,7 +58,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     const note = notes.find(n => n.id === id);
     if (!note) return false;
     const pinned = !note.pinned;
-    const { error } = await supabase.from("notes").update({ pinned }).eq("id", id);
+    const { error } = await supabase.from("notes").update({ pinned }).eq("id", id).eq("user_id", userId);
     if (error) { setMutationError(error.message); return false; }
     setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned } : n));
     return true;

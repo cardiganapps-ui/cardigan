@@ -66,7 +66,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     setMutationError("");
     const { data, error } = await supabase.from("documents")
       .update({ name })
-      .eq("id", id).select("updated_at").single();
+      .eq("id", id).eq("user_id", userId).select("updated_at").single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: data.updated_at } : d));
@@ -78,7 +78,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     setMutationError("");
     const { data, error } = await supabase.from("documents")
       .update({ session_id: sessionId || null })
-      .eq("id", id).select("updated_at").single();
+      .eq("id", id).eq("user_id", userId).select("updated_at").single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: sessionId || null, updated_at: data.updated_at } : d));
@@ -95,7 +95,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
         body: JSON.stringify({ path: doc.file_path }),
       });
     }
-    const { error } = await supabase.from("documents").delete().eq("id", id);
+    const { error } = await supabase.from("documents").delete().eq("id", id).eq("user_id", userId);
     if (error) { setMutationError(error.message); return false; }
     setDocuments(prev => prev.filter(d => d.id !== id));
     return true;

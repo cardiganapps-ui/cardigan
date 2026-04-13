@@ -259,15 +259,23 @@ export function useCardiganData(user, viewAsUserId) {
     });
   }, [patients, enrichedSessions]);
 
+  // Defense-in-depth: prevent mutations in read-only mode
+  const guard = (fn) => readOnly ? async () => false : fn;
+
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents,
     loading, fetchError, mutating, mutationError, readOnly,
-    createPatient, updatePatient, deletePatient,
-    createSession, updateSessionStatus, deleteSession, rescheduleSession,
-    generateRecurringSessions, applyScheduleChange, finalizePatient,
-    createPayment, deletePayment,
-    createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes,
-    uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
+    createPatient: guard(createPatient), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
+    createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
+    deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
+    generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
+    finalizePatient: guard(finalizePatient),
+    createPayment: guard(createPayment), deletePayment: guard(deletePayment),
+    createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
+    togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), deleteNotes: guard(deleteNotes),
+    uploadDocument: guard(uploadDocument), renameDocument: guard(renameDocument),
+    tagDocumentSession: guard(tagDocumentSession), deleteDocument: guard(deleteDocument),
+    getDocumentUrl,
     refresh,
   };
 }

@@ -50,7 +50,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         if (!sessErr && sessData) {
           const n = sessData.length;
           const billed = patientRate * n;
-          const { error: pErr } = await supabase.from("patients").update({ sessions: n, billed }).eq("id", data.id);
+          const { error: pErr } = await supabase.from("patients").update({ sessions: n, billed }).eq("id", data.id).eq("user_id", userId);
           if (pErr) {
             const fixed = await recalcPatientCounters(data.id);
             if (fixed) updatedPatient = { ...newPatient, ...fixed };
@@ -77,7 +77,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     const patch = { ...updates };
     if (patch.name) patch.initials = getInitials(patch.name);
     const { data, error } = await supabase.from("patients")
-      .update(patch).eq("id", id).select().single();
+      .update(patch).eq("id", id).eq("user_id", userId).select().single();
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setPatients(prev => prev.map(p => p.id === id ? { ...data, colorIdx: data.color_idx } : p));
@@ -87,7 +87,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   async function deletePatient(id) {
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("patients").delete().eq("id", id);
+    const { error } = await supabase.from("patients").delete().eq("id", id).eq("user_id", userId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
     setPatients(prev => prev.filter(p => p.id !== id));
