@@ -5,10 +5,11 @@ import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
+import { SessionSheet } from "../components/SessionSheet";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, mutating } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, mutating } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -28,8 +29,9 @@ export function Home({ setScreen, userName }) {
   const cobradoMes = currentMonthPayments.reduce((s,p) => s+p.amount, 0);
 
   const [selected, setSelected] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), []);
-  useEscape(selected ? closeSelected : null);
+  useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : null);
   const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {
@@ -97,7 +99,7 @@ export function Home({ setScreen, userName }) {
             : todaySessions.map(s => {
               const tutor = isTutorSession(s);
               return (
-              <div className="row-item" key={s.id} onClick={() => openPatient(s.patient)}>
+              <div className="row-item" key={s.id} onClick={() => setSelectedSession(s)}>
                 <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : getClientColor(s.colorIdx), border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
                   {tutor ? tutorDisplayInitials(s) : s.initials}
                 </div>
@@ -209,6 +211,18 @@ export function Home({ setScreen, userName }) {
       </div>
       </div>
       </div>
+
+      <SessionSheet
+        session={selectedSession}
+        patients={patients}
+        notes={notes}
+        onClose={() => setSelectedSession(null)}
+        onCancelSession={onCancelSession}
+        onMarkCompleted={onMarkCompleted}
+        onDelete={deleteSession}
+        onReschedule={rescheduleSession}
+        mutating={mutating}
+      />
 
       {selected && (
         <div className="sheet-overlay" onClick={() => setSelected(null)}>
