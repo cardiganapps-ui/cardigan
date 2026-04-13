@@ -192,6 +192,12 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
 }
 
+/* ── Helper: parse "HH:MM" to fractional hours from grid start (8:00) ── */
+function timeToFloat(time) {
+  const [h, m] = (time || "08:00").split(":").map(Number);
+  return (h || 8) + (m || 0) / 60 - 8;
+}
+
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
 function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, showWeekends, hours }) {
   const { strings } = useT();
@@ -199,8 +205,17 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
   const weekDays = getWeekDays(weekDate);
   const visibleDays = showWeekends ? weekDays : weekDays.slice(0, 5);
   const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
-  const hourIndex = (time) => parseInt(time.split(":")[0]) - 8;
   const cols = `repeat(${visibleDays.length}, 1fr)`;
+
+  // Group sessions by date for quick lookup
+  const sessionsByDate = useMemo(() => {
+    const map = new Map();
+    for (const s of upcomingSessions) {
+      if (!map.has(s.date)) map.set(s.date, []);
+      map.get(s.date).push(s);
+    }
+    return map;
+  }, [upcomingSessions]);
 
   return (
     <div>
@@ -216,33 +231,45 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
           );
         })}
       </div>
-      <div>
-        {hours.map((hour, hIdx) => (
-          <div className="week-time-row" key={hour} style={{ gridTemplateColumns: cols }}>
-            {visibleDays.map((d, dIdx) => {
-              const ds = formatShortDate(d);
-              const sess = upcomingSessions.filter(s => s.date===ds).find(s => hourIndex(s.time)===hIdx);
-              const eventStyle = sess ? (() => {
-                if (isCancelledStatus(sess.status)) return undefined; // .cancelled class handles it
-                if (isTutorSession(sess)) return { background:"var(--purple)", borderStyle:"dashed", color:"white", borderLeftColor:"var(--purple)" };
-                const c = getClientColor(sess.colorIdx);
-                return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
-              })() : undefined;
-              return (
-                <div key={dIdx} className="week-cell" role="button" tabIndex={0}
-                  onClick={() => !sess && onCellTap && onCellTap(d, hour)}>
-                  {sess && (
-                    <div className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
-                      style={eventStyle}
-                      onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
-                      <span className="week-event-time">{sess.time}</span> {shortName(sess.patient)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+      <div style={{ display:"grid", gridTemplateColumns: cols }}>
+        {visibleDays.map((d, dIdx) => {
+          const ds = formatShortDate(d);
+          const daySess = sessionsByDate.get(ds) || [];
+          return (
+            <div key={dIdx} className="week-day-col" style={{ position:"relative", borderLeft: dIdx > 0 ? "1px solid var(--border-lt)" : undefined }}>
+              {/* Background hour grid lines */}
+              {hours.map((hour, hIdx) => (
+                <div key={hIdx} className="week-cell"
+                  role="button" tabIndex={0}
+                  onClick={() => onCellTap && onCellTap(d, hour)} />
+              ))}
+              {/* Session events positioned absolutely */}
+              {daySess.map(sess => {
+                const startF = timeToFloat(sess.time);
+                const dur = (sess.duration || 60) / 60; // hours
+                if (startF < 0 || startF >= hours.length) return null;
+                const eventStyle = (() => {
+                  if (isCancelledStatus(sess.status)) return undefined;
+                  if (isTutorSession(sess)) return { background:"var(--purple)", borderStyle:"dashed", color:"white", borderLeftColor:"var(--purple)" };
+                  const c = getClientColor(sess.colorIdx);
+                  return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
+                })();
+                return (
+                  <div key={sess.id}
+                    className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
+                    style={{
+                      ...eventStyle,
+                      top: `calc(var(--week-row-h) * ${startF} + 2px)`,
+                      height: `calc(var(--week-row-h) * ${dur} - 4px)`,
+                    }}
+                    onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
+                    <span className="week-event-time">{sess.time}</span> {shortName(sess.patient)}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -542,9 +569,9 @@ export function Agenda() {
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
         }}
         onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
-        onReschedule={async (id, date, time) => {
-          const ok = await rescheduleSession(id, date, time);
-          if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, status: "scheduled" } : prev);
+        onReschedule={async (id, date, time, duration) => {
+          const ok = await rescheduleSession(id, date, time, duration);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, duration, status: "scheduled" } : prev);
           return ok;
         }}
         mutating={mutating}

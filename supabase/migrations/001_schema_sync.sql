@@ -38,6 +38,9 @@ begin
   end if;
 end $$;
 
+-- sessions: duration column (minutes, default 60)
+alter table sessions add column if not exists duration integer default 60;
+
 -- sessions: rate column (for per-session rate overrides)
 alter table sessions add column if not exists rate integer default null;
 

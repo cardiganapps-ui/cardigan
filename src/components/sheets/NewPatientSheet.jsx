@@ -18,7 +18,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [rate, setRate]       = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [recurring, setRecurring] = useState(true);
-  const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
+  const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00", duration: "60" }]);
   const [startDate, setStartDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate] = useState(false);
   const [endDate, setEndDate] = useState("");
@@ -102,7 +102,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
             <Toggle on={recurring} onToggle={() => setRecurring(v => !v)} />
           </div>
           {schedules.map((s, i) => (
-            <div key={i} style={{ display:"grid", gridTemplateColumns: schedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
+            <div key={i} style={{ display:"grid", gridTemplateColumns: schedules.length > 1 ? "1fr 1fr 80px 28px" : "1fr 1fr 80px", gap:8, marginBottom:8, alignItems:"end" }}>
               <div className="input-group" style={{ marginBottom:0 }}>
                 {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                 <select className="input" value={s.day} onChange={e => updateSched(i, "day", e.target.value)}>
@@ -113,6 +113,16 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                 {i === 0 && <label className="input-label">{t("patients.time")}</label>}
                 <input className="input" type="time" value={s.time} onChange={e => updateSched(i, "time", e.target.value)} />
               </div>
+              <div className="input-group" style={{ marginBottom:0 }}>
+                {i === 0 && <label className="input-label">{t("sessions.duration")}</label>}
+                <select className="input" value={s.duration || "60"} onChange={e => updateSched(i, "duration", e.target.value)}>
+                  <option value="30">30m</option>
+                  <option value="45">45m</option>
+                  <option value="60">1h</option>
+                  <option value="90">1½h</option>
+                  <option value="120">2h</option>
+                </select>
+              </div>
               {schedules.length > 1 && (
                 <button type="button" onClick={() => removeSched(i)}
                   style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -121,7 +131,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               )}
             </div>
           ))}
-          <button type="button" onClick={() => setSchedules(prev => [...prev, { day: "Lunes", time: "16:00" }])}
+          <button type="button" onClick={() => setSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60" }])}
             style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 12px", fontFamily:"var(--font)" }}>
             {t("patients.addSchedule")}
           </button>

@@ -34,6 +34,7 @@ create table if not exists sessions (
   day text not null,
   date text not null,
   status text default 'scheduled' check (status in ('scheduled', 'completed', 'cancelled', 'charged')),
+  duration integer default 60,
   rate integer default null,
   cancel_reason text default null,
   color_idx integer default 0,

@@ -39,10 +39,11 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     if (recurring && startDate) {
       const allRows = [];
       for (const s of sched) {
+        const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
         getRecurringDates(s.day, startDate, endDate).forEach(d =>
           allRows.push({ user_id: userId, patient_id: data.id, patient: name.trim(),
             initials: getInitials(name), time: s.time, day: s.day,
-            date: formatShortDate(d), rate: patientRate, color_idx: colorIdx }));
+            date: formatShortDate(d), duration: dur, rate: patientRate, color_idx: colorIdx }));
       }
       if (allRows.length > 0) {
         const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();

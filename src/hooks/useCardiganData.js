@@ -144,7 +144,7 @@ export function useCardiganData(user, viewAsUserId) {
             s => s.status !== SESSION_STATUS.CANCELLED && s.status !== SESSION_STATUS.CHARGED
           );
           const schedMap = new Map();
-          allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time }));
+          allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time, duration: s.duration || 60 }));
           const existingDates = new Set(allPSess.map(s => s.date));
           let latest = null;
           activePSess.forEach(s => {
@@ -161,7 +161,7 @@ export function useCardiganData(user, viewAsUserId) {
               if (!existingDates.has(ds)) {
                 rows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
                   initials: patient.initials, time: sched.time, day: sched.day,
-                  date: ds, rate: patient.rate, color_idx: patient.color_idx || 0 });
+                  date: ds, duration: sched.duration, rate: patient.rate, color_idx: patient.color_idx || 0 });
                 existingDates.add(ds);
               }
             });

@@ -17,6 +17,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const [cancelReason, setCancelReason] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
+  const [newDuration, setNewDuration] = useState("60");
   const [rescheduleErr, setRescheduleErr] = useState("");
   if (!session) return null;
   const patientData = patients?.find(p => p.name === session.patient);
@@ -28,9 +29,13 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const isTutor = session.initials?.startsWith("T·");
   const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
 
+  const dur = session.duration || 60;
+  const durationLabel = dur < 60 ? `${dur} min` : dur === 60 ? "1 hora" : dur === 90 ? "1½ horas" : `${dur / 60} horas`;
+
   const startReschedule = () => {
     setNewDate(shortDateToISO(session.date));
     setNewTime(session.time);
+    setNewDuration(String(dur));
     setRescheduleErr("");
     setRescheduling(true);
   };
@@ -39,7 +44,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
     if (!newDate) { setRescheduleErr(t("sessions.selectDate")); return; }
     if (!newTime.trim()) { setRescheduleErr(t("sessions.selectTime")); return; }
     setRescheduleErr("");
-    const ok = await onReschedule(session.id, isoToShortDate(newDate), newTime);
+    const ok = await onReschedule(session.id, isoToShortDate(newDate), newTime, Number(newDuration) || 60);
     if (ok) setRescheduling(false);
   };
 
@@ -70,7 +75,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 {session.patient}
                 {isTutor && <span style={{ fontSize:11, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}
               </div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time}</div>
+              <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} · {durationLabel}</div>
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
@@ -113,6 +118,16 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                   <label className="input-label">{t("patients.time")}</label>
                   <input className="input" type="time" value={newTime} onChange={e => setNewTime(e.target.value)} />
                 </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">{t("sessions.duration")}</label>
+                <select className="input" value={newDuration} onChange={e => setNewDuration(e.target.value)}>
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 hora</option>
+                  <option value="90">1½ horas</option>
+                  <option value="120">2 horas</option>
+                </select>
               </div>
               {rescheduleErr && <div className="form-error">{rescheduleErr}</div>}
               <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>

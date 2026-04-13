@@ -30,7 +30,7 @@ export function getRecurringDates(dayName, startDateStr, endDateStr) {
 
 export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
 
-  async function createSession({ patientName, date, time, isTutor, tutorName, customRate }) {
+  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate }) {
     if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
     const patient = patients.find(p => p.name === patientName);
     if (!patient) return false;
@@ -42,6 +42,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       ? "T·" + getInitials(tutorName || patient.parent || "Tutor")
       : patient.initials;
     const sessionRate = (customRate != null && Number(customRate) > 0) ? Number(customRate) : patient.rate;
+    const sessionDuration = Number(duration) > 0 ? Number(duration) : 60;
 
     setMutating(true);
     setMutationError("");
@@ -49,7 +50,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       user_id: userId, patient_id: patient.id,
       patient: patientName.trim(), initials: sessionInitials,
       time: time.trim(), day: dayName, date: date.trim(),
-      rate: sessionRate,
+      duration: sessionDuration, rate: sessionRate,
       color_idx: patient.colorIdx || 0,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -142,20 +143,19 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  async function rescheduleSession(sessionId, newDate, newTime) {
+  async function rescheduleSession(sessionId, newDate, newTime, newDuration) {
     if (!newDate?.trim() || !newTime?.trim()) return false;
     const dateObj = parseShortDate(newDate);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
 
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions")
-      .update({ date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED })
-      .eq("id", sessionId);
+    const patch = { date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED };
+    if (newDuration != null && Number(newDuration) > 0) patch.duration = Number(newDuration);
+    const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setUpcomingSessions(prev => prev.map(s => s.id === sessionId
-      ? { ...s, date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED } : s));
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...patch } : s));
     return true;
   }
 
@@ -165,10 +165,11 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     const allRows = [];
     for (const s of schedules) {
+      const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
       getRecurringDates(s.day, startDate, endDate).forEach(d =>
         allRows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
           initials: patient.initials, time: s.time, day: s.day,
-          date: formatShortDate(d), rate: patient.rate,
+          date: formatShortDate(d), duration: dur, rate: patient.rate,
           color_idx: patient.colorIdx || 0 }));
     }
     if (allRows.length === 0) return false;
@@ -233,12 +234,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const existingDates = new Set(upcomingSessions.filter(s => s.patient_id === patientId).map(s => s.date));
     const allRows = [];
     for (const s of schedules) {
+      const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
       getRecurringDates(s.day, effectiveDate, endDate).forEach(d => {
         const ds = formatShortDate(d);
         if (!existingDates.has(ds)) {
           allRows.push({ user_id: userId, patient_id: patientId, patient: updated.name,
             initials: updated.initials, time: s.time, day: s.day,
-            date: ds, rate: newRate, color_idx: updated.color_idx || 0 });
+            date: ds, duration: dur, rate: newRate, color_idx: updated.color_idx || 0 });
           existingDates.add(ds);
         }
       });

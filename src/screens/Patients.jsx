@@ -54,7 +54,7 @@ export function Patients() {
   };
 
   const startEdit = () => {
-    const scheds = [{ day: selected.day, time: selected.time }];
+    const scheds = [{ day: selected.day, time: selected.time, duration: "60" }];
     setEditName(selected.name);
     setEditIsMinor(!!selected.parent);
     setEditParent(selected.parent || "");
@@ -320,7 +320,7 @@ export function Patients() {
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:8 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>{t("patients.schedules")}</div>
                     {editSchedules.map((s, i) => (
-                      <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 28px" : "1fr 1fr", gap:8, marginBottom:8, alignItems:"end" }}>
+                      <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 80px 28px" : "1fr 1fr 80px", gap:8, marginBottom:8, alignItems:"end" }}>
                         <div className="input-group" style={{ marginBottom:0 }}>
                           {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                           <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
@@ -331,6 +331,16 @@ export function Patients() {
                           {i === 0 && <label className="input-label">{t("patients.time")}</label>}
                           <input className="input" type="time" value={s.time} onChange={e => updateEditSched(i, "time", e.target.value)} />
                         </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          {i === 0 && <label className="input-label">{t("sessions.duration")}</label>}
+                          <select className="input" value={s.duration || "60"} onChange={e => updateEditSched(i, "duration", e.target.value)}>
+                            <option value="30">30m</option>
+                            <option value="45">45m</option>
+                            <option value="60">1h</option>
+                            <option value="90">1½h</option>
+                            <option value="120">2h</option>
+                          </select>
+                        </div>
                         {editSchedules.length > 1 && (
                           <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))}
                             style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -339,7 +349,7 @@ export function Patients() {
                         )}
                       </div>
                     ))}
-                    <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00" }])}
+                    <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60" }])}
                       style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 8px", fontFamily:"var(--font)" }}>
                       {t("patients.addSchedule")}
                     </button>

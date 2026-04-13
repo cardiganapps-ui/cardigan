@@ -14,11 +14,12 @@ export function exportCSV(filename, headers, rows) {
 }
 
 export function exportSessions(sessions, filename = "sesiones.csv") {
-  const headers = ["Paciente", "Fecha", "Hora", "Día", "Estado", "Tipo"];
+  const headers = ["Paciente", "Fecha", "Hora", "Duración (min)", "Día", "Estado", "Tipo"];
   const rows = sessions.map(s => [
     s.patient,
     s.date,
     s.time,
+    s.duration || 60,
     s.day,
     s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : s.status === "charged" ? "Cancelada (cobrada)" : "Cancelada",
     s.initials?.startsWith("T·") ? "Tutor" : "Paciente",
