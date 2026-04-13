@@ -354,18 +354,16 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
         const isToday  = isSameDay(cellDate, TODAY);
         const isActive = isCurrentMonth && cellStr === selectedDateStr;
         const sessions = sessionsByDate.get(cellStr) || [];
-        const visibleDots = sessions.slice(0, 3);
-        const extraCount = Math.max(0, sessions.length - 3);
+        const hasRegular = sessions.some(s => !isTutorSession(s));
+        const hasTutor = sessions.some(s => isTutorSession(s));
         return (
           <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
             role="button" tabIndex={0} onClick={() => setSelectedDate(cellDate)}>
             <span className="month-cell-num">{cell.num}</span>
-            {visibleDots.length > 0 && (
+            {(hasRegular || hasTutor) && (
               <div className="month-dots">
-                {visibleDots.map((s, di) => (
-                  <span key={di} className="month-dot-color" style={{ background: getClientColor(s.colorIdx) }} />
-                ))}
-                {extraCount > 0 && <span className="month-dot-extra">+{extraCount}</span>}
+                {hasRegular && <span className="month-dot-color" style={{ background: "var(--teal)" }} />}
+                {hasTutor && <span className="month-dot-color" style={{ background: "var(--purple)" }} />}
               </div>
             )}
           </div>

@@ -1085,11 +1085,9 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .month-cell.today:not(.active) .month-cell-num { color: var(--teal-dark); }
 .month-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--teal); position: absolute; bottom: 4px; }
 .month-cell.active .month-dot { background: rgba(255,255,255,0.7); }
-.month-dots { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.month-dots { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 3px; }
 .month-dot-color { width: 5px; height: 5px; border-radius: 50%; }
-.month-dot-extra { font-size: 8px; font-weight: 800; color: var(--charcoal-xl); margin-left: 1px; line-height: 1; }
 .month-cell.active .month-dot-color { box-shadow: 0 0 0 1px rgba(255,255,255,0.7); }
-.month-cell.active .month-dot-extra { color: rgba(255,255,255,0.8); }
 
 /* WEEK GRID */
 .week-header-row { display: grid; grid-template-columns: 44px repeat(7, 1fr); padding: 0 16px; margin-bottom: 2px; }
