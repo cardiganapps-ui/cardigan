@@ -124,28 +124,22 @@ export function Home({ setScreen, userName }) {
         <div className="card">
           {owingPatients.length === 0
             ? emptyHint(t("home.emptyBalances"))
-            : owingPatients.slice(0,4).map((p,i) => {
-              const owed = p.amountDue;
-              const totalDue = owed + p.paid;
-              const pct  = totalDue > 0 ? (p.paid / totalDue) * 100 : 0;
-              return (
+            : owingPatients.slice(0,4).map((p,i) => (
                 <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
                   <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i) }}>{p.initials}</div>
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
-                    <div className="balance-bar"><div className="balance-fill" style={{ width:`${pct}%` }} /></div>
-                    <div className="row-sub" style={{ marginTop:3 }}>${p.paid.toLocaleString()} {t("home.paidOf")} ${totalDue.toLocaleString()}</div>
+                    <div className="row-sub">{p.day} · {p.time}</div>
                   </div>
                   <div className="row-right" style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
-                    <div className="row-amount amount-owe">-${owed.toLocaleString()}</div>
+                    <div className="row-amount amount-owe">-${p.amountDue.toLocaleString()}</div>
                     <button className="btn btn-ghost" style={{ fontSize:11, height:26, padding:"0 8px", minHeight:26 }}
                       onClick={(e) => { e.stopPropagation(); openRecordPaymentModal(p); }}>
                       {t("finances.collect")}
                     </button>
                   </div>
                 </div>
-              );
-            })}
+              ))}
         </div>
       </div>
 

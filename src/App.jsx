@@ -269,7 +269,7 @@ function AppShell({ user, signOut, demo, theme }) {
           </div>
         </PullToRefresh>
         {!readOnly && (
-          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); if (msg) setSuccessMsg(msg); }}
+          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); if (typeof msg === "string" && msg) setSuccessMsg(msg); }}
             initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} />
         )}
         {!readOnly && !hideFab && <QuickActions />}
