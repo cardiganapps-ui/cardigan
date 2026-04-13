@@ -131,12 +131,8 @@ export function Home({ setScreen, userName }) {
                     <div className="row-title">{p.name}</div>
                     <div className="row-sub">{p.day} · {p.time}</div>
                   </div>
-                  <div className="row-right" style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
+                  <div className="row-right">
                     <div className="row-amount amount-owe">-${p.amountDue.toLocaleString()}</div>
-                    <button className="btn btn-ghost" style={{ fontSize:11, height:26, padding:"0 8px", minHeight:26 }}
-                      onClick={(e) => { e.stopPropagation(); openRecordPaymentModal(p); }}>
-                      {t("finances.collect")}
-                    </button>
                   </div>
                 </div>
               ))}
