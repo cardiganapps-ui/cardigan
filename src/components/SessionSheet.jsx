@@ -13,7 +13,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [cancelCharge, setCancelCharge] = useState(false);
+  const [cancelCharge, setCancelCharge] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
@@ -48,8 +48,8 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
     if (ok) setRescheduling(false);
   };
 
-  const startCancel = (charge) => {
-    setCancelCharge(charge);
+  const startCancel = () => {
+    setCancelCharge(null);
     setCancelReason("");
     setCancelling(true);
   };
@@ -137,45 +137,55 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
             </div>
           ) : cancelling ? (
             <div>
-              <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>
-                {cancelCharge ? t("sessions.cancelAndCharge") : t("sessions.cancelNoCharge")}
-              </div>
-              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:12, lineHeight:1.5 }}>
-                {cancelCharge ? t("sessions.cancelChargeExplain") : t("sessions.cancelNoChargeExplain")}
-              </div>
-              <div className="input-group">
-                <label className="input-label">{t("sessions.cancelReason")}</label>
-                <textarea className="input" value={cancelReason} onChange={e => setCancelReason(e.target.value)}
-                  placeholder={t("sessions.cancelReasonPlaceholder")}
-                  rows={2} style={{ resize:"none", fontFamily:"var(--font)", fontSize:13 }} />
-              </div>
-              <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-md)", color:"white", boxShadow:"none", fontWeight:700 }}
-                onClick={submitCancel} disabled={mutating}>
-                {mutating ? t("saving") : t("sessions.confirmCancel")}
-              </button>
-              <button className="btn btn-secondary w-full" onClick={() => setCancelling(false)}>{t("back")}</button>
+              <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", marginBottom:12 }}>{t("sessions.cancelSession")}</div>
+              {cancelCharge === null ? (
+                <>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                    <button className="btn" style={{ height:44, fontSize:12, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
+                      onClick={() => setCancelCharge(true)}>
+                      {t("sessions.cancelAndCharge")}
+                    </button>
+                    <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-lt)", boxShadow:"none" }}
+                      onClick={() => setCancelCharge(false)}>
+                      {t("sessions.cancelNoCharge")}
+                    </button>
+                  </div>
+                  <button className="btn btn-secondary w-full" onClick={() => setCancelling(false)}>{t("back")}</button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:12, lineHeight:1.5 }}>
+                    {cancelCharge ? t("sessions.cancelChargeExplain") : t("sessions.cancelNoChargeExplain")}
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">{t("sessions.cancelReason")}</label>
+                    <textarea className="input" value={cancelReason} onChange={e => setCancelReason(e.target.value)}
+                      placeholder={t("sessions.cancelReasonPlaceholder")}
+                      rows={2} style={{ resize:"none", fontFamily:"var(--font)", fontSize:13 }} />
+                  </div>
+                  <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-md)", color:"white", boxShadow:"none", fontWeight:700 }}
+                    onClick={submitCancel} disabled={mutating}>
+                    {mutating ? t("saving") : t("sessions.confirmCancel")}
+                  </button>
+                  <button className="btn btn-secondary w-full" onClick={() => setCancelCharge(null)}>{t("back")}</button>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {/* Status change actions — available for ALL statuses */}
-              {!isCompleted && (
-                <button className="btn btn-primary" style={{ height:44 }}
-                  onClick={() => onMarkCompleted(session)} disabled={mutating}>
-                  {t("sessions.markCompleted")}
+              {/* Reschedule — primary action */}
+              <button className="btn btn-primary" style={{ height:44 }} onClick={startReschedule}>
+                {t("sessions.reschedule")}
+              </button>
+
+              {/* Cancel — single button for both charge/no-charge */}
+              {!isCancelled && (
+                <button className="btn" style={{ height:44, fontSize:13, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
+                  onClick={startCancel} disabled={mutating}>
+                  {t("sessions.cancelSession")}
                 </button>
               )}
-              {!isCancelled && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                  <button className="btn" style={{ height:44, fontSize:12, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
-                    onClick={() => startCancel(true)} disabled={mutating}>
-                    {t("sessions.cancelAndCharge")}
-                  </button>
-                  <button className="btn" style={{ height:44, fontSize:12, background:"var(--cream)", color:"var(--charcoal-lt)", boxShadow:"none" }}
-                    onClick={() => startCancel(false)} disabled={mutating}>
-                    {t("sessions.cancelNoCharge")}
-                  </button>
-                </div>
-              )}
+
               {/* Revert cancelled/completed back to scheduled */}
               {(isCompleted || isCancelled) && (
                 <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-mist)", color:"var(--teal-dark)", boxShadow:"none" }}
@@ -183,24 +193,27 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                   {t("sessions.revertScheduled")}
                 </button>
               )}
-              {onOpenNote && (() => {
-                const hasNote = notes?.some(n => n.session_id === session.id);
-                return (
+
+              {/* Note + Document side by side */}
+              <div style={{ display:"grid", gridTemplateColumns: onAttachDocument ? "1fr 1fr" : "1fr", gap:10 }}>
+                {onOpenNote && (() => {
+                  const hasNote = notes?.some(n => n.session_id === session.id);
+                  return (
+                    <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+                      onClick={() => onOpenNote(session)}>
+                      <IconClipboard size={15} /> {hasNote ? t("notes.viewNote") : t("notes.addNote")}
+                    </button>
+                  );
+                })()}
+                {onAttachDocument && (
                   <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
-                    onClick={() => onOpenNote(session)}>
-                    <IconClipboard size={15} /> {hasNote ? t("notes.viewNote") : t("notes.addNote")}
+                    onClick={() => onAttachDocument(session)}>
+                    <IconUpload size={15} /> {t("sessions.attachDoc")}
                   </button>
-                );
-              })()}
-              {onAttachDocument && (
-                <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
-                  onClick={() => onAttachDocument(session)}>
-                  <IconUpload size={15} /> {t("sessions.attachDoc")}
-                </button>
-              )}
-              <button className="btn btn-primary" style={{ height:44 }} onClick={startReschedule}>
-                {t("sessions.reschedule")}
-              </button>
+                )}
+              </div>
+
+              {/* Delete — least prominent */}
               <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
                 onClick={() => setConfirmDelete(true)}>
                 {t("delete")}
