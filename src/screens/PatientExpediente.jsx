@@ -328,23 +328,9 @@ export function PatientExpediente({
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
-            <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-              {patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")} · {patient.day} {patient.time}
+            <div style={{ marginTop:3 }}>
+              <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
             </div>
-            {(patient.birthdate || patient.start_date) && (
-              <div style={{ fontSize:11, color:"var(--charcoal-lt)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {patient.birthdate && (() => {
-                  const birth = new Date(patient.birthdate + "T00:00:00");
-                  const today = new Date();
-                  let age = today.getFullYear() - birth.getFullYear();
-                  const m = today.getMonth() - birth.getMonth();
-                  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-                  return `${age} ${t("patients.yearsOld")} · ${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`;
-                })()}
-                {patient.birthdate && patient.start_date && " · "}
-                {patient.start_date && `${t("patients.startDate")}: ${new Date(patient.start_date + "T00:00:00").toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`}
-              </div>
-            )}
           </div>
           <button onClick={() => onEdit(patient)}
             style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
