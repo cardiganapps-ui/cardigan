@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
-import { PAYMENT_METHOD } from "../data/constants";
 import { IconCheck } from "../components/Icons";
 import { exportPayments } from "../utils/export";
+import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
@@ -10,25 +10,27 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
   const { t, strings } = useT();
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);
-  const [sortOrder, setSortOrder]         = useState("desc");
-  const [filterMethod, setFilterMethod]   = useState("all");
-  const [dateRange, setDateRange]         = useState("all");
+  const [period, setPeriod] = useState("all");
 
-  const monthAbbrevs = strings.monthsShort;
-  const monthOrder = {};
-  monthAbbrevs.forEach((m, i) => { monthOrder[m] = i + 1; });
-  const parseDateKey = (dateStr) => {
-    const [day, mon] = dateStr.split(" ");
-    return (monthOrder[mon] || 0) * 100 + parseInt(day);
+  // Compute date-from based on period selection
+  const getDateFrom = (p) => {
+    if (p === "all") return null;
+    const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
+    const d = new Date();
+    d.setMonth(d.getMonth() - (months[p] || 0));
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   };
 
-  const availableMonths = monthAbbrevs.filter(m => payments.some(p => p.date.split(" ")[1] === m));
-  const periodOptions = [{k:"all",l:t("finances.periodAll")}, ...availableMonths.map(m => ({k:m, l:m}))];
+  const dateFrom = getDateFrom(period);
+  const today = todayISO();
 
   let filtered = [...payments];
-  if (filterMethod !== "all") filtered = filtered.filter(p => p.method === filterMethod);
-  if (dateRange !== "all") filtered = filtered.filter(p => p.date.split(" ")[1] === dateRange);
-  filtered.sort((a,b) => sortOrder === "desc" ? parseDateKey(b.date)-parseDateKey(a.date) : parseDateKey(a.date)-parseDateKey(b.date));
+  if (dateFrom) filtered = filtered.filter(p => {
+    const iso = shortDateToISO(p.date);
+    return iso >= dateFrom && iso <= today;
+  });
+  // Always sort newest first
+  filtered.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
 
   const totalFiltered = filtered.reduce((s,p) => s+p.amount, 0);
 
@@ -89,6 +91,20 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
 
       <div className="card" style={{ padding:"8px 12px", marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+          <div style={{ display:"flex", gap:4 }}>
+            {[
+              { k: "all", l: t("periods.all") },
+              { k: "1m",  l: t("periods.1m") },
+              { k: "3m",  l: t("periods.3m") },
+              { k: "6m",  l: t("periods.6m") },
+              { k: "1y",  l: t("periods.1y") },
+            ].map(o => (
+              <button key={o.k} onClick={() => setPeriod(o.k)}
+                style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: period===o.k ? "var(--teal)" : "var(--cream)", color: period===o.k ? "white" : "var(--charcoal-md)" }}>
+                {o.l}
+              </button>
+            ))}
+          </div>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
             <button
@@ -97,36 +113,6 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
             >
               <div style={{ width:14, height:14, borderRadius:"50%", background:"white", boxShadow:"0 1px 2px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
             </button>
-          </div>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
-            {[{k:"desc",l:t("finances.newest")},{k:"asc",l:t("finances.oldest")}].map(o => (
-              <button key={o.k} onClick={() => setSortOrder(o.k)}
-                style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: sortOrder===o.k ? "var(--white)" : "transparent", color: sortOrder===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: sortOrder===o.k ? "var(--shadow-sm)" : "none", minHeight:32 }}>
-                {o.l}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1 }}>
-            {[
-              { k: "all", l: t("finances.allMethods") },
-              { k: PAYMENT_METHOD.TRANSFER, l: t("finances.transferShort") },
-              { k: PAYMENT_METHOD.CASH,     l: t("finances.cashShort") },
-            ].map(o => (
-              <button key={o.k} onClick={() => setFilterMethod(o.k)}
-                style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: filterMethod===o.k ? "var(--white)" : "transparent", color: filterMethod===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: filterMethod===o.k ? "var(--shadow-sm)" : "none", minHeight:32 }}>
-                {o.l}
-              </button>
-            ))}
-          </div>
-          <div style={{ display:"flex", background:"var(--cream-dark)", borderRadius:"var(--radius-pill)", padding:2, gap:1, overflowX:"auto" }}>
-            {periodOptions.map(o => (
-              <button key={o.k} onClick={() => setDateRange(o.k)}
-                style={{ padding:"6px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: dateRange===o.k ? "var(--white)" : "transparent", color: dateRange===o.k ? "var(--teal-dark)" : "var(--charcoal-lt)", boxShadow: dateRange===o.k ? "var(--shadow-sm)" : "none", whiteSpace:"nowrap", flexShrink:0, minHeight:32 }}>
-                {o.l}
-              </button>
-            ))}
           </div>
         </div>
       </div>
