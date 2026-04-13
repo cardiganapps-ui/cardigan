@@ -41,6 +41,8 @@ export default {
     noTutorSession: "Sin sesión registrada",
     overdueDays: "Vencido · {count} días",
     dueThisWeek: "Esta semana",
+    recentNotes: "Notas recientes",
+    emptyNotes: "Las notas aparecer\u00e1n aqu\u00ed.",
     totalSessions: "Total sesiones",
     totalCollectedAllTime: "Total cobrado",
     allTime: "desde el inicio",

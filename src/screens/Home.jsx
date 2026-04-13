@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
-import { IconDollar, IconX, IconPlus } from "../components/Icons";
+import { IconClipboard, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
 import { useEscape } from "../hooks/useEscape";
@@ -8,7 +8,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, tutorReminders, openRecordPaymentModal, mutating } = useCardigan();
+  const { patients, upcomingSessions, notes, tutorReminders, openRecordPaymentModal, mutating } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -187,24 +187,25 @@ export function Home({ setScreen, userName }) {
 
       <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
         <div className="section-header">
-          <span className="section-title">{t("home.recentPayments")}</span>
-          <button className="see-all" onClick={() => setScreen("finances")}>{t("home.seeAll")}</button>
+          <span className="section-title">{t("home.recentNotes")}</span>
+          <button className="see-all" onClick={() => setScreen("notes")}>{t("home.seeAll")}</button>
         </div>
         <div className="card">
-          {payments.length === 0
-            ? emptyHint(t("home.emptyPayments"))
-            : payments.slice(0,3).map(p => (
-              <div className="row-item" key={p.id} onClick={() => openPatient(p.patient)}>
-                <div className="row-icon" style={{ background:"var(--green-bg)", color:"var(--green)" }}><IconDollar size={18} /></div>
-                <div className="row-content">
-                  <div className="row-title">{p.patient}</div>
-                  <div className="row-sub">{p.date} · {p.method}</div>
+          {(notes || []).length === 0
+            ? emptyHint(t("home.emptyNotes"))
+            : (notes || []).slice(0,3).map(n => {
+              const pat = n.patient_id ? patients.find(p => p.id === n.patient_id) : null;
+              const preview = n.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
+              return (
+                <div className="row-item" key={n.id} onClick={() => pat && openPatient(pat.name)}>
+                  <div className="row-icon" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}><IconClipboard size={18} /></div>
+                  <div className="row-content">
+                    <div className="row-title">{n.title || t("notes.noTitle")}</div>
+                    <div className="row-sub">{pat ? pat.name : t("notes.generalNote")}{preview ? ` · ${preview}` : ""}</div>
+                  </div>
                 </div>
-                <div className="row-right">
-                  <div className="row-amount amount-paid">+${p.amount.toLocaleString()}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
       </div>
       </div>
