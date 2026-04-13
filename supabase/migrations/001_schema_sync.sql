@@ -78,6 +78,9 @@ create table if not exists bug_reports (
   archived_at timestamptz
 );
 
+-- If table already existed, ensure archived_at column is present
+alter table bug_reports add column if not exists archived_at timestamptz;
+
 -- ============================================================
 -- 4. Indexes
 -- ============================================================

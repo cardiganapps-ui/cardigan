@@ -13,6 +13,7 @@ export default {
   search: "Buscar",
   apply: "Aplicar cambios",
   ok: "OK",
+  retry: "Reintentar",
   yes: "S\u00ed",
   no: "No",
   loading: "Cargando datos...",

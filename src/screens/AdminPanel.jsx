@@ -188,6 +188,7 @@ function BugsTab() {
 
   const handleArchiveAll = async () => {
     setArchiving(true);
+    setError("");
     try {
       await archiveBugReports(reports.map(r => r.id));
       // Re-fetch to confirm archive persisted
@@ -202,7 +203,6 @@ function BugsTab() {
   };
 
   if (loading) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>{t("admin.bugsLoading")}</div>;
-  if (error) return <div style={{ textAlign:"center", padding:40, color:"var(--red)", fontSize:13 }}>{error}</div>;
 
   return (
     <>
@@ -224,8 +224,18 @@ function BugsTab() {
         ))}
       </div>
 
+      {error && (
+        <div style={{ textAlign:"center", padding:"12px 14px", marginBottom:10, background:"var(--red-bg)", borderRadius:"var(--radius-sm)", color:"var(--red)", fontSize:13 }}>
+          <div style={{ marginBottom:8 }}>{error}</div>
+          <button onClick={() => { setError(""); load(); }}
+            style={{ fontSize:11, fontWeight:700, color:"white", background:"var(--red)", border:"none", borderRadius:"var(--radius-pill)", padding:"4px 14px", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+            {t("retry")}
+          </button>
+        </div>
+      )}
+
       {reports.length === 0 ? (
-        <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>
+        !error && <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>
           {showArchived ? t("admin.bugsArchivedEmpty") : t("admin.bugsEmpty")}
         </div>
       ) : (
