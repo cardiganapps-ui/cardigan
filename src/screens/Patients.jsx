@@ -15,7 +15,6 @@ export function Patients() {
   const { t, strings } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
-  const [sort, setSort]         = useState("name");
   const [selected, setSelected] = useState(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -148,12 +147,8 @@ export function Patients() {
   };
 
   const filters = [
-    {k:"all",l:t("patients.all")},{k:"active",l:t("patients.active")},{k:"ended",l:t("patients.ended")},
-    {k:"owes",l:t("patients.withBalance")},{k:"paid",l:t("patients.upToDate")},
-  ];
-  const sorts = [
-    {k:"name",l:t("patients.name")},{k:"day",l:t("patients.sessionDay")},
-    {k:"sessions",l:t("patients.sessions")},{k:"rate",l:t("patients.rate")},
+    {k:"owes",l:t("patients.withDebt")},{k:"paid",l:t("patients.upToDate")},
+    {k:"active",l:t("patients.active")},{k:"ended",l:t("patients.ended")},
   ];
 
   const applyFilter = (p) => {
@@ -164,11 +159,11 @@ export function Patients() {
     return true;
   };
   const applySort = (a,b) => {
-    if (sort==="name")     return a.name.localeCompare(b.name);
-    if (sort==="day")      return DAY_ORDER.indexOf(a.day)-DAY_ORDER.indexOf(b.day);
-    if (sort==="sessions") return b.sessions-a.sessions;
-    if (sort==="rate")     return b.rate-a.rate;
-    return 0;
+    if (a.status !== b.status) {
+      if (a.status === "active") return -1;
+      if (b.status === "active") return 1;
+    }
+    return a.name.localeCompare(b.name);
   };
   const filtered = patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort);
 
@@ -194,16 +189,10 @@ export function Patients() {
         </div>
       </div>
       <div className="filter-chips">
-        {filters.map(f => <button key={f.k} className={`chip ${filter===f.k?"active":""}`} onClick={() => setFilter(f.k)}>{f.l}</button>)}
+        {filters.map(f => <button key={f.k} className={`chip ${filter===f.k?"active":""}`} onClick={() => setFilter(prev => prev === f.k ? "all" : f.k)}>{f.l}</button>)}
       </div>
       <div className="sort-row">
         <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{t("patients.count", { count: filtered.length })}</span>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <span className="sort-label">{t("patients.sortBy")}</span>
-          <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)}>
-            {sorts.map(s => <option key={s.k} value={s.k}>{s.l}</option>)}
-          </select>
-        </div>
       </div>
       <div style={{ padding:"0 16px 12px" }}>
         <div className="card">
@@ -216,9 +205,8 @@ export function Patients() {
                   <div className="row-title">{p.name}</div>
                   <div className="row-sub">{p.day} · {p.time}</div>
                 </div>
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
+                <div style={{ flexShrink:0 }}>
                   <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
-                  <span style={{ fontSize:11, color:"var(--charcoal-xl)", fontWeight:600 }}>{p.sessions} ses. · ${p.rate}/ses</span>
                 </div>
                 <span className="row-chevron">›</span>
               </div>
