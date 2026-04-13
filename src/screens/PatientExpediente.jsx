@@ -104,6 +104,9 @@ export function PatientExpediente({
     [notes, patient.id]
   );
 
+  // Earliest session date (pSessions sorted desc, so last = oldest)
+  const earliestISO = pSessions.length > 0 ? shortDateToISO(pSessions[pSessions.length - 1].date) : null;
+
   // All-time stats
   const allCompleted = pSessions.filter(s => s.status === "completed").length;
   const allCancelled = pSessions.filter(s => s.status === "cancelled").length;
@@ -375,6 +378,16 @@ export function PatientExpediente({
                 <div style={{ fontSize:11, color:"var(--charcoal-lt)", marginTop:2 }}>{t("expediente.periodFilterSub")}</div>
               </div>
               <div style={{ display:"flex", gap:6, marginBottom:6, flexWrap:"wrap" }}>
+                {earliestISO && (() => {
+                  const isActive = dateFrom === earliestISO && dateTo === todayISO();
+                  return (
+                    <button onClick={() => { setDateFrom(earliestISO); setDateTo(todayISO()); }}
+                      style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
+                        background: isActive ? "var(--teal)" : "var(--cream)", color: isActive ? "white" : "var(--charcoal-md)" }}>
+                      {t("periods.all")}
+                    </button>
+                  );
+                })()}
                 {[{l:t("periods.1m"),m:1},{l:t("periods.3m"),m:3},{l:t("periods.6m"),m:6},{l:t("periods.1y"),m:12}].map(p => {
                   const d = new Date(); d.setMonth(d.getMonth() - p.m);
                   const fromVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;

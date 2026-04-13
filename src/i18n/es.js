@@ -388,6 +388,7 @@ export default {
 
   // ── Time periods ──
   periods: {
+    all: "Todo",
     "1m": "1 mes",
     "3m": "3 meses",
     "6m": "6 meses",
