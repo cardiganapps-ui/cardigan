@@ -1299,8 +1299,7 @@ button, a, select { min-height: 44px; }
   }
   .drawer-header { padding: 20px 16px 16px; }
 
-  /* Main content area: constrain height on desktop */
-  .main-content { height: 100dvh; }
+  /* Main content area: no extra height constraint — flex:1 from base is enough */
 
   /* Topbar: hide hamburger, un-center logo */
   .hamburger { display: none; }
