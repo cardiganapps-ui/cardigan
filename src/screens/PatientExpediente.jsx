@@ -335,7 +335,7 @@ export function PatientExpediente({
       </div>
 
       {/* Content */}
-      <div style={{ flex:1, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
+      <div style={{ flex:1, minHeight:0, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
 
         {/* ── RESUMEN ── */}
         {tab === "resumen" && (

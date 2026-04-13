@@ -61,8 +61,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
           <span className="sheet-title">{t("patients.newPatient")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
-          <div style={{ flex:1 }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, minHeight:0 }}>
           <div className="input-group">
             <label className="input-label">{t("settings.fullName")}</label>
             <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />

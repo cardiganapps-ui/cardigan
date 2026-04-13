@@ -296,7 +296,7 @@ export function AdminPanel({ onViewAs, onClose }) {
         </div>
       </div>
 
-      <div style={{ flex:1, overflowY:"auto", padding:16 }}>
+      <div style={{ flex:1, minHeight:0, overflowY:"auto", padding:16 }}>
         {tab === "accounts" ? <AccountsTab onViewAs={onViewAs} /> : <BugsTab />}
       </div>
     </div>

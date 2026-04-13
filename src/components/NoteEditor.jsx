@@ -354,7 +354,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
       )}
 
       {/* Editor body */}
-      <div style={{ flex:1, overflowY:"auto", padding:"16px 20px 60px" }}>
+      <div style={{ flex:1, minHeight:0, overflowY:"auto", padding:"16px 20px 60px" }}>
         {dateStr && (
           <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginBottom:12 }}>{dateStr}</div>
         )}

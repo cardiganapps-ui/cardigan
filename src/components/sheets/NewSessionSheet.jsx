@@ -57,8 +57,8 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           <span className="sheet-title">{t("sessions.schedule")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
-          <div style={{ flex:1 }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, minHeight:0 }}>
           <div className="input-group">
             <label className="input-label">{t("sessions.patient")}</label>
             <select className="input" value={patientName} onChange={e => handlePatientChange(e.target.value)}>
