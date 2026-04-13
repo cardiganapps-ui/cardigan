@@ -50,6 +50,10 @@ export function Home({ setScreen, userName }) {
   }, [nextSession, notes]);
 
   const currentMonthPayments = payments.filter(p => {
+    if (p.created_at) {
+      const d = new Date(p.created_at);
+      return d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth();
+    }
     const parts = p.date.split(" ");
     return parts[1] === SHORT_MONTHS[TODAY.getMonth()];
   });
