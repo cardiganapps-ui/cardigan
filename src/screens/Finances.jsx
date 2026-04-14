@@ -140,32 +140,6 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
           : <div className="card">{filtered.map((p,i) => renderRow(p,i))}</div>
       }
 
-      <div style={{ marginTop:16 }}>
-        <div className="section-title" style={{ marginBottom:10 }}>{t("finances.pendingCollection")}</div>
-        <div className="card">
-          {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => {
-            const owed = p.amountDue;
-            return (
-              <div className="bal-row" key={p.id}>
-                <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div className="bal-name">{p.name}</div>
-                </div>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div className="bal-amt amount-owe">${owed.toLocaleString()}</div>
-                  <button
-                    style={{ padding:"8px 16px", fontSize:12, fontWeight:700, borderRadius:"var(--radius-pill)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer", fontFamily:"var(--font)", whiteSpace:"nowrap", minHeight:36 }}
-                    onClick={() => onRecordPayment(p)}
-                    disabled={mutating}
-                  >
-                    {mutating ? "..." : t("finances.collect")}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
