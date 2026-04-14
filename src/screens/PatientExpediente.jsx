@@ -21,7 +21,7 @@ export function PatientExpediente({
   mutating,
 }) {
   const { t, strings } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, deletePayment } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, deletePayment } = useCardigan();
   useLayer("expediente", onClose);
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
@@ -833,6 +833,11 @@ export function PatientExpediente({
         onUpdateModality={async (id, modality) => {
           const ok = await updateSessionModality(id, modality);
           if (ok) setSelectedSession(prev => prev ? { ...prev, modality } : prev);
+          return ok;
+        }}
+        onUpdateRate={async (id, rate) => {
+          const ok = await updateSessionRate(id, rate);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, rate: Number(rate) } : prev);
           return ok;
         }}
         mutating={mutating}

@@ -206,7 +206,7 @@ export function useCardiganData(user, viewAsUserId) {
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, helpers);
-  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality } =
+  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
@@ -274,7 +274,7 @@ export function useCardiganData(user, viewAsUserId) {
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
-    finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality),
+    finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality), updateSessionRate: guard(updateSessionRate),
     createPayment: guard(createPayment), deletePayment: guard(deletePayment),
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
     togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), deleteNotes: guard(deleteNotes),

@@ -461,7 +461,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
   const { t } = useT();
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
@@ -588,6 +588,11 @@ export function Agenda() {
         onUpdateModality={async (id, modality) => {
           const ok = await updateSessionModality(id, modality);
           if (ok) setSelectedSession(prev => prev ? { ...prev, modality } : prev);
+          return ok;
+        }}
+        onUpdateRate={async (id, rate) => {
+          const ok = await updateSessionRate(id, rate);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, rate: Number(rate) } : prev);
           return ok;
         }}
         mutating={mutating}

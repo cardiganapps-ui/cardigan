@@ -315,5 +315,38 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality };
+  async function updateSessionRate(sessionId, newRate) {
+    const rate = Number(newRate);
+    if (!rate || rate <= 0) return false;
+    const session = upcomingSessions.find(s => s.id === sessionId);
+    if (!session) return false;
+    const oldRate = session.rate != null ? session.rate : 0;
+    const diff = rate - oldRate;
+
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions").update({ rate }).eq("id", sessionId).eq("user_id", userId);
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, rate } : s));
+
+    // Adjust patient billed if session is not cancelled (cancelled sessions don't count toward billed)
+    if (diff !== 0 && session.patient_id && session.status !== SESSION_STATUS.CANCELLED) {
+      const patient = patients.find(p => p.id === session.patient_id);
+      if (patient) {
+        const newBilled = Math.max(0, patient.billed + diff);
+        const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id).eq("user_id", userId);
+        if (pErr) {
+          const fixed = await recalcPatientCounters(patient.id);
+          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+        } else {
+          setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
+        }
+      }
+    }
+
+    setMutating(false);
+    return true;
+  }
+
+  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate };
 }

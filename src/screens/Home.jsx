@@ -9,7 +9,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, mutating } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, mutating } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -232,6 +232,7 @@ export function Home({ setScreen, userName }) {
         onDelete={deleteSession}
         onReschedule={rescheduleSession}
         onUpdateModality={updateSessionModality}
+        onUpdateRate={updateSessionRate}
         mutating={mutating}
       />
 

@@ -7,7 +7,7 @@ import { IconX, IconClipboard, IconUpload, IconTrash } from "./Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onOpenNote, onAttachDocument, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onOpenNote, onAttachDocument, mutating }) {
   const { t } = useT();
   useEscape(session ? onClose : null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -19,9 +19,11 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const [newTime, setNewTime] = useState("");
   const [newDuration, setNewDuration] = useState("60");
   const [rescheduleErr, setRescheduleErr] = useState("");
+  const [editingRate, setEditingRate] = useState(false);
+  const [rateInput, setRateInput] = useState("");
   if (!session) return null;
-  const patientData = patients?.find(p => p.name === session.patient);
-  const rate = patientData ? `$${patientData.rate.toLocaleString()}` : "—";
+  const sessionRate = session.rate != null ? session.rate : (patients?.find(p => p.name === session.patient)?.rate || 0);
+  const rateDisplay = `$${sessionRate.toLocaleString()}`;
   const isCancelled = isCancelledStatus(session.status);
   const isCompleted = session.status === SESSION_STATUS.COMPLETED;
   const isScheduled = session.status === SESSION_STATUS.SCHEDULED;
@@ -97,9 +99,22 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
             </button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-            <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
+            <div role="button" tabIndex={0}
+              onClick={() => { if (onUpdateRate && !editingRate) { setRateInput(String(sessionRate)); setEditingRate(true); } }}
+              style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateRate ? "pointer" : undefined }}>
               <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("sessions.rate")}</div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)" }}>{rate}</div>
+              {editingRate ? (
+                <form onSubmit={async (e) => { e.preventDefault(); const ok = await onUpdateRate(session.id, rateInput); if (ok) setEditingRate(false); }}
+                  style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <span style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)" }}>$</span>
+                  <input type="number" className="input" value={rateInput} onChange={e => setRateInput(e.target.value)}
+                    autoFocus onBlur={async () => { const ok = await onUpdateRate(session.id, rateInput); if (ok) setEditingRate(false); else setEditingRate(false); }}
+                    onClick={e => e.stopPropagation()}
+                    style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, padding:"0 4px", height:22, width:"100%", minHeight:"unset" }} />
+                </form>
+              ) : (
+                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)" }}>{rateDisplay}</div>
+              )}
             </div>
             <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")}
               style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateModality ? "pointer" : undefined }}>
