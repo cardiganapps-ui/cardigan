@@ -85,9 +85,13 @@ function SessionRow({ s, onClick, compact }) {
         <div className="row-title">
           {s.patient}
           {tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
-          {isVirtual && !tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--blue)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.virtual")}</span>}
         </div>
-        <div className="row-sub">{s.day}</div>
+        <div className="row-sub">
+          {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
+          <span style={{ fontSize:10, fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
+            {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
+          </span>
+        </div>
       </div>
       <span className={`session-status ${statusClass(s.status)}`}>{t(`sessions.${s.status}`)}</span>
       {!compact && <span className="row-chevron">›</span>}
