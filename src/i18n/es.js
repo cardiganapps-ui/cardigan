@@ -174,7 +174,7 @@ export default {
     scheduling: "Agendando...",
     conflict: "Ya tienes una sesi\u00f3n con {patient} a esa hora.",
     reschedule: "Reagendar",
-    cancelSession: "Cancelar sesi\u00f3n",
+    cancelSession: "Cancelar",
     cancelWithCharge: "Cancelar con cobro",
     cancelWithoutCharge: "Cancelar sin cobro",
     markCompleted: "Marcar completada",

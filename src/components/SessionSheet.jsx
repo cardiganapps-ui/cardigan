@@ -3,7 +3,7 @@ import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
 import { isCancelledStatus } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
-import { IconX, IconClipboard, IconUpload } from "./Icons";
+import { IconX, IconClipboard, IconUpload, IconTrash } from "./Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
@@ -79,7 +79,13 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
             {t("sessions.session")}
             <span style={{ fontSize:11, fontWeight:700, padding:"2px 10px", borderRadius:"var(--radius-pill)", background: pillStyle.bg, color: pillStyle.color }}>{statusLbl}</span>
           </span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+            <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+            <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}
+              style={{ width:28, height:28, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0, minHeight:"unset" }}>
+              <IconTrash size={14} />
+            </button>
+          </div>
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20 }}>
@@ -221,11 +227,6 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 )}
               </div>
 
-              {/* Delete — least prominent */}
-              <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
-                onClick={() => setConfirmDelete(true)}>
-                {t("delete")}
-              </button>
             </div>
           )}
         </div>
