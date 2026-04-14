@@ -105,7 +105,7 @@ export function Home({ setScreen, userName }) {
                 </div>
                 <div className="row-content">
                   <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>{t("sessions.tutor").toUpperCase()}</span>}</div>
-                  <div className="row-sub">{s.time} · {s.day}</div>
+                  <div className="row-sub">{s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}</div>
                 </div>
                 <div className="row-right">
                   <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
