@@ -30,7 +30,18 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
 
   const dur = session.duration || 60;
-  const durationLabel = dur < 60 ? `${dur} min` : dur === 60 ? "1 hora" : dur === 90 ? "1½ horas" : `${dur / 60} horas`;
+  const [h, m] = (session.time || "0:0").split(":");
+  const endDate = new Date(0, 0, 0, +h, +m);
+  endDate.setMinutes(endDate.getMinutes() + dur);
+  const endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`;
+
+  const statusPillColors = {
+    [SESSION_STATUS.SCHEDULED]: { bg: "var(--teal-pale)", color: "var(--teal-dark)" },
+    [SESSION_STATUS.COMPLETED]: { bg: "var(--green-bg)", color: "var(--green)" },
+    [SESSION_STATUS.CANCELLED]: { bg: "var(--cream-dark)", color: "var(--charcoal-lt)" },
+    [SESSION_STATUS.CHARGED]:   { bg: "var(--amber-bg)", color: "var(--amber)" },
+  };
+  const pillStyle = statusPillColors[session.status] || statusPillColors[SESSION_STATUS.SCHEDULED];
 
   const startReschedule = () => {
     setNewDate(shortDateToISO(session.date));
@@ -64,7 +75,10 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
       <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">{t("sessions.session")}</span>
+          <span className="sheet-title" style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {t("sessions.session")}
+            <span style={{ fontSize:11, fontWeight:700, padding:"2px 10px", borderRadius:"var(--radius-pill)", background: pillStyle.bg, color: pillStyle.color }}>{statusLbl}</span>
+          </span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 20px" }}>
@@ -75,20 +89,21 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 {session.patient}
                 {isTutor && <span style={{ fontSize:11, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}
               </div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} · {durationLabel}</div>
+              <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:20 }}>
-            {[
-              { label: t("sessions.status"), value: statusLbl, highlight: isScheduled },
-              { label: t("sessions.rate"), value: rate },
-              { label: t("sessions.modality"), value: session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial"), color: session.modality === "virtual" ? "var(--blue)" : undefined },
-            ].map((item,i) => (
-              <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{item.label}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: item.color || (item.highlight ? "var(--teal-dark)" : "var(--charcoal)") }}>{item.value}</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+            <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
+              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("sessions.rate")}</div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)" }}>{rate}</div>
+            </div>
+            <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")}
+              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateModality ? "pointer" : undefined }}>
+              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("sessions.modality")}</div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)" }}>
+                {session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial")}
               </div>
-            ))}
+            </div>
           </div>
 
           {/* Cancel reason display for already-cancelled sessions */}
@@ -184,22 +199,6 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 <button className="btn" style={{ height:44, fontSize:13, background:"var(--amber-bg)", color:"var(--amber)", boxShadow:"none" }}
                   onClick={startCancel} disabled={mutating}>
                   {t("sessions.cancelSession")}
-                </button>
-              )}
-
-              {/* Revert cancelled/completed back to scheduled */}
-              {(isCompleted || isCancelled) && (
-                <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-mist)", color:"var(--teal-dark)", boxShadow:"none" }}
-                  onClick={() => onMarkCompleted(session, "scheduled")} disabled={mutating}>
-                  {t("sessions.revertScheduled")}
-                </button>
-              )}
-
-              {/* Toggle modality */}
-              {onUpdateModality && (
-                <button className="btn" style={{ height:44, fontSize:13, background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal-md)", boxShadow:"none" }}
-                  onClick={() => onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")} disabled={mutating}>
-                  {session.modality === "virtual" ? `${t("sessions.modality")}: ${t("sessions.virtual")} → ${t("sessions.presencial")}` : `${t("sessions.modality")}: ${t("sessions.presencial")} → ${t("sessions.virtual")}`}
                 </button>
               )}
 
