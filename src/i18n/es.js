@@ -255,7 +255,7 @@ export default {
     noPayments: "Sin pagos registrados",
     savePayment: "Guardar pago",
     specifyMethod: "Especificar m\u00e9todo",
-    deletePayment: "Eliminar pago",
+    deletePayment: "Eliminar",
     groupByClient: "Agrupar por cliente",
     sortOrder: "Orden",
     newest: "M\u00e1s reciente",
