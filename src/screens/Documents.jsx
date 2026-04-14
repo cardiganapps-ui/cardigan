@@ -10,7 +10,7 @@ export function Documents() {
   const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating } = useCardigan();
   const { t } = useT();
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name
+  const [sortBy, setSortBy] = useState("newest"); // newest | name
   const [filterPatient, setFilterPatient] = useState("all");
   const [filterType, setFilterType] = useState("all"); // all | image | pdf | doc
   const [uploading, setUploading] = useState(false);
@@ -56,8 +56,7 @@ export function Documents() {
     else if (filterType === "doc") docs = docs.filter(d => isWordDoc(d));
 
     // Sort
-    if (sortBy === "oldest") docs.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
-    else if (sortBy === "name") docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    if (sortBy === "name") docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     else docs.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
     return docs;
@@ -140,7 +139,6 @@ export function Documents() {
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}
           style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>
           <option value="newest">{t("docs.newest")}</option>
-          <option value="oldest">{t("docs.oldest")}</option>
           <option value="name">{t("docs.nameAZ")}</option>
         </select>
         {/* Patient filter */}
