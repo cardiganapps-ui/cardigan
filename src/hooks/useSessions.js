@@ -62,7 +62,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id);
 
-    setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx }]);
+    setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" }]);
     if (pErr) {
       const fixed = await recalcPatientCounters(patient.id);
       if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
@@ -187,7 +187,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id).eq("user_id", userId);
 
-    setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+    setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
     if (pErr) {
       const fixed = await recalcPatientCounters(patient.id);
       if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
@@ -256,7 +256,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const finalSessions = (updated.sessions || 0) + sessData.length;
         const finalBilled = (updated.billed || 0) + newRate * sessData.length;
         const { error: pErr2 } = await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId).eq("user_id", userId);
-        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
         if (pErr2) {
           const fixed = await recalcPatientCounters(patientId);
           if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));

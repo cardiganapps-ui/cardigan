@@ -20,7 +20,7 @@ import { getTutorReminders } from "../utils/sessions";
 let _extending = false;
 
 function mapRows(rows) {
-  return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx }));
+  return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }));
 }
 
 export function isAdmin(user) {
