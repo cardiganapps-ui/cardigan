@@ -91,7 +91,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
       </div>
 
       <div style={{ marginBottom:12 }}>
-        <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
+        <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {[
             { k: "all", l: t("periods.all") },
             { k: "1m",  l: t("periods.1m") },
@@ -100,7 +100,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
             { k: "1y",  l: t("periods.1y") },
           ].map(o => (
             <button key={o.k} onClick={() => setPeriod(o.k)}
-              style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: period===o.k ? "var(--teal)" : "var(--cream)", color: period===o.k ? "white" : "var(--charcoal-md)" }}>
+              style={{ flex:1, padding:"5px 0", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: period===o.k ? "var(--teal)" : "var(--cream)", color: period===o.k ? "white" : "var(--charcoal-md)", textAlign:"center" }}>
               {o.l}
             </button>
           ))}
