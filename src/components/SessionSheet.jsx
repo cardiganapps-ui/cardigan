@@ -3,7 +3,7 @@ import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
 import { isCancelledStatus } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
-import { IconX, IconClipboard, IconUpload, IconTrash } from "./Icons";
+import { IconX, IconUpload, IconTrash } from "./Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
@@ -221,24 +221,13 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 </button>
               )}
 
-              {/* Note + Document side by side */}
-              <div style={{ display:"grid", gridTemplateColumns: onAttachDocument ? "1fr 1fr" : "1fr", gap:10 }}>
-                {onOpenNote && (() => {
-                  const hasNote = notes?.some(n => n.session_id === session.id);
-                  return (
-                    <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
-                      onClick={() => onOpenNote(session)}>
-                      <IconClipboard size={15} /> {hasNote ? t("notes.viewNote") : t("notes.addNote")}
-                    </button>
-                  );
-                })()}
-                {onAttachDocument && (
-                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
-                    onClick={() => onAttachDocument(session)}>
-                    <IconUpload size={15} /> {t("sessions.attachDoc")}
-                  </button>
-                )}
-              </div>
+              {/* Document button */}
+              {onAttachDocument && (
+                <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%" }}
+                  onClick={() => onAttachDocument(session)}>
+                  <IconUpload size={15} /> {t("sessions.attachDoc")}
+                </button>
+              )}
 
             </div>
           )}
