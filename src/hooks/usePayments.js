@@ -66,5 +66,64 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     return true;
   }
 
-  return { createPayment, deletePayment };
+  async function updatePayment(paymentId, { patientName, amount, method, date, note }) {
+    const oldPayment = payments.find(p => p.id === paymentId);
+    if (!oldPayment) return false;
+    const parsedAmount = Number(amount);
+    if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
+    const newPatient = patients.find(p => p.name === patientName);
+
+    setMutating(true);
+    setMutationError("");
+
+    // Update the payment row
+    const { data, error } = await supabase.from("payments").update({
+      patient_id: newPatient?.id || null,
+      patient: patientName,
+      initials: newPatient?.initials || getInitials(patientName),
+      amount: parsedAmount, date, method,
+      note: note || null,
+      color_idx: newPatient?.colorIdx || 0,
+    }).eq("id", paymentId).eq("user_id", userId).select().single();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    // Adjust old patient's paid counter (subtract old amount)
+    if (oldPayment.patient_id) {
+      const oldPatient = patients.find(p => p.id === oldPayment.patient_id);
+      if (oldPatient) {
+        const newPaid = Math.max(0, oldPatient.paid - oldPayment.amount);
+        const { error: pErr } = await supabase.from("patients")
+          .update({ paid: newPaid }).eq("id", oldPatient.id).eq("user_id", userId);
+        if (pErr) {
+          const fixed = await recalcPatientCounters(oldPatient.id);
+          if (fixed) setPatients(prev => prev.map(p => p.id === oldPatient.id ? { ...p, ...fixed } : p));
+        } else {
+          setPatients(prev => prev.map(p => p.id === oldPatient.id ? { ...p, paid: newPaid } : p));
+        }
+      }
+    }
+
+    // Adjust new patient's paid counter (add new amount)
+    if (newPatient) {
+      // Re-read the patient in case it was the same and we just decremented
+      const freshPatient = newPatient.id === oldPayment.patient_id
+        ? { ...newPatient, paid: Math.max(0, newPatient.paid - oldPayment.amount) }
+        : patients.find(p => p.id === newPatient.id) || newPatient;
+      const newPaid = freshPatient.paid + parsedAmount;
+      const { error: pErr } = await supabase.from("patients")
+        .update({ paid: newPaid }).eq("id", newPatient.id).eq("user_id", userId);
+      if (pErr) {
+        const fixed = await recalcPatientCounters(newPatient.id);
+        if (fixed) setPatients(prev => prev.map(p => p.id === newPatient.id ? { ...p, ...fixed } : p));
+      } else {
+        setPatients(prev => prev.map(p => p.id === newPatient.id ? { ...p, paid: newPaid } : p));
+      }
+    }
+
+    setPayments(prev => prev.map(p => p.id === paymentId ? { ...data, colorIdx: data.color_idx } : p));
+    setMutating(false);
+    return true;
+  }
+
+  return { createPayment, deletePayment, updatePayment };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { todayISO, isoToShortDate } from "../utils/dates";
+import { todayISO, isoToShortDate, shortDateToISO } from "../utils/dates";
 import { PAYMENT_METHOD } from "../data/constants";
 import { IconX } from "./Icons";
 import { MoneyInput } from "./MoneyInput";
@@ -7,9 +7,10 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
-export function PaymentModal({ open, onClose, initialPatientName, initialAmount }) {
-  const { patients, createPayment, mutating } = useCardigan();
+export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }) {
+  const { patients, createPayment, updatePayment, mutating } = useCardigan();
   const { t } = useT();
+  const isEditing = !!editingPayment;
   useEscape(open ? onClose : null);
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
@@ -21,14 +22,30 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
 
   useEffect(() => {
     if (!open) return;
-    setPatientName(initialPatientName || "");
-    setAmount(initialAmount || "");
-    setMethod(PAYMENT_METHOD.TRANSFER);
-    setCustomMethod("");
-    setDate(todayISO());
-    setPaymentNote("");
+    if (editingPayment) {
+      setPatientName(editingPayment.patient || "");
+      setAmount(String(editingPayment.amount || ""));
+      // Determine if method is a standard one or custom
+      const stdMethods = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.OTHER];
+      if (stdMethods.includes(editingPayment.method)) {
+        setMethod(editingPayment.method);
+        setCustomMethod("");
+      } else {
+        setMethod(PAYMENT_METHOD.OTHER);
+        setCustomMethod(editingPayment.method || "");
+      }
+      setDate(editingPayment.date ? shortDateToISO(editingPayment.date) : todayISO());
+      setPaymentNote(editingPayment.note || "");
+    } else {
+      setPatientName(initialPatientName || "");
+      setAmount(initialAmount || "");
+      setMethod(PAYMENT_METHOD.TRANSFER);
+      setCustomMethod("");
+      setDate(todayISO());
+      setPaymentNote("");
+    }
     setFormError("");
-  }, [open, initialPatientName, initialAmount]);
+  }, [open, initialPatientName, initialAmount, editingPayment]);
 
   const handlePatientChange = (name) => {
     setPatientName(name);
@@ -54,14 +71,25 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
     }
     const finalMethod = method === PAYMENT_METHOD.OTHER ? (customMethod.trim() || t("finances.other")) : method;
     setFormError("");
-    const ok = await createPayment({
-      patientName: patientName.trim(),
-      amount: parsedAmount,
-      method: finalMethod,
-      date: isoToShortDate(date),
-      note: paymentNote.trim(),
-    });
-    if (ok) onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
+    if (isEditing) {
+      const ok = await updatePayment(editingPayment.id, {
+        patientName: patientName.trim(),
+        amount: parsedAmount,
+        method: finalMethod,
+        date: isoToShortDate(date),
+        note: paymentNote.trim(),
+      });
+      if (ok) onClose(`Pago actualizado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
+    } else {
+      const ok = await createPayment({
+        patientName: patientName.trim(),
+        amount: parsedAmount,
+        method: finalMethod,
+        date: isoToShortDate(date),
+        note: paymentNote.trim(),
+      });
+      if (ok) onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
+    }
   };
 
   return (
@@ -69,7 +97,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
       <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">{t("finances.recordPayment")}</span>
+          <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
@@ -111,7 +139,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount 
           </div>
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
             <button className="btn btn-primary" type="submit" disabled={mutating}>
-              {mutating ? t("saving") : t("finances.savePayment")}
+              {mutating ? t("saving") : isEditing ? t("finances.updatePayment") : t("finances.savePayment")}
             </button>
           </div>
         </form>

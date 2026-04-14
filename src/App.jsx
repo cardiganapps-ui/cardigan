@@ -85,6 +85,7 @@ function AppShell({ user, signOut, demo, theme }) {
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
+  const [editingPayment, setEditingPayment] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
   const pendingAgendaViewRef = useRef(null);
 
@@ -93,8 +94,16 @@ function AppShell({ user, signOut, demo, theme }) {
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
 
+  const openEditPaymentModal = (payment) => {
+    if (readOnly) return;
+    setEditingPayment(payment);
+    setPaymentDraft({ patientName: "", amount: "" });
+    setPaymentModalOpen(true);
+  };
+
   const openRecordPaymentModal = (patient) => {
     if (readOnly) return;
+    setEditingPayment(null);
     setPaymentDraft({
       patientName: patient?.name || "",
       amount: patient ? String(patient.amountDue || 0) : "",
@@ -184,7 +193,7 @@ function AppShell({ user, signOut, demo, theme }) {
   }, []);
 
   const ctxValue = useMemo(() => ({
-    ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
+    ...data, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
     screen, drawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
@@ -272,8 +281,8 @@ function AppShell({ user, signOut, demo, theme }) {
           </div>
         </PullToRefresh>
         {!readOnly && (
-          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); if (typeof msg === "string" && msg) setSuccessMsg(msg); }}
-            initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} />
+          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) setSuccessMsg(msg); }}
+            initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
         )}
         {!readOnly && !hideFab && <QuickActions />}
 

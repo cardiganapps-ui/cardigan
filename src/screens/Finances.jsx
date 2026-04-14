@@ -7,9 +7,9 @@ import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
-function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutating }) {
+function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
   const { t, strings } = useT();
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);
   const [period, setPeriod] = useState("all");
 
@@ -43,10 +43,10 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
 
   const renderRow = (p, i) => {
     const patient = patients.find(pt => pt.name === p.patient);
-    const isDeleting = confirmDeleteId === p.id;
+    const isExpanded = expandedId === p.id;
     return (
       <div key={p.id}>
-        <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeleteId(isDeleting ? null : p.id)} style={{ cursor:"pointer" }}>
+        <div className="bal-row" role="button" tabIndex={0} onClick={() => setExpandedId(isExpanded ? null : p.id)} style={{ cursor:"pointer" }}>
           <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i), width:36, height:36, fontSize:11, flexShrink:0 }}>
             {patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
           </div>
@@ -60,14 +60,18 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
           </div>
           <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
         </div>
-        {isDeleting && (
+        {isExpanded && (
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
+            <button style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"var(--teal-pale)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
+              onClick={(e) => { e.stopPropagation(); setExpandedId(null); onEditPayment(p); }}>
+              {t("edit")}
+            </button>
             <button style={{ fontSize:12, fontWeight:600, color:"var(--red)", background:"var(--red-bg)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
-              disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setConfirmDeleteId(null); }}>
+              disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setExpandedId(null); }}>
               {mutating ? "..." : t("finances.deletePayment")}
             </button>
             <button style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-lt)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
-              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}>
+              onClick={(e) => { e.stopPropagation(); setExpandedId(null); }}>
               {t("cancel")}
             </button>
           </div>
@@ -167,7 +171,7 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
 }
 
 export function Finances() {
-  const { patients, payments, openRecordPaymentModal, deletePayment, mutating } = useCardigan();
+  const { patients, payments, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
@@ -271,7 +275,7 @@ export function Finances() {
         </div>
       )}
 
-      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={openRecordPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />}
+      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={openRecordPaymentModal} onEditPayment={openEditPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />}
 
     </div>
   );

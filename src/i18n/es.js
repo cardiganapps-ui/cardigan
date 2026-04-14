@@ -238,6 +238,8 @@ export default {
     paymentNote: "Nota (opcional)",
     paymentNotePlaceholder: "Ej: Cheque posfechado, pago parcial...",
     recordPayment: "Registrar pago",
+    editPayment: "Editar pago",
+    updatePayment: "Guardar cambios",
     recording: "Registrando...",
     amount: "Monto",
     method: "M\u00e9todo de pago",
