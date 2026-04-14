@@ -1,10 +1,12 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { IconSearch, IconClipboard, IconX, IconStar, IconTrash } from "../components/Icons";
+import { IconSearch, IconClipboard, IconX, IconStar, IconTrash, IconEdit, IconDocument, IconCheck, IconUser } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
+
+const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
 /* ── Swipeable wrapper for note cards ── */
 const SWIPE_REVEALED = -80;
@@ -214,7 +216,9 @@ export function Notes() {
                     const note = await createNote({ patientId: null, sessionId: null, title: tmpl.title, content: tmpl.content });
                     if (note) setEditingNote(note);
                   }}>
-                  <span style={{ fontSize:20, flexShrink:0 }}>{tmpl.icon}</span>
+                  <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:28, height:28, borderRadius:"var(--radius)", background:"var(--teal-pale)", color:"var(--teal-dark)", flexShrink:0 }}>
+                    {(() => { const Ic = TEMPLATE_ICONS[tmpl.icon]; return Ic ? <Ic size={15} /> : null; })()}
+                  </span>
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{tmpl.name}</span>
                 </div>
               ))}

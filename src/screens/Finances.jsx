@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
 import { IconCheck } from "../components/Icons";
+import { Toggle } from "../components/Toggle";
 import { exportPayments } from "../utils/export";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
@@ -89,31 +90,24 @@ function PagosTab({ payments, patients, onRecordPayment, onDeletePayment, mutati
         )}
       </div>
 
-      <div className="card" style={{ padding:"8px 12px", marginBottom:10 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-          <div style={{ display:"flex", gap:4 }}>
-            {[
-              { k: "all", l: t("periods.all") },
-              { k: "1m",  l: t("periods.1m") },
-              { k: "3m",  l: t("periods.3m") },
-              { k: "6m",  l: t("periods.6m") },
-              { k: "1y",  l: t("periods.1y") },
-            ].map(o => (
-              <button key={o.k} onClick={() => setPeriod(o.k)}
-                style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: period===o.k ? "var(--teal)" : "var(--cream)", color: period===o.k ? "white" : "var(--charcoal-md)" }}>
-                {o.l}
-              </button>
-            ))}
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
-            <button
-              onClick={() => setGroupByClient(g => !g)}
-              style={{ width:34, height:18, minHeight:18, borderRadius:9, border:"none", cursor:"pointer", padding:2, background: groupByClient ? "var(--teal)" : "var(--cream-deeper)", transition:"background 0.2s", position:"relative", flexShrink:0 }}
-            >
-              <div style={{ width:14, height:14, borderRadius:"50%", background:"white", boxShadow:"0 1px 2px rgba(0,0,0,0.2)", transform: groupByClient ? "translateX(16px)" : "translateX(0)", transition:"transform 0.2s" }} />
+      <div style={{ marginBottom:12 }}>
+        <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
+          {[
+            { k: "all", l: t("periods.all") },
+            { k: "1m",  l: t("periods.1m") },
+            { k: "3m",  l: t("periods.3m") },
+            { k: "6m",  l: t("periods.6m") },
+            { k: "1y",  l: t("periods.1y") },
+          ].map(o => (
+            <button key={o.k} onClick={() => setPeriod(o.k)}
+              style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: period===o.k ? "var(--teal)" : "var(--cream)", color: period===o.k ? "white" : "var(--charcoal-md)" }}>
+              {o.l}
             </button>
-          </div>
+          ))}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8 }}>
+          <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
+          <Toggle on={groupByClient} onToggle={() => setGroupByClient(g => !g)} />
         </div>
       </div>
 
@@ -208,7 +202,9 @@ export function Finances() {
             <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
             <div className="card">
               {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
-                <div className="bal-row" key={p.id}>
+                <div className="bal-row" key={p.id} role="button" tabIndex={0}
+                  onClick={() => openRecordPaymentModal(p)}
+                  style={{ cursor:"pointer" }}>
                   <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="bal-name">{p.name}</div>

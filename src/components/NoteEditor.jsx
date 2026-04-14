@@ -3,6 +3,7 @@ import { IconX, IconCheck, IconUser, IconCalendar, IconStar, IconTrash } from ".
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
+import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
 function relativeTime(dateStr) {
   if (!dateStr) return "";
@@ -363,14 +364,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
           <div style={{ marginBottom:16 }}>
             <div style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-xl)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>{t("notes.templates")}</div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {[
-                { title: t("notes.tplSession"), content: "- Tema principal:\n- Observaciones:\n- Plan para siguiente sesión:\n" },
-                { title: t("notes.tplIntake"), content: "- Motivo de consulta:\n- Antecedentes relevantes:\n- Objetivos del tratamiento:\n- Frecuencia sugerida:\n" },
-                { title: t("notes.tplPlan"), content: "- Objetivos a corto plazo:\n- Objetivos a largo plazo:\n- Técnicas/intervenciones:\n- Indicadores de progreso:\n" },
-              ].map((tpl, i) => (
-                <button key={i} type="button" onClick={() => { setTitle(tpl.title); updateContent(tpl.content); bodyRef.current?.focus(); }}
+              {NOTE_TEMPLATES.filter(t => t.id !== "blank").map(tpl => (
+                <button key={tpl.id} type="button" onClick={() => { setTitle(tpl.title); updateContent(tpl.content); bodyRef.current?.focus(); }}
                   style={{ padding:"8px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)" }}>
-                  {tpl.title}
+                  {tpl.name}
                 </button>
               ))}
             </div>

@@ -161,6 +161,7 @@ export default {
     weekView: "Semana",
     monthView: "Mes",
     allPatients: "Todos los pacientes",
+    noSessionsForPatient: "Sin sesiones de {name} este día",
     emptyHint: "Agrega pacientes y citas recurrentes para ver tu agenda aquí.",
   },
 
@@ -282,7 +283,7 @@ export default {
   notes: {
     title: "Notas",
     newNote: "+ Nueva nota",
-    searchPlaceholder: "Buscar nota...",
+    searchPlaceholder: "Buscar por título, paciente o contenido\u2026",
     count: "{count} nota{plural}",
     createNote: "Crear nota",
     generalNote: "General (sin paciente)",

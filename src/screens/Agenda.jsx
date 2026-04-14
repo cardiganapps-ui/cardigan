@@ -4,7 +4,7 @@ import { SESSION_STATUS } from "../data/constants";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
-import { IconSun, IconSearch, IconX } from "../components/Icons";
+import { IconSun } from "../components/Icons";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName } from "../utils/sessions";
 import { useSwipe } from "../hooks/useSwipe";
@@ -100,7 +100,7 @@ function SessionRow({ s, onClick, compact }) {
 }
 
 /* ── DAY PANEL (just one day's session list, no week strip) ── */
-function DayPanel({ panelDate, onSelectSession, upcomingSessions }) {
+function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const dateStr = formatShortDate(panelDate);
@@ -115,11 +115,15 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions }) {
       </div>
       <div style={{ padding:"0 16px 12px" }}>
         {daySessions.length === 0
-          ? <div className="card" style={{ padding:32, textAlign:"center" }}>
-              <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
-            </div>
+          ? filterPatientName
+            ? <div className="card" style={{ padding:32, textAlign:"center" }}>
+                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+              </div>
+            : <div className="card" style={{ padding:32, textAlign:"center" }}>
+                <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+              </div>
           : <div className="card">
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} />)}
             </div>
@@ -145,7 +149,7 @@ function HeaderLabel({ children, isCurrent, onJumpToday, t }) {
 }
 
 /* ── DAY VIEW ── */
-function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday }) {
+function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
@@ -155,7 +159,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
   const prevDay = addDays(selectedDate, -1);
   const nextDay = addDays(selectedDate, 1);
-  const shared = { onSelectSession, upcomingSessions };
+  const shared = { onSelectSession, upcomingSessions, filterPatientName };
 
   const weekDays = getWeekDays(selectedDate);
   const monday = weekDays[0];
@@ -387,7 +391,7 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
 }
 
 /* ── MONTH VIEW ── */
-function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday }) {
+function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName }) {
   const { t, strings } = useT();
   const MONTH_NAMES = strings.months;
   const DOW = strings.daysShort;
@@ -446,10 +450,14 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
           <div style={{ fontSize:12, color:"var(--charcoal-xl)" }}>{daySessions.length===0?t("sessions.noSessions"):t("sessions.sessionsCount", { count: daySessions.length })}</div>
         </div>
         {daySessions.length === 0
-          ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-              <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={24} /></div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
-            </div>
+          ? filterPatientName
+            ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
+                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+              </div>
+            : <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
+                <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={24} /></div>
+                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
+              </div>
           : <div className="card">
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}
             </div>
@@ -461,13 +469,13 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView } = useCardigan();
   const { t } = useT();
-  const [view, setView] = useState("day");
+  const [view, setView] = useState(() => consumeAgendaView?.() || "day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
-  const [search, setSearch] = useState("");
+  const [filterPatientId, setFilterPatientId] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState(null);
 
   // "Ahora" tick — re-render every minute so the now-line stays current
@@ -478,10 +486,11 @@ export function Agenda() {
   }, []);
 
   const filteredSessions = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return upcomingSessions;
-    return upcomingSessions.filter(s => (s.patient || "").toLowerCase().includes(q));
-  }, [upcomingSessions, search]);
+    if (!filterPatientId) return upcomingSessions;
+    return upcomingSessions.filter(s => s.patient_id === filterPatientId);
+  }, [upcomingSessions, filterPatientId]);
+
+  const filterPatientName = filterPatientId ? patients.find(p => p.id === filterPatientId)?.name || "" : "";
 
   const handleCellTap = useCallback((date, hour) => {
     setNewSessionPrefill({ date: toISODate(date), time: hour });
@@ -524,22 +533,16 @@ export function Agenda() {
         </div>
         {patients.length > 0 && (
           <div style={{ padding:"0 16px 10px" }}>
-            <div className="search-bar">
-              <IconSearch size={16} />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t("patients.searchPlaceholder")}
-                aria-label={t("patients.searchPlaceholder")}
-              />
-              {search && (
-                <button type="button" onClick={() => setSearch("")} aria-label={t("close")}
-                  style={{ background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)", padding:0, display:"flex", alignItems:"center", minHeight:"unset" }}>
-                  <IconX size={14} />
-                </button>
-              )}
-            </div>
+            <select
+              value={filterPatientId}
+              onChange={e => setFilterPatientId(e.target.value)}
+              style={{ width:"100%", fontSize:13, fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
+            >
+              <option value="">{t("agenda.allPatients")}</option>
+              {patients.filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
           </div>
         )}
       </div>
@@ -550,9 +553,9 @@ export function Agenda() {
           <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
         </div>
       )}
-      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} />}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
-      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {newSessionPrefill && (
         <NewSessionSheet
           onClose={() => setNewSessionPrefill(null)}

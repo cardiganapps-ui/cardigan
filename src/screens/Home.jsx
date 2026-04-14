@@ -9,7 +9,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, mutating } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, mutating, setAgendaView } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -89,12 +89,12 @@ export function Home({ setScreen, userName }) {
       <div className="section home-col-main">
         <div className="section-header">
           <span className="section-title">{t("sessions.today")} — {todayDayName} {todayStr}</span>
-          <button className="see-all" onClick={() => setScreen("agenda")}>{t("home.seeWeek")}</button>
+          <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
         </div>
         <div className="card">
           {todaySessions.length === 0
             ? emptyHint(t("home.emptyToday"),
-                <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => setScreen("agenda")}>{t("home.seeWeek")}</button>
+                <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
               )
             : todaySessions.map(s => {
               const tutor = isTutorSession(s);

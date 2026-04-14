@@ -86,6 +86,7 @@ function AppShell({ user, signOut, demo, theme }) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [successMsg, setSuccessMsg] = useState("");
+  const pendingAgendaViewRef = useRef(null);
 
   const tutorial = useTutorial({ user, demo, readOnly });
 
@@ -186,6 +187,8 @@ function AppShell({ user, signOut, demo, theme }) {
     ...data, userName, userInitial, openRecordPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
     screen, drawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
+    setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
+    consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
   }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial, theme, setSuccessMsg]);

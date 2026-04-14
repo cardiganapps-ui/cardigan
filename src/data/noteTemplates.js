@@ -2,14 +2,14 @@ export const NOTE_TEMPLATES = [
   {
     id: "blank",
     name: "En blanco",
-    icon: "📝",
+    icon: "edit",
     title: "",
     content: "",
   },
   {
     id: "soap",
     name: "Nota SOAP",
-    icon: "🩺",
+    icon: "clipboard",
     title: "Nota SOAP",
     content: `# Subjetivo
 - Lo que el paciente reporta:
@@ -27,7 +27,7 @@ export const NOTE_TEMPLATES = [
   {
     id: "dap",
     name: "Nota DAP",
-    icon: "📋",
+    icon: "document",
     title: "Nota DAP",
     content: `# Datos
 - Información relevante de la sesión:
@@ -42,7 +42,7 @@ export const NOTE_TEMPLATES = [
   {
     id: "progress",
     name: "Nota de progreso",
-    icon: "📈",
+    icon: "check",
     title: "Nota de progreso",
     content: `# Estado actual
 - Situación del paciente:
@@ -62,7 +62,7 @@ export const NOTE_TEMPLATES = [
   {
     id: "initial",
     name: "Evaluación inicial",
-    icon: "📄",
+    icon: "user",
     title: "Evaluación inicial",
     content: `# Datos del paciente
 - Nombre:
