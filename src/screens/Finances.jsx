@@ -70,10 +70,6 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
               disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setExpandedId(null); }}>
               {mutating ? "..." : t("finances.deletePayment")}
             </button>
-            <button style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-lt)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
-              onClick={(e) => { e.stopPropagation(); setExpandedId(null); }}>
-              {t("cancel")}
-            </button>
           </div>
         )}
       </div>
