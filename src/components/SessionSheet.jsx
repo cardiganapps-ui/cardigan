@@ -3,7 +3,7 @@ import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
 import { isCancelledStatus } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
-import { IconX, IconUpload, IconTrash } from "./Icons";
+import { IconX, IconTrash } from "./Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
@@ -221,13 +221,6 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 </button>
               )}
 
-              {/* Document button */}
-              {onAttachDocument && (
-                <button className="btn" style={{ height:44, fontSize:13, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%" }}
-                  onClick={() => onAttachDocument(session)}>
-                  <IconUpload size={15} /> {t("sessions.attachDoc")}
-                </button>
-              )}
 
             </div>
           )}
