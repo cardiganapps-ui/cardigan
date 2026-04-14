@@ -328,6 +328,7 @@ export default {
     selectFiles: "Seleccionar archivos",
     searchPlaceholder: "Buscar por nombre o paciente...",
     general: "General (sin paciente)",
+    linkToPatient: "Vincular a paciente",
     allPatients: "Todos",
     generalFilter: "General",
     newest: "M\u00e1s reciente",

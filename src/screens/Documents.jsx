@@ -14,7 +14,7 @@ export function Documents() {
   const [filterPatient, setFilterPatient] = useState("all");
   const [filterType, setFilterType] = useState("all"); // all | image | pdf | doc
   const [uploading, setUploading] = useState(false);
-  const [uploadPatientId, setUploadPatientId] = useState("general");
+  const [pendingFiles, setPendingFiles] = useState(null);
   const [viewingDoc, setViewingDoc] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -62,22 +62,27 @@ export function Documents() {
     return docs;
   }, [documents, search, filterPatient, filterType, sortBy, patients]);
 
-  const handleFileUpload = async (e) => {
+  const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const patientId = uploadPatientId === "general" ? null : uploadPatientId;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
-    if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (valid.length === 0) return;
+    setPendingFiles(valid);
+  };
+
+  const confirmUpload = async (patientId) => {
+    if (!pendingFiles) return;
     setUploading(true);
-    for (const file of valid) {
+    setPendingFiles(null);
+    for (const file of pendingFiles) {
       await uploadDocument({ patientId, file, sessionId: null, name: file.name });
     }
     setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const openDocViewer = async (doc) => {
@@ -111,27 +116,46 @@ export function Documents() {
         <input placeholder={t("docs.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* Upload area */}
-      <div className="card" style={{ padding:"12px 14px", marginBottom:12 }}>
-        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:8 }}>{t("docs.upload")}</div>
-        <div style={{ display:"flex", gap:8 }}>
-          <select value={uploadPatientId} onChange={e => setUploadPatientId(e.target.value)}
-            style={{ flex:1, fontSize:12, fontFamily:"var(--font)", padding:"8px 10px", borderRadius:"var(--radius)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal)" }}>
-            <option value="general">{t("docs.general")}</option>
-            {activePatients.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            style={{ display:"none" }} onChange={handleFileUpload} />
-          <button className="btn btn-primary" style={{ padding:"8px 16px", fontSize:12, display:"flex", alignItems:"center", gap:5, width:"auto" }}
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}>
-            <IconUpload size={14} />
-            {uploading ? "..." : t("docs.uploadBtn")}
-          </button>
+      {/* Upload button */}
+      <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        style={{ display:"none" }} onChange={handleFileSelect} />
+      <button className="btn btn-primary" style={{ width:"100%", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:12 }}
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}>
+        <IconUpload size={14} />
+        {uploading ? "..." : t("docs.uploadBtn")}
+      </button>
+
+      {/* Patient picker after file selection */}
+      {pendingFiles && (
+        <div className="sheet-overlay" onClick={() => setPendingFiles(null)}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"60vh" }}>
+            <div className="sheet-handle" />
+            <div style={{ padding:"16px 20px 8px" }}>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>
+                {t("docs.linkToPatient")}
+              </div>
+              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:12 }}>
+                {pendingFiles.length === 1 ? pendingFiles[0].name : t("docs.count", { count: pendingFiles.length })}
+              </div>
+            </div>
+            <div style={{ overflowY:"auto", padding:"0 20px 20px" }}>
+              <div className="card" style={{ padding:0 }}>
+                <div className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
+                  onClick={() => confirmUpload(null)}>
+                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{t("docs.general")}</span>
+                </div>
+                {activePatients.map(p => (
+                  <div className="row-item" key={p.id} role="button" tabIndex={0} style={{ cursor:"pointer" }}
+                    onClick={() => confirmUpload(p.id)}>
+                    <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Filters & sort */}
       <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>
