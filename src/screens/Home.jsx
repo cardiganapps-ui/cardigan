@@ -109,7 +109,9 @@ export function Home({ setScreen, userName }) {
                   <div className="row-title">
                     {s.patient}
                     {tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>{t("sessions.tutor").toUpperCase()}</span>}
-                    {isVirtual && !tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--blue)", marginLeft:6 }}>{t("sessions.virtual").toUpperCase()}</span>}
+                    <span style={{ fontSize:10, fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6 }}>
+                      {isVirtual ? t("sessions.virtual").toUpperCase() : t("sessions.presencial").toUpperCase()}
+                    </span>
                   </div>
                   <div className="row-sub">{s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}</div>
                 </div>
