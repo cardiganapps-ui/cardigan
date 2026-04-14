@@ -142,7 +142,7 @@ export function useCardiganData(user, viewAsUserId) {
             s => s.status !== SESSION_STATUS.CANCELLED && s.status !== SESSION_STATUS.CHARGED
           );
           const schedMap = new Map();
-          allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time, duration: s.duration || 60 }));
+          allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time, duration: s.duration || 60, modality: s.modality || "presencial" }));
           const existingDates = new Set(allPSess.map(s => s.date));
           let latest = null;
           activePSess.forEach(s => {
@@ -159,7 +159,8 @@ export function useCardiganData(user, viewAsUserId) {
               if (!existingDates.has(ds)) {
                 rows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
                   initials: patient.initials, time: sched.time, day: sched.day,
-                  date: ds, duration: sched.duration, rate: patient.rate, color_idx: patient.color_idx || 0 });
+                  date: ds, duration: sched.duration, rate: patient.rate,
+                  modality: sched.modality, color_idx: patient.color_idx || 0 });
                 existingDates.add(ds);
               }
             });
@@ -205,7 +206,7 @@ export function useCardiganData(user, viewAsUserId) {
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, helpers);
-  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient } =
+  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
@@ -273,7 +274,7 @@ export function useCardiganData(user, viewAsUserId) {
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
-    finalizePatient: guard(finalizePatient),
+    finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality),
     createPayment: guard(createPayment), deletePayment: guard(deletePayment),
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
     togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), deleteNotes: guard(deleteNotes),

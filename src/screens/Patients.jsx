@@ -32,7 +32,7 @@ export function Patients() {
   const [editBirthdate, setEditBirthdate] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editStatus, setEditStatus]   = useState("");
-  const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00" }]);
+  const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00", modality: "presencial" }]);
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate]       = useState(false);
   const [endDate, setEndDate]             = useState("");
@@ -54,7 +54,8 @@ export function Patients() {
   };
 
   const startEdit = () => {
-    const scheds = [{ day: selected.day, time: selected.time, duration: "60" }];
+    const recentSess = upcomingSessions.find(s => s.patient_id === selected.id && s.day === selected.day && s.time === selected.time);
+    const scheds = [{ day: selected.day, time: selected.time, duration: "60", modality: recentSess?.modality || "presencial" }];
     setEditName(selected.name);
     setEditIsMinor(!!selected.parent);
     setEditParent(selected.parent || "");
@@ -324,7 +325,7 @@ export function Patients() {
                   <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:8 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>{t("patients.schedules")}</div>
                     {editSchedules.map((s, i) => (
-                      <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 80px 28px" : "1fr 1fr 80px", gap:8, marginBottom:8, alignItems:"end" }}>
+                      <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 70px 90px 28px" : "1fr 1fr 70px 90px", gap:8, marginBottom:8, alignItems:"end" }}>
                         <div className="input-group" style={{ marginBottom:0 }}>
                           {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                           <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
@@ -345,6 +346,13 @@ export function Patients() {
                             <option value="120">2h</option>
                           </select>
                         </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
+                          <select className="input" value={s.modality || "presencial"} onChange={e => updateEditSched(i, "modality", e.target.value)}>
+                            <option value="presencial">{t("sessions.presencial")}</option>
+                            <option value="virtual">{t("sessions.virtual")}</option>
+                          </select>
+                        </div>
                         {editSchedules.length > 1 && (
                           <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))}
                             style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -353,7 +361,7 @@ export function Patients() {
                         )}
                       </div>
                     ))}
-                    <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60" }])}
+                    <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }])}
                       style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 8px", fontFamily:"var(--font)" }}>
                       {t("patients.addSchedule")}
                     </button>

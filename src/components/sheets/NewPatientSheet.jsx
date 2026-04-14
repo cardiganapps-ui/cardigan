@@ -25,7 +25,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [birthdate, setBirthdate] = useState("");
 
   // Step 2 fields
-  const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00", duration: "60" }]);
+  const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }]);
   const [startDate, setStartDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate] = useState(false);
   const [endDate, setEndDate] = useState("");
@@ -158,7 +158,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               {/* Step 2: Schedule */}
               <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:12 }}>{t("patients.schedules")}</div>
               {schedules.map((s, i) => (
-                <div key={i} style={{ display:"grid", gridTemplateColumns: schedules.length > 1 ? "1fr 1fr 80px 28px" : "1fr 1fr 80px", gap:8, marginBottom:8, alignItems:"end" }}>
+                <div key={i} style={{ display:"grid", gridTemplateColumns: schedules.length > 1 ? "1fr 1fr 70px 90px 28px" : "1fr 1fr 70px 90px", gap:8, marginBottom:8, alignItems:"end" }}>
                   <div className="input-group" style={{ marginBottom:0 }}>
                     {i === 0 && <label className="input-label">{t("patients.day")}</label>}
                     <select className="input" value={s.day} onChange={e => updateSched(i, "day", e.target.value)}>
@@ -179,6 +179,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                       <option value="120">2h</option>
                     </select>
                   </div>
+                  <div className="input-group" style={{ marginBottom:0 }}>
+                    {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
+                    <select className="input" value={s.modality || "presencial"} onChange={e => updateSched(i, "modality", e.target.value)}>
+                      <option value="presencial">{t("sessions.presencial")}</option>
+                      <option value="virtual">{t("sessions.virtual")}</option>
+                    </select>
+                  </div>
                   {schedules.length > 1 && (
                     <button type="button" onClick={() => removeSched(i)}
                       style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -187,7 +194,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   )}
                 </div>
               ))}
-              <button type="button" onClick={() => setSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60" }])}
+              <button type="button" onClick={() => setSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }])}
                 style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 14px", fontFamily:"var(--font)" }}>
                 {t("patients.addSchedule")}
               </button>

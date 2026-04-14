@@ -7,7 +7,7 @@ import { IconX, IconClipboard, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onOpenNote, onAttachDocument, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onOpenNote, onAttachDocument, mutating }) {
   const { t } = useT();
   useEscape(session ? onClose : null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -78,14 +78,15 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
               <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} · {durationLabel}</div>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:20 }}>
             {[
               { label: t("sessions.status"), value: statusLbl, highlight: isScheduled },
               { label: t("sessions.rate"), value: rate },
+              { label: t("sessions.modality"), value: session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial"), color: session.modality === "virtual" ? "var(--blue)" : undefined },
             ].map((item,i) => (
               <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
                 <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{item.label}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: item.highlight ? "var(--teal-dark)" : "var(--charcoal)" }}>{item.value}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: item.color || (item.highlight ? "var(--teal-dark)" : "var(--charcoal)") }}>{item.value}</div>
               </div>
             ))}
           </div>
@@ -191,6 +192,14 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-mist)", color:"var(--teal-dark)", boxShadow:"none" }}
                   onClick={() => onMarkCompleted(session, "scheduled")} disabled={mutating}>
                   {t("sessions.revertScheduled")}
+                </button>
+              )}
+
+              {/* Toggle modality */}
+              {onUpdateModality && (
+                <button className="btn" style={{ height:44, fontSize:13, background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal-md)", boxShadow:"none" }}
+                  onClick={() => onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")} disabled={mutating}>
+                  {session.modality === "virtual" ? `${t("sessions.modality")}: ${t("sessions.virtual")} → ${t("sessions.presencial")}` : `${t("sessions.modality")}: ${t("sessions.presencial")} → ${t("sessions.virtual")}`}
                 </button>
               )}
 

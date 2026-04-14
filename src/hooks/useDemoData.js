@@ -63,7 +63,7 @@ export function useDemoData() {
     // All mutations are no-ops in demo
     createPatient: noop, updatePatient: noop, deletePatient: noop,
     createSession: noop, updateSessionStatus: noop, deleteSession: noop,
-    rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
+    rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop, updateSessionModality: noop,
     createPayment: noop, deletePayment: noop,
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,

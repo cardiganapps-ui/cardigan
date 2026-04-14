@@ -68,19 +68,25 @@ const STATUS_BORDER = {
 function SessionRow({ s, onClick, compact }) {
   const { t } = useT();
   const tutor = isTutorSession(s);
+  const isVirtual = s.modality === "virtual";
   const sz = compact ? 34 : 36;
   const borderColor = STATUS_BORDER[s.status] || "var(--teal)";
+  const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
   return (
     <div className="row-item" key={s.id} onClick={() => onClick(s)}
       style={{ borderLeft: `3px solid ${borderColor}` }}>
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? 13 : 14, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
       </div>
-      <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : getClientColor(s.colorIdx), width:sz, height:sz, fontSize:11, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
+      <div className="row-avatar" style={{ background: avatarBg, width:sz, height:sz, fontSize:11, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
         {tutor ? tutorDisplayInitials(s) : s.initials}
       </div>
       <div className="row-content">
-        <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}</div>
+        <div className="row-title">
+          {s.patient}
+          {tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+          {isVirtual && !tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--blue)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.virtual")}</span>}
+        </div>
         <div className="row-sub">{s.day}</div>
       </div>
       <span className={`session-status ${statusClass(s.status)}`}>{t(`sessions.${s.status}`)}</span>
@@ -251,6 +257,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                 const eventStyle = (() => {
                   if (isCancelledStatus(sess.status)) return undefined;
                   if (isTutorSession(sess)) return { background:"var(--purple)", borderStyle:"dashed", color:"white", borderLeftColor:"var(--purple)" };
+                  if (sess.modality === "virtual") return { background:"var(--blue-bg)", borderLeftColor:"var(--blue)", color:"var(--charcoal)" };
                   const c = getClientColor(sess.colorIdx);
                   return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
                 })();
@@ -354,15 +361,17 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
         const isToday  = isSameDay(cellDate, TODAY);
         const isActive = isCurrentMonth && cellStr === selectedDateStr;
         const sessions = sessionsByDate.get(cellStr) || [];
-        const hasRegular = sessions.some(s => !isTutorSession(s));
+        const hasPresencial = sessions.some(s => !isTutorSession(s) && s.modality !== "virtual");
+        const hasVirtual = sessions.some(s => !isTutorSession(s) && s.modality === "virtual");
         const hasTutor = sessions.some(s => isTutorSession(s));
         return (
           <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
             role="button" tabIndex={0} onClick={() => setSelectedDate(cellDate)}>
             <span className="month-cell-num">{cell.num}</span>
-            {(hasRegular || hasTutor) && (
+            {(hasPresencial || hasVirtual || hasTutor) && (
               <div className="month-dots">
-                {hasRegular && <span className="month-dot-color" style={{ background: "var(--teal)" }} />}
+                {hasPresencial && <span className="month-dot-color" style={{ background: "var(--teal)" }} />}
+                {hasVirtual && <span className="month-dot-color" style={{ background: "var(--blue)" }} />}
                 {hasTutor && <span className="month-dot-color" style={{ background: "var(--purple)" }} />}
               </div>
             )}
@@ -448,7 +457,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, notes, createNote, updateNote, deleteNote, mutating } = useCardigan();
   const { t } = useT();
   const [view, setView] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
@@ -570,6 +579,11 @@ export function Agenda() {
         onReschedule={async (id, date, time, duration) => {
           const ok = await rescheduleSession(id, date, time, duration);
           if (ok) setSelectedSession(prev => prev ? { ...prev, date, time, duration, status: "scheduled" } : prev);
+          return ok;
+        }}
+        onUpdateModality={async (id, modality) => {
+          const ok = await updateSessionModality(id, modality);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, modality } : prev);
           return ok;
         }}
         mutating={mutating}

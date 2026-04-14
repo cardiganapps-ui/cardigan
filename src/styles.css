@@ -26,6 +26,8 @@
   --amber-bg:    #FDF6E8;
   --purple:      #8B7EC8;
   --purple-bg:   #F0EEF9;
+  --blue:        #5B8FD4;
+  --blue-bg:     #EBF1FA;
   --nav-bg:      #2C4A52;
   --radius-sm:   8px;
   --radius:      12px;
@@ -353,6 +355,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .badge-gray   { background: var(--cream-dark);color: var(--charcoal-lt); }
 .badge-amber  { background: var(--amber-bg);  color: var(--amber); }
 .badge-purple { background: var(--purple-bg); color: var(--purple); }
+.badge-blue   { background: var(--blue-bg);   color: var(--blue); }
 
 /* ROW ITEMS */
 .row-item {

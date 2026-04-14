@@ -9,7 +9,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, mutating } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, mutating } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -98,13 +98,19 @@ export function Home({ setScreen, userName }) {
               )
             : todaySessions.map(s => {
               const tutor = isTutorSession(s);
+              const isVirtual = s.modality === "virtual";
+              const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
               return (
               <div className="row-item" key={s.id} onClick={() => setSelectedSession(s)}>
-                <div className="row-avatar" style={{ background: tutor ? "var(--purple)" : getClientColor(s.colorIdx), border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
+                <div className="row-avatar" style={{ background: avatarBg, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
                   {tutor ? tutorDisplayInitials(s) : s.initials}
                 </div>
                 <div className="row-content">
-                  <div className="row-title">{s.patient}{tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>{t("sessions.tutor").toUpperCase()}</span>}</div>
+                  <div className="row-title">
+                    {s.patient}
+                    {tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>{t("sessions.tutor").toUpperCase()}</span>}
+                    {isVirtual && !tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--blue)", marginLeft:6 }}>{t("sessions.virtual").toUpperCase()}</span>}
+                  </div>
                   <div className="row-sub">{s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}</div>
                 </div>
                 <div className="row-right">
@@ -221,6 +227,7 @@ export function Home({ setScreen, userName }) {
         onMarkCompleted={onMarkCompleted}
         onDelete={deleteSession}
         onReschedule={rescheduleSession}
+        onUpdateModality={updateSessionModality}
         mutating={mutating}
       />
 

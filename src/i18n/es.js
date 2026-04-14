@@ -215,6 +215,9 @@ export default {
     selectDate: "Selecciona una fecha.",
     selectTime: "Selecciona una hora.",
     patient: "Paciente",
+    modality: "Modalidad",
+    presencial: "Presencial",
+    virtual: "Virtual",
   },
 
   // ── Finances ──

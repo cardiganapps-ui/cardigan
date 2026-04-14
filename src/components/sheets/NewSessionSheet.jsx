@@ -13,6 +13,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const [date, setDate] = useState(initialDate || todayISO());
   const [time, setTime] = useState(initialTime || "16:00");
   const [duration, setDuration] = useState("60");
+  const [modality, setModality] = useState("presencial");
   const [customRate, setCustomRate] = useState("");
   const [err, setErr]   = useState("");
 
@@ -40,7 +41,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
     if (!date) { setErr(t("sessions.selectDate")); return; }
     if (!time.trim()) { setErr(t("sessions.selectTime")); return; }
     setErr("");
-    const params = { patientName, date: isoToShortDate(date), time, duration: Number(duration) || 60 };
+    const params = { patientName, date: isoToShortDate(date), time, duration: Number(duration) || 60, modality };
     if (isTutor) {
       params.isTutor = true;
       params.tutorName = selectedPatient.parent;
@@ -94,15 +95,24 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
               <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
             </div>
           </div>
-          <div className="input-group">
-            <label className="input-label">{t("sessions.duration")}</label>
-            <select className="input" value={duration} onChange={e => setDuration(e.target.value)}>
-              <option value="30">30 min</option>
-              <option value="45">45 min</option>
-              <option value="60">1 hora</option>
-              <option value="90">1½ horas</option>
-              <option value="120">2 horas</option>
-            </select>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div className="input-group">
+              <label className="input-label">{t("sessions.duration")}</label>
+              <select className="input" value={duration} onChange={e => setDuration(e.target.value)}>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hora</option>
+                <option value="90">1½ horas</option>
+                <option value="120">2 horas</option>
+              </select>
+            </div>
+            <div className="input-group">
+              <label className="input-label">{t("sessions.modality")}</label>
+              <select className="input" value={modality} onChange={e => setModality(e.target.value)}>
+                <option value="presencial">{t("sessions.presencial")}</option>
+                <option value="virtual">{t("sessions.virtual")}</option>
+              </select>
+            </div>
           </div>
           {conflict && (
             <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>

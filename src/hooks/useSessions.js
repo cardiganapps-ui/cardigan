@@ -30,7 +30,7 @@ export function getRecurringDates(dayName, startDateStr, endDateStr) {
 
 export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
 
-  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate }) {
+  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate, modality }) {
     if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
     const patient = patients.find(p => p.name === patientName);
     if (!patient) return false;
@@ -51,6 +51,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       patient: patientName.trim(), initials: sessionInitials,
       time: time.trim(), day: dayName, date: date.trim(),
       duration: sessionDuration, rate: sessionRate,
+      modality: modality || "presencial",
       color_idx: patient.colorIdx || 0,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -170,6 +171,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         allRows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
           initials: patient.initials, time: s.time, day: s.day,
           date: formatShortDate(d), duration: dur, rate: patient.rate,
+          modality: s.modality || "presencial",
           color_idx: patient.colorIdx || 0 }));
     }
     if (allRows.length === 0) return false;
@@ -240,7 +242,9 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         if (!existingDates.has(ds)) {
           allRows.push({ user_id: userId, patient_id: patientId, patient: updated.name,
             initials: updated.initials, time: s.time, day: s.day,
-            date: ds, duration: dur, rate: newRate, color_idx: updated.color_idx || 0 });
+            date: ds, duration: dur, rate: newRate,
+            modality: s.modality || "presencial",
+            color_idx: updated.color_idx || 0 });
           existingDates.add(ds);
         }
       });
@@ -301,5 +305,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient };
+  async function updateSessionModality(sessionId, modality) {
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions").update({ modality }).eq("id", sessionId).eq("user_id", userId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, modality } : s));
+    return true;
+  }
+
+  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality };
 }
