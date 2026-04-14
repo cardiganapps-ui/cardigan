@@ -79,24 +79,22 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
             {t("sessions.session")}
             <span style={{ fontSize:11, fontWeight:700, padding:"2px 10px", borderRadius:"var(--radius-pill)", background: pillStyle.bg, color: pillStyle.color }}>{statusLbl}</span>
           </span>
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
-            <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
-            <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}
-              style={{ width:28, height:28, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0, minHeight:"unset" }}>
-              <IconTrash size={14} />
-            </button>
-          </div>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 20px" }}>
-          <div className="flex items-center gap-3" style={{ marginBottom:20 }}>
+          <div className="flex items-center gap-3" style={{ marginBottom:20, position:"relative" }}>
             <div className="row-avatar" style={{ background: isTutor ? "var(--purple)" : getClientColor(session.colorIdx), width:52, height:52, fontSize:16, border: isTutor ? "2px dashed var(--purple-bg)" : undefined }}>{displayInitials}</div>
-            <div>
+            <div style={{ flex:1 }}>
               <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)" }}>
                 {session.patient}
                 {isTutor && <span style={{ fontSize:11, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}
               </div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
             </div>
+            <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}
+              style={{ width:30, height:30, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0, minHeight:"unset", flexShrink:0 }}>
+              <IconTrash size={14} />
+            </button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
             <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
