@@ -346,6 +346,20 @@ export function PatientExpediente({
               <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
             </div>
           </div>
+          {patient.phone && (
+            <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
+              onClick={e => e.stopPropagation()}
+              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+              <IconPhone size={16} />
+            </a>
+          )}
+          {patient.email && (
+            <a href={emailHref(patient.email)} aria-label={t("settings.email")}
+              onClick={e => e.stopPropagation()}
+              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+              <IconMail size={16} />
+            </a>
+          )}
           <button onClick={() => onEdit(patient)}
             style={{ padding:"6px 14px", fontSize:"var(--text-sm)", fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
             {t("edit")}
@@ -391,35 +405,14 @@ export function PatientExpediente({
                   ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
                   ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
                 ];
-                const phoneLink = patient.phone ? phoneHref(patient.phone) : null;
-                const mailLink = patient.email ? emailHref(patient.email) : null;
-                const showContactStrip = !!(phoneLink || mailLink);
                 return (
                   <>
                     {rows.map((row, i) => (
-                      <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 14px", borderBottom: (i < rows.length - 1 || showContactStrip) ? "1px solid var(--border-lt)" : "none" }}>
+                      <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 14px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
                         <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
                         <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                       </div>
                     ))}
-                    {showContactStrip && (
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8, padding:"8px 14px" }}>
-                        {phoneLink && (
-                          <a href={phoneLink} aria-label={t("patients.phone")}
-                            onClick={e => e.stopPropagation()}
-                            style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:32, height:32, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}>
-                            <IconPhone size={15} />
-                          </a>
-                        )}
-                        {mailLink && (
-                          <a href={mailLink} aria-label={t("settings.email")}
-                            onClick={e => e.stopPropagation()}
-                            style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:32, height:32, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}>
-                            <IconMail size={15} />
-                          </a>
-                        )}
-                      </div>
-                    )}
                   </>
                 );
               })()}
