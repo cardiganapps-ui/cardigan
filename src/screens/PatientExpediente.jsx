@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { formatPhoneMX, phoneHref, emailHref } from "../utils/contact";
-import { IconClipboard, IconCalendar, IconUser, IconDocument, IconDollar, IconUpload, IconChevron } from "../components/Icons";
+import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
 import { isTutorSession, statusClass, getLastTutorSession, getNextTutorSession } from "../utils/sessions";
@@ -274,8 +274,7 @@ export function PatientExpediente({
     { k: "resumen", l: t("expediente.resumen"), Icon: IconUser },
     { k: "sesiones", l: t("expediente.sesiones"), Icon: IconCalendar },
     { k: "finanzas", l: t("finances.payments"), Icon: IconDollar },
-    { k: "notas", l: t("expediente.notas"), Icon: IconClipboard },
-    { k: "documentos", l: t("expediente.docs"), Icon: IconDocument },
+    { k: "archivo", l: t("expediente.archivo"), Icon: IconClipboard },
   ];
 
   // Swipe-to-dismiss
@@ -378,42 +377,52 @@ export function PatientExpediente({
           <div style={{ padding:"12px 14px" }}>
             {/* General info */}
             <div className="card" style={{ padding:0, marginBottom:10 }}>
-              {[
-                ...(patient.birthdate ? [{ label: t("patients.birthdate"), value: (() => {
-                  const birth = new Date(patient.birthdate + "T00:00:00");
-                  const today = new Date();
-                  let age = today.getFullYear() - birth.getFullYear();
-                  const m = today.getMonth() - birth.getMonth();
-                  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-                  return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
-                })() }] : []),
-                { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
-                ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
-                ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
-                ...(patient.phone ? [{
-                  label: t("patients.phone"),
-                  value: formatPhoneMX(patient.phone),
-                  href: phoneHref(patient.phone),
-                }] : []),
-                ...(patient.email ? [{
-                  label: t("settings.email"),
-                  value: patient.email,
-                  href: emailHref(patient.email),
-                }] : []),
-              ].map((row, i, arr) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
-                  <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  {row.href ? (
-                    <a href={row.href}
-                      style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}
-                      onClick={e => e.stopPropagation()}>
-                      {row.value}
-                    </a>
-                  ) : (
-                    <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
-                  )}
-                </div>
-              ))}
+              {(() => {
+                const rows = [
+                  ...(patient.birthdate ? [{ label: t("patients.birthdate"), value: (() => {
+                    const birth = new Date(patient.birthdate + "T00:00:00");
+                    const today = new Date();
+                    let age = today.getFullYear() - birth.getFullYear();
+                    const m = today.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                    return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
+                  })() }] : []),
+                  { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
+                  ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
+                  ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
+                ];
+                const phoneLink = patient.phone ? phoneHref(patient.phone) : null;
+                const mailLink = patient.email ? emailHref(patient.email) : null;
+                const showContactStrip = !!(phoneLink || mailLink);
+                return (
+                  <>
+                    {rows.map((row, i) => (
+                      <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 14px", borderBottom: (i < rows.length - 1 || showContactStrip) ? "1px solid var(--border-lt)" : "none" }}>
+                        <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
+                        <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                      </div>
+                    ))}
+                    {showContactStrip && (
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8, padding:"8px 14px" }}>
+                        {phoneLink && (
+                          <a href={phoneLink} aria-label={t("patients.phone")}
+                            onClick={e => e.stopPropagation()}
+                            style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:32, height:32, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}>
+                            <IconPhone size={15} />
+                          </a>
+                        )}
+                        {mailLink && (
+                          <a href={mailLink} aria-label={t("settings.email")}
+                            onClick={e => e.stopPropagation()}
+                            style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:32, height:32, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}>
+                            <IconMail size={15} />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Tutor reminder card — only for minors with tutor_frequency */}
@@ -433,6 +442,16 @@ export function PatientExpediente({
               const dueSoon = lastTutor && daysUntilDue >= 0 && daysUntilDue <= 7;
               const dueNextWeek = lastTutor && daysUntilDue > 7 && daysUntilDue <= 14;
               const upToDate = lastTutor && daysUntilDue > 14;
+              // Compact pill when nothing needs attention — saves a full card
+              // slot so Resumen doesn't feel as stacked.
+              if (upToDate && !nextTutor) {
+                return (
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"6px 12px", marginBottom:10, background:"var(--green-bg)", borderRadius:"var(--radius-pill)", fontSize:11, fontWeight:600, color:"var(--green)" }}>
+                    <span>{t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}</span>
+                    <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>
+                  </div>
+                );
+              }
               return (
                 <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)", borderRadius:"var(--radius)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, gap:6, flexWrap:"wrap" }}>
@@ -444,7 +463,6 @@ export function PatientExpediente({
                       {!nextTutor && overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
                       {!nextTutor && dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
                       {!nextTutor && dueNextWeek && <span className="badge badge-purple" style={{ fontSize:10 }}>{t("expediente.tutorDueNextWeek")}</span>}
-                      {!nextTutor && upToDate && <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>}
                     </div>
                   </div>
                   {nextTutor && (
@@ -541,15 +559,12 @@ export function PatientExpediente({
               })()}
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
               <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
                 {t("fab.payment")}
               </button>
-              <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
-                {t("fab.note")}
-              </button>
-              <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={triggerUpload} disabled={uploading}>
-                {uploading ? t("docs.uploading") : t("fab.document")}
+              <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => setTab("archivo")}>
+                {t("expediente.archivo")}
               </button>
             </div>
           </div>
@@ -564,22 +579,6 @@ export function PatientExpediente({
               </div>
             ) : (
               <>
-                {/* Summary stats */}
-                <div className="card" style={{ padding:"12px 14px", marginBottom:12 }}>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, textAlign:"center" }}>
-                    {[
-                      { label: t("expediente.attended"), value: sessCounts.completed, color: "var(--green)" },
-                      { label: t("expediente.missed"), value: sessCounts.cancelled, color: "var(--charcoal-xl)" },
-                      { label: t("sessions.charged"), value: sessCounts.charged, color: "var(--amber)" },
-                    ].map((s, i) => (
-                      <div key={i}>
-                        <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color: s.color }}>{s.value}</div>
-                        <div style={{ fontSize:9, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--charcoal-xl)", marginTop:2 }}>{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Filters */}
                 <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
                   {/* Type filter */}
@@ -763,14 +762,20 @@ export function PatientExpediente({
           );
         })()}
 
-        {/* ── NOTAS ── */}
-        {tab === "notas" && (
+        {/* ── ARCHIVO (Notas + Documentos combined) ── */}
+        {tab === "archivo" && (
           <div style={{ padding:16 }}>
-            <button className="btn btn-primary" style={{ marginBottom:16 }} onClick={() => openNewNote(null)}>
+            {/* ── Notas section ── */}
+            <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>
+                {t("expediente.notasSection")} · {pNotes.length}
+              </div>
+            </div>
+            <button className="btn btn-primary" style={{ marginBottom:12 }} onClick={() => openNewNote(null)}>
               {t("notes.newNote")}
             </button>
             {pNotes.length === 0
-              ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+              ? <div className="card" style={{ padding:"24px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
                   {t("notes.noNotes")}
                 </div>
               : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
@@ -788,12 +793,13 @@ export function PatientExpediente({
                   })}
                 </div>
             }
-          </div>
-        )}
 
-        {/* ── DOCUMENTOS ── */}
-        {tab === "documentos" && (
-          <div style={{ padding:16 }}>
+            {/* ── Documentos section ── */}
+            <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginTop:24, marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>
+                {t("expediente.docsSection")} · {pDocuments.length}
+              </div>
+            </div>
             <button className="btn btn-primary" style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%" }}
               onClick={triggerUpload} disabled={uploading}>
               <IconUpload size={16} />
