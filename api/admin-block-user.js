@@ -7,8 +7,6 @@
 
 import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
 
-const BLOCK_UNTIL = "2999-01-01T00:00:00Z";
-
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -22,16 +20,29 @@ export default async function handler(req, res) {
   // this endpoint (would lock the app out). The UI prevents it too.
   if (userId === admin.id) return res.status(400).json({ error: "Cannot block yourself" });
 
+  let svc;
   try {
-    const svc = getServiceClient();
-    const { error } = await svc.auth.admin.updateUserById(userId, {
-      ban_duration: block ? "87600h" : "none", // 87600h ≈ 10 years; "none" clears it
-    });
-    if (error) {
-      return res.status(500).json({ error: error.message || "Update failed" });
-    }
-    return res.status(200).json({ ok: true, blocked: block, until: block ? BLOCK_UNTIL : null });
+    svc = getServiceClient();
   } catch (err) {
-    return res.status(500).json({ error: "Block/unblock failed" });
+    // Missing SUPABASE_SERVICE_ROLE_KEY in env is a common deploy issue;
+    // surface it explicitly so the admin knows where to look.
+    return res.status(500).json({ error: err?.message || "Service client unavailable" });
   }
+
+  // Update auth.users.banned_until through the admin_set_user_blocked
+  // RPC. See migration 005 — the RPC runs as security definer and is
+  // grant-restricted to service_role, which is what the service client
+  // uses.
+  const { error } = await svc.rpc("admin_set_user_blocked", {
+    target_user_id: userId,
+    blocked: block,
+  });
+  if (error) {
+    return res.status(500).json({ error: error.message || "Update failed" });
+  }
+  return res.status(200).json({
+    ok: true,
+    blocked: block,
+    until: block ? "2999-01-01T00:00:00Z" : null,
+  });
 }

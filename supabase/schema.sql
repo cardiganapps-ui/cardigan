@@ -157,6 +157,28 @@ begin
 end;
 $$ language plpgsql security definer;
 
+-- Admin helper: block/unblock a user by writing auth.users.banned_until
+-- directly. Called from /api/admin-block-user via the service-role
+-- client; execution is revoked from anon/authenticated so nothing
+-- browser-side can hit it via PostgREST.
+create or replace function admin_set_user_blocked(target_user_id uuid, blocked boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  update auth.users
+  set banned_until = case when blocked then '2999-01-01'::timestamptz else null end
+  where id = target_user_id;
+end;
+$$;
+
+revoke execute on function admin_set_user_blocked(uuid, boolean) from public;
+revoke execute on function admin_set_user_blocked(uuid, boolean) from anon;
+revoke execute on function admin_set_user_blocked(uuid, boolean) from authenticated;
+grant execute on function admin_set_user_blocked(uuid, boolean) to service_role;
+
 -- Admin helper: fetch user profiles (email + name + ban state) from
 -- auth.users. banned_until powers the "Bloqueado" badge in the admin
 -- panel; blocking is performed server-side via /api/admin-block-user.
