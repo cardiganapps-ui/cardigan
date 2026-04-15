@@ -5,6 +5,10 @@
 --
 -- Run this in the Supabase SQL editor after the base schema is applied.
 
+-- The return type changes (adds banned_until + created_at), and Postgres
+-- can't CREATE OR REPLACE across return-type changes, so drop first.
+drop function if exists get_user_profiles();
+
 create or replace function get_user_profiles()
 returns table(id uuid, email text, full_name text, banned_until timestamptz, created_at timestamptz)
 as $$
