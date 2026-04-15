@@ -43,10 +43,16 @@ export async function requireAdmin(req, res) {
 export function getServiceClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  // Be specific about which var is missing so the admin knows what to
+  // fix in Vercel. Also trim: a trailing newline in the pasted value
+  // will pass the truthy check but break createClient downstream.
+  const missing = [];
+  if (!url || !url.trim()) missing.push("SUPABASE_URL");
+  if (!key || !key.trim()) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (missing.length) {
+    throw new Error(`Missing env var(s): ${missing.join(", ")}`);
   }
-  return createClient(url, key, {
+  return createClient(url.trim(), key.trim(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
