@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
-import { IconSearch, IconX, IconUsers } from "../components/Icons";
+import { IconSearch, IconX, IconUsers, IconTrash } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { useEscape } from "../hooks/useEscape";
 import { Toggle } from "../components/Toggle";
@@ -19,7 +19,8 @@ export function Patients() {
   const [selected, setSelected] = useState(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); }, []);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); }, []);
   useEscape(selected ? closeSheet : null);
   const [expediente, setExpediente] = useState(null);
   // Edit form state
@@ -45,13 +46,6 @@ export function Patients() {
   const openDetail = (p) => {
     setExpediente(p);
     setHideFab?.(true);
-  };
-
-  const openEditSheet = (p) => {
-    setExpediente(null);
-    setSelected(p);
-    setEditing(false);
-    setConfirmDelete(false);
   };
 
   const startEdit = () => {
@@ -150,7 +144,24 @@ export function Patients() {
     if (ok) {
       setSelected(null);
       setConfirmDelete(false);
+      setDeleteConfirmText("");
     }
+  };
+
+  const deleteConfirmMatches = selected
+    ? deleteConfirmText.trim().toLowerCase() === selected.name.trim().toLowerCase()
+    : false;
+
+  const startDelete = () => {
+    setConfirmDelete(true);
+    setDeleteConfirmText("");
+  };
+
+  const finalizeInstead = () => {
+    // Close delete confirm, return to edit form, jump to the status field
+    setConfirmDelete(false);
+    setDeleteConfirmText("");
+    setEditStatus("ended");
   };
 
   const filters = [
@@ -226,15 +237,19 @@ export function Patients() {
       </div>
 
       {selected && (
-        <div className="sheet-overlay" onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}>
+        <div className="sheet-overlay" onClick={closeSheet}>
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">{editing ? t("patients.editPatient") : selected.name}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}><IconX size={14} /></button>
+              <span className="sheet-title">
+                {confirmDelete
+                  ? t("patients.deleteButton")
+                  : editing ? t("patients.editPatient") : selected.name}
+              </span>
+              <button className="sheet-close" aria-label={t("close")} onClick={closeSheet}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 24px" }}>
-              {editing ? (
+              {editing && !confirmDelete ? (
                 /* ── EDIT MODE ── */
                 <div>
                   {/* Basic info */}
@@ -404,28 +419,94 @@ export function Patients() {
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
                     {mutating ? t("saving") : isFinalizingPatient ? t("patients.finalize") : scheduleOrRateChanged() ? t("apply") : t("save")}
                   </button>
-                  <button className="btn btn-secondary w-full" onClick={() => setEditing(false)}>{t("cancel")}</button>
+                  <button className="btn btn-secondary w-full" onClick={closeSheet}>{t("cancel")}</button>
+
+                  {/* ── Danger zone ── */}
+                  <div style={{ marginTop:24, paddingTop:16, borderTop:"1px solid var(--border-lt)" }}>
+                    <div style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase", color:"var(--red)", marginBottom:8 }}>
+                      {t("patients.deleteDanger")}
+                    </div>
+                    <button type="button"
+                      onClick={startDelete}
+                      className="btn"
+                      style={{ width:"100%", height:44, fontSize:"var(--text-sm)", background:"var(--red-bg)", color:"var(--red)", boxShadow:"none", gap:8 }}>
+                      <IconTrash size={14} /> {t("patients.deleteButton")}
+                    </button>
+                  </div>
                 </div>
               ) : confirmDelete ? (
-                /* ── DELETE CONFIRMATION ── */
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", marginBottom:8 }}>{t("patients.deleteConfirm", { name: selected.name })}</div>
-                  <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:20 }}>{t("patients.deleteWarning")}</div>
-                  <button className="btn btn-danger" style={{ marginBottom:10 }} onClick={handleDelete} disabled={mutating}>
+                /* ── STRONG DELETE CONFIRMATION ── */
+                <div>
+                  {/* Red warning icon */}
+                  <div style={{ textAlign:"center", marginBottom:14 }}>
+                    <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+                      <IconTrash size={24} />
+                    </div>
+                  </div>
+
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", textAlign:"center", marginBottom:8, letterSpacing:"-0.2px" }}>
+                    {t("patients.deleteConfirm", { name: selected.name })}
+                  </div>
+                  <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5, textAlign:"center", marginBottom:16 }}>
+                    {t("patients.deleteWarning")}
+                  </div>
+
+                  {/* What will be lost */}
+                  <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:12 }}>
+                    <div style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--red)", marginBottom:6 }}>
+                      {t("patients.deleteLost")}
+                    </div>
+                    <ul style={{ margin:0, paddingLeft:18, fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.6 }}>
+                      <li>{t("patients.deleteLostSessions")}</li>
+                      <li>{t("patients.deleteLostNotes")}</li>
+                      <li>{t("patients.deleteLostHistory")}</li>
+                    </ul>
+                    <div style={{ marginTop:8, fontSize:"var(--text-xs)", color:"var(--charcoal-lt)", lineHeight:1.5 }}>
+                      {t("patients.deleteKept")}
+                    </div>
+                  </div>
+
+                  {/* Alternative: finalize (only surfaced for active patients;
+                      if already ended, the finalize option is a no-op) */}
+                  {selected.status === "active" && (
+                    <div style={{ background:"var(--teal-pale)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:16 }}>
+                      <div style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--teal-dark)", marginBottom:4 }}>
+                        {t("patients.deleteAlternativeTitle")}
+                      </div>
+                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
+                        {t("patients.deleteAlternativeBody")}
+                      </div>
+                      <button type="button" onClick={finalizeInstead}
+                        className="btn btn-secondary" style={{ width:"100%", height:40, fontSize:"var(--text-sm)" }}>
+                        {t("patients.deleteAlternativeCta")}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Type-to-confirm */}
+                  <div className="input-group">
+                    <label className="input-label">{t("patients.deleteTypeToConfirm", { name: selected.name })}</label>
+                    <input className="input"
+                      value={deleteConfirmText}
+                      onChange={e => setDeleteConfirmText(e.target.value)}
+                      placeholder={t("patients.deleteTypePlaceholder")}
+                      autoFocus
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false} />
+                  </div>
+
+                  <button className="btn btn-danger" style={{ marginBottom:10 }}
+                    onClick={handleDelete}
+                    disabled={mutating || !deleteConfirmMatches}>
                     {mutating ? t("patients.deleting") : t("patients.yesDelete")}
                   </button>
-                  <button className="btn btn-secondary w-full" onClick={() => setConfirmDelete(false)}>{t("cancel")}</button>
-                </div>
-              ) : (
-                /* ── QUICK ACTIONS (from sheet) ── */
-                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                  <button className="btn btn-primary" style={{ height:48 }} onClick={() => { setSelected(null); openDetail(selected); }}>
-                    {t("patients.viewExpediente")}
+                  <button className="btn btn-secondary w-full"
+                    onClick={() => { setConfirmDelete(false); setDeleteConfirmText(""); }}>
+                    {t("cancel")}
                   </button>
-                  <button className="btn btn-secondary" style={{ height:44, fontSize:13 }} onClick={startEdit}>{t("edit")}</button>
-                  <button className="btn" style={{ height:44, fontSize:13, background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }} onClick={() => setConfirmDelete(true)}>{t("delete")}</button>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
