@@ -131,12 +131,17 @@ export function PatientExpediente({
   const allCharged = pSessions.filter(s => s.status === "charged").length;
   const allScheduled = pSessions.filter(s => s.status === "scheduled").length;
 
-  // Date-filtered stats for the Resumen attendance card
+  // Date-filtered stats for the Resumen attendance card.
+  // Past scheduled sessions get auto-completed via enrichment, so any
+  // session still labeled "scheduled" here is a today-but-not-yet-elapsed
+  // one — exclude it so the tile counts add up (Programadas == Asistió
+  // + Canceladas, always).
   const filteredSessions = useMemo(() => {
     const now = todayISO();
     return pSessions.filter(s => {
       const iso = shortDateToISO(s.date);
       if (iso > now) return false; // only past/today
+      if (s.status === "scheduled") return false; // today-upcoming not yet resolved
       if (dateFrom && iso < dateFrom) return false;
       if (dateTo && iso > dateTo) return false;
       return true;
