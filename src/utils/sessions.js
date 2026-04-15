@@ -111,9 +111,9 @@ export function getTutorReminders(patients, sessions) {
     const daysSince = Math.round((todayMs - lastMs) / DAY_MS);
     const daysUntilDue = (p.tutor_frequency * 7) - daysSince;
 
-    // Show reminders up to 14 days before the ideal date — that gives
-    // a full week of "heads up" before the dueSoon (≤7 days) window kicks in.
-    if (daysUntilDue <= 14) {
+    // Surface reminders only within one week of the ideal date (or already
+    // overdue) so the Home list doesn't nag users weeks in advance.
+    if (daysUntilDue <= 7) {
       reminders.push({ patient: p, lastTutorSession: last, nextTutorSession: next, daysSince, daysUntilDue, frequencyWeeks: p.tutor_frequency });
     }
   }

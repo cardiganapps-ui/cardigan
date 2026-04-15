@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { navItems } from "../data/seedData";
 import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut } from "./Icons";
 import { LogoIcon } from "./LogoMark";
@@ -34,16 +34,24 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
 
+  // Reset any stale drag state whenever the drawer transitions closed →
+  // open or is closed programmatically (e.g. nav change mid-gesture).
+  useEffect(() => {
+    dragRef.current = null;
+    setDragging(false);
+    setDragOffset(0);
+  }, [open]);
+
   const onPanelTouchStart = useCallback((e) => {
     if (!open) return;
-    dragRef.current = { x: e.touches[0].clientX, time: Date.now(), active: false };
+    const t0 = e.touches[0];
+    dragRef.current = { x: t0.clientX, y: t0.clientY, time: Date.now(), active: false };
   }, [open]);
 
   const onPanelTouchMove = useCallback((e) => {
     if (!dragRef.current) return;
     const dx = e.touches[0].clientX - dragRef.current.x;
-    const dy = e.touches[0].clientY - (dragRef.current.y || e.touches[0].clientY);
-    if (!dragRef.current.y) dragRef.current.y = e.touches[0].clientY;
+    const dy = e.touches[0].clientY - dragRef.current.y;
     if (!dragRef.current.active) {
       if (dx < -8 && Math.abs(dx) > Math.abs(dy)) {
         dragRef.current.active = true;
@@ -74,6 +82,14 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
       setDragOffset(0);
     }
   }, [onClose]);
+
+  const onPanelTouchCancel = useCallback(() => {
+    // iOS can cancel gestures (incoming call, multi-touch, etc). Clear all
+    // drag bookkeeping so the panel doesn't get stuck off-screen.
+    dragRef.current = null;
+    setDragging(false);
+    setDragOffset(0);
+  }, []);
 
   // Calculate panel position
   let translateX, overlayOpacity, transition, visible;
@@ -122,13 +138,13 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
         style={{
           opacity: overlayOpacity,
           transition: dragging || swipeProgress > 0 ? "none" : "opacity 0.28s",
-          pointerEvents: visible ? "auto" : "none",
-          visibility: visible || open ? "visible" : "hidden",
+          pointerEvents: overlayOpacity > 0 ? "auto" : "none",
         }} />
 
       {/* Panel */}
       <div className="drawer" style={{ pointerEvents: visible ? "auto" : "none" }} onClick={open ? onClose : undefined}
-        onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove} onTouchEnd={onPanelTouchEnd}>
+        onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove}
+        onTouchEnd={onPanelTouchEnd} onTouchCancel={onPanelTouchCancel}>
         <div className="drawer-panel" onClick={e => e.stopPropagation()}
           style={{ transform: `translateX(${translateX}px)`, transition }}>
           <div className="drawer-header">
