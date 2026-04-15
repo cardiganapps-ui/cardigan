@@ -104,7 +104,8 @@ html, body {
   border-bottom: 1px solid var(--border-lt);
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); }
+.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); transition: opacity 0.15s ease, transform 0.15s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+.topbar-brand:active { opacity: 0.6; transform: translateX(-50%) scale(0.94); }
 .topbar-right { display: flex; align-items: center; gap: 6px; }
 
 .icon-btn {
@@ -1202,6 +1203,10 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   border: 1px solid var(--border-lt);
   padding: 14px 16px; position: relative; overflow: hidden;
 }
+.stat-tile-clickable { transition: background 0.18s ease, transform 0.12s ease, border-color 0.18s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+.stat-tile-clickable:active { transform: scale(0.97); }
+.stat-tile-selected { background: var(--cream); border-color: var(--charcoal-xxl, var(--border)); }
+.modality-toggle:active { transform: scale(0.96); }
 .stat-tile-label { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--charcoal-xl); margin-bottom:5px; }
 .stat-tile-val { font-family:var(--font-d); font-size:20px; font-weight:800; color:var(--charcoal); letter-spacing:-0.3px; }
 .stat-tile-sub { font-size:11px; color:var(--charcoal-xl); margin-top:3px; }
@@ -1321,6 +1326,7 @@ button, a, select { min-height: 44px; }
   /* Topbar: hide hamburger, un-center logo */
   .hamburger { display: none; }
   .topbar-brand { position: static; transform: none; }
+  .topbar-brand:active { transform: scale(0.94); }
 
   /* Page: wider padding, centered */
   .page { padding: 20px 32px; max-width: 900px; margin: 0 auto; }
@@ -1532,11 +1538,11 @@ button, a, select { min-height: 44px; }
   box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
   pointer-events: none;
-  transition: top 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-              left 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-              width 0.32s cubic-bezier(0.32, 0.72, 0, 1),
-              height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
-  animation: tutSpotlightIn 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: top 0.6s cubic-bezier(0.32, 0.72, 0, 1),
+              left 0.6s cubic-bezier(0.32, 0.72, 0, 1),
+              width 0.6s cubic-bezier(0.32, 0.72, 0, 1),
+              height 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: tutSpotlightIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes tutSpotlightIn {
   from { opacity: 0; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0); }
@@ -1573,19 +1579,19 @@ button, a, select { min-height: 44px; }
   padding: 18px 18px 14px;
   max-width: min(320px, calc(100vw - 24px));
   width: calc(100vw - 24px);
-  transition: top 0.28s cubic-bezier(0.32, 0.72, 0, 1),
-              left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: top 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+              left 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* Directional entrance animations — the tooltip slides from the side of the
    spotlight so the connection between element and tooltip feels deliberate. */
 .tut-bubble--enter-from-above {
-  animation: tutBubbleFromAbove 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleFromAbove 0.65s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tut-bubble--enter-from-below {
-  animation: tutBubbleFromBelow 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleFromBelow 0.65s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tut-bubble--enter-center {
-  animation: tutBubbleCenter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleCenter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes tutBubbleFromAbove {
   from { opacity: 0; transform: translateY(-14px) scale(0.98); }

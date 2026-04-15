@@ -13,9 +13,9 @@ const EDGE_PAD = 12;
 // How long the "Abriendo X" chip stays up before we actually navigate — this
 // is also the window where the hamburger pulses, so the user sees the button
 // that "did" the navigation before the screen slides in.
-const NAV_HINT_MS = 550;
+const NAV_HINT_MS = 1100;
 // Delay between nav and spotlight measurement (matches screenSlide animation).
-const NAV_SETTLE_MS = 360;
+const NAV_SETTLE_MS = 620;
 
 function computeTooltipStyle(rect, placement, tooltipEl) {
   // Center fallback: place tooltip in the middle of the viewport.
@@ -258,6 +258,21 @@ export function Tutorial() {
 
   // ── Pause while drawer is open ──
   const paused = isActive && !!drawerOpen;
+
+  // ── Hard cleanup on unmount / finish ──
+  // Sometimes a stuck animation can leave `.tut-blocker` / `.tut-spotlight`
+  // elements in the DOM even after the portal unmounts (e.g. if an in-progress
+  // CSS transition pinned the element). Do a belt-and-braces sweep when the
+  // tutorial is no longer active.
+  useEffect(() => {
+    if (isActive || isWelcome) return;
+    // Defer one frame so React's own portal cleanup runs first.
+    const raf = requestAnimationFrame(() => {
+      document.querySelectorAll(".tut-dim, .tut-blocker, .tut-spotlight, .tut-nav-chip").forEach(el => el.remove());
+      document.querySelectorAll(".tut-nav-pulse").forEach(el => el.classList.remove("tut-nav-pulse"));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isActive, isWelcome]);
 
   if (!tutorial) return null;
 

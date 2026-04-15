@@ -131,8 +131,6 @@ export function PatientExpediente({
   const fCancelled = filteredSessions.filter(s => s.status === "cancelled").length;
   const fCharged = filteredSessions.filter(s => s.status === "charged").length;
   const fScheduled = filteredSessions.filter(s => s.status === "scheduled").length;
-  const fResolved = fCompleted + fCancelled + fCharged;
-  const fAttendanceRate = fResolved > 0 ? Math.round(fCompleted / fResolved * 100) : null;
 
   // Filtered financials
   const fBillableSessions = filteredSessions.filter(s => s.status === "completed" || s.status === "charged");
@@ -491,14 +489,6 @@ export function PatientExpediente({
               {fCharged > 0 && (
                 <div style={{ fontSize:11, color:"var(--amber)", marginBottom:8 }}>
                   {t("expediente.chargedCancelled", { count: fCharged })}
-                </div>
-              )}
-              {fAttendanceRate !== null && (
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ flex:1, height:6, background:"var(--cream-dark)", borderRadius:3, overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:`${fAttendanceRate}%`, background:"var(--green)", borderRadius:3 }} />
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, color:"var(--charcoal-md)" }}>{fAttendanceRate}%</span>
                 </div>
               )}
             </div>

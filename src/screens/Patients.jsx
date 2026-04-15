@@ -212,7 +212,10 @@ export function Patients() {
                   <div className="row-sub">{p.day} · {p.time}</div>
                 </div>
                 <div style={{ flexShrink:0 }}>
-                  <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
+                  {filter === "owes"
+                    ? <span style={{ fontSize:13, fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>${p.amountDue.toLocaleString()}</span>
+                    : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
+                  }
                 </div>
                 <span className="row-chevron">›</span>
               </div>

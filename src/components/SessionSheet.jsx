@@ -117,9 +117,10 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
               )}
             </div>
             <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")}
-              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateModality ? "pointer" : undefined }}>
+              className={onUpdateModality ? "modality-toggle" : ""}
+              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.2s ease, transform 0.12s ease", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
               <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("sessions.modality")}</div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)" }}>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)", transition:"color 0.2s ease" }}>
                 {session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial")}
               </div>
             </div>

@@ -16,7 +16,7 @@ export function Home({ setScreen, userName }) {
 
   const totalOwed     = patients.reduce((s,p) => s + p.amountDue, 0);
   const activeCount   = patients.filter(p=>p.status==="active").length;
-  const todaySessions = upcomingSessions.filter(s => s.date === todayStr);
+  const todaySessions = upcomingSessions.filter(s => s.date === todayStr).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
   const currentMonthPayments = payments.filter(p => {
     if (p.created_at) {

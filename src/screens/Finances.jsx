@@ -2,7 +2,6 @@ import { useState } from "react";
 import { getClientColor } from "../data/seedData";
 import { IconCheck } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
-import { exportPayments } from "../utils/export";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -78,16 +77,10 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
 
   return (
     <div style={{ padding:"0 16px" }}>
-      <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-        <button className="btn btn-primary" style={{ flex:1 }} onClick={() => onRecordPayment(null)} disabled={mutating}>
+      <div style={{ marginBottom:14 }}>
+        <button className="btn btn-primary" style={{ width:"100%" }} onClick={() => onRecordPayment(null)} disabled={mutating}>
           {mutating ? t("saving") : t("finances.registerPayment")}
         </button>
-        {filtered.length > 0 && (
-          <button className="btn" onClick={() => exportPayments(filtered)}
-            style={{ fontSize:11, fontWeight:600, padding:"0 14px", background:"var(--cream)", color:"var(--charcoal-md)", boxShadow:"none" }}>
-            {t("finances.export")}
-          </button>
-        )}
       </div>
 
       <div style={{ marginBottom:12 }}>
@@ -105,34 +98,43 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
             </button>
           ))}
         </div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8 }}>
-          <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8 }}>
           <Toggle on={groupByClient} onToggle={() => setGroupByClient(g => !g)} />
+          <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
         </div>
       </div>
 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-        <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{t("finances.paymentCount", { count: filtered.length })}</span>
+        <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>
+          {groupByClient
+            ? t("finances.patientCount", { count: Object.keys(grouped).length })
+            : t("finances.paymentCount", { count: filtered.length })}
+        </span>
         <span style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color:"var(--green)" }}>+${totalFiltered.toLocaleString()}</span>
       </div>
 
       {filtered.length === 0
         ? <div className="card empty-hint">{t("finances.noPaymentsInPeriod")}</div>
         : groupByClient
-          ? Object.entries(grouped).map(([name, pList], gi) => {
-              const total = pList.reduce((s,p)=>s+p.amount,0);
-              return (
-                <div key={name} style={{ marginBottom:12 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, paddingLeft:2 }}>
-                    <span className="section-title" style={{ fontSize:13 }}>{name}</span>
-                    <span style={{ fontFamily:"var(--font-d)", fontSize:13, fontWeight:800, color:"var(--green)" }}>+${total.toLocaleString()}</span>
+          ? <div className="card">
+              {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, pList], gi) => {
+                const total = pList.reduce((s,p)=>s+p.amount,0);
+                const first = pList[0];
+                const patient = patients.find(pt => pt.name === name);
+                return (
+                  <div className="bal-row" key={name}>
+                    <div className="row-avatar" style={{ background: getClientColor(first?.colorIdx ?? gi), width:36, height:36, fontSize:11, flexShrink:0 }}>
+                      {patient ? patient.initials : name.slice(0,2).toUpperCase()}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div className="bal-name">{name}</div>
+                      <div className="bal-sub">{t("finances.paymentCount", { count: pList.length })}</div>
+                    </div>
+                    <div className="bal-amt amount-paid">+${total.toLocaleString()}</div>
                   </div>
-                  <div className="card">
-                    {pList.map((p,i) => renderRow(p, gi*10+i))}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           : <div className="card">{filtered.map((p,i) => renderRow(p,i))}</div>
       }
 
@@ -144,6 +146,7 @@ export function Finances() {
   const { patients, payments, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
+  const [balanceFilter, setBalanceFilter] = useState(null); // null | "owing" | "paid"
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
 
@@ -160,48 +163,58 @@ export function Finances() {
       {tab==="balances" && (
         <div>
           <div className="fin-stats-grid">
-            <div className="stat-tile">
+            <div role="button" tabIndex={0}
+              onClick={() => setBalanceFilter(balanceFilter === "owing" ? null : "owing")}
+              className={`stat-tile stat-tile-clickable ${balanceFilter === "owing" ? "stat-tile-selected" : ""}`}
+              style={{ cursor:"pointer" }}>
               <div className="stat-tile-label">{t("finances.outstanding")}</div>
               <div className="stat-tile-val" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
               <div className="stat-tile-sub">{t("finances.patientCount", { count: owingPatients.length })}</div>
             </div>
-            <div className="stat-tile">
+            <div role="button" tabIndex={0}
+              onClick={() => setBalanceFilter(balanceFilter === "paid" ? null : "paid")}
+              className={`stat-tile stat-tile-clickable ${balanceFilter === "paid" ? "stat-tile-selected" : ""}`}
+              style={{ cursor:"pointer" }}>
               <div className="stat-tile-label">{t("patients.upToDate")}</div>
               <div className="stat-tile-val" style={{ color:"var(--green)" }}>{patients.filter(p=>p.amountDue<=0).length}</div>
               <div className="stat-tile-sub">{t("finances.patientsLabel")}</div>
             </div>
           </div>
-          <div style={{ padding:"0 16px 8px" }}>
-            <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
-            <div className="card">
-              {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
-                <div className="bal-row" key={p.id} role="button" tabIndex={0}
-                  onClick={() => openRecordPaymentModal(p)}
-                  style={{ cursor:"pointer" }}>
-                  <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div className="bal-name">{p.name}</div>
+          {balanceFilter !== "paid" && (
+            <div style={{ padding:"0 16px 8px" }}>
+              <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
+              <div className="card">
+                {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
+                  <div className="bal-row" key={p.id} role="button" tabIndex={0}
+                    onClick={() => openRecordPaymentModal(p)}
+                    style={{ cursor:"pointer" }}>
+                    <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div className="bal-name">{p.name}</div>
+                    </div>
+                    <div className="bal-amt amount-owe">${p.amountDue.toLocaleString()}</div>
                   </div>
-                  <div className="bal-amt amount-owe">${p.amountDue.toLocaleString()}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-          <div style={{ padding:"16px 16px 0" }}>
-            <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
-            <div className="card">
-              {patients.filter(p=>p.amountDue<=0).map((p,i) => (
-                <div className="bal-row" key={p.id}>
-                  <div className="row-avatar" style={{ background: getClientColor(i + 4), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
-                  <div style={{ flex:1 }}>
-                    <div className="bal-name">{p.name}</div>
-                    <div className="bal-sub">${p.paid.toLocaleString()} {t("finances.paidAmount")}</div>
+          )}
+          {balanceFilter !== "owing" && (
+            <div style={{ padding: balanceFilter === "paid" ? "0 16px 8px" : "16px 16px 0" }}>
+              <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
+              <div className="card">
+                {patients.filter(p=>p.amountDue<=0).map((p,i) => (
+                  <div className="bal-row" key={p.id}>
+                    <div className="row-avatar" style={{ background: getClientColor(i + 4), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                    <div style={{ flex:1 }}>
+                      <div className="bal-name">{p.name}</div>
+                      <div className="bal-sub">${p.paid.toLocaleString()} {t("finances.paidAmount")}</div>
+                    </div>
+                    <div className="bal-amt amount-paid"><IconCheck size={16} /></div>
                   </div>
-                  <div className="bal-amt amount-paid"><IconCheck size={16} /></div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
