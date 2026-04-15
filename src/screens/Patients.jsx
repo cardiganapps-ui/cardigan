@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
+import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
 import { Toggle } from "../components/Toggle";
 import { MoneyInput } from "../components/MoneyInput";
@@ -87,7 +88,7 @@ export function Patients() {
     setEditParent(selected.parent || "");
     setEditRate(String(selected.rate));
     setEditTutorFrequency(selected.tutor_frequency ? String(selected.tutor_frequency) : "");
-    setEditPhone(selected.phone || "");
+    setEditPhone(formatPhoneMX(selected.phone));
     setEditEmail(selected.email || "");
     setEditBirthdate(selected.birthdate || "");
     setEditStartDate(selected.start_date || "");
@@ -122,7 +123,7 @@ export function Patients() {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
           tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
-          phone: editPhone.trim(), email: editEmail.trim(),
+          phone: phoneDigits(editPhone), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
         });
         setSelected(null);
@@ -145,7 +146,7 @@ export function Patients() {
           name: editName.trim(),
           parent: editIsMinor ? editParent.trim() : "",
           tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
-          phone: editPhone.trim(), email: editEmail.trim(),
+          phone: phoneDigits(editPhone), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
           status: editStatus,
         });
@@ -406,7 +407,10 @@ export function Patients() {
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                       <div className="input-group">
                         <label className="input-label">{t("patients.phone")}</label>
-                        <input className="input" type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
+                        <input className="input" type="tel" inputMode="tel" autoComplete="tel"
+                          value={editPhone}
+                          onChange={e => setEditPhone(formatPhoneMX(e.target.value))}
+                          placeholder={t("patients.phonePlaceholder")} />
                       </div>
                       <div className="input-group">
                         <label className="input-label">{t("settings.email")}</label>
@@ -577,7 +581,7 @@ export function Patients() {
             setEditIsMinor(!!p.parent);
             setEditParent(p.parent || "");
             setEditRate(String(p.rate));
-            setEditPhone(p.phone || "");
+            setEditPhone(formatPhoneMX(p.phone));
             setEditEmail(p.email || "");
             setEditBirthdate(p.birthdate || "");
             setEditStartDate(p.start_date || "");

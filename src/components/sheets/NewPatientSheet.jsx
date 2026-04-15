@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
+import { formatPhoneMX, phoneDigits } from "../../utils/contact";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
@@ -58,7 +59,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     const ok = await onSubmit({
       name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
       tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
-      phone: phone.trim(), email: email.trim(), birthdate: birthdate || null,
+      phone: phoneDigits(phone), email: email.trim(), birthdate: birthdate || null,
       schedules, recurring: true,
       startDate,
       endDate: hasEndDate ? endDate : null,
@@ -141,7 +142,10 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <div className="input-group">
                   <label className="input-label">{t("patients.phone")}</label>
-                  <input className="input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
+                  <input className="input" type="tel" inputMode="tel" autoComplete="tel"
+                    value={phone}
+                    onChange={e => setPhone(formatPhoneMX(e.target.value))}
+                    placeholder={t("patients.phonePlaceholder")} />
                 </div>
                 <div className="input-group">
                   <label className="input-label">{t("settings.email")}</label>

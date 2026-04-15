@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
+import { formatPhoneMX, phoneHref, emailHref } from "../utils/contact";
 import { IconClipboard, IconCalendar, IconUser, IconDocument, IconDollar, IconUpload, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
@@ -375,12 +376,28 @@ export function PatientExpediente({
                   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
                   return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
                 })() }] : []),
-                ...(patient.phone ? [{ label: t("patients.phone"), value: patient.phone }] : []),
-                ...(patient.email ? [{ label: t("settings.email"), value: patient.email }] : []),
+                ...(patient.phone ? [{
+                  label: t("patients.phone"),
+                  value: formatPhoneMX(patient.phone),
+                  href: phoneHref(patient.phone),
+                }] : []),
+                ...(patient.email ? [{
+                  label: t("settings.email"),
+                  value: patient.email,
+                  href: emailHref(patient.email),
+                }] : []),
               ].map((row, i, arr) => (
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
-                  <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                  <span style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{row.label}</span>
+                  {row.href ? (
+                    <a href={row.href}
+                      style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}
+                      onClick={e => e.stopPropagation()}>
+                      {row.value}
+                    </a>
+                  ) : (
+                    <span style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                  )}
                 </div>
               ))}
             </div>
