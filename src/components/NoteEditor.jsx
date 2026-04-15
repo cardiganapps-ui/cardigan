@@ -21,6 +21,24 @@ function relativeTime(dateStr) {
   return new Date(dateStr).toLocaleDateString("es-MX", { day:"numeric", month:"short" });
 }
 
+/* ── Empty-note detection ──
+   A note is "effectively empty" when:
+   - Both title and body are whitespace-only, OR
+   - The content is still the pristine text from one of the preset
+     templates (user tapped a template then closed without editing).
+   We use this on close to decide whether to save or silently delete, so
+   the notes list doesn't fill up with blank/default placeholder rows. */
+function isEffectivelyEmpty(title, content) {
+  const t = (title || "").trim();
+  const c = (content || "").trim();
+  if (!t && !c) return true;
+  for (const tpl of NOTE_TEMPLATES) {
+    if (tpl.id === "blank") continue;
+    if (t === (tpl.title || "").trim() && c === (tpl.content || "").trim()) return true;
+  }
+  return false;
+}
+
 /* ── List prefix detection ── */
 const LIST_PATTERNS = [
   { regex: /^(\s*)(- )/, prefix: (m) => `${m[1]}- ` },
@@ -86,7 +104,6 @@ function ToolSep() {
 export function NoteEditor({ note, onSave, onDelete, onClose }) {
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote } = useCardigan();
-  useLayer("noteEditor", onClose);
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
@@ -97,6 +114,22 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const saveTimer = useRef(null);
   const bodyRef = useRef(null);
+  // Always run through this when dismissing so "empty on close" → delete
+  // instead of save, regardless of what triggered the close (back
+  // button, ESC via useLayer, etc.).
+  const closeRef = useRef({ title, content, onSave, onDelete, onClose, note });
+  closeRef.current = { title, content, onSave, onDelete, onClose, note };
+  const handleClose = useCallback(async () => {
+    const { title: t, content: c, onSave: s, onDelete: d, onClose: cl, note: n } = closeRef.current;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (isEffectivelyEmpty(t, c)) {
+      if (n?.id && d) await d();
+    } else {
+      await s({ title: t, content: c });
+    }
+    cl();
+  }, []);
+  useLayer("noteEditor", handleClose);
 
   const autoSave = useCallback((newTitle, newContent) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -223,7 +256,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
     <div className="note-editor-desktop" style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-note-editor)", display:"flex", flexDirection:"column" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"calc(var(--sat, 0px) + 12px) 16px 10px", borderBottom:"1px solid var(--border-lt)", flexShrink:0 }}>
-        <button onClick={async () => { if (saveTimer.current) { clearTimeout(saveTimer.current); await onSave({ title, content }); } onClose(); }}
+        <button onClick={handleClose}
           style={{ fontSize:13, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 0" }}>
           ‹ {t("back")}
         </button>

@@ -11,6 +11,33 @@ import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
+/* ── Collapsible section for the edit form ──
+   Hides secondary info by default so the sheet doesn't overwhelm. The
+   header is a tappable row with the section title + a chevron that
+   rotates when open. Callers pass `forceOpen` when contextual state
+   (e.g. finalize warning) needs the section expanded. */
+function EditSection({ title, open, onToggle, forceOpen = false, children }) {
+  const isOpen = open || forceOpen;
+  return (
+    <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4 }}>
+      <button type="button"
+        onClick={forceOpen ? undefined : onToggle}
+        style={{
+          width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"12px 0", background:"none", border:"none", cursor: forceOpen ? "default" : "pointer",
+          fontFamily:"var(--font)", color:"var(--charcoal)",
+          minHeight: 40,
+        }}>
+        <span style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--charcoal)" }}>{title}</span>
+        {!forceOpen && (
+          <span style={{ color:"var(--charcoal-xl)", fontSize:14, transform: isOpen ? "rotate(90deg)" : undefined, transition:"transform 0.15s" }}>›</span>
+        )}
+      </button>
+      {isOpen && <div style={{ paddingBottom:4 }}>{children}</div>}
+    </div>
+  );
+}
+
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab } = useCardigan();
   const { t, strings } = useT();
@@ -20,7 +47,11 @@ export function Patients() {
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); }, []);
+  // Collapsible sub-sections of the edit form. Defaults keep the sheet
+  // short: secondary info is hidden until the user asks for it.
+  const [openContact, setOpenContact] = useState(false);
+  const [openDates, setOpenDates] = useState(false);
+  const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); setOpenContact(false); setOpenDates(false); }, []);
   useEscape(selected ? closeSheet : null);
   const [expediente, setExpediente] = useState(null);
   // Edit form state
@@ -250,15 +281,20 @@ export function Patients() {
             </div>
             <div style={{ padding:"0 20px 24px" }}>
               {editing && !confirmDelete ? (
-                /* ── EDIT MODE ── */
+                /* ── EDIT MODE ──
+                   Structure: essentials up top (name, minor, rate,
+                   schedules), secondary info tucked into collapsible
+                   "Contacto" and "Fechas y estado" sections. Contextual
+                   warnings (finalize, effective date) appear inline
+                   when relevant. */
                 <div>
-                  {/* Basic info */}
+                  {/* ── Essentials ── */}
                   <div className="input-group">
                     <label className="input-label">{t("patients.name")}</label>
                     <input className="input" value={editName} onChange={e => setEditName(e.target.value)} />
                   </div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: editIsMinor ? 6 : 14 }}>
-                    <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.isMinor")}</span>
+                    <span style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.isMinor")}</span>
                     <Toggle on={editIsMinor} onToggle={() => setEditIsMinor(v => !v)} />
                   </div>
                   {editIsMinor && (<>
@@ -275,146 +311,158 @@ export function Patients() {
                         <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
                         <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
                       </select>
-                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.tutorFrequencyHint")}</div>
+                      <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.tutorFrequencyHint")}</div>
                     </div>
                   </>)}
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    <div className="input-group">
-                      <label className="input-label">{t("patients.phone")}</label>
-                      <input className="input" type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">{t("settings.email")}</label>
-                      <input className="input" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
-                    </div>
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    <div className="input-group">
-                      <label className="input-label">{t("patients.birthdate")}</label>
-                      <input className="input" type="date" value={editBirthdate} onChange={e => setEditBirthdate(e.target.value)} />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">{t("patients.startDate")}</label>
-                      <input className="input" type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">{t("patients.status")}</label>
-                    <select className="input" value={editStatus} onChange={e => setEditStatus(e.target.value)}>
-                      <option value="active">{t("patients.statusActive")}</option>
-                      <option value="ended">{t("patients.statusEnded")}</option>
-                    </select>
-                  </div>
 
-                  {/* Finalize patient */}
-                  {isFinalizingPatient && (() => {
-                    const cutoff = parseLocalDate(finishDate);
-                    const sessionsToRemove = upcomingSessions.filter(s =>
-                      s.patient_id === selected.id && s.status === "scheduled" && new Date(shortDateToISO(s.date)) > cutoff
-                    ).length;
-                    return (
-                      <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
-                        <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:6 }}>{t("patients.finalizeTitle")}</div>
-                        <div style={{ fontSize:11, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
-                          {t("patients.finalizeWarning")}
-                        </div>
-                        <div className="input-group" style={{ marginBottom:6 }}>
-                          <label className="input-label">{t("patients.lastSession")}</label>
-                          <input className="input" type="date" value={finishDate} onChange={e => setFinishDate(e.target.value)} />
-                        </div>
-                        {sessionsToRemove > 0 && (
-                          <div style={{ fontSize:11, fontWeight:600, color:"var(--red)", marginTop:4 }}>
-                            {t("patients.sessionsToRemove", { count: sessionsToRemove })}
+                  {/* Rate & Schedules — the most commonly edited fields,
+                      always visible. Hidden only while finalizing
+                      (status=ended) since schedules no longer apply. */}
+                  {!isFinalizingPatient && (
+                    <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
+                      <div className="input-group">
+                        <label className="input-label">{t("patients.ratePerSession")}</label>
+                        <MoneyInput min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+                      </div>
+                      <div style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--charcoal)", marginBottom:8 }}>{t("patients.schedules")}</div>
+                      {editSchedules.map((s, i) => (
+                        <div key={i} style={{ border:"1px solid var(--border-lt)", borderRadius:"var(--radius)", padding:"10px 10px 6px", marginBottom:8, position:"relative" }}>
+                          {editSchedules.length > 1 && (
+                            <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))}
+                              aria-label={t("delete")}
+                              style={{ position:"absolute", top:6, right:6, width:24, height:24, minHeight:24, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>
+                              <IconX size={11} />
+                            </button>
+                          )}
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                            <div className="input-group" style={{ marginBottom:8 }}>
+                              <label className="input-label">{t("patients.day")}</label>
+                              <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
+                                {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                              </select>
+                            </div>
+                            <div className="input-group" style={{ marginBottom:8 }}>
+                              <label className="input-label">{t("patients.time")}</label>
+                              <input className="input" type="time" value={s.time} onChange={e => updateEditSched(i, "time", e.target.value)} />
+                            </div>
+                            <div className="input-group" style={{ marginBottom:0 }}>
+                              <label className="input-label">{t("sessions.duration")}</label>
+                              <select className="input" value={s.duration || "60"} onChange={e => updateEditSched(i, "duration", e.target.value)}>
+                                <option value="30">30m</option>
+                                <option value="45">45m</option>
+                                <option value="60">1h</option>
+                                <option value="90">1½h</option>
+                                <option value="120">2h</option>
+                              </select>
+                            </div>
+                            <div className="input-group" style={{ marginBottom:0 }}>
+                              <label className="input-label">{t("sessions.modality")}</label>
+                              <select className="input" value={s.modality || "presencial"} onChange={e => updateEditSched(i, "modality", e.target.value)}>
+                                <option value="presencial">{t("sessions.presencial")}</option>
+                                <option value="virtual">{t("sessions.virtual")}</option>
+                              </select>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }])}
+                        style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 10px", fontFamily:"var(--font)" }}>
+                        {t("patients.addSchedule")}
+                      </button>
 
-                  {/* Rate & Schedules — hidden when finalizing */}
-                  {!isFinalizingPatient && <>
-                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
-                    <div className="input-group">
-                      <label className="input-label">{t("patients.ratePerSession")}</label>
-                      <MoneyInput min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
-                    </div>
-                  </div>
-
-                  {/* Schedules */}
-                  <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14, marginBottom:8 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:10 }}>{t("patients.schedules")}</div>
-                    {editSchedules.map((s, i) => (
-                      <div key={i} style={{ display:"grid", gridTemplateColumns: editSchedules.length > 1 ? "1fr 1fr 70px 90px 28px" : "1fr 1fr 70px 90px", gap:8, marginBottom:8, alignItems:"end" }}>
-                        <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">{t("patients.day")}</label>}
-                          <select className="input" value={s.day} onChange={e => updateEditSched(i, "day", e.target.value)}>
-                            {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-                          </select>
+                      {/* Effective date — only when schedule or rate changed */}
+                      {scheduleOrRateChanged() && (
+                        <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
+                          <div style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--amber)", marginBottom:8 }}>
+                            {Number(editRate) !== origRate && JSON.stringify(editSchedules) !== origSchedules
+                              ? t("patients.bothChanged")
+                              : Number(editRate) !== origRate ? t("patients.rateChanged") : t("patients.scheduleChanged")}
+                          </div>
+                          <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
+                            {t("patients.changeWarning")}
+                          </div>
+                          <div className="input-group" style={{ marginBottom:8 }}>
+                            <label className="input-label">{t("patients.effectiveFrom")}</label>
+                            <input className="input" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+                          </div>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: hasEndDate ? 8 : 0 }}>
+                            <span style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.endDate")}</span>
+                            <Toggle on={hasEndDate} onToggle={() => setHasEndDate(v => !v)} />
+                          </div>
+                          {hasEndDate ? (
+                            <div className="input-group" style={{ marginBottom:0 }}>
+                              <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                            </div>
+                          ) : (
+                            <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
+                          )}
                         </div>
-                        <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">{t("patients.time")}</label>}
-                          <input className="input" type="time" value={s.time} onChange={e => updateEditSched(i, "time", e.target.value)} />
-                        </div>
-                        <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">{t("sessions.duration")}</label>}
-                          <select className="input" value={s.duration || "60"} onChange={e => updateEditSched(i, "duration", e.target.value)}>
-                            <option value="30">30m</option>
-                            <option value="45">45m</option>
-                            <option value="60">1h</option>
-                            <option value="90">1½h</option>
-                            <option value="120">2h</option>
-                          </select>
-                        </div>
-                        <div className="input-group" style={{ marginBottom:0 }}>
-                          {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
-                          <select className="input" value={s.modality || "presencial"} onChange={e => updateEditSched(i, "modality", e.target.value)}>
-                            <option value="presencial">{t("sessions.presencial")}</option>
-                            <option value="virtual">{t("sessions.virtual")}</option>
-                          </select>
-                        </div>
-                        {editSchedules.length > 1 && (
-                          <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))}
-                            style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                            <IconX size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }])}
-                      style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 8px", fontFamily:"var(--font)" }}>
-                      {t("patients.addSchedule")}
-                    </button>
-                  </div>
-
-                  {/* Effective date — only when schedule or rate changed */}
-                  {scheduleOrRateChanged() && (
-                    <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
-                      <div style={{ fontSize:12, fontWeight:700, color:"var(--amber)", marginBottom:8 }}>
-                        {Number(editRate) !== origRate && JSON.stringify(editSchedules) !== origSchedules
-                          ? t("patients.bothChanged")
-                          : Number(editRate) !== origRate ? t("patients.rateChanged") : t("patients.scheduleChanged")}
-                      </div>
-                      <div style={{ fontSize:11, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
-                        {t("patients.changeWarning")}
-                      </div>
-                      <div className="input-group" style={{ marginBottom:8 }}>
-                        <label className="input-label">{t("patients.effectiveFrom")}</label>
-                        <input className="input" type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: hasEndDate ? 8 : 0 }}>
-                        <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.endDate")}</span>
-                        <Toggle on={hasEndDate} onToggle={() => setHasEndDate(v => !v)} />
-                      </div>
-                      {hasEndDate ? (
-                        <div className="input-group" style={{ marginBottom:0 }}>
-                          <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                        </div>
-                      ) : (
-                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
                       )}
                     </div>
                   )}
-                  </>}
+
+                  {/* ── Contacto (collapsible) ── */}
+                  <EditSection title={t("patients.sectionContact")} open={openContact} onToggle={() => setOpenContact(v => !v)}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      <div className="input-group">
+                        <label className="input-label">{t("patients.phone")}</label>
+                        <input className="input" type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t("patients.phonePlaceholder")} />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("settings.email")}</label>
+                        <input className="input" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                      </div>
+                    </div>
+                  </EditSection>
+
+                  {/* ── Fechas y estado (collapsible; force-open while finalizing) ── */}
+                  <EditSection title={t("patients.sectionDates")}
+                    open={openDates} onToggle={() => setOpenDates(v => !v)}
+                    forceOpen={isFinalizingPatient}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      <div className="input-group">
+                        <label className="input-label">{t("patients.birthdate")}</label>
+                        <input className="input" type="date" value={editBirthdate} onChange={e => setEditBirthdate(e.target.value)} />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patients.startDate")}</label>
+                        <input className="input" type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.status")}</label>
+                      <select className="input" value={editStatus} onChange={e => setEditStatus(e.target.value)}>
+                        <option value="active">{t("patients.statusActive")}</option>
+                        <option value="ended">{t("patients.statusEnded")}</option>
+                      </select>
+                    </div>
+
+                    {isFinalizingPatient && (() => {
+                      const cutoff = parseLocalDate(finishDate);
+                      const sessionsToRemove = upcomingSessions.filter(s =>
+                        s.patient_id === selected.id && s.status === "scheduled" && new Date(shortDateToISO(s.date)) > cutoff
+                      ).length;
+                      return (
+                        <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
+                          <div style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--amber)", marginBottom:6 }}>{t("patients.finalizeTitle")}</div>
+                          <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
+                            {t("patients.finalizeWarning")}
+                          </div>
+                          <div className="input-group" style={{ marginBottom:6 }}>
+                            <label className="input-label">{t("patients.lastSession")}</label>
+                            <input className="input" type="date" value={finishDate} onChange={e => setFinishDate(e.target.value)} />
+                          </div>
+                          {sessionsToRemove > 0 && (
+                            <div style={{ fontSize:"var(--text-xs)", fontWeight:600, color:"var(--red)", marginTop:4 }}>
+                              {t("patients.sessionsToRemove", { count: sessionsToRemove })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </EditSection>
+
+                  <div style={{ marginTop:20 }} />
 
                   <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
                     {mutating ? t("saving") : isFinalizingPatient ? t("patients.finalize") : scheduleOrRateChanged() ? t("apply") : t("save")}

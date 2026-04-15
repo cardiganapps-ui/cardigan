@@ -120,6 +120,8 @@ export default {
     deleteTypePlaceholder: "Nombre del paciente",
     deleteButton: "Eliminar paciente",
     deleteDanger: "Zona peligrosa",
+    sectionContact: "Contacto",
+    sectionDates: "Fechas y estado",
     yesDelete: "Eliminar permanentemente",
     deleting: "Eliminando...",
     isMinor: "Es menor de edad",
