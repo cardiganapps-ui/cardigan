@@ -41,7 +41,11 @@ export function PatientExpediente({
 
   // Session filter state (sesiones tab)
   const [sessTypeFilter, setSessTypeFilter] = useState("all"); // all | patient | tutor
-  const [sessStatusFilter, setSessStatusFilter] = useState("all"); // all | completed | cancelled | charged | scheduled
+  const [sessStatusFilter, setSessStatusFilter] = useState("all"); // all | completed | cancelled_any | scheduled
+  // Date range filter for sesiones tab — null = no filter. Set when the user
+  // taps an Asistencia tile in Resumen so the same date window carries over.
+  const [sessDateFrom, setSessDateFrom] = useState(null);
+  const [sessDateTo, setSessDateTo] = useState(null);
 
   // All sessions for this patient, sorted descending (most recent first) —
   // used by the Resumen stats which are order-independent. The Sesiones tab
@@ -75,10 +79,21 @@ export function PatientExpediente({
     return pSessions.filter(s => {
       if (sessTypeFilter === "patient" && isTutorSession(s)) return false;
       if (sessTypeFilter === "tutor" && !isTutorSession(s)) return false;
-      if (sessStatusFilter !== "all" && s.status !== sessStatusFilter) return false;
+      if (sessStatusFilter !== "all") {
+        if (sessStatusFilter === "cancelled_any") {
+          if (s.status !== "cancelled" && s.status !== "charged") return false;
+        } else if (s.status !== sessStatusFilter) {
+          return false;
+        }
+      }
+      if (sessDateFrom || sessDateTo) {
+        const iso = shortDateToISO(s.date);
+        if (sessDateFrom && iso < sessDateFrom) return false;
+        if (sessDateTo && iso > sessDateTo) return false;
+      }
       return true;
     });
-  }, [pSessions, sessTypeFilter, sessStatusFilter]);
+  }, [pSessions, sessTypeFilter, sessStatusFilter, sessDateFrom, sessDateTo]);
 
   // Sesiones tab: upcoming ascending (nearest first), past descending
   // (most recent first). Date + time are compared as ISO strings so ordering
@@ -490,35 +505,40 @@ export function PatientExpediente({
               {(() => {
                 const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
                 const showTutor = !!patient.parent && fTutor > 0;
+                const goToSessions = (statusFilter, typeFilter = "all") => {
+                  setSessStatusFilter(statusFilter);
+                  setSessTypeFilter(typeFilter);
+                  setSessDateFrom(dateFrom);
+                  setSessDateTo(dateTo);
+                  setTab("sesiones");
+                };
+                const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent" };
                 return (
-                <>
-                <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8, marginBottom:8 }}>
-                  <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8 }}>
+                  <div role="button" tabIndex={0} onClick={() => goToSessions("all")}
+                    style={{ ...tileStyle, background:"var(--cream)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
                     <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.programmed")}</div>
                   </div>
-                  <div style={{ background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                  <div role="button" tabIndex={0} onClick={() => goToSessions("completed")}
+                    style={{ ...tileStyle, background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
                     <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.attended")}</div>
                   </div>
-                  <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                  <div role="button" tabIndex={0} onClick={() => goToSessions("cancelled_any")}
+                    style={{ ...tileStyle, background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                     <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
-                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.missed")}</div>
+                    <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.cancelled")}</div>
                   </div>
                   {showTutor && (
-                    <div style={{ background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
+                    <div role="button" tabIndex={0} onClick={() => goToSessions("all", "tutor")}
+                      style={{ ...tileStyle, background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
                       <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--purple)" }}>{fTutor}</div>
                       <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("sessions.tutor")}</div>
                     </div>
                   )}
-                </div>
-                </>);
+                </div>);
               })()}
-              {fCharged > 0 && (
-                <div style={{ fontSize:11, color:"var(--amber)", marginBottom:8 }}>
-                  {t("expediente.chargedCancelled", { count: fCharged })}
-                </div>
-              )}
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
@@ -583,9 +603,8 @@ export function PatientExpediente({
                   <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
                     {[
                       { key: "all", label: t("expediente.allStatuses") },
-                      { key: "completed", label: t("sessions.completed") },
-                      { key: "cancelled", label: t("sessions.cancelled") },
-                      { key: "charged", label: t("sessions.charged") },
+                      { key: "completed", label: t("expediente.attended") },
+                      { key: "cancelled_any", label: t("expediente.cancelled") },
                       { key: "scheduled", label: t("sessions.scheduled") },
                     ].map(f => (
                       <button key={f.key} type="button"
@@ -596,6 +615,21 @@ export function PatientExpediente({
                     ))}
                   </div>
                 </div>
+
+                {/* Active date range indicator (set when user clicks a Resumen tile) */}
+                {(sessDateFrom || sessDateTo) && (
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:12, padding:"8px 12px", background:"var(--teal-pale)", borderRadius:"var(--radius-pill)", fontSize:11, fontWeight:600, color:"var(--teal-dark)" }}>
+                    <span>{t("expediente.dateRangeApplied", {
+                      from: sessDateFrom ? sessDateFrom.slice(5) : "—",
+                      to: sessDateTo ? sessDateTo.slice(5) : "—",
+                    })}</span>
+                    <button type="button"
+                      onClick={() => { setSessDateFrom(null); setSessDateTo(null); }}
+                      style={{ background:"none", border:"none", color:"var(--teal-dark)", fontWeight:700, cursor:"pointer", fontFamily:"var(--font)", fontSize:11, padding:0 }}>
+                      {t("expediente.clearDateRange")}
+                    </button>
+                  </div>
+                )}
 
                 {/* Session lists */}
                 {filteredPSessions.length === 0 ? (

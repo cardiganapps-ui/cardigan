@@ -253,7 +253,15 @@ export function Patients() {
                 <Avatar initials={p.initials} color={getClientColor(i)} size="md" />
                 <div className="row-content">
                   <div className="row-title">{p.name}</div>
-                  <div className="row-sub">{p.day} · {p.time}</div>
+                  <div className="row-sub">
+                    {p.parent && (
+                      <>
+                        <span style={{ color:"var(--purple)", fontWeight:700 }}>{t("sessions.tutor")}: {p.parent}</span>
+                        {" · "}
+                      </>
+                    )}
+                    ${p.rate.toLocaleString()} {t("expediente.perSession")}
+                  </div>
                 </div>
                 <div style={{ flexShrink:0 }}>
                   {filter === "owes"

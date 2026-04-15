@@ -20,11 +20,13 @@ export const PATIENT_STATUS = Object.freeze({
 export const PAYMENT_METHOD = Object.freeze({
   TRANSFER: "Transferencia",
   CASH:     "Efectivo",
+  CARD:     "Tarjeta",
   OTHER:    "Otro",
 });
 export const PAYMENT_METHODS = [
   PAYMENT_METHOD.TRANSFER,
   PAYMENT_METHOD.CASH,
+  PAYMENT_METHOD.CARD,
   PAYMENT_METHOD.OTHER,
 ];
 

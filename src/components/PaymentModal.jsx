@@ -26,7 +26,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
       setPatientName(editingPayment.patient || "");
       setAmount(String(editingPayment.amount || ""));
       // Determine if method is a standard one or custom
-      const stdMethods = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.OTHER];
+      const stdMethods = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.CARD, PAYMENT_METHOD.OTHER];
       if (stdMethods.includes(editingPayment.method)) {
         setMethod(editingPayment.method);
         setCustomMethod("");
@@ -118,6 +118,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
             <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>
               <option value={PAYMENT_METHOD.TRANSFER}>{t("finances.transfer")}</option>
               <option value={PAYMENT_METHOD.CASH}>{t("finances.cash")}</option>
+              <option value={PAYMENT_METHOD.CARD}>{t("finances.card")}</option>
               <option value={PAYMENT_METHOD.OTHER}>{t("finances.other")}</option>
             </select>
           </div>
