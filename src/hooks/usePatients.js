@@ -41,10 +41,15 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       const allRows = [];
       for (const s of sched) {
         const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
+        // Honor the modality the user picked per schedule row. Missing
+        // this field was letting the DB default every auto-generated
+        // session to "presencial" even when the user chose "virtual".
+        const mod = s.modality || "presencial";
         getRecurringDates(s.day, startDate, endDate).forEach(d =>
           allRows.push({ user_id: userId, patient_id: data.id, patient: name.trim(),
             initials: getInitials(name), time: s.time, day: s.day,
-            date: formatShortDate(d), duration: dur, rate: patientRate, color_idx: colorIdx }));
+            date: formatShortDate(d), duration: dur, rate: patientRate,
+            modality: mod, color_idx: colorIdx }));
       }
       if (allRows.length > 0) {
         const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
@@ -58,7 +63,9 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
           } else {
             updatedPatient = { ...newPatient, sessions: n, billed };
           }
-          setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx }))]);
+          // Match the shape produced by mapRows() so a subsequent full
+          // refresh doesn't introduce reference churn / duplicate keys.
+          setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
         }
       }
     }

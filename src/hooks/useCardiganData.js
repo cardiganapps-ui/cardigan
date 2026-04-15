@@ -319,11 +319,22 @@ export function useCardiganData(user, viewAsUserId) {
   // Defense-in-depth: prevent mutations in read-only mode
   const guard = (fn) => readOnly ? async () => false : fn;
 
+  // After a successful patient create we also refresh from the server.
+  // The optimistic setters inside createPatient should be enough, but a
+  // user report showed newly-generated recurring sessions occasionally
+  // didn't render until the next pull-to-refresh — this closes that
+  // gap without blocking the sheet from dismissing.
+  const createPatientWithRefresh = async (args) => {
+    const ok = await createPatient(args);
+    if (ok) refresh().catch(() => {});
+    return ok;
+  };
+
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
-    createPatient: guard(createPatient), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
+    createPatient: guard(createPatientWithRefresh), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
