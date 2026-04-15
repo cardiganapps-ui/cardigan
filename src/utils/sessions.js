@@ -18,13 +18,23 @@ export function isCancelledStatus(status) {
 export function statusClass(status) {
   if (status === SESSION_STATUS.SCHEDULED) return "status-scheduled";
   if (status === SESSION_STATUS.COMPLETED) return "status-completed";
+  if (status === SESSION_STATUS.CHARGED)   return "status-charged";
   return "status-cancelled";
 }
 
 export function statusLabel(status) {
-  if (isCancelledStatus(status)) return "Cancelada";
+  if (status === SESSION_STATUS.CHARGED)   return "Cancelada cobrada";
+  if (status === SESSION_STATUS.CANCELLED) return "Cancelada";
   if (status === SESSION_STATUS.COMPLETED) return "Completada";
   return "Agendada";
+}
+
+/** CSS class suffix for the session-row colored rail. */
+export function railClass(status) {
+  if (status === SESSION_STATUS.COMPLETED) return "rail-completed";
+  if (status === SESSION_STATUS.CANCELLED) return "rail-cancelled";
+  if (status === SESSION_STATUS.CHARGED)   return "rail-charged";
+  return "rail-scheduled";
 }
 
 export function shortName(name) {

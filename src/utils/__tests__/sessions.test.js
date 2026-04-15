@@ -39,7 +39,7 @@ describe("statusClass", () => {
     expect(statusClass("scheduled")).toBe("status-scheduled");
     expect(statusClass("completed")).toBe("status-completed");
     expect(statusClass("cancelled")).toBe("status-cancelled");
-    expect(statusClass("charged")).toBe("status-cancelled");
+    expect(statusClass("charged")).toBe("status-charged");
   });
 });
 
@@ -48,7 +48,7 @@ describe("statusLabel", () => {
     expect(statusLabel("scheduled")).toBe("Agendada");
     expect(statusLabel("completed")).toBe("Completada");
     expect(statusLabel("cancelled")).toBe("Cancelada");
-    expect(statusLabel("charged")).toBe("Cancelada");
+    expect(statusLabel("charged")).toBe("Cancelada cobrada");
   });
 });
 

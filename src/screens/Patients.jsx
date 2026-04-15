@@ -6,6 +6,7 @@ import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../uti
 import { useEscape } from "../hooks/useEscape";
 import { Toggle } from "../components/Toggle";
 import { MoneyInput } from "../components/MoneyInput";
+import { Avatar } from "../components/Avatar";
 import { PatientExpediente } from "./PatientExpediente";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -206,14 +207,14 @@ export function Patients() {
             ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
             : filtered.map((p,i) => (
               <div className="row-item" key={p.id} onClick={() => openDetail(p)}>
-                <div className="row-avatar" style={{ background: getClientColor(i) }}>{p.initials}</div>
+                <Avatar initials={p.initials} color={getClientColor(i)} size="md" />
                 <div className="row-content">
                   <div className="row-title">{p.name}</div>
                   <div className="row-sub">{p.day} · {p.time}</div>
                 </div>
                 <div style={{ flexShrink:0 }}>
                   {filter === "owes"
-                    ? <span style={{ fontSize:13, fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>${p.amountDue.toLocaleString()}</span>
+                    ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>${p.amountDue.toLocaleString()}</span>
                     : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
                   }
                 </div>

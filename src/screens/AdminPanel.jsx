@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
+import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 
 function relativeTime(dateStr) {
@@ -41,14 +42,12 @@ function AccountsTab({ onViewAs }) {
       <div className="card">
         {accounts.map(a => (
           <div key={a.userId} className="row-item" style={{ cursor:"pointer" }} onClick={() => onViewAs(a.userId)}>
-            <div className="row-avatar" style={{ background:"var(--teal)", width:40, height:40, fontSize:14 }}>
-              {(a.fullName || a.email || "?").charAt(0).toUpperCase()}
-            </div>
+            <Avatar initials={(a.fullName || a.email || "?").charAt(0).toUpperCase()} color="var(--teal)" size="md" />
             <div className="row-content">
               <div className="row-title">{a.fullName || t("admin.noName")}</div>
               <div className="row-sub">{a.email || `ID: ${a.userId.slice(0, 8)}...`} · {a.patientCount} {t("nav.patients").toLowerCase()}</div>
             </div>
-            <span style={{ fontSize:11, fontWeight:600, color:"var(--teal-dark)", padding:"4px 10px", background:"var(--teal-pale)", borderRadius:"var(--radius-pill)", flexShrink:0 }}>
+            <span className="badge badge-teal" style={{ flexShrink:0 }}>
               {t("admin.view")}
             </span>
           </div>

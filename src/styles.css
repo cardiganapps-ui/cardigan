@@ -36,6 +36,14 @@
   --shadow-sm:   0 1px 4px rgba(46,46,46,0.07);
   --shadow:      0 2px 12px rgba(46,46,46,0.09);
   --shadow-lg:   0 8px 28px rgba(46,46,46,0.12);
+  /* Type scale — 7 steps. Use var(--text-*) instead of raw px. */
+  --text-eyebrow: 10px;  /* uppercase tracked labels */
+  --text-xs:      11px;  /* meta, sub rows, badges */
+  --text-sm:      12px;  /* secondary labels, chips */
+  --text-md:      14px;  /* body default, row titles */
+  --text-lg:      16px;  /* sheet titles, emphasized body */
+  --text-xl:      20px;  /* KPI numbers */
+  --text-2xl:     24px;  /* page-level numbers */
   --font:        'Nunito Sans', sans-serif;
   --font-d:      'Nunito', sans-serif;
   --sat: env(safe-area-inset-top, 44px);
@@ -269,7 +277,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   border: none; display: flex; align-items: center; justify-content: center;
   color: white;
   padding: 0;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 14px rgba(46,46,46,0.12);
   cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s, background 0.2s;
@@ -349,7 +357,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .kpi-meta { font-size: 11px; color: var(--charcoal-xl); margin-top: 4px; }
 
 /* BADGE */
-.badge { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); }
+.badge { display: inline-flex; align-items: center; font-size: var(--text-xs); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); }
 .badge-green  { background: var(--green-bg);  color: var(--green); }
 .badge-red    { background: var(--red-bg);    color: var(--red); }
 .badge-teal   { background: var(--teal-pale); color: var(--teal-dark); }
@@ -380,17 +388,39 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .amount-paid  { color: var(--green); }
 .amount-clear { color: var(--charcoal-xl); }
 
-/* SEGMENT */
-.segment { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; }
-.seg-btn {
-  flex: 1; padding: 7px 8px; font-size: 12px; font-weight: 600;
+/* ── SEGMENTED CONTROL ──
+   The single pill-tab style used app-wide. Legacy classes
+   (.segment/.seg-btn, .view-toggle/.view-btn, .fin-tab-row/.fin-tab,
+   .auth-toggle/.auth-tab) all alias to this block so older markup keeps
+   working while new code uses <SegmentedControl />. */
+.segmented, .segment, .view-toggle, .fin-tab-row, .auth-toggle {
+  display: flex; background: var(--cream-dark);
+  border-radius: var(--radius-pill);
+  padding: 3px; gap: 2px;
+}
+.segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab {
+  flex: 1; padding: 7px 8px;
+  font-size: var(--text-sm); font-weight: 600;
   border-radius: var(--radius-pill); border: none; cursor: pointer;
   font-family: var(--font); color: var(--charcoal-lt); background: transparent;
   transition: all 0.15s; -webkit-tap-highlight-color: transparent;
-  text-transform: capitalize; min-height: 34px;
+  min-height: 34px; white-space: nowrap;
 }
-.seg-btn.active { background: var(--white); color: var(--teal-dark); box-shadow: var(--shadow-sm); }
-.seg-btn:active { opacity: 0.7; }
+.segmented-btn.active, .seg-btn.active, .view-btn.active, .fin-tab.active {
+  background: var(--white); color: var(--teal-dark); box-shadow: var(--shadow-sm);
+}
+.auth-tab.active {
+  background: var(--white); color: var(--charcoal);
+  box-shadow: var(--shadow-sm); font-family: var(--font-d);
+}
+.segmented-btn:active, .seg-btn:active, .view-btn:active, .fin-tab:active, .auth-tab:active {
+  opacity: 0.7;
+}
+/* Size variant — "md" uses display font + heavier weight, for primary tabs */
+.segmented--md .segmented-btn {
+  font-family: var(--font-d); font-weight: 700; font-size: var(--text-md);
+  padding: 10px 8px;
+}
 
 /* SEARCH */
 .search-bar {
@@ -404,7 +434,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 
 /* INPUT */
 .input-group { margin-bottom: 14px; }
-.input-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--charcoal-md); margin-bottom: 5px; }
+.input-label { display: block; font-size: var(--text-sm); font-weight: 600; color: var(--charcoal-md); margin-bottom: 5px; }
 .input {
   width: 100%; padding: 11px 13px;
   border: 1.5px solid var(--border); border-radius: var(--radius);
@@ -465,11 +495,21 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 /* SESSION STATUS PILL */
 .session-status {
   padding: 3px 10px; border-radius: var(--radius-pill);
-  font-size: 11px; font-weight: 700; display: inline-block;
+  font-size: var(--text-xs); font-weight: 700; display: inline-block;
 }
+
+/* SESSION ROW RAIL — 3px status-colored accent on the left edge.
+   Used on .row-item instances that represent a session, applied via
+   --rail-color so status border stays consistent across screens. */
+.row-item.session-row { border-left: 3px solid var(--rail-color, var(--teal)); }
+.row-item.session-row.rail-scheduled { --rail-color: var(--teal); }
+.row-item.session-row.rail-completed { --rail-color: var(--green); }
+.row-item.session-row.rail-cancelled { --rail-color: var(--charcoal-xl); }
+.row-item.session-row.rail-charged   { --rail-color: var(--amber); }
 .status-scheduled  { background: var(--teal-pale);  color: var(--teal-dark); }
 .status-completed  { background: var(--green-bg);   color: var(--green); }
 .status-cancelled  { background: var(--cream-dark); color: var(--charcoal-lt); }
+.status-charged    { background: var(--amber-bg);   color: var(--amber); }
 
 /* CALENDAR DAY STRIP */
 .cal-strip { display: flex; padding: 0 16px 4px; }
@@ -498,11 +538,9 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .bal-row { -webkit-tap-highlight-color: transparent; transition: background 0.1s; }
 .bal-row[role="button"]:active { background: var(--teal-mist); }
 
-/* AUTH */
-/* Auth toggle (used inside the sign-in/sign-up sheet on the landing). */
-.auth-toggle { display: flex; background: var(--cream-dark); border-radius: var(--radius-pill); padding: 3px; gap: 2px; margin-bottom: 24px; }
-.auth-tab { flex: 1; padding: 10px; font-size: 14px; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; font-family: var(--font-d); color: var(--charcoal-lt); background: transparent; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
-.auth-tab.active { background: var(--white); color: var(--charcoal); box-shadow: var(--shadow-sm); }
+/* AUTH: auth-tab inherits shared .segmented-btn visuals (above). */
+.auth-toggle { margin-bottom: 24px; }
+.auth-tab { padding: 10px; font-size: var(--text-md); font-weight: 700; font-family: var(--font-d); }
 
 /* ── LANDING PAGE ── */
 /* Marketing site shown to signed-out visitors. Minimal palette
@@ -672,7 +710,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
   letter-spacing: -0.01em;
 }
 .lp-feature-desc {
-  font-size: 14.5px;
+  font-size: 15px;
   line-height: 1.65;
   color: var(--charcoal-md);
 }
@@ -1056,19 +1094,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .sheet-close { width: 30px; height: 30px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; position: relative; }
 .sheet-close::after { content: ""; position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
-/* AGENDA VIEW TOGGLE */
-.view-toggle {
-  display: flex; background: var(--cream-dark); border-radius: var(--radius-pill);
-  padding: 3px; gap: 2px; margin: 0 16px 14px;
-}
-.view-btn {
-  flex: 1; padding: 7px 8px; font-size: 12px; font-weight: 600;
-  border-radius: var(--radius-pill); border: none; cursor: pointer;
-  font-family: var(--font); color: var(--charcoal-lt); background: transparent;
-  transition: all 0.15s; -webkit-tap-highlight-color: transparent; min-height: 34px;
-}
-.view-btn.active { background: var(--white); color: var(--teal-dark); box-shadow: var(--shadow-sm); }
-.view-btn:active { opacity: 0.7; }
+/* AGENDA VIEW TOGGLE: use the shared .segmented block (above) */
 
 /* MONTH GRID */
 .month-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 12px; }
@@ -1166,20 +1192,7 @@ body:has(.expediente-open) .fab-menu { display: none !important; }
 .week-event-time { display: none; }
 .week-event.cancelled { background: var(--cream-dark); border-left-color: var(--charcoal-xl); color: var(--charcoal-lt); }
 
-/* FINANCES */
-.fin-tab-row {
-  display: flex; gap: 0; background: var(--cream-dark);
-  border-radius: var(--radius-pill); padding: 3px; margin: 0 16px 16px;
-}
-.fin-tab {
-  flex: 1; padding: 7px 6px; font-size: 11.5px; font-weight: 600;
-  border-radius: var(--radius-pill); border: none; cursor: pointer;
-  font-family: var(--font); color: var(--charcoal-lt); background: transparent;
-  transition: all 0.15s; -webkit-tap-highlight-color: transparent; min-height: 34px;
-  white-space: nowrap;
-}
-.fin-tab.active { background: var(--white); color: var(--teal-dark); box-shadow: var(--shadow-sm); }
-.fin-tab:active { opacity: 0.7; }
+/* FINANCES: tabs use the shared .segmented block (above) */
 
 /* Mini bar chart */
 .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; padding: 0 4px; }
@@ -1471,7 +1484,7 @@ button, a, select { min-height: 44px; }
 @media (min-width: 768px) {
   .drawer-item.active { background: rgba(91,155,175,0.25); }
   .drawer-item.active::before { width: 4px; }
-  .drawer-item.active .drawer-item-label { font-size: 14.5px; }
+  .drawer-item.active .drawer-item-label { font-size: 15px; }
 }
 
 /* ── REDUCED MOTION ── */
@@ -1623,7 +1636,7 @@ button, a, select { min-height: 44px; }
   padding-right: 26px; /* room for the × close button */
 }
 .tut-bubble-body {
-  font-size: 13.5px;
+  font-size: var(--text-md);
   line-height: 1.55;
   color: var(--charcoal-md);
   margin-bottom: 14px;
@@ -1794,7 +1807,7 @@ button, a, select { min-height: 44px; }
   letter-spacing: -0.3px;
 }
 .tut-welcome-body {
-  font-size: 13.5px;
+  font-size: var(--text-md);
   line-height: 1.55;
   color: var(--charcoal-md);
   margin-bottom: 20px;

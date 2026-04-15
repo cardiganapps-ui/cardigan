@@ -2,10 +2,11 @@ import { useState, useCallback } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconClipboard, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
-import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel } from "../utils/sessions";
+import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
+import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
@@ -50,15 +51,15 @@ export function Home({ setScreen, userName }) {
     <div className="page">
       {patients.length === 0 && (
         <div style={{ padding:"18px 16px 2px", textAlign:"center" }}>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
             {userName ? `${t("home.welcome")}, ${userName.split(" ")[0]}` : t("home.welcome")}
           </div>
-          <div style={{ fontSize:12, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:10 }}>
+          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:10 }}>
             {t("patients.addFirst")}
           </div>
-          <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"var(--teal-pale)", color:"var(--teal-dark)", padding:"6px 14px", borderRadius:"var(--radius-pill)", fontSize:12, fontWeight:700 }}>
+          <span className="badge badge-teal" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px" }}>
             <IconPlus size={14} /> {t("fab.patient")}
-          </div>
+          </span>
         </div>
       )}
 
@@ -101,19 +102,17 @@ export function Home({ setScreen, userName }) {
               const isVirtual = s.modality === "virtual";
               const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
               return (
-              <div className="row-item" key={s.id} onClick={() => setSelectedSession(s)}>
-                <div className="row-avatar" style={{ background: avatarBg, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
-                  {tutor ? tutorDisplayInitials(s) : s.initials}
-                </div>
+              <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
+                <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
                 <div className="row-content">
                   <div className="row-title">
                     {s.patient}
-                    {tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>{t("sessions.tutor").toUpperCase()}</span>}
+                    {tutor && <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
                   </div>
                   <div className="row-sub">
                     {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
-                    <span style={{ fontSize:10, fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6 }}>
-                      {isVirtual ? t("sessions.virtual").toUpperCase() : t("sessions.presencial").toUpperCase()}
+                    <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
+                      {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
                     </span>
                   </div>
                 </div>
@@ -138,7 +137,7 @@ export function Home({ setScreen, userName }) {
             ? emptyHint(t("home.emptyBalances"))
             : owingPatients.slice(0,4).map((p,i) => (
                 <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
-                  <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i) }}>{p.initials}</div>
+                  <Avatar initials={p.initials} color={getClientColor(p.colorIdx ?? i)} size="md" />
                   <div className="row-content">
                     <div className="row-title">{p.name}</div>
                   </div>
@@ -165,9 +164,7 @@ export function Home({ setScreen, userName }) {
               const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
               return (
                 <div className="row-item" key={r.patient.id} onClick={() => openPatient(r.patient.name)}>
-                  <div className="row-avatar" style={{ background:"var(--purple)", border:"2px dashed var(--purple-bg)" }}>
-                    {r.patient.initials}
-                  </div>
+                  <Avatar initials={r.patient.initials} color="var(--purple)" size="md" />
                   <div className="row-content">
                     <div className="row-title">{r.patient.name}</div>
                     <div className="row-sub">
@@ -178,12 +175,12 @@ export function Home({ setScreen, userName }) {
                   </div>
                   <div className="row-right">
                     {overdue && (
-                      <span className="badge badge-red" style={{ fontSize:10, whiteSpace:"nowrap" }}>
+                      <span className="badge badge-red" style={{ whiteSpace:"nowrap" }}>
                         {r.daysSince != null ? t("home.overdueDays", { count: Math.abs(r.daysUntilDue) }) : t("home.noTutorSession")}
                       </span>
                     )}
                     {dueSoon && (
-                      <span className="badge badge-amber" style={{ fontSize:10, whiteSpace:"nowrap" }}>
+                      <span className="badge badge-amber" style={{ whiteSpace:"nowrap" }}>
                         {t("home.dueThisWeek")}
                       </span>
                     )}
@@ -250,9 +247,9 @@ export function Home({ setScreen, userName }) {
                   { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
                   { label: t("finances.balance"), value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                 ].map((s,i) => (
-                  <div key={i} style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 10px", textAlign:"center" }}>
-                    <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{s.label}</div>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:s.color||"var(--charcoal)" }}>{s.value}</div>
+                  <div key={i} className="stat-tile" style={{ textAlign:"center" }}>
+                    <div className="stat-tile-label">{s.label}</div>
+                    <div className="stat-tile-val" style={{ color:s.color||"var(--charcoal)", fontSize:"var(--text-lg)" }}>{s.value}</div>
                   </div>
                 ))}
               </div>
@@ -261,12 +258,12 @@ export function Home({ setScreen, userName }) {
                 { label: t("patients.rate"),            value:`$${selected.rate} ${t("expediente.perSession")}` },
               ].map((row,i) => (
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
-                  <span style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                  <span style={{ fontSize:"var(--text-md)", color:"var(--charcoal-xl)" }}>{row.label}</span>
+                  <span style={{ fontSize:"var(--text-md)", fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                 </div>
               ))}
               <div style={{ marginTop:20 }}>
-                <button className="btn btn-primary" style={{ height:48 }} onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
+                <button className="btn btn-primary" onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
                   {mutating ? t("saving") : t("finances.recordPayment")}
                 </button>
               </div>

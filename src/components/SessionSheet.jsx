@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
-import { isCancelledStatus } from "../utils/sessions";
+import { isCancelledStatus, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconTrash } from "./Icons";
+import { Avatar } from "./Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 
@@ -36,14 +37,6 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const endDate = new Date(0, 0, 0, +h, +m);
   endDate.setMinutes(endDate.getMinutes() + dur);
   const endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`;
-
-  const statusPillColors = {
-    [SESSION_STATUS.SCHEDULED]: { bg: "var(--teal-pale)", color: "var(--teal-dark)" },
-    [SESSION_STATUS.COMPLETED]: { bg: "var(--green-bg)", color: "var(--green)" },
-    [SESSION_STATUS.CANCELLED]: { bg: "var(--cream-dark)", color: "var(--charcoal-lt)" },
-    [SESSION_STATUS.CHARGED]:   { bg: "var(--amber-bg)", color: "var(--amber)" },
-  };
-  const pillStyle = statusPillColors[session.status] || statusPillColors[SESSION_STATUS.SCHEDULED];
 
   const startReschedule = () => {
     setNewDate(shortDateToISO(session.date));
@@ -79,19 +72,20 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
         <div className="sheet-header">
           <span className="sheet-title" style={{ display:"flex", alignItems:"center", gap:8 }}>
             {t("sessions.session")}
-            <span style={{ fontSize:11, fontWeight:700, padding:"2px 10px", borderRadius:"var(--radius-pill)", background: pillStyle.bg, color: pillStyle.color }}>{statusLbl}</span>
+            <span className={`session-status ${statusClass(session.status)}`}>{statusLbl}</span>
           </span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20, position:"relative" }}>
-            <div className="row-avatar" style={{ background: isTutor ? "var(--purple)" : getClientColor(session.colorIdx), width:52, height:52, fontSize:16, border: isTutor ? "2px dashed var(--purple-bg)" : undefined }}>{displayInitials}</div>
+            <Avatar initials={displayInitials}
+              color={isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
             <div style={{ flex:1 }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)" }}>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
                 {session.patient}
-                {isTutor && <span style={{ fontSize:11, fontWeight:700, color:"var(--purple)", marginLeft:6 }}>TUTOR</span>}
+                {isTutor && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
               </div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
+              <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
             </div>
             <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}
               style={{ width:30, height:30, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0, minHeight:"unset", flexShrink:0 }}>
@@ -101,26 +95,27 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
             <div role="button" tabIndex={0}
               onClick={() => { if (onUpdateRate && !editingRate) { setRateInput(String(sessionRate)); setEditingRate(true); } }}
-              style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateRate ? "pointer" : undefined }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("sessions.rate")}</div>
+              className="stat-tile"
+              style={{ background:"var(--cream)", cursor: onUpdateRate ? "pointer" : undefined }}>
+              <div className="stat-tile-label">{t("sessions.rate")}</div>
               {editingRate ? (
                 <form onSubmit={async (e) => { e.preventDefault(); const ok = await onUpdateRate(session.id, rateInput); if (ok) setEditingRate(false); }}
                   style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <span style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)" }}>$</span>
+                  <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)" }}>$</span>
                   <input type="number" className="input" value={rateInput} onChange={e => setRateInput(e.target.value)}
                     autoFocus onBlur={async () => { const ok = await onUpdateRate(session.id, rateInput); if (ok) setEditingRate(false); else setEditingRate(false); }}
                     onClick={e => e.stopPropagation()}
-                    style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, padding:"0 4px", height:22, width:"100%", minHeight:"unset" }} />
+                    style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, padding:"0 4px", height:22, width:"100%", minHeight:"unset" }} />
                 </form>
               ) : (
-                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)" }}>{rateDisplay}</div>
+                <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color:"var(--charcoal)" }}>{rateDisplay}</div>
               )}
             </div>
             <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")}
-              className={onUpdateModality ? "modality-toggle" : ""}
-              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.2s ease, transform 0.12s ease", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("sessions.modality")}</div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)", transition:"color 0.2s ease" }}>
+              className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
+              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.2s ease, transform 0.12s ease", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+              <div className="stat-tile-label">{t("sessions.modality")}</div>
+              <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)", transition:"color 0.2s ease" }}>
                 {session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial")}
               </div>
             </div>
@@ -128,8 +123,8 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
 
           {/* Cancel reason display for already-cancelled sessions */}
           {isCancelled && session.cancel_reason && (
-            <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"10px 14px", marginBottom:14, fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", color:"var(--amber)", marginBottom:4 }}>{t("sessions.cancelMotivo")}</div>
+            <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"10px 14px", marginBottom:14, fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5 }}>
+              <div style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, textTransform:"uppercase", color:"var(--amber)", marginBottom:4 }}>{t("sessions.cancelMotivo")}</div>
               {session.cancel_reason}
             </div>
           )}

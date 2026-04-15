@@ -1,16 +1,17 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { getClientColor, TODAY } from "../data/seedData";
-import { SESSION_STATUS } from "../data/constants";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { IconSun } from "../components/Icons";
 import { formatShortDate, toISODate } from "../utils/dates";
-import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName } from "../utils/sessions";
+import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
+import { Avatar } from "../components/Avatar";
 import { useSwipe } from "../hooks/useSwipe";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
+import { SegmentedControl } from "../components/SegmentedControl";
 
 /* ── DATE HELPERS ── */
 function getMonday(d) {
@@ -57,38 +58,28 @@ function buildMonthGrid(year, month) {
   return cells;
 }
 
-/* ── SESSION ROW (shared) ── */
-const STATUS_BORDER = {
-  [SESSION_STATUS.SCHEDULED]: "var(--teal)",
-  [SESSION_STATUS.COMPLETED]: "var(--green)",
-  [SESSION_STATUS.CANCELLED]: "var(--charcoal-xl)",
-  [SESSION_STATUS.CHARGED]:   "var(--amber)",
-};
-
+/* ── SESSION ROW (shared) ──
+   Rail color comes from .session-row + rail-* classes (see styles.css).
+   Avatar sizing is unified via the shared <Avatar /> component. */
 function SessionRow({ s, onClick, compact }) {
   const { t } = useT();
   const tutor = isTutorSession(s);
   const isVirtual = s.modality === "virtual";
-  const sz = compact ? 34 : 36;
-  const borderColor = STATUS_BORDER[s.status] || "var(--teal)";
   const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
   return (
-    <div className="row-item" key={s.id} onClick={() => onClick(s)}
-      style={{ borderLeft: `3px solid ${borderColor}` }}>
+    <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => onClick(s)}>
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
-        <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? 13 : 14, fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
+        <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? "var(--text-sm)" : "var(--text-md)", fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
       </div>
-      <div className="row-avatar" style={{ background: avatarBg, width:sz, height:sz, fontSize:11, border: tutor ? "2px dashed var(--purple-bg)" : undefined }}>
-        {tutor ? tutorDisplayInitials(s) : s.initials}
-      </div>
+      <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="sm" />
       <div className="row-content">
         <div className="row-title">
           {s.patient}
-          {tutor && <span style={{ fontSize:10, fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+          {tutor && <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
         </div>
         <div className="row-sub">
           {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
-          <span style={{ fontSize:10, fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
+          <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
             {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
           </span>
         </div>
@@ -110,19 +101,19 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientN
   return (
     <>
       <div style={{ padding:"0 16px 4px" }}>
-        <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)", marginBottom:2 }}>{dayName} {dateStr}</div>
-        <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? t("sessions.noSessions") : t("sessions.sessionsCount", { count: daySessions.length })}</div>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", marginBottom:2 }}>{dayName} {dateStr}</div>
+        <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? t("sessions.noSessions") : t("sessions.sessionsCount", { count: daySessions.length })}</div>
       </div>
       <div style={{ padding:"0 16px 12px" }}>
         {daySessions.length === 0
           ? filterPatientName
             ? <div className="card" style={{ padding:32, textAlign:"center" }}>
-                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
               </div>
             : <div className="card" style={{ padding:32, textAlign:"center" }}>
                 <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
               </div>
           : <div className="card">
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} />)}
@@ -174,7 +165,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 10px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>‹</button>
         <HeaderLabel isCurrent={isCurrent} onJumpToday={jumpToToday} t={t}>
-          <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{weekLabel}</span>
+          <span style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", fontWeight:600 }}>{weekLabel}</span>
         </HeaderLabel>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>›</button>
       </div>
@@ -264,7 +255,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                 if (startF < 0 || startF >= hours.length) return null;
                 const eventStyle = (() => {
                   if (isCancelledStatus(sess.status)) return undefined;
-                  if (isTutorSession(sess)) return { background:"var(--purple)", borderStyle:"dashed", color:"white", borderLeftColor:"var(--purple)" };
+                  if (isTutorSession(sess)) return { background:"var(--purple)", color:"white", borderLeftColor:"var(--purple)" };
                   if (sess.modality === "virtual") return { background:"#5B8FD426", borderLeftColor:"var(--blue)", color:"var(--charcoal)" };
                   const c = getClientColor(sess.colorIdx);
                   return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
@@ -317,13 +308,13 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
   return (
     <>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", padding:"0 16px 8px", gap:8 }}>
-        <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-xl)" }}>{t("sessions.weekends")}</span>
+        <span style={{ fontSize:"var(--text-xs)", fontWeight:600, color:"var(--charcoal-xl)" }}>{t("sessions.weekends")}</span>
         <Toggle on={showWeekends} onToggle={() => setShowWeekends(v => !v)} />
       </div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 8px" }}>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>‹</button>
         <HeaderLabel isCurrent={isCurrent} onJumpToday={jumpToToday} t={t}>
-          <span style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</span>
+          <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>{weekLabel}</span>
         </HeaderLabel>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>›</button>
       </div>
@@ -447,16 +438,16 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
       <div style={{ padding:"16px 16px 0" }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:10 }}>
           <div className="section-title">{selectedDateStr}</div>
-          <div style={{ fontSize:12, color:"var(--charcoal-xl)" }}>{daySessions.length===0?t("sessions.noSessions"):t("sessions.sessionsCount", { count: daySessions.length })}</div>
+          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{daySessions.length===0?t("sessions.noSessions"):t("sessions.sessionsCount", { count: daySessions.length })}</div>
         </div>
         {daySessions.length === 0
           ? filterPatientName
             ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
               </div>
             : <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
                 <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={24} /></div>
-                <div style={{ fontSize:13, color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
               </div>
           : <div className="card">
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}
@@ -525,18 +516,23 @@ export function Agenda() {
     <div className="page">
       <div style={{ paddingTop:16 }}>
         <div style={{ padding:"0 16px 14px" }}>
-          <div className="view-toggle" data-tour="agenda-toggle" style={{ margin:0 }}>
-            {[{k:"day",l:t("agenda.dayView")},{k:"week",l:t("agenda.weekView")},{k:"month",l:t("agenda.monthView")}].map(v => (
-              <button key={v.k} className={`view-btn ${view===v.k?"active":""}`} onClick={() => setView(v.k)}>{v.l}</button>
-            ))}
-          </div>
+          <SegmentedControl
+            dataTour="agenda-toggle"
+            value={view}
+            onChange={setView}
+            items={[
+              { k: "day",   l: t("agenda.dayView") },
+              { k: "week",  l: t("agenda.weekView") },
+              { k: "month", l: t("agenda.monthView") },
+            ]}
+          />
         </div>
         {patients.length > 0 && (
           <div style={{ padding:"0 16px 10px" }}>
             <select
               value={filterPatientId}
               onChange={e => setFilterPatientId(e.target.value)}
-              style={{ width:"100%", fontSize:13, fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
+              style={{ width:"100%", fontSize:"var(--text-sm)", fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
             >
               <option value="">{t("agenda.allPatients")}</option>
               {patients.filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
@@ -549,8 +545,8 @@ export function Agenda() {
       {upcomingSessions.length === 0 && (
         <div style={{ padding:"32px 24px", textAlign:"center" }}>
           <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconSun size={36} /></div>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
-          <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
+          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
         </div>
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}

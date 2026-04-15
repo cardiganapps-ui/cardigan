@@ -4,6 +4,8 @@ import { IconCheck } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
+import { SegmentedControl } from "../components/SegmentedControl";
+import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 
 function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
@@ -46,9 +48,8 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
     return (
       <div key={p.id}>
         <div className="bal-row" role="button" tabIndex={0} onClick={() => setExpandedId(isExpanded ? null : p.id)} style={{ cursor:"pointer" }}>
-          <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i), width:36, height:36, fontSize:11, flexShrink:0 }}>
-            {patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
-          </div>
+          <Avatar initials={patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
+            color={getClientColor(p.colorIdx ?? i)} size="sm" />
           <div style={{ flex:1, minWidth:0 }}>
             {!groupByClient && <div className="bal-name">{p.patient}</div>}
             <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
@@ -61,11 +62,11 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
         </div>
         {isExpanded && (
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
-            <button style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"var(--teal-pale)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
+            <button className="btn btn-ghost" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", height:36, padding:"0 16px" }}
               onClick={(e) => { e.stopPropagation(); setExpandedId(null); onEditPayment(p); }}>
               {t("edit")}
             </button>
-            <button style={{ fontSize:12, fontWeight:600, color:"var(--red)", background:"var(--red-bg)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
+            <button className="btn" style={{ background:"var(--red-bg)", color:"var(--red)", height:36, padding:"0 16px", fontSize:"var(--text-sm)", boxShadow:"none" }}
               disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setExpandedId(null); }}>
               {mutating ? "..." : t("finances.deletePayment")}
             </button>
@@ -84,33 +85,32 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
       </div>
 
       <div style={{ marginBottom:12 }}>
-        <div style={{ display:"flex", gap:4, marginBottom:8 }}>
-          {[
+        <SegmentedControl
+          value={period}
+          onChange={setPeriod}
+          ariaLabel={t("periods.all")}
+          style={{ marginBottom: 8 }}
+          items={[
             { k: "all", l: t("periods.all") },
             { k: "1m",  l: t("periods.1m") },
             { k: "3m",  l: t("periods.3m") },
             { k: "6m",  l: t("periods.6m") },
             { k: "1y",  l: t("periods.1y") },
-          ].map(o => (
-            <button key={o.k} onClick={() => setPeriod(o.k)}
-              style={{ flex:1, padding:"5px 0", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: period===o.k ? "var(--teal)" : "var(--cream)", color: period===o.k ? "white" : "var(--charcoal-md)", textAlign:"center" }}>
-              {o.l}
-            </button>
-          ))}
-        </div>
+          ]}
+        />
         <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8 }}>
           <Toggle on={groupByClient} onToggle={() => setGroupByClient(g => !g)} />
-          <span style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
+          <span style={{ fontSize:"var(--text-xs)", fontWeight:600, color:"var(--charcoal-md)" }}>{t("finances.groupByClient")}</span>
         </div>
       </div>
 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-        <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>
+        <span style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", fontWeight:600 }}>
           {groupByClient
             ? t("finances.patientCount", { count: Object.keys(grouped).length })
             : t("finances.paymentCount", { count: filtered.length })}
         </span>
-        <span style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color:"var(--green)" }}>+${totalFiltered.toLocaleString()}</span>
+        <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--green)" }}>+${totalFiltered.toLocaleString()}</span>
       </div>
 
       {filtered.length === 0
@@ -123,9 +123,8 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
                 const patient = patients.find(pt => pt.name === name);
                 return (
                   <div className="bal-row" key={name}>
-                    <div className="row-avatar" style={{ background: getClientColor(first?.colorIdx ?? gi), width:36, height:36, fontSize:11, flexShrink:0 }}>
-                      {patient ? patient.initials : name.slice(0,2).toUpperCase()}
-                    </div>
+                    <Avatar initials={patient ? patient.initials : name.slice(0,2).toUpperCase()}
+                      color={getClientColor(first?.colorIdx ?? gi)} size="sm" />
                     <div style={{ flex:1, minWidth:0 }}>
                       <div className="bal-name">{name}</div>
                       <div className="bal-sub">{t("finances.paymentCount", { count: pList.length })}</div>
@@ -152,12 +151,16 @@ export function Finances() {
 
   return (
     <div className="page">
-      <div style={{ paddingTop:16 }}>
-        <div className="fin-tab-row" role="tablist" data-tour="finances-tabs">
-          {[{k:"balances",l:t("finances.balances")},{k:"pagos",l:t("finances.payments")}].map(tb => (
-            <button key={tb.k} role="tab" aria-selected={tab===tb.k} className={`fin-tab ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>{tb.l}</button>
-          ))}
-        </div>
+      <div style={{ padding:"16px 16px 16px" }}>
+        <SegmentedControl
+          dataTour="finances-tabs"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { k: "balances", l: t("finances.balances") },
+            { k: "pagos",    l: t("finances.payments") },
+          ]}
+        />
       </div>
 
       {tab==="balances" && (
@@ -188,7 +191,7 @@ export function Finances() {
                   <div className="bal-row" key={p.id} role="button" tabIndex={0}
                     onClick={() => openRecordPaymentModal(p)}
                     style={{ cursor:"pointer" }}>
-                    <div className="row-avatar" style={{ background: getClientColor(i), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                    <Avatar initials={p.initials} color={getClientColor(i)} size="sm" />
                     <div style={{ flex:1, minWidth:0 }}>
                       <div className="bal-name">{p.name}</div>
                     </div>
@@ -204,7 +207,7 @@ export function Finances() {
               <div className="card">
                 {patients.filter(p=>p.amountDue<=0).map((p,i) => (
                   <div className="bal-row" key={p.id}>
-                    <div className="row-avatar" style={{ background: getClientColor(i + 4), width:36, height:36, fontSize:11, flexShrink:0 }}>{p.initials}</div>
+                    <Avatar initials={p.initials} color={getClientColor(i + 4)} size="sm" />
                     <div style={{ flex:1 }}>
                       <div className="bal-name">{p.name}</div>
                       <div className="bal-sub">${p.paid.toLocaleString()} {t("finances.paidAmount")}</div>

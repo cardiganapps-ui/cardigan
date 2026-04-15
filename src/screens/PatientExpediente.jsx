@@ -10,6 +10,7 @@ import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { HelpTip } from "../components/HelpTip";
+import { Avatar } from "../components/Avatar";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useT } from "../i18n/index";
@@ -321,17 +322,17 @@ export function PatientExpediente({
             style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
           </button>
-          <div className="row-avatar" style={{ background: getClientColor(patient.colorIdx), width:48, height:48, fontSize:16 }}>
-            {patient.initials}
-          </div>
+          <Avatar initials={patient.initials} color={getClientColor(patient.colorIdx)}
+            style={{ width:48, height:48, fontSize:"var(--text-lg)" }} />
+          {/* Note: 48px is a custom header size between md and lg — kept as style override. */}
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
+            <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
             <div style={{ marginTop:3 }}>
               <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
             </div>
           </div>
           <button onClick={() => onEdit(patient)}
-            style={{ padding:"6px 14px", fontSize:12, fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
+            style={{ padding:"6px 14px", fontSize:"var(--text-sm)", fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
             {t("edit")}
           </button>
           <HelpTip tipsKey="help.expediente" />
@@ -341,7 +342,7 @@ export function PatientExpediente({
           {tabs.map(t => (
             <button key={t.k} role="tab" aria-selected={tab === t.k} onClick={() => setTab(t.k)}
               style={{
-                flex:1, padding:"10px 0 12px", fontSize:12, fontWeight:700,
+                flex:1, padding:"10px 0 12px", fontSize:"var(--text-sm)", fontWeight:700,
                 fontFamily:"var(--font)", color: tab === t.k ? "var(--charcoal)" : "var(--charcoal-xl)",
                 background:"none", border:"none", borderBottom: tab === t.k ? "2px solid var(--charcoal)" : "2px solid transparent",
                 cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5,
@@ -420,13 +421,13 @@ export function PatientExpediente({
 
             {/* Financials — all-time totals */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.collected")}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>${patient.paid.toLocaleString()}</div>
+              <div className="stat-tile" style={{ textAlign:"center" }}>
+                <div className="stat-tile-label">{t("finances.collected")}</div>
+                <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>${patient.paid.toLocaleString()}</div>
               </div>
-              <div style={{ background:"var(--white)", borderRadius:"var(--radius)", padding:"10px 8px", textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)", marginBottom:4 }}>{t("finances.balance")}</div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color: patient.amountDue > 0 ? "var(--red)" : "var(--green)" }}>${patient.amountDue.toLocaleString()}</div>
+              <div className="stat-tile" style={{ textAlign:"center" }}>
+                <div className="stat-tile-label">{t("finances.balance")}</div>
+                <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-xl)" }}>${patient.amountDue.toLocaleString()}</div>
               </div>
             </div>
 
@@ -494,13 +495,13 @@ export function PatientExpediente({
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
+              <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
                 {t("fab.payment")}
               </button>
-              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
+              <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={() => openNewNote(null)}>
                 {t("fab.note")}
               </button>
-              <button className="btn" style={{ height:44, fontSize:12, background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={triggerUpload} disabled={uploading}>
+              <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={triggerUpload} disabled={uploading}>
                 {uploading ? t("docs.uploading") : t("fab.document")}
               </button>
             </div>

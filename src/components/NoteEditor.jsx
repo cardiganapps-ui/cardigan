@@ -73,7 +73,7 @@ function ToolBtn({ children, onClick, title }) {
   return (
     <button onClick={onClick} title={title} style={{
       width:40, height:40, display:"flex", alignItems:"center", justifyContent:"center",
-      background:"none", border:"none", cursor:"pointer", borderRadius:8,
+      background:"none", border:"none", cursor:"pointer", borderRadius:"var(--radius-sm)",
       color:"var(--charcoal-md)", WebkitTapHighlightColor:"transparent",
     }}>{children}</button>
   );

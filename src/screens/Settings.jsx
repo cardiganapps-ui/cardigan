@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../components/Icons";
+import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
@@ -54,12 +55,12 @@ export function Settings({ user, signOut }) {
       <div className="section" style={{ paddingTop:16 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
-            <div style={{ width:52,height:52,background:"var(--teal)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-d)",fontSize:18,fontWeight:800,color:"white" }}>{userInitial}</div>
+            <Avatar initials={userInitial} color="var(--teal)" size="lg" />
             <div style={{ flex:1 }}>
-              <div style={{ fontFamily:"var(--font-d)",fontSize:16,fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
-              <div style={{ fontSize:12.5,color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
+              <div style={{ fontFamily:"var(--font-d)",fontSize:"var(--text-lg)",fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
+              <div style={{ fontSize:"var(--text-sm)",color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
             </div>
-            <button className="btn btn-ghost" style={{ fontSize:13,height:34 }} onClick={() => openSheet("profile")}>{t("edit")}</button>
+            <button className="btn btn-ghost" onClick={() => openSheet("profile")}>{t("edit")}</button>
           </div>
         </div>
       </div>
