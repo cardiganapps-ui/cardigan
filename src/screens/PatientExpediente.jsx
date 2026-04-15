@@ -546,12 +546,11 @@ export function PatientExpediente({
               <>
                 {/* Summary stats */}
                 <div className="card" style={{ padding:"12px 14px", marginBottom:12 }}>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:6, textAlign:"center" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, textAlign:"center" }}>
                     {[
                       { label: t("expediente.attended"), value: sessCounts.completed, color: "var(--green)" },
                       { label: t("expediente.missed"), value: sessCounts.cancelled, color: "var(--charcoal-xl)" },
                       { label: t("sessions.charged"), value: sessCounts.charged, color: "var(--amber)" },
-                      { label: t("expediente.programmed"), value: sessCounts.scheduled, color: "var(--teal)" },
                     ].map((s, i) => (
                       <div key={i}>
                         <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color: s.color }}>{s.value}</div>
