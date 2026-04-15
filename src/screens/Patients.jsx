@@ -490,7 +490,6 @@ export function Patients() {
                       value={deleteConfirmText}
                       onChange={e => setDeleteConfirmText(e.target.value)}
                       placeholder={t("patients.deleteTypePlaceholder")}
-                      autoFocus
                       autoComplete="off"
                       autoCorrect="off"
                       spellCheck={false} />
