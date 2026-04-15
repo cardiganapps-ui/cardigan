@@ -9,20 +9,26 @@
 -- can't CREATE OR REPLACE across return-type changes, so drop first.
 drop function if exists get_user_profiles();
 
+-- Plain SQL function (no plpgsql) to avoid any aliased identifiers that
+-- can trip up copy/paste through HTML-rendering clients. The WHERE
+-- is_admin() clause short-circuits to an empty result set for non-admins.
 create or replace function get_user_profiles()
-returns table(id uuid, email text, full_name text, banned_until timestamptz, created_at timestamptz)
+returns table(
+  id uuid,
+  email text,
+  full_name text,
+  banned_until timestamptz,
+  created_at timestamptz
+)
+language sql
+security definer
 as $$
-begin
-  if not is_admin() then
-    return;
-  end if;
-  return query
-    select
-      au.id,
-      au.email::text,
-      coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name,
-      au.banned_until,
-      au.created_at
-    from auth.users au;
-end;
-$$ language plpgsql security definer;
+  select
+    id,
+    email::text,
+    coalesce(raw_user_meta_data ->> 'full_name', '')::text,
+    banned_until,
+    created_at
+  from auth.users
+  where is_admin();
+$$;
