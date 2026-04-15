@@ -164,7 +164,6 @@ export function Home({ setScreen, userName }) {
             : tutorReminders.slice(0, 3).map(r => {
               const overdue = r.daysUntilDue < 0;
               const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
-              const dueNextWeek = r.daysUntilDue > 7 && r.daysUntilDue <= 14;
               const hasScheduled = !!r.nextTutorSession;
               const lastLine = r.lastTutorSession
                 ? `${t("home.lastTutorSession")}: ${r.lastTutorSession.date}`
@@ -172,8 +171,13 @@ export function Home({ setScreen, userName }) {
               const scheduledLine = hasScheduled
                 ? `${t("home.nextTutorSession")}: ${r.nextTutorSession.date}`
                 : null;
+              const handleClick = () => {
+                if (readOnly) return openPatient(r.patient.name);
+                if (hasScheduled) return setSelectedSession(r.nextTutorSession);
+                setTutorBooking(r.patient);
+              };
               return (
-                <div className="row-item" key={r.patient.id} onClick={() => readOnly ? openPatient(r.patient.name) : setTutorBooking(r.patient)}>
+                <div className="row-item" key={r.patient.id} onClick={handleClick}>
                   <Avatar initials={r.patient.initials} color="var(--purple)" size="md" />
                   <div className="row-content">
                     <div className="row-title">{r.patient.name}</div>
@@ -197,11 +201,6 @@ export function Home({ setScreen, userName }) {
                     {!hasScheduled && dueSoon && (
                       <span className="badge badge-amber" style={{ whiteSpace:"nowrap" }}>
                         {t("home.dueThisWeek")}
-                      </span>
-                    )}
-                    {!hasScheduled && dueNextWeek && (
-                      <span className="badge badge-purple" style={{ whiteSpace:"nowrap" }}>
-                        {t("home.dueNextWeek")}
                       </span>
                     )}
                   </div>
