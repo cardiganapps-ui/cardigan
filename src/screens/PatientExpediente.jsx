@@ -323,11 +323,11 @@ export function PatientExpediente({
 
       {/* Drag zone — covers handle + header */}
       <div onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
-        style={{ flexShrink:0, cursor:"grab", borderBottom:"1px solid var(--border-lt)" }}>
+        style={{ flexShrink:0, cursor:"grab", boxShadow:"0 1px 0 var(--border-lt)" }}>
 
         {/* Drag handle (visual only, hidden on desktop) */}
-        <div className="expediente-drag-handle" style={{ padding:"10px 0 0" }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:"var(--cream-deeper)", margin:"0 auto 8px" }} />
+        <div className="expediente-drag-handle" style={{ padding:"8px 0 2px" }}>
+          <div style={{ width:40, height:5, borderRadius:3, background:"var(--cream-deeper)", margin:"0 auto 6px" }} />
         </div>
 
         {/* Header */}
