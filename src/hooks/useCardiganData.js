@@ -205,7 +205,7 @@ export function useCardiganData(user, viewAsUserId) {
   /* ── DOMAIN ACTIONS (delegated to focused modules) ── */
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient } =
-    createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, helpers);
+    createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
   const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment, updatePayment } =

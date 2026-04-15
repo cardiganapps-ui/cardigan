@@ -3,7 +3,7 @@ import { DAY_ORDER } from "../data/seedData";
 import { getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 
-export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
+export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
   async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate }) {
     if (!name?.trim()) return false;
@@ -88,11 +88,46 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   async function deletePatient(id) {
     setMutating(true);
     setMutationError("");
+
+    // 1. Clean up R2 storage files for this patient's documents. The
+    //    document metadata rows cascade via FK, but the binary files in
+    //    storage would leak otherwise. Failures here are non-fatal — we
+    //    still proceed with the DB deletes so the user isn't blocked by
+    //    transient storage errors.
+    const patientDocs = (documents || []).filter(d => d.patient_id === id);
+    if (patientDocs.length > 0) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = {
+          "Authorization": `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
+        };
+        await Promise.all(patientDocs.map(d =>
+          fetch("/api/delete-document", {
+            method: "POST", headers,
+            body: JSON.stringify({ path: d.file_path }),
+          }).catch(() => {})
+        ));
+      } catch { /* noop — don't block patient delete on storage errors */ }
+    }
+
+    // 2. Payments use ON DELETE SET NULL, so we must delete them
+    //    explicitly or they'd be left orphaned. Everything else
+    //    (sessions, notes, documents metadata) cascades via FK.
+    const { error: payErr } = await supabase.from("payments")
+      .delete().eq("patient_id", id).eq("user_id", userId);
+    if (payErr) { setMutating(false); setMutationError(payErr.message); return false; }
+
+    // 3. Delete the patient row — cascades remove sessions, notes, docs.
     const { error } = await supabase.from("patients").delete().eq("id", id).eq("user_id", userId);
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
+
+    // 4. Sync local state with what the DB now reflects.
     setPatients(prev => prev.filter(p => p.id !== id));
     setUpcomingSessions(prev => prev.filter(s => s.patient_id !== id));
+    setPayments?.(prev => prev.filter(p => p.patient_id !== id));
+    setDocuments?.(prev => prev.filter(d => d.patient_id !== id));
     return true;
   }
 

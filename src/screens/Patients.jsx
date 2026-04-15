@@ -456,11 +456,9 @@ export function Patients() {
                     <ul style={{ margin:0, paddingLeft:18, fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.6 }}>
                       <li>{t("patients.deleteLostSessions")}</li>
                       <li>{t("patients.deleteLostNotes")}</li>
+                      <li>{t("patients.deleteLostPayments")}</li>
                       <li>{t("patients.deleteLostHistory")}</li>
                     </ul>
-                    <div style={{ marginTop:8, fontSize:"var(--text-xs)", color:"var(--charcoal-lt)", lineHeight:1.5 }}>
-                      {t("patients.deleteKept")}
-                    </div>
                   </div>
 
                   {/* Alternative: finalize (only surfaced for active patients;
