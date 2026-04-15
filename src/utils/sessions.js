@@ -64,11 +64,28 @@ export function getLastTutorSession(sessions, patientId) {
   return best;
 }
 
+/** Find the soonest scheduled tutor session in the future for a patient. */
+export function getNextTutorSession(sessions, patientId) {
+  const today = todayISO();
+  let best = null;
+  let bestISO = "";
+  for (const s of sessions) {
+    if (s.patient_id !== patientId) continue;
+    if (!isTutorSession(s)) continue;
+    if (s.status !== SESSION_STATUS.SCHEDULED) continue;
+    const iso = shortDateToISO(s.date);
+    if (iso < today) continue;
+    if (!bestISO || iso < bestISO) { bestISO = iso; best = s; }
+  }
+  return best;
+}
+
 /**
  * Compute tutor reminders for all eligible patients.
- * Returns an array of { patient, lastTutorSession, daysSince, daysUntilDue, frequencyWeeks }
- * sorted by most overdue first. Only includes reminders that are due within
- * 7 days or already overdue, plus patients with no tutor session at all.
+ * Returns an array of { patient, lastTutorSession, nextTutorSession, daysSince, daysUntilDue, frequencyWeeks }
+ * sorted by most overdue first. Surfaces patients who are overdue, due within
+ * the coming two weeks, or have never had a tutor session — so the user gets
+ * ~1 week of early warning before the ideal cadence slips.
  */
 export function getTutorReminders(patients, sessions) {
   const today = todayISO();
@@ -82,9 +99,10 @@ export function getTutorReminders(patients, sessions) {
     if (!p.tutor_frequency) continue;
 
     const last = getLastTutorSession(sessions, p.id);
+    const next = getNextTutorSession(sessions, p.id);
     if (!last) {
       // Never had a tutor session — always show as reminder
-      reminders.push({ patient: p, lastTutorSession: null, daysSince: null, daysUntilDue: -Infinity, frequencyWeeks: p.tutor_frequency });
+      reminders.push({ patient: p, lastTutorSession: null, nextTutorSession: next, daysSince: null, daysUntilDue: -Infinity, frequencyWeeks: p.tutor_frequency });
       continue;
     }
 
@@ -93,8 +111,10 @@ export function getTutorReminders(patients, sessions) {
     const daysSince = Math.round((todayMs - lastMs) / DAY_MS);
     const daysUntilDue = (p.tutor_frequency * 7) - daysSince;
 
-    if (daysUntilDue <= 7) {
-      reminders.push({ patient: p, lastTutorSession: last, daysSince, daysUntilDue, frequencyWeeks: p.tutor_frequency });
+    // Show reminders up to 14 days before the ideal date — that gives
+    // a full week of "heads up" before the dueSoon (≤7 days) window kicks in.
+    if (daysUntilDue <= 14) {
+      reminders.push({ patient: p, lastTutorSession: last, nextTutorSession: next, daysSince, daysUntilDue, frequencyWeeks: p.tutor_frequency });
     }
   }
 

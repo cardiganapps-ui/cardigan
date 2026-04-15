@@ -5,7 +5,7 @@ import { formatPhoneMX, phoneHref, emailHref } from "../utils/contact";
 import { IconClipboard, IconCalendar, IconUser, IconDocument, IconDollar, IconUpload, IconChevron } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
-import { isTutorSession, statusClass, getLastTutorSession } from "../utils/sessions";
+import { isTutorSession, statusClass, getLastTutorSession, getNextTutorSession } from "../utils/sessions";
 import { exportPayments } from "../utils/export";
 import { isWordDoc } from "../utils/files";
 import { DocumentList } from "../components/DocumentList";
@@ -364,10 +364,6 @@ export function PatientExpediente({
             {/* General info */}
             <div className="card" style={{ padding:0, marginBottom:10 }}>
               {[
-                { label: t("sessions.regular"), value:`${patient.day} ${patient.time}` },
-                { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
-                ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
-                ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
                 ...(patient.birthdate ? [{ label: t("patients.birthdate"), value: (() => {
                   const birth = new Date(patient.birthdate + "T00:00:00");
                   const today = new Date();
@@ -376,6 +372,9 @@ export function PatientExpediente({
                   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
                   return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
                 })() }] : []),
+                { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
+                ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
+                ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
                 ...(patient.phone ? [{
                   label: t("patients.phone"),
                   value: formatPhoneMX(patient.phone),
@@ -387,16 +386,16 @@ export function PatientExpediente({
                   href: emailHref(patient.email),
                 }] : []),
               ].map((row, i, arr) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
-                  <span style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{row.label}</span>
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+                  <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
                   {row.href ? (
                     <a href={row.href}
-                      style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}
+                      style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--teal-dark)", textDecoration:"none", WebkitTapHighlightColor:"transparent" }}
                       onClick={e => e.stopPropagation()}>
                       {row.value}
                     </a>
                   ) : (
-                    <span style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                    <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                   )}
                 </div>
               ))}
@@ -405,6 +404,7 @@ export function PatientExpediente({
             {/* Tutor reminder card — only for minors with tutor_frequency */}
             {!!patient.parent && !!patient.tutor_frequency && (() => {
               const lastTutor = getLastTutorSession(upcomingSessions, patient.id);
+              const nextTutor = getNextTutorSession(upcomingSessions, patient.id);
               const DAY_MS = 86400000;
               const todayMs = new Date(todayISO() + "T00:00:00").getTime();
               let daysSince = null;
@@ -416,17 +416,27 @@ export function PatientExpediente({
               }
               const overdue = lastTutor ? daysUntilDue < 0 : true;
               const dueSoon = lastTutor && daysUntilDue >= 0 && daysUntilDue <= 7;
-              const upToDate = lastTutor && daysUntilDue > 7;
+              const dueNextWeek = lastTutor && daysUntilDue > 7 && daysUntilDue <= 14;
+              const upToDate = lastTutor && daysUntilDue > 14;
               return (
                 <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)", borderRadius:"var(--radius)" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, gap:6, flexWrap:"wrap" }}>
                     <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--purple)" }}>
                       {t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}
                     </div>
-                    {overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
-                    {dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
-                    {upToDate && <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>}
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                      {nextTutor && <span className="badge badge-teal" style={{ fontSize:10 }}>{t("expediente.tutorScheduled")}</span>}
+                      {!nextTutor && overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
+                      {!nextTutor && dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
+                      {!nextTutor && dueNextWeek && <span className="badge badge-purple" style={{ fontSize:10 }}>{t("expediente.tutorDueNextWeek")}</span>}
+                      {!nextTutor && upToDate && <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>}
+                    </div>
                   </div>
+                  {nextTutor && (
+                    <div style={{ fontSize:12, color:"var(--purple)", fontWeight:600, marginBottom:2 }}>
+                      {t("expediente.tutorNextScheduled", { date: nextTutor.date })}
+                    </div>
+                  )}
                   <div style={{ fontSize:12, color:"var(--charcoal-md)" }}>
                     {lastTutor
                       ? `${t("home.lastTutorSession")}: ${lastTutor.date}`
