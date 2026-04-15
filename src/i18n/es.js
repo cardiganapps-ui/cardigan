@@ -225,7 +225,6 @@ export default {
   finances: {
     balances: "Saldos",
     payments: "Pagos",
-    income: "Ingresos",
     totalCollected: "Total cobrado",
     pending: "Pendiente",
     billed: "Facturado",

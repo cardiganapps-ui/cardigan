@@ -146,13 +146,12 @@ export function Finances() {
   const [tab, setTab] = useState("balances");
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
-  const totalCollected = payments.reduce((s,p) => s+p.amount, 0);
 
   return (
     <div className="page">
       <div style={{ paddingTop:16 }}>
         <div className="fin-tab-row" role="tablist" data-tour="finances-tabs">
-          {[{k:"balances",l:t("finances.balances")},{k:"pagos",l:t("finances.payments")},{k:"ingresos",l:t("finances.income")}].map(tb => (
+          {[{k:"balances",l:t("finances.balances")},{k:"pagos",l:t("finances.payments")}].map(tb => (
             <button key={tb.k} role="tab" aria-selected={tab===tb.k} className={`fin-tab ${tab===tb.k?"active":""}`} onClick={() => setTab(tb.k)}>{tb.l}</button>
           ))}
         </div>
@@ -203,45 +202,6 @@ export function Finances() {
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {tab==="ingresos" && (
-        <div style={{ padding:"0 16px" }}>
-          <div className="fin-stats-grid" style={{ marginBottom:14, paddingBottom:0 }}>
-            <div className="stat-tile">
-              <div className="stat-tile-label">{t("finances.totalCollected")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)" }}>${totalCollected.toLocaleString()}</div>
-              <div className="stat-tile-sub">{t("finances.paymentCount", { count: payments.length })}</div>
-            </div>
-            <div className="stat-tile">
-              <div className="stat-tile-label">{t("finances.pending")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
-              <div className="stat-tile-sub">{t("finances.patientCount", { count: owingPatients.length })}</div>
-            </div>
-          </div>
-          {payments.length === 0
-            ? <div className="card empty-hint">
-                {t("finances.noPayments")}
-              </div>
-            : <div>
-                <div className="section-title" style={{ marginBottom:10 }}>{t("finances.recentPayments")}</div>
-                <div className="card">
-                  {[...payments].reverse().slice(0,10).map((p,i) => (
-                    <div className="bal-row" key={p.id}>
-                      <div className="row-avatar" style={{ background: getClientColor(p.colorIdx ?? i), width:36, height:36, fontSize:11, flexShrink:0 }}>
-                        {p.initials || p.patient?.slice(0,2).toUpperCase()}
-                      </div>
-                      <div style={{ flex:1 }}>
-                        <div className="bal-name">{p.patient}</div>
-                        <div className="bal-sub">{p.date} · {p.method}</div>
-                      </div>
-                      <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-          }
         </div>
       )}
 
