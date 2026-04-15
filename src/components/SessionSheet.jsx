@@ -62,7 +62,14 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
 
   const submitCancel = async () => {
     const ok = await onCancelSession(session, cancelCharge, cancelReason.trim());
-    if (ok) setCancelling(false);
+    if (ok) {
+      // Cancellation is a terminal action on this session — dismiss the
+      // sheet so the user lands back on whichever screen opened it
+      // (Home, Agenda, Patient expediente, etc.) instead of staring at
+      // the now-cancelled session mid-sheet.
+      setCancelling(false);
+      onClose();
+    }
   };
 
   return (
