@@ -38,25 +38,78 @@ export async function fetchAllAccounts() {
     profileData = data || [];
   } catch (e) { /* ignore */ }
 
-  if (pData.length === 0) return [];
-  const profiles = new Map();
-  profileData.forEach(p => profiles.set(p.id, p));
-
+  // Start from auth.users so accounts with zero patients still appear —
+  // otherwise the admin can't block/delete a freshly-created empty
+  // account. Patient counts are joined in afterwards.
+  const now = Date.now();
   const accounts = new Map();
+  profileData.forEach(prof => {
+    const bannedUntilMs = prof.banned_until ? new Date(prof.banned_until).getTime() : 0;
+    accounts.set(prof.id, {
+      userId: prof.id,
+      fullName: prof.full_name || "",
+      email: prof.email || "",
+      patientCount: 0,
+      firstSeen: prof.created_at || null,
+      blocked: bannedUntilMs > now,
+      bannedUntil: prof.banned_until || null,
+    });
+  });
   pData.forEach(p => {
     if (!accounts.has(p.user_id)) {
-      const prof = profiles.get(p.user_id);
+      // Profile fetch failed (e.g. RLS blocked) but we still see the
+      // user via their patient rows. Render with what we have.
       accounts.set(p.user_id, {
         userId: p.user_id,
-        fullName: prof?.full_name || "",
-        email: prof?.email || "",
+        fullName: "",
+        email: "",
         patientCount: 0,
         firstSeen: p.created_at,
+        blocked: false,
+        bannedUntil: null,
       });
     }
     accounts.get(p.user_id).patientCount++;
   });
   return [...accounts.values()];
+}
+
+async function authHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    "Authorization": `Bearer ${session?.access_token}`,
+    "Content-Type": "application/json",
+  };
+}
+
+export async function adminBlockUser(userId, block) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-block-user", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ userId, block }),
+  });
+  if (!res.ok) {
+    let msg = "Block failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export async function adminDeleteUser(userId) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-delete-user", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) {
+    let msg = "Delete failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
 }
 
 export async function fetchBugReports({ archived = false } = {}) {

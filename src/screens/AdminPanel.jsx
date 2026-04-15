@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports } from "../hooks/useCardiganData";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
@@ -18,39 +18,208 @@ function relativeTime(dateStr) {
   return new Date(dateStr).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
-function AccountsTab({ onViewAs }) {
+/* ── Account row ──
+   Tapping the row opens an inline "Acciones" strip that lets the admin
+   pick between Ver como usuario / Bloquear / Eliminar. Block and Delete
+   each have their own strong confirmation screens below the row. */
+function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
+  const { t } = useT();
+  const [mode, setMode] = useState("collapsed"); // collapsed | actions | confirmBlock | confirmDelete
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  const isSelf = account.userId === currentAdminId;
+  const emailLabel = account.email || `ID: ${account.userId.slice(0, 8)}…`;
+  const deleteConfirmMatches = account.email
+    ? deleteConfirmText.trim().toLowerCase() === account.email.trim().toLowerCase()
+    : false;
+
+  const reset = () => { setMode("collapsed"); setErr(""); setDeleteConfirmText(""); };
+
+  const doBlock = async (block) => {
+    setBusy(true); setErr("");
+    try { await adminBlockUser(account.userId, block); onAction(); reset(); }
+    catch (e) { setErr(e.message || t("admin.actionError")); }
+    finally { setBusy(false); }
+  };
+
+  const doDelete = async () => {
+    setBusy(true); setErr("");
+    try { await adminDeleteUser(account.userId); onAction(); reset(); }
+    catch (e) { setErr(e.message || t("admin.actionError")); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ borderBottom:"1px solid var(--border-lt)" }}>
+      {/* Summary row */}
+      <div className="row-item"
+        style={{ cursor:"pointer", borderBottom:"none" }}
+        onClick={() => setMode(m => m === "collapsed" ? "actions" : "collapsed")}>
+        <Avatar initials={(account.fullName || account.email || "?").charAt(0).toUpperCase()}
+          color={account.blocked ? "var(--charcoal-xl)" : "var(--teal)"} size="md" />
+        <div className="row-content">
+          <div className="row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
+            {account.fullName || t("admin.noName")}
+            {account.blocked && <span className="badge badge-red">{t("admin.accountStatusBlocked")}</span>}
+          </div>
+          <div className="row-sub">{emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}</div>
+        </div>
+        <span className="row-chevron" style={{ transform: mode !== "collapsed" ? "rotate(90deg)" : undefined, transition:"transform 0.15s" }}>›</span>
+      </div>
+
+      {/* Actions strip */}
+      {mode === "actions" && (
+        <div style={{ padding:"0 16px 12px", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+          <button className="btn" style={{ height:36, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }}
+            onClick={(e) => { e.stopPropagation(); onViewAs(account.userId); }}>
+            {t("admin.view")}
+          </button>
+          <button className="btn"
+            style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none",
+              background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)",
+              color: account.blocked ? "var(--green)" : "var(--amber)",
+              opacity: isSelf ? 0.5 : 1 }}
+            disabled={isSelf}
+            onClick={(e) => { e.stopPropagation(); setErr(""); setMode("confirmBlock"); }}>
+            {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
+          </button>
+          <button className="btn"
+            style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none", background:"var(--red-bg)", color:"var(--red)", opacity: isSelf ? 0.5 : 1 }}
+            disabled={isSelf}
+            onClick={(e) => { e.stopPropagation(); setErr(""); setDeleteConfirmText(""); setMode("confirmDelete"); }}>
+            {t("admin.accountDelete")}
+          </button>
+        </div>
+      )}
+
+      {/* Block / Unblock confirmation */}
+      {mode === "confirmBlock" && (
+        <div style={{ padding:"0 16px 14px" }}>
+          <div style={{ background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:10 }}>
+            <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
+              {account.blocked
+                ? t("admin.unblockTitle", { email: emailLabel })
+                : t("admin.blockTitle", { email: emailLabel })}
+            </div>
+            <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5 }}>
+              {account.blocked ? t("admin.unblockBody") : t("admin.blockBody")}
+            </div>
+          </div>
+          {err && <div className="form-error">{err}</div>}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            <button className="btn btn-secondary" onClick={reset} disabled={busy}>{t("cancel")}</button>
+            <button className="btn"
+              style={{ background: account.blocked ? "var(--green)" : "var(--amber)", color:"white", boxShadow:"none" }}
+              onClick={() => doBlock(!account.blocked)} disabled={busy}>
+              {busy ? t("admin.processing") : (account.blocked ? t("admin.unblockConfirm") : t("admin.blockConfirm"))}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation — strongest pattern */}
+      {mode === "confirmDelete" && (
+        <div style={{ padding:"0 16px 14px" }}>
+          {/* Red warning */}
+          <div style={{ textAlign:"center", margin:"6px 0 10px" }}>
+            <div style={{ width:52, height:52, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+              <IconTrash size={22} />
+            </div>
+          </div>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", textAlign:"center", marginBottom:6, letterSpacing:"-0.2px" }}>
+            {t("admin.deleteAccountTitle", { email: emailLabel })}
+          </div>
+          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5, textAlign:"center", marginBottom:12 }}>
+            {t("admin.deleteAccountWarning")}
+          </div>
+
+          {/* What will be lost */}
+          <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 14px", marginBottom:10 }}>
+            <div style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--red)", marginBottom:6 }}>
+              {t("admin.deleteAccountLost")}
+            </div>
+            <ul style={{ margin:0, paddingLeft:18, fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.6 }}>
+              <li>{t("admin.deleteAccountLostData")}</li>
+              <li>{t("admin.deleteAccountLostFiles")}</li>
+              <li>{t("admin.deleteAccountLostAuth", { email: emailLabel })}</li>
+            </ul>
+          </div>
+
+          {/* Alternative: block */}
+          {!account.blocked && (
+            <div style={{ background:"var(--teal-pale)", borderRadius:"var(--radius)", padding:"10px 14px", marginBottom:10 }}>
+              <div style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--teal-dark)", marginBottom:4 }}>
+                {t("admin.deleteAccountAlternativeTitle")}
+              </div>
+              <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:10 }}>
+                {t("admin.deleteAccountAlternativeBody")}
+              </div>
+              <button type="button"
+                onClick={() => { setDeleteConfirmText(""); setErr(""); setMode("confirmBlock"); }}
+                className="btn btn-secondary" style={{ width:"100%", height:36, fontSize:"var(--text-sm)" }}>
+                {t("admin.deleteAccountAlternativeCta")}
+              </button>
+            </div>
+          )}
+
+          {/* Type-to-confirm email */}
+          <div className="input-group">
+            <label className="input-label">{t("admin.deleteAccountTypeToConfirm", { email: emailLabel })}</label>
+            <input className="input"
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              placeholder={t("admin.deleteAccountTypePlaceholder")}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false} />
+          </div>
+
+          {err && <div className="form-error">{err}</div>}
+
+          <button className="btn btn-danger" style={{ marginBottom:8 }}
+            onClick={doDelete}
+            disabled={busy || !deleteConfirmMatches || !account.email}>
+            {busy ? t("admin.processing") : t("admin.deleteAccountConfirm")}
+          </button>
+          <button className="btn btn-secondary w-full" onClick={reset} disabled={busy}>
+            {t("cancel")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountsTab({ onViewAs, currentAdminId }) {
   const { t } = useT();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     fetchAllAccounts()
-      .then(a => { setAccounts(a); setLoading(false); })
+      .then(a => { setAccounts(a); setError(""); setLoading(false); })
       .catch(e => { setError(e.message || t("admin.loadError")); setLoading(false); });
   }, [t]);
 
-  if (loading) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>{t("admin.loadingAccounts")}</div>;
-  if (error) return <div style={{ textAlign:"center", padding:40, color:"var(--red)", fontSize:13 }}>{error}</div>;
-  if (accounts.length === 0) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>{t("admin.noAccounts")}</div>;
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:"var(--text-sm)" }}>{t("admin.loadingAccounts")}</div>;
+  if (error) return <div style={{ textAlign:"center", padding:40, color:"var(--red)", fontSize:"var(--text-sm)" }}>{error}</div>;
+  if (accounts.length === 0) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:"var(--text-sm)" }}>{t("admin.noAccounts")}</div>;
 
   return (
     <>
-      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
+      <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginBottom:8 }}>
         {t("admin.accounts", { count: accounts.length })}
       </div>
       <div className="card">
         {accounts.map(a => (
-          <div key={a.userId} className="row-item" style={{ cursor:"pointer" }} onClick={() => onViewAs(a.userId)}>
-            <Avatar initials={(a.fullName || a.email || "?").charAt(0).toUpperCase()} color="var(--teal)" size="md" />
-            <div className="row-content">
-              <div className="row-title">{a.fullName || t("admin.noName")}</div>
-              <div className="row-sub">{a.email || `ID: ${a.userId.slice(0, 8)}...`} · {a.patientCount} {t("nav.patients").toLowerCase()}</div>
-            </div>
-            <span className="badge badge-teal" style={{ flexShrink:0 }}>
-              {t("admin.view")}
-            </span>
-          </div>
+          <AccountRow key={a.userId} account={a} currentAdminId={currentAdminId}
+            onViewAs={onViewAs} onAction={load} />
         ))}
       </div>
     </>
@@ -279,7 +448,7 @@ function BugsTab() {
   );
 }
 
-export function AdminPanel({ onViewAs, onClose }) {
+export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
   const { t } = useT();
   const [tab, setTab] = useState("accounts");
 
@@ -311,7 +480,7 @@ export function AdminPanel({ onViewAs, onClose }) {
       </div>
 
       <div style={{ flex:1, minHeight:0, overflowY:"auto", padding:16 }}>
-        {tab === "accounts" ? <AccountsTab onViewAs={onViewAs} /> : <BugsTab />}
+        {tab === "accounts" ? <AccountsTab onViewAs={onViewAs} currentAdminId={currentAdminId} /> : <BugsTab />}
       </div>
     </div>
   );

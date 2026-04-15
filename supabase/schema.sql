@@ -157,15 +157,23 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Admin helper: fetch user profiles (email + name) from auth.users
+-- Admin helper: fetch user profiles (email + name + ban state) from
+-- auth.users. banned_until powers the "Bloqueado" badge in the admin
+-- panel; blocking is performed server-side via /api/admin-block-user.
 create or replace function get_user_profiles()
-returns table(id uuid, email text, full_name text) as $$
+returns table(id uuid, email text, full_name text, banned_until timestamptz, created_at timestamptz)
+as $$
 begin
   if not is_admin() then
     return;
   end if;
   return query
-    select au.id, au.email::text, coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name
+    select
+      au.id,
+      au.email::text,
+      coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name,
+      au.banned_until,
+      au.created_at
     from auth.users au;
 end;
 $$ language plpgsql security definer;

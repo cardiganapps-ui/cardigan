@@ -475,6 +475,38 @@ export default {
     bugsArchivedEmpty: "Sin reportes archivados",
     bugsArchiveAll: "Completar todos",
     bugsArchiveConfirm: "Archivar",
+
+    // Account actions (block / delete)
+    accountStatusBlocked: "Bloqueado",
+    accountActions: "Acciones",
+    accountBlock: "Bloquear",
+    accountUnblock: "Desbloquear",
+    accountDelete: "Eliminar cuenta",
+    // Block confirmation
+    blockTitle: "\u00bfBloquear a {email}?",
+    blockBody: "El usuario no podr\u00e1 iniciar sesi\u00f3n. Sus datos se conservan y puedes desbloquearlo en cualquier momento.",
+    blockConfirm: "S\u00ed, bloquear",
+    blockSuccess: "Cuenta bloqueada",
+    unblockTitle: "\u00bfDesbloquear a {email}?",
+    unblockBody: "El usuario recuperar\u00e1 el acceso a su cuenta.",
+    unblockConfirm: "S\u00ed, desbloquear",
+    unblockSuccess: "Cuenta desbloqueada",
+    // Delete confirmation
+    deleteAccountTitle: "\u00bfEliminar cuenta de {email} para siempre?",
+    deleteAccountWarning: "Esta acci\u00f3n no se puede deshacer. Todo lo relacionado con esta cuenta se perder\u00e1 de forma permanente.",
+    deleteAccountLost: "Se eliminar\u00e1n:",
+    deleteAccountLostData: "Todos sus pacientes, sesiones, notas, pagos y documentos",
+    deleteAccountLostFiles: "Todos los archivos subidos a almacenamiento",
+    deleteAccountLostAuth: "La cuenta de acceso ({email})",
+    deleteAccountAlternativeTitle: "\u00bfPrefieres bloquear en vez de eliminar?",
+    deleteAccountAlternativeBody: "Bloquear impide el acceso pero conserva todo el historial. Puedes desbloquear despu\u00e9s.",
+    deleteAccountAlternativeCta: "Bloquear en su lugar",
+    deleteAccountTypeToConfirm: "Escribe \u201c{email}\u201d para confirmar",
+    deleteAccountTypePlaceholder: "correo@ejemplo.com",
+    deleteAccountConfirm: "Eliminar permanentemente",
+    deleteAccountSuccess: "Cuenta eliminada",
+    actionError: "Ocurri\u00f3 un error. Intenta de nuevo.",
+    processing: "Procesando...",
   },
 
   // ── Install prompt ──

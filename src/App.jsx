@@ -290,6 +290,7 @@ function AppShell({ user, signOut, demo, theme }) {
           <AdminPanel
             onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
             onClose={() => setShowAdmin(false)}
+            currentAdminId={user?.id}
           />
         )}
         <InstallPrompt />
