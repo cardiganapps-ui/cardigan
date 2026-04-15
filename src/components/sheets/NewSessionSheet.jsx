@@ -5,16 +5,18 @@ import { MoneyInput } from "../MoneyInput";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 
-export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime }) {
+export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime, initialPatientName, initialSessionType }) {
   const { t } = useT();
   useEscape(onClose);
-  const [patientName, setPatientName] = useState("");
-  const [sessionType, setSessionType] = useState("patient");
+  const initialPatient = initialPatientName ? patients.find(p => p.name === initialPatientName) : null;
+  const tutorAllowed = initialSessionType === "tutor" && initialPatient && !!initialPatient.parent;
+  const [patientName, setPatientName] = useState(initialPatientName || "");
+  const [sessionType, setSessionType] = useState(tutorAllowed ? "tutor" : "patient");
   const [date, setDate] = useState(initialDate || todayISO());
   const [time, setTime] = useState(initialTime || "16:00");
   const [duration, setDuration] = useState("60");
   const [modality, setModality] = useState("presencial");
-  const [customRate, setCustomRate] = useState("");
+  const [customRate, setCustomRate] = useState(tutorAllowed ? String(initialPatient.rate) : (initialPatient ? String(initialPatient.rate) : ""));
   const [err, setErr]   = useState("");
 
   const selectedPatient = patients.find(p => p.name === patientName);

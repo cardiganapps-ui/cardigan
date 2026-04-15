@@ -6,11 +6,12 @@ import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel, railCla
 import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
+import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, mutating, setAgendaView } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, readOnly, mutating, setAgendaView } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -31,8 +32,9 @@ export function Home({ setScreen, userName }) {
 
   const [selected, setSelected] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
+  const [tutorBooking, setTutorBooking] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), []);
-  useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : null);
+  useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : null);
   const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {
@@ -163,7 +165,7 @@ export function Home({ setScreen, userName }) {
               const overdue = r.daysUntilDue < 0;
               const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
               return (
-                <div className="row-item" key={r.patient.id} onClick={() => openPatient(r.patient.name)}>
+                <div className="row-item" key={r.patient.id} onClick={() => readOnly ? openPatient(r.patient.name) : setTutorBooking(r.patient)}>
                   <Avatar initials={r.patient.initials} color="var(--purple)" size="md" />
                   <div className="row-content">
                     <div className="row-title">{r.patient.name}</div>
@@ -218,6 +220,18 @@ export function Home({ setScreen, userName }) {
       </div>
       </div>
       </div>
+
+      {tutorBooking && (
+        <NewSessionSheet
+          onClose={() => setTutorBooking(null)}
+          onSubmit={createSession}
+          patients={patients}
+          sessions={upcomingSessions}
+          mutating={mutating}
+          initialPatientName={tutorBooking.name}
+          initialSessionType="tutor"
+        />
+      )}
 
       <SessionSheet
         session={selectedSession}
