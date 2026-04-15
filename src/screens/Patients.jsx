@@ -423,9 +423,6 @@ export function Patients() {
 
                   {/* ── Danger zone ── */}
                   <div style={{ marginTop:24, paddingTop:16, borderTop:"1px solid var(--border-lt)" }}>
-                    <div style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase", color:"var(--red)", marginBottom:8 }}>
-                      {t("patients.deleteDanger")}
-                    </div>
                     <button type="button"
                       onClick={startDelete}
                       className="btn"
