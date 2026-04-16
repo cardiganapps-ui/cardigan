@@ -276,7 +276,7 @@ export function PatientExpediente({
         boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
         animation: dragY > 0 ? "none" : undefined,
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-        transition: dragging ? "none" : "transform 0.7s cubic-bezier(0.32, 0.72, 0, 1)",
+        transition: dragging ? "none" : "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
         overflow:"hidden",
       }}>
 

@@ -23,7 +23,7 @@ export function Toast({ message, type = "error", duration = 4000, onDismiss }) {
     <div style={{
       position:"fixed", top:"calc(var(--sat, 44px) + 52px)", left:12, right:12,
       zIndex:"var(--z-install)", pointerEvents:"auto",
-      animation: leaving ? "toastOut 0.7s ease forwards" : "toastIn 0.7s ease",
+      animation: leaving ? "toastOut 0.5s ease forwards" : "toastIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
     }}>
       <div onClick={() => { setLeaving(true); setTimeout(() => { setVisible(false); onDismiss?.(); }, 700); }}
         style={{

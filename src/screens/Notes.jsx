@@ -71,7 +71,7 @@ function SwipeableRow({ children, onDelete }) {
       </div>
       {/* Content */}
       <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.5s ease", position:"relative", zIndex:1 }}>
+        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", position:"relative", zIndex:1 }}>
         {children}
       </div>
     </div>

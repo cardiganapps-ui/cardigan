@@ -104,7 +104,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     // Fully open or animating closed
     translateX = dragOffset; // 0 when static, -PANEL_WIDTH when animating close
     overlayOpacity = dragOffset === 0 ? 1 : 0;
-    transition = `transform 0.7s cubic-bezier(0.32, 0.72, 0, 1)`;
+    transition = `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)`;
     visible = true;
   } else if (swipeProgress > 0) {
     // Edge swipe opening — follow finger
@@ -116,7 +116,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     // Fully closed
     translateX = -PANEL_WIDTH;
     overlayOpacity = 0;
-    transition = `transform 0.7s cubic-bezier(0.32, 0.72, 0, 1)`;
+    transition = `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)`;
     visible = false;
   }
 

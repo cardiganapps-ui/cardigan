@@ -274,8 +274,8 @@ function AppShell({ user, signOut, demo, theme }) {
           <div style={{
             flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
             transition: direction ? "none" : undefined,
-            animation: direction === "left" ? "screenSlideLeft 0.6s cubic-bezier(0.32, 0.72, 0, 1)" :
-                       direction === "right" ? "screenSlideRight 0.6s cubic-bezier(0.32, 0.72, 0, 1)" : undefined,
+            animation: direction === "left" ? "screenSlideLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" :
+                       direction === "right" ? "screenSlideRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : undefined,
           }}>
             {screenMap[screen]}
           </div>

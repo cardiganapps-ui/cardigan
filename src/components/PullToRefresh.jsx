@@ -74,7 +74,7 @@ export function PullToRefresh({ onRefresh, children }) {
           display: "flex", justifyContent: "center", alignItems: "center",
           height: refreshing ? THRESHOLD : pullY,
           minHeight: refreshing ? THRESHOLD : 0,
-          transition: (refreshing || releasing) ? "height 0.7s cubic-bezier(0.32, 0.72, 0, 1), min-height 0.7s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
+          transition: (refreshing || releasing) ? "height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), min-height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
           flexShrink: 0, overflow: "hidden",
         }}>
           <div style={{
@@ -82,7 +82,7 @@ export function PullToRefresh({ onRefresh, children }) {
             transform: refreshing
               ? "scale(1)"
               : `scale(${0.5 + progress * 0.5}) rotate(${progress * 270}deg)`,
-            transition: releasing ? "opacity 0.5s ease, transform 0.7s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
+            transition: releasing ? "opacity 0.5s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
           }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{
               display: "block",
