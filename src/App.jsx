@@ -20,8 +20,7 @@ import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
 import { Finances } from "./screens/Finances";
-import { Notes } from "./screens/Notes";
-import { Documents } from "./screens/Documents";
+import { Archivo } from "./screens/Archivo";
 import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
@@ -132,7 +131,7 @@ function AppShell({ user, signOut, demo, theme }) {
 
     const onTouchStart = (e) => {
       if (drawerOpenRef.current) return;
-      if (e.touches[0].clientX < 20) {
+      if (e.touches[0].clientX < 28) {
         edgeRef.current = {
           startX: e.touches[0].clientX,
           startY: e.touches[0].clientY,
@@ -210,8 +209,7 @@ function AppShell({ user, signOut, demo, theme }) {
     agenda: <Agenda />,
     patients: <Patients />,
     finances: <Finances />,
-    notes: <Notes />,
-    documents: <Documents />,
+    archivo: <Archivo />,
     settings: <Settings user={user} signOut={signOut} />,
   };
 

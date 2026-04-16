@@ -84,8 +84,8 @@ export function getNextTutorSession(sessions, patientId) {
  * Compute tutor reminders for all eligible patients.
  * Returns an array of { patient, lastTutorSession, nextTutorSession, daysSince, daysUntilDue, frequencyWeeks }
  * sorted by most overdue first. Surfaces patients who are overdue, due within
- * the coming two weeks, or have never had a tutor session — so the user gets
- * ~1 week of early warning before the ideal cadence slips.
+ * the coming week, or have never had a tutor session — only shows reminders
+ * 1 week before the ideal date (or already overdue).
  */
 export function getTutorReminders(patients, sessions) {
   const today = todayISO();

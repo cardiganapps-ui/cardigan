@@ -74,8 +74,8 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     dragRef.current = null;
     setDragging(false);
 
-    // Close if dragged far enough or fast enough
-    if (dx < -CLOSE_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+    // Close if dragged far enough left or fast enough leftward
+    if (dx < -CLOSE_THRESHOLD || (dx < -10 && velocity > VELOCITY_THRESHOLD)) {
       setDragOffset(-PANEL_WIDTH);
       setTimeout(() => { setDragOffset(0); onClose(); }, 280);
     } else {
@@ -149,7 +149,9 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
           style={{ transform: `translateX(${translateX}px)`, transition }}>
           <div className="drawer-header">
             <div className="drawer-logo"><LogoIcon size={24} color="var(--teal-light)" /><span>cardigan</span></div>
-            <div className="drawer-user">
+            <div className="drawer-user" role="button" tabIndex={0}
+              onClick={() => handleNav("settings")}
+              style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
               <div className="drawer-avatar">{userInitial}</div>
               <div>
                 <div className="drawer-user-name">{userName}</div>

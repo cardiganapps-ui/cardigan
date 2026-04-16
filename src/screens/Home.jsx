@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconClipboard, IconX, IconPlus } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
@@ -10,6 +10,28 @@ import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 
+/* ── Compute next working day for the "Mañana" carousel panel ── */
+function getNextDay(today, sessions) {
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // On Friday (day 5), check if Sat/Sun have sessions. If not, skip to Monday.
+  if (today.getDay() === 5) {
+    const sat = new Date(today); sat.setDate(sat.getDate() + 1);
+    const sun = new Date(today); sun.setDate(sun.getDate() + 2);
+    const satStr = formatShortDate(sat);
+    const sunStr = formatShortDate(sun);
+    const hasSatSessions = sessions.some(s => s.date === satStr);
+    const hasSunSessions = sessions.some(s => s.date === sunStr);
+    if (!hasSatSessions && !hasSunSessions) {
+      const monday = new Date(today);
+      monday.setDate(monday.getDate() + 3);
+      return monday;
+    }
+  }
+  return tomorrow;
+}
+
 export function Home({ setScreen, userName }) {
   const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, readOnly, mutating, setAgendaView } = useCardigan();
   const { t, strings } = useT();
@@ -19,6 +41,69 @@ export function Home({ setScreen, userName }) {
   const totalOwed     = patients.reduce((s,p) => s + p.amountDue, 0);
   const activeCount   = patients.filter(p=>p.status==="active").length;
   const todaySessions = upcomingSessions.filter(s => s.date === todayStr).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+  // Next-day carousel data
+  const nextDay = useMemo(() => getNextDay(TODAY, upcomingSessions), [upcomingSessions]);
+  const nextDayStr = formatShortDate(nextDay);
+  const nextDayName = DAY_ORDER[(nextDay.getDay() + 6) % 7];
+  const nextDaySessions = useMemo(() =>
+    upcomingSessions.filter(s => s.date === nextDayStr).sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+    [upcomingSessions, nextDayStr]
+  );
+  // Label: "Mañana" if it's actually tomorrow, otherwise the day name
+  const diffDays = Math.round((nextDay - TODAY) / 86400000);
+  const nextDayLabel = diffDays === 1 ? "Mañana" : nextDayName;
+
+  // Carousel swipe state
+  const [carouselPage, setCarouselPage] = useState(0); // 0 = today, 1 = next day
+  const carouselRef = useRef(null);
+  const [carouselOffset, setCarouselOffset] = useState(0);
+  const [carouselSwiping, setCarouselSwiping] = useState(false);
+  const [carouselSettling, setCarouselSettling] = useState(false);
+
+  const onCarouselTouchStart = useCallback((e) => {
+    if (e.touches[0].clientX < 30) return;
+    carouselRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
+  }, []);
+
+  const onCarouselTouchMove = useCallback((e) => {
+    if (!carouselRef.current) return;
+    const dx = e.touches[0].clientX - carouselRef.current.x;
+    const dy = e.touches[0].clientY - carouselRef.current.y;
+    if (!carouselRef.current.active) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        carouselRef.current.active = true;
+        setCarouselSwiping(true);
+      } else if (Math.abs(dy) > 10) {
+        carouselRef.current = null;
+        return;
+      } else return;
+    }
+    if (carouselRef.current.active) setCarouselOffset(dx);
+  }, []);
+
+  const onCarouselTouchEnd = useCallback((e) => {
+    if (!carouselRef.current?.active) { carouselRef.current = null; return; }
+    const dx = e.changedTouches[0].clientX - carouselRef.current.x;
+    carouselRef.current = null;
+    setCarouselSwiping(false);
+
+    const triggered = Math.abs(dx) > 60;
+    if (triggered) {
+      setCarouselSettling(true);
+      if (dx < -60 && carouselPage === 0) {
+        setCarouselPage(1);
+      } else if (dx > 60 && carouselPage === 1) {
+        setCarouselPage(0);
+      }
+      setCarouselOffset(0);
+      setTimeout(() => setCarouselSettling(false), 500);
+    } else {
+      setCarouselSettling(true);
+      setCarouselOffset(0);
+      setTimeout(() => setCarouselSettling(false), 300);
+    }
+  }, [carouselPage]);
 
   const currentMonthPayments = payments.filter(p => {
     if (p.created_at) {
@@ -48,6 +133,42 @@ export function Home({ setScreen, userName }) {
       {action && <div style={{ marginTop:8 }}>{action}</div>}
     </div>
   );
+
+  const renderSessionRow = (s) => {
+    const tutor = isTutorSession(s);
+    const isVirtual = s.modality === "virtual";
+    const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
+    return (
+      <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
+        <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
+        <div className="row-content">
+          <div className="row-title">
+            {s.patient}
+            {tutor && <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+          </div>
+          <div className="row-sub">
+            {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
+            <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
+              {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
+            </span>
+          </div>
+        </div>
+        <div className="row-right">
+          <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Carousel transform
+  const baseShift = -carouselPage * 100;
+  const dragPx = carouselSwiping ? carouselOffset : 0;
+  const carouselTransform = `translateX(calc(${baseShift}% + ${dragPx}px))`;
+  const carouselTransition = carouselSwiping
+    ? "none"
+    : carouselSettling || carouselPage !== 0
+      ? "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
+      : "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)";
 
   return (
     <div className="page">
@@ -91,40 +212,63 @@ export function Home({ setScreen, userName }) {
       <div className="home-columns">
       <div className="section home-col-main">
         <div className="section-header">
-          <span className="section-title">{t("sessions.today")} — {todayDayName} {todayStr}</span>
+          <span className="section-title" style={{ transition:"opacity 0.3s" }}>
+            {carouselPage === 0
+              ? <>{t("sessions.today")} — {todayDayName} {todayStr}</>
+              : <>{nextDayLabel} — {nextDayName} {nextDayStr}</>
+            }
+          </span>
           <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
         </div>
-        <div className="card">
-          {todaySessions.length === 0
-            ? emptyHint(t("home.emptyToday"),
-                <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
-              )
-            : todaySessions.map(s => {
-              const tutor = isTutorSession(s);
-              const isVirtual = s.modality === "virtual";
-              const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
-              return (
-              <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
-                <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
-                <div className="row-content">
-                  <div className="row-title">
-                    {s.patient}
-                    {tutor && <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
-                  </div>
-                  <div className="row-sub">
-                    {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
-                    <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
-                      {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
-                    </span>
-                  </div>
-                </div>
-                <div className="row-right">
-                  <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
-                </div>
+
+        {/* Carousel container */}
+        <div style={{ overflow: "hidden", borderRadius: "var(--radius-lg)", touchAction: "pan-y" }}
+          onTouchStart={onCarouselTouchStart} onTouchMove={onCarouselTouchMove} onTouchEnd={onCarouselTouchEnd}>
+          <div style={{
+            display: "flex", width: "200%",
+            transform: carouselTransform,
+            transition: carouselTransition,
+            willChange: carouselSwiping || carouselSettling ? "transform" : undefined,
+          }}>
+            {/* Panel 1: Today */}
+            <div style={{ width: "50%", flexShrink: 0 }}>
+              <div className="card" style={{ borderRadius: 0 }}>
+                {todaySessions.length === 0
+                  ? emptyHint(t("home.emptyToday"),
+                      <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+                    )
+                  : todaySessions.map(renderSessionRow)
+                }
               </div>
-              );
-            })
-          }
+            </div>
+            {/* Panel 2: Next day */}
+            <div style={{ width: "50%", flexShrink: 0 }}>
+              <div className="card" style={{ borderRadius: 0 }}>
+                {nextDaySessions.length === 0
+                  ? emptyHint(`${t("sessions.freeDay")} — ${nextDayLabel.toLowerCase()}`,
+                      <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+                    )
+                  : nextDaySessions.map(renderSessionRow)
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Carousel dots + hint */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px 0 2px" }}>
+          <button onClick={() => setCarouselPage(0)} aria-label={t("sessions.today")}
+            style={{ width:7, height:7, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
+              background: carouselPage === 0 ? "var(--teal)" : "var(--cream-deeper)",
+              transition:"all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transform: carouselPage === 0 ? "scale(1)" : "scale(0.8)",
+            }} />
+          <button onClick={() => setCarouselPage(1)} aria-label={nextDayLabel}
+            style={{ width:7, height:7, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
+              background: carouselPage === 1 ? "var(--teal)" : "var(--cream-deeper)",
+              transition:"all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transform: carouselPage === 1 ? "scale(1)" : "scale(0.8)",
+            }} />
         </div>
       </div>
 
@@ -215,7 +359,7 @@ export function Home({ setScreen, userName }) {
       <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
         <div className="section-header">
           <span className="section-title">{t("home.recentNotes")}</span>
-          <button className="see-all" onClick={() => setScreen("notes")}>{t("home.seeAll")}</button>
+          <button className="see-all" onClick={() => setScreen("archivo")}>{t("home.seeAll")}</button>
         </div>
         <div className="card">
           {(notes || []).length === 0

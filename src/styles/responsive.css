@@ -228,7 +228,7 @@
 }
 /* ── PWA Standalone: tighter bottom spacing (no Safari bar) ── */
 @media (display-mode: standalone) {
-  .fab      { bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
-  .fab-menu { bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
-  .bug-fab  { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+  .fab      { bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
+  .fab-menu { bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); }
+  .bug-fab  { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
 }

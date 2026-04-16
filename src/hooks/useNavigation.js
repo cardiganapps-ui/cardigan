@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const VALID_SCREENS = ["home", "agenda", "patients", "notes", "documents", "finances", "settings"];
-const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, notes: 3, documents: 4, finances: 5, settings: 6 };
+const VALID_SCREENS = ["home", "agenda", "patients", "finances", "archivo", "settings"];
+const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, finances: 3, archivo: 4, settings: 5 };
 
 function getHashScreen() {
   const hash = window.location.hash.replace("#", "").split("?")[0];

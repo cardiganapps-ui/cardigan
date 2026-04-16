@@ -181,6 +181,23 @@ html, body {
   100% { opacity: 1; transform: translateX(0); }
 }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
+@keyframes ptr-breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.15) rotate(180deg); opacity: 0.7; }
+}
+@keyframes ptr-check-in {
+  0% { transform: scale(0) rotate(-90deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes ptr-check-draw {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes ptr-text-in {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
 
 /* Expediente panel: mobile base (fullscreen bottom-up) */
 .expediente-desktop-panel {

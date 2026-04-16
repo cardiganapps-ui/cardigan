@@ -13,9 +13,8 @@ export const navItems = [
   { id:"home",      label:"Inicio",      iconId:"home",      section:"principal" },
   { id:"agenda",    label:"Agenda",      iconId:"calendar",  section:"principal" },
   { id:"patients",  label:"Pacientes",   iconId:"users",     section:"principal" },
-  { id:"notes",     label:"Notas",       iconId:"clipboard", section:"principal" },
-  { id:"documents", label:"Documentos",  iconId:"document",  section:"principal" },
   { id:"finances",  label:"Finanzas",    iconId:"dollar",    section:"principal" },
+  { id:"archivo",   label:"Archivo",     iconId:"clipboard", section:"principal" },
   { id:"settings",  label:"Ajustes",    iconId:"settings", section:"cuenta"    },
 ];
 

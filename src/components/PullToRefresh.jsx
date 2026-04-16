@@ -1,15 +1,16 @@
 import { useRef, useState, useCallback } from "react";
+import { LogoIcon } from "./LogoMark";
 
 export function PullToRefresh({ onRefresh, children }) {
   const wrapRef = useRef(null);
   const touchRef = useRef(null);
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  // Track release so we can animate the collapse smoothly
   const [releasing, setReleasing] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const THRESHOLD = 56;
-  const MAX_PULL = 120;
+  const THRESHOLD = 64;
+  const MAX_PULL = 130;
 
   const isAtTop = () => {
     const page = wrapRef.current?.querySelector(".page");
@@ -31,7 +32,6 @@ export function PullToRefresh({ onRefresh, children }) {
       else return;
     }
     if (touchRef.current.active && dy > 0) {
-      // Rubber-band dampening: slows down as you pull further
       const ratio = 1 - Math.min(dy / 600, 0.7);
       setPullY(Math.min(MAX_PULL, dy * ratio * 0.5));
     }
@@ -44,69 +44,88 @@ export function PullToRefresh({ onRefresh, children }) {
       setRefreshing(true);
       setPullY(THRESHOLD);
       try { await onRefresh(); } finally {
+        setDone(true);
         setRefreshing(false);
-        setReleasing(true);
-        setPullY(0);
-        setTimeout(() => setReleasing(false), 300);
+        setTimeout(() => {
+          setReleasing(true);
+          setPullY(0);
+          setTimeout(() => {
+            setReleasing(false);
+            setDone(false);
+          }, 500);
+        }, 600);
       }
     } else {
       setReleasing(true);
       setPullY(0);
-      setTimeout(() => setReleasing(false), 300);
+      setTimeout(() => setReleasing(false), 400);
     }
   }, [pullY, onRefresh]);
 
-  // Progress 0..1 based on pull distance toward threshold
   const progress = Math.min(1, pullY / THRESHOLD);
-  const show = pullY > 0 || refreshing || releasing;
-
-  // Spinner sizing
-  const size = 22;
-  const stroke = 2.5;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
+  const show = pullY > 0 || refreshing || releasing || done;
 
   return (
     <div ref={wrapRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       {show && (
-        <div style={{
+        <div className="ptr-container" style={{
           display: "flex", justifyContent: "center", alignItems: "center",
-          height: refreshing ? THRESHOLD : pullY,
-          minHeight: refreshing ? THRESHOLD : 0,
-          transition: (refreshing || releasing) ? "height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), min-height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+          flexDirection: "column", gap: 6,
+          height: refreshing || done ? THRESHOLD : pullY,
+          minHeight: refreshing || done ? THRESHOLD : 0,
+          transition: (refreshing || releasing || done) ? "height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), min-height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
           flexShrink: 0, overflow: "hidden",
         }}>
           <div style={{
-            opacity: refreshing ? 1 : Math.min(1, progress * 1.5),
-            transform: refreshing
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            opacity: done ? 1 : refreshing ? 1 : Math.min(1, progress * 1.5),
+            transform: done
               ? "scale(1)"
-              : `scale(${0.5 + progress * 0.5}) rotate(${progress * 270}deg)`,
-            transition: releasing ? "opacity 0.5s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+              : refreshing
+                ? "scale(1)"
+                : `scale(${0.3 + progress * 0.7}) rotate(${progress * 180}deg)`,
+            transition: (releasing || done)
+              ? "opacity 0.6s ease, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)"
+              : "none",
           }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{
-              display: "block",
-              animation: refreshing ? "ptr-spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite" : "none",
-            }}>
-              <circle cx={size / 2} cy={size / 2} r={r}
-                fill="none"
-                stroke="var(--cream-deeper)"
-                strokeWidth={stroke}
-              />
-              <circle cx={size / 2} cy={size / 2} r={r}
-                fill="none"
-                stroke="var(--teal)"
-                strokeWidth={stroke}
-                strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={refreshing ? circ * 0.25 : circ * (1 - progress * 0.75)}
-                style={{
-                  transition: refreshing ? "stroke-dashoffset 0.7s ease" : "none",
-                  transformOrigin: "center",
-                }}
-              />
-            </svg>
+            {done ? (
+              /* Success checkmark */
+              <svg width={24} height={24} viewBox="0 0 24 24" fill="none" style={{
+                animation: "ptr-check-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              }}>
+                <circle cx={12} cy={12} r={11} stroke="var(--green)" strokeWidth={2} fill="var(--green-bg)" />
+                <path d="M7 12.5L10.5 16L17 9" stroke="var(--green)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+                  style={{ strokeDasharray: 20, strokeDashoffset: 0, animation: "ptr-check-draw 0.4s ease 0.1s both" }} />
+              </svg>
+            ) : (
+              /* Logo spinner */
+              <div style={{
+                width: 28, height: 28,
+                animation: refreshing ? "ptr-breathe 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite" : "none",
+              }}>
+                <LogoIcon size={28} color={refreshing ? "var(--teal)" : `rgba(91, 155, 175, ${0.3 + progress * 0.7})`} />
+              </div>
+            )}
           </div>
+          {done && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: "var(--green)",
+              fontFamily: "var(--font-d)", letterSpacing: "0.02em",
+              animation: "ptr-text-in 0.4s ease 0.15s both",
+            }}>
+              Actualizado
+            </span>
+          )}
+          {refreshing && (
+            <span style={{
+              fontSize: 10, fontWeight: 600, color: "var(--charcoal-xl)",
+              fontFamily: "var(--font)",
+              animation: "ptr-text-in 0.4s ease both",
+            }}>
+              Actualizando...
+            </span>
+          )}
         </div>
       )}
       {children}

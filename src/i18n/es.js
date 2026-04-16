@@ -44,6 +44,7 @@ export default {
     dueThisWeek: "Esta semana",
     dueNextWeek: "Próxima semana",
     scheduledBadge: "Ya agendada",
+    tomorrow: "Mañana",
     recentNotes: "Notas recientes",
     emptyNotes: "Las notas aparecer\u00e1n aqu\u00ed.",
     totalSessions: "Total sesiones",
@@ -64,6 +65,7 @@ export default {
     finances: "Finanzas",
     notes: "Notas",
     documents: "Documentos",
+    archivo: "Archivo",
     settings: "Ajustes",
     principal: "Principal",
     account: "Cuenta",
@@ -610,6 +612,11 @@ export default {
     ],
     documents: [
       "Vincula un documento a una sesi\u00f3n para verlo en su detalle.",
+      "M\u00e1ximo 10 MB por archivo. Acepta im\u00e1genes, PDF y Word.",
+    ],
+    archivo: [
+      "Se guardan solitas cuando dejas de escribir.",
+      "Desliza a la izquierda sobre una nota para borrarla.",
       "M\u00e1ximo 10 MB por archivo. Acepta im\u00e1genes, PDF y Word.",
     ],
     // Settings screen is self-explanatory — empty array hides the ? button.
