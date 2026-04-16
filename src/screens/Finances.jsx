@@ -212,19 +212,17 @@ function ProyeccionTab({ sessions, patients }) {
     ? Math.round(gross / futureSessions.length)
     : 0;
 
-  // Breakdown by patient
-  const byPatient = useMemo(() => {
-    const map = {};
-    for (const s of futureSessions) {
-      const rate = sessionRate(s);
-      if (!map[s.patient]) map[s.patient] = { count: 0, total: 0, colorIdx: s.colorIdx ?? s.color_idx, initials: s.initials };
-      map[s.patient].count++;
-      map[s.patient].total += rate;
-    }
-    return Object.entries(map)
-      .map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => b.total - a.total);
-  }, [futureSessions, patientMap]);
+  // Breakdown by patient (plain computation — trivial cost, always fresh)
+  const byPatientMap = {};
+  for (const s of futureSessions) {
+    const rate = sessionRate(s);
+    if (!byPatientMap[s.patient]) byPatientMap[s.patient] = { count: 0, total: 0, colorIdx: s.colorIdx ?? s.color_idx, initials: s.initials };
+    byPatientMap[s.patient].count++;
+    byPatientMap[s.patient].total += rate;
+  }
+  const byPatient = Object.entries(byPatientMap)
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.total - a.total);
 
   // Active patients contributing
   const activeContributing = new Set(futureSessions.map(s => s.patient_id)).size;
