@@ -7,7 +7,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating } = useCardigan();
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating, openExpediente } = useCardigan();
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | name
@@ -103,6 +103,7 @@ export function Documents() {
         patientName={(patients || []).find(pt => pt.id === viewingDoc.doc.patient_id)?.name}
         linkedSession={viewingDoc.doc.session_id ? (upcomingSessions || []).find(s => s.id === viewingDoc.doc.session_id) : null}
         onClose={() => setViewingDoc(null)}
+        onPatientClick={(() => { const p = (patients || []).find(pt => pt.id === viewingDoc.doc.patient_id); return p ? () => { setViewingDoc(null); openExpediente(p); } : undefined; })()}
       />
     )}
     <div className="page" style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
@@ -203,6 +204,7 @@ export function Documents() {
         sessions={upcomingSessions}
         patients={patients}
         showPatientName
+        onPatientClick={openExpediente}
         onOpen={openDocViewer}
         onRename={renameDocument}
         onTag={tagDocumentSession}

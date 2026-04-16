@@ -6,7 +6,7 @@ import { useT } from "../i18n/index";
 export function DocumentList({
   documents, sessions, patients,
   onOpen, onRename, onTag, onDelete,
-  emptyMessage, showPatientName,
+  emptyMessage, showPatientName, onPatientClick,
   variant = "list", // "list" (single card with dividers) | "cards" (individual cards with gaps)
 }) {
   const { t } = useT();
@@ -87,7 +87,8 @@ export function DocumentList({
                       {doc.name}
                     </div>
                     <div style={{ fontSize:10, color:"var(--charcoal-xl)", marginTop:2 }}>
-                      {p && <span style={{ fontWeight:600 }}>{p.name} · </span>}
+                      {p && <span style={{ fontWeight:600, cursor: onPatientClick ? "pointer" : undefined, color: onPatientClick ? "var(--teal-dark)" : undefined }}
+                        onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(p); } : undefined}>{p.name} · </span>}
                       {formatFileSize(doc.file_size)}
                       {doc.created_at && ` · ${new Date(doc.created_at).toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`}
                     </div>

@@ -441,7 +441,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
   );
 }
 
-export function NoteCard({ note, onClick, patientName, sessionLabel }) {
+export function NoteCard({ note, onClick, patientName, sessionLabel, onPatientClick }) {
   const { t } = useT();
   const preview = note.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 100) || t("notes.noContent");
   const timeAgo = relativeTime(note.updated_at);
@@ -461,7 +461,14 @@ export function NoteCard({ note, onClick, patientName, sessionLabel }) {
       </div>
       <div style={{ fontSize:12, color: hasLink ? "var(--teal-dark)" : "var(--charcoal-lt)", lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight: hasLink ? 600 : 400 }}>
         {hasLink
-          ? [patientName && `${t("sessions.patient")}: ${patientName}`, sessionLabel && `${t("sessions.session")}: ${sessionLabel}`].filter(Boolean).join(" | ")
+          ? <>
+              {patientName && <span onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(); } : undefined}
+                style={onPatientClick ? { cursor:"pointer", textDecoration:"underline", textDecorationColor:"var(--teal-light)", textUnderlineOffset:2 } : undefined}>
+                {t("sessions.patient")}: {patientName}
+              </span>}
+              {patientName && sessionLabel && " | "}
+              {sessionLabel && `${t("sessions.session")}: ${sessionLabel}`}
+            </>
           : preview}
       </div>
     </div>

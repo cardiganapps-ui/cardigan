@@ -79,7 +79,7 @@ function SwipeableRow({ children, onDelete }) {
 }
 
 export function Notes() {
-  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes } = useCardigan();
+  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente } = useCardigan();
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
@@ -299,7 +299,8 @@ export function Notes() {
                       onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}
                       onTouchCancel={cancelLongPress}>
                       <NoteCard note={n} onClick={() => handleNoteClick(n)}
-                        patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null} />
+                        patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null}
+                        onPatientClick={p ? () => openExpediente(p) : undefined} />
                     </div>
                   </div>
                   {isLongPressing && <div className="note-longpress-progress" aria-hidden="true" />}

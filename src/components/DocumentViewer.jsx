@@ -2,7 +2,7 @@ import { IconChevron } from "./Icons";
 import { getFileIcon, formatFileSize, isImageDoc, isPdfDoc } from "../utils/files";
 import { useT } from "../i18n/index";
 
-export function DocumentViewer({ doc, url, patientName, linkedSession, onClose }) {
+export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, onPatientClick }) {
   const { t } = useT();
   const isImage = isImageDoc(doc);
   const isPdf = isPdfDoc(doc);
@@ -29,7 +29,9 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose }
                 {doc.name}
               </div>
               <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:1 }}>
-                {patientName && `${patientName} · `}{formatFileSize(doc.file_size)}
+                {patientName && <span onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(); } : undefined}
+                  style={onPatientClick ? { cursor:"pointer", color:"var(--teal-dark)", fontWeight:600 } : undefined}>{patientName}</span>}
+                {patientName && " · "}{formatFileSize(doc.file_size)}
                 {linkedSession && ` · ${t("sessions.session")} ${linkedSession.date}`}
               </div>
             </div>
