@@ -18,9 +18,13 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
   // Compute date-from based on period selection
   const getDateFrom = (p) => {
     if (p === "all") return null;
-    const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
     const d = new Date();
-    d.setMonth(d.getMonth() - (months[p] || 0));
+    if (p === "1w") {
+      d.setDate(d.getDate() - 7);
+    } else {
+      const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
+      d.setMonth(d.getMonth() - (months[p] || 0));
+    }
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   };
 
@@ -122,10 +126,9 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
           style={{ marginBottom: 8 }}
           items={[
             { k: "all", l: t("periods.all") },
+            { k: "1w",  l: t("periods.1w") },
             { k: "1m",  l: t("periods.1m") },
             { k: "3m",  l: t("periods.3m") },
-            { k: "6m",  l: t("periods.6m") },
-            { k: "1y",  l: t("periods.1y") },
           ]}
         />
         <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8 }}>
