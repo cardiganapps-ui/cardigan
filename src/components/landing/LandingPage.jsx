@@ -41,7 +41,7 @@ function FeatureCard({ title, desc }) {
 }
 
 /* ── Landing page ──────────────────────────────────────────────────── */
-export function LandingPage({ onPrimary, onSecondary, onLogin }) {
+export function LandingPage({ onPrimary, onSecondary, onLogin, onShowTerms }) {
   return (
     <div className="lp-root">
       {/* Nav */}
@@ -183,6 +183,9 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             <span>cardigan</span>
           </div>
           <div className="lp-footer-tag">Gestión de consultorio, simplificada.</div>
+          <button type="button" className="lp-footer-link" onClick={onShowTerms}>
+            Términos y Condiciones
+          </button>
         </div>
       </footer>
     </div>

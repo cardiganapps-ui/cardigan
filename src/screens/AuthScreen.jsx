@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
+import { TermsPage } from "../components/landing/TermsPage";
 import { IconX } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -115,9 +116,14 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
   const { t } = useT();
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("signup");
-  useEscape(showAuth ? () => setShowAuth(false) : null);
+  const [showTerms, setShowTerms] = useState(false);
+  useEscape(showAuth ? () => setShowAuth(false) : showTerms ? () => setShowTerms(false) : null);
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
+
+  if (showTerms) {
+    return <TermsPage onBack={() => setShowTerms(false)} />;
+  }
 
   return (
     <>
@@ -125,6 +131,7 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
         onPrimary={() => openAuth("signup")}
         onSecondary={onDemo}
         onLogin={() => openAuth("login")}
+        onShowTerms={() => setShowTerms(true)}
       />
 
       {showAuth && (

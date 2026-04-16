@@ -268,6 +268,81 @@
   color: var(--charcoal-xl);
   text-align: center;
 }
+.lp-footer-link {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin-top: 2px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--charcoal-md);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.4s ease;
+}
+.lp-footer-link:hover { color: var(--charcoal); }
+
+/* Legal pages (Terms & Conditions) — readable long-form typography,
+   same container width as the marketing landing. */
+.lp-legal {
+  max-width: 720px;
+  margin: 0 auto;
+  color: var(--charcoal-md);
+}
+.lp-legal-title {
+  font-family: var(--font-d);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--charcoal);
+  margin: 0 0 10px;
+}
+.lp-legal-meta {
+  font-size: 14px;
+  color: var(--charcoal-xl);
+  margin: 0 0 36px;
+}
+.lp-legal-h2 {
+  font-family: var(--font-d);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.01em;
+  margin: 36px 0 12px;
+}
+.lp-legal-p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+.lp-legal-list {
+  margin: 0 0 16px;
+  padding-left: 22px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+.lp-legal-list li { margin-bottom: 8px; }
+.lp-legal-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  color: var(--charcoal);
+  word-break: break-all;
+}
+.lp-legal-footer {
+  margin-top: 48px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border-lt);
+}
+
+@media (max-width: 640px) {
+  .lp-legal-title { font-size: 30px; }
+  .lp-legal-h2 { font-size: 18px; margin-top: 28px; }
+  .lp-legal-p, .lp-legal-list { font-size: 15px; }
+}
 
 /* Buttons — rounded, medium weight, minimal */
 .lp-btn {
