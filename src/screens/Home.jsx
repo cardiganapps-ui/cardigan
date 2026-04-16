@@ -258,13 +258,13 @@ export function Home({ setScreen, userName }) {
         {/* Carousel dots + hint */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px 0 2px" }}>
           <button onClick={() => setCarouselPage(0)} aria-label={t("sessions.today")}
-            style={{ width:7, height:7, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
+            style={{ width:7, height:7, minHeight:0, minWidth:0, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
               background: carouselPage === 0 ? "var(--teal)" : "var(--cream-deeper)",
               transition:"all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
               transform: carouselPage === 0 ? "scale(1)" : "scale(0.8)",
             }} />
           <button onClick={() => setCarouselPage(1)} aria-label={nextDayLabel}
-            style={{ width:7, height:7, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
+            style={{ width:7, height:7, minHeight:0, minWidth:0, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
               background: carouselPage === 1 ? "var(--teal)" : "var(--cream-deeper)",
               transition:"all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
               transform: carouselPage === 1 ? "scale(1)" : "scale(0.8)",
