@@ -88,6 +88,7 @@ function AppShell({ user, signOut, demo, theme }) {
   const [editingPayment, setEditingPayment] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
   const pendingAgendaViewRef = useRef(null);
+  const pendingExpedienteRef = useRef(null);
 
   const tutorial = useTutorial({ user, demo, readOnly });
 
@@ -198,6 +199,8 @@ function AppShell({ user, signOut, demo, theme }) {
     screen, drawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
+    openExpediente: (patient) => { pendingExpedienteRef.current = patient; setScreen("patients"); },
+    consumeExpediente: () => { const p = pendingExpedienteRef.current; pendingExpedienteRef.current = null; return p; },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
   }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial, theme, setSuccessMsg]);

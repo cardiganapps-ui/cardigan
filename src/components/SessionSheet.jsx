@@ -7,9 +7,11 @@ import { IconX, IconTrash } from "./Icons";
 import { Avatar } from "./Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useCardigan } from "../context/CardiganContext";
 
 export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onOpenNote, onAttachDocument, mutating }) {
   const { t } = useT();
+  const { openExpediente } = useCardigan();
   useEscape(session ? onClose : null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
@@ -85,14 +87,17 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
         </div>
         <div style={{ padding:"0 20px 20px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20, position:"relative" }}>
-            <Avatar initials={displayInitials}
-              color={isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
-            <div style={{ flex:1 }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
-                {session.patient}
-                {isTutor && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+            <div style={{ display:"flex", alignItems:"center", gap:"inherit", flex:1, minWidth:0, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
+              onClick={() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { onClose(); openExpediente(p); } }}>
+              <Avatar initials={displayInitials}
+                color={isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
+                  {session.patient}
+                  {isTutor && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+                </div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
               </div>
-              <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
             </div>
             <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}
               style={{ width:30, height:30, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0, minHeight:"unset", flexShrink:0 }}>

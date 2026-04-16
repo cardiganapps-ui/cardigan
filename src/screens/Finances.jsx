@@ -142,7 +142,7 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
 }
 
 export function Finances() {
-  const { patients, payments, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating } = useCardigan();
+  const { patients, payments, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
   const [balanceFilter, setBalanceFilter] = useState(null); // null | "owing" | "paid"
@@ -206,7 +206,9 @@ export function Finances() {
               <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
               <div className="card">
                 {patients.filter(p=>p.amountDue<=0).map((p,i) => (
-                  <div className="bal-row" key={p.id}>
+                  <div className="bal-row" key={p.id} role="button" tabIndex={0}
+                    onClick={() => openExpediente(p)}
+                    style={{ cursor:"pointer" }}>
                     <Avatar initials={p.initials} color={getClientColor(i + 4)} size="sm" />
                     <div style={{ flex:1 }}>
                       <div className="bal-name">{p.name}</div>

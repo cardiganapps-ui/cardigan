@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash } from "../components/Icons";
@@ -40,7 +40,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente } = useCardigan();
   const { t, strings } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
@@ -79,6 +79,15 @@ export function Patients() {
     setExpediente(p);
     setHideFab?.(true);
   };
+
+  // Open expediente when navigated from another screen
+  useEffect(() => {
+    const pending = consumeExpediente?.();
+    if (pending) {
+      const match = patients.find(p => p.id === pending.id) || pending;
+      openDetail(match);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startEdit = () => {
     const recentSess = upcomingSessions.find(s => s.patient_id === selected.id && s.day === selected.day && s.time === selected.time);
