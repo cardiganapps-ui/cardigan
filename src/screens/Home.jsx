@@ -215,7 +215,9 @@ export function Home({ setScreen, userName }) {
           <span className="section-title" style={{ transition:"opacity 0.3s" }}>
             {carouselPage === 0
               ? <>{t("sessions.today")} — {todayDayName} {todayStr}</>
-              : <>{nextDayLabel} — {nextDayName} {nextDayStr}</>
+              : nextDayLabel === nextDayName
+                ? <>{nextDayName} {nextDayStr}</>
+                : <>{nextDayLabel} — {nextDayName} {nextDayStr}</>
             }
           </span>
           <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
