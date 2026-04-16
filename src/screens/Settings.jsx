@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone } from "../components/Icons";
+import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell } from "../components/Icons";
+import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -8,7 +9,7 @@ import { useCardigan } from "../context/CardiganContext";
 
 export function Settings({ user, signOut }) {
   const { t } = useT();
-  const { tutorial, navigate, theme } = useCardigan();
+  const { tutorial, navigate, theme, notifications } = useCardigan();
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -93,6 +94,54 @@ export function Settings({ user, signOut }) {
         </div>
       </div>
 
+      {notifications?.supported && (
+        <>
+          <div className="settings-label">{t("settings.notificationsSection")}</div>
+          <div className="card" style={{ margin:"0 16px" }}>
+            <div className="settings-row">
+              <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconBell size={18} /></div>
+              <div style={{ flex:1 }}>
+                <div className="settings-row-title">{t("notifications.sessionReminders")}</div>
+                <div className="settings-row-sub">
+                  {notifications.needsInstall
+                    ? t("notifications.installRequired")
+                    : notifications.permission === "denied"
+                    ? t("notifications.permissionDenied")
+                    : notifications.enabled
+                    ? t("notifications.enabled")
+                    : t("notifications.sessionRemindersDesc")}
+                </div>
+              </div>
+              <Toggle
+                on={notifications.enabled}
+                onToggle={async () => {
+                  if (notifications.needsInstall) return;
+                  if (notifications.enabled) {
+                    await notifications.disable();
+                  } else {
+                    await notifications.enable();
+                  }
+                }}
+              />
+            </div>
+            {notifications.enabled && (
+              <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("reminderTime")}>
+                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCheck size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("notifications.reminderTime")}</div>
+                  <div className="settings-row-sub">
+                    {notifications.reminderMinutes === 15 ? t("notifications.15min")
+                      : notifications.reminderMinutes === 60 ? t("notifications.60min")
+                      : t("notifications.30min")}
+                  </div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       <div className="settings-label">{t("settings.plan")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("plan")}>
@@ -175,6 +224,34 @@ export function Settings({ user, signOut }) {
                     <div className="settings-row-title">{opt.label}</div>
                   </div>
                   {theme?.preference === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── REMINDER TIME SHEET ── */}
+      {activeSheet === "reminderTime" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("notifications.reminderTime")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {[
+                { key: 15, label: t("notifications.15min") },
+                { key: 30, label: t("notifications.30min") },
+                { key: 60, label: t("notifications.60min") },
+              ].map(opt => (
+                <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
+                  onClick={() => { notifications?.setReminderMinutes(opt.key); setActiveSheet(null); }}>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">{opt.label}</div>
+                  </div>
+                  {notifications?.reminderMinutes === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
                 </div>
               ))}
             </div>

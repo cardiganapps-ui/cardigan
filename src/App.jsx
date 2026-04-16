@@ -26,6 +26,7 @@ import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
 import { BugReportFab } from "./components/BugReportFab";
 import { useTheme } from "./hooks/useTheme";
+import { useNotifications } from "./hooks/useNotifications";
 import "./utils/logBuffer";
 import "./styles/index.css";
 
@@ -90,6 +91,7 @@ function AppShell({ user, signOut, demo, theme }) {
   const pendingExpedienteRef = useRef(null);
 
   const tutorial = useTutorial({ user, demo, readOnly });
+  const notifications = useNotifications(demo ? null : user);
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
@@ -195,14 +197,14 @@ function AppShell({ user, signOut, demo, theme }) {
   const ctxValue = useMemo(() => ({
     ...data, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
-    screen, drawerOpen, setDrawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
+    screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess: setSuccessMsg,
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
     openExpediente: (patient) => { pendingExpedienteRef.current = patient; setScreen("patients"); },
     consumeExpediente: () => { const p = pendingExpedienteRef.current; pendingExpedienteRef.current = null; return p; },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, setSuccessMsg]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,

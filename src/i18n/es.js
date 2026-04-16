@@ -394,6 +394,21 @@ export default {
     themeLight: "Claro",
     themeDark: "Oscuro",
     themeSystem: "Sistema",
+    notificationsSection: "Notificaciones",
+  },
+
+  // ── Notifications ──
+  notifications: {
+    sessionReminders: "Recordatorios de sesi\u00f3n",
+    sessionRemindersDesc: "Recibe un aviso antes de cada sesi\u00f3n",
+    reminderTime: "Tiempo de aviso",
+    "15min": "15 minutos antes",
+    "30min": "30 minutos antes",
+    "60min": "1 hora antes",
+    enabled: "Notificaciones activadas",
+    disabled: "Notificaciones desactivadas",
+    permissionDenied: "Activa las notificaciones en los ajustes de tu dispositivo",
+    installRequired: "Instala Cardigan en tu pantalla de inicio para recibir notificaciones",
   },
 
   // ── Expediente ──
