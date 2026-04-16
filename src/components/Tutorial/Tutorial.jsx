@@ -183,7 +183,7 @@ export function Tutorial() {
         return;
       }
       // Give up and auto-skip to the next step.
-      if (typeof window !== "undefined" && window.console) {
+      if (import.meta.env.DEV && typeof window !== "undefined" && window.console) {
         console.warn(`[Tutorial] Target not found for step "${step.id}": ${step.selector}`);
       }
       tutorial.next();

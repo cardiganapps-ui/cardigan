@@ -33,7 +33,7 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, readOnly, mutating, setAgendaView } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, readOnly, mutating, setAgendaView, requestFabAction } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -62,7 +62,10 @@ export function Home({ setScreen, userName }) {
   const [carouselSettling, setCarouselSettling] = useState(false);
 
   const onCarouselTouchStart = useCallback((e) => {
-    if (e.touches[0].clientX < 30) return;
+    // Keep a 50px dead zone so the left-edge drawer gesture wins — with
+    // App.jsx's 20px drawer threshold, this gives a 30px gap where
+    // neither fires, preventing the "drawer opens mid-swipe" bug.
+    if (e.touches[0].clientX < 50) return;
     carouselRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
   }, []);
 
@@ -169,17 +172,21 @@ export function Home({ setScreen, userName }) {
 
   return (
     <div className="page">
-      {patients.length === 0 && (
-        <div style={{ padding:"18px 16px 2px", textAlign:"center" }}>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>
+      {patients.length === 0 && !readOnly && (
+        <div style={{ padding:"24px 16px 8px", textAlign:"center" }}>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-xl)", fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>
             {userName ? `${t("home.welcome")}, ${userName.split(" ")[0]}` : t("home.welcome")}
           </div>
-          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:10 }}>
+          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:14 }}>
             {t("patients.addFirst")}
           </div>
-          <span className="badge badge-teal" style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"6px 14px" }}>
-            <IconPlus size={14} /> {t("fab.patient")}
-          </span>
+          <button
+            type="button"
+            onClick={() => requestFabAction?.("patient")}
+            className="btn btn-primary"
+            style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+            <IconPlus size={16} /> {t("patients.addFirstCta")}
+          </button>
         </div>
       )}
 

@@ -3,6 +3,30 @@
 .page > *:last-child { margin-bottom: 80px; } /* guarantees scroll room below FAB */
 .page::-webkit-scrollbar { display: none; }
 
+/* ── LOADING SKELETON ──
+   Used in App.jsx's LoadingSkeleton on first load. Shapes mimic the
+   Home layout (KPI tiles + row list) so the transition to real data
+   feels continuous. */
+.sk-bar, .sk-circle {
+  background: linear-gradient(90deg, var(--cream-deeper) 0%, var(--cream) 50%, var(--cream-deeper) 100%);
+  background-size: 200% 100%;
+  animation: skShimmer 1.4s infinite ease-in-out;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+.sk-bar-xs { height: 9px; border-radius: 4px; }
+.sk-bar-sm { height: 11px; }
+.sk-bar-md { height: 14px; }
+.sk-bar-lg { height: 20px; }
+.sk-circle {
+  width: 36px; height: 36px; border-radius: 50%;
+  flex-shrink: 0;
+}
+@keyframes skShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* FAB — charcoal primary button, matching landing .lp-btn--primary */
 .fab {
   position: fixed; bottom: calc(var(--sab) + 20px); right: 20px;

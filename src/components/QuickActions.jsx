@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
@@ -17,7 +17,7 @@ const ACTIONS = [
 
 export function QuickActions() {
   const { t } = useT();
-  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating } = useCardigan();
+  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction } = useCardigan();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
   const [quickNote, setQuickNote] = useState(null);
@@ -32,6 +32,15 @@ export function QuickActions() {
     }
     else setActiveSheet(key);
   };
+
+  // Allow other screens (e.g. the empty-state CTA on Home) to open a
+  // specific FAB sheet by setting pendingFabAction in context.
+  useEffect(() => {
+    if (!pendingFabAction) return;
+    handleAction(pendingFabAction);
+    consumeFabAction?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingFabAction]);
 
   const closeSheet = () => setActiveSheet(null);
 

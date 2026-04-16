@@ -71,24 +71,28 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
     }
     const finalMethod = method === PAYMENT_METHOD.OTHER ? (customMethod.trim() || t("finances.other")) : method;
     setFormError("");
-    if (isEditing) {
-      const ok = await updatePayment(editingPayment.id, {
-        patientName: patientName.trim(),
-        amount: parsedAmount,
-        method: finalMethod,
-        date: isoToShortDate(date),
-        note: paymentNote.trim(),
-      });
-      if (ok) onClose(`Pago actualizado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
-    } else {
-      const ok = await createPayment({
-        patientName: patientName.trim(),
-        amount: parsedAmount,
-        method: finalMethod,
-        date: isoToShortDate(date),
-        note: paymentNote.trim(),
-      });
-      if (ok) onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
+    try {
+      if (isEditing) {
+        const ok = await updatePayment(editingPayment.id, {
+          patientName: patientName.trim(),
+          amount: parsedAmount,
+          method: finalMethod,
+          date: isoToShortDate(date),
+          note: paymentNote.trim(),
+        });
+        if (ok) onClose(`Pago actualizado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
+      } else {
+        const ok = await createPayment({
+          patientName: patientName.trim(),
+          amount: parsedAmount,
+          method: finalMethod,
+          date: isoToShortDate(date),
+          note: paymentNote.trim(),
+        });
+        if (ok) onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`);
+      }
+    } catch (ex) {
+      setFormError(ex?.message || "Error al guardar");
     }
   };
 
@@ -103,15 +107,21 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
         <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
           <div style={{ flex:1 }}>
           <div className="input-group">
-            <label className="input-label">{t("sessions.patient")}</label>
-            <select className="input" value={patientName} onChange={(e) => handlePatientChange(e.target.value)}>
+            <label className="input-label">
+              {t("sessions.patient")}
+              <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+            </label>
+            <select className="input" required value={patientName} onChange={(e) => handlePatientChange(e.target.value)}>
               <option value="">{t("finances.selectPatient")}</option>
               {patients.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div className="input-group">
-            <label className="input-label">{t("finances.amount")}</label>
-            <MoneyInput min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+            <label className="input-label">
+              {t("finances.amount")}
+              <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+            </label>
+            <MoneyInput min="1" step="1" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
           </div>
           <div className="input-group">
             <label className="input-label">{t("finances.method")}</label>

@@ -11,6 +11,7 @@ import { useT } from "../i18n/index";
 function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
   const { t, strings } = useT();
   const [expandedId, setExpandedId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);
   const [period, setPeriod] = useState("all");
 
@@ -61,15 +62,44 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
           <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
         </div>
         {isExpanded && (
-          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
-            <button className="btn btn-ghost" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", height:36, padding:"0 16px" }}
-              onClick={(e) => { e.stopPropagation(); setExpandedId(null); onEditPayment(p); }}>
-              {t("edit")}
-            </button>
-            <button className="btn" style={{ background:"var(--red-bg)", color:"var(--red)", height:36, padding:"0 16px", fontSize:"var(--text-sm)", boxShadow:"none" }}
-              disabled={mutating} onClick={async (e) => { e.stopPropagation(); await onDeletePayment(p.id); setExpandedId(null); }}>
-              {mutating ? "..." : t("finances.deletePayment")}
-            </button>
+          <div style={{ padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
+            {confirmDeleteId === p.id ? (
+              <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
+                <div style={{ fontSize:13, fontWeight:700, color:"var(--red)", marginBottom:4 }}>
+                  {t("finances.deleteConfirm")}
+                </div>
+                <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.4, marginBottom:10 }}>
+                  {t("finances.deleteWarning")}
+                </div>
+                <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+                  <button className="btn btn-secondary" style={{ height:36, padding:"0 14px", fontSize:12, width:"auto", minHeight:0 }}
+                    onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}>
+                    {t("cancel")}
+                  </button>
+                  <button className="btn btn-danger" style={{ height:36, padding:"0 14px", fontSize:12, width:"auto", minHeight:0 }}
+                    disabled={mutating}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await onDeletePayment(p.id);
+                      setConfirmDeleteId(null);
+                      setExpandedId(null);
+                    }}>
+                    {mutating ? t("patients.deleting") : t("delete")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+                <button className="btn btn-ghost" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", height:36, padding:"0 16px" }}
+                  onClick={(e) => { e.stopPropagation(); setExpandedId(null); onEditPayment(p); }}>
+                  {t("edit")}
+                </button>
+                <button className="btn" style={{ background:"var(--red-bg)", color:"var(--red)", height:36, padding:"0 16px", fontSize:"var(--text-sm)", boxShadow:"none" }}
+                  disabled={mutating} onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}>
+                  {t("finances.deletePayment")}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -335,6 +365,8 @@ function ProyeccionTab({ sessions, patients }) {
 }
 
 export function Finances() {
+  // `deletePayment` is already wrapped at the context level to surface
+  // a success toast, so we use it directly here.
   const { patients, payments, upcomingSessions, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");

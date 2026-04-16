@@ -49,8 +49,12 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
       params.tutorName = selectedPatient.parent;
       params.customRate = Number(customRate) || selectedPatient.rate;
     }
-    const ok = await onSubmit(params);
-    if (ok) onClose();
+    try {
+      const ok = await onSubmit(params);
+      if (ok) onClose();
+    } catch (ex) {
+      setErr(ex?.message || "Error al guardar");
+    }
   };
 
   return (
@@ -64,8 +68,11 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
         <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
           <div style={{ flex:1, minHeight:0 }}>
           <div className="input-group">
-            <label className="input-label">{t("sessions.patient")}</label>
-            <select className="input" value={patientName} onChange={e => handlePatientChange(e.target.value)}>
+            <label className="input-label">
+              {t("sessions.patient")}
+              <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+            </label>
+            <select className="input" required value={patientName} onChange={e => handlePatientChange(e.target.value)}>
               <option value="">{t("finances.selectPatient")}</option>
               {patients.filter(p => p.status === "active").map(p => (
                 <option key={p.id} value={p.name}>{p.name}{p.parent ? ` ${t("patients.minor")}` : ""}</option>
@@ -89,12 +96,18 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           )}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             <div className="input-group">
-              <label className="input-label">{t("sessions.date")}</label>
-              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <label className="input-label">
+                {t("sessions.date")}
+                <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+              </label>
+              <input className="input" type="date" required value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <div className="input-group">
-              <label className="input-label">{t("patients.time")}</label>
-              <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
+              <label className="input-label">
+                {t("patients.time")}
+                <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+              </label>
+              <input className="input" type="time" required value={time} onChange={e => setTime(e.target.value)} />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -130,7 +143,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           {err && <div className="form-error">{err}</div>}
           </div>
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
-            <button className={`btn ${isTutor ? "" : "btn-primary"}`} type="submit" disabled={mutating}
+            <button className={`btn ${isTutor ? "" : "btn-primary"}`} type="submit" disabled={mutating || !!conflict}
               style={isTutor ? { background:"var(--purple)", color:"white", boxShadow:"none", width:"100%" } : undefined}>
               {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${(Number(customRate) || selectedPatient?.rate || 0).toLocaleString()}` : t("sessions.schedule")}
             </button>

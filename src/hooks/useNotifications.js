@@ -106,7 +106,7 @@ export function useNotifications(user) {
       });
 
       if (!resp.ok) {
-        console.error("push-subscribe failed:", resp.status);
+        if (import.meta.env.DEV) console.error("push-subscribe failed:", resp.status);
         return false;
       }
 
@@ -124,7 +124,7 @@ export function useNotifications(user) {
       setEnabled(true);
       return true;
     } catch (err) {
-      console.error("Push subscription error:", err);
+      if (import.meta.env.DEV) console.error("Push subscription error:", err);
       return false;
     }
   }, [supported, user, reminderMinutes]);
@@ -167,7 +167,7 @@ export function useNotifications(user) {
 
       setEnabled(false);
     } catch (err) {
-      console.error("Push unsubscribe error:", err);
+      if (import.meta.env.DEV) console.error("Push unsubscribe error:", err);
     }
   }, [supported, user]);
 

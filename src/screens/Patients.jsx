@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
-import { IconSearch, IconX, IconUsers, IconTrash } from "../components/Icons";
+import { IconSearch, IconX, IconUsers, IconTrash, IconPlus } from "../components/Icons";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
@@ -40,7 +40,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly } = useCardigan();
   const { t, strings } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
@@ -181,16 +181,22 @@ export function Patients() {
   };
 
   const handleDelete = async () => {
+    const name = selected?.name || "";
     const ok = await deletePatient(selected.id);
     if (ok) {
       setSelected(null);
       setConfirmDelete(false);
       setDeleteConfirmText("");
+      showSuccess?.(`${name} eliminado`);
     }
   };
 
+  // Accept either the literal word "ELIMINAR" (simpler, and also
+  // robust against long or accented names) or the patient's name. Users
+  // pick whichever feels safer.
   const deleteConfirmMatches = selected
-    ? deleteConfirmText.trim().toLowerCase() === selected.name.trim().toLowerCase()
+    ? (deleteConfirmText.trim().toUpperCase() === "ELIMINAR" ||
+       deleteConfirmText.trim().toLowerCase() === selected.name.trim().toLowerCase())
     : false;
 
   const startDelete = () => {
@@ -234,7 +240,16 @@ export function Patients() {
           <IconUsers size={26} />
         </div>
         <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>{t("patients.noPatients")}</div>
-        <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("patients.addFirst")}</div>
+        <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:18 }}>{t("patients.addFirst")}</div>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => requestFabAction?.("patient")}
+            className="btn btn-primary"
+            style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+            <IconPlus size={16} /> {t("patients.addFirstCta")}
+          </button>
+        )}
       </div>
     );
   }
@@ -547,15 +562,16 @@ export function Patients() {
                     </div>
                   )}
 
-                  {/* Type-to-confirm */}
+                  {/* Type-to-confirm — accepts "ELIMINAR" or the patient's name */}
                   <div className="input-group">
-                    <label className="input-label">{t("patients.deleteTypeToConfirm", { name: selected.name })}</label>
+                    <label className="input-label">{t("patients.deleteTypeToConfirm")}</label>
                     <input className="input"
                       value={deleteConfirmText}
                       onChange={e => setDeleteConfirmText(e.target.value)}
                       placeholder={t("patients.deleteTypePlaceholder")}
                       autoComplete="off"
                       autoCorrect="off"
+                      autoCapitalize="characters"
                       spellCheck={false} />
                   </div>
 

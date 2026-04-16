@@ -79,6 +79,14 @@ export function useTutorial({ user, demo, readOnly } = {}) {
   const gateCheckedRef = useRef(null);
 
   // ── Initial gate check ──
+  //
+  // Runs once per user session. If the user has never completed the
+  // tutorial, schedule the welcome modal after a short delay. The
+  // delay gives the shell / service worker / initial data fetch time
+  // to settle so the welcome doesn't pop mid-render. If the user
+  // navigates away before the modal shows we still want to show it
+  // next session — that's why we key gateCheckedRef on userId only,
+  // not on route.
   useEffect(() => {
     if (disabled) return;
     if (gateCheckedRef.current === userId) return;
@@ -95,12 +103,15 @@ export function useTutorial({ user, demo, readOnly } = {}) {
     // Check if we have an in-progress run to resume after a reload.
     const progress = readLocalProgress(userId);
     const timer = setTimeout(() => {
+      // Re-check done status right before firing — avoids a race where
+      // another tab / the auth metadata refreshed in the meantime.
+      if (readLocalDone(userId)) return;
       if (progress && progress.stepIndex > 0 && progress.stepIndex < TUTORIAL_STEPS.length) {
         dispatch({ type: "start", stepIndex: progress.stepIndex });
       } else {
         dispatch({ type: "showWelcome" });
       }
-    }, 1200);
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [disabled, userId, user?.user_metadata?.tutorial_completed_at]);

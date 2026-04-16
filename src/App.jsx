@@ -59,6 +59,41 @@ export default function Cardigan() {
   return <I18nProvider><CardiganApp /></I18nProvider>;
 }
 
+/* ── LoadingSkeleton ──
+   Shown on first load (before any data has been fetched) instead of a
+   blank screen or a bare "Cargando..." line. Uses the same card + KPI
+   tile shapes as Home, so the transition feels continuous once data
+   arrives. */
+function LoadingSkeleton() {
+  return (
+    <div className="page" aria-hidden>
+      <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="kpi-card">
+            <div className="sk-bar sk-bar-sm" style={{ width:"50%", marginBottom:10 }} />
+            <div className="sk-bar sk-bar-lg" style={{ width:"70%", marginBottom:6 }} />
+            <div className="sk-bar sk-bar-xs" style={{ width:"40%" }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ padding:"16px 16px 0" }}>
+        <div className="sk-bar sk-bar-sm" style={{ width:"40%", marginBottom:12 }} />
+        <div className="card">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="row-item" style={{ cursor:"default" }}>
+              <div className="sk-circle" />
+              <div className="row-content">
+                <div className="sk-bar sk-bar-md" style={{ width:"55%", marginBottom:6 }} />
+                <div className="sk-bar sk-bar-xs" style={{ width:"35%" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppShell({ user, signOut, demo, theme }) {
   const { t } = useT();
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
@@ -74,7 +109,7 @@ function AppShell({ user, signOut, demo, theme }) {
   const data = demo ? demoData : liveData;
   const {
     patients, upcomingSessions, payments, notes, documents,
-    loading, mutating, mutationError, readOnly,
+    loading, mutating, mutationError, readOnly, clearMutationError,
     createPayment, createPatient, createSession,
     updateSessionStatus, updatePatient, deletePatient,
     deleteSession, rescheduleSession, deletePayment,
@@ -87,6 +122,20 @@ function AppShell({ user, signOut, demo, theme }) {
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [editingPayment, setEditingPayment] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
+  // Online/offline indicator — navigator.onLine is imperfect but "good
+  // enough" for a surface warning; combined with explicit error toasts
+  // for actual request failures it catches the common cases.
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine !== false : true);
+  useEffect(() => {
+    const onUp = () => setOnline(true);
+    const onDown = () => setOnline(false);
+    window.addEventListener("online", onUp);
+    window.addEventListener("offline", onDown);
+    return () => {
+      window.removeEventListener("online", onUp);
+      window.removeEventListener("offline", onDown);
+    };
+  }, []);
   const pendingAgendaViewRef = useRef(null);
   const pendingExpedienteRef = useRef(null);
 
@@ -133,7 +182,10 @@ function AppShell({ user, signOut, demo, theme }) {
 
     const onTouchStart = (e) => {
       if (drawerOpenRef.current) return;
-      if (e.touches[0].clientX < 28) {
+      // Narrow 20px edge — anything wider conflicts with the Home
+      // carousel's horizontal pan. The old 28px band was eating swipes
+      // meant for the Hoy/Mañana panels.
+      if (e.touches[0].clientX < 20) {
         edgeRef.current = {
           startX: e.touches[0].clientX,
           startY: e.touches[0].clientY,
@@ -194,17 +246,33 @@ function AppShell({ user, signOut, demo, theme }) {
     };
   }, []);
 
+  const [pendingFabAction, setPendingFabAction] = useState(null);
+  // Wrap delete actions so we show a success toast on completion. Keeps
+  // callers (SessionSheet, Finances, NoteEditor, etc.) unchanged — they
+  // still receive a function with the original signature.
+  const withSuccess = useCallback((fn, msg) => async (...args) => {
+    const ok = await fn(...args);
+    if (ok) setSuccessMsg(msg);
+    return ok;
+  }, []);
   const ctxValue = useMemo(() => ({
-    ...data, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
-    navigate, pushLayer, popLayer, removeLayer,
+    ...data,
+    deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
+    deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
+    deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
+    userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
+    navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess: setSuccessMsg,
+    pendingFabAction,
+    requestFabAction: setPendingFabAction,
+    consumeFabAction: () => setPendingFabAction(null),
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
     openExpediente: (patient) => { pendingExpedienteRef.current = patient; setScreen("patients"); },
     consumeExpediente: () => { const p = pendingExpedienteRef.current; pendingExpedienteRef.current = null; return p; },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg, online, pendingFabAction]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
@@ -246,6 +314,16 @@ function AppShell({ user, signOut, demo, theme }) {
           </div>
         )}
 
+        {/* Offline indicator — shown whenever the browser reports no
+            network connectivity. Mutations will queue in local state but
+            fail at the Supabase round-trip, so we warn proactively. */}
+        {!online && (
+          <div style={{ background:"var(--amber)", padding:"6px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:8, zIndex:"var(--z-banner)", flexShrink:0 }}>
+            <span style={{ width:6, height:6, borderRadius:"50%", background:"white", display:"inline-block" }} />
+            <span style={{ fontSize:11, fontWeight:700, color:"white" }}>{t("offline")}</span>
+          </div>
+        )}
+
         <div className="topbar">
           <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
             <div className="hamburger-line" />
@@ -268,10 +346,7 @@ function AppShell({ user, signOut, demo, theme }) {
             <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
           </div>
         </div>
-        {loading && (
-          <div style={{ padding:"10px 16px 0", fontSize:12, color:"var(--charcoal-xl)" }}>{t("loading")}</div>
-        )}
-        <Toast message={mutationError} type="error" />
+        <Toast message={mutationError} type="error" persistent onDismiss={clearMutationError} onRetry={refresh} />
         <Toast message={successMsg} type="success" onDismiss={() => setSuccessMsg("")} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{
@@ -280,7 +355,7 @@ function AppShell({ user, signOut, demo, theme }) {
             animation: direction === "left" ? "screenSlideLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" :
                        direction === "right" ? "screenSlideRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : undefined,
           }}>
-            {screenMap[screen]}
+            {loading && patients.length === 0 ? <LoadingSkeleton /> : screenMap[screen]}
           </div>
         </PullToRefresh>
         {!readOnly && (

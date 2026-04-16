@@ -56,15 +56,19 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
-    const ok = await onSubmit({
-      name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
-      tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
-      phone: phoneDigits(phone), email: email.trim(), birthdate: birthdate || null,
-      schedules, recurring: true,
-      startDate,
-      endDate: hasEndDate ? endDate : null,
-    });
-    if (ok) onClose();
+    try {
+      const ok = await onSubmit({
+        name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
+        tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
+        phone: phoneDigits(phone), email: email.trim(), birthdate: birthdate || null,
+        schedules, recurring: true,
+        startDate,
+        endDate: hasEndDate ? endDate : null,
+      });
+      if (ok) onClose();
+    } catch (ex) {
+      setErr(ex?.message || "Error al guardar");
+    }
   };
 
   return (
@@ -94,14 +98,21 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
             <>
               {/* Name */}
               <div className="input-group">
-                <label className="input-label">{t("settings.fullName")}</label>
-                <input className="input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
+                <label className="input-label">
+                  {t("settings.fullName")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <input className="input" type="text" required value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
               </div>
 
               {/* Rate */}
               <div className="input-group">
-                <label className="input-label">{t("patients.ratePerSession")}</label>
-                <MoneyInput min="0" step="50" value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+                <label className="input-label">
+                  {t("patients.ratePerSession")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.rateHint")}</div>
               </div>
 
               {/* Minor toggle — prominent card style */}
@@ -134,7 +145,11 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                     <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
                     <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
                   </select>
-                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.tutorFrequencyHint")}</div>
+                  <div style={{ fontSize:11, color: tutorFrequency ? "var(--teal-dark)" : "var(--charcoal-xl)", marginTop:2 }}>
+                    {tutorFrequency
+                      ? t("patients.tutorFrequencyConfirm", { count: tutorFrequency })
+                      : t("patients.tutorFrequencyHint")}
+                  </div>
                 </div>
               </>)}
 

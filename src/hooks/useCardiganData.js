@@ -149,6 +149,9 @@ export function useCardiganData(user, viewAsUserId) {
 
   /* ── DATA FETCH + AUTO-EXTEND ── */
   const refresh = useCallback(async () => {
+    // Defense-in-depth: skip fetch if no user. Without this guard, Supabase
+    // would return rows for any user_id = null, which is a data-leak smell.
+    if (!userId) { setLoading(false); return; }
     setLoading(true);
     setFetchError("");
     const q = (table, limit) => {
@@ -338,6 +341,7 @@ export function useCardiganData(user, viewAsUserId) {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
+    clearMutationError: () => setMutationError(""),
     createPatient: guard(createPatientWithRefresh), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
