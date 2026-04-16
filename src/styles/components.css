@@ -130,17 +130,31 @@
   display: flex; background: var(--cream-dark);
   border-radius: var(--radius-pill);
   padding: 3px; gap: 2px;
+  position: relative;
+}
+.segmented-slider {
+  position: absolute; top: 3px; bottom: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--white); box-shadow: var(--shadow-sm);
+  transition: left 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1);
+  pointer-events: none; z-index: 0;
 }
 .segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab {
   flex: 1; padding: 7px 8px;
   font-size: var(--text-sm); font-weight: 600;
   border-radius: var(--radius-pill); border: none; cursor: pointer;
   font-family: var(--font); color: var(--charcoal-lt); background: transparent;
-  transition: all 0.4s; -webkit-tap-highlight-color: transparent;
+  transition: color 0.3s; -webkit-tap-highlight-color: transparent;
   min-height: 34px; white-space: nowrap;
+  position: relative; z-index: 1;
 }
 .segmented-btn.active, .seg-btn.active, .view-btn.active, .fin-tab.active {
-  background: var(--white); color: var(--teal-dark); box-shadow: var(--shadow-sm);
+  color: var(--teal-dark);
+  background: transparent; box-shadow: none;
+}
+/* Fallback for legacy markup without slider element */
+.segment .seg-btn.active, .view-toggle .view-btn.active, .fin-tab-row .fin-tab.active {
+  background: var(--white); box-shadow: var(--shadow-sm);
 }
 .auth-tab.active {
   background: var(--white); color: var(--charcoal);
