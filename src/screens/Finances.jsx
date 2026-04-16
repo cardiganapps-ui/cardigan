@@ -141,6 +141,8 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
   );
 }
 
+const PERIOD_DAYS = { "1w": 7, "1m": 30, "3m": 90 };
+
 function ProyeccionTab({ sessions, patients }) {
   const { t } = useT();
   const [period, setPeriod] = useState("1m");
@@ -148,22 +150,19 @@ function ProyeccionTab({ sessions, patients }) {
 
   const today = todayISO();
 
-  // Compute the cutoff date for the selected period
+  // Compute the cutoff date for the selected period (fixed day counts)
   const cutoff = useMemo(() => {
     const d = new Date();
-    if (period === "1w") d.setDate(d.getDate() + 7);
-    else if (period === "1m") d.setMonth(d.getMonth() + 1);
-    else if (period === "3m") d.setMonth(d.getMonth() + 3);
-    else if (period === "1y") d.setFullYear(d.getFullYear() + 1);
+    d.setDate(d.getDate() + (PERIOD_DAYS[period] || 30));
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }, [period]);
 
-  // Future scheduled sessions within period
+  // Scheduled sessions within the projection period (today through cutoff)
   const futureSessions = useMemo(() =>
     sessions.filter(s => {
       if (s.status !== "scheduled") return false;
       const iso = shortDateToISO(s.date);
-      return iso > today && iso <= cutoff;
+      return iso >= today && iso <= cutoff;
     }),
     [sessions, today, cutoff]
   );
@@ -190,8 +189,8 @@ function ProyeccionTab({ sessions, patients }) {
   const gross = futureSessions.reduce((sum, s) => sum + (s.rate || 0), 0);
   const net = Math.round(gross * (1 - cancelRate));
 
-  // Weeks in period for weekly average
-  const weeksInPeriod = period === "1w" ? 1 : period === "1m" ? 4.33 : period === "3m" ? 13 : 52;
+  // Weeks in period for weekly average (matches fixed day counts: 7, 30, 90)
+  const weeksInPeriod = (PERIOD_DAYS[period] || 30) / 7;
   const perWeek = weeksInPeriod > 0 ? Math.round(net / weeksInPeriod) : 0;
 
   // Average session rate
@@ -228,7 +227,6 @@ function ProyeccionTab({ sessions, patients }) {
             { k: "1w", l: t("periods.1w") },
             { k: "1m", l: t("periods.1m") },
             { k: "3m", l: t("periods.3m") },
-            { k: "1y", l: t("periods.1y") },
           ]}
         />
       </div>

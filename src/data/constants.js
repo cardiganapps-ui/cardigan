@@ -37,5 +37,7 @@ export const ADMIN_EMAIL = "gaxioladiego@gmail.com";
 // within RECURRENCE_EXTEND_THRESHOLD_DAYS of today, append another
 // RECURRENCE_WINDOW_WEEKS weeks of sessions. The same window is also used as
 // the default end for getRecurringDates(), so both values live here.
-export const RECURRENCE_EXTEND_THRESHOLD_DAYS = 28;
-export const RECURRENCE_WINDOW_WEEKS = 12;
+// Window = 15 weeks (105 days) so the 3-month projection (90 days) is always complete.
+// Threshold = 105 days so every patient gets re-extended on each load if needed.
+export const RECURRENCE_EXTEND_THRESHOLD_DAYS = 105;
+export const RECURRENCE_WINDOW_WEEKS = 15;

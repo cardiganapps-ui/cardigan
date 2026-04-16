@@ -151,12 +151,16 @@ export function useCardiganData(user, viewAsUserId) {
   const refresh = useCallback(async () => {
     setLoading(true);
     setFetchError("");
-    const q = (table) => supabase.from(table).select("*").eq("user_id", userId);
+    const q = (table, limit) => {
+      let query = supabase.from(table).select("*").eq("user_id", userId);
+      if (limit) query = query.limit(limit);
+      return query;
+    };
     let pRes, sRes, pmRes, nRes, dRes;
     try {
       [pRes, sRes, pmRes, nRes, dRes] = await Promise.all([
         q("patients").order("name"),
-        q("sessions").order("created_at"),
+        q("sessions", 10000).order("created_at"),
         q("payments").order("created_at", { ascending: false }),
         q("notes").order("updated_at", { ascending: false }),
         q("documents").order("created_at", { ascending: false }),
