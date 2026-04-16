@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
-import { IconClipboard, IconX, IconPlus } from "../components/Icons";
+import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
 import { useEscape } from "../hooks/useEscape";
@@ -245,9 +245,11 @@ export function Home({ setScreen, userName }) {
             <div style={{ width: "50%", flexShrink: 0 }}>
               <div className="card" style={{ borderRadius: 0 }}>
                 {nextDaySessions.length === 0
-                  ? emptyHint(`${t("sessions.freeDay")} — ${nextDayLabel.toLowerCase()}`,
-                      <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
-                    )
+                  ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
+                      <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                    </div>
                   : nextDaySessions.map(renderSessionRow)
                 }
               </div>
