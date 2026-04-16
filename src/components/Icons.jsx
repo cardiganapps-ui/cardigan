@@ -163,3 +163,6 @@ export const IconBug = (p) => (
 export const IconRefresh = (p) => (
   <I {...p}><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115.36-6.36L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15.36 6.36L3 16"/></I>
 );
+export const IconTrendingUp = (p) => (
+  <I {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></I>
+);

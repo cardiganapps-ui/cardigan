@@ -298,6 +298,20 @@ export default {
     of: "de",
     registerPayment: "+ Registrar pago",
     export: "Exportar",
+    forecast: "Proyección",
+    forecastTitle: "Ingresos proyectados",
+    forecastGross: "Bruto",
+    forecastNet: "Neto estimado",
+    forecastScheduled: "{count} sesión{plural} agendada{plural}",
+    forecastActivePatients: "{count} paciente{plural} activo{plural}",
+    forecastCancelRate: "Tasa de cancelación",
+    forecastHistorical: "Tu promedio histórico",
+    forecastAssumption: "Supuesto de cancelación",
+    forecastAdjust: "Ajusta el porcentaje para ver cómo afecta tus ingresos",
+    forecastNoSessions: "Sin sesiones agendadas en este período.",
+    forecastAvgSession: "Tarifa promedio",
+    forecastPerWeek: "Promedio semanal",
+    forecastByPatient: "Desglose por paciente",
   },
 
   // ── Notes ──
@@ -440,6 +454,7 @@ export default {
   // ── Time periods ──
   periods: {
     all: "Todo",
+    "1w": "1 sem",
     "1m": "1 mes",
     "3m": "3 meses",
     "6m": "6 meses",
