@@ -126,6 +126,7 @@ export const TUTORIAL_STEPS = [
     placement: "center",
     titleKey: "tutorial.steps.doneTitle",
     bodyKey: "tutorial.steps.doneBody",
+    showInstall: true,
     padding: 0,
   },
 ];

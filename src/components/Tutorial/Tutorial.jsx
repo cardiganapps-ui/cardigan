@@ -305,7 +305,37 @@ export function Tutorial() {
   if (!isActive || !step || paused) return null;
 
   const title = t(step.titleKey);
-  const body = t(step.bodyKey);
+  const bodyText = t(step.bodyKey);
+
+  // On iOS (not already installed), append install instructions to the last step
+  const showInstall = step.showInstall
+    && /iPad|iPhone|iPod/.test(navigator.userAgent)
+    && !(window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches);
+
+  const body = showInstall ? (
+    <>
+      <div>{bodyText}</div>
+      <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:12, paddingTop:12 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:8 }}>{t("install.title")}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+          <div style={{ width:20, height:20, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>1</div>
+          <span style={{ fontSize:12, color:"var(--charcoal)" }}>
+            {t("install.tapButton")}{" "}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign:"middle" }}>
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            {" "}{t("install.safariButton")}
+          </span>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>2</div>
+          <span style={{ fontSize:12, color:"var(--charcoal)" }}>
+            {t("install.selectLabel")} <strong>"{t("install.selectAdd")}"</strong>
+          </span>
+        </div>
+      </div>
+    </>
+  ) : bodyText;
 
   // While settling (drawer opening / screen switching), show a dim overlay.
   if (settling) {
