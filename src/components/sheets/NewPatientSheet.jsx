@@ -82,7 +82,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
             <div key={s} style={{
               flex:1, height:3, borderRadius:2,
               background: s <= step ? "var(--teal)" : "var(--cream-deeper)",
-              transition: "background 0.2s",
+              transition: "background 0.5s",
             }} />
           ))}
         </div>
@@ -112,7 +112,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   padding:"14px 16px", marginBottom:14, cursor:"pointer",
                   borderRadius:"var(--radius)", border: isMinor ? "1.5px solid var(--purple)" : "1.5px solid var(--border-lt)",
                   background: isMinor ? "var(--purple-bg)" : "var(--white)",
-                  transition: "all 0.15s",
+                  transition: "all 0.4s",
                 }}>
                 <div>
                   <div style={{ fontSize:14, fontWeight:700, color: isMinor ? "var(--purple)" : "var(--charcoal)" }}>{t("patients.isMinor")}</div>

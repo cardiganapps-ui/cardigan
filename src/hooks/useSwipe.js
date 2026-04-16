@@ -72,7 +72,7 @@ export function useSwipe(onLeft, onRight) {
     display: "flex",
     width: "300%",
     transform: `translateX(calc(-33.333% + ${stripTranslate}px))`,
-    transition: settling ? "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)" : swiping ? "none" : undefined,
+    transition: settling ? "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)" : swiping ? "none" : undefined,
     willChange: swiping || settling ? "transform" : undefined,
   };
 

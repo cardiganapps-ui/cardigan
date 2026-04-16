@@ -41,7 +41,7 @@ export function QuickActions() {
       {menuOpen && (
         <div className="fab-menu">
           {ACTIONS.map((a, i) => (
-            <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.04}s` }} onClick={() => handleAction(a.key)}>
+            <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.08}s` }} onClick={() => handleAction(a.key)}>
               <span className="fab-action-label">{t(a.tKey)}</span>
               <span className="fab-action-icon"><a.Icon size={16} /></span>
             </button>

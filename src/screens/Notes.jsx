@@ -71,7 +71,7 @@ function SwipeableRow({ children, onDelete }) {
       </div>
       {/* Content */}
       <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.2s ease", position:"relative", zIndex:1 }}>
+        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.5s ease", position:"relative", zIndex:1 }}>
         {children}
       </div>
     </div>
@@ -248,7 +248,7 @@ export function Notes() {
             background: favoritesOnly ? "var(--amber-bg)" : "var(--white)",
             color: favoritesOnly ? "var(--amber)" : "var(--charcoal-xl)",
             cursor:"pointer", padding:0, flexShrink:0,
-            transition:"all 0.15s",
+            transition:"all 0.4s",
           }}>
           <IconStar size={16} />
         </button>
@@ -278,7 +278,7 @@ export function Notes() {
 
               const isLongPressing = longPressingId === n.id;
               const noteContent = (
-                <div className={isLongPressing ? "note-card-pressing" : ""} style={{ position:"relative", background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden", transition:"transform 0.15s ease, background 0.15s ease" }}>
+                <div className={isLongPressing ? "note-card-pressing" : ""} style={{ position:"relative", background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden", transition:"transform 0.4s ease, background 0.4s ease" }}>
                   <div style={{ display:"flex", alignItems:"center" }}>
                     {selectMode && (
                       <div onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}
@@ -288,7 +288,7 @@ export function Notes() {
                           border: isSelected ? "none" : "2px solid var(--border)",
                           background: isSelected ? "var(--teal)" : "transparent",
                           display:"flex", alignItems:"center", justifyContent:"center",
-                          transition:"all 0.15s",
+                          transition:"all 0.4s",
                         }}>
                           {isSelected && <span style={{ color:"white", fontSize:12, fontWeight:800 }}>✓</span>}
                         </div>
@@ -324,7 +324,7 @@ export function Notes() {
           background:"var(--red)", color:"white", borderRadius:"var(--radius)",
           padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between",
           boxShadow:"0 4px 20px rgba(0,0,0,0.2)", zIndex:"var(--z-sheet)",
-          animation:"toastIn 0.2s ease",
+          animation:"toastIn 0.5s ease",
         }}>
           <span style={{ fontSize:13, fontWeight:700 }}>
             {selected.size} seleccionada{selected.size !== 1 ? "s" : ""}
@@ -399,7 +399,7 @@ export function Notes() {
       {confirmDeleteProps && propsNote && (
         <div className="sheet-overlay" onClick={() => setConfirmDeleteProps(false)} style={{ alignItems:"center" }}>
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
-            style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.2s ease" }}>
+            style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.5s ease" }}>
             <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
               <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
                 <IconTrash size={24} />

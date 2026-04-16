@@ -283,7 +283,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
       {confirmDelete && (
         <div className="sheet-overlay" onClick={() => setConfirmDelete(false)} style={{ alignItems:"center" }}>
           <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
-            style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.2s ease" }}>
+            style={{ maxWidth:340, borderRadius:"var(--radius-lg)", margin:"0 20px", animation:"slideUp 0.5s ease" }}>
             <div style={{ padding:"28px 24px 22px", textAlign:"center" }}>
               <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--red-bg)", color:"var(--red)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
                 <IconTrash size={24} />

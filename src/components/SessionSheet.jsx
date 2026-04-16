@@ -120,9 +120,9 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
             </div>
             <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")}
               className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
-              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.2s ease, transform 0.12s ease", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.35s ease", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
               <div className="stat-tile-label">{t("sessions.modality")}</div>
-              <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)", transition:"color 0.2s ease" }}>
+              <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)", transition:"color 0.5s ease" }}>
                 {session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial")}
               </div>
             </div>

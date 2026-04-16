@@ -66,7 +66,7 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
           </div>
           <div className="row-sub">{emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}</div>
         </div>
-        <span className="row-chevron" style={{ transform: mode !== "collapsed" ? "rotate(90deg)" : undefined, transition:"transform 0.15s" }}>›</span>
+        <span className="row-chevron" style={{ transform: mode !== "collapsed" ? "rotate(90deg)" : undefined, transition:"transform 0.4s" }}>›</span>
       </div>
 
       {/* Actions strip */}
@@ -388,7 +388,7 @@ function BugsTab() {
               background: showArchived === tb.k ? "var(--white)" : "transparent",
               color: showArchived === tb.k ? "var(--charcoal)" : "var(--charcoal-xl)",
               boxShadow: showArchived === tb.k ? "var(--shadow-sm)" : "none",
-              transition: "all 0.15s",
+              transition: "all 0.4s",
             }}>
             {tb.l}
           </button>
@@ -471,7 +471,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
                 fontFamily:"var(--font)", minHeight:32,
                 background: tab===tb.k ? "white" : "transparent",
                 color: tab===tb.k ? "#1a1a2e" : "rgba(255,255,255,0.65)",
-                transition:"all 0.15s",
+                transition:"all 0.4s",
               }}>
               {tb.l}
             </button>

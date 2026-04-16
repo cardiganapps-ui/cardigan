@@ -9,14 +9,14 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose }
 
   return (
     <>
-      <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:"var(--z-doc-viewer-bg)", animation:"fadeIn 0.2s ease" }}
+      <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:"var(--z-doc-viewer-bg)", animation:"fadeIn 0.5s ease" }}
         onClick={onClose} />
       <div style={{
         position:"fixed", top:"calc(var(--sat, 44px))", left:0, right:0, bottom:0, zIndex:"var(--z-doc-viewer)",
         display:"flex", flexDirection:"column", background:"var(--white)",
         borderRadius:"var(--radius-lg) var(--radius-lg) 0 0", overflow:"hidden",
         boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
-        animation:"expedientePullUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        animation:"expedientePullUp 0.9s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
         <div style={{ background:"var(--white)", padding:"12px 16px", flexShrink:0, borderBottom:"1px solid var(--border-lt)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>

@@ -31,7 +31,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
         }}>
         <span style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--charcoal)" }}>{title}</span>
         {!forceOpen && (
-          <span style={{ color:"var(--charcoal-xl)", fontSize:14, transform: isOpen ? "rotate(90deg)" : undefined, transition:"transform 0.15s" }}>›</span>
+          <span style={{ color:"var(--charcoal-xl)", fontSize:14, transform: isOpen ? "rotate(90deg)" : undefined, transition:"transform 0.4s" }}>›</span>
         )}
       </button>
       {isOpen && <div style={{ paddingBottom:4 }}>{children}</div>}

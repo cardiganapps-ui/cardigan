@@ -306,7 +306,7 @@ export function PatientExpediente({
     <>
     {/* Backdrop */}
     <div className="expediente-open" onClick={onClose}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)", animation:"fadeIn 0.4s ease" }} />
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)", animation:"fadeIn 0.9s ease" }} />
 
     {/* Card */}
     <div className="expediente-open expediente-desktop-panel"
@@ -317,7 +317,7 @@ export function PatientExpediente({
         boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
         animation: dragY > 0 ? "none" : undefined,
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-        transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+        transition: dragging ? "none" : "transform 0.7s cubic-bezier(0.32, 0.72, 0, 1)",
         overflow:"hidden",
       }}>
 
