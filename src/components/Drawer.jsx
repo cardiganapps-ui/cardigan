@@ -123,7 +123,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const renderItem = (item) => {
     const Icon = NAV_ICONS[item.iconId];
     return (
-      <button key={item.id} className={`drawer-item ${screen===item.id?"active":""}`} onClick={() => handleNav(item.id)}>
+      <button key={item.id} className={`drawer-item ${screen===item.id?"active":""}`} data-tour={`nav-${item.id}`} onClick={() => handleNav(item.id)}>
         <div className="drawer-item-icon">{Icon && <Icon size={18} />}</div>
         <span className="drawer-item-label">{t(`nav.${item.id}`)}</span>
       </button>

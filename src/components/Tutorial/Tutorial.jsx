@@ -6,16 +6,14 @@ import { useEscape } from "../../hooks/useEscape";
 import { TutorialSpotlight } from "./TutorialSpotlight";
 import { TutorialTooltip } from "./TutorialTooltip";
 import { TutorialWelcome } from "./TutorialWelcome";
-import { STEP_IDS_REQUIRING_FAB } from "./tutorialSteps";
+import { STEP_IDS_REQUIRING_FAB, STEP_IDS_WITH_DRAWER, TUTORIAL_STEPS } from "./tutorialSteps";
 
 // Viewport padding around the tooltip so it never hugs the edge.
 const EDGE_PAD = 12;
-// How long the "Abriendo X" chip stays up before we actually navigate — this
-// is also the window where the hamburger pulses, so the user sees the button
-// that "did" the navigation before the screen slides in.
-const NAV_HINT_MS = 1100;
+// Time for the drawer open/close animation to settle before measuring.
+const DRAWER_SETTLE_MS = 800;
 // Delay between nav and spotlight measurement (matches screenSlide animation).
-const NAV_SETTLE_MS = 620;
+const NAV_SETTLE_MS = 750;
 
 function computeTooltipStyle(rect, placement, tooltipEl) {
   // Center fallback: place tooltip in the middle of the viewport.
@@ -68,7 +66,7 @@ function intersects(rect, bubbleTop, bubbleLeft, bubbleH, bubbleW) {
 /**
  * Main tutorial orchestrator.
  * - Reads tutorial state + actions from CardiganContext.
- * - Navigates between screens as steps require.
+ * - Navigates between screens and opens the drawer as steps require.
  * - Measures target elements via getBoundingClientRect + ResizeObserver +
  *   scroll/resize/orientationchange listeners.
  * - Renders spotlight + tooltip (or welcome card) via a portal to document.body.
@@ -80,6 +78,7 @@ export function Tutorial() {
     screen,
     setHideFab,
     drawerOpen,
+    setDrawerOpen,
   } = useCardigan();
   const { t } = useT();
 
@@ -87,61 +86,66 @@ export function Tutorial() {
   const [tooltipStyle, setTooltipStyle] = useState(null);
   const [centered, setCentered] = useState(false);
   const [ready, setReady] = useState(false);
-  // While navigating between screens: chip target ("agenda") or null. When
-  // non-null, we suppress the spotlight/tooltip and show only the nav chip +
-  // a pulse on the hamburger.
-  const [navigating, setNavigating] = useState(null);
+  // True while the drawer is animating open/closed or the screen is
+  // transitioning — suppresses spotlight/tooltip until settled.
+  const [settling, setSettling] = useState(false);
   const tooltipRef = useRef(null);
   const retryRef = useRef(0);
 
   const step = tutorial?.step || null;
   const isActive = tutorial?.isActive;
   const isWelcome = tutorial?.isWelcome;
+  const isDrawerStep = step && STEP_IDS_WITH_DRAWER.has(step.id);
 
-  // ── Navigate to the step's screen when needed ──
-  //
-  // When a step targets a different screen than the one currently shown, we
-  // don't teleport the user silently. Instead:
-  //   1. Show a floating "Abriendo Agenda" chip at the top of the viewport.
-  //   2. Pulse the hamburger button via a CSS class, so the user sees which
-  //      element would have triggered the navigation.
-  //   3. After NAV_HINT_MS, call navigate() — the app's existing screen-slide
-  //      animation plays naturally.
-  //   4. After NAV_SETTLE_MS, clear `navigating` so the spotlight measurement
-  //      effect runs and the new step's target gets highlighted.
-  //
-  // We key this effect on `step?.id` alone (not on `screen`) so that the
-  // effect doesn't re-run mid-navigation when `navigate()` itself flips the
-  // `screen` state — which would otherwise kill the chip early.
+  // Stable refs for values used in effects that shouldn't retrigger.
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const screenRef = useRef(screen);
   screenRef.current = screen;
+  const setDrawerOpenRef = useRef(setDrawerOpen);
+  setDrawerOpenRef.current = setDrawerOpen;
+  const drawerOpenRef = useRef(drawerOpen);
+  drawerOpenRef.current = drawerOpen;
 
+  // ── Open/close drawer and navigate for each step ──
+  //
+  // Drawer steps:     open the drawer, wait for animation, then measure.
+  // Non-drawer steps: close the drawer (if open), navigate to screen, wait, measure.
   useEffect(() => {
-    if (!isActive || !step) { setNavigating(null); return; }
-    if (!step.screen || step.screen === screenRef.current) {
-      setNavigating(null);
-      return;
+    if (!isActive || !step) { setSettling(false); return; }
+    const timers = [];
+
+    if (step.openDrawer) {
+      // Drawer step: open the drawer and wait for it to settle.
+      if (!drawerOpenRef.current) {
+        setSettling(true);
+        setDrawerOpenRef.current(true);
+        timers.push(setTimeout(() => setSettling(false), DRAWER_SETTLE_MS));
+      } else {
+        setSettling(false);
+      }
+    } else {
+      // Non-drawer step: close drawer if open, navigate if needed.
+      const needsClose = drawerOpenRef.current;
+      const needsNav = step.screen && step.screen !== screenRef.current;
+
+      if (needsClose || needsNav) {
+        setSettling(true);
+        if (needsClose) setDrawerOpenRef.current(false);
+        // Navigate after drawer closes (or immediately if drawer wasn't open).
+        const navDelay = needsClose ? 500 : 0;
+        if (needsNav) {
+          timers.push(setTimeout(() => navigateRef.current(step.screen), navDelay));
+        }
+        // Wait for close + screen slide to settle.
+        const totalDelay = navDelay + (needsNav ? NAV_SETTLE_MS : needsClose ? 500 : 0);
+        timers.push(setTimeout(() => setSettling(false), totalDelay));
+      } else {
+        setSettling(false);
+      }
     }
 
-    setNavigating(step.screen);
-    const hamburger = document.querySelector('[data-tour="hamburger"]');
-    hamburger?.classList.add("tut-nav-pulse");
-
-    const t1 = setTimeout(() => {
-      navigateRef.current(step.screen);
-    }, NAV_HINT_MS);
-    const t2 = setTimeout(() => {
-      hamburger?.classList.remove("tut-nav-pulse");
-      setNavigating(null);
-    }, NAV_HINT_MS + NAV_SETTLE_MS);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      hamburger?.classList.remove("tut-nav-pulse");
-    };
+    return () => timers.forEach(clearTimeout);
   }, [isActive, step?.id]);
 
   // ── Hide FAB during the tour except on the FAB step ──
@@ -158,6 +162,14 @@ export function Tutorial() {
     };
   }, [isActive, step, setHideFab]);
 
+  // ── Boost drawer z-index above tutorial overlay during drawer steps ──
+  useEffect(() => {
+    if (!isActive || !step) return;
+    if (isDrawerStep) document.body.classList.add("tut-drawer-active");
+    else document.body.classList.remove("tut-drawer-active");
+    return () => document.body.classList.remove("tut-drawer-active");
+  }, [isActive, step, isDrawerStep]);
+
   // ── Measure target element ──
   const measure = useCallback(() => {
     if (!step) { setRect(null); return; }
@@ -165,9 +177,9 @@ export function Tutorial() {
     const el = document.querySelector(step.selector);
     if (!el) {
       // Retry a few times for elements that mount late after a screen switch.
-      if (retryRef.current < 4) {
+      if (retryRef.current < 6) {
         retryRef.current += 1;
-        setTimeout(measure, 150);
+        setTimeout(measure, 200);
         return;
       }
       // Give up and auto-skip to the next step.
@@ -186,18 +198,16 @@ export function Tutorial() {
     setReady(true);
   }, [step, tutorial]);
 
-  // Initial measurement for each step — wait for the nav hint + screen
-  // transition to settle before measuring. Re-runs when the `navigating`
-  // sentinel clears so we measure against the newly-mounted target.
+  // Initial measurement for each step — wait for settling to clear first.
   useLayoutEffect(() => {
     if (!isActive || !step) { setReady(false); setRect(null); return; }
-    if (navigating) { setReady(false); setRect(null); return; }
+    if (settling) { setReady(false); setRect(null); return; }
     setReady(false);
     retryRef.current = 0;
-    const timer = setTimeout(measure, 40);
+    const timer = setTimeout(measure, 60);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, step?.id, navigating]);
+  }, [isActive, step?.id, settling]);
 
   // Re-measure on resize/scroll/orientation change, throttled via rAF.
   useEffect(() => {
@@ -262,20 +272,19 @@ export function Tutorial() {
   }, [isActive, isWelcome, tutorial]);
   useEscape(isActive || isWelcome ? onEscape : null);
 
-  // ── Pause while drawer is open ──
-  const paused = isActive && !!drawerOpen;
+  // ── Pause while drawer is open — but NOT during drawer steps ──
+  const paused = isActive && !!drawerOpen && !isDrawerStep;
 
   // ── Hard cleanup on unmount / finish ──
-  // Sometimes a stuck animation can leave `.tut-blocker` / `.tut-spotlight`
-  // elements in the DOM even after the portal unmounts (e.g. if an in-progress
-  // CSS transition pinned the element). Do a belt-and-braces sweep when the
-  // tutorial is no longer active.
   useEffect(() => {
     if (isActive || isWelcome) return;
+    // Close drawer if left open by a drawer step.
+    if (drawerOpenRef.current) setDrawerOpenRef.current(false);
     // Defer one frame so React's own portal cleanup runs first.
     const raf = requestAnimationFrame(() => {
       document.querySelectorAll(".tut-dim, .tut-blocker, .tut-spotlight, .tut-nav-chip").forEach(el => el.remove());
       document.querySelectorAll(".tut-nav-pulse").forEach(el => el.classList.remove("tut-nav-pulse"));
+      document.body.classList.remove("tut-drawer-active", "tut-fab-active");
     });
     return () => cancelAnimationFrame(raf);
   }, [isActive, isWelcome]);
@@ -297,48 +306,34 @@ export function Tutorial() {
 
   const title = t(step.titleKey);
   const body = t(step.bodyKey);
-  // While the nav chip is up, hide the spotlight + tooltip entirely so the
-  // user sees a clean screen slide with only the chip.
-  const inTransition = !!navigating;
+
+  // While settling (drawer opening / screen switching), show a dim overlay.
+  if (settling) {
+    return createPortal(
+      <div className="tut-dim tut-dim--transition" />,
+      document.body
+    );
+  }
 
   return createPortal(
     <>
-      {inTransition && (
-        <>
-          {/* Dim the entire viewport while the screen change happens so the
-              transition reads as "something important is happening". */}
-          <div className="tut-dim tut-dim--transition" />
-          <div className="tut-nav-chip" role="status" aria-live="polite">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-            <span>{t("tutorial.navigatingTo", { screen: t(`nav.${navigating}`) })}</span>
-          </div>
-        </>
-      )}
-      {!inTransition && (
-        <>
-          <TutorialSpotlight rect={rect} padding={step.padding} />
-          {/* key={step.id} forces a remount on step change so the directional
-              enter animation on .tut-bubble replays instead of snapping. */}
-          <TutorialTooltip
-            key={step.id}
-            ref={tooltipRef}
-            title={title}
-            body={body}
-            stepIndex={tutorial.stepIndex}
-            totalSteps={tutorial.totalSteps}
-            isFirst={tutorial.isFirst}
-            isLast={tutorial.isLast}
-            onPrev={tutorial.prev}
-            onNext={tutorial.next}
-            onSkip={tutorial.skip}
-            style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
-            centered={centered}
-            placement={step.placement}
-          />
-        </>
-      )}
+      <TutorialSpotlight rect={rect} padding={step.padding} />
+      <TutorialTooltip
+        key={step.id}
+        ref={tooltipRef}
+        title={title}
+        body={body}
+        stepIndex={tutorial.stepIndex}
+        totalSteps={tutorial.totalSteps}
+        isFirst={tutorial.isFirst}
+        isLast={tutorial.isLast}
+        onPrev={tutorial.prev}
+        onNext={tutorial.next}
+        onSkip={tutorial.skip}
+        style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+        centered={centered}
+        placement={step.placement}
+      />
     </>,
     document.body
   );

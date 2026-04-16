@@ -2,11 +2,15 @@
 // Each step either targets an element via a CSS selector, or is a centered
 // "card" step (no selector) shown in the middle of the screen.
 //
-// Flow: home orientation first (kpis + fab), then the menu/hamburger so the
-// user knows HOW to navigate, THEN the screen-specific stops (agenda,
-// patients, finances). The orchestrator auto-navigates between screens while
-// showing a "screen change" chip and pulsing the hamburger, so the user sees
-// where the navigation comes from instead of being teleported silently.
+// Flow: home orientation first (kpis + fab), then the hamburger so the user
+// knows HOW to navigate, then for each screen we first open the drawer and
+// spotlight the nav item (so the user learns WHERE each screen lives), then
+// navigate to that screen and highlight a key feature.
+//
+// Steps with `openDrawer: true` cause the Tutorial orchestrator to
+// programmatically open the side drawer before spotlighting the target.
+// The drawer item is highlighted inside the open drawer panel so the user
+// sees exactly which button takes them to each screen.
 //
 // Shape:
 //   id           — stable identifier
@@ -16,6 +20,7 @@
 //   titleKey     — i18n key for the step title
 //   bodyKey      — i18n key for the step body
 //   padding      — extra pixels around the target rect for the spotlight cutout
+//   openDrawer   — if true, the orchestrator opens the drawer before this step
 
 export const TUTORIAL_STEPS = [
   {
@@ -54,6 +59,17 @@ export const TUTORIAL_STEPS = [
     bodyKey: "tutorial.steps.drawerBody",
     padding: 6,
   },
+  // ── Drawer → Agenda ──
+  {
+    id: "nav-agenda",
+    screen: "home",
+    openDrawer: true,
+    selector: '[data-tour="nav-agenda"]',
+    placement: "bottom",
+    titleKey: "tutorial.steps.navAgendaTitle",
+    bodyKey: "tutorial.steps.navAgendaBody",
+    padding: 4,
+  },
   {
     id: "agenda",
     screen: "agenda",
@@ -63,6 +79,17 @@ export const TUTORIAL_STEPS = [
     bodyKey: "tutorial.steps.agendaBody",
     padding: 8,
   },
+  // ── Drawer → Patients ──
+  {
+    id: "nav-patients",
+    screen: "agenda",
+    openDrawer: true,
+    selector: '[data-tour="nav-patients"]',
+    placement: "bottom",
+    titleKey: "tutorial.steps.navPatientsTitle",
+    bodyKey: "tutorial.steps.navPatientsBody",
+    padding: 4,
+  },
   {
     id: "patients",
     screen: "patients",
@@ -71,6 +98,17 @@ export const TUTORIAL_STEPS = [
     titleKey: "tutorial.steps.patientsTitle",
     bodyKey: "tutorial.steps.patientsBody",
     padding: 6,
+  },
+  // ── Drawer → Finances ──
+  {
+    id: "nav-finances",
+    screen: "patients",
+    openDrawer: true,
+    selector: '[data-tour="nav-finances"]',
+    placement: "bottom",
+    titleKey: "tutorial.steps.navFinancesTitle",
+    bodyKey: "tutorial.steps.navFinancesBody",
+    padding: 4,
   },
   {
     id: "finances",
@@ -94,3 +132,8 @@ export const TUTORIAL_STEPS = [
 
 // The "fab" step targets the FAB itself, so we must leave it visible for that step.
 export const STEP_IDS_REQUIRING_FAB = new Set(["fab"]);
+
+// Steps that open the drawer — the Tutorial must not "pause" for these.
+export const STEP_IDS_WITH_DRAWER = new Set(
+  TUTORIAL_STEPS.filter(s => s.openDrawer).map(s => s.id)
+);

@@ -196,14 +196,14 @@ function AppShell({ user, signOut, demo, theme }) {
   const ctxValue = useMemo(() => ({
     ...data, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer,
-    screen, drawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
+    screen, drawerOpen, setDrawerOpen, tutorial, theme, showSuccess: setSuccessMsg,
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
     openExpediente: (patient) => { pendingExpedienteRef.current = patient; setScreen("patients"); },
     consumeExpediente: () => { const p = pendingExpedienteRef.current; pendingExpedienteRef.current = null; return p; },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, tutorial, theme, setSuccessMsg]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, setSuccessMsg]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,

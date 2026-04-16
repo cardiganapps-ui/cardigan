@@ -3,7 +3,7 @@
   position: fixed; inset: 0;
   background: rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
-  animation: fadeIn 0.5s ease;
+  animation: fadeIn 0.7s ease;
   pointer-events: auto;
 }
 .tut-spotlight {
@@ -12,11 +12,11 @@
   box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
   pointer-events: none;
-  transition: top 1.2s cubic-bezier(0.32, 0.72, 0, 1),
-              left 1.2s cubic-bezier(0.32, 0.72, 0, 1),
-              width 1.2s cubic-bezier(0.32, 0.72, 0, 1),
-              height 1.2s cubic-bezier(0.32, 0.72, 0, 1);
-  animation: tutSpotlightIn 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: top 1.6s cubic-bezier(0.32, 0.72, 0, 1),
+              left 1.6s cubic-bezier(0.32, 0.72, 0, 1),
+              width 1.6s cubic-bezier(0.32, 0.72, 0, 1),
+              height 1.6s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: tutSpotlightIn 1.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes tutSpotlightIn {
   from { opacity: 0; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0); }
@@ -40,7 +40,7 @@
 }
 @keyframes tutRingPulse {
   0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%      { opacity: 0.9; transform: scale(1.02); }
+  50%      { opacity: 0.9; transform: scale(1.03); }
 }
 
 /* ── Tooltip bubble ── */
@@ -53,19 +53,19 @@
   padding: 18px 18px 14px;
   max-width: min(320px, calc(100vw - 24px));
   width: calc(100vw - 24px);
-  transition: top 1.0s cubic-bezier(0.32, 0.72, 0, 1),
-              left 1.0s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: top 1.4s cubic-bezier(0.32, 0.72, 0, 1),
+              left 1.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* Directional entrance animations — the tooltip slides from the side of the
    spotlight so the connection between element and tooltip feels deliberate. */
 .tut-bubble--enter-from-above {
-  animation: tutBubbleFromAbove 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleFromAbove 1.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tut-bubble--enter-from-below {
-  animation: tutBubbleFromBelow 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleFromBelow 1.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tut-bubble--enter-center {
-  animation: tutBubbleCenter 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleCenter 1.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes tutBubbleFromAbove {
   from { opacity: 0; transform: translateY(-14px) scale(0.98); }
@@ -85,7 +85,7 @@
   left: 50% !important; top: 50% !important;
   transform: translate(-50%, -50%);
   max-width: min(340px, calc(100vw - 32px));
-  animation: tutBubbleCenter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleCenter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tut-bubble-title {
@@ -116,7 +116,7 @@
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.4s ease, color 0.4s ease;
+  transition: background 0.5s ease, color 0.5s ease;
   padding: 0;
 }
 .tut-bubble-close:hover,
@@ -138,7 +138,7 @@
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--cream-dark);
-  transition: width 0.55s ease, background 0.55s ease;
+  transition: width 0.7s ease, background 0.7s ease;
 }
 .tut-dot--done {
   background: var(--teal-light);
@@ -161,7 +161,7 @@
   border: none; cursor: pointer;
   font-family: var(--font-d);
   font-size: 13px; font-weight: 700;
-  transition: transform 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+  transition: transform 0.5s ease, background 0.5s ease, box-shadow 0.5s ease;
   -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
 }
@@ -183,53 +183,8 @@
    full-bleed-centered while the Tutorial orchestrator switches screens. */
 .tut-dim--transition {
   background: rgba(20, 20, 20, 0.48);
-  animation: fadeIn 0.5s ease;
+  animation: fadeIn 0.7s ease;
   pointer-events: auto;
-}
-.tut-nav-chip {
-  position: fixed;
-  /* Sit below the topbar so it doesn't collide with the pulsing hamburger. */
-  top: calc(var(--sat) + 60px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: calc(var(--z-tutorial) + 2);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--white);
-  color: var(--teal-dark);
-  font-family: var(--font-d);
-  font-size: 13px;
-  font-weight: 800;
-  padding: 10px 16px 10px 14px;
-  border-radius: var(--radius-pill);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.22);
-  animation: tutChipIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-  white-space: nowrap;
-  text-transform: capitalize;
-}
-@keyframes tutChipIn {
-  from { opacity: 0; transform: translate(-50%, -14px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
-}
-
-/* ── Hamburger "tapped" pulse ── */
-/* Applied briefly by the orchestrator via JS while a screen change is
-   pending, so the user sees the button that "did" the navigation. The
-   z-index bump lifts the hamburger above the transition dim so it reads
-   clearly; the background pill makes it visible against the dimmed topbar. */
-.hamburger.tut-nav-pulse {
-  position: relative;
-  z-index: calc(var(--z-tutorial) + 3);
-  background: var(--white);
-  border-radius: 50%;
-  animation: tutHamburgerPulse 1.1s cubic-bezier(0.4, 0, 0.6, 1);
-}
-@keyframes tutHamburgerPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(122, 181, 199, 0.0); transform: scale(1); }
-  30%  { box-shadow: 0 0 0 8px rgba(122, 181, 199, 0.7); transform: scale(1.12); }
-  100% { box-shadow: 0 0 0 20px rgba(122, 181, 199, 0); transform: scale(1); }
 }
 .tut-welcome-overlay {
   position: fixed; inset: 0;
@@ -246,7 +201,7 @@
   padding: 26px 22px 20px;
   max-width: 340px; width: 100%;
   text-align: center;
-  animation: tutWelcomeIn 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutWelcomeIn 1.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes tutWelcomeIn {
   from { opacity: 0; transform: translateY(12px) scale(0.96); }
@@ -283,6 +238,22 @@
    so it's visible through the spotlight cutout. */
 body.tut-fab-active .fab {
   z-index: calc(var(--z-tutorial) + 1) !important;
+}
+
+/* ── Drawer z-index boost during tutorial drawer steps ──
+   The drawer (z-index 201) sits below the tutorial overlay (700).
+   During drawer navigation steps, boost both the drawer panel and its
+   overlay above the tutorial layer so the nav items are interactive
+   through the spotlight cutout. */
+body.tut-drawer-active .drawer {
+  z-index: calc(var(--z-tutorial) + 1) !important;
+}
+body.tut-drawer-active .drawer-overlay {
+  z-index: var(--z-tutorial) !important;
+  /* Let the tutorial dim handle the backdrop instead */
+  background: transparent !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
 }
 
 /* ── CONTEXTUAL HELP TIPS ── */
