@@ -183,10 +183,24 @@ function ProyeccionTab({ sessions, patients }) {
     };
   }, [sessions, today]);
 
+  // Resolve the effective rate for a session: use session.rate if set,
+  // otherwise fall back to the patient's current rate (handles legacy
+  // sessions created before rate was tracked per-session).
+  const patientMap = useMemo(() => {
+    const m = new Map();
+    for (const p of patients) m.set(p.id, p);
+    return m;
+  }, [patients]);
+  const sessionRate = (s) => {
+    if (s.rate != null && s.rate > 0) return s.rate;
+    const p = patientMap.get(s.patient_id);
+    return p ? p.rate : 0;
+  };
+
   const cancelRate = customCancel !== null ? customCancel / 100 : histRate;
 
   // Gross and net
-  const gross = futureSessions.reduce((sum, s) => sum + (s.rate || 0), 0);
+  const gross = futureSessions.reduce((sum, s) => sum + sessionRate(s), 0);
   const net = Math.round(gross * (1 - cancelRate));
 
   // Weeks in period for weekly average (matches fixed day counts: 7, 30, 90)
@@ -195,21 +209,22 @@ function ProyeccionTab({ sessions, patients }) {
 
   // Average session rate
   const avgRate = futureSessions.length > 0
-    ? Math.round(futureSessions.reduce((s, x) => s + (x.rate || 0), 0) / futureSessions.length)
+    ? Math.round(gross / futureSessions.length)
     : 0;
 
   // Breakdown by patient
   const byPatient = useMemo(() => {
     const map = {};
     for (const s of futureSessions) {
+      const rate = sessionRate(s);
       if (!map[s.patient]) map[s.patient] = { count: 0, total: 0, colorIdx: s.colorIdx ?? s.color_idx, initials: s.initials };
       map[s.patient].count++;
-      map[s.patient].total += (s.rate || 0);
+      map[s.patient].total += rate;
     }
     return Object.entries(map)
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total);
-  }, [futureSessions]);
+  }, [futureSessions, patientMap]);
 
   // Active patients contributing
   const activeContributing = new Set(futureSessions.map(s => s.patient_id)).size;
