@@ -1,0 +1,520 @@
+/* ── LANDING PAGE ── */
+/* Marketing site shown to signed-out visitors. Minimal palette
+   (near-white bg, charcoal text, teal accent), strong typography,
+   generous vertical rhythm. All classes are prefixed .lp- to avoid
+   colliding with the app shell. */
+.lp-root {
+  height: 100dvh;
+  background: var(--white);
+  color: var(--charcoal);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-family: var(--font);
+}
+.lp-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+/* Nav */
+.lp-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-lt);
+  padding: calc(var(--sat) + 12px) 0 12px;
+}
+.lp-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.lp-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-d);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.3px;
+  text-decoration: none;
+}
+.lp-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.lp-nav-link {
+  background: none;
+  border: none;
+  color: var(--charcoal-md);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.4s ease;
+}
+.lp-nav-link:hover { color: var(--charcoal); }
+
+/* Section rhythm: 80px top + 80px bottom per section gives ~160px of
+   breathing room between adjacent sections, which is generous enough for
+   a marketing page without feeling empty on smaller viewports. */
+.lp-section {
+  padding: 80px 0;
+  scroll-margin-top: 80px;
+}
+.lp-section--dark {
+  padding: 96px 0;
+  background: var(--charcoal);
+  color: var(--white);
+  margin-top: 40px;
+}
+/* Hero gets a tighter rhythm so the headline doesn't float awkwardly
+   below the sticky nav. */
+#hero.lp-section { padding-top: 72px; padding-bottom: 28px; }
+
+/* Typography */
+.lp-hero-title {
+  font-family: var(--font-d);
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: var(--charcoal);
+  margin: 0 0 24px;
+  max-width: 780px;
+}
+.lp-hero-sub {
+  font-size: 19px;
+  line-height: 1.6;
+  color: var(--charcoal-md);
+  margin: 0 0 40px;
+  max-width: 580px;
+}
+.lp-hero-ctas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lp-section-title {
+  font-family: var(--font-d);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: inherit;
+  margin: 0 0 18px;
+  max-width: 760px;
+}
+.lp-section-sub {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--charcoal-md);
+  margin: 0 0 56px;
+  max-width: 600px;
+}
+.lp-section--dark .lp-section-sub { color: rgba(255, 255, 255, 0.7); }
+
+/* Problem body — "It works… until it doesn't." gets visual weight */
+.lp-body {
+  max-width: 640px;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--charcoal-md);
+}
+.lp-body p { margin: 0 0 20px; }
+.lp-body p:last-child { margin-bottom: 0; }
+.lp-body-emphasis {
+  font-family: var(--font-d);
+  font-size: 26px !important;
+  font-weight: 800;
+  color: var(--charcoal) !important;
+  line-height: 1.3 !important;
+  margin: 36px 0 !important;
+  letter-spacing: -0.01em;
+}
+
+/* Solution: 3-feature grid */
+.lp-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.lp-feature {
+  padding: 32px 28px;
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.5s ease, transform 0.5s ease, box-shadow 0.5s ease;
+}
+.lp-feature-title {
+  font-family: var(--font-d);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+.lp-feature-desc {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--charcoal-md);
+}
+
+/* Differentiation list: 2 columns on desktop, 1 on mobile */
+.lp-diff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 40px;
+  max-width: 680px;
+}
+.lp-diff-list li {
+  font-family: var(--font-d);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--charcoal);
+  padding-left: 28px;
+  position: relative;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+.lp-diff-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+
+/* Use cases — chip list */
+.lp-usecase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.lp-usecase-list li {
+  padding: 14px 22px;
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--charcoal-md);
+  transition: border-color 0.4s ease, color 0.4s ease;
+}
+
+/* Final CTA (dark section) */
+.lp-final-title {
+  font-family: var(--font-d);
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+  color: var(--white);
+  max-width: 640px;
+}
+.lp-final-sub {
+  font-size: 18px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.68);
+  margin: 0 0 36px;
+  max-width: 520px;
+}
+
+/* Footer */
+.lp-footer {
+  border-top: 1px solid var(--border-lt);
+  padding: 44px 0 calc(var(--sab) + 44px);
+  background: var(--white);
+}
+.lp-footer-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.lp-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--charcoal-xl);
+  letter-spacing: -0.2px;
+}
+.lp-footer-tag {
+  font-size: 13px;
+  color: var(--charcoal-xl);
+  text-align: center;
+}
+
+/* Buttons — rounded, medium weight, minimal */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  height: 50px;
+  font-family: var(--font-d);
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.45s ease, box-shadow 0.45s ease, background 0.45s ease, color 0.45s ease, border-color 0.45s ease;
+}
+.lp-btn--primary {
+  background: var(--charcoal);
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.lp-btn--secondary {
+  background: var(--white);
+  color: var(--charcoal);
+  border: 1.5px solid var(--border);
+}
+.lp-btn:active { transform: scale(0.97); }
+/* Invert the primary button inside the dark final-CTA section. */
+.lp-section--dark .lp-btn--primary {
+  background: var(--white);
+  color: var(--charcoal);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* Product preview — fake dashboard window */
+.lp-preview {
+  margin-top: 48px;
+  display: flex;
+  justify-content: center;
+}
+.lp-preview-window {
+  width: 100%;
+  max-width: 720px;
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: 14px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.08), 0 4px 18px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+.lp-preview-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-lt);
+  background: #F7F5F2;
+}
+.lp-preview-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #D8D5D0;
+}
+.lp-preview-topbar {
+  padding: 18px 24px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.lp-preview-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--charcoal);
+}
+.lp-preview-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 12px;
+  font-weight: 800;
+}
+.lp-preview-content {
+  padding: 12px 24px 28px;
+}
+.lp-preview-greeting {
+  font-family: var(--font-d);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin-bottom: 18px;
+  letter-spacing: -0.01em;
+}
+.lp-preview-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 26px;
+}
+.lp-preview-kpi {
+  padding: 14px 16px;
+  border: 1px solid var(--border-lt);
+  border-radius: 12px;
+  background: var(--white);
+}
+.lp-preview-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--charcoal-xl);
+  margin-bottom: 4px;
+}
+.lp-preview-kpi-value {
+  font-family: var(--font-d);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.01em;
+}
+.lp-preview-list-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--charcoal-xl);
+  margin-bottom: 8px;
+}
+.lp-preview-list {
+  border: 1px solid var(--border-lt);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.lp-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-lt);
+}
+.lp-preview-row:last-child { border-bottom: none; }
+.lp-preview-time {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal-dark);
+  min-width: 44px;
+}
+.lp-preview-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--charcoal);
+}
+.lp-preview-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex-shrink: 0;
+}
+
+/* Hover states — pointer devices only */
+@media (hover: hover) {
+  .lp-feature:hover {
+    border-color: var(--teal-light);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  }
+  .lp-usecase-list li:hover {
+    border-color: var(--teal-light);
+    color: var(--charcoal);
+  }
+  .lp-btn--primary:hover {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  }
+  .lp-btn--secondary:hover {
+    border-color: var(--charcoal-xl);
+    background: var(--cream);
+  }
+  .lp-section--dark .lp-btn--primary:hover {
+    background: var(--cream);
+    transform: translateY(-1px);
+  }
+}
+
+/* Tablet breakpoint — tighten typography */
+@media (max-width: 880px) {
+  .lp-section { padding: 72px 0; }
+  .lp-section--dark { padding: 88px 0; }
+  .lp-hero-title { font-size: 44px; }
+  .lp-section-title { font-size: 32px; }
+  .lp-final-title { font-size: 36px; }
+  .lp-features { grid-template-columns: 1fr 1fr; }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .lp-container { padding: 0 20px; }
+  .lp-section { padding: 56px 0; }
+  .lp-section--dark { padding: 72px 0; margin-top: 28px; }
+  #hero.lp-section { padding-top: 48px; padding-bottom: 20px; }
+  .lp-nav { padding: calc(var(--sat) + 10px) 0 10px; }
+  .lp-nav-brand { font-size: 17px; }
+  .lp-nav-actions { gap: 8px; }
+  .lp-nav-link { display: none; }
+
+  .lp-hero-title { font-size: 36px; }
+  .lp-hero-sub { font-size: 16px; margin-bottom: 28px; }
+  .lp-section-title { font-size: 28px; }
+  .lp-section-sub { font-size: 16px; margin-bottom: 40px; }
+  .lp-body { font-size: 16px; }
+  .lp-body-emphasis { font-size: 22px !important; margin: 28px 0 !important; }
+
+  .lp-features { grid-template-columns: 1fr; gap: 14px; }
+  .lp-feature { padding: 24px 22px; }
+  .lp-feature-title { font-size: 17px; }
+
+  .lp-diff-list { grid-template-columns: 1fr; gap: 14px; }
+  .lp-diff-list li { font-size: 16px; }
+
+  .lp-usecase-list li { padding: 12px 18px; font-size: 14px; }
+
+  .lp-final-title { font-size: 30px; }
+  .lp-final-sub { font-size: 16px; }
+
+  .lp-btn { height: 46px; padding: 0 20px; font-size: 14px; }
+
+  .lp-preview { margin-top: 36px; }
+  .lp-preview-content { padding: 12px 18px 22px; }
+  .lp-preview-greeting { font-size: 18px; }
+  .lp-preview-kpis { gap: 8px; }
+  .lp-preview-kpi { padding: 12px 12px; }
+  .lp-preview-kpi-value { font-size: 18px; }
+  .lp-preview-kpi-label { font-size: 9px; }
+}

@@ -1,0 +1,234 @@
+/* Desktop-only elements: hidden on mobile */
+.topbar-screen-name, .topbar-refresh-btn { display: none; }
+
+/* ── RESPONSIVE: DESKTOP (768px+) ── */
+@media (min-width: 768px) {
+  /* Override safe area insets for desktop (no notch) */
+  :root { --sat: 0px; --sab: 0px; }
+
+  /* Shell: horizontal layout (sidebar | main) */
+  .shell { flex-direction: row; max-width: none; margin: 0; }
+  .status-bar { display: none; }
+
+  /* Drawer: persistent sidebar */
+  .drawer-overlay { display: none !important; }
+  .drawer {
+    position: static !important; width: 240px; height: auto;
+    flex-shrink: 0; pointer-events: auto !important;
+    z-index: auto;
+  }
+  .drawer-panel {
+    position: static !important; width: 240px; max-width: none;
+    transform: none !important; transition: none !important;
+    animation: none !important;
+  }
+  .drawer-header { padding: 20px 16px 16px; }
+
+  /* Main content area: no extra height constraint — flex:1 from base is enough */
+
+  /* Topbar: hide hamburger, un-center logo */
+  .hamburger { display: none; }
+  .topbar-brand { position: static; transform: none; }
+  .topbar-brand:active { transform: scale(0.94); }
+
+  /* Page: wider padding, centered */
+  .page { padding: 20px 32px; max-width: 900px; margin: 0 auto; }
+
+  /* Sheets: centered modal instead of bottom sheet */
+  .sheet-overlay { align-items: center; }
+  .sheet-panel {
+    max-width: 520px;
+    border-radius: var(--radius-lg);
+    animation: sheetScaleIn 0.5s ease;
+    max-height: 80dvh;
+  }
+  .sheet-handle { display: none; }
+
+  /* KPI grid: 4 columns on desktop, highlight card spans 2 */
+  .kpi-grid-desktop { grid-template-columns: repeat(4, 1fr) !important; }
+  .kpi-card--highlight { grid-column: span 2 !important; }
+
+  /* Desktop topbar: light, warm */
+  .topbar {
+    background: var(--white); border-bottom: 1px solid var(--border-lt);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); padding: 10px 24px;
+  }
+  .topbar-brand { color: var(--charcoal); }
+  .topbar-screen-name {
+    display: inline; font-size: 14px; color: var(--charcoal-lt);
+    margin-left: 12px; font-weight: 600; font-family: var(--font);
+  }
+  .topbar-refresh-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: none; border: 1.5px solid var(--border);
+    cursor: pointer; color: var(--charcoal-xl);
+    transition: all 0.4s; min-height: unset;
+  }
+  .topbar-refresh-btn:hover { background: var(--teal-pale); color: var(--teal-dark); border-color: var(--teal-light); }
+  .topbar-right .avatar-sm { background: var(--teal); }
+  .admin-btn { color: var(--charcoal-xl); }
+  /* Dark help button variant is used for the mobile topbar; swap it back
+     to the light styling inside the desktop (white) topbar. */
+  .topbar .help-icon-btn--dark {
+    border-color: var(--border);
+    color: var(--charcoal-xl);
+  }
+  .topbar .help-icon-btn--dark:hover,
+  .topbar .help-icon-btn--dark[aria-expanded="true"] {
+    background: var(--teal-pale);
+    color: var(--teal-dark);
+    border-color: var(--teal-light);
+  }
+
+  /* Multi-column Home dashboard */
+  .home-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
+  .home-col-main { padding-right: 0; }
+  .home-col-side { padding-left: 0; }
+
+  /* Spacious cards on desktop */
+  .card { border-radius: var(--radius-lg); }
+  .kpi-card { padding: 18px 20px; }
+  .kpi-value { font-size: 24px; }
+  .row-item { padding: 14px 18px; min-height: 66px; }
+  .section-title { font-size: 16px; }
+
+  /* Appointment card color accents on desktop */
+  .row-item { border-left: 3px solid transparent; }
+  .row-item:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .row-item:last-child { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .row-item:only-child { border-radius: var(--radius-lg); }
+
+  /* Expediente: right-side panel on desktop */
+  .expediente-desktop-panel {
+    left: auto !important;
+    right: 0 !important;
+    width: 580px !important;
+    max-width: 50vw !important;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg) !important;
+    animation: slideInRight 0.9s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+  .expediente-desktop-panel .expediente-drag-handle { display: none; }
+
+  /* NoteEditor: centered panel instead of full-screen */
+  .note-editor-desktop {
+    left: 240px !important;
+    max-width: 680px !important;
+    right: auto !important;
+    width: calc(100% - 240px) !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  }
+
+  /* Wider week event cells: show time + name */
+  .week-event { font-size: 10px; padding: 4px 6px; }
+  .week-event-time { display: inline; font-weight: 800; margin-right: 2px; }
+  .week-time-row { min-height: 56px; }
+  .week-cell { min-height: 56px; }
+  :root { --week-row-h: 56px; }
+}
+
+/* ── DESKTOP POINTER: tighter sizing ── */
+@media (hover: hover) and (min-width: 768px) {
+  button, a, select { min-height: 36px; }
+  .icon-btn { min-width: 36px; min-height: 36px; }
+  .btn { height: 42px; font-size: 14px; }
+  .search-bar { height: 38px; }
+  .fab { width: 48px; height: 48px; bottom: 24px; right: 24px; }
+  .fab-action { min-height: 38px; }
+  .chip { min-height: 30px; }
+  .cal-day { min-height: 40px; }
+  .month-cell { min-height: 36px; }
+  .month-nav-btn { min-width: 36px; min-height: 36px; }
+}
+
+/* ── CURSOR + TRANSITIONS (pointer devices) ── */
+.row-item, .settings-row, .kpi-card, .month-cell, .week-cell, .chip { cursor: pointer; }
+.row-item, .settings-row, .drawer-item, .kpi-card, .month-cell, .week-cell, .chip,
+.btn, .fab, .fab-action { transition: all 0.4s ease; }
+
+/* ── HOVER STATES (pointer devices only) ── */
+@media (hover: hover) {
+  .row-item:hover { background: var(--teal-mist); }
+  .settings-row:hover { background: var(--teal-mist); }
+  .drawer-item:hover { background: rgba(255,255,255,0.08); }
+  .btn:hover { transform: scale(0.98); }
+  .btn-primary:hover { background: #000; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+  .fab:hover { transform: scale(1.05); }
+  .fab-action:hover { background: var(--cream); }
+  .icon-btn:hover { opacity: 0.7; }
+  .admin-btn:hover { opacity: 0.8; }
+  .month-nav-btn:hover { background: var(--teal-pale); }
+  .month-cell:hover { background: var(--teal-pale); }
+  .week-cell:hover { background: var(--teal-mist); }
+  .week-event:hover { background: var(--teal-pale); filter: brightness(0.97); }
+  .chip:hover { opacity: 0.85; }
+  .kpi-card:hover { border-color: var(--teal-light); }
+}
+
+/* ── FOCUS-VISIBLE (keyboard navigation) ── */
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: var(--radius-sm); }
+.btn:focus-visible, .lp-btn:focus-visible { outline-offset: 3px; }
+.drawer-item:focus-visible { outline-color: var(--teal-light); outline-offset: -2px; }
+
+/* ── DESKTOP DRAWER: stronger active state ── */
+@media (min-width: 768px) {
+  .drawer-item.active { background: rgba(91,155,175,0.25); }
+  .drawer-item.active::before { width: 4px; }
+  .drawer-item.active .drawer-item-label { font-size: 15px; }
+}
+
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ── CUSTOM SCROLLBAR (desktop) ── */
+@media (min-width: 768px) {
+  .page::-webkit-scrollbar { width: 6px; }
+  .page::-webkit-scrollbar-track { background: transparent; }
+  .page::-webkit-scrollbar-thumb { background: var(--cream-deeper); border-radius: 3px; }
+  .page::-webkit-scrollbar-thumb:hover { background: var(--border); }
+  .page { scrollbar-width: thin; scrollbar-color: var(--cream-deeper) transparent; }
+  .drawer-nav::-webkit-scrollbar { width: 4px; }
+  .drawer-nav::-webkit-scrollbar-track { background: transparent; }
+  .drawer-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  .drawer-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+}
+
+/* ── RESPONSIVE: LAPTOP (1024px+) ── */
+@media (min-width: 1024px) {
+  .page { max-width: 1040px; padding: 24px 40px; }
+  .drawer { width: 260px; }
+  .drawer-panel { width: 260px; }
+  .sheet-panel { max-width: 560px; }
+  .expediente-desktop-panel {
+    width: 620px !important;
+  }
+  .note-editor-desktop {
+    left: 260px !important;
+    width: calc(100% - 260px) !important;
+  }
+  .week-time-col { width: 56px; }
+  .week-header-row { grid-template-columns: 56px repeat(7, 1fr); }
+  :root { --week-row-h: 60px; }
+  .week-time-row, .week-cell { min-height: 60px; }
+  .week-event { font-size: 11px; padding: 4px 8px; }
+  .fin-stats-grid { gap: 14px; }
+}
+
+/* ── RESPONSIVE: LARGE DESKTOP (1280px+) ── */
+@media (min-width: 1280px) {
+  .page { max-width: 1120px; padding: 28px 48px; }
+  .home-columns { grid-template-columns: 1.3fr 0.7fr; gap: 12px; }
+}
+
+/* ── RESPONSIVE: WIDE DESKTOP (1440px+) ── */
+@media (min-width: 1440px) {
+  .page { max-width: 1200px; }
+}
+/* ── PWA Standalone: tighter bottom spacing (no Safari bar) ── */
+@media (display-mode: standalone) {
+  .fab      { bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .fab-menu { bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+  .bug-fab  { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+}

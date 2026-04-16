@@ -28,7 +28,7 @@ import { AdminPanel } from "./screens/AdminPanel";
 import { BugReportFab } from "./components/BugReportFab";
 import { useTheme } from "./hooks/useTheme";
 import "./utils/logBuffer";
-import "./styles.css";
+import "./styles/index.css";
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
