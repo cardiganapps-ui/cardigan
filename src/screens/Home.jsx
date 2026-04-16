@@ -156,8 +156,9 @@ export function Home({ setScreen, userName }) {
     );
   };
 
-  // Carousel transform
-  const baseShift = -carouselPage * 100;
+  // Carousel transform — 50% because translateX(%) is relative to the element's
+  // own width (200% of parent), so 50% of element = 100% of parent = one panel.
+  const baseShift = -carouselPage * 50;
   const dragPx = carouselSwiping ? carouselOffset : 0;
   const carouselTransform = `translateX(calc(${baseShift}% + ${dragPx}px))`;
   const carouselTransition = carouselSwiping
