@@ -38,7 +38,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
       const result = await onSignUp({ email, password, name: name.trim() });
       setSubmitting(false);
       if (result.error) { setError(result.error); return; }
-      setMessage(t("settings.linkSent"));
+      setMessage(t("auth.confirmEmailSent"));
       return;
     }
 

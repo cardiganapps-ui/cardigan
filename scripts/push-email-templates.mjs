@@ -44,14 +44,16 @@ if (!projectRef || !accessToken) {
 
 // Read all four templates
 const templates = {
-  MAILER_TEMPLATES_CONFIRMATION_CONTENT: readFileSync(resolve(emailsDir, 'confirm-signup.html'), 'utf-8'),
-  MAILER_TEMPLATES_RECOVERY_CONTENT: readFileSync(resolve(emailsDir, 'reset-password.html'), 'utf-8'),
-  MAILER_TEMPLATES_MAGIC_LINK_CONTENT: readFileSync(resolve(emailsDir, 'magic-link.html'), 'utf-8'),
-  MAILER_TEMPLATES_EMAIL_CHANGE_CONTENT: readFileSync(resolve(emailsDir, 'change-email.html'), 'utf-8'),
-  MAILER_SUBJECTS_CONFIRMATION: 'Confirma tu cuenta — Cardigan',
-  MAILER_SUBJECTS_RECOVERY: 'Restablecer contraseña — Cardigan',
-  MAILER_SUBJECTS_MAGIC_LINK: 'Iniciar sesión — Cardigan',
-  MAILER_SUBJECTS_EMAIL_CHANGE: 'Confirmar nuevo correo — Cardigan',
+  mailer_autoconfirm: false,
+  site_url: 'https://cardigan-fawn.vercel.app',
+  mailer_templates_confirmation_content: readFileSync(resolve(emailsDir, 'confirm-signup.html'), 'utf-8'),
+  mailer_templates_recovery_content: readFileSync(resolve(emailsDir, 'reset-password.html'), 'utf-8'),
+  mailer_templates_magic_link_content: readFileSync(resolve(emailsDir, 'magic-link.html'), 'utf-8'),
+  mailer_templates_email_change_content: readFileSync(resolve(emailsDir, 'change-email.html'), 'utf-8'),
+  mailer_subjects_confirmation: 'Confirma tu cuenta — Cardigan',
+  mailer_subjects_recovery: 'Restablecer contraseña — Cardigan',
+  mailer_subjects_magic_link: 'Iniciar sesión — Cardigan',
+  mailer_subjects_email_change: 'Confirmar nuevo correo — Cardigan',
 }
 
 console.log('Pushing email templates to Supabase project:', projectRef)

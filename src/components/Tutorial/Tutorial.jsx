@@ -149,7 +149,13 @@ export function Tutorial() {
     if (!isActive || !step) return;
     const needFab = STEP_IDS_REQUIRING_FAB.has(step.id);
     setHideFab?.(!needFab);
-    return () => setHideFab?.(false);
+    // Boost FAB z-index above tutorial overlay so it's visible in the spotlight
+    if (needFab) document.body.classList.add("tut-fab-active");
+    else document.body.classList.remove("tut-fab-active");
+    return () => {
+      setHideFab?.(false);
+      document.body.classList.remove("tut-fab-active");
+    };
   }, [isActive, step, setHideFab]);
 
   // ── Measure target element ──

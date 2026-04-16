@@ -277,6 +277,14 @@
   display: flex; flex-direction: column; gap: 8px;
 }
 
+/* ── FAB z-index boost during tutorial ──
+   The FAB sits at z-index 52, far below the tutorial overlay at 700.
+   When the tutorial spotlights the FAB, we boost it above the overlay
+   so it's visible through the spotlight cutout. */
+body.tut-fab-active .fab {
+  z-index: calc(var(--z-tutorial) + 1) !important;
+}
+
 /* ── CONTEXTUAL HELP TIPS ── */
 .help-icon-btn {
   width: 28px; height: 28px;
