@@ -75,19 +75,19 @@ export function Settings({ user, signOut }) {
           </div>
           <IconChevron />
         </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={restartTutorial}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
-            <div className="settings-row-sub">{t("tutorial.settingsRowSub")}</div>
-          </div>
-          <IconChevron />
-        </div>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("theme")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{theme?.resolvedTheme === "dark" ? <IconMoon size={18} /> : <IconSun size={18} />}</div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.appearance")}</div>
             <div className="settings-row-sub">{theme?.preference === "light" ? t("settings.themeLight") : theme?.preference === "dark" ? t("settings.themeDark") : t("settings.themeSystem")}</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={restartTutorial}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
+            <div className="settings-row-sub">{t("tutorial.settingsRowSub")}</div>
           </div>
           <IconChevron />
         </div>
