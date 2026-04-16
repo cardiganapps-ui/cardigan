@@ -89,20 +89,16 @@ export function Home({ setScreen, userName }) {
     setCarouselSwiping(false);
 
     const triggered = Math.abs(dx) > 60;
+    setCarouselSettling(true);
     if (triggered) {
-      setCarouselSettling(true);
       if (dx < -60 && carouselPage === 0) {
         setCarouselPage(1);
       } else if (dx > 60 && carouselPage === 1) {
         setCarouselPage(0);
       }
-      setCarouselOffset(0);
-      setTimeout(() => setCarouselSettling(false), 500);
-    } else {
-      setCarouselSettling(true);
-      setCarouselOffset(0);
-      setTimeout(() => setCarouselSettling(false), 300);
     }
+    setCarouselOffset(0);
+    setTimeout(() => setCarouselSettling(false), 380);
   }, [carouselPage]);
 
   const currentMonthPayments = payments.filter(p => {
@@ -166,9 +162,9 @@ export function Home({ setScreen, userName }) {
   const carouselTransform = `translateX(calc(${baseShift}% + ${dragPx}px))`;
   const carouselTransition = carouselSwiping
     ? "none"
-    : carouselSettling || carouselPage !== 0
-      ? "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
-      : "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)";
+    : carouselSettling
+      ? "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)"
+      : "none";
 
   return (
     <div className="page">
@@ -236,9 +232,11 @@ export function Home({ setScreen, userName }) {
             <div style={{ width: "50%", flexShrink: 0 }}>
               <div className="card" style={{ borderRadius: 0 }}>
                 {todaySessions.length === 0
-                  ? emptyHint(t("home.emptyToday"),
-                      <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
-                    )
+                  ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
+                      <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                    </div>
                   : todaySessions.map(renderSessionRow)
                 }
               </div>
@@ -261,16 +259,16 @@ export function Home({ setScreen, userName }) {
 
         {/* Carousel dots + hint */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px 0 2px" }}>
-          <button onClick={() => setCarouselPage(0)} aria-label={t("sessions.today")}
+          <button onClick={() => { if (carouselPage !== 0) { setCarouselSettling(true); setCarouselPage(0); setTimeout(() => setCarouselSettling(false), 380); } }} aria-label={t("sessions.today")}
             style={{ width:7, height:7, minHeight:0, minWidth:0, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
               background: carouselPage === 0 ? "var(--teal)" : "var(--cream-deeper)",
-              transition:"all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transition:"all 0.3s ease",
               transform: carouselPage === 0 ? "scale(1)" : "scale(0.8)",
             }} />
-          <button onClick={() => setCarouselPage(1)} aria-label={nextDayLabel}
+          <button onClick={() => { if (carouselPage !== 1) { setCarouselSettling(true); setCarouselPage(1); setTimeout(() => setCarouselSettling(false), 380); } }} aria-label={nextDayLabel}
             style={{ width:7, height:7, minHeight:0, minWidth:0, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
               background: carouselPage === 1 ? "var(--teal)" : "var(--cream-deeper)",
-              transition:"all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transition:"all 0.3s ease",
               transform: carouselPage === 1 ? "scale(1)" : "scale(0.8)",
             }} />
         </div>
