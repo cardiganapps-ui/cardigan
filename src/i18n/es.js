@@ -320,6 +320,7 @@ export default {
     forecastScheduled: "{count} sesión{plural} agendada{plural}",
     forecastActivePatients: "{count} paciente{plural} activo{plural}",
     forecastCancelRate: "Tasa de cancelación",
+    forecastCancelRateLower: "tasa de cancelación",
     forecastHistorical: "Tu promedio histórico",
     forecastAssumption: "Supuesto de cancelación",
     forecastAdjust: "Ajusta el porcentaje para ver cómo afecta tus ingresos",
@@ -369,6 +370,8 @@ export default {
     generalNoSession: "Nota general (sin sesi\u00f3n espec\u00edfica)",
     past: "Pasadas",
     upcoming: "Pr\u00f3ximas",
+    createFirstHint: "Crea tu primera nota con el bot\u00f3n de arriba.",
+    selectedCount: "{count} seleccionada{plural}",
   },
 
   // ── Documents ──

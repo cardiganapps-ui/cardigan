@@ -78,7 +78,7 @@ export function DocumentList({
                     <input className="input" value={renameValue} onChange={e => setRenameValue(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") { setRenamingDoc(null); setRenameValue(""); } }}
                       autoFocus style={{ fontSize:12, padding:"4px 6px", flex:1 }} />
-                    <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:11, fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"white", cursor:"pointer" }}>{t("ok")}</button>
+                    <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:"var(--text-xs)", fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"var(--white)", cursor:"pointer" }}>{t("ok")}</button>
                   </div>
                 ) : (
                   <>
@@ -108,9 +108,9 @@ export function DocumentList({
                   {isConfirmingDelete ? (
                     <div style={{ display:"flex", gap:2 }}>
                       <button onClick={() => handleDelete(doc.id)}
-                        style={{ padding:"4px 8px", fontSize:10, fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"white", cursor:"pointer" }}>{t("yes")}</button>
+                        style={{ padding:"4px 8px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"var(--white)", cursor:"pointer" }}>{t("yes")}</button>
                       <button onClick={() => setConfirmDeleteDoc(null)}
-                        style={{ padding:"4px 8px", fontSize:10, fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>{t("no")}</button>
+                        style={{ padding:"4px 8px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>{t("no")}</button>
                     </div>
                   ) : (
                     <button onClick={() => setConfirmDeleteDoc(doc.id)}

@@ -85,7 +85,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
           </span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <div style={{ padding:"0 20px 20px" }}>
+        <div style={{ padding:"0 20px 22px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20, position:"relative" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"inherit", flex:1, minWidth:0, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
               onClick={() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { onClose(); openExpediente(p); } }}>
@@ -206,7 +206,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                       placeholder={t("sessions.cancelReasonPlaceholder")}
                       rows={2} style={{ resize:"none", fontFamily:"var(--font)", fontSize:13 }} />
                   </div>
-                  <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-md)", color:"white", boxShadow:"none", fontWeight:700 }}
+                  <button className="btn" style={{ width:"100%", height:44, marginBottom:10, background: cancelCharge ? "var(--amber)" : "var(--charcoal-md)", color:"var(--white)", boxShadow:"none", fontWeight:700 }}
                     onClick={submitCancel} disabled={mutating}>
                     {mutating ? t("saving") : t("sessions.confirmCancel")}
                   </button>

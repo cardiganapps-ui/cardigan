@@ -312,7 +312,7 @@ export function Patients() {
               </span>
               <button className="sheet-close" aria-label={t("close")} onClick={closeSheet}><IconX size={14} /></button>
             </div>
-            <div style={{ padding:"0 20px 24px" }}>
+            <div style={{ padding:"0 20px 22px" }}>
               {editing && !confirmDelete ? (
                 /* ── EDIT MODE ──
                    Structure: essentials up top (name, minor, rate,

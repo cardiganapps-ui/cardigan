@@ -144,7 +144,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           </div>
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
             <button className={`btn ${isTutor ? "" : "btn-primary"}`} type="submit" disabled={mutating || !!conflict}
-              style={isTutor ? { background:"var(--purple)", color:"white", boxShadow:"none", width:"100%" } : undefined}>
+              style={isTutor ? { background:"var(--purple)", color:"var(--white)", boxShadow:"none", width:"100%" } : undefined}>
               {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${(Number(customRate) || selectedPatient?.rate || 0).toLocaleString()}` : t("sessions.schedule")}
             </button>
           </div>

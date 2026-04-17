@@ -192,10 +192,10 @@ export function ResumenTab({
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-        <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal)", color:"white", boxShadow:"none" }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
+        <button className="btn btn-teal" onClick={() => onRecordPayment(patient)} disabled={mutating}>
           {t("fab.payment")}
         </button>
-        <button className="btn" style={{ height:44, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }} onClick={onGoToArchivo}>
+        <button className="btn btn-teal-soft" onClick={onGoToArchivo}>
           {t("expediente.archivo")}
         </button>
       </div>

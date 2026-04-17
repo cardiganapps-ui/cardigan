@@ -260,13 +260,13 @@ export function Notes() {
 
       {filteredNotes.length === 0
         ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)" }}>
-            <div style={{ marginBottom:8, color:"var(--teal-light)" }}><IconClipboard size={28} /></div>
+            <div style={{ marginBottom:8, color:"var(--teal-light)" }}><IconClipboard size={32} /></div>
             <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:4 }}>
               {(notes || []).length === 0 ? t("notes.noNotes") : t("docs.noResults")}
             </div>
             {(notes || []).length === 0 && (
-              <div style={{ fontSize:12, lineHeight:1.5 }}>
-                Crea tu primera nota con el botón de arriba.
+              <div style={{ fontSize:"var(--text-sm)", lineHeight:1.5 }}>
+                {t("notes.createFirstHint")}
               </div>
             )}
           </div>
@@ -290,7 +290,7 @@ export function Notes() {
                           display:"flex", alignItems:"center", justifyContent:"center",
                           transition:"all 0.4s",
                         }}>
-                          {isSelected && <span style={{ color:"white", fontSize:12, fontWeight:800 }}>✓</span>}
+                          {isSelected && <span style={{ color:"var(--white)", fontSize:"var(--text-sm)", fontWeight:800 }}>✓</span>}
                         </div>
                       </div>
                     )}
@@ -322,16 +322,16 @@ export function Notes() {
       {selectMode && selected.size > 0 && (
         <div style={{
           position:"fixed", bottom:"calc(var(--sab, 34px) + 12px)", left:16, right:16,
-          background:"var(--red)", color:"white", borderRadius:"var(--radius)",
+          background:"var(--red)", color:"var(--white)", borderRadius:"var(--radius)",
           padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between",
           boxShadow:"0 4px 20px rgba(0,0,0,0.2)", zIndex:"var(--z-sheet)",
           animation:"toastIn 0.5s ease",
         }}>
-          <span style={{ fontSize:13, fontWeight:700 }}>
-            {selected.size} seleccionada{selected.size !== 1 ? "s" : ""}
+          <span style={{ fontSize:"var(--text-md)", fontWeight:700 }}>
+            {t("notes.selectedCount", { count: selected.size, plural: selected.size !== 1 ? "s" : "" })}
           </span>
           <button onClick={handleBulkDelete}
-            style={{ padding:"8px 16px", fontSize:12, fontWeight:700, borderRadius:"var(--radius-pill)", border:"2px solid white", background:"transparent", color:"white", cursor:"pointer", fontFamily:"var(--font)" }}>
+            style={{ padding:"8px 16px", fontSize:"var(--text-sm)", fontWeight:700, borderRadius:"var(--radius-pill)", border:"2px solid var(--white)", background:"transparent", color:"var(--white)", cursor:"pointer", fontFamily:"var(--font)" }}>
             {t("delete")}
           </button>
         </div>
@@ -377,7 +377,7 @@ export function Notes() {
                   }}>
                   {t("save")}
                 </button>
-                <button className="btn" style={{ flex:0, padding:"0 16px", background: propsNote.pinned ? "var(--amber)" : "var(--cream)", color: propsNote.pinned ? "white" : "var(--charcoal-md)", boxShadow:"none" }}
+                <button className="btn" style={{ flex:0, padding:"0 16px", background: propsNote.pinned ? "var(--amber)" : "var(--cream)", color: propsNote.pinned ? "var(--white)" : "var(--charcoal-md)", boxShadow:"none" }}
                   aria-label={t("favorite") || "Favorito"}
                   onClick={async () => {
                     await togglePinNote(propsNote.id);
@@ -385,7 +385,7 @@ export function Notes() {
                   }}>
                   <IconStar size={16} />
                 </button>
-                <button className="btn" style={{ flex:0, padding:"0 16px", background:"var(--red-bg)", color:"var(--red)", boxShadow:"none" }}
+                <button className="btn btn-danger" style={{ flex:0, width:"auto", padding:"0 16px" }}
                   aria-label={t("delete")}
                   onClick={() => setConfirmDeleteProps(true)}>
                   <IconTrash size={16} />

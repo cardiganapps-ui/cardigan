@@ -295,9 +295,9 @@ function AppShell({ user, signOut, demo, theme }) {
         {/* Demo banner */}
         {demo && (
           <div style={{ background:"#3A7A8A", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:600, color:"#FFFFFF" }}>{t("demo.banner")}</span>
+            <span style={{ fontSize:"var(--text-xs)", fontWeight:600, color:"var(--white)" }}>{t("demo.banner")}</span>
             <button onClick={signOut}
-              style={{ fontSize:11, fontWeight:700, color:"#FFFFFF", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
+              style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
               {t("demo.createAccount")}
             </button>
           </div>
@@ -319,8 +319,8 @@ function AppShell({ user, signOut, demo, theme }) {
             fail at the Supabase round-trip, so we warn proactively. */}
         {!online && (
           <div style={{ background:"var(--amber)", padding:"6px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:8, zIndex:"var(--z-banner)", flexShrink:0 }}>
-            <span style={{ width:6, height:6, borderRadius:"50%", background:"white", display:"inline-block" }} />
-            <span style={{ fontSize:11, fontWeight:700, color:"white" }}>{t("offline")}</span>
+            <span style={{ width:6, height:6, borderRadius:"50%", background:"var(--white)", display:"inline-block" }} />
+            <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)" }}>{t("offline")}</span>
           </div>
         )}
 

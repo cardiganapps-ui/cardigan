@@ -287,7 +287,7 @@ function ProyeccionTab({ sessions, patients }) {
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastNet")}</div>
           <div className="stat-tile-val" style={{ color:"var(--green)" }}>${net.toLocaleString()}</div>
-          <div className="stat-tile-sub">-{Math.round(cancelRate * 100)}% {t("finances.forecastCancelRate").toLowerCase()}</div>
+          <div className="stat-tile-sub">-{Math.round(cancelRate * 100)}% {t("finances.forecastCancelRateLower")}</div>
         </div>
       </div>
 

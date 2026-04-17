@@ -426,7 +426,7 @@ export function Home({ setScreen, userName }) {
               <span className="sheet-title">{selected.name}</span>
               <button className="sheet-close" aria-label={t("close")} onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
-            <div style={{ padding:"0 20px 24px" }}>
+            <div style={{ padding:"0 20px 22px" }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
                 {[
                   { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },

@@ -446,7 +446,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
                 <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
               </div>
             : <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-                <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={24} /></div>
+                <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={32} /></div>
                 <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
               </div>
           : <div className="card">
@@ -544,7 +544,7 @@ export function Agenda() {
       </div>
       {upcomingSessions.length === 0 && (
         <div style={{ padding:"32px 24px", textAlign:"center" }}>
-          <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconSun size={36} /></div>
+          <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconSun size={32} /></div>
           <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
           <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
         </div>

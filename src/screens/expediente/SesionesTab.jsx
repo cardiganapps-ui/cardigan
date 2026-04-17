@@ -33,7 +33,7 @@ export function SesionesTab({
             ].map(f => (
               <button key={f.key} type="button"
                 className={`chip ${sessTypeFilter === f.key ? "active" : ""}`}
-                style={sessTypeFilter === f.key && f.key === "tutor" ? { background:"var(--purple)", borderColor:"var(--purple)", color:"white" } : undefined}
+                style={sessTypeFilter === f.key && f.key === "tutor" ? { background:"var(--purple)", borderColor:"var(--purple)", color:"var(--white)" } : undefined}
                 onClick={() => setSessTypeFilter(f.key)}>
                 {f.label}
               </button>

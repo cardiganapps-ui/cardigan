@@ -111,7 +111,7 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             <button className="btn btn-secondary" onClick={reset} disabled={busy}>{t("cancel")}</button>
             <button className="btn"
-              style={{ background: account.blocked ? "var(--green)" : "var(--amber)", color:"white", boxShadow:"none" }}
+              style={{ background: account.blocked ? "var(--green)" : "var(--amber)", color:"var(--white)", boxShadow:"none" }}
               onClick={() => doBlock(!account.blocked)} disabled={busy}>
               {busy ? t("admin.processing") : (account.blocked ? t("admin.unblockConfirm") : t("admin.blockConfirm"))}
             </button>
@@ -264,7 +264,7 @@ function BugReportRow({ report, onDelete }) {
         {confirmDel ? (
           <div style={{ display:"flex", gap:4, flexShrink:0 }}>
             <button onClick={handleDelete} disabled={deleting}
-              style={{ padding:"4px 10px", fontSize:11, fontWeight:700, color:"white", background:"var(--red)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+              style={{ padding:"4px 10px", fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)", background:"var(--red)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
               {deleting ? "..." : t("delete")}
             </button>
             <button onClick={() => setConfirmDel(false)}
@@ -399,7 +399,7 @@ function BugsTab() {
         <div style={{ textAlign:"center", padding:"12px 14px", marginBottom:10, background:"var(--red-bg)", borderRadius:"var(--radius-sm)", color:"var(--red)", fontSize:13 }}>
           <div style={{ marginBottom:8 }}>{error}</div>
           <button onClick={() => { setError(""); load(); }}
-            style={{ fontSize:11, fontWeight:700, color:"white", background:"var(--red)", border:"none", borderRadius:"var(--radius-pill)", padding:"4px 14px", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+            style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)", background:"var(--red)", border:"none", borderRadius:"var(--radius-pill)", padding:"4px 14px", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
             {t("retry")}
           </button>
         </div>
@@ -424,7 +424,7 @@ function BugsTab() {
                 confirmArchive ? (
                   <div style={{ display:"flex", gap:4 }}>
                     <button onClick={handleArchiveAll} disabled={archiving}
-                      style={{ padding:"4px 10px", fontSize:11, fontWeight:700, color:"white", background:"var(--green)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+                      style={{ padding:"4px 10px", fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)", background:"var(--green)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
                       {archiving ? "..." : t("admin.bugsArchiveConfirm")}
                     </button>
                     <button onClick={() => setConfirmArchive(false)}
@@ -456,7 +456,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
     <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-expediente)", display:"flex", flexDirection:"column" }}>
       <div style={{ background:"#1a1a2e", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"white" }}>{t("admin.title")}</div>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--white)" }}>{t("admin.title")}</div>
           <button onClick={onClose} aria-label={t("close")}
             style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", cursor:"pointer" }}>
             <IconX size={18} />

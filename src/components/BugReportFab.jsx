@@ -40,7 +40,7 @@ export function BugReportFab({ user, screen }) {
           width: 44, height: 44, minHeight: 44, borderRadius: "50%",
           background: "rgba(0,0,0,0.45)", border: "none", padding: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: "white", cursor: "pointer", zIndex: "var(--z-fab)",
+          color: "var(--white)", cursor: "pointer", zIndex: "var(--z-fab)",
           WebkitTapHighlightColor: "transparent", opacity: 0.7,
         }}
       >

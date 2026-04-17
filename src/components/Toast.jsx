@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useT } from "../i18n/index";
 
 export function Toast({ message, type = "error", duration = 4000, onDismiss, onRetry, persistent = false }) {
+  const { t } = useT();
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -29,8 +31,8 @@ export function Toast({ message, type = "error", duration = 4000, onDismiss, onR
     }}>
       <div
         style={{
-          background: bg, color:"white", padding:"12px 16px", borderRadius:"var(--radius)",
-          fontSize:13, fontWeight:600, fontFamily:"var(--font)",
+          background: bg, color:"var(--white)", padding:"12px 16px", borderRadius:"var(--radius)",
+          fontSize:"var(--text-md)", fontWeight:600, fontFamily:"var(--font)",
           boxShadow:"0 4px 20px rgba(0,0,0,0.2)",
           display:"flex", alignItems:"center", gap:10,
         }}>
@@ -38,11 +40,11 @@ export function Toast({ message, type = "error", duration = 4000, onDismiss, onR
         {onRetry && (
           <button onClick={(e) => { e.stopPropagation(); onRetry(); dismiss(); }}
             style={{
-              background:"rgba(255,255,255,0.22)", color:"white", border:"none",
-              borderRadius:"var(--radius-pill)", padding:"4px 12px", fontSize:12, fontWeight:700,
+              background:"rgba(255,255,255,0.22)", color:"var(--white)", border:"none",
+              borderRadius:"var(--radius-pill)", padding:"4px 12px", fontSize:"var(--text-sm)", fontWeight:700,
               fontFamily:"var(--font)", cursor:"pointer", flexShrink:0, minHeight:0,
             }}>
-            Reintentar
+            {t("retry")}
           </button>
         )}
       </div>

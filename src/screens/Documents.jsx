@@ -140,7 +140,7 @@ export function Documents() {
                 {pendingFiles.length === 1 ? pendingFiles[0].name : t("docs.count", { count: pendingFiles.length })}
               </div>
             </div>
-            <div style={{ overflowY:"auto", padding:"0 20px 20px" }}>
+            <div style={{ overflowY:"auto", padding:"0 20px 22px" }}>
               <div className="card" style={{ padding:0 }}>
                 <div className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
                   onClick={() => confirmUpload(null)}>
