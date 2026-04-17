@@ -12,7 +12,7 @@ const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: Ico
 const SWIPE_REVEALED = -80;
 const SWIPE_THRESHOLD = -40;
 
-function SwipeableRow({ children, onDelete }) {
+function SwipeableRow({ children, onDelete, deleteLabel }) {
   const ref = useRef(null);
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
@@ -65,9 +65,9 @@ function SwipeableRow({ children, onDelete }) {
   return (
     <div style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
       {/* Delete button behind */}
-      <div style={{ position:"absolute", top:0, right:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--red)", color:"white", fontSize:11, fontWeight:700, cursor:"pointer", borderRadius:"0 var(--radius) var(--radius) 0" }}
+      <div style={{ position:"absolute", top:0, right:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--red)", color:"var(--white)", fontSize:"var(--text-xs)", fontWeight:700, cursor:"pointer", borderRadius:"0 var(--radius) var(--radius) 0" }}
         onClick={() => { setOffset(0); onDelete(); }}>
-        Eliminar
+        {deleteLabel}
       </div>
       {/* Content */}
       <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -185,12 +185,12 @@ export function Notes() {
         <div className="section-title">{t("notes.title")}</div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           {selectMode ? (
-            <button onClick={exitSelectMode} style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
+            <button onClick={exitSelectMode} style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
               {t("done")}
             </button>
           ) : filteredNotes.length > 0 && (
-            <button onClick={() => setSelectMode(true)} style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
-              Seleccionar
+            <button onClick={() => setSelectMode(true)} style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)" }}>
+              {t("select")}
             </button>
           )}
         </div>
@@ -310,7 +310,7 @@ export function Notes() {
               return selectMode ? (
                 <div key={n.id}>{noteContent}</div>
               ) : (
-                <SwipeableRow key={n.id} onDelete={() => deleteNote(n.id)}>
+                <SwipeableRow key={n.id} onDelete={() => deleteNote(n.id)} deleteLabel={t("delete")}>
                   {noteContent}
                 </SwipeableRow>
               );

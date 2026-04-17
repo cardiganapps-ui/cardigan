@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { exportPayments } from "../../utils/export";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { useT } from "../../i18n/index";
 
 export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }) {
@@ -27,43 +28,43 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
     return { payFiltered: filtered, payTotal: total };
   }, [pPayments, payPeriod]);
 
+  const inlineBtnStyle = { height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 };
+
   return (
-    <div style={{ padding:16 }}>
+    <div style={{ padding:"16px" }}>
       {/* Record payment + export */}
       <div style={{ display:"flex", gap:10, marginBottom:14 }}>
         <button className="btn btn-primary" style={{ flex:1 }} onClick={() => onRecordPayment(patient)} disabled={mutating}>
           {mutating ? t("saving") : t("finances.registerPayment")}
         </button>
         {payFiltered.length > 0 && (
-          <button className="btn" onClick={() => exportPayments(payFiltered)}
-            style={{ fontSize:11, fontWeight:600, padding:"0 14px", background:"var(--cream)", color:"var(--charcoal-md)", boxShadow:"none" }}>
+          <button className="btn btn-secondary" onClick={() => exportPayments(payFiltered)}
+            style={{ height:48, padding:"0 16px", fontSize:"var(--text-sm)", width:"auto" }}>
             {t("finances.export")}
           </button>
         )}
       </div>
 
       {/* Period filter */}
-      <div className="card" style={{ padding:"8px 12px", marginBottom:10 }}>
-        <div style={{ display:"flex", gap:4 }}>
-          {[
+      <div style={{ marginBottom:10 }}>
+        <SegmentedControl
+          value={payPeriod}
+          onChange={setPayPeriod}
+          ariaLabel={t("finances.period")}
+          items={[
             { k: "all", l: t("periods.all") },
             { k: "1m",  l: t("periods.1m") },
             { k: "3m",  l: t("periods.3m") },
             { k: "6m",  l: t("periods.6m") },
             { k: "1y",  l: t("periods.1y") },
-          ].map(o => (
-            <button key={o.k} onClick={() => setPayPeriod(o.k)}
-              style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)", background: payPeriod===o.k ? "var(--teal)" : "var(--cream)", color: payPeriod===o.k ? "white" : "var(--charcoal-md)" }}>
-              {o.l}
-            </button>
-          ))}
-        </div>
+          ]}
+        />
       </div>
 
       {/* Count + total */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-        <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{t("finances.paymentCount", { count: payFiltered.length })}</span>
-        <span style={{ fontFamily:"var(--font-d)", fontSize:14, fontWeight:800, color:"var(--green)" }}>+${payTotal.toLocaleString()}</span>
+        <span style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", fontWeight:600 }}>{t("finances.paymentCount", { count: payFiltered.length })}</span>
+        <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--green)" }}>+${payTotal.toLocaleString()}</span>
       </div>
 
       {/* Payment list */}
@@ -86,13 +87,13 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
                   </div>
                   {isDeleting && (
                     <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
-                      <button style={{ fontSize:12, fontWeight:600, color:"var(--red)", background:"var(--red-bg)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
-                        disabled={mutating} onClick={async (e) => { e.stopPropagation(); await deletePayment(p.id); setConfirmDeletePayId(null); }}>
-                        {mutating ? "..." : t("finances.deletePayment")}
-                      </button>
-                      <button style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-lt)", background:"var(--cream)", border:"none", borderRadius:"var(--radius-pill)", padding:"8px 16px", cursor:"pointer", fontFamily:"var(--font)", minHeight:36 }}
+                      <button className="btn btn-secondary" style={inlineBtnStyle}
                         onClick={(e) => { e.stopPropagation(); setConfirmDeletePayId(null); }}>
                         {t("cancel")}
+                      </button>
+                      <button className="btn btn-danger" style={inlineBtnStyle}
+                        disabled={mutating} onClick={async (e) => { e.stopPropagation(); await deletePayment(p.id); setConfirmDeletePayId(null); }}>
+                        {mutating ? t("patients.deleting") : t("finances.deletePayment")}
                       </button>
                     </div>
                   )}

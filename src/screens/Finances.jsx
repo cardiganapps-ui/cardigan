@@ -69,18 +69,18 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
           <div style={{ padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
             {confirmDeleteId === p.id ? (
               <div style={{ background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"10px 12px" }}>
-                <div style={{ fontSize:13, fontWeight:700, color:"var(--red)", marginBottom:4 }}>
+                <div style={{ fontSize:"var(--text-md)", fontWeight:700, color:"var(--red)", marginBottom:4 }}>
                   {t("finances.deleteConfirm")}
                 </div>
-                <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.4, marginBottom:10 }}>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.4, marginBottom:10 }}>
                   {t("finances.deleteWarning")}
                 </div>
                 <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
-                  <button className="btn btn-secondary" style={{ height:36, padding:"0 14px", fontSize:12, width:"auto", minHeight:0 }}
+                  <button className="btn btn-secondary" style={{ height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 }}
                     onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}>
                     {t("cancel")}
                   </button>
-                  <button className="btn btn-danger" style={{ height:36, padding:"0 14px", fontSize:12, width:"auto", minHeight:0 }}
+                  <button className="btn btn-danger" style={{ height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 }}
                     disabled={mutating}
                     onClick={async (e) => {
                       e.stopPropagation();
@@ -94,11 +94,11 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
               </div>
             ) : (
               <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
-                <button className="btn btn-ghost" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", height:36, padding:"0 16px" }}
+                <button className="btn btn-secondary" style={{ height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0, background:"var(--teal-pale)", color:"var(--teal-dark)", borderColor:"var(--teal-pale)" }}
                   onClick={(e) => { e.stopPropagation(); setExpandedId(null); onEditPayment(p); }}>
                   {t("edit")}
                 </button>
-                <button className="btn" style={{ background:"var(--red-bg)", color:"var(--red)", height:36, padding:"0 16px", fontSize:"var(--text-sm)", boxShadow:"none" }}
+                <button className="btn btn-danger" style={{ height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 }}
                   disabled={mutating} onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}>
                   {t("finances.deletePayment")}
                 </button>
@@ -325,10 +325,10 @@ function ProyeccionTab({ sessions, patients }) {
           {customCancel !== null && customCancel !== histPct && (
             <button
               className="btn btn-ghost"
-              style={{ fontSize:11, padding:"2px 10px", height:"auto", minHeight:0 }}
+              style={{ fontSize:"var(--text-xs)", padding:"2px 10px", height:"auto", minHeight:0 }}
               onClick={() => setCustomCancel(null)}
             >
-              Usar histórico
+              {t("finances.useHistorical")}
             </button>
           )}
         </div>
@@ -347,7 +347,7 @@ function ProyeccionTab({ sessions, patients }) {
                   <Avatar initials={initials} color={getClientColor(p.colorIdx ?? i)} size="sm" />
                   <div style={{ flex:1, minWidth:0 }}>
                     <div className="bal-name">{p.name}</div>
-                    <div className="bal-sub">{p.count} sesión{p.count !== 1 ? "es" : ""}</div>
+                    <div className="bal-sub">{t("finances.sessionCount", { count: p.count, plural: p.count !== 1 ? "es" : "" })}</div>
                   </div>
                   <div className="bal-amt" style={{ color:"var(--charcoal)", fontWeight:700 }}>${p.total.toLocaleString()}</div>
                 </div>

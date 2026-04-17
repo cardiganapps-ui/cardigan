@@ -1,7 +1,16 @@
 import { useMemo } from "react";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { useT } from "../../i18n/index";
+
+const SECTION_LABEL_STYLE = {
+  fontSize: "var(--text-xs)",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  color: "var(--charcoal-xl)",
+};
 
 export function ResumenTab({
   patient, upcomingSessions,
@@ -19,7 +28,7 @@ export function ResumenTab({
   const fPeriodSaldo = fVendido - fCobrado;
 
   return (
-    <div style={{ padding:"12px 14px" }}>
+    <div style={{ padding:"16px" }}>
       {/* General info */}
       <div className="card" style={{ padding:0, marginBottom:10 }}>
         {(() => {
@@ -39,7 +48,7 @@ export function ResumenTab({
           return (
             <>
               {rows.map((row, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 14px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 16px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
                   <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
                   <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
                 </div>
@@ -68,31 +77,31 @@ export function ResumenTab({
         const upToDate = lastTutor && daysUntilDue > 14;
         if (upToDate && !nextTutor) {
           return (
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"6px 12px", marginBottom:10, background:"var(--green-bg)", borderRadius:"var(--radius-pill)", fontSize:11, fontWeight:600, color:"var(--green)" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"6px 12px", marginBottom:10, background:"var(--green-bg)", borderRadius:"var(--radius-pill)", fontSize:"var(--text-xs)", fontWeight:600, color:"var(--green)" }}>
               <span>{t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}</span>
-              <span className="badge badge-green" style={{ fontSize:10 }}>{t("expediente.tutorUpToDate")}</span>
+              <span className="badge badge-green">{t("expediente.tutorUpToDate")}</span>
             </div>
           );
         }
         return (
-          <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)", borderRadius:"var(--radius)" }}>
+          <div className="card" style={{ padding:"10px 12px", marginBottom:10, background:"var(--purple-bg)", border:"1.5px solid var(--purple)" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, gap:6, flexWrap:"wrap" }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--purple)" }}>
+              <div style={{ ...SECTION_LABEL_STYLE, color:"var(--purple)" }}>
                 {t("expediente.tutorScheduleCard")} · {t("patients.everyNWeeks", { count: patient.tutor_frequency })}
               </div>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end" }}>
-                {nextTutor && <span className="badge badge-teal" style={{ fontSize:10 }}>{t("expediente.tutorScheduled")}</span>}
-                {!nextTutor && overdue && <span className="badge badge-red" style={{ fontSize:10 }}>{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
-                {!nextTutor && dueSoon && <span className="badge badge-amber" style={{ fontSize:10 }}>{t("expediente.tutorDueSoon")}</span>}
-                {!nextTutor && dueNextWeek && <span className="badge badge-purple" style={{ fontSize:10 }}>{t("expediente.tutorDueNextWeek")}</span>}
+                {nextTutor && <span className="badge badge-teal">{t("expediente.tutorScheduled")}</span>}
+                {!nextTutor && overdue && <span className="badge badge-red">{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
+                {!nextTutor && dueSoon && <span className="badge badge-amber">{t("expediente.tutorDueSoon")}</span>}
+                {!nextTutor && dueNextWeek && <span className="badge badge-purple">{t("expediente.tutorDueNextWeek")}</span>}
               </div>
             </div>
             {nextTutor && (
-              <div style={{ fontSize:12, color:"var(--purple)", fontWeight:600, marginBottom:2 }}>
+              <div style={{ fontSize:"var(--text-sm)", color:"var(--purple)", fontWeight:600, marginBottom:2 }}>
                 {t("expediente.tutorNextScheduled", { date: nextTutor.date })}
               </div>
             )}
-            <div style={{ fontSize:12, color:"var(--charcoal-md)" }}>
+            <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)" }}>
               {lastTutor
                 ? `${t("home.lastTutorSession")}: ${lastTutor.date}`
                 : t("home.noTutorSession")}
@@ -116,58 +125,66 @@ export function ResumenTab({
       {/* Attendance — with time filter */}
       <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>{t("expediente.attendance")}</div>
+          <div style={SECTION_LABEL_STYLE}>{t("expediente.attendance")}</div>
         </div>
-        <div style={{ display:"flex", gap:4, marginBottom:10, flexWrap:"wrap" }}>
-          {earliestISO && (() => {
-            const isActive = dateFrom === earliestISO && dateTo === todayISO();
-            return (
-              <button onClick={() => { setDateFrom(earliestISO); setDateTo(todayISO()); }}
-                style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
-                  background: isActive ? "var(--teal)" : "var(--cream)", color: isActive ? "white" : "var(--charcoal-md)" }}>
-                {t("periods.all")}
-              </button>
-            );
-          })()}
-          {[{l:t("periods.1m"),m:1},{l:t("periods.3m"),m:3},{l:t("periods.6m"),m:6},{l:t("periods.1y"),m:12}].map(p => {
+        {(() => {
+          const periods = [
+            ...(earliestISO ? [{ k: "all", l: t("periods.all"), from: earliestISO }] : []),
+            { k: "1m", l: t("periods.1m"), m: 1 },
+            { k: "3m", l: t("periods.3m"), m: 3 },
+            { k: "6m", l: t("periods.6m"), m: 6 },
+            { k: "1y", l: t("periods.1y"), m: 12 },
+          ];
+          const periodFromKey = (p) => {
+            if (p.from) return p.from;
             const d = new Date(); d.setMonth(d.getMonth() - p.m);
-            const fromVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-            const isActive = dateFrom === fromVal && dateTo === todayISO();
-            return (
-              <button key={p.m} onClick={() => { setDateFrom(fromVal); setDateTo(todayISO()); }}
-                style={{ padding:"5px 10px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
-                  background: isActive ? "var(--teal)" : "var(--cream)", color: isActive ? "white" : "var(--charcoal-md)" }}>
-                {p.l}
-              </button>
-            );
-          })}
-        </div>
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+          };
+          const activeKey = periods.find(p => dateFrom === periodFromKey(p) && dateTo === todayISO())?.k;
+          return (
+            <div style={{ marginBottom:10 }}>
+              <SegmentedControl
+                value={activeKey || ""}
+                onChange={(k) => {
+                  const p = periods.find(x => x.k === k);
+                  if (!p) return;
+                  setDateFrom(periodFromKey(p));
+                  setDateTo(todayISO());
+                }}
+                ariaLabel={t("expediente.period")}
+                items={periods.map(p => ({ k: p.k, l: p.l }))}
+              />
+            </div>
+          );
+        })()}
         {(() => {
           const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
           const showTutor = !!patient.parent && fTutor > 0;
-          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent" };
+          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" };
+          const valStyle = { fontFamily:"var(--font-d)", fontSize:"var(--text-xl)", fontWeight:800 };
+          const labelStyle = { fontSize:"var(--text-eyebrow)", color:"var(--charcoal-xl)", marginTop:1 };
           return (
           <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8 }}>
             <div role="button" tabIndex={0} onClick={() => onGoToSesiones("all")}
-              style={{ ...tileStyle, background:"var(--cream)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)" }}>{fTotal}</div>
-              <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.programmed")}</div>
+              style={{ ...tileStyle, background:"var(--cream)" }}>
+              <div style={{ ...valStyle, color:"var(--charcoal)" }}>{fTotal}</div>
+              <div style={labelStyle}>{t("expediente.programmed")}</div>
             </div>
             <div role="button" tabIndex={0} onClick={() => onGoToSesiones("completed")}
-              style={{ ...tileStyle, background:"var(--green-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--green)" }}>{fCompleted}</div>
-              <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.attended")}</div>
+              style={{ ...tileStyle, background:"var(--green-bg)" }}>
+              <div style={{ ...valStyle, color:"var(--green)" }}>{fCompleted}</div>
+              <div style={labelStyle}>{t("expediente.attended")}</div>
             </div>
             <div role="button" tabIndex={0} onClick={() => onGoToSesiones("cancelled_any")}
-              style={{ ...tileStyle, background:"var(--red-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--red)" }}>{fCancelled + fCharged}</div>
-              <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("expediente.cancelled")}</div>
+              style={{ ...tileStyle, background:"var(--red-bg)" }}>
+              <div style={{ ...valStyle, color:"var(--red)" }}>{fCancelled + fCharged}</div>
+              <div style={labelStyle}>{t("expediente.cancelled")}</div>
             </div>
             {showTutor && (
               <div role="button" tabIndex={0} onClick={() => onGoToSesiones("all", "tutor")}
-                style={{ ...tileStyle, background:"var(--purple-bg)", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" }}>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--purple)" }}>{fTutor}</div>
-                <div style={{ fontSize:9, color:"var(--charcoal-xl)", marginTop:1 }}>{t("sessions.tutor")}</div>
+                style={{ ...tileStyle, background:"var(--purple-bg)" }}>
+                <div style={{ ...valStyle, color:"var(--purple)" }}>{fTutor}</div>
+                <div style={labelStyle}>{t("sessions.tutor")}</div>
               </div>
             )}
           </div>);

@@ -7,6 +7,8 @@ export default {
   delete: "Eliminar",
   edit: "Editar",
   close: "Cerrar",
+  add: "Agregar",
+  select: "Seleccionar",
   back: "Volver",
   done: "Listo",
   open: "Abrir",
@@ -325,6 +327,8 @@ export default {
     forecastAvgSession: "Tarifa promedio",
     forecastPerWeek: "Promedio semanal",
     forecastByPatient: "Desglose por paciente",
+    useHistorical: "Usar hist\u00f3rico",
+    sessionCount: "{count} sesi\u00f3n{plural}",
   },
 
   // ── Notes ──
