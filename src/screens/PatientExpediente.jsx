@@ -125,21 +125,10 @@ export function PatientExpediente({
     });
   }, [pSessions, dateFrom, dateTo]);
 
-  const fBillableSessions = filteredSessions.filter(s => s.status === "completed" || s.status === "charged");
-  const fVendido = fBillableSessions.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
-
   const pPayments = useMemo(() =>
     (payments || []).filter(p => p.patient_id === patient.id),
     [payments, patient.id]
   );
-  const fCobrado = useMemo(() => {
-    return pPayments.reduce((sum, p) => {
-      const iso = shortDateToISO(p.date);
-      if (dateFrom && iso < dateFrom) return sum;
-      if (dateTo && iso > dateTo) return sum;
-      return sum + p.amount;
-    }, 0);
-  }, [pPayments, dateFrom, dateTo]);
 
   // ── Note callbacks ──
   const handleSaveNote = useCallback(async ({ title, content }) => {
@@ -273,7 +262,7 @@ export function PatientExpediente({
         position:"fixed", top:"calc(var(--sat, 44px))", bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--white)",
-        boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
+        boxShadow:"var(--shadow-lg)",
         animation: dragY > 0 ? "none" : undefined,
         transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
         transition: dragging ? "none" : "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -349,7 +338,6 @@ export function PatientExpediente({
             patient={patient} upcomingSessions={upcomingSessions}
             dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
             earliestISO={earliestISO} filteredSessions={filteredSessions}
-            fVendido={fVendido} fCobrado={fCobrado}
             onRecordPayment={onRecordPayment} onGoToSesiones={goToSesiones} onGoToArchivo={goToArchivo}
             mutating={mutating}
           />

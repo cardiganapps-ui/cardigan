@@ -24,20 +24,30 @@ export function Settings({ user, signOut }) {
   const saveProfile = async () => {
     if (!editName.trim()) return;
     setSaving(true);
-    const { error } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
-    setSaving(false);
-    if (error) { setMessage(t("settings.saveError")); return; }
-    setMessage(t("settings.linkSent"));
-    setTimeout(() => { setMessage(""); setActiveSheet(null); }, 1200);
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
+      if (error) { setMessage(t("settings.saveError")); return; }
+      setMessage(t("settings.linkSent"));
+      setTimeout(() => { setMessage(""); setActiveSheet(null); }, 1200);
+    } catch {
+      setMessage(t("settings.saveError"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetPassword = async () => {
     setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
-    setSaving(false);
-    if (error) { setMessage(t("settings.emailError")); return; }
-    setMessage(t("settings.linkSent"));
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
+      if (error) { setMessage(t("settings.emailError")); return; }
+      setMessage(t("settings.linkSent"));
+      setTimeout(() => setMessage(""), 3000);
+    } catch {
+      setMessage(t("settings.emailError"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openSheet = (key) => {

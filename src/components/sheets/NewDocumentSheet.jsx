@@ -3,10 +3,12 @@ import { IconX, IconUpload } from "../Icons";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }) {
   const { t } = useT();
   useEscape(onClose);
+  const panelRef = useFocusTrap(true);
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -50,7 +52,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("docs.upload")}</span>

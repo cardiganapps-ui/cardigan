@@ -52,7 +52,7 @@ export function Home({ setScreen, userName }) {
   );
   // Label: "Mañana" if it's actually tomorrow, otherwise the day name
   const diffDays = Math.round((nextDay - TODAY) / 86400000);
-  const nextDayLabel = diffDays === 1 ? "Mañana" : nextDayName;
+  const nextDayLabel = diffDays === 1 ? t("home.tomorrow") : nextDayName;
 
   // Carousel swipe state
   const [carouselPage, setCarouselPage] = useState(0); // 0 = today, 1 = next day
@@ -191,26 +191,26 @@ export function Home({ setScreen, userName }) {
       )}
 
       <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("agenda")} style={{ cursor:"pointer" }}>
+        <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>
           <div className="kpi-label">{t("home.sessionsToday")}</div>
           <div className="kpi-value">{todaySessions.length}</div>
           <div className="kpi-meta">{todayDayName} {todayStr}</div>
-        </div>
-        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("patients")} style={{ cursor:"pointer" }}>
+        </button>
+        <button type="button" className="kpi-card" onClick={() => setScreen("patients")}>
           <div className="kpi-label">{t("patients.title")}</div>
           <div className="kpi-value">{activeCount}</div>
           <div className="kpi-meta">{activeCount === 0 ? t("patients.noPatients").toLowerCase() : t("patients.active").toLowerCase()}</div>
-        </div>
-        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
+        </button>
+        <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
           <div className="kpi-label">{t("finances.monthlyCollected")}</div>
           <div className="kpi-value">${cobradoMes.toLocaleString()}</div>
           <div className="kpi-meta">{strings.months[TODAY.getMonth()]}</div>
-        </div>
-        <div className="kpi-card" role="button" tabIndex={0} onClick={() => setScreen("finances")} style={{ cursor:"pointer" }}>
+        </button>
+        <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
           <div className="kpi-label">{t("finances.outstanding")}</div>
           <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
           <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
-        </div>
+        </button>
       </div>
 
       <div className="home-columns">

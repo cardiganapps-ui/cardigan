@@ -79,14 +79,18 @@ export function Documents() {
     if (!pendingFiles) return;
     setUploading(true);
     setPendingFiles(null);
-    for (const file of pendingFiles) {
-      await uploadDocument({ patientId, file, sessionId: null, name: file.name });
+    try {
+      for (const file of pendingFiles) {
+        await uploadDocument({ patientId, file, sessionId: null, name: file.name });
+      }
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const openDocViewer = async (doc) => {
-    const url = await getDocumentUrl(doc.file_path);
+    let url;
+    try { url = await getDocumentUrl(doc.file_path); } catch { return; }
     if (!url) return;
     if (isWordDoc(doc)) {
       window.open(url, "_blank");

@@ -5,19 +5,19 @@ import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
-function relativeTime(dateStr) {
+function relativeTime(dateStr, t) {
   if (!dateStr) return "";
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = now - then;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `hace ${mins}m`;
+  if (mins < 1) return t("timeNow");
+  if (mins < 60) return t("timeMinutesAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `hace ${hrs}h`;
+  if (hrs < 24) return t("timeHoursAgo", { count: hrs });
   const days = Math.floor(hrs / 24);
-  if (days === 1) return "ayer";
-  if (days < 7) return `hace ${days}d`;
+  if (days === 1) return t("timeYesterday");
+  if (days < 7) return t("timeDaysAgo", { count: days });
   return new Date(dateStr).toLocaleDateString("es-MX", { day:"numeric", month:"short" });
 }
 
@@ -43,7 +43,7 @@ function isEffectivelyEmpty(title, content) {
 const LIST_PATTERNS = [
   { regex: /^(\s*)(- )/, prefix: (m) => `${m[1]}- ` },
   { regex: /^(\s*)(\* )/, prefix: (m) => `${m[1]}* ` },
-  { regex: /^(\s*)(\d+)\. /, prefix: (m) => `${m[1]}${parseInt(m[2]) + 1}. ` },
+  { regex: /^(\s*)(\d+)\. /, prefix: (m) => `${m[1]}${parseInt(m[2], 10) + 1}. ` },
   { regex: /^(\s*)\[[ x]\] /, prefix: (m) => `${m[1]}[ ] ` },
 ];
 
@@ -444,7 +444,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
 export function NoteCard({ note, onClick, patientName, sessionLabel, onPatientClick }) {
   const { t } = useT();
   const preview = note.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 100) || t("notes.noContent");
-  const timeAgo = relativeTime(note.updated_at);
+  const timeAgo = relativeTime(note.updated_at, t);
   const hasLink = patientName || sessionLabel;
   return (
     <div role="button" tabIndex={0} onClick={onClick}

@@ -26,6 +26,12 @@ export default {
   offlineHint: "Los cambios no se guardar\u00e1n hasta que vuelva la conexi\u00f3n.",
   deleted: "Eliminado",
   saved: "Guardado",
+  // Relative time (past)
+  timeNow: "ahora",
+  timeMinutesAgo: "hace {count}m",
+  timeHoursAgo: "hace {count}h",
+  timeYesterday: "ayer",
+  timeDaysAgo: "hace {count}d",
 
   // ── Home ──
   home: {
@@ -138,6 +144,7 @@ export default {
     sectionDates: "Fechas y estado",
     yesDelete: "Eliminar permanentemente",
     deleting: "Eliminando...",
+    deletedToast: "{name} eliminado",
     isMinor: "Es menor de edad",
     isMinorHint: "Se asignará un tutor como contacto",
     tutor: "Tutor / contacto",
@@ -542,6 +549,7 @@ export default {
     bugsArchivedEmpty: "Sin reportes archivados",
     bugsArchiveAll: "Completar todos",
     bugsArchiveConfirm: "Archivar",
+    bugsArchiveFailed: "No se pudieron archivar los reportes. Intenta de nuevo.",
 
     // Account actions (block / delete)
     accountStatusBlocked: "Bloqueado",

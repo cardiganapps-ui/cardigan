@@ -187,7 +187,7 @@ export function Patients() {
       setSelected(null);
       setConfirmDelete(false);
       setDeleteConfirmText("");
-      showSuccess?.(`${name} eliminado`);
+      showSuccess?.(t("patients.deletedToast", { name }));
     }
   };
 

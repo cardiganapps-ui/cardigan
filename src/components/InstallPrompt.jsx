@@ -10,21 +10,26 @@ function isStandalone() {
   return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
 }
 
+// localStorage access is wrapped — private-browsing Safari and some locked-down
+// PWA contexts throw on read/write, which would otherwise unmount the whole app.
+const safeStorageGet = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+const safeStorageSet = (key, value) => { try { localStorage.setItem(key, value); } catch { /* noop */ } };
+
 export function InstallPrompt() {
   const { t } = useT();
-  const dismissed = localStorage.getItem("cardigan-install-dismissed");
+  const dismissed = safeStorageGet("cardigan-install-dismissed");
   const [visible, setVisible] = useState(!dismissed && isIOS() && !isStandalone());
 
   if (!visible) return null;
 
   const dismiss = (permanent) => {
     setVisible(false);
-    if (permanent) localStorage.setItem("cardigan-install-dismissed", "1");
+    if (permanent) safeStorageSet("cardigan-install-dismissed", "1");
   };
 
   return (
     <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:"var(--z-install)", padding:"0 12px 12px", animation:"slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-      <div style={{ background:"var(--white)", borderRadius:"var(--radius-lg)", boxShadow:"0 -2px 24px rgba(0,0,0,0.15)", padding:"18px 18px 14px", maxWidth:400, margin:"0 auto" }}>
+      <div style={{ background:"var(--white)", borderRadius:"var(--radius-lg)", boxShadow:"var(--shadow-lg)", padding:"18px 18px 14px", maxWidth:400, margin:"0 auto" }}>
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)", marginBottom:10 }}>
             {t("install.title")}

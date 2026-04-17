@@ -16,16 +16,23 @@ export function ResumenTab({
   patient, upcomingSessions,
   dateFrom, setDateFrom, dateTo, setDateTo, earliestISO,
   filteredSessions,
-  fVendido, fCobrado,
   onRecordPayment, onGoToSesiones, onGoToArchivo, mutating,
 }) {
   const { t } = useT();
 
-  const fTotal = filteredSessions.length;
-  const fCompleted = filteredSessions.filter(s => s.status === "completed").length;
-  const fCancelled = filteredSessions.filter(s => s.status === "cancelled").length;
-  const fCharged = filteredSessions.filter(s => s.status === "charged").length;
-  const fPeriodSaldo = fVendido - fCobrado;
+  const { fTotal, fCompleted, fCancelledTotal } = useMemo(() => {
+    let completed = 0, cancelled = 0, charged = 0;
+    for (const s of filteredSessions) {
+      if (s.status === "completed") completed++;
+      else if (s.status === "cancelled") cancelled++;
+      else if (s.status === "charged") charged++;
+    }
+    return {
+      fTotal: filteredSessions.length,
+      fCompleted: completed,
+      fCancelledTotal: cancelled + charged,
+    };
+  }, [filteredSessions]);
 
   return (
     <div style={{ padding:"16px" }}>
@@ -160,32 +167,32 @@ export function ResumenTab({
         {(() => {
           const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
           const showTutor = !!patient.parent && fTutor > 0;
-          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center" };
+          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center", border:"none", fontFamily:"inherit", width:"100%", minHeight:0 };
           const valStyle = { fontFamily:"var(--font-d)", fontSize:"var(--text-xl)", fontWeight:800 };
           const labelStyle = { fontSize:"var(--text-eyebrow)", color:"var(--charcoal-xl)", marginTop:1 };
           return (
           <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8 }}>
-            <div role="button" tabIndex={0} onClick={() => onGoToSesiones("all")}
+            <button type="button" onClick={() => onGoToSesiones("all")}
               style={{ ...tileStyle, background:"var(--cream)" }}>
               <div style={{ ...valStyle, color:"var(--charcoal)" }}>{fTotal}</div>
               <div style={labelStyle}>{t("expediente.programmed")}</div>
-            </div>
-            <div role="button" tabIndex={0} onClick={() => onGoToSesiones("completed")}
+            </button>
+            <button type="button" onClick={() => onGoToSesiones("completed")}
               style={{ ...tileStyle, background:"var(--green-bg)" }}>
               <div style={{ ...valStyle, color:"var(--green)" }}>{fCompleted}</div>
               <div style={labelStyle}>{t("expediente.attended")}</div>
-            </div>
-            <div role="button" tabIndex={0} onClick={() => onGoToSesiones("cancelled_any")}
+            </button>
+            <button type="button" onClick={() => onGoToSesiones("cancelled_any")}
               style={{ ...tileStyle, background:"var(--red-bg)" }}>
-              <div style={{ ...valStyle, color:"var(--red)" }}>{fCancelled + fCharged}</div>
+              <div style={{ ...valStyle, color:"var(--red)" }}>{fCancelledTotal}</div>
               <div style={labelStyle}>{t("expediente.cancelled")}</div>
-            </div>
+            </button>
             {showTutor && (
-              <div role="button" tabIndex={0} onClick={() => onGoToSesiones("all", "tutor")}
+              <button type="button" onClick={() => onGoToSesiones("all", "tutor")}
                 style={{ ...tileStyle, background:"var(--purple-bg)" }}>
                 <div style={{ ...valStyle, color:"var(--purple)" }}>{fTutor}</div>
                 <div style={labelStyle}>{t("sessions.tutor")}</div>
-              </div>
+              </button>
             )}
           </div>);
         })()}

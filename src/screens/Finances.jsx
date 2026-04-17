@@ -28,24 +28,23 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   };
 
-  const dateFrom = getDateFrom(period);
-  const today = todayISO();
-
-  let filtered = [...payments];
-  if (dateFrom) filtered = filtered.filter(p => {
-    const iso = shortDateToISO(p.date);
-    return iso >= dateFrom && iso <= today;
-  });
-  // Always sort newest first
-  filtered.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
-
-  const totalFiltered = filtered.reduce((s,p) => s+p.amount, 0);
-
-  const grouped = {};
-  filtered.forEach(p => {
-    if (!grouped[p.patient]) grouped[p.patient] = [];
-    grouped[p.patient].push(p);
-  });
+  const { filtered, totalFiltered, grouped } = useMemo(() => {
+    const dateFrom = getDateFrom(period);
+    const today = todayISO();
+    let list = [...payments];
+    if (dateFrom) list = list.filter(p => {
+      const iso = shortDateToISO(p.date);
+      return iso >= dateFrom && iso <= today;
+    });
+    list.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
+    const total = list.reduce((s, p) => s + p.amount, 0);
+    const byPatient = {};
+    for (const p of list) {
+      if (!byPatient[p.patient]) byPatient[p.patient] = [];
+      byPatient[p.patient].push(p);
+    }
+    return { filtered: list, totalFiltered: total, grouped: byPatient };
+  }, [payments, period]);
 
   const renderRow = (p, i) => {
     const patient = patients.find(pt => pt.name === p.patient);
@@ -395,22 +394,20 @@ export function Finances() {
       {tab==="balances" && (
         <div>
           <div className="fin-stats-grid">
-            <div role="button" tabIndex={0}
+            <button type="button"
               onClick={() => setBalanceFilter(balanceFilter === "owing" ? null : "owing")}
-              className={`stat-tile stat-tile-clickable ${balanceFilter === "owing" ? "stat-tile-selected" : ""}`}
-              style={{ cursor:"pointer" }}>
+              className={`stat-tile stat-tile-clickable ${balanceFilter === "owing" ? "stat-tile-selected" : ""}`}>
               <div className="stat-tile-label">{t("finances.outstanding")}</div>
               <div className="stat-tile-val" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
               <div className="stat-tile-sub">{t("finances.patientCount", { count: owingPatients.length })}</div>
-            </div>
-            <div role="button" tabIndex={0}
+            </button>
+            <button type="button"
               onClick={() => setBalanceFilter(balanceFilter === "paid" ? null : "paid")}
-              className={`stat-tile stat-tile-clickable ${balanceFilter === "paid" ? "stat-tile-selected" : ""}`}
-              style={{ cursor:"pointer" }}>
+              className={`stat-tile stat-tile-clickable ${balanceFilter === "paid" ? "stat-tile-selected" : ""}`}>
               <div className="stat-tile-label">{t("patients.upToDate")}</div>
               <div className="stat-tile-val" style={{ color:"var(--green)" }}>{patients.filter(p=>p.amountDue<=0).length}</div>
               <div className="stat-tile-sub">{t("finances.patientsLabel")}</div>
-            </div>
+            </button>
           </div>
           {balanceFilter !== "paid" && (
             <div style={{ padding:"0 16px 8px" }}>

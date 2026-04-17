@@ -324,7 +324,7 @@ export function Notes() {
           position:"fixed", bottom:"calc(var(--sab, 34px) + 12px)", left:16, right:16,
           background:"var(--red)", color:"var(--white)", borderRadius:"var(--radius)",
           padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between",
-          boxShadow:"0 4px 20px rgba(0,0,0,0.2)", zIndex:"var(--z-sheet)",
+          boxShadow:"var(--shadow-lg)", zIndex:"var(--z-sheet)",
           animation:"toastIn 0.5s ease",
         }}>
           <span style={{ fontSize:"var(--text-md)", fontWeight:700 }}>

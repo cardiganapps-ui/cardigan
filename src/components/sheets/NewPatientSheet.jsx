@@ -6,11 +6,13 @@ import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { useEscape } from "../../hooks/useEscape";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useT } from "../../i18n/index";
 
 export function NewPatientSheet({ onClose, onSubmit, mutating, patients, sessions }) {
   const { t, strings } = useT();
   useEscape(onClose);
+  const panelRef = useFocusTrap(true);
 
   // Step 1: patient info, Step 2: schedule
   const [step, setStep] = useState(1);
@@ -73,7 +75,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
+      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.newPatient")}</span>

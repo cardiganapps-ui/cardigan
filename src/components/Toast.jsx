@@ -33,7 +33,7 @@ export function Toast({ message, type = "error", duration = 4000, onDismiss, onR
         style={{
           background: bg, color:"var(--white)", padding:"12px 16px", borderRadius:"var(--radius)",
           fontSize:"var(--text-md)", fontWeight:600, fontFamily:"var(--font)",
-          boxShadow:"0 4px 20px rgba(0,0,0,0.2)",
+          boxShadow:"var(--shadow-lg)",
           display:"flex", alignItems:"center", gap:10,
         }}>
         <span onClick={dismiss} style={{ flex:1, cursor:"pointer" }}>{message}</span>

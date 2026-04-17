@@ -363,7 +363,7 @@ function BugsTab() {
       // Re-fetch to confirm archive persisted
       const fresh = await fetchBugReports({ archived: false });
       const stillPending = fresh.filter(r => ids.includes(r.id));
-      if (stillPending.length > 0) throw new Error("No se pudieron archivar los reportes. Intenta de nuevo.");
+      if (stillPending.length > 0) throw new Error(t("admin.bugsArchiveFailed"));
       setReports(fresh);
       setConfirmArchive(false);
     } catch (e) {
@@ -454,7 +454,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-expediente)", display:"flex", flexDirection:"column" }}>
-      <div style={{ background:"#1a1a2e", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
+      <div style={{ background:"var(--nav-bg)", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--white)" }}>{t("admin.title")}</div>
           <button onClick={onClose} aria-label={t("close")}

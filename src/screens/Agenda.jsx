@@ -256,7 +256,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                 const eventStyle = (() => {
                   if (isCancelledStatus(sess.status)) return undefined;
                   if (isTutorSession(sess)) return { background:"var(--purple-bg)", borderLeftColor:"var(--purple)", color:"var(--charcoal)" };
-                  if (sess.modality === "virtual") return { background:"#5B8FD426", borderLeftColor:"var(--blue)", color:"var(--charcoal)" };
+                  if (sess.modality === "virtual") return { background:"var(--blue-bg)", borderLeftColor:"var(--blue)", color:"var(--charcoal)" };
                   const c = getClientColor(sess.colorIdx);
                   return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
                 })();

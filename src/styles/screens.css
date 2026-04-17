@@ -160,7 +160,10 @@
   background: var(--white); border-radius: var(--radius-lg);
   border: 1px solid var(--border-lt);
   padding: 14px 16px; position: relative; overflow: hidden;
+  /* Button reset for <button class="stat-tile ..."> usage. */
+  font-family: inherit; color: inherit; text-align: left;
 }
+button.stat-tile { cursor: pointer; min-height: 0; }
 .stat-tile-clickable { transition: background 0.45s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.45s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
 .stat-tile-clickable:active { transform: scale(0.95); }
 .stat-tile-selected { background: var(--cream); border-color: var(--charcoal-xxl, var(--border)); }

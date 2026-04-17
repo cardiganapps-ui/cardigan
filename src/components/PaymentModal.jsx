@@ -6,12 +6,14 @@ import { MoneyInput } from "./MoneyInput";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }) {
   const { patients, createPayment, updatePayment, mutating } = useCardigan();
   const { t } = useT();
   const isEditing = !!editingPayment;
   useEscape(open ? onClose : null);
+  const panelRef = useFocusTrap(open);
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
@@ -98,7 +100,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
+      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>

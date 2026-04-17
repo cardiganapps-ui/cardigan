@@ -294,10 +294,9 @@ function AppShell({ user, signOut, demo, theme }) {
 
         {/* Demo banner */}
         {demo && (
-          <div style={{ background:"#3A7A8A", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
-            <span style={{ fontSize:"var(--text-xs)", fontWeight:600, color:"var(--white)" }}>{t("demo.banner")}</span>
-            <button onClick={signOut}
-              style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"var(--radius-pill)", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 12px" }}>
+          <div className="app-banner app-banner--demo">
+            <span className="app-banner-text">{t("demo.banner")}</span>
+            <button onClick={signOut} className="app-banner-action">
               {t("demo.createAccount")}
             </button>
           </div>
@@ -305,10 +304,10 @@ function AppShell({ user, signOut, demo, theme }) {
 
         {/* Read-only banner when viewing as another user */}
         {readOnly && !demo && (
-          <div style={{ background:"#2E2E2E", padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", zIndex:"var(--z-banner)", flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.7)" }}>{t("admin.readOnly")}</span>
+          <div className="app-banner app-banner--readonly">
+            <span className="app-banner-text app-banner-text--muted">{t("admin.readOnly")}</span>
             <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
-              style={{ fontSize:11, fontWeight:700, color:"#6DB8CC", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"2px 8px" }}>
+              className="app-banner-action app-banner-action--readonly">
               {t("admin.exit")}
             </button>
           </div>
@@ -325,15 +324,15 @@ function AppShell({ user, signOut, demo, theme }) {
         )}
 
         <div className="topbar">
-          <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label="Menú">
+          <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label={t("nav.menu")}>
             <div className="hamburger-line" />
             <div className="hamburger-line" />
             <div className="hamburger-line" />
           </button>
-          <div className="topbar-brand" onClick={() => navigate("home")} style={{ cursor:"pointer" }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></div>
+          <button type="button" className="topbar-brand" onClick={() => navigate("home")} aria-label={t("nav.home")} style={{ cursor:"pointer", background:"none", border:"none", padding:0 }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></button>
           <span className="topbar-screen-name">{t(`nav.${screen}`)}</span>
           <div className="topbar-right">
-            <button className="topbar-refresh-btn" onClick={refresh} aria-label="Refresh"><IconRefresh size={16} /></button>
+            <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
             {admin && !readOnly && (
               <button className="admin-btn" onClick={() => setShowAdmin(true)}>
                 Admin
@@ -343,7 +342,7 @@ function AppShell({ user, signOut, demo, theme }) {
                 so it doesn't eat vertical space on each page. HelpTip
                 returns null when the screen's tip array is empty. */}
             <HelpTip tipsKey={`help.${screen}`} />
-            <div className="avatar-sm" onClick={() => navigate("settings")} style={{ cursor:"pointer" }}>{userInitial}</div>
+            <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none" }}>{userInitial}</button>
           </div>
         </div>
         <Toast message={mutationError} type="error" persistent onDismiss={clearMutationError} onRetry={refresh} />

@@ -7,12 +7,14 @@ import { IconX, IconTrash } from "./Icons";
 import { Avatar } from "./Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useCardigan } from "../context/CardiganContext";
 
 export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onOpenNote, onAttachDocument, mutating }) {
   const { t } = useT();
   const { openExpediente } = useCardigan();
   useEscape(session ? onClose : null);
+  const panelRef = useFocusTrap(!!session);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -76,7 +78,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title" style={{ display:"flex", alignItems:"center", gap:8 }}>
