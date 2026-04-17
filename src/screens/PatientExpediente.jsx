@@ -27,7 +27,15 @@ export function PatientExpediente({
 }) {
   const { t, strings } = useT();
   const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, deletePayment } = useCardigan();
-  useLayer("expediente", onClose);
+  const [closing, setClosing] = useState(false);
+  const startClose = useCallback(() => {
+    setClosing((c) => {
+      if (c) return c;
+      setTimeout(() => onClose(), 340);
+      return true;
+    });
+  }, [onClose]);
+  useLayer("expediente", startClose);
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -246,15 +254,23 @@ export function PatientExpediente({
     if (!dragRef.current?.active) { dragRef.current = null; return; }
     dragRef.current = null;
     setDragging(false);
-    if (dragY > 120) { onClose(); }
-    setDragY(0);
+    if (dragY > 120) {
+      startClose();
+    } else {
+      setDragY(0);
+    }
   };
 
   return (
     <>
     {/* Backdrop */}
-    <div className="expediente-open" onClick={onClose}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)", animation:"fadeIn 0.9s ease" }} />
+    <div className="expediente-open" onClick={startClose}
+      style={{
+        position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)",
+        animation: closing ? "none" : "fadeIn 0.9s ease",
+        opacity: closing ? 0 : undefined,
+        transition: closing ? "opacity 0.3s ease" : undefined,
+      }} />
 
     {/* Card */}
     <div className="expediente-open expediente-desktop-panel"
@@ -263,9 +279,13 @@ export function PatientExpediente({
         display:"flex", flexDirection:"column",
         background:"var(--white)",
         boxShadow:"var(--shadow-lg)",
-        animation: dragY > 0 ? "none" : undefined,
-        transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-        transition: dragging ? "none" : "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        animation: (dragY > 0 || closing) ? "none" : undefined,
+        transform: closing
+          ? "translateY(100%)"
+          : dragY > 0 ? `translateY(${dragY}px)` : undefined,
+        transition: closing
+          ? "transform 0.34s cubic-bezier(0.5, 0, 0.75, 0)"
+          : dragging ? "none" : "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
         overflow:"hidden",
       }}>
 
@@ -281,7 +301,7 @@ export function PatientExpediente({
         {/* Header */}
         <div style={{ padding:"0 16px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={onClose} aria-label={t("back")}
+          <button onClick={startClose} aria-label={t("back")}
             style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
             <IconChevron size={20} />
           </button>
