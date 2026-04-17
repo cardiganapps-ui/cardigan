@@ -353,6 +353,7 @@ export function PatientExpediente({
             filteredPSessions={filteredPSessions}
             upcomingPSessions={upcomingPSessions} pastPSessions={pastPSessions}
             onSelectSession={setSelectedSession}
+            onOpenNote={openSessionNote}
           />
         )}
 

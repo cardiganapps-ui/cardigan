@@ -7,7 +7,7 @@ export function SesionesTab({
   sessTypeFilter, setSessTypeFilter, sessStatusFilter, setSessStatusFilter,
   sessDateFrom, setSessDateFrom, sessDateTo, setSessDateTo,
   filteredPSessions, upcomingPSessions, pastPSessions,
-  onSelectSession,
+  onSelectSession, onOpenNote,
 }) {
   const { t } = useT();
 
@@ -84,6 +84,7 @@ export function SesionesTab({
               sessions={upcomingPSessions}
               pNotes={pNotes}
               onSelect={onSelectSession}
+              onOpenNote={onOpenNote}
               t={t}
             />
           )}
@@ -95,6 +96,7 @@ export function SesionesTab({
                 sessions={pastPSessions}
                 pNotes={pNotes}
                 onSelect={onSelectSession}
+                onOpenNote={onOpenNote}
                 t={t}
               />
             </div>
@@ -114,7 +116,7 @@ const SECTION_LABEL_STYLE = {
   marginBottom: 6,
 };
 
-function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, t }) {
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, t }) {
   if (sessions.length === 0) {
     return (
       <>
@@ -146,10 +148,20 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, t }) {
                     </span>
                   )}
                   {hasNote && (
-                    <span style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
-                      <IconClipboard size={11} />
-                      {t("notes.noteAttached")}
-                    </span>
+                    onOpenNote ? (
+                      <button type="button"
+                        onClick={(e) => { e.stopPropagation(); onOpenNote(s); }}
+                        aria-label={t("notes.noteAttached")}
+                        style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3, background:"none", border:"none", padding:0, margin:0, minHeight:"unset", cursor:"pointer", fontFamily:"var(--font)", WebkitTapHighlightColor:"transparent" }}>
+                        <IconClipboard size={11} />
+                        {t("notes.noteAttached")}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
+                        <IconClipboard size={11} />
+                        {t("notes.noteAttached")}
+                      </span>
+                    )
                   )}
                 </div>
               </div>
