@@ -238,7 +238,7 @@ export function Home({ setScreen, userName }) {
           }}>
             {/* Panel 1: Today */}
             <div style={{ width: "50%", flexShrink: 0 }}>
-              <div className="card" style={{ borderRadius: 0 }}>
+              <div className="card">
                 {todaySessions.length === 0
                   ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
                       <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
@@ -251,7 +251,7 @@ export function Home({ setScreen, userName }) {
             </div>
             {/* Panel 2: Next day */}
             <div style={{ width: "50%", flexShrink: 0 }}>
-              <div className="card" style={{ borderRadius: 0 }}>
+              <div className="card">
                 {nextDaySessions.length === 0
                   ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
                       <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
