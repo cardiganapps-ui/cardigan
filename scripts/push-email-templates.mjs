@@ -46,6 +46,7 @@ if (!projectRef || !accessToken) {
 const templates = {
   mailer_autoconfirm: false,
   site_url: 'https://cardigan-fawn.vercel.app',
+  smtp_admin_email: 'cardigan.apps@gmail.com',
   mailer_templates_confirmation_content: readFileSync(resolve(emailsDir, 'confirm-signup.html'), 'utf-8'),
   mailer_templates_recovery_content: readFileSync(resolve(emailsDir, 'reset-password.html'), 'utf-8'),
   mailer_templates_magic_link_content: readFileSync(resolve(emailsDir, 'magic-link.html'), 'utf-8'),
