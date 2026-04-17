@@ -12,10 +12,7 @@ export function PullToRefresh({ onRefresh, children }) {
   const THRESHOLD = 64;
   const MAX_PULL = 130;
 
-  // In standalone/PWA mode the inner .page element is the scroll container.
-  // In Safari browser mode the body scrolls instead, so check both.
   const isAtTop = () => {
-    if (window.scrollY > 0) return false;
     const page = wrapRef.current?.querySelector(".page");
     return !page || page.scrollTop <= 0;
   };

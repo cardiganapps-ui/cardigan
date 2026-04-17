@@ -112,29 +112,6 @@ html, body {
   border-bottom: 1px solid var(--border-lt);
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-
-/* ── Safari browser mode (non-standalone PWA) ──
-   When the app is opened in regular Safari instead of being installed to
-   the home screen, invert the scroll model so the document body scrolls
-   and Safari's address bar / bottom toolbar can minimize on scroll.
-   Installed PWA users keep the fixed-shell layout (no chrome to hide). */
-@media (display-mode: browser) {
-  html, body { height: auto; overflow: visible; }
-  #root { height: auto; min-height: 100%; }
-  .shell { height: auto; min-height: 100dvh; overflow: visible; }
-  .main-content { min-height: 0; overflow: visible; }
-  .status-bar { display: none; }
-  .topbar {
-    position: sticky; top: 0; z-index: 5;
-    padding: calc(env(safe-area-inset-top, 0px) + 6px) 14px 6px;
-  }
-  .page { overflow: visible; }
-
-  /* Prevent body scroll while a modal/drawer/takeover is open. */
-  body:has(.drawer-overlay, .sheet-overlay, .doc-viewer-backdrop, .note-editor-desktop, .expediente-open) {
-    overflow: hidden;
-  }
-}
 .topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); transition: opacity 0.4s ease, transform 0.4s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
 .topbar-brand:active { opacity: 0.6; transform: translateX(-50%) scale(0.94); }
 .topbar-right { display: flex; align-items: center; gap: 6px; }
