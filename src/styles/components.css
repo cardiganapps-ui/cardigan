@@ -112,8 +112,14 @@
      and alignment instead of the UA defaults. */
   font-family: inherit; color: inherit; text-align: left;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.35s ease;
 }
 button.kpi-card { cursor: pointer; }
+button.kpi-card:active {
+  transform: scale(0.96);
+  background: var(--teal-mist);
+  border-color: var(--teal-light);
+}
 .kpi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--charcoal-xl); margin-bottom: 6px; }
 .kpi-value { font-family: var(--font-d); font-size: 22px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.4px; }
 .kpi-meta { font-size: 11px; color: var(--charcoal-xl); margin-top: 4px; }
