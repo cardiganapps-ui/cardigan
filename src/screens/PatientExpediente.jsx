@@ -235,11 +235,21 @@ export function PatientExpediente({
 
   // ── Swipe-to-dismiss ──
   const dragRef = useRef(null);
+  const contentRef = useRef(null);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
 
   const onDragStart = (e) => {
     dragRef.current = { y: e.touches[0].clientY, active: false };
+  };
+
+  // Delegate to the drag gesture only when the content is scrolled to the
+  // top — otherwise the user is scrolling the inner list, not pulling the
+  // sheet down. Same pattern as the handle drag zone above.
+  const onContentTouchStart = (e) => {
+    const el = contentRef.current;
+    if (!el || el.scrollTop > 0) return;
+    onDragStart(e);
   };
   const onDragMove = (e) => {
     if (!dragRef.current) return;
@@ -351,7 +361,9 @@ export function PatientExpediente({
       </div>
 
       {/* Content */}
-      <div style={{ flex:1, minHeight:0, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
+      <div ref={contentRef}
+        onTouchStart={onContentTouchStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+        style={{ flex:1, minHeight:0, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
 
         {tab === "resumen" && (
           <ResumenTab
