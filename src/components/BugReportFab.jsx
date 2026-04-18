@@ -38,7 +38,11 @@ export function BugReportFab({ user, screen }) {
         style={{
           position: "fixed", left: 16,
           width: 44, height: 44, minHeight: 44, borderRadius: "50%",
-          background: "rgba(0,0,0,0.45)", border: "none", padding: 0,
+          /* Use charcoal-with-alpha so the button stays visible in both light
+             and dark modes — the token flips with the theme, so we get a dark
+             pill on a light page and a light pill on a dark page. */
+          background: "color-mix(in srgb, var(--charcoal) 45%, transparent)",
+          border: "none", padding: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
           color: "var(--white)", cursor: "pointer", zIndex: "var(--z-fab)",
           WebkitTapHighlightColor: "transparent", opacity: 0.7,

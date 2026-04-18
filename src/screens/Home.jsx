@@ -121,6 +121,17 @@ export function Home({ setScreen, userName }) {
   const [editingNote, setEditingNote] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), []);
   useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
+
+  // Mirrors Notes.jsx so the NoteEditor's handleClose always sees a stable
+  // save/delete pair and always reaches its onClose() cleanup — critical in
+  // demo mode where the underlying mutations are no-ops.
+  const handleSaveNote = useCallback(async ({ title, content }) => {
+    if (editingNote?.id) await updateNote(editingNote.id, { title, content });
+  }, [editingNote, updateNote]);
+  const handleDeleteNote = useCallback(async () => {
+    if (editingNote?.id) await deleteNote(editingNote.id);
+  }, [editingNote, deleteNote]);
+  const handleCloseNote = useCallback(() => setEditingNote(null), []);
   const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {
@@ -423,11 +434,9 @@ export function Home({ setScreen, userName }) {
       {editingNote && (
         <NoteEditor
           note={editingNote}
-          onSave={async ({ title, content }) => {
-            if (editingNote?.id) await updateNote(editingNote.id, { title, content });
-          }}
-          onDelete={editingNote?.id ? async () => { await deleteNote(editingNote.id); } : undefined}
-          onClose={() => setEditingNote(null)}
+          onSave={handleSaveNote}
+          onDelete={editingNote.id ? handleDeleteNote : undefined}
+          onClose={handleCloseNote}
         />
       )}
 
