@@ -164,7 +164,13 @@
     color: var(--charcoal);
     box-shadow: var(--shadow-sm);
   }
-  .fab:hover { background: var(--cream-deeper); }
+  .fab:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      0 12px 32px -4px rgba(91,155,175,0.6),
+      0 4px 14px rgba(46,46,46,0.14),
+      inset 0 1px 0 rgba(255,255,255,0.35);
+  }
 
   /* Multi-column Home dashboard */
   .home-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }

@@ -57,8 +57,14 @@ html[data-theme="dark"] .btn-primary {
   color: #1A1A1A;
 }
 html[data-theme="dark"] .fab {
-  background: #EAEAEA;
-  color: #1A1A1A;
+  /* Keep the teal gradient in dark mode too — it's meant to look
+     special, so we don't fall through to the --charcoal swap. */
+  background: radial-gradient(circle at 30% 25%, var(--teal-light) 0%, var(--teal) 55%, var(--teal-dark) 100%);
+  color: #FFFFFF;
+  box-shadow:
+    0 10px 28px -6px rgba(91,155,175,0.6),
+    0 4px 14px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.22);
 }
 /* OAuth buttons: Google keeps its light pill per brand guidelines and
    Apple stays on a dark pill — the --charcoal-based swap would otherwise
@@ -119,7 +125,7 @@ html[data-theme="dark"] .lp-btn--primary {
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   }
   html[data-theme="dark"] .fab:hover {
-    background: #FFFFFF;
+    filter: brightness(1.1);
   }
   html[data-theme="dark"] .lp-btn--primary:hover {
     background: #FFFFFF;
