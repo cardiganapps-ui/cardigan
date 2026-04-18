@@ -122,10 +122,11 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
   const panelStyle = hasInteracted
     ? {
         transform: dragY !== 0 ? `translateY(${dragY}px)` : undefined,
-        // Match the spring curve used across Cardigan (fab-in, btn press,
-        // sheet slideUp) so the rubber-band release settles with a soft
-        // overshoot instead of a hard snap.
-        transition: dragging ? "none" : "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        // Silky decelerate (easeOutQuint) instead of Cardigan's spring
+        // curve — the spring's front-loaded acceleration + overshoot
+        // made the short rubber-band release feel snappy and abrupt.
+        // This one has no overshoot and eases in smoothly.
+        transition: dragging ? "none" : "transform 0.65s cubic-bezier(0.22, 1, 0.36, 1)",
       }
     : {};
 
