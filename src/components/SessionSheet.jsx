@@ -8,6 +8,7 @@ import { Avatar } from "./Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 
 export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onOpenNote, onAttachDocument, mutating }) {
@@ -15,6 +16,11 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const { openExpediente } = useCardigan();
   useEscape(session ? onClose : null);
   const panelRef = useFocusTrap(!!session);
+  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
+  const setPanel = (el) => {
+    panelRef.current = el;
+    scrollRef.current = el;
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -78,7 +84,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={panelStyle}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title" style={{ display:"flex", alignItems:"center", gap:8 }}>

@@ -4,6 +4,7 @@ import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
@@ -94,6 +95,8 @@ export function Notes() {
   const [longPressingId, setLongPressingId] = useState(null);
   const [confirmDeleteProps, setConfirmDeleteProps] = useState(false);
   useEscape(confirmDeleteProps ? () => setConfirmDeleteProps(false) : (propsNote ? () => setPropsNote(null) : null));
+  const closePropsNote = useCallback(() => setPropsNote(null), []);
+  const { scrollRef: propsScrollRef, panelHandlers: propsPanelHandlers, panelStyle: propsPanelStyle } = useSheetDrag(closePropsNote);
   const longPressRef = useRef(null);
 
   const patientsWithNotes = useMemo(() => {
@@ -343,7 +346,7 @@ export function Notes() {
       {/* Long-press properties sheet */}
       {propsNote && (
         <div className="sheet-overlay" onClick={() => setPropsNote(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={propsScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...propsPanelHandlers} style={propsPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{propsNote.title || t("notes.noTitle")}</span>

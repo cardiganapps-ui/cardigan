@@ -7,6 +7,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 
 export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }) {
   const { patients, createPayment, updatePayment, mutating } = useCardigan();
@@ -14,6 +15,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   const isEditing = !!editingPayment;
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(open);
+  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
@@ -100,13 +102,13 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column" }}>
+      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column", overflow:"hidden", ...panelStyle }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form className="sheet-scroll" onSubmit={submit} style={{ padding:"0 20px 0", flex:1, display:"flex", flexDirection:"column" }}>
+        <form ref={scrollRef} className="sheet-scroll" onSubmit={submit} style={{ padding:"0 20px 0", flex:1, display:"flex", flexDirection:"column" }}>
           <div style={{ flex:1 }}>
           <div className="input-group">
             <label className="input-label">

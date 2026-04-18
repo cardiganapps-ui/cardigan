@@ -4,11 +4,19 @@ import { shortDateToISO, todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useSheetDrag } from "../../hooks/useSheetDrag";
 
 export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }) {
   const { t } = useT();
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
+  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
+  // Dual-assign: this sheet has no inner scroll container, so the panel
+  // itself is both the focus-trap target and the scroll reference.
+  const setPanel = (el) => {
+    panelRef.current = el;
+    scrollRef.current = el;
+  };
   const [patientId, setPatientId] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -52,7 +60,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"92vh", overflowY:"auto" }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", overflowY:"auto", ...panelStyle }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("docs.upload")}</span>

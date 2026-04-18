@@ -4,14 +4,17 @@ import { supabase } from "../supabaseClient";
 import { getLogs } from "../utils/logBuffer";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 
 export function BugReportFab({ user, screen }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  useEscape(open ? () => { setOpen(false); setDescription(""); } : null);
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const closeSheet = () => { setOpen(false); setDescription(""); };
+  useEscape(open ? closeSheet : null);
+  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(closeSheet, { isOpen: open });
 
   const submit = async (e) => {
     e.preventDefault();
@@ -53,7 +56,7 @@ export function BugReportFab({ user, screen }) {
 
       {open && (
         <div className="sheet-overlay" onClick={() => { setOpen(false); setDescription(""); }}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={scrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={panelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("bugReport.title")}</span>

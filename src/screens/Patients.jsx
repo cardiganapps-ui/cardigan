@@ -6,6 +6,7 @@ import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
 import { Toggle } from "../components/Toggle";
 import { MoneyInput } from "../components/MoneyInput";
@@ -58,6 +59,7 @@ export function Patients() {
   const [openDates, setOpenDates] = useState(false);
   const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); setOpenContact(false); setOpenDates(false); }, []);
   useEscape(selected ? closeSheet : null);
+  const { scrollRef: editScrollRef, panelHandlers: editPanelHandlers, panelStyle: editPanelStyle } = useSheetDrag(closeSheet);
   const [expediente, setExpediente] = useState(null);
   // Edit form state
   const [editName, setEditName]       = useState("");
@@ -407,7 +409,7 @@ export function Patients() {
 
       {selected && (
         <div className="sheet-overlay" onClick={closeSheet}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={editScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...editPanelHandlers} style={editPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">

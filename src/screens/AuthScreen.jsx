@@ -4,6 +4,7 @@ import { LandingPage } from "../components/landing/LandingPage";
 import { IconX } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 
 /* ── Auth form (reused inside sheet) ──
    The landing page is English; the auth form stays in Spanish to match
@@ -115,6 +116,8 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo, autoOpen }) {
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("signup");
   useEscape(showAuth ? () => setShowAuth(false) : null);
+  const closeAuth = () => setShowAuth(false);
+  const { scrollRef: authScrollRef, panelHandlers: authPanelHandlers, panelStyle: authPanelStyle } = useSheetDrag(closeAuth, { isOpen: showAuth });
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
 
@@ -134,7 +137,7 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo, autoOpen }) {
 
       {showAuth && (
         <div className="sheet-overlay" onClick={() => setShowAuth(false)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={authScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...authPanelHandlers} style={authPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">

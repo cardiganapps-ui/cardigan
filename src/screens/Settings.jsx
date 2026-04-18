@@ -5,6 +5,7 @@ import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 
 export function Settings({ user, signOut }) {
@@ -17,6 +18,7 @@ export function Settings({ user, signOut }) {
   const [activeSheet, setActiveSheet] = useState(null);
   const closeSheet = useCallback(() => setActiveSheet(null), []);
   useEscape(activeSheet ? closeSheet : null);
+  const { scrollRef: sheetScrollRef, panelHandlers: sheetPanelHandlers, panelStyle: sheetPanelStyle } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
   const [editName, setEditName] = useState(userName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -188,7 +190,7 @@ export function Settings({ user, signOut }) {
       {/* ── PROFILE SHEET ── */}
       {activeSheet === "profile" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={sheetScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers} style={sheetPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.editProfile")}</span>
@@ -215,7 +217,7 @@ export function Settings({ user, signOut }) {
       {/* ── THEME SHEET ── */}
       {activeSheet === "theme" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={sheetScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers} style={sheetPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.appearance")}</span>
@@ -244,7 +246,7 @@ export function Settings({ user, signOut }) {
       {/* ── REMINDER TIME SHEET ── */}
       {activeSheet === "reminderTime" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={sheetScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers} style={sheetPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("notifications.reminderTime")}</span>
@@ -272,7 +274,7 @@ export function Settings({ user, signOut }) {
       {/* ── PLAN SHEET ── */}
       {activeSheet === "plan" && (
         <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+          <div ref={sheetScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers} style={sheetPanelStyle}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("settings.plan")}</span>

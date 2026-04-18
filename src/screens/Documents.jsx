@@ -5,6 +5,7 @@ import { DocumentList } from "../components/DocumentList";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { useSheetDrag } from "../hooks/useSheetDrag";
 
 export function Documents() {
   const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating, openExpediente } = useCardigan();
@@ -17,6 +18,8 @@ export function Documents() {
   const [pendingFiles, setPendingFiles] = useState(null);
   const [viewingDoc, setViewingDoc] = useState(null);
   const fileInputRef = useRef(null);
+  const closePending = () => setPendingFiles(null);
+  const { scrollRef: pendingScrollRef, panelHandlers: pendingPanelHandlers, panelStyle: pendingPanelStyle } = useSheetDrag(closePending, { isOpen: !!pendingFiles });
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -134,7 +137,7 @@ export function Documents() {
       {/* Patient picker after file selection */}
       {pendingFiles && (
         <div className="sheet-overlay" onClick={() => setPendingFiles(null)}>
-          <div className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ maxHeight:"60vh" }}>
+          <div ref={pendingScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...pendingPanelHandlers} style={{ maxHeight:"60vh", ...pendingPanelStyle }}>
             <div className="sheet-handle" />
             <div style={{ padding:"16px 20px 8px" }}>
               <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>
