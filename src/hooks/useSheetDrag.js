@@ -47,7 +47,7 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
   // feels "tethered" rather than linear. Tuned to feel close to native
   // UIScrollView overscroll.
   const rubberBand = (distance, dimension) => {
-    const c = 0.55;
+    const c = 0.5;
     const x = Math.abs(distance);
     const resist = (x * dimension * c) / (dimension + c * x);
     return Math.sign(distance) * resist;
@@ -130,8 +130,11 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
     const currentY = matrix.m42 || 0;
 
     // Silky decelerate, no overshoot — matches iOS rubber-band release.
-    const springBack = "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)";
-    const dismiss    = "transform 0.32s cubic-bezier(0.32, 0.72, 0.0, 1)";
+    // easeOutExpo at 0.8s gives a long, gentle glide back to rest; the
+    // finger-to-animation handoff stays unbroken because touchstart
+    // cancels the transition if the user re-grabs.
+    const springBack = "transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+    const dismiss    = "transform 0.38s cubic-bezier(0.32, 0.72, 0.0, 1)";
 
     if (s.dir === 1 && currentY > threshold) {
       closingRef.current = true;
@@ -139,7 +142,7 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
       setTimeout(() => {
         closingRef.current = false;
         onClose();
-      }, 320);
+      }, 380);
     } else {
       writeTransform(panel, 0, springBack);
     }
