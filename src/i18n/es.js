@@ -299,6 +299,7 @@ export default {
     cash: "Efectivo",
     transfer: "Transferencia",
     card: "Tarjeta",
+    cardlessWithdrawal: "Retiro sin Tarjeta",
     other: "Otro",
     otherPlaceholder: "Cheque, Dep\u00f3sito...",
     enterAmount: "Ingresa un monto v\u00e1lido",

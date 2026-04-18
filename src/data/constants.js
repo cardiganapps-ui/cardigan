@@ -21,12 +21,14 @@ export const PAYMENT_METHOD = Object.freeze({
   TRANSFER: "Transferencia",
   CASH:     "Efectivo",
   CARD:     "Tarjeta",
+  CARDLESS: "Retiro sin Tarjeta",
   OTHER:    "Otro",
 });
 export const PAYMENT_METHODS = [
   PAYMENT_METHOD.TRANSFER,
   PAYMENT_METHOD.CASH,
   PAYMENT_METHOD.CARD,
+  PAYMENT_METHOD.CARDLESS,
   PAYMENT_METHOD.OTHER,
 ];
 
