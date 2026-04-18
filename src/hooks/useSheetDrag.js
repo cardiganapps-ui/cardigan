@@ -92,11 +92,17 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
     }
   }, [dragY, threshold, onClose]);
 
-  const panelStyle = {
-    transform: dragY !== 0 ? `translateY(${dragY}px)` : undefined,
-    transition: dragging ? "none" : "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
-    touchAction: "pan-y",
-  };
+  // Only attach a transform/transition once the user starts interacting.
+  // Leaving them undefined at rest lets the sheet's CSS open animation
+  // play untouched; the inline transition used to fight that animation
+  // and cause a visible jump right after the sheet finished opening.
+  const hasInteracted = dragY !== 0 || dragging || closing;
+  const panelStyle = hasInteracted
+    ? {
+        transform: dragY !== 0 ? `translateY(${dragY}px)` : undefined,
+        transition: dragging ? "none" : "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
+      }
+    : {};
 
   const panelHandlers = { onTouchStart, onTouchMove, onTouchEnd };
 

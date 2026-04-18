@@ -15,7 +15,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   const isEditing = !!editingPayment;
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(open);
-  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
+  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose, { isOpen: open });
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
