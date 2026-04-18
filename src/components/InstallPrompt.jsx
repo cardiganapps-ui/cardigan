@@ -15,12 +15,12 @@ function isStandalone() {
 const safeStorageGet = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const safeStorageSet = (key, value) => { try { localStorage.setItem(key, value); } catch { /* noop */ } };
 
-export function InstallPrompt() {
+export function InstallPrompt({ hidden = false }) {
   const { t } = useT();
   const dismissed = safeStorageGet("cardigan-install-dismissed");
   const [visible, setVisible] = useState(!dismissed && isIOS() && !isStandalone());
 
-  if (!visible) return null;
+  if (!visible || hidden) return null;
 
   const dismiss = (permanent) => {
     setVisible(false);

@@ -374,7 +374,7 @@ function AppShell({ user, signOut, demo, theme }) {
             currentAdminId={user?.id}
           />
         )}
-        <InstallPrompt />
+        <InstallPrompt hidden={tutorial?.isActive || tutorial?.isWelcome} />
         {user && !demo && !readOnly && <BugReportFab user={user} screen={screen} />}
         {!demo && !readOnly && <Tutorial />}
       </div>
