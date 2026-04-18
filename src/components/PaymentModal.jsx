@@ -158,7 +158,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           {formError && <div className="form-error">{formError}</div>}
           </div>
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
-            <button className="btn btn-primary" type="submit" disabled={mutating}>
+            <button className="btn btn-primary-teal" type="submit" disabled={mutating}>
               {mutating ? t("saving") : isEditing ? t("finances.updatePayment") : t("finances.savePayment")}
             </button>
           </div>

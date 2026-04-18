@@ -79,7 +79,7 @@ export function BugReportFab({ user, screen }) {
                   onChange={e => setDescription(e.target.value)}
                   style={{ resize: "vertical", fontFamily: "var(--font)", fontSize: 13 }}
                 />
-                <button className="btn btn-primary" type="submit" disabled={sending}
+                <button className="btn btn-primary-teal" type="submit" disabled={sending}
                   style={{ width: "100%", marginTop: 12 }}>
                   {sending ? t("saving") : t("bugReport.submit")}
                 </button>

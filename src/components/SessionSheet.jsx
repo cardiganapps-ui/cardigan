@@ -182,7 +182,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
                 </select>
               </div>
               {rescheduleErr && <div className="form-error">{rescheduleErr}</div>}
-              <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>
+              <button className="btn btn-primary-teal" style={{ marginBottom:10 }} onClick={submitReschedule} disabled={mutating}>
                 {mutating ? t("saving") : t("sessions.confirm")}
               </button>
               <button className="btn btn-secondary w-full" onClick={() => setRescheduling(false)}>{t("back")}</button>
@@ -226,7 +226,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {/* Reschedule — primary action */}
-              <button className="btn btn-primary" style={{ height:44 }} onClick={startReschedule}>
+              <button className="btn btn-primary-teal" style={{ height:44 }} onClick={startReschedule}>
                 {t("sessions.reschedule")}
               </button>
 

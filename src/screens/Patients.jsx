@@ -608,7 +608,7 @@ export function Patients() {
 
                   <div style={{ marginTop:20 }} />
 
-                  <button className="btn btn-primary" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
+                  <button className="btn btn-primary-teal" style={{ marginBottom:10 }} onClick={saveEdit} disabled={mutating}>
                     {mutating ? t("saving") : isFinalizingPatient ? t("patients.finalize") : scheduleOrRateChanged() ? t("apply") : t("save")}
                   </button>
                   <button className="btn btn-secondary w-full" onClick={closeSheet}>{t("cancel")}</button>

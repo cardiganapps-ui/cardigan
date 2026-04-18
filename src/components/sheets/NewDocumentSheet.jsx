@@ -79,7 +79,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                 <button className="btn btn-secondary" style={{ flex:1 }} onClick={() => { setDone(false); setUploadedCount(0); }}>
                   {t("uploadMore")}
                 </button>
-                <button className="btn btn-primary" style={{ flex:1 }} onClick={onClose}>
+                <button className="btn btn-primary-teal" style={{ flex:1 }} onClick={onClose}>
                   {t("done")}
                 </button>
               </div>
@@ -113,7 +113,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
               <input ref={fileInputRef} type="file" multiple
                 accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 style={{ display:"none" }} onChange={handleUpload} />
-              <button className="btn btn-primary" disabled={uploading}
+              <button className="btn btn-primary-teal" disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
                 style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 <IconUpload size={16} />

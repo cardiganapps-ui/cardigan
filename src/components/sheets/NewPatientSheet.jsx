@@ -35,7 +35,12 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [tutorFrequency, setTutorFrequency] = useState("");
   const [phone, setPhone]     = useState("");
   const [email, setEmail]     = useState("");
-  const [birthdate, setBirthdate] = useState("");
+  // Birthdate "placeholder": defaults to today so the field doesn't
+  // render as an empty mm/dd/yyyy stub (some users don't realize it's
+  // a date picker when blank). Faded until the user changes it so
+  // they know to replace it with the patient's real birthdate.
+  const [birthdate, setBirthdate] = useState(todayISO());
+  const birthdateUntouched = birthdate === todayISO();
 
   // Step 2 fields
   const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }]);
@@ -72,7 +77,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
       const ok = await onSubmit({
         name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
         tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
-        phone: phoneDigits(phone), email: email.trim(), birthdate: birthdate || null,
+        phone: phoneDigits(phone), email: email.trim(),
+        birthdate: (birthdate && !birthdateUntouched) ? birthdate : null,
         schedules, recurring: true,
         startDate,
         endDate: hasEndDate ? endDate : null,
@@ -182,7 +188,12 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               <div className="input-group">
                 <label className="input-label">{t("patients.birthdate")}</label>
                 <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)}
-                  style={{ height: 52, fontSize: 16, padding: "14px 14px" }} />
+                  style={{ height: 52, fontSize: 16, padding: "14px 14px",
+                    // Placeholder-style fade while the value is still the
+                    // default (today). Clears to normal once the user
+                    // picks a real birthdate.
+                    color: birthdateUntouched ? "var(--charcoal-xl)" : "var(--charcoal)",
+                  }} />
               </div>
             </>
           ) : (

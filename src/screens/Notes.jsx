@@ -377,7 +377,7 @@ export function Notes() {
                 </div>
               )}
               <div style={{ display:"flex", gap:8, marginTop:4 }}>
-                <button className="btn btn-primary" style={{ flex:1 }}
+                <button className="btn btn-primary-teal" style={{ flex:1 }}
                   onClick={async () => {
                     await updateNoteLink(propsNote.id, { patientId: propsNote._patientId, sessionId: propsNote._sessionId });
                     setPropsNote(null);

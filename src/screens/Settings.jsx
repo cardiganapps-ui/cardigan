@@ -207,7 +207,7 @@ export function Settings({ user, signOut }) {
                 <input className="input" value={userEmail} disabled style={{ opacity:0.5 }} />
               </div>
               {message && <div style={{ fontSize:12, color:"var(--green)", marginBottom:10, display:"flex", alignItems:"center", gap:4 }}><IconCheck size={14} /> {message}</div>}
-              <button className="btn btn-primary" onClick={saveProfile} disabled={saving || !editName.trim()}>
+              <button className="btn btn-primary-teal" onClick={saveProfile} disabled={saving || !editName.trim()}>
                 {saving ? t("saving") : t("save")}
               </button>
             </div>
