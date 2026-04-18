@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
-import { IconSearch, IconX, IconUsers, IconTrash, IconPlus } from "../components/Icons";
+import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
+import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
@@ -43,6 +44,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly } = useCardigan();
   const { isDesktop } = useViewport();
+  const ctxMenu = useContextMenu();
   const { t, strings } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
@@ -82,6 +84,42 @@ export function Patients() {
     // Desktop split view keeps the topbar + FAB visible; the expediente
     // renders inline alongside the list so nothing is covered.
     if (!isDesktop) setHideFab?.(true);
+  };
+
+  // Right-click menu for patient rows. Desktop-only affordance —
+  // contextmenu events don't fire for normal mobile long-presses so
+  // the mobile long-press/swipe gestures are untouched.
+  const openPatientContextMenu = (e, p) => {
+    if (readOnly) return;
+    ctxMenu.openAt(e, [
+      { key: "open",    label: t("patients.viewExpediente") || "Ver expediente", icon: <IconUsers size={15} />, onSelect: () => openDetail(p) },
+      { key: "payment", label: t("finances.recordPayment"), icon: <IconDollar size={15} />, onSelect: () => openRecordPaymentModal(p) },
+      { divider: true },
+      { key: "edit",    label: t("edit"),   icon: <IconEdit size={15} />,  onSelect: () => openEditForPatient(p) },
+      { key: "delete",  label: t("patients.deleteButton"), icon: <IconTrash size={15} />, onSelect: () => openEditForPatient(p, { confirmDelete: true }), destructive: true },
+    ]);
+  };
+
+  const openEditForPatient = (p, opts = {}) => {
+    const scheds = [{ day: p.day, time: p.time }];
+    setEditName(p.name);
+    setEditIsMinor(!!p.parent);
+    setEditParent(p.parent || "");
+    setEditRate(String(p.rate));
+    setEditPhone(formatPhoneMX(p.phone));
+    setEditEmail(p.email || "");
+    setEditBirthdate(p.birthdate || "");
+    setEditStartDate(p.start_date || "");
+    setEditStatus(p.status);
+    setEditSchedules(scheds);
+    setOrigRate(p.rate);
+    setOrigSchedules(JSON.stringify(scheds));
+    setEffectiveDate(todayISO());
+    setHasEndDate(false);
+    setEndDate("");
+    setSelected(p);
+    setEditing(true);
+    setConfirmDelete(!!opts.confirmDelete);
   };
 
   // Open expediente when navigated from another screen
@@ -279,7 +317,7 @@ export function Patients() {
           {filtered.length === 0
             ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
             : filtered.map((p,i) => (
-              <div className={`row-item ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""}`} key={p.id} onClick={() => openDetail(p)}>
+              <div className={`row-item ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""}`} key={p.id} onClick={() => openDetail(p)} onContextMenu={(e) => openPatientContextMenu(e, p)}>
                 <Avatar initials={p.initials} color={getClientColor(i)} size="md" />
                 <div className="row-content">
                   <div className="row-title">{p.name}</div>
@@ -703,6 +741,7 @@ export function Patients() {
         />,
         document.body
       )}
+      <ContextMenu {...ctxMenu.state} onClose={ctxMenu.close} />
     </div>
   );
 }

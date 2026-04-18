@@ -217,6 +217,7 @@ export default {
     cancelWithCharge: "Cancelar con cobro",
     cancelWithoutCharge: "Cancelar sin cobro",
     markCompleted: "Marcar completada",
+    markCancelled: "Cancelar sesi\u00f3n",
     revertScheduled: "Revertir a agendada",
     cancelReason: "Raz\u00f3n de cancelaci\u00f3n (opcional)",
     cancelReasonPlaceholder: "Paciente no se present\u00f3, aviso tard\u00edo...",

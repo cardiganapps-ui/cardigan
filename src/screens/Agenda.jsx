@@ -3,7 +3,8 @@ import { getClientColor, TODAY } from "../data/seedData";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
-import { IconSun } from "../components/Icons";
+import { IconSun, IconCheck, IconX, IconTrash, IconCalendar } from "../components/Icons";
+import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
 import { Avatar } from "../components/Avatar";
@@ -205,7 +206,7 @@ function timeToFloat(time) {
 }
 
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
-function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, upcomingSessions, showWeekends, hours }) {
+function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours }) {
   const { strings } = useT();
   const DOW = strings.daysShort;
   const weekDays = getWeekDays(weekDate);
@@ -288,7 +289,8 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                       top: `calc(var(--week-row-h) * ${startF} + 2px)`,
                       height: `calc(var(--week-row-h) * ${dur} - 4px)`,
                     }}
-                    onClick={e => { e.stopPropagation(); onSelectSession(sess); }}>
+                    onClick={e => { e.stopPropagation(); onSelectSession(sess); }}
+                    onContextMenu={onEventContextMenu ? (e) => { e.stopPropagation(); onEventContextMenu(e, sess); } : undefined}>
                     <span className="week-event-time">{sess.time}</span> {shortName(sess.patient)}
                   </div>
                 );
@@ -302,7 +304,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
 }
 
 /* ── WEEK VIEW ── */
-function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, upcomingSessions, now, jumpToToday }) {
+function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, now, jumpToToday }) {
   const { t, strings } = useT();
   const HOURS = strings.hours;
   const [showWeekends, setShowWeekends] = useState(false);
@@ -316,7 +318,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
   const monday = weekDays[0];
   const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
   const isCurrent = weekDays.some(d => isSameDay(d, TODAY));
-  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, upcomingSessions, showWeekends, hours: HOURS };
+  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours: HOURS };
 
   // "Ahora" line: only when today is in the visible week and within work hours
   const visibleDays = (showWeekends ? weekDays : weekDays.slice(0, 5));
@@ -522,6 +524,28 @@ export function Agenda() {
     await rescheduleSession(sessionId, newShortDate, hour, sess.duration || 60);
   }, [upcomingSessions, rescheduleSession]);
 
+  const ctxMenu = useContextMenu();
+  const handleEventContextMenu = useCallback((e, sess) => {
+    const isCancelled = isCancelledStatus(sess.status);
+    const isCompleted = sess.status === "completed";
+    const items = [
+      { key: "open", label: t("sessions.session"), icon: <IconCalendar size={15} />, onSelect: () => setSelectedSession(sess) },
+      { divider: true },
+    ];
+    if (!isCompleted) {
+      items.push({ key: "complete", label: t("sessions.markCompleted"), icon: <IconCheck size={15} />,
+        onSelect: async () => { await onMarkCompleted(sess); } });
+    }
+    if (!isCancelled) {
+      items.push({ key: "cancel", label: t("sessions.markCancelled") || "Cancelar sesión", icon: <IconX size={15} />,
+        onSelect: async () => { await onCancelSession(sess, false, null); } });
+    }
+    items.push({ divider: true });
+    items.push({ key: "delete", label: t("delete"), icon: <IconTrash size={15} />, destructive: true,
+      onSelect: async () => { await deleteSession(sess.id); } });
+    ctxMenu.openAt(e, items);
+  }, [ctxMenu, onMarkCompleted, onCancelSession, deleteSession, t]);
+
   const jumpToToday = useCallback(() => {
     setSelectedDate(new Date(TODAY));
   }, []);
@@ -585,7 +609,7 @@ export function Agenda() {
         </div>
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} onEventContextMenu={isDesktop ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {newSessionPrefill && (
         <NewSessionSheet
@@ -631,6 +655,7 @@ export function Agenda() {
         }}
         mutating={mutating}
       />
+      <ContextMenu {...ctxMenu.state} onClose={ctxMenu.close} />
     </div>
     </>
   );
