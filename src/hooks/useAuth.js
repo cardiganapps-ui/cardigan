@@ -27,6 +27,16 @@ export function useAuth() {
       },
     });
     if (error) return { error: error.message };
+    // If the Supabase project still has "Confirm email" on, signUp returns
+    // no session. Try to sign in immediately so the user lands in the app
+    // without needing a confirmation click.
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) return { error: signInError.message };
+    }
     return { data };
   }
 
