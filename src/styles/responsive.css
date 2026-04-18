@@ -30,7 +30,7 @@
   /* Topbar: hide hamburger, un-center logo */
   .hamburger { display: none; }
   .topbar-brand { position: static; transform: none; }
-  .topbar-brand:active { transform: scale(0.94); }
+  .topbar-brand:active { background: var(--teal-pale); color: var(--teal-dark); transform: scale(0.9); }
 
   /* Page: wider padding, centered */
   .page { padding: 20px 32px; max-width: 900px; margin: 0 auto; }
