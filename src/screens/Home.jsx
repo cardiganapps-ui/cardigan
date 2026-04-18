@@ -7,6 +7,7 @@ import { useEscape } from "../hooks/useEscape";
 import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
+import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 
@@ -33,7 +34,7 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, readOnly, mutating, setAgendaView, requestFabAction } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -117,8 +118,9 @@ export function Home({ setScreen, userName }) {
   const [selected, setSelected] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
   const [tutorBooking, setTutorBooking] = useState(null);
+  const [editingNote, setEditingNote] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), []);
-  useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : null);
+  useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
   const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {
@@ -378,7 +380,7 @@ export function Home({ setScreen, userName }) {
               const pat = n.patient_id ? patients.find(p => p.id === n.patient_id) : null;
               const preview = n.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
               return (
-                <div className="row-item" key={n.id} onClick={() => pat && openPatient(pat.name)}>
+                <div className="row-item" key={n.id} onClick={() => setEditingNote(n)}>
                   <div className="row-icon" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}><IconClipboard size={18} /></div>
                   <div className="row-content">
                     <div className="row-title">{n.title || t("notes.noTitle")}</div>
@@ -417,6 +419,17 @@ export function Home({ setScreen, userName }) {
         onUpdateRate={updateSessionRate}
         mutating={mutating}
       />
+
+      {editingNote && (
+        <NoteEditor
+          note={editingNote}
+          onSave={async ({ title, content }) => {
+            if (editingNote?.id) await updateNote(editingNote.id, { title, content });
+          }}
+          onDelete={editingNote?.id ? async () => { await deleteNote(editingNote.id); } : undefined}
+          onClose={() => setEditingNote(null)}
+        />
+      )}
 
       {selected && (
         <div className="sheet-overlay" onClick={() => setSelected(null)}>

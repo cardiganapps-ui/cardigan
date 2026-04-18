@@ -33,6 +33,10 @@ import "./styles/index.css";
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
+  // When set, AuthScreen mounts directly into the signup sheet — used by the
+  // demo banner's "Crear cuenta" button so the user doesn't bounce through
+  // the landing page.
+  const [authIntent, setAuthIntent] = useState(null);
   const theme = useTheme();
 
   if (authLoading && !demoMode) {
@@ -45,11 +49,11 @@ function CardiganApp() {
   }
 
   if (demoMode) {
-    return <AppShell user={null} signOut={() => setDemoMode(false)} demo theme={theme} />;
+    return <AppShell user={null} signOut={() => { setAuthIntent("signup"); setDemoMode(false); }} demo theme={theme} />;
   }
 
   if (!user) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => setDemoMode(true)} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
   }
 
   return <AppShell user={user} signOut={signOut} theme={theme} />;

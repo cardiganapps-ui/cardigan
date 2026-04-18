@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
 import { IconX } from "../components/Icons";
@@ -111,13 +111,19 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
    Thin shell: renders the marketing landing page, and wires the landing
    CTAs to either the auth sheet (signup / sign in) or demo mode (the
    "See how it works" secondary CTA). */
-export function AuthScreen({ onSignIn, onSignUp, onDemo }) {
+export function AuthScreen({ onSignIn, onSignUp, onDemo, autoOpen }) {
   const { t } = useT();
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("signup");
   useEscape(showAuth ? () => setShowAuth(false) : null);
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
+
+  // When we mount because the user clicked "Crear cuenta" from the demo
+  // banner, jump straight into the signup sheet instead of the marketing page.
+  useEffect(() => {
+    if (autoOpen === "signup" || autoOpen === "login") openAuth(autoOpen);
+  }, [autoOpen]);
 
   return (
     <>
