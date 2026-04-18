@@ -56,7 +56,7 @@ function CardiganApp() {
   }
 
   if (!user) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onProvider={signInWithProvider} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
   }
 
   return <AppShell user={user} signOut={signOut} theme={theme} />;
