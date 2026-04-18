@@ -101,7 +101,8 @@ function ToolSep() {
 }
 
 /* ── Main Editor ── */
-export function NoteEditor({ note, onSave, onDelete, onClose }) {
+export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay" }) {
+  const inlineMode = layout === "inline";
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote } = useCardigan();
   const [pinned, setPinned] = useState(!!note?.pinned);
@@ -129,7 +130,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
     }
     cl();
   }, []);
-  useLayer("noteEditor", handleClose);
+  useLayer(inlineMode ? null : "noteEditor", inlineMode ? null : handleClose);
 
   const autoSave = useCallback((newTitle, newContent) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -253,7 +254,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose }) {
     : "";
 
   return (
-    <div className="note-editor-desktop" style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-note-editor)", display:"flex", flexDirection:"column" }}>
+    <div className={inlineMode ? "note-editor-inline" : "note-editor-desktop"} style={inlineMode
+      ? { flex:1, minHeight:0, background:"var(--white)", display:"flex", flexDirection:"column" }
+      : { position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-note-editor)", display:"flex", flexDirection:"column" }
+    }>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"calc(var(--sat, 0px) + 12px) 16px 10px", borderBottom:"1px solid var(--border-lt)", flexShrink:0 }}>
         <button onClick={handleClose}

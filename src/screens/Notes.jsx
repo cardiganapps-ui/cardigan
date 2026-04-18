@@ -4,6 +4,7 @@ import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
+import { useViewport } from "../hooks/useViewport";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
@@ -81,6 +82,7 @@ function SwipeableRow({ children, onDelete, deleteLabel }) {
 export function Notes() {
   const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente } = useCardigan();
   const { t } = useT();
+  const { isDesktop } = useViewport();
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -172,7 +174,7 @@ export function Notes() {
 
   return (
     <>
-    {editingNote && (
+    {editingNote && !isDesktop && (
       <NoteEditor
         note={editingNote}
         onSave={handleSaveNote}
@@ -180,7 +182,8 @@ export function Notes() {
         onClose={() => setEditingNote(null)}
       />
     )}
-    <div className="page" style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
+    <div className={`page ${isDesktop ? "notes-page--split" : ""}`} style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
+    <div className="notes-list-col">
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, gap:8 }}>
         <div className="section-title">{t("notes.title")}</div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -428,6 +431,26 @@ export function Notes() {
           </div>
         </div>
       )}
+    </div>
+    {isDesktop && (
+      <div className="notes-detail-col">
+        {editingNote ? (
+          <NoteEditor
+            note={editingNote}
+            onSave={handleSaveNote}
+            onDelete={editingNote.id ? handleDeleteNote : undefined}
+            onClose={() => setEditingNote(null)}
+            layout="inline"
+          />
+        ) : (
+          <div className="notes-detail-empty">
+            <div className="notes-detail-empty-icon"><IconClipboard size={30} /></div>
+            <div className="notes-detail-empty-title">{t("notes.selectPrompt") || "Selecciona una nota"}</div>
+            <div className="notes-detail-empty-hint">{t("notes.selectHint") || "Elige una nota de la lista o crea una nueva para empezar a escribir."}</div>
+          </div>
+        )}
+      </div>
+    )}
     </div>
     </>
   );

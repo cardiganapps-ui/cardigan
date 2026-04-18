@@ -344,6 +344,8 @@ export default {
   notes: {
     title: "Notas",
     newNote: "+ Nueva nota",
+    selectPrompt: "Selecciona una nota",
+    selectHint: "Elige una nota de la lista o crea una nueva para empezar a escribir.",
     searchPlaceholder: "Buscar por título, paciente o contenido\u2026",
     count: "{count} nota{plural}",
     createNote: "Crear nota",
