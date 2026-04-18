@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { getClientColor } from "../data/seedData";
-import { IconCheck, IconTrendingUp } from "../components/Icons";
+import { IconCheck, IconTrendingUp, IconUsers, IconPlus } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
@@ -369,12 +369,13 @@ function ProyeccionTab({ sessions, patients }) {
 export function Finances() {
   // `deletePayment` is already wrapped at the context level to surface
   // a success toast, so we use it directly here.
-  const { patients, payments, upcomingSessions, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente } = useCardigan();
+  const { patients, payments, upcomingSessions, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente, requestFabAction, readOnly } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
   const [balanceFilter, setBalanceFilter] = useState(null); // null | "owing" | "paid"
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
+  const noPatients    = patients.length === 0;
 
   return (
     <div className="page">
@@ -409,7 +410,25 @@ export function Finances() {
               <div className="stat-tile-sub">{t("finances.patientsLabel")}</div>
             </button>
           </div>
-          {balanceFilter !== "paid" && (
+          {noPatients && (
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"32px 24px" }}>
+              <div style={{ width:56, height:56, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, color:"var(--teal)" }}>
+                <IconUsers size={26} />
+              </div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>{t("patients.noPatients")}</div>
+              <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:18 }}>{t("patients.addFirst")}</div>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => requestFabAction?.("patient")}
+                  className="btn btn-primary"
+                  style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+                  <IconPlus size={16} /> {t("patients.addFirstCta")}
+                </button>
+              )}
+            </div>
+          )}
+          {!noPatients && balanceFilter !== "paid" && (
             <div style={{ padding:"0 16px 8px" }}>
               <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
               <div className="card">
@@ -427,7 +446,7 @@ export function Finances() {
               </div>
             </div>
           )}
-          {balanceFilter !== "owing" && (
+          {!noPatients && balanceFilter !== "owing" && (
             <div style={{ padding: balanceFilter === "paid" ? "0 16px 8px" : "16px 16px 0" }}>
               <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
               <div className="card">

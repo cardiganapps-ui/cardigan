@@ -371,7 +371,7 @@ function AppShell({ user, signOut, demo, theme }) {
           />
         )}
         <InstallPrompt />
-        <BugReportFab user={user} screen={screen} />
+        {user && !demo && !readOnly && <BugReportFab user={user} screen={screen} />}
         {!demo && !readOnly && <Tutorial />}
       </div>
     </div>

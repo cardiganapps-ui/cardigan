@@ -33,6 +33,20 @@ const origWarn = console.warn;
 console.error = (...args) => { push("error", args); origError.apply(console, args); };
 console.warn = (...args) => { push("warn", args); origWarn.apply(console, args); };
 
+// Capture uncaught errors and unhandled promise rejections so they show up
+// in bug-report payloads even when the user didn't see a console message.
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (e) => {
+    const msg = e.error ? `${e.message}\n${e.error.stack || ""}` : (e.message || "Uncaught error");
+    push("error", [`[uncaught] ${msg}`]);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const r = e.reason;
+    const msg = r instanceof Error ? `${r.message}\n${r.stack || ""}` : String(r);
+    push("error", [`[unhandled-rejection] ${msg}`]);
+  });
+}
+
 export function getLogs() {
   return logs.map(l => ({ ...l, message: sanitize(l.message) }));
 }
