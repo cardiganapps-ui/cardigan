@@ -339,8 +339,8 @@ export function PatientExpediente({
         transition: dragging
           ? "none"
           : closing
-            ? "transform 0.34s cubic-bezier(0.5, 0, 0.75, 0)"
-            : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+            ? "transform 0.34s cubic-bezier(0.55, 0.06, 0.68, 0.19)"
+            : "transform 0.62s cubic-bezier(0.32, 0.72, 0, 1)",
         willChange: "transform",
         overflow:"hidden",
       }}>
