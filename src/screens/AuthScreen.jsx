@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
-import { IconX } from "../components/Icons";
+import { IconX, IconGoogle, IconApple } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -9,15 +9,28 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 /* ── Auth form (reused inside sheet) ──
    The landing page is English; the auth form stays in Spanish to match
    the rest of the app, which is Spanish-only per CLAUDE.md. */
-function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
+function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [providerBusy, setProviderBusy] = useState(null);
   const [message, setMessage] = useState("");
 
   const switchMode = (m) => { setMode(m); setError(""); setMessage(""); };
+
+  const handleProvider = async (provider) => {
+    if (!onProvider || providerBusy) return;
+    setError("");
+    setProviderBusy(provider);
+    const result = await onProvider(provider);
+    // On success Supabase redirects away, so we only reach here on failure.
+    if (result?.error) {
+      setError(result.error || t("auth.providerError"));
+      setProviderBusy(null);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,6 +84,33 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
           <div style={{ fontSize: 13, color: "var(--charcoal-xl)", lineHeight: 1.5 }}>{t("auth.resetHint")}</div>
         </div>
       )}
+      {mode !== "reset" && onProvider && (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, marginBottom: 18 }}>
+            <button
+              type="button"
+              className="btn btn-oauth btn-oauth-google"
+              disabled={!!providerBusy}
+              onClick={() => handleProvider("google")}
+            >
+              <IconGoogle size={18} />
+              <span>{t("auth.continueWithGoogle")}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-oauth btn-oauth-apple"
+              disabled={!!providerBusy}
+              onClick={() => handleProvider("apple")}
+            >
+              <IconApple size={18} />
+              <span>{t("auth.continueWithApple")}</span>
+            </button>
+          </div>
+          <div className="auth-divider" aria-hidden="true">
+            <span>{t("auth.orWithEmail")}</span>
+          </div>
+        </>
+      )}
       <form onSubmit={handleSubmit}>
         {mode === "signup" && (
           <div className="input-group">
@@ -111,7 +151,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, t }) {
    Thin shell: renders the marketing landing page, and wires the landing
    CTAs to either the auth sheet (signup / sign in) or demo mode (the
    "See how it works" secondary CTA). */
-export function AuthScreen({ onSignIn, onSignUp, onDemo, autoOpen }) {
+export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen }) {
   const { t } = useT();
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("signup");
@@ -148,7 +188,7 @@ export function AuthScreen({ onSignIn, onSignUp, onDemo, autoOpen }) {
               </button>
             </div>
             <div style={{ padding: "0 20px 22px" }}>
-              <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} t={t} />
+              <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} t={t} />
             </div>
           </div>
         </div>

@@ -111,6 +111,10 @@ export default {
     enterPassword: "Ingresa tu contrase\u00f1a",
     demo: "Ver demo",
     tagline: "Gestiona tu pr\u00e1ctica. Sin complicaciones.",
+    continueWithGoogle: "Continuar con Google",
+    continueWithApple: "Continuar con Apple",
+    orWithEmail: "o continúa con tu correo",
+    providerError: "No se pudo iniciar sesión. Intenta de nuevo.",
   },
 
   // ── Patients ──

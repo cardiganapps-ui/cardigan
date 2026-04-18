@@ -53,5 +53,17 @@ export function useAuth() {
     await supabase.auth.signOut();
   }
 
-  return { user, loading, signUp, signIn, signOut };
+  // OAuth providers (Google, Apple) use a full-page redirect to the provider
+  // and back to the app. Supabase handles the session exchange on return;
+  // the onAuthStateChange listener above picks it up automatically.
+  async function signInWithProvider(provider) {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) return { error: error.message };
+    return {};
+  }
+
+  return { user, loading, signUp, signIn, signOut, signInWithProvider };
 }

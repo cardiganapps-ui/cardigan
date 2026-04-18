@@ -60,6 +60,15 @@ html[data-theme="dark"] .fab {
   background: #EAEAEA;
   color: #1A1A1A;
 }
+/* OAuth buttons: Google keeps its light pill per brand guidelines and
+   Apple stays on a dark pill — the --charcoal-based swap would otherwise
+   flip both, so we hardcode literal colors here. */
+html[data-theme="dark"] .btn-oauth-google {
+  background: #FFFFFF; color: #1A1A1A; border-color: #D8D8D8;
+}
+html[data-theme="dark"] .btn-oauth-apple {
+  background: #000000; color: #FFFFFF; border-color: #000000;
+}
 
 /* ── Overlays: slightly stronger for dark backgrounds ── */
 html[data-theme="dark"] .drawer-overlay {

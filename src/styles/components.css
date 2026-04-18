@@ -365,6 +365,39 @@ button.kpi-card:active {
 .auth-toggle { margin-bottom: 24px; }
 .auth-tab { padding: 10px; font-size: var(--text-md); font-weight: 700; font-family: var(--font-d); }
 
+/* ── OAUTH BUTTONS ──
+   Social-login CTAs shown above the email form. The Google variant
+   follows Google's sign-in brand guidelines (white background, dark
+   text, visible border) while Apple uses the required black/white
+   solid styling. Both share a 44px touch target with the brand icon
+   left-aligned in a 16px inline gap. */
+.btn-oauth {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+  height: 46px;
+  font-size: 14px; font-weight: 700;
+  border-radius: var(--radius-pill);
+  font-family: var(--font); letter-spacing: 0.01em;
+  cursor: pointer; border: 1.5px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+}
+.btn-oauth:active { transform: scale(0.97); }
+.btn-oauth:disabled { opacity: 0.6; cursor: default; }
+.btn-oauth-google { background: var(--white); color: var(--charcoal); }
+.btn-oauth-apple  { background: var(--charcoal); color: var(--white); border-color: var(--charcoal); }
+
+.auth-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 4px 0 16px;
+  color: var(--charcoal-xl); font-size: 12px; font-weight: 600;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--border-lt);
+}
+
 /* ── DESKTOP PRIMITIVES ──────────────────────────────────────────────
    Rendered off-document (fixed position) so they work regardless of
    ancestor overflow/transform. Mobile ignores them (no hover, no
