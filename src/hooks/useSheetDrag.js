@@ -100,5 +100,5 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
 
   const panelHandlers = { onTouchStart, onTouchMove, onTouchEnd };
 
-  return { panelRef, scrollRef, panelHandlers, panelStyle, dragging };
+  return { scrollRef, panelHandlers, panelStyle, dragging };
 }
