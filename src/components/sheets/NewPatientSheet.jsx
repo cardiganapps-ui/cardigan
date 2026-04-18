@@ -93,7 +93,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
           ))}
         </div>
 
-        <form onSubmit={step === 2 ? submit : (e) => { e.preventDefault(); goToStep2(); }} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
+        <form className="sheet-scroll" onSubmit={step === 2 ? submit : (e) => { e.preventDefault(); goToStep2(); }} style={{ padding:"0 20px 0", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
           <div style={{ flex:1, minHeight:0 }}>
 
           {step === 1 ? (
@@ -171,7 +171,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               </div>
               <div className="input-group">
                 <label className="input-label">{t("patients.birthdate")}</label>
-                <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
+                <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)}
+                  style={{ height: 52, fontSize: 16, padding: "14px 14px" }} />
               </div>
             </>
           ) : (
@@ -255,12 +256,12 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
 
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
             {step === 1 ? (
-              <button className="btn btn-primary" type="submit" disabled={mutating}>
+              <button className="btn btn-primary-teal" type="submit" disabled={mutating}>
                 {t("next")}
               </button>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                <button className="btn btn-primary" type="submit" disabled={mutating}>
+                <button className="btn btn-primary-teal" type="submit" disabled={mutating}>
                   {mutating ? t("saving") : t("patients.addPatient")}
                 </button>
                 <button className="btn btn-secondary w-full" type="button" onClick={() => setStep(1)}>

@@ -106,7 +106,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form onSubmit={submit} style={{ padding:"0 20px 0", overflowY:"auto", flex:1, display:"flex", flexDirection:"column" }}>
+        <form className="sheet-scroll" onSubmit={submit} style={{ padding:"0 20px 0", flex:1, display:"flex", flexDirection:"column" }}>
           <div style={{ flex:1 }}>
           <div className="input-group">
             <label className="input-label">

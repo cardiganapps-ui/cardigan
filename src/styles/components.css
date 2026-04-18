@@ -292,7 +292,21 @@ button.kpi-card:active {
   background: none; color: #7AB5C7; padding: 2px 8px;
 }
 
+/* Scrollable body inside sheets — enables iOS momentum + elastic bounce at
+   the edges so short menus still give tactile "nothing more" feedback. */
+.sheet-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 .btn-primary { background: var(--charcoal); color: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.08); width: 100%; }
+.btn-primary-teal {
+  background: var(--teal); color: var(--white); width: 100%;
+  box-shadow: 0 4px 14px rgba(91,155,175,0.38);
+  font-size: 16px;
+}
+.btn-primary-teal:active { background: var(--teal-dark); }
 .btn-secondary { background: var(--white); color: var(--charcoal-md); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
 .btn-ghost { background: transparent; color: var(--teal-dark); height: 38px; padding: 0 10px; font-size: var(--text-md); }
 .btn-danger { background: var(--red-bg); color: var(--red); box-shadow: none; width: 100%; }

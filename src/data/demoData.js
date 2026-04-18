@@ -33,23 +33,26 @@ const PAYMENT_NOTES = [
 // 20 realistic Mexican therapy patient names. phone/email/birthdate mirror the
 // real schema so the Expediente contact card and edit form have content to
 // render in demo — birthdate only filled for minors (those with a parent).
+// `overdue` means the patient has missed their last 2-3 months of payments,
+// producing a visible saldo on the Home and Finances screens. `paidAhead`
+// means they pay like clockwork, producing a zero or near-zero balance.
 const PATIENT_DEFS = [
-  { name: "Sofía Ramírez",      day: "Lunes",     time: "09:00", rate: 800, status: "active", phone: "+52 55 1234 5678", email: "sofia.ramirez@example.com" },
-  { name: "Diego Hernández",    day: "Lunes",     time: "11:00", rate: 700, status: "active", modality: "virtual", phone: "+52 55 2345 6789", email: "diego.hernandez@example.com" },
+  { name: "Sofía Ramírez",      day: "Lunes",     time: "09:00", rate: 800, status: "active", phone: "+52 55 1234 5678", email: "sofia.ramirez@example.com", paidAhead: true },
+  { name: "Diego Hernández",    day: "Lunes",     time: "11:00", rate: 700, status: "active", modality: "virtual", phone: "+52 55 2345 6789", email: "diego.hernandez@example.com", overdue: true },
   { name: "Valentina Torres",   day: "Lunes",     time: "16:00", rate: 800, status: "active", phone: "+52 55 3456 7890" },
   { name: "Mateo García",       day: "Martes",    time: "10:00", rate: 750, status: "active", parent: "Laura García",   tutor_frequency: 4, birthdate: "2012-03-14", phone: "+52 55 4567 8901", email: "laura.garcia@example.com" },
-  { name: "Isabella Morales",   day: "Martes",    time: "14:00", rate: 800, status: "active", phone: "+52 55 5678 9012", email: "isabella.morales@example.com" },
-  { name: "Santiago López",     day: "Martes",    time: "17:00", rate: 700, status: "active" },
+  { name: "Isabella Morales",   day: "Martes",    time: "14:00", rate: 800, status: "active", phone: "+52 55 5678 9012", email: "isabella.morales@example.com", paidAhead: true },
+  { name: "Santiago López",     day: "Martes",    time: "17:00", rate: 700, status: "active", parent: "Roberto López",  tutor_frequency: 6, birthdate: "2013-05-30" },
   { name: "Camila Flores",      day: "Miércoles", time: "09:00", rate: 850, status: "active", phone: "+52 55 6789 0123" },
-  { name: "Sebastián Ruiz",     day: "Miércoles", time: "12:00", rate: 700, status: "active", parent: "Patricia Ruiz",  tutor_frequency: 2, birthdate: "2014-08-02", phone: "+52 55 7890 1234", email: "patricia.ruiz@example.com" },
+  { name: "Sebastián Ruiz",     day: "Miércoles", time: "12:00", rate: 700, status: "active", parent: "Patricia Ruiz",  tutor_frequency: 4, birthdate: "2014-08-02", phone: "+52 55 7890 1234", email: "patricia.ruiz@example.com", overdue: true },
   { name: "Regina Díaz",        day: "Miércoles", time: "16:00", rate: 800, status: "active", phone: "+52 55 8901 2345", email: "regina.diaz@example.com" },
-  { name: "Emiliano Cruz",      day: "Jueves",    time: "10:00", rate: 750, status: "active", modality: "virtual", phone: "+52 55 9012 3456" },
-  { name: "María José Vargas",  day: "Jueves",    time: "13:00", rate: 800, status: "active", email: "mjose.vargas@example.com" },
+  { name: "Emiliano Cruz",      day: "Jueves",    time: "10:00", rate: 750, status: "active", modality: "virtual", phone: "+52 55 9012 3456", parent: "Ana Cruz", tutor_frequency: 8, birthdate: "2010-09-11" },
+  { name: "María José Vargas",  day: "Jueves",    time: "13:00", rate: 800, status: "active", email: "mjose.vargas@example.com", paidAhead: true },
   { name: "Leonardo Mendoza",   day: "Jueves",    time: "16:00", rate: 700, status: "active", phone: "+52 55 1122 3344" },
   { name: "Renata Castillo",    day: "Viernes",   time: "09:00", rate: 800, status: "active", modality: "virtual", phone: "+52 55 2233 4455", email: "renata.castillo@example.com" },
   { name: "Andrés Ortega",      day: "Viernes",   time: "11:00", rate: 750, status: "active", parent: "Carmen Ortega",  tutor_frequency: 8, birthdate: "2011-11-21", phone: "+52 55 3344 5566", email: "carmen.ortega@example.com" },
-  { name: "Paula Salazar",      day: "Viernes",   time: "15:00", rate: 800, status: "active", phone: "+52 55 4455 6677" },
-  { name: "Nicolás Guzmán",     day: "Lunes",     time: "14:00", rate: 700, status: "active" },
+  { name: "Paula Salazar",      day: "Viernes",   time: "15:00", rate: 800, status: "active", phone: "+52 55 4455 6677", overdue: true },
+  { name: "Nicolás Guzmán",     day: "Lunes",     time: "14:00", rate: 700, status: "active", parent: "Mariana Guzmán", tutor_frequency: 6, birthdate: "2015-02-18" },
   { name: "Luciana Peña",       day: "Miércoles", time: "10:00", rate: 850, status: "ended",  phone: "+52 55 5566 7788" },
   { name: "Fernando Reyes",     day: "Jueves",    time: "11:00", rate: 700, status: "ended" },
   { name: "Daniela Herrera",    day: "Martes",    time: "09:00", rate: 800, status: "active", phone: "+52 55 6677 8899", email: "daniela.herrera@example.com" },
@@ -171,11 +174,22 @@ export function generateDemoData() {
     const completedPast = patientSessions.filter(s => s.status === "completed" || s.status === "charged");
     const monthlyBill = def.rate * 4;
     let payMonth = new Date(startDate);
+    // Skip-threshold: months within this many back are "recent" and the
+    // `overdue` flag will stop generating payments for those to create a
+    // visible outstanding balance.
+    const overdueCutoff = new Date(now.getFullYear(), now.getMonth() - 2, 1);
 
     while (payMonth < now) {
-      // Most patients pay monthly, some skip or partial
+      const isRecent = payMonth >= overdueCutoff;
+      if (def.overdue && isRecent) {
+        // Skip recent months entirely to leave an outstanding balance.
+        payMonth.setMonth(payMonth.getMonth() + 1);
+        continue;
+      }
       const rand = Math.random();
-      if (rand < 0.75) {
+      const fullPayChance = def.paidAhead ? 0.95 : 0.75;
+      const partialChance = def.paidAhead ? 1.0 : 0.90;
+      if (rand < fullPayChance) {
         // Full month payment
         const payAmount = monthlyBill;
         totalPaid += payAmount;
@@ -193,7 +207,7 @@ export function generateDemoData() {
           colorIdx: colorIdx,
           created_at: payMonth.toISOString(),
         });
-      } else if (rand < 0.90) {
+      } else if (rand < partialChance) {
         // Partial payment
         const payAmount = Math.round(monthlyBill * 0.5);
         totalPaid += payAmount;
@@ -217,6 +231,9 @@ export function generateDemoData() {
       payMonth.setMonth(payMonth.getMonth() + 1);
     }
 
+    // Cap billed so saldo stays in a realistic range: paid-ahead patients owe
+    // at most ~2 sessions, regulars owe up to ~6, overdue owe up to ~14.
+    const maxOwedSessions = def.paidAhead ? 2 : def.overdue ? 14 : 6;
     patients.push({
       id: patientId,
       user_id: demoUserId,
@@ -232,7 +249,7 @@ export function generateDemoData() {
       birthdate: def.birthdate || null,
       start_date: dateStr(firstSession),
       end_date: def.status === "ended" ? dateStr(endDate) : null,
-      billed: Math.min(billed, totalPaid + def.rate * 8), // keep realistic
+      billed: Math.min(billed, totalPaid + def.rate * maxOwedSessions),
       paid: totalPaid,
       sessions: sessionCount,
       color_idx: colorIdx,
