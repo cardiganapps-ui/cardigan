@@ -8,6 +8,7 @@ import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
 import { Avatar } from "../components/Avatar";
 import { useSwipe } from "../hooks/useSwipe";
+import { useViewport } from "../hooks/useViewport";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
@@ -204,13 +205,14 @@ function timeToFloat(time) {
 }
 
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
-function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, showWeekends, hours }) {
+function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, upcomingSessions, showWeekends, hours }) {
   const { strings } = useT();
   const DOW = strings.daysShort;
   const weekDays = getWeekDays(weekDate);
   const visibleDays = showWeekends ? weekDays : weekDays.slice(0, 5);
   const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
   const cols = `repeat(${visibleDays.length}, 1fr)`;
+  const [dropTarget, setDropTarget] = useState(null); // `${dayIdx}:${hourIdx}`
 
   // Group sessions by date for quick lookup
   const sessionsByDate = useMemo(() => {
@@ -243,11 +245,23 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
           return (
             <div key={dIdx} className="week-day-col" style={{ position:"relative", borderLeft: dIdx > 0 ? "1px solid var(--border-lt)" : undefined }}>
               {/* Background hour grid lines */}
-              {hours.map((hour, hIdx) => (
-                <div key={hIdx} className="week-cell"
-                  role="button" tabIndex={0}
-                  onClick={() => onCellTap && onCellTap(d, hour)} />
-              ))}
+              {hours.map((hour, hIdx) => {
+                const isDropTarget = dropTarget === `${dIdx}:${hIdx}`;
+                return (
+                  <div key={hIdx} className={`week-cell ${isDropTarget ? "week-cell--drop-target" : ""}`}
+                    role="button" tabIndex={0}
+                    onClick={() => onCellTap && onCellTap(d, hour)}
+                    onDragOver={canDrag ? (e) => { e.preventDefault(); setDropTarget(`${dIdx}:${hIdx}`); } : undefined}
+                    onDragLeave={canDrag ? () => setDropTarget(prev => prev === `${dIdx}:${hIdx}` ? null : prev) : undefined}
+                    onDrop={canDrag ? (e) => {
+                      e.preventDefault();
+                      const id = e.dataTransfer.getData("text/plain");
+                      setDropTarget(null);
+                      if (id && onDropSession) onDropSession(id, d, hour);
+                    } : undefined}
+                  />
+                );
+              })}
               {/* Session events positioned absolutely */}
               {daySess.map(sess => {
                 const startF = timeToFloat(sess.time);
@@ -260,9 +274,15 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                   const c = getClientColor(sess.colorIdx);
                   return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
                 })();
+                const isDraggable = canDrag && !isCancelledStatus(sess.status);
                 return (
                   <div key={sess.id}
-                    className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""}`}
+                    className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""} ${isDraggable ? "week-event--draggable" : ""}`}
+                    draggable={isDraggable}
+                    onDragStart={isDraggable ? (e) => {
+                      e.dataTransfer.setData("text/plain", sess.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    } : undefined}
                     style={{
                       ...eventStyle,
                       top: `calc(var(--week-row-h) * ${startF} + 2px)`,
@@ -282,7 +302,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
 }
 
 /* ── WEEK VIEW ── */
-function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, now, jumpToToday }) {
+function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, upcomingSessions, now, jumpToToday }) {
   const { t, strings } = useT();
   const HOURS = strings.hours;
   const [showWeekends, setShowWeekends] = useState(false);
@@ -296,7 +316,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
   const monday = weekDays[0];
   const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
   const isCurrent = weekDays.some(d => isSameDay(d, TODAY));
-  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, upcomingSessions, showWeekends, hours: HOURS };
+  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, upcomingSessions, showWeekends, hours: HOURS };
 
   // "Ahora" line: only when today is in the visible week and within work hours
   const visibleDays = (showWeekends ? weekDays : weekDays.slice(0, 5));
@@ -462,7 +482,10 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 export function Agenda() {
   const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView } = useCardigan();
   const { t } = useT();
-  const [view, setView] = useState(() => consumeAgendaView?.() || "day");
+  const { isDesktop } = useViewport();
+  // Default to week view on desktop (more horizontal room) and day view on
+  // mobile. A cross-screen pending view (consumeAgendaView) always wins.
+  const [view, setView] = useState(() => consumeAgendaView?.() || (isDesktop ? "week" : "day"));
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
@@ -486,6 +509,18 @@ export function Agenda() {
   const handleCellTap = useCallback((date, hour) => {
     setNewSessionPrefill({ date: toISODate(date), time: hour });
   }, []);
+
+  // Drag-and-drop reschedule (desktop week view): accept drops on any
+  // hour cell, move the session to that slot. Keeps duration intact;
+  // uses formatShortDate + the hour string which already matches the
+  // project's "D MMM" + "HH:MM" format.
+  const handleDropSession = useCallback(async (sessionId, date, hour) => {
+    const sess = upcomingSessions.find(s => s.id === sessionId);
+    if (!sess) return;
+    const newShortDate = formatShortDate(date);
+    if (sess.date === newShortDate && sess.time === hour) return;
+    await rescheduleSession(sessionId, newShortDate, hour, sess.duration || 60);
+  }, [upcomingSessions, rescheduleSession]);
 
   const jumpToToday = useCallback(() => {
     setSelectedDate(new Date(TODAY));
@@ -550,7 +585,7 @@ export function Agenda() {
         </div>
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {newSessionPrefill && (
         <NewSessionSheet
