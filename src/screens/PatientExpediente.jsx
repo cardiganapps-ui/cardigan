@@ -38,6 +38,15 @@ export function PatientExpediente({
   const [closing, setClosing] = useState(false);
   const closedRef = useRef(false);
 
+  // Refs for state/props that must be read from a stable callback — the
+  // onClose prop from Patients.jsx is an inline arrow (new reference every
+  // render), so depending on it directly would reset the safety timeout
+  // on every context update and prevent close from ever firing.
+  const onCloseRef = useRef(onClose);
+  const enteringRef = useRef(true);
+  useEffect(() => { onCloseRef.current = onClose; });
+  useEffect(() => { enteringRef.current = entering; }, [entering]);
+
   useEffect(() => {
     // Double-rAF guarantees the browser has painted the initial
     // translateY(100%) frame before we transition to 0 — otherwise React
@@ -48,19 +57,34 @@ export function PatientExpediente({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const startClose = useCallback(() => {
-    setClosing((c) => c || true);
+  const finishClose = useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    onCloseRef.current();
   }, []);
 
-  // Safety net: if transitionend never fires (interrupted, unfocused tab),
-  // unmount after slightly longer than the close duration.
+  const startClose = useCallback(() => {
+    if (closedRef.current) return;
+    // If the panel never actually rose into view (rare: user closes
+    // within ~32ms of mount before the entering flip), there's no visible
+    // animation to run and transform would stay at translateY(100%), so
+    // transitionend would never fire. Unmount immediately.
+    if (enteringRef.current) {
+      finishClose();
+      return;
+    }
+    setClosing((c) => (c ? c : true));
+  }, [finishClose]);
+
+  // Safety net: if transitionend never fires (interrupted, tab unfocused,
+  // etc.) unmount after slightly longer than the close duration. Depends
+  // ONLY on `closing` — reading onClose via ref keeps this effect from
+  // resetting every time Patients.jsx re-renders.
   useEffect(() => {
     if (!closing) return;
-    const id = setTimeout(() => {
-      if (!closedRef.current) { closedRef.current = true; onClose(); }
-    }, 420);
+    const id = setTimeout(finishClose, 420);
     return () => clearTimeout(id);
-  }, [closing, onClose]);
+  }, [closing, finishClose]);
 
   useLayer("expediente", startClose);
   const [tab, setTab] = useState("resumen");
@@ -319,11 +343,10 @@ export function PatientExpediente({
     {/* Card */}
     <div className="expediente-open expediente-desktop-panel"
       onTransitionEnd={(e) => {
-        if (!closing || closedRef.current) return;
+        if (!closing) return;
         if (e.target !== e.currentTarget) return;
         if (e.propertyName !== "transform") return;
-        closedRef.current = true;
-        onClose();
+        finishClose();
       }}
       style={{
         position:"fixed", top:"calc(var(--sat, 44px))", bottom:0, zIndex:"var(--z-expediente)",
