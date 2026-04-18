@@ -292,12 +292,15 @@ button.kpi-card:active {
   background: none; color: #7AB5C7; padding: 2px 8px;
 }
 
-/* Scrollable body inside sheets — enables iOS momentum + elastic bounce at
-   the edges so short menus still give tactile "nothing more" feedback. */
+/* Scrollable body inside sheets — forces an always-on scroll area and
+   leaves overscroll-behavior at its default `auto` so iOS elastic bounce
+   fires at the ends. `overscroll-behavior: contain` kills the bounce on
+   iOS Safari inside nested scroll containers, so we deliberately avoid
+   it here; scroll chaining to the page underneath is already blocked by
+   the body's `overflow: hidden`. */
 .sheet-scroll {
-  overflow-y: auto;
+  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
 }
 
 .btn-primary { background: var(--charcoal); color: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.08); width: 100%; }

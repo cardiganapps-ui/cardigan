@@ -14,9 +14,8 @@
   background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%;
   padding-bottom: var(--sab);
-  max-height: 85dvh; overflow-y: auto;
+  max-height: 85dvh; overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
   animation: slideUp 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes slideUp {
