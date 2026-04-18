@@ -17,29 +17,43 @@ function addWeeks(d, n) {
 
 const COLORS = 7;
 const METHODS = ["Transferencia", "Efectivo", "Transferencia", "Transferencia", "Efectivo"];
+const CANCEL_REASONS = [
+  "Paciente canceló por enfermedad",
+  "Reagendada a la siguiente semana",
+  "Conflicto de horario",
+  null, null, null,
+];
+const PAYMENT_NOTES = [
+  "Abono parcial del mes",
+  "Última sesión del mes",
+  "Pago adelantado",
+  null, null, null, null, null,
+];
 
-// 20 realistic Mexican therapy patient names
+// 20 realistic Mexican therapy patient names. phone/email/birthdate mirror the
+// real schema so the Expediente contact card and edit form have content to
+// render in demo — birthdate only filled for minors (those with a parent).
 const PATIENT_DEFS = [
-  { name: "Sofía Ramírez", day: "Lunes", time: "09:00", rate: 800, status: "active" },
-  { name: "Diego Hernández", day: "Lunes", time: "11:00", rate: 700, status: "active", modality: "virtual" },
-  { name: "Valentina Torres", day: "Lunes", time: "16:00", rate: 800, status: "active" },
-  { name: "Mateo García", day: "Martes", time: "10:00", rate: 750, status: "active", parent: "Laura García", tutor_frequency: 4 },
-  { name: "Isabella Morales", day: "Martes", time: "14:00", rate: 800, status: "active" },
-  { name: "Santiago López", day: "Martes", time: "17:00", rate: 700, status: "active" },
-  { name: "Camila Flores", day: "Miércoles", time: "09:00", rate: 850, status: "active" },
-  { name: "Sebastián Ruiz", day: "Miércoles", time: "12:00", rate: 700, status: "active", parent: "Patricia Ruiz", tutor_frequency: 2 },
-  { name: "Regina Díaz", day: "Miércoles", time: "16:00", rate: 800, status: "active" },
-  { name: "Emiliano Cruz", day: "Jueves", time: "10:00", rate: 750, status: "active", modality: "virtual" },
-  { name: "María José Vargas", day: "Jueves", time: "13:00", rate: 800, status: "active" },
-  { name: "Leonardo Mendoza", day: "Jueves", time: "16:00", rate: 700, status: "active" },
-  { name: "Renata Castillo", day: "Viernes", time: "09:00", rate: 800, status: "active", modality: "virtual" },
-  { name: "Andrés Ortega", day: "Viernes", time: "11:00", rate: 750, status: "active", parent: "Carmen Ortega", tutor_frequency: 8 },
-  { name: "Paula Salazar", day: "Viernes", time: "15:00", rate: 800, status: "active" },
-  { name: "Nicolás Guzmán", day: "Lunes", time: "14:00", rate: 700, status: "active" },
-  { name: "Luciana Peña", day: "Miércoles", time: "10:00", rate: 850, status: "ended" },
-  { name: "Fernando Reyes", day: "Jueves", time: "11:00", rate: 700, status: "ended" },
-  { name: "Daniela Herrera", day: "Martes", time: "09:00", rate: 800, status: "active" },
-  { name: "Alejandro Romero", day: "Viernes", time: "13:00", rate: 750, status: "active" },
+  { name: "Sofía Ramírez",      day: "Lunes",     time: "09:00", rate: 800, status: "active", phone: "+52 55 1234 5678", email: "sofia.ramirez@example.com" },
+  { name: "Diego Hernández",    day: "Lunes",     time: "11:00", rate: 700, status: "active", modality: "virtual", phone: "+52 55 2345 6789", email: "diego.hernandez@example.com" },
+  { name: "Valentina Torres",   day: "Lunes",     time: "16:00", rate: 800, status: "active", phone: "+52 55 3456 7890" },
+  { name: "Mateo García",       day: "Martes",    time: "10:00", rate: 750, status: "active", parent: "Laura García",   tutor_frequency: 4, birthdate: "2012-03-14", phone: "+52 55 4567 8901", email: "laura.garcia@example.com" },
+  { name: "Isabella Morales",   day: "Martes",    time: "14:00", rate: 800, status: "active", phone: "+52 55 5678 9012", email: "isabella.morales@example.com" },
+  { name: "Santiago López",     day: "Martes",    time: "17:00", rate: 700, status: "active" },
+  { name: "Camila Flores",      day: "Miércoles", time: "09:00", rate: 850, status: "active", phone: "+52 55 6789 0123" },
+  { name: "Sebastián Ruiz",     day: "Miércoles", time: "12:00", rate: 700, status: "active", parent: "Patricia Ruiz",  tutor_frequency: 2, birthdate: "2014-08-02", phone: "+52 55 7890 1234", email: "patricia.ruiz@example.com" },
+  { name: "Regina Díaz",        day: "Miércoles", time: "16:00", rate: 800, status: "active", phone: "+52 55 8901 2345", email: "regina.diaz@example.com" },
+  { name: "Emiliano Cruz",      day: "Jueves",    time: "10:00", rate: 750, status: "active", modality: "virtual", phone: "+52 55 9012 3456" },
+  { name: "María José Vargas",  day: "Jueves",    time: "13:00", rate: 800, status: "active", email: "mjose.vargas@example.com" },
+  { name: "Leonardo Mendoza",   day: "Jueves",    time: "16:00", rate: 700, status: "active", phone: "+52 55 1122 3344" },
+  { name: "Renata Castillo",    day: "Viernes",   time: "09:00", rate: 800, status: "active", modality: "virtual", phone: "+52 55 2233 4455", email: "renata.castillo@example.com" },
+  { name: "Andrés Ortega",      day: "Viernes",   time: "11:00", rate: 750, status: "active", parent: "Carmen Ortega",  tutor_frequency: 8, birthdate: "2011-11-21", phone: "+52 55 3344 5566", email: "carmen.ortega@example.com" },
+  { name: "Paula Salazar",      day: "Viernes",   time: "15:00", rate: 800, status: "active", phone: "+52 55 4455 6677" },
+  { name: "Nicolás Guzmán",     day: "Lunes",     time: "14:00", rate: 700, status: "active" },
+  { name: "Luciana Peña",       day: "Miércoles", time: "10:00", rate: 850, status: "ended",  phone: "+52 55 5566 7788" },
+  { name: "Fernando Reyes",     day: "Jueves",    time: "11:00", rate: 700, status: "ended" },
+  { name: "Daniela Herrera",    day: "Martes",    time: "09:00", rate: 800, status: "active", phone: "+52 55 6677 8899", email: "daniela.herrera@example.com" },
+  { name: "Alejandro Romero",   day: "Viernes",   time: "13:00", rate: 750, status: "active", phone: "+52 55 7788 9900" },
 ];
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
@@ -105,7 +119,11 @@ export function generateDemoData() {
         day: def.day,
         date: sessDate,
         duration: 60,
+        rate: def.rate,
         status,
+        cancel_reason: status === "cancelled" || status === "charged"
+          ? CANCEL_REASONS[Math.floor(Math.random() * CANCEL_REASONS.length)]
+          : null,
         modality: def.modality || "presencial",
         color_idx: colorIdx,
         colorIdx: colorIdx,
@@ -129,7 +147,10 @@ export function generateDemoData() {
           day: def.day,
           date: dateStr(tutorDate),
           duration: 60,
+          rate: def.rate,
           status: "completed",
+          cancel_reason: null,
+          modality: "presencial",
           color_idx: colorIdx,
           colorIdx: colorIdx,
           created_at: tutorDate.toISOString(),
@@ -167,6 +188,7 @@ export function generateDemoData() {
           amount: payAmount,
           date: dateStr(new Date(payMonth.getFullYear(), payMonth.getMonth(), 1 + Math.floor(Math.random() * 15))),
           method: METHODS[Math.floor(Math.random() * METHODS.length)],
+          note: PAYMENT_NOTES[Math.floor(Math.random() * PAYMENT_NOTES.length)],
           color_idx: colorIdx,
           colorIdx: colorIdx,
           created_at: payMonth.toISOString(),
@@ -184,6 +206,7 @@ export function generateDemoData() {
           amount: payAmount,
           date: dateStr(new Date(payMonth.getFullYear(), payMonth.getMonth(), 5 + Math.floor(Math.random() * 20))),
           method: METHODS[Math.floor(Math.random() * METHODS.length)],
+          note: "Abono parcial",
           color_idx: colorIdx,
           colorIdx: colorIdx,
           created_at: payMonth.toISOString(),
@@ -204,6 +227,11 @@ export function generateDemoData() {
       day: def.day,
       time: def.time,
       status: def.status,
+      phone: def.phone || "",
+      email: def.email || "",
+      birthdate: def.birthdate || null,
+      start_date: dateStr(firstSession),
+      end_date: def.status === "ended" ? dateStr(endDate) : null,
       billed: Math.min(billed, totalPaid + def.rate * 8), // keep realistic
       paid: totalPaid,
       sessions: sessionCount,
@@ -237,6 +265,9 @@ export function generateDemoData() {
         session_id: linkedSession?.id || null,
         title: noteTopics[n].title,
         content: noteTopics[n].content,
+        // Pin the first note per patient for ~1 in 4 patients so the pinned-
+        // notes feature is visible on the Notes screen in demo.
+        pinned: n === 0 && idx % 4 === 0,
         created_at: noteDate.toISOString(),
         updated_at: noteDate.toISOString(),
       });

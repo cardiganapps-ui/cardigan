@@ -57,14 +57,19 @@ export function useDemoData() {
     notes: data.notes,
     tutorReminders,
     loading: false,
+    fetchError: "",
     mutating: false,
     mutationError: "",
+    clearMutationError: () => {},
     readOnly: true,
-    // All mutations are no-ops in demo
+    // All mutations are no-ops in demo. Shape mirrors useCardiganData's
+    // return value so every destructure across the app resolves to a
+    // callable (readOnly UI prevents most of these from firing anyway).
     createPatient: noop, updatePatient: noop, deletePatient: noop,
     createSession: noop, updateSessionStatus: noop, deleteSession: noop,
-    rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop, updateSessionModality: noop,
-    createPayment: noop, deletePayment: noop,
+    rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
+    updateSessionModality: noop, updateSessionRate: noop,
+    createPayment: noop, deletePayment: noop, updatePayment: noop,
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,
     refresh: async () => {},
