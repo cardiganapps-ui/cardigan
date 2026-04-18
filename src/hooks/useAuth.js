@@ -24,7 +24,6 @@ export function useAuth() {
       password,
       options: {
         data: { full_name: name },
-        emailRedirectTo: window.location.origin,
       },
     });
     if (error) return { error: error.message };

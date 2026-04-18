@@ -104,7 +104,6 @@ export default {
     enterEmail: "Ingresa tu correo",
     enterName: "Ingresa tu nombre",
     enterPassword: "Ingresa tu contrase\u00f1a",
-    confirmEmailSent: "Te enviamos un correo de confirmación. Revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.",
     demo: "Ver demo",
     tagline: "Gestiona tu pr\u00e1ctica. Sin complicaciones.",
   },
