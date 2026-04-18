@@ -200,11 +200,12 @@ html, body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Expediente panel: mobile base (fullscreen bottom-up) */
+/* Expediente panel: mobile base (fullscreen bottom-up) ──
+   Transform + transition are driven inline by PatientExpediente.jsx so
+   the open, drag, and close states share one animation pipeline. */
 .expediente-desktop-panel {
   left: 0; right: 0;
   border-radius: 24px 24px 0 0;
-  animation: expedientePullUp 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Hide FAB when expediente is open */

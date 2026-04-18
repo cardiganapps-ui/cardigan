@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { formatPhoneMX, phoneHref, emailHref } from "../utils/contact";
@@ -27,14 +27,41 @@ export function PatientExpediente({
 }) {
   const { t, strings } = useT();
   const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, deletePayment } = useCardigan();
+
+  // ── Enter/close animation state ──
+  // `entering` is true for the first paint so the panel mounts at
+  // translateY(100%); a rAF flips it to false on the next frame so the
+  // CSS transition to translateY(0) plays. `closing` flips the panel
+  // back to translateY(100%); we listen for the panel's transitionend to
+  // call the parent's onClose and unmount, avoiding setTimeout races.
+  const [entering, setEntering] = useState(true);
   const [closing, setClosing] = useState(false);
-  const startClose = useCallback(() => {
-    setClosing((c) => {
-      if (c) return c;
-      setTimeout(() => onClose(), 340);
-      return true;
+  const closedRef = useRef(false);
+
+  useEffect(() => {
+    // Double-rAF guarantees the browser has painted the initial
+    // translateY(100%) frame before we transition to 0 — otherwise React
+    // can batch both into one paint and the transition never plays.
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntering(false));
     });
-  }, [onClose]);
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const startClose = useCallback(() => {
+    setClosing((c) => c || true);
+  }, []);
+
+  // Safety net: if transitionend never fires (interrupted, unfocused tab),
+  // unmount after slightly longer than the close duration.
+  useEffect(() => {
+    if (!closing) return;
+    const id = setTimeout(() => {
+      if (!closedRef.current) { closedRef.current = true; onClose(); }
+    }, 420);
+    return () => clearTimeout(id);
+  }, [closing, onClose]);
+
   useLayer("expediente", startClose);
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
@@ -284,25 +311,37 @@ export function PatientExpediente({
     <div className="expediente-open" onClick={startClose}
       style={{
         position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)",
-        animation: closing ? "none" : "fadeIn 0.9s ease",
-        opacity: closing ? 0 : undefined,
-        transition: closing ? "opacity 0.3s ease" : undefined,
+        opacity: entering || closing ? 0 : 1,
+        transition: "opacity 0.34s ease",
+        pointerEvents: closing ? "none" : undefined,
       }} />
 
     {/* Card */}
     <div className="expediente-open expediente-desktop-panel"
+      onTransitionEnd={(e) => {
+        if (!closing || closedRef.current) return;
+        if (e.target !== e.currentTarget) return;
+        if (e.propertyName !== "transform") return;
+        closedRef.current = true;
+        onClose();
+      }}
       style={{
         position:"fixed", top:"calc(var(--sat, 44px))", bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--white)",
         boxShadow:"var(--shadow-lg)",
-        animation: (dragY > 0 || closing) ? "none" : undefined,
+        // Unified transform source of truth. Priority: closing > dragging > entering > rest.
         transform: closing
           ? "translateY(100%)"
-          : dragY > 0 ? `translateY(${dragY}px)` : undefined,
-        transition: closing
-          ? "transform 0.34s cubic-bezier(0.5, 0, 0.75, 0)"
-          : dragging ? "none" : "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          : dragY > 0 ? `translateY(${dragY}px)`
+          : entering ? "translateY(100%)"
+          : "translateY(0)",
+        transition: dragging
+          ? "none"
+          : closing
+            ? "transform 0.34s cubic-bezier(0.5, 0, 0.75, 0)"
+            : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+        willChange: "transform",
         overflow:"hidden",
       }}>
 
