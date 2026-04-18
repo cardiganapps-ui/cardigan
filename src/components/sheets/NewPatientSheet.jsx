@@ -15,6 +15,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
+  // iOS elastic bounce only fires on the outermost scroll container, so
+  // let the sheet-panel itself scroll (its CSS already sets overflow-y
+  // and -webkit-overflow-scrolling). Dual-assign both refs to it.
+  const setPanel = (el) => {
+    panelRef.current = el;
+    scrollRef.current = el;
+  };
 
   // Step 1: patient info, Step 2: schedule
   const [step, setStep] = useState(1);
@@ -77,7 +84,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column", overflow:"hidden", ...panelStyle }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", ...panelStyle }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.newPatient")}</span>
@@ -95,8 +102,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
           ))}
         </div>
 
-        <form ref={scrollRef} className="sheet-scroll" onSubmit={step === 2 ? submit : (e) => { e.preventDefault(); goToStep2(); }} style={{ padding:"0 20px 0", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
-          <div style={{ flex:1, minHeight:0 }}>
+        <form onSubmit={step === 2 ? submit : (e) => { e.preventDefault(); goToStep2(); }} style={{ padding:"0 20px 0" }}>
+          <div>
 
           {step === 1 ? (
             <>

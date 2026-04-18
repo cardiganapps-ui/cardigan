@@ -12,6 +12,12 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
+  // Let the sheet-panel be the scrollable surface so iOS elastic bounce
+  // fires at the ends. Dual-assign both refs to it.
+  const setPanel = (el) => {
+    panelRef.current = el;
+    scrollRef.current = el;
+  };
   const initialPatient = initialPatientName ? patients.find(p => p.name === initialPatientName) : null;
   const tutorAllowed = initialSessionType === "tutor" && initialPatient && !!initialPatient.parent;
   const [patientName, setPatientName] = useState(initialPatientName || "");
@@ -63,14 +69,14 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column", overflow:"hidden", ...panelStyle }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", ...panelStyle }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.schedule")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form ref={scrollRef} className="sheet-scroll" onSubmit={submit} style={{ padding:"0 20px 0", flex:1, minHeight:0, display:"flex", flexDirection:"column" }}>
-          <div style={{ flex:1, minHeight:0 }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
+          <div>
           <div className="input-group">
             <label className="input-label">
               {t("sessions.patient")}

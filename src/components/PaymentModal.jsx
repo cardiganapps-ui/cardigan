@@ -16,6 +16,12 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(open);
   const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose, { isOpen: open });
+  // Let the sheet-panel be the scrollable surface so iOS elastic bounce
+  // fires at the ends. Dual-assign both refs to it.
+  const setPanel = (el) => {
+    panelRef.current = el;
+    scrollRef.current = el;
+  };
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
   const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
@@ -102,14 +108,14 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={panelRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", display:"flex", flexDirection:"column", overflow:"hidden", ...panelStyle }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", ...panelStyle }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
-        <form ref={scrollRef} className="sheet-scroll" onSubmit={submit} style={{ padding:"0 20px 0", flex:1, display:"flex", flexDirection:"column" }}>
-          <div style={{ flex:1 }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
+          <div>
           <div className="input-group">
             <label className="input-label">
               {t("sessions.patient")}
