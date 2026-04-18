@@ -192,6 +192,25 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
   );
 }
 
+// Split "Ana María López Pérez" → { first: "ana maría", last: "lópez pérez" }.
+// If the name has only one token, treat it as the first name and leave
+// last blank so accounts with no surname still sort sensibly.
+function nameParts(fullName) {
+  const tokens = (fullName || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return { first: "", last: "" };
+  if (tokens.length === 1) return { first: tokens[0], last: "" };
+  return { first: tokens[0], last: tokens.slice(1).join(" ") };
+}
+
+function compareAccounts(a, b) {
+  const an = nameParts(a.fullName);
+  const bn = nameParts(b.fullName);
+  const cmp = (x, y) => x.localeCompare(y, "es", { sensitivity: "base" });
+  return cmp(an.first, bn.first)
+      || cmp(an.last, bn.last)
+      || cmp((a.email || "").toLowerCase(), (b.email || "").toLowerCase());
+}
+
 function AccountsTab({ onViewAs, currentAdminId }) {
   const { t } = useT();
   const [accounts, setAccounts] = useState([]);
@@ -201,7 +220,7 @@ function AccountsTab({ onViewAs, currentAdminId }) {
   const load = useCallback(() => {
     setLoading(true);
     fetchAllAccounts()
-      .then(a => { setAccounts(a); setError(""); setLoading(false); })
+      .then(a => { setAccounts([...a].sort(compareAccounts)); setError(""); setLoading(false); })
       .catch(e => { setError(e.message || t("admin.loadError")); setLoading(false); });
   }, [t]);
 
