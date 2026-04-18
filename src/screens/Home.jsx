@@ -31,6 +31,17 @@ function getNextDay(today, sessions) {
       return monday;
     }
   }
+  // On Saturday (day 6), same idea: if Sunday has no sessions, skip to Monday.
+  if (today.getDay() === 6) {
+    const sun = new Date(today); sun.setDate(sun.getDate() + 1);
+    const sunStr = formatShortDate(sun);
+    const hasSunSessions = sessions.some(s => s.date === sunStr);
+    if (!hasSunSessions) {
+      const monday = new Date(today);
+      monday.setDate(monday.getDate() + 2);
+      return monday;
+    }
+  }
   return tomorrow;
 }
 
