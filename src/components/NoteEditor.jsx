@@ -104,7 +104,7 @@ function ToolSep() {
 export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay" }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
-  const { patients, upcomingSessions, togglePinNote } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote, readOnly } = useCardigan();
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
@@ -118,15 +118,24 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   // Always run through this when dismissing so "empty on close" → delete
   // instead of save, regardless of what triggered the close (back
   // button, ESC via useLayer, etc.).
-  const closeRef = useRef({ title, content, onSave, onDelete, onClose, note });
-  closeRef.current = { title, content, onSave, onDelete, onClose, note };
+  const closeRef = useRef({ title, content, onSave, onDelete, onClose, note, readOnly });
+  closeRef.current = { title, content, onSave, onDelete, onClose, note, readOnly };
   const handleClose = useCallback(async () => {
-    const { title: t, content: c, onSave: s, onDelete: d, onClose: cl, note: n } = closeRef.current;
+    const { title: t, content: c, onSave: s, onDelete: d, onClose: cl, note: n, readOnly: ro } = closeRef.current;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    if (isEffectivelyEmpty(t, c)) {
-      if (n?.id && d) await d();
-    } else {
-      await s({ title: t, content: c });
+    // Read-only viewers (admin "ver como usuario" / demo) can't mutate,
+    // and their save/delete handlers are no-op promises — attempting to
+    // save or delete just wastes a round trip and can stall the close
+    // if the promise doesn't resolve quickly. Exit straight to cl().
+    if (ro) { cl(); return; }
+    try {
+      if (isEffectivelyEmpty(t, c)) {
+        if (n?.id && d) await d();
+      } else {
+        await s({ title: t, content: c });
+      }
+    } catch {
+      /* swallow — we still want to close even if save/delete failed */
     }
     cl();
   }, []);
@@ -265,16 +274,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           ‹ {t("back")}
         </button>
         <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-          {saved
+          {!readOnly && (saved
             ? <span style={{ fontSize:11, color:"var(--charcoal-xl)" }}>{t("notes.saved")}</span>
-            : <span style={{ fontSize:11, color:"var(--amber)" }}>{t("notes.saving")}</span>}
-          {note?.id && (
+            : <span style={{ fontSize:11, color:"var(--amber)" }}>{t("notes.saving")}</span>)}
+          {!readOnly && note?.id && (
             <button onClick={async () => { await togglePinNote(note.id); setPinned(p => !p); }}
               style={{ padding:"4px 6px", background:"none", border:"none", cursor:"pointer", color: pinned ? "var(--amber)" : "var(--charcoal-xl)" }}>
               <IconStar size={16} />
             </button>
           )}
-          {onDelete && (
+          {!readOnly && onDelete && (
             <button onClick={() => setConfirmDelete(true)}
               style={{ fontSize:11, fontWeight:600, color:"var(--red)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", padding:"4px 8px" }}>
               {t("delete")}
@@ -416,7 +425,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           onChange={handleTitleChange}
           onKeyDown={handleTitleKeyDown}
           placeholder={t("notes.titlePlaceholder")}
-          autoFocus
+          autoFocus={!readOnly}
+          readOnly={readOnly}
           style={{
             width:"100%", border:"none", outline:"none", padding:0, marginBottom:12,
             fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)",
@@ -429,6 +439,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           onChange={handleContentChange}
           onKeyDown={handleContentKeyDown}
           placeholder={t("notes.bodyPlaceholder")}
+          readOnly={readOnly}
           style={{
             width:"100%", border:"none", outline:"none", padding:0, resize:"none",
             fontFamily:"var(--font)", fontSize:15, fontWeight:400, color:"var(--charcoal)",
