@@ -72,7 +72,6 @@ src/
 │   ├── HelpTip.jsx         # Contextual help popover (? icon)
 │   ├── LayerWrapper.jsx    # Layer stack backdrop handler
 │   ├── BugReportFab.jsx    # Bug report floating button
-│   ├── InstallPrompt.jsx   # iOS "Add to Home Screen" prompt
 │   ├── LogoMark.jsx        # SVG logo icon component
 │   └── Icons.jsx           # All SVG icons as components
 ├── screens/

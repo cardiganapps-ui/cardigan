@@ -10,7 +10,6 @@ import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { LogoIcon } from "./components/LogoMark";
-import { InstallPrompt } from "./components/InstallPrompt";
 import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
 import { Tutorial } from "./components/Tutorial/Tutorial";
@@ -374,7 +373,6 @@ function AppShell({ user, signOut, demo, theme }) {
             currentAdminId={user?.id}
           />
         )}
-        <InstallPrompt />
         {user && !demo && !readOnly && <BugReportFab user={user} screen={screen} />}
         {!demo && !readOnly && <Tutorial />}
       </div>
