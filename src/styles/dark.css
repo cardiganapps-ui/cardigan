@@ -94,24 +94,11 @@ html[data-theme="dark"] input:-webkit-autofill:focus {
   -webkit-text-fill-color: #EAEAEA;
 }
 
-/* ── Landing page dark overrides ── */
-html[data-theme="dark"] .lp-nav {
-  background: rgba(26,26,26,0.88);
-}
-html[data-theme="dark"] .lp-preview-chrome {
-  background: #2A2A2A;
-}
-html[data-theme="dark"] .lp-preview-dot {
-  background: #444;
-}
-html[data-theme="dark"] .lp-section--dark {
-  background: #111111;
-}
+/* ── Landing page dark overrides ──
+   The nav, page bg, and most surfaces adapt automatically via the shared
+   --white / --charcoal tokens now. Only the primary CTA needs explicit
+   inversion so it stays a bright pill on the dark page. */
 html[data-theme="dark"] .lp-btn--primary {
-  background: #EAEAEA;
-  color: #1A1A1A;
-}
-html[data-theme="dark"] .lp-section--dark .lp-btn--primary {
   background: #EAEAEA;
   color: #1A1A1A;
 }

@@ -19,12 +19,14 @@
   width: 100%;
 }
 
-/* ── NAV ── */
+/* ── NAV ──
+   Background uses color-mix over var(--white) so the tint flips with dark
+   mode (light/dark page → light/dark nav) without a separate override. */
 .lp-nav {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--white) 82%, transparent);
   backdrop-filter: saturate(140%) blur(14px);
   -webkit-backdrop-filter: saturate(140%) blur(14px);
   border-bottom: 1px solid transparent;
@@ -76,7 +78,7 @@
       padding-top: calc(var(--sat) + 8px);
       padding-bottom: 8px;
       border-bottom-color: var(--border-lt);
-      background: rgba(255, 255, 255, 0.94);
+      background: color-mix(in srgb, var(--white) 94%, transparent);
     }
   }
 }
