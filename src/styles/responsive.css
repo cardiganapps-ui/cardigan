@@ -1,5 +1,6 @@
 /* Desktop-only elements: hidden on mobile */
-.topbar-screen-name, .topbar-refresh-btn { display: none; }
+.topbar-screen-name, .topbar-refresh-btn, .topbar-actions,
+.home-two-panel-desktop { display: none; }
 
 /* ── RESPONSIVE: DESKTOP (768px+) ── */
 @media (min-width: 768px) {
@@ -80,6 +81,66 @@
     color: var(--teal-dark);
     border-color: var(--teal-light);
   }
+
+  /* Desktop "+ Nuevo" button lives in the topbar; FAB softens to a
+     secondary affordance so the two don't fight. */
+  .topbar-actions { display: inline-flex; position: relative; margin-right: 4px; }
+  .topbar-new-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 14px 0 11px;
+    background: var(--charcoal); color: var(--white);
+    border: none; border-radius: var(--radius-pill);
+    font-family: var(--font); font-size: var(--text-sm); font-weight: 700;
+    letter-spacing: 0.01em; cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  }
+  .topbar-new-btn:hover { background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.18); transform: translateY(-1px); }
+  .topbar-new-btn:active { transform: translateY(0) scale(0.97); }
+  .topbar-new-btn--open { background: #000; }
+  .topbar-new-menu {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    min-width: 220px;
+    background: var(--white); border: 1px solid var(--border-lt);
+    border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    padding: 4px; z-index: 60;
+    display: flex; flex-direction: column;
+    animation: topbarNewMenuIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .topbar-new-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; background: none; border: none;
+    cursor: pointer; text-align: left;
+    border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: var(--text-md); font-weight: 500;
+    color: var(--charcoal);
+    opacity: 0;
+    animation: fabActionIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .topbar-new-item:hover { background: var(--teal-mist); color: var(--teal-dark); }
+  .topbar-new-item-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--teal-pale); color: var(--teal-dark);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .topbar-new-item:hover .topbar-new-item-icon { background: var(--teal); color: var(--white); }
+  .topbar-new-item-label { flex: 1; white-space: nowrap; }
+  @keyframes topbarNewMenuIn {
+    0%   { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Softened secondary FAB on desktop — primary affordance is "+ Nuevo"
+     in the topbar. Keeps muscle memory for cross-device users without
+     competing for visual weight. */
+  .fab {
+    background: var(--cream-dark);
+    color: var(--charcoal);
+    box-shadow: var(--shadow-sm);
+  }
+  .fab:hover { background: var(--cream-deeper); }
 
   /* Multi-column Home dashboard */
   .home-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
@@ -216,10 +277,54 @@
   .fin-stats-grid { gap: 14px; }
 }
 
-/* ── RESPONSIVE: LARGE DESKTOP (1280px+) ── */
-@media (min-width: 1280px) {
-  .page { max-width: 1120px; padding: 28px 48px; }
-  .home-columns { grid-template-columns: 1.3fr 0.7fr; gap: 12px; }
+/* ── HOME DASHBOARD (≥1024px) ──
+   On true desktop, collapse the carousel (Today/Mañana stacked panels
+   become a 2-column grid) and turn the side column's stacked sections
+   into a 3-up grid. Mobile markup is untouched; desktop-only classes
+   .home-carousel and .home-side-grid are toggled off below the
+   breakpoint. */
+@media (min-width: 1024px) {
+  /* Full-bleed Today+Tomorrow as side-by-side cards, no carousel */
+  .home-carousel { display: none !important; }
+  .home-two-panel-desktop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .home-two-panel-desktop .home-panel-title {
+    font-family: var(--font-d); font-size: var(--text-md); font-weight: 800;
+    color: var(--charcoal); letter-spacing: -0.2px;
+    padding: 0 2px 8px;
+  }
+  .home-two-panel-desktop .home-panel-meta {
+    font-size: var(--text-xs); font-weight: 600;
+    color: var(--charcoal-xl); letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 0 2px 6px;
+  }
+  .home-two-panel-see-all {
+    position: absolute; top: -2px; right: 2px;
+    font-size: var(--text-sm); font-weight: 600;
+    color: var(--teal-dark); background: none; border: none;
+    cursor: pointer; padding: 4px 0;
+  }
+  /* Side column: 3 sections in a row */
+  .home-col-side {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .home-col-side > .section {
+    padding: 0 !important;
+    min-width: 0;
+  }
+  .home-col-side .section-header { padding: 0 2px 8px; }
+  /* Home columns: stack main row + side row vertically (not 1fr 1fr) */
+  .home-columns {
+    display: block !important;
+    padding: 0 4px;
+  }
+  .home-col-main { padding: 0 0 14px; }
 }
 
 /* ── RESPONSIVE: WIDE DESKTOP (1440px+) ── */

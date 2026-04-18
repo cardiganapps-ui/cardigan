@@ -8,6 +8,7 @@ import { I18nProvider, useT } from "./i18n/index";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
 import { QuickActions } from "./components/QuickActions";
+import TopbarActions from "./components/TopbarActions";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
@@ -335,6 +336,7 @@ function AppShell({ user, signOut, demo, theme }) {
           <button type="button" className="topbar-brand" onClick={() => navigate("home")} aria-label={t("nav.home")} style={{ cursor:"pointer", background:"none", border:"none", padding:0 }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></button>
           <span className="topbar-screen-name">{t(`nav.${screen}`)}</span>
           <div className="topbar-right">
+            {!readOnly && <TopbarActions />}
             <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
             {admin && !readOnly && (
               <button className="admin-btn" onClick={() => setShowAdmin(true)}>

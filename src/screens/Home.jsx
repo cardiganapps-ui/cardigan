@@ -228,7 +228,7 @@ export function Home({ setScreen, userName }) {
 
       <div className="home-columns">
       <div className="section home-col-main">
-        <div className="section-header">
+        <div className="section-header home-carousel">
           <span className="section-title" style={{ transition:"opacity 0.3s" }}>
             {carouselPage === 0
               ? <>{t("sessions.today")} — {todayDayName} {todayStr}</>
@@ -240,7 +240,8 @@ export function Home({ setScreen, userName }) {
           <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
         </div>
 
-        {/* Carousel container */}
+        {/* Mobile/tablet: swipe carousel */}
+        <div className="home-carousel">
         <div style={{ overflow: "hidden", borderRadius: "var(--radius-lg)", touchAction: "pan-y" }}
           onTouchStart={onCarouselTouchStart} onTouchMove={onCarouselTouchMove} onTouchEnd={onCarouselTouchEnd}>
           <div style={{
@@ -292,6 +293,38 @@ export function Home({ setScreen, userName }) {
               transition:"all 0.3s ease",
               transform: carouselPage === 1 ? "scale(1)" : "scale(0.8)",
             }} />
+        </div>
+        </div>
+
+        {/* Desktop (≥1024px): side-by-side static panels, no carousel */}
+        <div className="home-two-panel-desktop" style={{ position:"relative" }}>
+          <button className="see-all home-two-panel-see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+          <div>
+            <div className="home-panel-meta">{t("sessions.today")} · {todayDayName} {todayStr}</div>
+            <div className="card">
+              {todaySessions.length === 0
+                ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
+                    <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+                    <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                  </div>
+                : todaySessions.map(renderSessionRow)
+              }
+            </div>
+          </div>
+          <div>
+            <div className="home-panel-meta">{nextDayLabel === nextDayName ? <>{nextDayName} {nextDayStr}</> : <>{nextDayLabel} · {nextDayName} {nextDayStr}</>}</div>
+            <div className="card">
+              {nextDaySessions.length === 0
+                ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
+                    <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
+                    <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                  </div>
+                : nextDaySessions.map(renderSessionRow)
+              }
+            </div>
+          </div>
         </div>
       </div>
 

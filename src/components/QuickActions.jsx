@@ -7,13 +7,16 @@ import { NoteEditor } from "./NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
-const ACTIONS = [
+/* Shared quick-action list. Reused by the desktop "+ Nuevo" top-bar
+   button (TopbarActions) so the menu stays in sync with the mobile FAB. */
+export const QUICK_ACTIONS = [
   { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },
   { key:"note",     Icon: IconClipboard,    tKey:"fab.note" },
   { key:"document", Icon: IconDocument,     tKey:"fab.document" },
   { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
   { key:"session",  Icon: IconCalendarPlus, tKey:"fab.session" },
 ];
+const ACTIONS = QUICK_ACTIONS;
 
 export function QuickActions() {
   const { t } = useT();
