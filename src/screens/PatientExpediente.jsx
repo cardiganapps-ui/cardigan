@@ -258,12 +258,19 @@ export function PatientExpediente({
       if (dy > 8) { dragRef.current.active = true; setDragging(true); }
       else return;
     }
-    if (dragRef.current.active && dy > 0) setDragY(dy * 0.6);
+    if (dragRef.current.active && dy > 0) {
+      // Prevent the outer PullToRefresh (which sees the portaled expediente
+      // as a descendant in React's event tree) from interpreting this
+      // downward swipe as a refresh gesture.
+      e.stopPropagation();
+      setDragY(dy * 0.6);
+    }
   };
-  const onDragEnd = () => {
+  const onDragEnd = (e) => {
     if (!dragRef.current?.active) { dragRef.current = null; return; }
     dragRef.current = null;
     setDragging(false);
+    e?.stopPropagation?.();
     if (dragY > 120) {
       startClose();
     } else {
