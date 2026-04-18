@@ -31,9 +31,15 @@ export function useFocusTrap(active) {
       .filter(el => !el.hasAttribute("aria-hidden") && el.offsetParent !== null);
 
     // Defer initial focus one frame so entrance animations don't steal it.
+    // Skip the sheet-close (X) button when picking the initial target — it's
+    // usually the first focusable child on a bottom sheet, and auto-focusing
+    // it makes the X look "pressed" the instant the sheet opens.
     const rafId = requestAnimationFrame(() => {
       const list = focusables();
-      if (list.length > 0 && !container.contains(document.activeElement)) list[0].focus();
+      if (list.length > 0 && !container.contains(document.activeElement)) {
+        const initial = list.find(el => !el.classList.contains("sheet-close")) || list[0];
+        initial.focus();
+      }
     });
 
     const onKeyDown = (e) => {
