@@ -389,6 +389,17 @@
 
 /* ── RESPONSIVE: LAPTOP (1024px+) ── */
 @media (min-width: 1024px) {
+  /* Density: slightly taller rows + more generous card padding.
+     Body text stays at the same 14px base — bumping it would require
+     re-tuning dozens of inline styles. Card/row/KPI spacing gives the
+     laptop layout its breathing room instead. */
+  .row-item { padding: 16px 20px; min-height: 70px; }
+  .row-title { font-size: var(--text-md); }
+  .kpi-card { padding: 20px 22px; }
+  .kpi-value { font-size: 26px; }
+  .section-title { font-size: var(--text-lg); }
+  .card { box-shadow: var(--shadow-sm); }
+
   .page { max-width: 1040px; padding: 24px 40px; }
   .drawer { width: 260px; }
   .drawer-panel { width: 260px; }

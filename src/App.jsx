@@ -15,6 +15,7 @@ import { PullToRefresh } from "./components/PullToRefresh";
 import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
+import Tooltip from "./components/Tooltip";
 import { Tutorial } from "./components/Tutorial/Tutorial";
 import { useTutorial } from "./hooks/useTutorial";
 import { Toast } from "./components/Toast";
@@ -344,7 +345,9 @@ function AppShell({ user, signOut, demo, theme }) {
           <span className="topbar-screen-name">{t(`nav.${screen}`)}</span>
           <div className="topbar-right">
             {!readOnly && <TopbarActions onOpenPalette={() => setPaletteOpen(true)} />}
-            <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
+            <Tooltip label={t("retry")} placement="bottom">
+              <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
+            </Tooltip>
             {admin && !readOnly && (
               <button className="admin-btn" onClick={() => setShowAdmin(true)}>
                 Admin
@@ -354,7 +357,9 @@ function AppShell({ user, signOut, demo, theme }) {
                 so it doesn't eat vertical space on each page. HelpTip
                 returns null when the screen's tip array is empty. */}
             <HelpTip tipsKey={`help.${screen}`} />
-            <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none" }}>{userInitial}</button>
+            <Tooltip label={t("nav.settings")} placement="bottom">
+              <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none" }}>{userInitial}</button>
+            </Tooltip>
           </div>
         </div>
         <Toast message={mutationError} type="error" persistent onDismiss={clearMutationError} onRetry={refresh} />
