@@ -5,6 +5,7 @@ import { IconSearch, IconX, IconUsers, IconTrash, IconPlus } from "../components
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
+import { useViewport } from "../hooks/useViewport";
 import { Toggle } from "../components/Toggle";
 import { MoneyInput } from "../components/MoneyInput";
 import { Avatar } from "../components/Avatar";
@@ -41,6 +42,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly } = useCardigan();
+  const { isDesktop } = useViewport();
   const { t, strings } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
@@ -77,7 +79,9 @@ export function Patients() {
 
   const openDetail = (p) => {
     setExpediente(p);
-    setHideFab?.(true);
+    // Desktop split view keeps the topbar + FAB visible; the expediente
+    // renders inline alongside the list so nothing is covered.
+    if (!isDesktop) setHideFab?.(true);
   };
 
   // Open expediente when navigated from another screen
@@ -254,8 +258,10 @@ export function Patients() {
     );
   }
 
-  return (
-    <div className="page" data-tour="patients-list">
+  const splitMode = isDesktop && !!expediente;
+
+  const listJSX = (
+    <>
       <div style={{ padding:"16px 16px 10px" }}>
         <div className="search-bar">
           <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
@@ -273,7 +279,7 @@ export function Patients() {
           {filtered.length === 0
             ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
             : filtered.map((p,i) => (
-              <div className="row-item" key={p.id} onClick={() => openDetail(p)}>
+              <div className={`row-item ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""}`} key={p.id} onClick={() => openDetail(p)}>
                 <Avatar initials={p.initials} color={getClientColor(i)} size="md" />
                 <div className="row-content">
                   <div className="row-title">{p.name}</div>
@@ -299,6 +305,67 @@ export function Patients() {
           }
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <div className={isDesktop ? "patients-split-view" : "page"} data-tour="patients-list">
+      {isDesktop ? (
+        <div className="patients-list-pane">{listJSX}</div>
+      ) : listJSX}
+      {isDesktop && (
+        <div className="patients-detail-pane">
+          {expediente ? (
+            <PatientExpediente
+              layout="inline"
+              patient={patients.find(p => p.id === expediente.id) || expediente}
+              upcomingSessions={upcomingSessions}
+              notes={notes}
+              payments={payments}
+              documents={documents}
+              uploadDocument={uploadDocument}
+              renameDocument={renameDocument}
+              tagDocumentSession={tagDocumentSession}
+              deleteDocument={deleteDocument}
+              getDocumentUrl={getDocumentUrl}
+              onClose={() => setExpediente(null)}
+              onRecordPayment={openRecordPaymentModal}
+              onEdit={(p) => {
+                const scheds = [{ day: p.day, time: p.time }];
+                setEditName(p.name);
+                setEditIsMinor(!!p.parent);
+                setEditParent(p.parent || "");
+                setEditRate(String(p.rate));
+                setEditPhone(formatPhoneMX(p.phone));
+                setEditEmail(p.email || "");
+                setEditBirthdate(p.birthdate || "");
+                setEditStartDate(p.start_date || "");
+                setEditStatus(p.status);
+                setEditSchedules(scheds);
+                setOrigRate(p.rate);
+                setOrigSchedules(JSON.stringify(scheds));
+                setEffectiveDate(todayISO());
+                setHasEndDate(false);
+                setEndDate("");
+                setSelected(p);
+                setEditing(true);
+                setConfirmDelete(false);
+              }}
+              createSession={createSession}
+              createNote={createNote}
+              updateNote={updateNote}
+              deleteNote={deleteNote}
+              mutating={mutating}
+            />
+          ) : (
+            <div className="patients-split-view-empty">
+              <div className="patients-split-view-empty-icon"><IconUsers size={30} /></div>
+              <div className="patients-split-view-empty-title">{t("patients.selectPrompt") || "Selecciona un paciente"}</div>
+              <div className="patients-split-view-empty-hint">{t("patients.selectHint") || "Elige un paciente de la lista para ver su expediente."}</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {selected && (
         <div className="sheet-overlay" onClick={closeSheet}>
@@ -591,7 +658,7 @@ export function Patients() {
         </div>
       )}
 
-      {expediente && createPortal(
+      {expediente && !isDesktop && createPortal(
         <PatientExpediente
           patient={patients.find(p => p.id === expediente.id) || expediente}
           upcomingSessions={upcomingSessions}

@@ -14,6 +14,10 @@ export function useLayer(key, closeFn) {
   const registered = useRef(false);
 
   useEffect(() => {
+    // Pass a falsy key (null/undefined/empty) to opt out — e.g. when a
+    // component renders inline on desktop and shouldn't participate in the
+    // back-button/ESC stack.
+    if (!key || !closeFn) return;
     if (!registered.current) {
       pushLayer(key, closeFn);
       registered.current = true;

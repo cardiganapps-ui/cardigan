@@ -24,7 +24,9 @@ export function PatientExpediente({
   onClose, onRecordPayment, onEdit, createSession, createNote, updateNote, deleteNote,
   uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
   mutating,
+  layout = "overlay",
 }) {
+  const inline = layout === "inline";
   const { t, strings } = useT();
   const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, deletePayment } = useCardigan();
 
@@ -65,16 +67,16 @@ export function PatientExpediente({
 
   const startClose = useCallback(() => {
     if (closedRef.current) return;
-    // If the panel never actually rose into view (rare: user closes
-    // within ~32ms of mount before the entering flip), there's no visible
-    // animation to run and transform would stay at translateY(100%), so
-    // transitionend would never fire. Unmount immediately.
-    if (enteringRef.current) {
+    // Inline mode has no slide animation, so transitionend never fires.
+    // Same story if the panel never rose into view (rare: user closes
+    // within ~32ms of mount before the entering flip). Unmount immediately
+    // in both cases.
+    if (inline || enteringRef.current) {
       finishClose();
       return;
     }
     setClosing((c) => (c ? c : true));
-  }, [finishClose]);
+  }, [finishClose, inline]);
 
   // Safety net: if transitionend never fires (interrupted, tab unfocused,
   // etc.) unmount after slightly longer than the close duration. Depends
@@ -86,7 +88,7 @@ export function PatientExpediente({
     return () => clearTimeout(id);
   }, [closing, finishClose]);
 
-  useLayer("expediente", startClose);
+  useLayer(inline ? null : "expediente", inline ? null : startClose);
   const [tab, setTab] = useState("resumen");
   const [editingNote, setEditingNote] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -331,24 +333,29 @@ export function PatientExpediente({
 
   return (
     <>
-    {/* Backdrop */}
-    <div className="expediente-open" onClick={startClose}
-      style={{
-        position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)",
-        opacity: entering || closing ? 0 : 1,
-        transition: "opacity 0.34s ease",
-        pointerEvents: closing ? "none" : undefined,
-      }} />
+    {/* Backdrop (overlay mode only) */}
+    {!inline && (
+      <div className="expediente-open" onClick={startClose}
+        style={{
+          position:"fixed", inset:0, background:"rgba(0,0,0,0.35)", zIndex:"var(--z-expediente-bg)",
+          opacity: entering || closing ? 0 : 1,
+          transition: "opacity 0.34s ease",
+          pointerEvents: closing ? "none" : undefined,
+        }} />
+    )}
 
     {/* Card */}
-    <div className="expediente-open expediente-desktop-panel"
-      onTransitionEnd={(e) => {
+    <div className={inline ? "expediente-inline" : "expediente-open expediente-desktop-panel"}
+      onTransitionEnd={inline ? undefined : (e) => {
         if (!closing) return;
         if (e.target !== e.currentTarget) return;
         if (e.propertyName !== "transform") return;
         finishClose();
       }}
-      style={{
+      style={inline ? {
+        display:"flex", flexDirection:"column", flex:1, minHeight:0,
+        background:"var(--white)", overflow:"hidden",
+      } : {
         position:"fixed", top:"calc(var(--sat, 44px))", bottom:0, zIndex:"var(--z-expediente)",
         display:"flex", flexDirection:"column",
         background:"var(--white)",
@@ -369,13 +376,15 @@ export function PatientExpediente({
       }}>
 
       {/* Drag zone — covers handle + header */}
-      <div onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
-        style={{ flexShrink:0, cursor:"grab", boxShadow:"0 1px 0 var(--border-lt)" }}>
+      <div onTouchStart={inline ? undefined : onDragStart} onTouchMove={inline ? undefined : onDragMove} onTouchEnd={inline ? undefined : onDragEnd}
+        style={{ flexShrink:0, cursor: inline ? "default" : "grab", boxShadow:"0 1px 0 var(--border-lt)" }}>
 
-        {/* Drag handle */}
-        <div className="expediente-drag-handle" style={{ padding:"8px 0 2px" }}>
-          <div style={{ width:40, height:5, borderRadius:3, background:"var(--cream-deeper)", margin:"0 auto 6px" }} />
-        </div>
+        {/* Drag handle (mobile overlay only) */}
+        {!inline && (
+          <div className="expediente-drag-handle" style={{ padding:"8px 0 2px" }}>
+            <div style={{ width:40, height:5, borderRadius:3, background:"var(--cream-deeper)", margin:"0 auto 6px" }} />
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ padding:"0 16px 0" }}>
@@ -431,7 +440,7 @@ export function PatientExpediente({
 
       {/* Content */}
       <div ref={contentRef}
-        onTouchStart={onContentTouchStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+        onTouchStart={inline ? undefined : onContentTouchStart} onTouchMove={inline ? undefined : onDragMove} onTouchEnd={inline ? undefined : onDragEnd}
         style={{ flex:1, minHeight:0, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
 
         {tab === "resumen" && (

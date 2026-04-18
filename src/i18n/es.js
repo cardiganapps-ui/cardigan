@@ -118,6 +118,8 @@ export default {
     noResults: "Sin resultados",
     addFirst: "Toca el bot\u00f3n + abajo para agregar tu primer paciente.",
     addFirstCta: "Agregar paciente",
+    selectPrompt: "Selecciona un paciente",
+    selectHint: "Elige un paciente de la lista para ver su expediente.",
     active: "Activos",
     ended: "Finalizados",
     withDebt: "Con deuda",

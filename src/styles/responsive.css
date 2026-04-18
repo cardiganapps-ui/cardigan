@@ -256,6 +256,58 @@
   .drawer-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
 }
 
+/* ── PATIENTS SPLIT VIEW (≥1024px) ──
+   Left-side list + inline expediente on the right. Replaces the
+   .expediente-desktop-panel overlay at true-desktop breakpoint. */
+@media (min-width: 1024px) {
+  .patients-split-view {
+    display: flex; flex: 1; min-height: 0;
+    width: 100%; max-width: none;
+    margin: 0; padding: 0;
+    overflow: hidden;
+  }
+  .patients-split-view .patients-list-pane {
+    width: 380px; flex-shrink: 0;
+    border-right: 1px solid var(--border-lt);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--white);
+  }
+  .patients-split-view .patients-detail-pane {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    background: var(--white);
+    border-radius: 0;
+  }
+  /* At ≥1024px the expediente overlay must NOT render when it is inline;
+     the Patients.jsx branch already skips the portal, but we also reset
+     the .expediente-desktop-panel overlay chrome so nothing stray shows. */
+  .patients-split-view .expediente-inline {
+    position: static; width: 100%; height: 100%;
+    box-shadow: none; border-radius: 0;
+  }
+  .patients-split-view .row-item.row-item--selected {
+    background: var(--teal-mist);
+    border-left: 3px solid var(--teal);
+  }
+  .patients-split-view-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 60px 32px; color: var(--charcoal-xl); gap: 8px;
+  }
+  .patients-split-view-empty .patients-split-view-empty-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--teal-pale); color: var(--teal);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .patients-split-view-empty-title {
+    font-family: var(--font-d); font-size: var(--text-lg); font-weight: 800;
+    color: var(--charcoal-md); margin-bottom: 4px;
+  }
+  .patients-split-view-empty-hint {
+    font-size: var(--text-sm); max-width: 320px; line-height: 1.5;
+  }
+}
+
 /* ── RESPONSIVE: LAPTOP (1024px+) ── */
 @media (min-width: 1024px) {
   .page { max-width: 1040px; padding: 24px 40px; }
