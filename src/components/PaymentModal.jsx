@@ -15,12 +15,11 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   const isEditing = !!editingPayment;
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(open);
-  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose, { isOpen: open });
-  // Let the sheet-panel be the scrollable surface so iOS elastic bounce
-  // fires at the ends. Dual-assign both refs to it.
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = (el) => {
     panelRef.current = el;
     scrollRef.current = el;
+    setPanelEl(el);
   };
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
@@ -108,7 +107,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", ...panelStyle }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>

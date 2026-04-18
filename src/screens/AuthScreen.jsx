@@ -157,7 +157,8 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen })
   const [authMode, setAuthMode] = useState("signup");
   useEscape(showAuth ? () => setShowAuth(false) : null);
   const closeAuth = () => setShowAuth(false);
-  const { scrollRef: authScrollRef, panelHandlers: authPanelHandlers, panelStyle: authPanelStyle } = useSheetDrag(closeAuth, { isOpen: showAuth });
+  const { scrollRef: authScrollRef, setPanelEl: setAuthPanelEl, panelHandlers: authPanelHandlers } = useSheetDrag(closeAuth, { isOpen: showAuth });
+  const setAuthPanel = (el) => { authScrollRef.current = el; setAuthPanelEl(el); };
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
 
@@ -177,7 +178,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen })
 
       {showAuth && (
         <div className="sheet-overlay" onClick={() => setShowAuth(false)}>
-          <div ref={authScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...authPanelHandlers} style={authPanelStyle}>
+          <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...authPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">

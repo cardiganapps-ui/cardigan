@@ -159,14 +159,22 @@ export function useCardiganData(user, viewAsUserId) {
       if (limit) query = query.limit(limit);
       return query;
     };
+    // Scaling windows: most daily use (Home, Agenda, Finances current view)
+    // only touches recent rows, so we don't hydrate years of history on
+    // every login. Older rows become visible via per-screen "load more"
+    // (expediente, Finances filter) — not implemented yet but the data
+    // model and shape stay compatible.
+    const now = new Date();
+    const sessionsSince = new Date(now); sessionsSince.setMonth(now.getMonth() - 6);
+    const paymentsSince = new Date(now); paymentsSince.setMonth(now.getMonth() - 12);
     let pRes, sRes, pmRes, nRes, dRes;
     try {
       [pRes, sRes, pmRes, nRes, dRes] = await Promise.all([
         q("patients").order("name"),
-        q("sessions", 10000).order("created_at"),
-        q("payments").order("created_at", { ascending: false }),
-        q("notes").order("updated_at", { ascending: false }),
-        q("documents").order("created_at", { ascending: false }),
+        q("sessions", 10000).gte("created_at", sessionsSince.toISOString()).order("created_at"),
+        q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
+        q("notes", 500).order("updated_at", { ascending: false }),
+        q("documents", 500).order("created_at", { ascending: false }),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -242,7 +250,7 @@ export function useCardiganData(user, viewAsUserId) {
         if (didExtend) {
           const [pRes2, sRes2] = await Promise.all([
             q("patients").order("name"),
-            q("sessions").order("created_at"),
+            q("sessions", 10000).gte("created_at", sessionsSince.toISOString()).order("created_at"),
           ]);
           pData = mapRows(pRes2.data);
           sData = mapRows(sRes2.data);
@@ -295,26 +303,32 @@ export function useCardiganData(user, viewAsUserId) {
 
   const enrichedPatients = useMemo(() => {
     const now = new Date();
-    // Pre-group sessions by patient_id to avoid O(patients * sessions) scan
-    const sessionsByPatient = new Map();
+    // amountDue = stored patient.billed (all-time cumulative of non-
+    // cancelled sessions at their actual rates) minus sessions that are
+    // still scheduled for the future (those already count in billed but
+    // haven't happened yet) minus what's been paid. This formula works
+    // even when the session window filter hides old past sessions, and
+    // matches the documented spec in CLAUDE.md.
+    const futureByPatient = new Map();
     for (const s of enrichedSessions) {
-      if (s.status !== SESSION_STATUS.COMPLETED && s.status !== SESSION_STATUS.CHARGED) continue;
+      if (s.status !== SESSION_STATUS.SCHEDULED) continue;
       if (!s.patient_id) continue;
-      if (!sessionsByPatient.has(s.patient_id)) sessionsByPatient.set(s.patient_id, []);
-      sessionsByPatient.get(s.patient_id).push(s);
+      const d = parseShortDate(s.date);
+      if (s.time) {
+        const [h, m] = s.time.split(":");
+        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+      }
+      if (d <= now) continue;
+      if (!futureByPatient.has(s.patient_id)) futureByPatient.set(s.patient_id, []);
+      futureByPatient.get(s.patient_id).push(s);
     }
     return patients.map(p => {
-      let pastBilled = 0;
-      const pSessions = sessionsByPatient.get(p.id) || [];
-      for (const s of pSessions) {
-        const d = parseShortDate(s.date);
-        if (s.time) {
-          const [h, m] = s.time.split(":");
-          d.setHours(parseInt(h) || 0, parseInt(m) || 0);
-        }
-        if (d <= now) pastBilled += (s.rate != null ? s.rate : p.rate);
-      }
-      return { ...p, amountDue: Math.max(0, pastBilled - p.paid) };
+      let futureBilled = 0;
+      const fs = futureByPatient.get(p.id) || [];
+      for (const s of fs) futureBilled += (s.rate != null ? s.rate : p.rate) || 0;
+      const billed = p.billed || 0;
+      const paid = p.paid || 0;
+      return { ...p, amountDue: Math.max(0, billed - futureBilled - paid) };
     });
   }, [patients, enrichedSessions]);
 

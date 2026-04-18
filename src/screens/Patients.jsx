@@ -59,7 +59,8 @@ export function Patients() {
   const [openDates, setOpenDates] = useState(false);
   const closeSheet = useCallback(() => { setSelected(null); setEditing(false); setConfirmDelete(false); setDeleteConfirmText(""); setOpenContact(false); setOpenDates(false); }, []);
   useEscape(selected ? closeSheet : null);
-  const { scrollRef: editScrollRef, panelHandlers: editPanelHandlers, panelStyle: editPanelStyle } = useSheetDrag(closeSheet);
+  const { scrollRef: editScrollRef, setPanelEl: setEditPanelEl, panelHandlers: editPanelHandlers } = useSheetDrag(closeSheet);
+  const setEditPanel = (el) => { editScrollRef.current = el; setEditPanelEl(el); };
   const [expediente, setExpediente] = useState(null);
   // Edit form state
   const [editName, setEditName]       = useState("");
@@ -409,7 +410,7 @@ export function Patients() {
 
       {selected && (
         <div className="sheet-overlay" onClick={closeSheet}>
-          <div ref={editScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...editPanelHandlers} style={editPanelStyle}>
+          <div ref={setEditPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...editPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">

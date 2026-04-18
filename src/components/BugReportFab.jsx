@@ -14,7 +14,8 @@ export function BugReportFab({ user, screen }) {
   const [sent, setSent] = useState(false);
   const closeSheet = () => { setOpen(false); setDescription(""); };
   useEscape(open ? closeSheet : null);
-  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(closeSheet, { isOpen: open });
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(closeSheet, { isOpen: open });
+  const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -56,7 +57,7 @@ export function BugReportFab({ user, screen }) {
 
       {open && (
         <div className="sheet-overlay" onClick={() => { setOpen(false); setDescription(""); }}>
-          <div ref={scrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={panelStyle}>
+          <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("bugReport.title")}</span>

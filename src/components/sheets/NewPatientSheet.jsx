@@ -14,13 +14,14 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const { t, strings } = useT();
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
-  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
-  // iOS elastic bounce only fires on the outermost scroll container, so
-  // let the sheet-panel itself scroll (its CSS already sets overflow-y
-  // and -webkit-overflow-scrolling). Dual-assign both refs to it.
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
+  // Panel is also its own scroll container — triple-assign so focus trap,
+  // drag scroll reference, and direct DOM handle all point at the same
+  // element.
   const setPanel = (el) => {
     panelRef.current = el;
     scrollRef.current = el;
+    setPanelEl(el);
   };
 
   // Step 1: patient info, Step 2: schedule
@@ -84,7 +85,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", ...panelStyle }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.newPatient")}</span>

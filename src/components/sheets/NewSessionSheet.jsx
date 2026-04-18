@@ -11,12 +11,11 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const { t } = useT();
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
-  const { scrollRef, panelHandlers, panelStyle } = useSheetDrag(onClose);
-  // Let the sheet-panel be the scrollable surface so iOS elastic bounce
-  // fires at the ends. Dual-assign both refs to it.
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => {
     panelRef.current = el;
     scrollRef.current = el;
+    setPanelEl(el);
   };
   const initialPatient = initialPatientName ? patients.find(p => p.name === initialPatientName) : null;
   const tutorAllowed = initialSessionType === "tutor" && initialPatient && !!initialPatient.parent;
@@ -69,7 +68,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", ...panelStyle }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.schedule")}</span>

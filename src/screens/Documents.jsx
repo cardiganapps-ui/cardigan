@@ -19,7 +19,8 @@ export function Documents() {
   const [viewingDoc, setViewingDoc] = useState(null);
   const fileInputRef = useRef(null);
   const closePending = () => setPendingFiles(null);
-  const { scrollRef: pendingScrollRef, panelHandlers: pendingPanelHandlers, panelStyle: pendingPanelStyle } = useSheetDrag(closePending, { isOpen: !!pendingFiles });
+  const { scrollRef: pendingScrollRef, setPanelEl: setPendingPanelEl, panelHandlers: pendingPanelHandlers } = useSheetDrag(closePending, { isOpen: !!pendingFiles });
+  const setPendingPanel = (el) => { pendingScrollRef.current = el; setPendingPanelEl(el); };
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -137,7 +138,7 @@ export function Documents() {
       {/* Patient picker after file selection */}
       {pendingFiles && (
         <div className="sheet-overlay" onClick={() => setPendingFiles(null)}>
-          <div ref={pendingScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...pendingPanelHandlers} style={{ maxHeight:"60vh", ...pendingPanelStyle }}>
+          <div ref={setPendingPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...pendingPanelHandlers} style={{ maxHeight:"60vh" }}>
             <div className="sheet-handle" />
             <div style={{ padding:"16px 20px 8px" }}>
               <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>

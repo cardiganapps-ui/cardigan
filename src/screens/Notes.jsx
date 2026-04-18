@@ -96,7 +96,8 @@ export function Notes() {
   const [confirmDeleteProps, setConfirmDeleteProps] = useState(false);
   useEscape(confirmDeleteProps ? () => setConfirmDeleteProps(false) : (propsNote ? () => setPropsNote(null) : null));
   const closePropsNote = useCallback(() => setPropsNote(null), []);
-  const { scrollRef: propsScrollRef, panelHandlers: propsPanelHandlers, panelStyle: propsPanelStyle } = useSheetDrag(closePropsNote);
+  const { scrollRef: propsScrollRef, setPanelEl: setPropsPanelEl, panelHandlers: propsPanelHandlers } = useSheetDrag(closePropsNote);
+  const setPropsPanel = (el) => { propsScrollRef.current = el; setPropsPanelEl(el); };
   const longPressRef = useRef(null);
 
   const patientsWithNotes = useMemo(() => {
@@ -346,7 +347,7 @@ export function Notes() {
       {/* Long-press properties sheet */}
       {propsNote && (
         <div className="sheet-overlay" onClick={() => setPropsNote(null)}>
-          <div ref={propsScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...propsPanelHandlers} style={propsPanelStyle}>
+          <div ref={setPropsPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...propsPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{propsNote.title || t("notes.noTitle")}</span>

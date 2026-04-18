@@ -122,7 +122,8 @@ export function Home({ setScreen, userName }) {
   const [editingNote, setEditingNote] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), []);
   useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
-  const { scrollRef: selectedScrollRef, panelHandlers: selectedPanelHandlers, panelStyle: selectedPanelStyle } = useSheetDrag(closeSelected);
+  const { scrollRef: selectedScrollRef, setPanelEl: setSelectedPanelEl, panelHandlers: selectedPanelHandlers } = useSheetDrag(closeSelected);
+  const setSelectedPanel = (el) => { selectedScrollRef.current = el; setSelectedPanelEl(el); };
 
   // Mirrors Notes.jsx so the NoteEditor's handleClose always sees a stable
   // save/delete pair and always reaches its onClose() cleanup — critical in
@@ -477,7 +478,7 @@ export function Home({ setScreen, userName }) {
 
       {selected && (
         <div className="sheet-overlay" onClick={() => setSelected(null)}>
-          <div ref={selectedScrollRef} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...selectedPanelHandlers} style={selectedPanelStyle}>
+          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...selectedPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{selected.name}</span>
