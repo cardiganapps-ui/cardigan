@@ -17,14 +17,25 @@ export function PullToRefresh({ onRefresh, children }) {
     return !page || page.scrollTop <= 0;
   };
 
+  // Skip the gesture entirely when an overlay (expediente, sheet, doc
+  // viewer, note editor takeover) is open. Portaled overlays bubble touch
+  // events through React's virtual tree into this wrapper, so without
+  // this guard scrolling inside a modal would fire PullToRefresh.
+  const overlayOpen = () =>
+    !!document.querySelector(
+      ".expediente-open, .sheet-overlay, .doc-viewer-backdrop, .note-editor-desktop"
+    );
+
   const onTouchStart = useCallback((e) => {
     if (refreshing || releasing) return;
+    if (overlayOpen()) return;
     if (!isAtTop()) return;
     touchRef.current = { y: e.touches[0].clientY, active: false };
   }, [refreshing, releasing]);
 
   const onTouchMove = useCallback((e) => {
     if (!touchRef.current || refreshing || releasing) return;
+    if (overlayOpen()) { touchRef.current = null; return; }
     const dy = e.touches[0].clientY - touchRef.current.y;
     if (!touchRef.current.active) {
       if (dy > 10 && isAtTop()) touchRef.current.active = true;
