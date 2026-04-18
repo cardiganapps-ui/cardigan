@@ -133,7 +133,6 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
         <div className="lp-glow" aria-hidden="true" />
         <div className="lp-container lp-hero-grid">
           <div className="lp-hero-copy">
-            <span className="lp-eyebrow">Para terapeutas y consultorios</span>
             <h1 id="lp-hero-title" className="lp-hero-title">
               Tu consultorio, <span className="lp-accent">en orden.</span>
             </h1>
@@ -145,11 +144,8 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
                 Comenzar gratis
               </CTAButton>
               <CTAButton variant="secondary" onClick={onSecondary}>
-                Probar demo sin registrarte
+                Probar demo
               </CTAButton>
-            </div>
-            <div className="lp-hero-trust">
-              <span className="lp-dot" /> Gratis &nbsp;·&nbsp; Sin tarjeta &nbsp;·&nbsp; Listo en minutos
             </div>
           </div>
 
@@ -160,11 +156,8 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       </section>
 
       {/* 2. Feature strip — visual proof, not paragraphs */}
-      <section id="features" className="lp-section" aria-labelledby="lp-features-title">
+      <section id="features" className="lp-section">
         <div className="lp-container">
-          <h2 id="lp-features-title" className="lp-section-title">
-            Hecho para el día a día.
-          </h2>
           <div className="lp-features">
             <article className="lp-feature-v2" data-reveal style={{ "--i": 0 }}>
               <MiniCalendar />
@@ -183,11 +176,8 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       </section>
 
       {/* 3. Cómo empezar — the path to utilization */}
-      <section id="start" className="lp-section lp-start" aria-labelledby="lp-start-title">
+      <section id="start" className="lp-section lp-start">
         <div className="lp-container">
-          <h2 id="lp-start-title" className="lp-section-title">
-            Empieza en minutos.
-          </h2>
           <ol className="lp-steps">
             <li className="lp-step" data-reveal style={{ "--i": 0 }}>
               <span className="lp-step-num">1</span>
@@ -195,18 +185,13 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             </li>
             <li className="lp-step" data-reveal style={{ "--i": 1 }}>
               <span className="lp-step-num">2</span>
-              <span className="lp-step-label">Agrega tu primer paciente</span>
+              <span className="lp-step-label">Agrega un paciente</span>
             </li>
             <li className="lp-step" data-reveal style={{ "--i": 2 }}>
               <span className="lp-step-num">3</span>
-              <span className="lp-step-label">Agenda tu primera sesión</span>
+              <span className="lp-step-label">Agenda una sesión</span>
             </li>
           </ol>
-          <div className="lp-start-cta">
-            <CTAButton variant="primary" onClick={onPrimary}>
-              Comenzar gratis
-            </CTAButton>
-          </div>
         </div>
       </section>
 
@@ -234,7 +219,6 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             <LogoIcon size={14} color="var(--charcoal-xl)" />
             <span>cardigan</span>
           </div>
-          <div className="lp-footer-tag">Gestión de consultorio, simplificada.</div>
         </div>
       </footer>
     </div>
