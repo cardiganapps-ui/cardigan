@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { IconPlus } from "./Icons";
+import { IconPlus, IconSearch } from "./Icons";
 import { QUICK_ACTIONS } from "./QuickActions";
 import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useT } from "../i18n/index";
 
-export default function TopbarActions() {
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
+
+export default function TopbarActions({ onOpenPalette }) {
   const { t } = useT();
   const { requestFabAction, readOnly } = useCardigan();
   const [open, setOpen] = useState(false);
@@ -31,6 +33,18 @@ export default function TopbarActions() {
 
   return (
     <div className="topbar-actions" ref={wrapRef}>
+      {onOpenPalette && (
+        <button
+          type="button"
+          className="topbar-search-btn"
+          onClick={onOpenPalette}
+          aria-label={t("cmdp.open") || "Buscar / comandos"}
+        >
+          <IconSearch size={14} />
+          <span className="topbar-search-hint">{t("cmdp.placeholder") || "Buscar\u2026"}</span>
+          <kbd className="topbar-search-kbd">{isMac ? "\u2318 K" : "Ctrl K"}</kbd>
+        </button>
+      )}
       <button
         type="button"
         className={`topbar-new-btn ${open ? "topbar-new-btn--open" : ""}`}

@@ -13,6 +13,11 @@ export default {
   done: "Listo",
   open: "Abrir",
   search: "Buscar",
+  cmdp: {
+    open: "Buscar / comandos",
+    placeholder: "Buscar comandos, pacientes\u2026",
+    empty: "Sin resultados",
+  },
   apply: "Aplicar cambios",
   ok: "OK",
   retry: "Reintentar",

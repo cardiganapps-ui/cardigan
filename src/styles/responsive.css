@@ -84,7 +84,31 @@
 
   /* Desktop "+ Nuevo" button lives in the topbar; FAB softens to a
      secondary affordance so the two don't fight. */
-  .topbar-actions { display: inline-flex; position: relative; margin-right: 4px; }
+  .topbar-actions { display: inline-flex; position: relative; margin-right: 4px; gap: 8px; align-items: center; }
+  .topbar-search-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 10px 0 12px;
+    background: var(--cream);
+    border: 1px solid var(--border-lt);
+    border-radius: var(--radius-pill);
+    color: var(--charcoal-lt);
+    font-family: var(--font); cursor: pointer;
+    transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+  .topbar-search-btn:hover { background: var(--teal-mist); border-color: var(--teal-light); color: var(--teal-dark); }
+  .topbar-search-hint {
+    font-size: var(--text-sm); font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .topbar-search-kbd {
+    font-family: var(--font); font-size: 10px; font-weight: 700;
+    color: var(--charcoal-xl);
+    background: var(--white);
+    border: 1px solid var(--border-lt);
+    padding: 2px 6px; border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+  .topbar-search-btn:hover .topbar-search-kbd { color: var(--teal-dark); }
   .topbar-new-btn {
     display: inline-flex; align-items: center; gap: 6px;
     height: 34px; padding: 0 14px 0 11px;

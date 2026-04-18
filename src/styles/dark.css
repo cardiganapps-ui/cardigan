@@ -123,3 +123,6 @@ html[data-theme="dark"] .tooltip-kbd { background: rgba(255,255,255,0.08); }
 html[data-theme="dark"] .context-menu { background: #242424; border-color: #3A3A3A; }
 html[data-theme="dark"] .split-view-list { background: #1F1F1F; }
 html[data-theme="dark"] .split-view-detail { background: #1A1A1A; }
+html[data-theme="dark"] .cmdp-panel { background: #1F1F1F; border-color: #3A3A3A; }
+html[data-theme="dark"] .cmdp-footer { background: #242424; }
+html[data-theme="dark"] .cmdp-kbd { background: #2A2A2A; border-color: #3A3A3A; color: #BFBFBF; }
