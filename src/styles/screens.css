@@ -18,6 +18,11 @@
   -webkit-overflow-scrolling: touch;
   animation: slideUp 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+/* Focus trap parks focus on the panel itself (tabindex=-1) so no inner
+   button looks pre-selected when the sheet opens — hide the default
+   outline on that container-level focus. Inner buttons still get the
+   normal :focus-visible treatment for keyboard navigation. */
+.sheet-panel:focus, .sheet-panel:focus-visible { outline: none; }
 @keyframes slideUp {
   0%   { transform: translateY(100%); }
   100% { transform: translateY(0); }

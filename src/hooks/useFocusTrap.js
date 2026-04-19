@@ -30,16 +30,16 @@ export function useFocusTrap(active) {
     const focusables = () => Array.from(container.querySelectorAll(FOCUSABLE))
       .filter(el => !el.hasAttribute("aria-hidden") && el.offsetParent !== null);
 
-    // Defer initial focus one frame so entrance animations don't steal it.
-    // Skip the sheet-close (X) button when picking the initial target — it's
-    // usually the first focusable child on a bottom sheet, and auto-focusing
-    // it makes the X look "pressed" the instant the sheet opens.
+    // Park initial focus on the panel container itself (tabindex=-1) so
+    // screen-reader users land inside the modal, but NO button appears
+    // pre-selected. Focusing an actual <button> here would paint the
+    // global :focus-visible ring (e.g. the trash icon looked selected
+    // the instant the sheet opened). Keyboard users still Tab into the
+    // content normally — focus trap below keeps them contained.
     const rafId = requestAnimationFrame(() => {
-      const list = focusables();
-      if (list.length > 0 && !container.contains(document.activeElement)) {
-        const initial = list.find(el => !el.classList.contains("sheet-close")) || list[0];
-        initial.focus();
-      }
+      if (container.contains(document.activeElement)) return;
+      if (!container.hasAttribute("tabindex")) container.setAttribute("tabindex", "-1");
+      try { container.focus({ preventScroll: true }); } catch { container.focus(); }
     });
 
     const onKeyDown = (e) => {
