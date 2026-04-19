@@ -493,15 +493,23 @@ export function Home({ setScreen, userName }) {
           <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...selectedPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <button type="button"
-                className="sheet-title"
-                onClick={() => { const p = selected; setSelected(null); openExpediente(p); }}
-                style={{ background:"transparent", border:"none", padding:0, font:"inherit", color:"inherit", textAlign:"left", cursor:"pointer", minHeight:"unset" }}>
-                {selected.name}
-              </button>
+              <span className="sheet-title">{t("home.balanceDetail")}</span>
               <button className="sheet-close" aria-label={t("close")} onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
+              {/* Tappable patient block — matches SessionSheet identity row */}
+              <div className="flex items-center gap-3" style={{ marginBottom:20, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
+                onClick={() => { const p = selected; setSelected(null); openExpediente(p); }}>
+                <Avatar initials={selected.initials} color={getClientColor(selected.colorIdx ?? 0)} size="lg" />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
+                    {selected.name}
+                  </div>
+                  <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                    {selected.day} {t("home.atTime")} {selected.time}
+                  </div>
+                </div>
+              </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
                 {[
                   { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
@@ -513,15 +521,10 @@ export function Home({ setScreen, userName }) {
                   </div>
                 ))}
               </div>
-              {[
-                { label: t("sessions.regular"),         value:`${selected.day} ${t("home.atTime")} ${selected.time}` },
-                { label: t("patients.rate"),            value:`$${selected.rate} ${t("expediente.perSession")}` },
-              ].map((row,i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
-                  <span style={{ fontSize:"var(--text-md)", color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  <span style={{ fontSize:"var(--text-md)", fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
-                </div>
-              ))}
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
+                <span style={{ fontSize:"var(--text-md)", color:"var(--charcoal-xl)" }}>{t("patients.rate")}</span>
+                <span style={{ fontSize:"var(--text-md)", fontWeight:600, color:"var(--charcoal)" }}>${selected.rate} {t("expediente.perSession")}</span>
+              </div>
               <div style={{ marginTop:20 }}>
                 <button className="btn btn-primary-teal" onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
                   {mutating ? t("saving") : t("finances.recordPayment")}

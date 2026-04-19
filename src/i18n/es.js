@@ -48,6 +48,7 @@ export default {
     nextSession: "Pr\u00f3xima sesi\u00f3n",
     emptyToday: "No hay sesiones hoy. \u00a1D\u00eda libre!",
     pendingBalances: "Saldos pendientes",
+    balanceDetail: "Saldo",
     emptyBalances: "Todos los pacientes est\u00e1n al corriente.",
     paidOf: "de",
     recentPayments: "Pagos recientes",

@@ -324,6 +324,7 @@ button.kpi-card:active {
 .btn-secondary { background: var(--white); color: var(--charcoal-md); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
 .btn-ghost { background: transparent; color: var(--teal-dark); height: 38px; padding: 0 10px; font-size: var(--text-md); }
 .btn-danger { background: var(--red-bg); color: var(--red); box-shadow: none; width: 100%; }
+.btn-warning { background: var(--amber-bg); color: var(--amber); box-shadow: none; width: 100%; }
 /* Teal CTAs — solid filled + soft-tinted variants. Default height 44 for
    compact grid placement; override with inline style when needed. */
 .btn-teal { background: var(--teal); color: var(--white); height: 44px; font-size: var(--text-sm); box-shadow: none; }
