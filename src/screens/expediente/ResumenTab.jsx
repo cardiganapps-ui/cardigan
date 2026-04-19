@@ -6,13 +6,21 @@ import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
 
 // ── Date helpers ──
-// Both display formats render in Spanish and are used in the patient's
-// recurring-schedule rows on the Resumen card.
+// Display format used across the Resumen card. Spanish locale renders
+// the short month lowercase ("nov"), so we capitalize the first letter
+// to match how the rest of the app shows dates ("14 Nov 2015").
+function capitalizeMonth(str) {
+  // Match "<day> <mon>..." and uppercase the first letter of the
+  // month token, wherever it falls after the day number.
+  return str.replace(/(\d+\s+)([a-záéíóúñ])/iu, (_, pre, first) => pre + first.toUpperCase());
+}
 function formatISODateLong(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  return capitalizeMonth(
+    new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })
+  );
 }
 
 // Derive the patient's active recurring schedule(s) from their
@@ -97,19 +105,6 @@ export function ResumenTab({
     return latestIso;
   }, [upcomingSessions, patient.id]);
 
-  const nextSessionDate = useMemo(() => {
-    let earliestIso = null;
-    const today = todayISO();
-    for (const s of (upcomingSessions || [])) {
-      if (s.patient_id !== patient.id) continue;
-      if (s.status === "cancelled" || s.status === "charged") continue;
-      const iso = shortDateToISO(s.date);
-      if (iso < today) continue;
-      if (!earliestIso || iso < earliestIso) earliestIso = iso;
-    }
-    return earliestIso;
-  }, [upcomingSessions, patient.id]);
-
   return (
     <div style={{ padding:"16px" }}>
       {/* General info */}
@@ -118,22 +113,28 @@ export function ResumenTab({
           const scheduleValue = schedules.length === 0
             ? t("patients.notRecurring") || "Sin recurrencia"
             : schedules.map(s => `${s.day} · ${s.time}`).join("\n");
+          const birthdateValue = patient.birthdate ? (() => {
+            const birth = new Date(patient.birthdate + "T00:00:00");
+            const today = new Date();
+            let age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+            const formatted = capitalizeMonth(
+              birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })
+            );
+            return `${formatted} (${age} ${t("patients.yearsOld")})`;
+          })() : null;
+          // Order requested by product: schedule → rate → tutor info →
+          // dates. The last-session fallback for ended patients stays
+          // folded into the Fecha de inicio row block.
           const rows = [
-            ...(patient.birthdate ? [{ label: t("patients.birthdate"), value: (() => {
-              const birth = new Date(patient.birthdate + "T00:00:00");
-              const today = new Date();
-              let age = today.getFullYear() - birth.getFullYear();
-              const m = today.getMonth() - birth.getMonth();
-              if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-              return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
-            })() }] : []),
+            { label: t("expediente.scheduleRow"), value: scheduleValue, multiline: schedules.length > 1 },
             { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
-            { label: t("patients.schedules"), value: scheduleValue, multiline: schedules.length > 1 },
-            ...(patient.start_date ? [{ label: t("patients.startDate"), value: formatISODateLong(patient.start_date) }] : []),
-            ...(!isEnded && nextSessionDate ? [{ label: t("home.nextSession"), value: formatISODateLong(nextSessionDate) }] : []),
-            ...(isEnded && lastSessionDate ? [{ label: t("patients.endDate"), value: formatISODateLong(lastSessionDate) }] : []),
             ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
-            ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
+            ...(patient.tutor_frequency ? [{ label: t("expediente.tutorSessionsRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
+            ...(patient.start_date ? [{ label: t("patients.startDate"), value: formatISODateLong(patient.start_date) }] : []),
+            ...(isEnded && lastSessionDate ? [{ label: t("patients.endDate"), value: formatISODateLong(lastSessionDate) }] : []),
+            ...(birthdateValue ? [{ label: t("patients.birthdate"), value: birthdateValue }] : []),
           ];
           return (
             <>

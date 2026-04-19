@@ -504,6 +504,8 @@ export default {
     tutorNextScheduled: "Agendada: {date}",
     tutorUpToDate: "Al corriente",
     tutorFrequencyRow: "Frecuencia tutor",
+    tutorSessionsRow: "Sesiones con Tutor",
+    scheduleRow: "Horarios",
     allTypes: "Todas",
     patientType: "Paciente",
     tutorType: "Tutor",
