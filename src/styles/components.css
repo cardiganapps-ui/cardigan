@@ -4,15 +4,20 @@
    so elastic rubber-band bounce is consistent on every screen. Pair it
    with `overscroll-behavior-y: contain` to keep the bounce inside the
    page (bounce happens) without chaining up to <body> (which has
-   overflow:hidden anyway). */
+   overflow:hidden anyway).
+
+   Bottom-tabs sit in-flow below .page (no longer position:fixed), so
+   we only need enough padding here to clear the floating FAB, not the
+   tab bar. This removes ~190px of enforced whitespace that showed as
+   dead space below short-content screens in the PWA. */
 .page {
   flex: 1;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  padding-bottom: calc(var(--bottom-tabs-h) + var(--sab) + 24px);
+  padding-bottom: 24px;
 }
-.page > *:last-child { margin-bottom: 80px; } /* guarantees scroll room below FAB */
+.page > *:last-child { margin-bottom: 64px; } /* scroll clearance for the floating FAB */
 .page::-webkit-scrollbar { display: none; }
 
 /* ── TAP-ONLY SURFACES ──
@@ -60,13 +65,15 @@
 
 /* ── BOTTOM TAB BAR (mobile) ──
    Primary nav for Home / Agenda / Patients / Finances. Hidden on ≥768px
-   (desktop uses the sidebar drawer) via responsive.css. Height tracked
-   in --bottom-tabs-h so FAB and .page bottom padding can reference it
-   without duplication. */
+   (desktop uses the sidebar drawer) via responsive.css.
+
+   Sits in-flow at the bottom of .main-content (flex column) rather than
+   as a position:fixed overlay, so .page doesn't reserve 90px of
+   padding to clear it — eliminating the large dead space that showed
+   up under short-content screens in the iOS PWA. */
 :root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
-  position: fixed; left: 0; right: 0;
-  bottom: 0;
+  flex-shrink: 0;
   height: calc(var(--bottom-tabs-h) + var(--sab));
   padding-bottom: var(--sab);
   background: var(--white);
