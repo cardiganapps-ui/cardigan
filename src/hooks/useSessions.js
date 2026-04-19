@@ -127,8 +127,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
         const sessRate = session.rate != null ? session.rate : patient.rate;
+        // Cancelled sessions were already removed from billed when they were
+        // cancelled. Subtracting again here would double-count and drive
+        // amountDue below reality.
+        const wasBilled = session.status !== SESSION_STATUS.CANCELLED;
         const newSessions = Math.max(0, patient.sessions - 1);
-        const newBilled = Math.max(0, patient.billed - sessRate);
+        const newBilled = wasBilled
+          ? Math.max(0, patient.billed - sessRate)
+          : patient.billed;
         const { error: pErr } = await supabase.from("patients")
           .update({ sessions: newSessions, billed: newBilled })
           .eq("id", patient.id).eq("user_id", userId);
@@ -233,7 +239,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
     setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
 
-    const existingDates = new Set(upcomingSessions.filter(s => s.patient_id === patientId).map(s => s.date));
+    // Exclude the rows we just deleted — the local `upcomingSessions` still
+    // references them (setState hasn't flushed) and including their dates
+    // would skip regenerating the same dates at the new rate.
+    const deletedIds = new Set(toDelete.map(s => s.id));
+    const existingDates = new Set(
+      upcomingSessions
+        .filter(s => s.patient_id === patientId && !deletedIds.has(s.id))
+        .map(s => s.date)
+    );
     const allRows = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;

@@ -16,12 +16,15 @@ export async function recalcPatientCounters(patientId) {
   ]);
   if (sErr || pErr) return null;
 
-  // sessions = count of non-cancelled sessions; billed = sum of their rates
+  // sessions = total rows in DB (matches live counter semantics: +1 on
+  // create, -1 on delete, untouched on status change). billed = sum of
+  // rates for non-cancelled sessions only (cancelled without charge is
+  // removed from billed at cancel time).
   let sessions = 0;
   let billed = 0;
   for (const s of sessRows || []) {
+    sessions++;
     if (s.status !== SESSION_STATUS.CANCELLED) {
-      sessions++;
       billed += s.rate || 0;
     }
   }
