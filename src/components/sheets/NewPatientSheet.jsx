@@ -24,10 +24,14 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     setPanelEl(el);
   };
 
-  // Step 1: patient info, Step 2: schedule
-  const [step, setStep] = useState(1);
+  // Single-step form (previously split into info → schedule across two
+   // screens). Optional sections collapse by default so the sheet stays
+   // scannable; users who want quick capture tap Save with just name +
+   // rate + the default schedule. "Advanced" hides birthdate/contact/
+   // tutor-frequency behind a disclosure.
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Step 1 fields
+  // Info fields
   const [name, setName]       = useState("");
   const [isMinor, setIsMinor] = useState(false);
   const [parent, setParent]   = useState("");
@@ -42,7 +46,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [birthdate, setBirthdate] = useState(todayISO());
   const birthdateUntouched = birthdate === todayISO();
 
-  // Step 2 fields
+  // Schedule fields
   const [schedules, setSchedules] = useState([{ day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }]);
   const [startDate, setStartDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate] = useState(false);
@@ -61,17 +65,12 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const updateSched = (i, f, v) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
   const removeSched = (i) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
 
-  const goToStep2 = () => {
+  const submit = async (e) => {
+    e.preventDefault();
     if (!name.trim()) { setErr(t("patients.enterName")); return; }
     if (patients?.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setErr(t("patients.duplicateName")); return;
     }
-    setErr("");
-    setStep(2);
-  };
-
-  const submit = async (e) => {
-    e.preventDefault();
     setErr("");
     try {
       const ok = await onSubmit({
@@ -98,108 +97,29 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
           <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
         </div>
 
-        {/* Step indicator */}
-        <div style={{ display:"flex", gap:6, padding:"0 20px 16px" }}>
-          {[1, 2].map(s => (
-            <div key={s} style={{
-              flex:1, height:3, borderRadius:2,
-              background: s <= step ? "var(--teal)" : "var(--cream-deeper)",
-              transition: "background 0.5s",
-            }} />
-          ))}
-        </div>
-
-        <form onSubmit={step === 2 ? submit : (e) => { e.preventDefault(); goToStep2(); }} style={{ padding:"0 20px 0" }}>
+        <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
           <div>
 
-          {step === 1 ? (
-            <>
-              {/* Name */}
-              <div className="input-group">
-                <label className="input-label">
-                  {t("settings.fullName")}
-                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
-                </label>
-                <input className="input" type="text" required value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
-              </div>
+          {/* Essentials */}
+          <div className="input-group">
+            <label className="input-label">
+              {t("settings.fullName")}
+              <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+            </label>
+            <input className="input" type="text" required value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
+          </div>
 
-              {/* Rate */}
-              <div className="input-group">
-                <label className="input-label">
-                  {t("patients.ratePerSession")}
-                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
-                </label>
-                <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
-                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.rateHint")}</div>
-              </div>
+          <div className="input-group">
+            <label className="input-label">
+              {t("patients.ratePerSession")}
+              <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+            </label>
+            <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+            <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.rateHint")}</div>
+          </div>
 
-              {/* Minor toggle — prominent card style */}
-              <div
-                onClick={() => setIsMinor(v => !v)}
-                style={{
-                  display:"flex", alignItems:"center", justifyContent:"space-between",
-                  padding:"14px 16px", marginBottom:14, cursor:"pointer",
-                  borderRadius:"var(--radius)", border: isMinor ? "1.5px solid var(--purple)" : "1.5px solid var(--border-lt)",
-                  background: isMinor ? "var(--purple-bg)" : "var(--white)",
-                  transition: "all 0.4s",
-                }}>
-                <div>
-                  <div style={{ fontSize:14, fontWeight:700, color: isMinor ? "var(--purple)" : "var(--charcoal)" }}>{t("patients.isMinor")}</div>
-                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.isMinorHint")}</div>
-                </div>
-                <Toggle on={isMinor} onToggle={() => {}} />
-              </div>
-              {isMinor && (<>
-                <div className="input-group">
-                  <label className="input-label">{t("patients.tutor")}</label>
-                  <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">{t("patients.tutorFrequency")}</label>
-                  <select className="input" value={tutorFrequency} onChange={e => setTutorFrequency(e.target.value)}>
-                    <option value="">{t("patients.frequencyNone")}</option>
-                    <option value="4">{t("patients.everyNWeeks", { count: 4 })}</option>
-                    <option value="6">{t("patients.everyNWeeks", { count: 6 })}</option>
-                    <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
-                    <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
-                  </select>
-                  <div style={{ fontSize:11, color: tutorFrequency ? "var(--teal-dark)" : "var(--charcoal-xl)", marginTop:2 }}>
-                    {tutorFrequency
-                      ? t("patients.tutorFrequencyConfirm", { count: tutorFrequency })
-                      : t("patients.tutorFrequencyHint")}
-                  </div>
-                </div>
-              </>)}
-
-              {/* Contact info */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                <div className="input-group">
-                  <label className="input-label">{t("patients.phone")}</label>
-                  <input className="input" type="tel" inputMode="tel" autoComplete="tel"
-                    value={phone}
-                    onChange={e => setPhone(formatPhoneMX(e.target.value))}
-                    placeholder={t("patients.phonePlaceholder")} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">{t("settings.email")}</label>
-                  <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
-                </div>
-              </div>
-              <div className="input-group">
-                <label className="input-label">{t("patients.birthdate")}</label>
-                <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)}
-                  style={{ height: 52, fontSize: 16, padding: "14px 14px",
-                    // Placeholder-style fade while the value is still the
-                    // default (today). Clears to normal once the user
-                    // picks a real birthdate.
-                    color: birthdateUntouched ? "var(--charcoal-xl)" : "var(--charcoal)",
-                  }} />
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Step 2: Schedule */}
-              <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:12 }}>{t("patients.schedules")}</div>
+          {/* Schedule — always visible, sensible defaults pre-filled */}
+          <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 10px" }}>{t("patients.schedules")}</div>
               {schedules.map((s, i) => (
                 <div key={i} style={{ display:"grid", gridTemplateColumns: schedules.length > 1 ? "1fr 1fr 70px 90px 28px" : "1fr 1fr 70px 90px", gap:8, marginBottom:8, alignItems:"end" }}>
                   <div className="input-group" style={{ marginBottom:0 }}>
@@ -269,27 +189,86 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
                 )}
               </div>
-            </>
-          )}
+
+              {/* Advanced disclosure — minor toggle, contact, birthdate */}
+              <button type="button"
+                onClick={() => setShowAdvanced(v => !v)}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 0", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", color:"var(--teal-dark)", fontSize:13, fontWeight:600, marginBottom: showAdvanced ? 4 : 6 }}>
+                <span>{showAdvanced ? "Ocultar opciones avanzadas" : "Más opciones (menor, contacto, fecha de nacimiento)"}</span>
+                <span style={{ fontSize:14, transform: showAdvanced ? "rotate(180deg)" : "none", transition:"transform 0.3s" }}>▾</span>
+              </button>
+
+              {showAdvanced && (
+                <>
+                  {/* Minor toggle */}
+                  <div
+                    onClick={() => setIsMinor(v => !v)}
+                    style={{
+                      display:"flex", alignItems:"center", justifyContent:"space-between",
+                      padding:"14px 16px", marginBottom:14, cursor:"pointer",
+                      borderRadius:"var(--radius)", border: isMinor ? "1.5px solid var(--purple)" : "1.5px solid var(--border-lt)",
+                      background: isMinor ? "var(--purple-bg)" : "var(--white)",
+                      transition: "all 0.4s",
+                    }}>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:700, color: isMinor ? "var(--purple)" : "var(--charcoal)" }}>{t("patients.isMinor")}</div>
+                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.isMinorHint")}</div>
+                    </div>
+                    <Toggle on={isMinor} onToggle={() => {}} />
+                  </div>
+                  {isMinor && (<>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.tutor")}</label>
+                      <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.tutorFrequency")}</label>
+                      <select className="input" value={tutorFrequency} onChange={e => setTutorFrequency(e.target.value)}>
+                        <option value="">{t("patients.frequencyNone")}</option>
+                        <option value="4">{t("patients.everyNWeeks", { count: 4 })}</option>
+                        <option value="6">{t("patients.everyNWeeks", { count: 6 })}</option>
+                        <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
+                        <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
+                      </select>
+                      <div style={{ fontSize:11, color: tutorFrequency ? "var(--teal-dark)" : "var(--charcoal-xl)", marginTop:2 }}>
+                        {tutorFrequency
+                          ? t("patients.tutorFrequencyConfirm", { count: tutorFrequency })
+                          : t("patients.tutorFrequencyHint")}
+                      </div>
+                    </div>
+                  </>)}
+
+                  {/* Contact info */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <div className="input-group">
+                      <label className="input-label">{t("patients.phone")}</label>
+                      <input className="input" type="tel" inputMode="tel" autoComplete="tel"
+                        value={phone}
+                        onChange={e => setPhone(formatPhoneMX(e.target.value))}
+                        placeholder={t("patients.phonePlaceholder")} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("settings.email")}</label>
+                      <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">{t("patients.birthdate")}</label>
+                    <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)}
+                      style={{ height: 52, fontSize: 16, padding: "14px 14px",
+                        color: birthdateUntouched ? "var(--charcoal-xl)" : "var(--charcoal)",
+                      }} />
+                  </div>
+                </>
+              )}
 
           {err && <div className="form-error">{err}</div>}
           </div>
 
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
-            {step === 1 ? (
-              <button className="btn btn-primary-teal" type="submit" disabled={mutating}>
-                {t("next")}
-              </button>
-            ) : (
-              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                <button className="btn btn-primary-teal" type="submit" disabled={mutating}>
-                  {mutating ? t("saving") : t("patients.addPatient")}
-                </button>
-                <button className="btn btn-secondary w-full" type="button" onClick={() => setStep(1)}>
-                  {t("back")}
-                </button>
-              </div>
-            )}
+            <button className="btn btn-primary-teal" type="submit" disabled={mutating}>
+              {mutating ? t("saving") : t("patients.addPatient")}
+            </button>
           </div>
         </form>
       </div>

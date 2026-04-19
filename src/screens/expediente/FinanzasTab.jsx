@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { exportPayments } from "../../utils/export";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import { SwipeableRow } from "../../components/SwipeableRow";
 import { useT } from "../../i18n/index";
 
 export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }) {
@@ -73,18 +74,26 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
         : <div className="card">
             {payFiltered.map((p) => {
               const isDeleting = confirmDeletePayId === p.id;
+              const row = (
+                <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeletePayId(isDeleting ? null : p.id)} style={{ cursor:"pointer", background:"var(--white)" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <span>{p.date}</span>
+                      <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
+                      <span>{p.method}</span>
+                    </div>
+                  </div>
+                  <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
+                </div>
+              );
               return (
                 <div key={p.id}>
-                  <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeletePayId(isDeleting ? null : p.id)} style={{ cursor:"pointer" }}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <span>{p.date}</span>
-                        <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
-                        <span>{p.method}</span>
-                      </div>
-                    </div>
-                    <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
-                  </div>
+                  <SwipeableRow
+                    onAction={async () => { if (!mutating) await deletePayment(p.id); }}
+                    actionLabel={t("delete")}
+                    actionTone="danger">
+                    {row}
+                  </SwipeableRow>
                   {isDeleting && (
                     <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
                       <button className="btn btn-secondary" style={inlineBtnStyle}

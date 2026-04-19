@@ -10,6 +10,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
+import { SessionStatusToggle } from "../components/SessionStatusToggle";
 import { useT } from "../i18n/index";
 
 /* ── Compute next working day for the "Mañana" carousel panel ── */
@@ -179,8 +180,11 @@ export function Home({ setScreen, userName }) {
             </span>
           </div>
         </div>
-        <div className="row-right">
+        <div className="row-right" style={{ display:"flex", alignItems:"center" }}>
           <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
+          {!readOnly && (
+            <SessionStatusToggle session={s} onToggle={onMarkCompleted} disabled={mutating} />
+          )}
         </div>
       </div>
     );

@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { getClientColor, TODAY } from "../data/seedData";
+import { haptic } from "../utils/haptics";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
@@ -14,6 +15,72 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
 import { SegmentedControl } from "../components/SegmentedControl";
+
+/* ── LongPressEvent ──
+   Mobile users can't drag HTML5 draggables; this wraps the week-event so a
+   500 ms long-press opens SessionSheet straight into reschedule mode
+   (parity with the desktop drag-and-drop gesture, just touch-native).
+   Desktop still uses the native draggable path on the same element. */
+function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLongPressable, onSelectSession, onEventContextMenu }) {
+  const timer = useRef(null);
+  const firedRef = useRef(false);
+  const startPos = useRef(null);
+
+  const clearTimer = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+
+  const onTouchStart = (e) => {
+    if (!touchLongPressable) return;
+    firedRef.current = false;
+    const t0 = e.touches[0];
+    startPos.current = { x: t0.clientX, y: t0.clientY };
+    timer.current = setTimeout(() => {
+      firedRef.current = true;
+      haptic.warn();
+      onSelectSession(session, "reschedule");
+    }, 500);
+  };
+  const onTouchMove = (e) => {
+    if (!timer.current || !startPos.current) return;
+    const dx = e.touches[0].clientX - startPos.current.x;
+    const dy = e.touches[0].clientY - startPos.current.y;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) clearTimer();
+  };
+  const onTouchEnd = () => { clearTimer(); };
+  const onTouchCancel = () => { clearTimer(); firedRef.current = false; };
+
+  return (
+    <div
+      className={`week-event ${isCancelledStatus(session.status)?"cancelled":""} ${isDraggable ? "week-event--draggable" : ""} ${touchLongPressable ? "week-event--longpress" : ""}`}
+      draggable={isDraggable}
+      onDragStart={isDraggable ? (e) => {
+        e.dataTransfer.setData("text/plain", session.id);
+        e.dataTransfer.effectAllowed = "move";
+      } : undefined}
+      style={{
+        ...eventStyle,
+        top: `calc(var(--week-row-h) * ${startF} + 2px)`,
+        height: `calc(var(--week-row-h) * ${dur} - 4px)`,
+      }}
+      onClick={(e) => {
+        // Suppress the click fired after a long-press (iOS synthesizes
+        // it). If the long-press already opened the sheet we don't want
+        // a second tap to reset it to normal mode.
+        if (firedRef.current) { firedRef.current = false; return; }
+        e.stopPropagation();
+        onSelectSession(session);
+      }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      onContextMenu={onEventContextMenu ? (e) => { e.stopPropagation(); onEventContextMenu(e, session); } : undefined}>
+      <span className="week-event-time">{session.time}</span> {shortName(session.patient)}
+    </div>
+  );
+}
 
 /* ── DATE HELPERS ── */
 function getMonday(d) {
@@ -276,23 +343,17 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                   return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
                 })();
                 const isDraggable = canDrag && !isCancelledStatus(sess.status);
+                const touchLongPressable = !canDrag && !isCancelledStatus(sess.status);
                 return (
-                  <div key={sess.id}
-                    className={`week-event ${isCancelledStatus(sess.status)?"cancelled":""} ${isDraggable ? "week-event--draggable" : ""}`}
-                    draggable={isDraggable}
-                    onDragStart={isDraggable ? (e) => {
-                      e.dataTransfer.setData("text/plain", sess.id);
-                      e.dataTransfer.effectAllowed = "move";
-                    } : undefined}
-                    style={{
-                      ...eventStyle,
-                      top: `calc(var(--week-row-h) * ${startF} + 2px)`,
-                      height: `calc(var(--week-row-h) * ${dur} - 4px)`,
-                    }}
-                    onClick={e => { e.stopPropagation(); onSelectSession(sess); }}
-                    onContextMenu={onEventContextMenu ? (e) => { e.stopPropagation(); onEventContextMenu(e, sess); } : undefined}>
-                    <span className="week-event-time">{sess.time}</span> {shortName(sess.patient)}
-                  </div>
+                  <LongPressEvent key={sess.id}
+                    session={sess}
+                    eventStyle={eventStyle}
+                    startF={startF}
+                    dur={dur}
+                    isDraggable={isDraggable}
+                    touchLongPressable={touchLongPressable}
+                    onSelectSession={onSelectSession}
+                    onEventContextMenu={onEventContextMenu} />
                 );
               })}
             </div>
@@ -490,6 +551,10 @@ export function Agenda() {
   const [view, setView] = useState(() => consumeAgendaView?.() || (isDesktop ? "week" : "day"));
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
+  // "reschedule" when the sheet was opened via a long-press on a week
+  // event (mobile drag-reschedule replacement); cleared on close. Null
+  // for all other entry points.
+  const [selectedSessionMode, setSelectedSessionMode] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
   const [filterPatientId, setFilterPatientId] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState(null);
@@ -609,7 +674,7 @@ export function Agenda() {
         </div>
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={setSelectedSession} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} onEventContextMenu={isDesktop ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} onEventContextMenu={isDesktop ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {newSessionPrefill && (
         <NewSessionSheet
@@ -626,7 +691,8 @@ export function Agenda() {
         session={selectedSession}
         patients={patients}
         notes={notes}
-        onClose={() => setSelectedSession(null)}
+        initialMode={selectedSessionMode}
+        onClose={() => { setSelectedSession(null); setSelectedSessionMode(null); }}
         onOpenNote={handleOpenNote}
         onCancelSession={async (session, charge, reason) => {
           const ok = await onCancelSession(session, charge, reason);

@@ -286,6 +286,43 @@ export function PatientExpediente({
     { k: "archivo", l: t("expediente.archivo"), Icon: IconClipboard },
   ];
 
+  // ── Horizontal swipe between tabs ──
+  // Pattern mirrors the Home carousel: 60px threshold, must be strongly
+  // horizontal (|dx| > |dy|) so vertical scroll inside the tab body keeps
+  // working. Advances one tab per gesture; stops at the ends (no wrap).
+  const tabSwipeRef = useRef(null);
+  const onTabContentTouchStart = (e) => {
+    if (inline) return;
+    // Avoid conflicting with the drag-to-close handle (which already
+    // fires onDragStart when contentRef is scrolled to top).
+    tabSwipeRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      active: false,
+    };
+  };
+  const onTabContentTouchMove = (e) => {
+    if (!tabSwipeRef.current) return;
+    const dx = e.touches[0].clientX - tabSwipeRef.current.x;
+    const dy = e.touches[0].clientY - tabSwipeRef.current.y;
+    if (!tabSwipeRef.current.active) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+        tabSwipeRef.current.active = true;
+      } else if (Math.abs(dy) > 10) {
+        tabSwipeRef.current = null;
+      }
+    }
+  };
+  const onTabContentTouchEnd = (e) => {
+    if (!tabSwipeRef.current?.active) { tabSwipeRef.current = null; return; }
+    const dx = e.changedTouches[0].clientX - tabSwipeRef.current.x;
+    tabSwipeRef.current = null;
+    if (Math.abs(dx) < 60) return;
+    const i = tabs.findIndex(tx => tx.k === tab);
+    const next = dx < 0 ? Math.min(tabs.length - 1, i + 1) : Math.max(0, i - 1);
+    if (next !== i) setTab(tabs[next].k);
+  };
+
   // ── Swipe-to-dismiss ──
   const dragRef = useRef(null);
   const contentRef = useRef(null);
@@ -415,6 +452,10 @@ export function PatientExpediente({
               <IconMail size={16} />
             </a>
           )}
+          <button type="button" onClick={() => openNewNote()} aria-label={t("notes.addNote")}
+            style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
+            <IconClipboard size={16} />
+          </button>
           <button onClick={() => onEdit(patient)}
             style={{ padding:"6px 14px", fontSize:"var(--text-sm)", fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
             {t("edit")}
@@ -440,7 +481,9 @@ export function PatientExpediente({
 
       {/* Content */}
       <div ref={contentRef}
-        onTouchStart={inline ? undefined : onContentTouchStart} onTouchMove={inline ? undefined : onDragMove} onTouchEnd={inline ? undefined : onDragEnd}
+        onTouchStart={inline ? undefined : (e) => { onContentTouchStart(e); onTabContentTouchStart(e); }}
+        onTouchMove={inline ? undefined : (e) => { onDragMove(e); onTabContentTouchMove(e); }}
+        onTouchEnd={inline ? undefined : (e) => { onDragEnd(e); onTabContentTouchEnd(e); }}
         style={{ flex:1, minHeight:0, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
 
         {tab === "resumen" && (

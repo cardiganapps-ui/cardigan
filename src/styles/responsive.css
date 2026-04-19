@@ -5,7 +5,18 @@
 /* ── RESPONSIVE: DESKTOP (768px+) ── */
 @media (min-width: 768px) {
   /* Override safe area insets for desktop (no notch) */
-  :root { --sat: 0px; --sab: 0px; }
+  :root { --sat: 0px; --sab: 0px; --bottom-tabs-h: 0px; }
+
+  /* Bottom tab bar is mobile-only; desktop uses the sidebar drawer. */
+  .bottom-tabs { display: none !important; }
+
+  /* Page padding no longer needs to reserve space for a tab bar. */
+  .page { padding-bottom: 24px; }
+
+  /* Restore desktop FAB placement (matches legacy spacing). */
+  .fab { bottom: calc(var(--sab) + 20px); }
+  .fab-menu { bottom: calc(var(--sab) + 84px); }
+  .bug-fab { bottom: calc(var(--sab) + 24px); }
 
   /* Shell: horizontal layout (sidebar | main) */
   .shell { flex-direction: row; max-width: none; margin: 0; }
@@ -67,7 +78,12 @@
     transition: all 0.4s; min-height: unset;
   }
   .topbar-refresh-btn:hover { background: var(--teal-pale); color: var(--teal-dark); border-color: var(--teal-light); }
-  .topbar-right .avatar-sm { background: var(--teal); }
+  /* On desktop the settings avatar uses solid teal. Target the ::before
+     since the button version of .avatar-sm draws its circle via a
+     pseudo-element to keep the hit area at 44×44. */
+  .topbar-right .avatar-sm { background: var(--teal); color: var(--white); }
+  .topbar-right button.avatar-sm { background: transparent; }
+  .topbar-right button.avatar-sm::before { background: var(--teal); }
   .admin-btn { color: var(--charcoal-xl); }
   /* Dark help button variant is used for the mobile topbar; swap it back
      to the light styling inside the desktop (white) topbar. */

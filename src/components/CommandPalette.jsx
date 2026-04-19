@@ -129,6 +129,26 @@ export default function CommandPalette({ open, onClose }) {
           <kbd className="cmdp-kbd">ESC</kbd>
         </div>
         <div ref={listRef} className="cmdp-list" role="listbox">
+          {!query.trim() && (
+            <div className="cmdp-tips" aria-hidden>
+              <span className="cmdp-tip">
+                <kbd className="cmdp-kbd">↑</kbd><kbd className="cmdp-kbd">↓</kbd>
+                <span>Navegar</span>
+              </span>
+              <span className="cmdp-tip">
+                <kbd className="cmdp-kbd">↵</kbd>
+                <span>Abrir</span>
+              </span>
+              <span className="cmdp-tip">
+                <kbd className="cmdp-kbd">esc</kbd>
+                <span>Cerrar</span>
+              </span>
+              <span className="cmdp-tip">
+                <kbd className="cmdp-kbd">⌘K</kbd>
+                <span>Abrir desde cualquier pantalla</span>
+              </span>
+            </div>
+          )}
           {filtered.length === 0 ? (
             <div className="cmdp-empty">{t("cmdp.empty") || "Sin resultados"}</div>
           ) : (
@@ -154,6 +174,7 @@ export default function CommandPalette({ open, onClose }) {
         <div className="cmdp-footer">
           <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">↑</kbd><kbd className="cmdp-kbd">↓</kbd> Navegar</span>
           <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">↵</kbd> Abrir</span>
+          <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">esc</kbd> Cerrar</span>
         </div>
       </div>
     </div>

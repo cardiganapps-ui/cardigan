@@ -6,6 +6,7 @@ import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { NoteEditor } from "./NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { haptic } from "../utils/haptics";
 
 /* Shared quick-action list. Reused by the desktop "+ Nuevo" top-bar
    button (TopbarActions) so the menu stays in sync with the mobile FAB. */
@@ -63,7 +64,7 @@ export function QuickActions() {
       <button
         className={`fab ${menuOpen ? "fab-open" : ""}`}
         data-tour="fab"
-        onClick={() => setMenuOpen(o => !o)}
+        onClick={() => { haptic.tap(); setMenuOpen(o => !o); }}
         aria-label={menuOpen ? t("close") : t("add")}
       >
         <IconPlus size={26} strokeWidth={2.2} />
