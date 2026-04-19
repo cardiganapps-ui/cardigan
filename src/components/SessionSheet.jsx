@@ -5,13 +5,14 @@ import { isCancelledStatus, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconTrash } from "./Icons";
 import { Avatar } from "./Avatar";
+import { haptic } from "../utils/haptics";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, onOpenNote, onAttachDocument, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, onOpenNote, onAttachDocument, mutating, initialMode }) {
   const { t } = useT();
   const { openExpediente } = useCardigan();
   useEscape(session ? onClose : null);
@@ -23,13 +24,20 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
     setPanelEl(el);
   };
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [rescheduling, setRescheduling] = useState(false);
+  // initialMode="reschedule" opens the sheet directly in reschedule UI —
+  // used by the long-press gesture on mobile week-view events so the
+  // path from "I want to move this session" to the date/time form is
+  // one gesture instead of tap → button.
+  const [rescheduling, setRescheduling] = useState(initialMode === "reschedule");
   const [cancelling, setCancelling] = useState(false);
   const [cancelCharge, setCancelCharge] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("");
-  const [newDuration, setNewDuration] = useState("60");
+  // Pre-fill the reschedule inputs with the session's current slot when
+  // the sheet opens straight into reschedule mode. Otherwise they get
+  // set lazily by startReschedule() once the user taps the button.
+  const [newDate, setNewDate] = useState(() => (initialMode === "reschedule" && session) ? shortDateToISO(session.date) : "");
+  const [newTime, setNewTime] = useState(() => (initialMode === "reschedule" && session?.time) ? session.time : "");
+  const [newDuration, setNewDuration] = useState(() => (initialMode === "reschedule" && session?.duration) ? String(session.duration) : "60");
   const [rescheduleErr, setRescheduleErr] = useState("");
   const [editingRate, setEditingRate] = useState(false);
   const [rateInput, setRateInput] = useState("");
@@ -76,6 +84,7 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const submitCancel = async () => {
     const ok = await onCancelSession(session, cancelCharge, cancelReason.trim());
     if (ok) {
+      haptic.warn();
       // Cancellation is a terminal action on this session — dismiss the
       // sheet so the user lands back on whichever screen opened it
       // (Home, Agenda, Patient expediente, etc.) instead of staring at

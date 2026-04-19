@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { IconSearch, IconClipboard, IconX, IconStar, IconTrash, IconEdit, IconDocument, IconCheck, IconUser } from "../components/Icons";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
+import { SwipeableRow } from "../components/SwipeableRow";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -9,76 +10,6 @@ import { useViewport } from "../hooks/useViewport";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
-
-/* ── Swipeable wrapper for note cards ── */
-const SWIPE_REVEALED = -80;
-const SWIPE_THRESHOLD = -40;
-
-function SwipeableRow({ children, onDelete, deleteLabel }) {
-  const ref = useRef(null);
-  const [offset, setOffset] = useState(0);
-  const offsetRef = useRef(0);
-  const [swiping, setSwiping] = useState(false);
-
-  // Keep ref in sync so touch handlers see the latest committed offset
-  // without needing to re-bind on every render.
-  offsetRef.current = offset;
-
-  const onTouchStart = useCallback((e) => {
-    ref.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      startOffset: offsetRef.current,
-      active: false,
-    };
-  }, []);
-
-  const onTouchMove = useCallback((e) => {
-    if (!ref.current) return;
-    const dx = e.touches[0].clientX - ref.current.x;
-    const dy = e.touches[0].clientY - ref.current.y;
-    const revealed = ref.current.startOffset < 0;
-    if (!ref.current.active) {
-      // Activate horizontal swipe in both directions when revealed,
-      // only leftward when hidden.
-      const horizontal = Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
-      const leftward = dx < 0;
-      if (horizontal && (revealed || leftward)) {
-        ref.current.active = true;
-        setSwiping(true);
-      } else if (Math.abs(dy) > 8 || (!revealed && dx > 5)) {
-        ref.current = null;
-        return;
-      } else return;
-    }
-    if (ref.current.active) {
-      const next = ref.current.startOffset + dx;
-      setOffset(Math.min(0, Math.max(SWIPE_REVEALED, next)));
-    }
-  }, []);
-
-  const onTouchEnd = useCallback(() => {
-    if (!ref.current?.active) { ref.current = null; return; }
-    ref.current = null;
-    setSwiping(false);
-    setOffset(prev => (prev < SWIPE_THRESHOLD ? SWIPE_REVEALED : 0));
-  }, []);
-
-  return (
-    <div style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
-      {/* Delete button behind */}
-      <div style={{ position:"absolute", top:0, right:0, bottom:0, width:80, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--red)", color:"var(--white)", fontSize:"var(--text-xs)", fontWeight:700, cursor:"pointer", borderRadius:"0 var(--radius) var(--radius) 0" }}
-        onClick={() => { setOffset(0); onDelete(); }}>
-        {deleteLabel}
-      </div>
-      {/* Content */}
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{ transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", position:"relative", zIndex:1 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 export function Notes() {
   const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente } = useCardigan();
@@ -317,7 +248,7 @@ export function Notes() {
               return selectMode ? (
                 <div key={n.id}>{noteContent}</div>
               ) : (
-                <SwipeableRow key={n.id} onDelete={() => deleteNote(n.id)} deleteLabel={t("delete")}>
+                <SwipeableRow key={n.id} onAction={() => deleteNote(n.id)} actionLabel={t("delete")} actionTone="danger">
                   {noteContent}
                 </SwipeableRow>
               );

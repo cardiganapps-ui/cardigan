@@ -12,6 +12,7 @@ import TopbarActions from "./components/TopbarActions";
 import CommandPalette from "./components/CommandPalette";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { PullToRefresh } from "./components/PullToRefresh";
+import { BottomTabs } from "./components/BottomTabs";
 import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
@@ -379,6 +380,7 @@ function AppShell({ user, signOut, demo, theme }) {
             initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
         )}
         {!readOnly && !hideFab && <QuickActions />}
+        {!hideFab && <BottomTabs />}
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
         {showAdmin && (

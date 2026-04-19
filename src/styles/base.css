@@ -117,7 +117,10 @@ html, body {
 .topbar-right { display: flex; align-items: center; gap: 6px; }
 
 .icon-btn {
-  width: 38px; height: 38px; border-radius: 50%;
+  /* Hit target bumped to 44px (iOS HIG minimum) — previously 38px, which
+     caused mis-taps in the dense topbar cluster. Visual size is preserved
+     via the inner SVG; only the transparent padding grows. */
+  width: 44px; height: 44px; border-radius: 50%;
   background: none; border: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; color: var(--charcoal);
@@ -134,7 +137,9 @@ html, body {
 
 /* HAMBURGER */
 .hamburger {
-  width: 32px; height: 32px; border-radius: 50%;
+  /* Bumped from 32×32 to 44×44 to hit iOS HIG minimum; the visible lines
+     remain 18×2 — the extra pixels are invisible touch padding. */
+  width: 44px; height: 44px; border-radius: 50%;
   background: none; border: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 4px; cursor: pointer; padding: 0;
@@ -151,11 +156,31 @@ html, body {
 .hamburger.open .hamburger-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 .avatar-sm {
+  /* Avatar visually stays 28px, but when used as a button (topbar settings
+     shortcut) we expand the hit area to 44×44 with a transparent border-
+     box so it satisfies the HIG without resizing the circle itself. */
   width: 28px; height: 28px; background: var(--teal-pale); border-radius: 50%;
   min-width: 28px; min-height: 28px; padding: 0; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-d); font-size: 11px; font-weight: 800; color: var(--teal-dark);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+button.avatar-sm {
+  position: relative;
+  width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+  background: transparent;
+  padding: 0;
+  z-index: 0;
+}
+button.avatar-sm::before {
+  content: "";
+  position: absolute;
+  width: 28px; height: 28px;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--teal-pale);
+  z-index: -1;
 }
 
 /* DRAWER OVERLAY */
@@ -208,13 +233,15 @@ html, body {
   border-radius: 24px 24px 0 0;
 }
 
-/* Hide FAB when expediente is open */
+/* Hide FAB + bottom tabs when expediente is open */
 .expediente-open ~ .fab,
 .expediente-open ~ .fab-overlay,
 .expediente-open ~ .fab-menu,
+.expediente-open ~ .bottom-tabs,
 body:has(.expediente-open) .fab,
 body:has(.expediente-open) .fab-overlay,
-body:has(.expediente-open) .fab-menu { display: none !important; }
+body:has(.expediente-open) .fab-menu,
+body:has(.expediente-open) .bottom-tabs { display: none !important; }
 
 /* DRAWER PANEL */
 .drawer {

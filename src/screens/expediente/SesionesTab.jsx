@@ -1,5 +1,7 @@
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
+import { SessionStatusToggle } from "../../components/SessionStatusToggle";
+import { useCardigan } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 
 export function SesionesTab({
@@ -10,6 +12,7 @@ export function SesionesTab({
   onSelectSession, onOpenNote,
 }) {
   const { t } = useT();
+  const { onMarkCompleted, readOnly, mutating } = useCardigan();
 
   if (pSessions.length === 0) {
     return (
@@ -142,6 +145,9 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                   <span className={`session-status ${statusClass(s.status)}`}>
                     {t(`sessions.${s.status}`)}
                   </span>
+                  {!readOnly && (
+                    <SessionStatusToggle session={s} onToggle={onMarkCompleted} disabled={mutating} />
+                  )}
                   {tutor && (
                     <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
                       {t("sessions.tutor")}

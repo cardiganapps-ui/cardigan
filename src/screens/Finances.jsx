@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { getClientColor } from "../data/seedData";
-import { IconCheck, IconTrendingUp, IconUsers, IconPlus } from "../components/Icons";
+import { IconCheck, IconTrendingUp, IconUsers, IconPlus, IconDollar } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { useCardigan } from "../context/CardiganContext";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
+import { SwipeableRow } from "../components/SwipeableRow";
 import { useT } from "../i18n/index";
 
 function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
@@ -49,21 +50,29 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
   const renderRow = (p, i) => {
     const patient = patients.find(pt => pt.name === p.patient);
     const isExpanded = expandedId === p.id;
+    const rowBody = (
+      <div className="bal-row" role="button" tabIndex={0} onClick={() => setExpandedId(isExpanded ? null : p.id)} style={{ cursor:"pointer", background:"var(--white)" }}>
+        <Avatar initials={patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
+          color={getClientColor(p.colorIdx ?? i)} size="sm" />
+        <div style={{ flex:1, minWidth:0 }}>
+          {!groupByClient && <div className="bal-name">{p.patient}</div>}
+          <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
+            <span>{p.date}</span>
+            <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
+            <span>{p.method}</span>
+          </div>
+        </div>
+        <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
+      </div>
+    );
     return (
       <div key={p.id}>
-        <div className="bal-row" role="button" tabIndex={0} onClick={() => setExpandedId(isExpanded ? null : p.id)} style={{ cursor:"pointer" }}>
-          <Avatar initials={patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
-            color={getClientColor(p.colorIdx ?? i)} size="sm" />
-          <div style={{ flex:1, minWidth:0 }}>
-            {!groupByClient && <div className="bal-name">{p.patient}</div>}
-            <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
-              <span>{p.date}</span>
-              <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
-              <span>{p.method}</span>
-            </div>
-          </div>
-          <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
-        </div>
+        <SwipeableRow
+          onAction={async () => { if (!mutating) await onDeletePayment(p.id); }}
+          actionLabel={t("delete")}
+          actionTone="danger">
+          {rowBody}
+        </SwipeableRow>
         {isExpanded && (
           <div style={{ padding:"8px 12px 12px", borderBottom:"1px solid var(--border-lt)" }}>
             {confirmDeleteId === p.id ? (
@@ -433,14 +442,23 @@ export function Finances() {
               <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
               <div className="card">
                 {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
-                  <div className="bal-row" key={p.id} role="button" tabIndex={0}
-                    onClick={() => openRecordPaymentModal(p)}
-                    style={{ cursor:"pointer" }}>
-                    <Avatar initials={p.initials} color={getClientColor(i)} size="sm" />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div className="bal-name">{p.name}</div>
+                  <div className="bal-row" key={p.id} style={{ gap:8 }}>
+                    <div
+                      role="button" tabIndex={0}
+                      onClick={() => openExpediente(p)}
+                      style={{ display:"flex", alignItems:"center", gap:12, flex:1, minWidth:0, cursor:"pointer" }}>
+                      <Avatar initials={p.initials} color={getClientColor(i)} size="sm" />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div className="bal-name">{p.name}</div>
+                      </div>
+                      <div className="bal-amt amount-owe">${p.amountDue.toLocaleString()}</div>
                     </div>
-                    <div className="bal-amt amount-owe">${p.amountDue.toLocaleString()}</div>
+                    <button type="button"
+                      aria-label={t("finances.recordPayment")}
+                      onClick={(e) => { e.stopPropagation(); openRecordPaymentModal(p); }}
+                      style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
+                      <IconDollar size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
