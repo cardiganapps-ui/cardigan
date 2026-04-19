@@ -1,7 +1,38 @@
-/* PAGE */
-.page { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--bottom-tabs-h) + var(--sab) + 24px); }
+/* PAGE ──
+   `overflow-y: scroll` (not auto) guarantees the container is always a
+   scroll area on iOS Safari, even when content fits in the viewport —
+   so elastic rubber-band bounce is consistent on every screen. Pair it
+   with `overscroll-behavior-y: contain` to keep the bounce inside the
+   page (bounce happens) without chaining up to <body> (which has
+   overflow:hidden anyway). */
+.page {
+  flex: 1;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: calc(var(--bottom-tabs-h) + var(--sab) + 24px);
+}
 .page > *:last-child { margin-bottom: 80px; } /* guarantees scroll room below FAB */
 .page::-webkit-scrollbar { display: none; }
+
+/* ── TAP-ONLY SURFACES ──
+   List rows, tabs, chips, calendar events, and KPI tiles are meant to be
+   tapped, not long-pressed for text selection. Disabling selection here
+   also prevents the iOS text-selection UI from firing on hold-to-swipe
+   and on the week-event long-press-to-reschedule gesture. Inputs,
+   textareas, note content, and .note-card-pressing are unaffected. */
+.row-item, .bal-row, .week-event, .chip, .drawer-item, .bottom-tab,
+.kpi-card, .stat-tile, .cal-day, .month-cell, .fab, .fab-action,
+.drawer-user, .hamburger, .icon-btn, .avatar-sm, .session-toggle,
+.topbar-brand, .topbar-new-btn, .topbar-new-item, .topbar-search-btn,
+.segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab,
+.session-status, .session-row, .see-all, .sheet-close, .sheet-handle,
+.cmdp-item, .context-menu-item {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 
 /* ── LOADING SKELETON ──
    Used in App.jsx's LoadingSkeleton on first load. Shapes mimic the

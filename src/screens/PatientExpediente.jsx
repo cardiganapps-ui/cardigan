@@ -28,7 +28,7 @@ export function PatientExpediente({
 }) {
   const inline = layout === "inline";
   const { t, strings } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly } = useCardigan();
 
   // ── Enter/close animation state ──
   // `entering` is true for the first paint so the panel mounts at
@@ -484,7 +484,7 @@ export function PatientExpediente({
         onTouchStart={inline ? undefined : (e) => { onContentTouchStart(e); onTabContentTouchStart(e); }}
         onTouchMove={inline ? undefined : (e) => { onDragMove(e); onTabContentTouchMove(e); }}
         onTouchEnd={inline ? undefined : (e) => { onDragEnd(e); onTabContentTouchEnd(e); }}
-        style={{ flex:1, minHeight:0, overflowY:"auto", background:"var(--white)", borderRadius:0 }}>
+        style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0 }}>
 
         {tab === "resumen" && (
           <ResumenTab
@@ -507,6 +507,9 @@ export function PatientExpediente({
             upcomingPSessions={upcomingPSessions} pastPSessions={pastPSessions}
             onSelectSession={setSelectedSession}
             onOpenNote={openSessionNote}
+            onMarkCompleted={onMarkCompleted}
+            readOnly={readOnly}
+            mutating={mutating}
           />
         )}
 
