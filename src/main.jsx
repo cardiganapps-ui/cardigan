@@ -9,10 +9,17 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-/* ── Service Worker: aggressive update checks for iOS standalone ── */
+/* ── Service Worker: aggressive update checks for iOS standalone ──
+   Pair this with self.skipWaiting() / clients.claim() in sw.js — without
+   those, a new SW sits in "waiting" indefinitely and the reload below
+   never fires. `updateViaCache: 'none'` stops iOS from serving a cached
+   /sw.js from HTTP cache, so `reg.update()` actually hits the network. */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
-    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    const reg = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+      updateViaCache: 'none',
+    });
 
     // When a new SW takes over, reload to pick up fresh assets
     let refreshing = false;

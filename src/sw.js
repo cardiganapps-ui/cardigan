@@ -10,6 +10,21 @@ import { ExpirationPlugin } from "workbox-expiration";
 // ── Precache manifest (injected by vite-plugin-pwa at build time) ──
 precacheAndRoute(self.__WB_MANIFEST);
 
+// ── Update lifecycle ──
+// Without these, every new SW we ship lands in "waiting" state and
+// only takes over once the user force-closes all PWA windows —
+// which on iOS can mean waiting days for a restart. skipWaiting +
+// clients.claim() make the new SW activate immediately, which fires
+// `controllerchange` on the client and triggers the reload wired up
+// in main.jsx. Combined with the visibility + polled update checks,
+// bookmarked PWAs now pick up deploys on the next focus.
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 // ── Runtime caching (replicated from previous generateSW config) ──
 
 // Supabase API — network-first with short-lived cache fallback
