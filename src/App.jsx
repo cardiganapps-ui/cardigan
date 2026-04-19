@@ -28,7 +28,7 @@ import { Archivo } from "./screens/Archivo";
 import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
-import { BugReportFab } from "./components/BugReportFab";
+import { BugReportSheet } from "./components/BugReportFab";
 import { useTheme } from "./hooks/useTheme";
 import { useNotifications } from "./hooks/useNotifications";
 import "./utils/logBuffer";
@@ -110,6 +110,7 @@ function AppShell({ user, signOut, demo, theme }) {
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [hideFab, setHideFab] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
   const admin = !demo && isAdmin(user);
 
   const liveData = useCardiganData(demo ? null : user, viewAsUserId);
@@ -312,7 +313,8 @@ function AppShell({ user, signOut, demo, theme }) {
     <CardiganProvider value={ctxValue}>
     <div className="shell" ref={shellRef}>
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
-        user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress} />
+        user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
+        onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setBugReportOpen(true); } : null} />
 
       <div className="main-content">
         <div className="status-bar" />
@@ -402,7 +404,9 @@ function AppShell({ user, signOut, demo, theme }) {
             currentAdminId={user?.id}
           />
         )}
-        {user && !demo && !readOnly && <BugReportFab user={user} screen={screen} />}
+        {user && !demo && !readOnly && (
+          <BugReportSheet open={bugReportOpen} onClose={() => setBugReportOpen(false)} user={user} screen={screen} />
+        )}
         {!demo && !readOnly && <Tutorial />}
       </div>
     </div>

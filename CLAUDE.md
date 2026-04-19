@@ -71,7 +71,7 @@ src/
 │   ├── Toast.jsx           # Toast notification component
 │   ├── HelpTip.jsx         # Contextual help popover (? icon)
 │   ├── LayerWrapper.jsx    # Layer stack backdrop handler
-│   ├── BugReportFab.jsx    # Bug report floating button
+│   ├── BugReportFab.jsx    # Bug report sheet (triggered from drawer)
 │   ├── LogoMark.jsx        # SVG logo icon component
 │   └── Icons.jsx           # All SVG icons as components
 ├── screens/

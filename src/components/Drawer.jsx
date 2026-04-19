@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { navItems } from "../data/seedData";
-import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut } from "./Icons";
+import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut, IconBug } from "./Icons";
 import { LogoIcon } from "./LogoMark";
 import { useT } from "../i18n/index";
 
@@ -19,7 +19,7 @@ const OPEN_THRESHOLD = 100;
 const CLOSE_THRESHOLD = 80;
 const VELOCITY_THRESHOLD = 0.3;
 
-export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeProgress }) {
+export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeProgress, onReportBug }) {
   const { t } = useT();
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
@@ -164,6 +164,12 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
             {principal.map(renderItem)}
             <div className="drawer-section-label" style={{ marginTop:8 }}>{t("nav.account")}</div>
             {cuenta.map(renderItem)}
+            {onReportBug && (
+              <button className="drawer-item" onClick={onReportBug}>
+                <div className="drawer-item-icon"><IconBug size={18} /></div>
+                <span className="drawer-item-label">{t("bugReport.title")}</span>
+              </button>
+            )}
             <button className="drawer-item" onClick={() => { if (window.confirm(t("nav.signOutConfirm"))) { signOut(); onClose(); } }}>
               <div className="drawer-item-icon"><IconLogOut size={18} /></div>
               <span className="drawer-item-label">{t("nav.signOut")}</span>

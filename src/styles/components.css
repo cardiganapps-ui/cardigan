@@ -4,20 +4,16 @@
    so elastic rubber-band bounce is consistent on every screen. Pair it
    with `overscroll-behavior-y: contain` to keep the bounce inside the
    page (bounce happens) without chaining up to <body> (which has
-   overflow:hidden anyway).
-
-   Bottom-tabs sit in-flow below .page (no longer position:fixed), so
-   we only need enough padding here to clear the floating FAB, not the
-   tab bar. This removes ~190px of enforced whitespace that showed as
-   dead space below short-content screens in the PWA. */
+   overflow:hidden anyway). Padding-bottom clears the fixed tab bar
+   (+ a small breathing margin) so the last row isn't hidden when the
+   user scrolls to the bottom. */
 .page {
   flex: 1;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  padding-bottom: 24px;
+  padding-bottom: calc(var(--bottom-tabs-h) + var(--sab) + 12px);
 }
-.page > *:last-child { margin-bottom: 64px; } /* scroll clearance for the floating FAB */
 .page::-webkit-scrollbar { display: none; }
 
 /* ── TAP-ONLY SURFACES ──
@@ -67,13 +63,14 @@
    Primary nav for Home / Agenda / Patients / Finances. Hidden on ≥768px
    (desktop uses the sidebar drawer) via responsive.css.
 
-   Sits in-flow at the bottom of .main-content (flex column) rather than
-   as a position:fixed overlay, so .page doesn't reserve 90px of
-   padding to clear it — eliminating the large dead space that showed
-   up under short-content screens in the iOS PWA. */
+   Pinned to the true viewport bottom via position:fixed — an earlier
+   attempt at an in-flow bar collided with an iOS PWA quirk where
+   100dvh excludes env(safe-area-inset-bottom), which pushed the bar
+   34px up into the FAB's zone. */
 :root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
-  flex-shrink: 0;
+  position: fixed; left: 0; right: 0;
+  bottom: 0;
   height: calc(var(--bottom-tabs-h) + var(--sab));
   padding-bottom: var(--sab);
   background: var(--white);
@@ -106,9 +103,11 @@
   background: var(--teal-pale); color: var(--teal-dark);
 }
 
-/* FAB — teal gradient pill with a soft diffused glow for emphasis. */
+/* FAB — teal gradient pill with a soft diffused glow for emphasis.
+   Floats 24px above the bottom tab bar so it's clearly a floating
+   action, not another tab. */
 .fab {
-  position: fixed; bottom: calc(var(--sab) + var(--bottom-tabs-h) + 16px); right: 20px;
+  position: fixed; bottom: calc(var(--sab) + var(--bottom-tabs-h) + 24px); right: 20px;
   width: 54px; height: 54px;
   background: radial-gradient(circle at 30% 25%, var(--teal-light) 0%, var(--teal) 55%, var(--teal-dark) 100%);
   border-radius: 50%;
@@ -133,8 +132,6 @@
 .fab.fab-open { transform: rotate(45deg); }
 .fab.fab-open:active { transform: rotate(45deg) scale(0.88); }
 
-.bug-fab { bottom: calc(var(--sab) + var(--bottom-tabs-h) + 20px); }
-
 .fab-overlay {
   position: fixed; inset: 0;
   background: rgba(20,35,40,0.45);
@@ -144,7 +141,7 @@
 
 .fab-menu {
   position: fixed;
-  bottom: calc(var(--sab) + var(--bottom-tabs-h) + 80px);
+  bottom: calc(var(--sab) + var(--bottom-tabs-h) + 88px);
   right: 20px;
   display: flex; flex-direction: column; gap: 10px;
   align-items: flex-end;

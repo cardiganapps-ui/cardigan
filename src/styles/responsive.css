@@ -16,7 +16,6 @@
   /* Restore desktop FAB placement (matches legacy spacing). */
   .fab { bottom: calc(var(--sab) + 20px); }
   .fab-menu { bottom: calc(var(--sab) + 84px); }
-  .bug-fab { bottom: calc(var(--sab) + 24px); }
 
   /* Shell: horizontal layout (sidebar | main) */
   .shell { flex-direction: row; max-width: none; margin: 0; }
@@ -494,10 +493,4 @@
 /* ── RESPONSIVE: WIDE DESKTOP (1440px+) ── */
 @media (min-width: 1440px) {
   .page { max-width: 1200px; }
-}
-/* ── PWA Standalone: tighter bottom spacing (no Safari bar) ── */
-@media (display-mode: standalone) {
-  .fab      { bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
-  .fab-menu { bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); }
-  .bug-fab  { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
 }
