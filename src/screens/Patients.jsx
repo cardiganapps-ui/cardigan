@@ -43,7 +43,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate } = useCardigan();
   const { isDesktop } = useViewport();
   const ctxMenu = useContextMenu();
   const { t, strings } = useT();
@@ -62,6 +62,11 @@ export function Patients() {
   const { scrollRef: editScrollRef, setPanelEl: setEditPanelEl, panelHandlers: editPanelHandlers } = useSheetDrag(closeSheet);
   const setEditPanel = (el) => { editScrollRef.current = el; setEditPanelEl(el); };
   const [expediente, setExpediente] = useState(null);
+  // When Patients is opened via openExpediente() from another screen
+  // (e.g. tapping a patient on Home), remember that origin so closing
+  // the expediente can send the user back there instead of stranding
+  // them on Pacientes.
+  const [expedienteOrigin, setExpedienteOrigin] = useState(null);
   // Edit form state
   const [editName, setEditName]       = useState("");
   const [editIsMinor, setEditIsMinor] = useState(false);
@@ -87,6 +92,18 @@ export function Patients() {
     // Desktop split view keeps the topbar + FAB visible; the expediente
     // renders inline alongside the list so nothing is covered.
     if (!isDesktop) setHideFab?.(true);
+  };
+
+  // Close helper — also sends the user back to the screen that opened
+  // the expediente (e.g. Home) when one was recorded. Without this the
+  // user lands on Pacientes, which is disorienting when they never
+  // navigated there themselves.
+  const closeExpediente = () => {
+    setExpediente(null);
+    if (!isDesktop) setHideFab?.(false);
+    const origin = expedienteOrigin;
+    setExpedienteOrigin(null);
+    if (origin && origin !== "patients") navigate(origin);
   };
 
   // Right-click menu for patient rows. Desktop-only affordance —
@@ -129,7 +146,8 @@ export function Patients() {
   useEffect(() => {
     const pending = consumeExpediente?.();
     if (pending) {
-      const match = patients.find(p => p.id === pending.id) || pending;
+      const match = patients.find(p => p.id === pending.patient.id) || pending.patient;
+      setExpedienteOrigin(pending.origin || null);
       openDetail(match);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -369,7 +387,7 @@ export function Patients() {
               tagDocumentSession={tagDocumentSession}
               deleteDocument={deleteDocument}
               getDocumentUrl={getDocumentUrl}
-              onClose={() => setExpediente(null)}
+              onClose={closeExpediente}
               onRecordPayment={openRecordPaymentModal}
               onEdit={(p) => {
                 const scheds = [{ day: p.day, time: p.time }];
@@ -711,10 +729,14 @@ export function Patients() {
           tagDocumentSession={tagDocumentSession}
           deleteDocument={deleteDocument}
           getDocumentUrl={getDocumentUrl}
-          onClose={() => { setExpediente(null); setHideFab?.(false); }}
+          onClose={closeExpediente}
           onRecordPayment={openRecordPaymentModal}
           onEdit={(p) => {
+            // "Editar" jumps into the edit sheet in-place on Pacientes
+            // — don't forward the user back to the origin (e.g. Home)
+            // in that case, they need to stay here to finish editing.
             setExpediente(null);
+            setExpedienteOrigin(null);
             setHideFab?.(false);
             setSelected(p);
             const scheds = [{ day: p.day, time: p.time }];

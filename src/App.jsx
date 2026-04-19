@@ -282,8 +282,19 @@ function AppShell({ user, signOut, demo, theme }) {
     consumeFabAction: () => setPendingFabAction(null),
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
-    openExpediente: (patient) => { pendingExpedienteRef.current = patient; setScreen("patients"); },
-    consumeExpediente: () => { const p = pendingExpedienteRef.current; pendingExpedienteRef.current = null; return p; },
+    openExpediente: (patient) => {
+      // Remember which screen the user came from so closing the
+      // expediente can take them back there instead of stranding them
+      // on Pacientes. Only set an origin when the caller isn't already
+      // on Pacientes — otherwise closing would navigate to itself.
+      pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
+      setScreen("patients");
+    },
+    consumeExpediente: () => {
+      const v = pendingExpedienteRef.current;
+      pendingExpedienteRef.current = null;
+      return v;
+    },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
   }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg, online, pendingFabAction]);
