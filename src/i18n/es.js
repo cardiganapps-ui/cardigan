@@ -195,6 +195,7 @@ export default {
     enterName: "Ingresa el nombre del paciente.",
     birthdate: "Fecha de nacimiento",
     startDate: "Fecha de inicio",
+    notRecurring: "Sin recurrencia",
     yearsOld: "años",
     tutorFrequency: "Frecuencia de sesiones con tutor",
     tutorFrequencyHint: "Recibe recordatorios cuando sea hora de agendar",

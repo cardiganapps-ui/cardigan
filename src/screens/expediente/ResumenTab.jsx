@@ -2,7 +2,47 @@ import { useMemo } from "react";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
+
+// ── Date helpers ──
+// Both display formats render in Spanish and are used in the patient's
+// recurring-schedule rows on the Resumen card.
+function formatISODateLong(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Derive the patient's active recurring schedule(s) from their
+// non-cancelled sessions. Returns an array of { day, time } pairs sorted
+// Monday→Sunday, time ascending, deduped. Prefers future sessions; falls
+// back to all sessions for ended patients so the historical schedule
+// still shows on the expediente.
+function derivePatientSchedules(sessions, patientId, includePast) {
+  const today = todayISO();
+  const seen = new Set();
+  const result = [];
+  for (const s of sessions) {
+    if (s.patient_id !== patientId) continue;
+    if (s.status === "cancelled" || s.status === "charged") continue;
+    if (!includePast) {
+      const iso = shortDateToISO(s.date);
+      if (iso < today) continue;
+    }
+    const key = `${s.day}|${s.time}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ day: s.day, time: s.time });
+  }
+  result.sort((a, b) => {
+    const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
+    if (di !== 0) return di;
+    return (a.time || "").localeCompare(b.time || "");
+  });
+  return result;
+}
 
 const SECTION_LABEL_STYLE = {
   fontSize: "var(--text-xs)",
@@ -34,11 +74,50 @@ export function ResumenTab({
     };
   }, [filteredSessions]);
 
+  // ── Recurring schedule rows ──
+  // Active patients show their current/upcoming (day, time) pairs; ended
+  // patients fall back to the historical schedule so the card still has
+  // context. The last-session date becomes the effective "end date" for
+  // ended patients (we don't store end_date on the row).
+  const isEnded = patient.status === "ended";
+  const schedules = useMemo(
+    () => derivePatientSchedules(upcomingSessions || [], patient.id, isEnded),
+    [upcomingSessions, patient.id, isEnded]
+  );
+
+  const lastSessionDate = useMemo(() => {
+    let latestIso = null;
+    for (const s of (upcomingSessions || [])) {
+      if (s.patient_id !== patient.id) continue;
+      if (s.status === "cancelled" || s.status === "charged") continue;
+      const iso = shortDateToISO(s.date);
+      if (iso > todayISO()) continue;
+      if (!latestIso || iso > latestIso) latestIso = iso;
+    }
+    return latestIso;
+  }, [upcomingSessions, patient.id]);
+
+  const nextSessionDate = useMemo(() => {
+    let earliestIso = null;
+    const today = todayISO();
+    for (const s of (upcomingSessions || [])) {
+      if (s.patient_id !== patient.id) continue;
+      if (s.status === "cancelled" || s.status === "charged") continue;
+      const iso = shortDateToISO(s.date);
+      if (iso < today) continue;
+      if (!earliestIso || iso < earliestIso) earliestIso = iso;
+    }
+    return earliestIso;
+  }, [upcomingSessions, patient.id]);
+
   return (
     <div style={{ padding:"16px" }}>
       {/* General info */}
       <div className="card" style={{ padding:0, marginBottom:10 }}>
         {(() => {
+          const scheduleValue = schedules.length === 0
+            ? t("patients.notRecurring") || "Sin recurrencia"
+            : schedules.map(s => `${s.day} · ${s.time}`).join("\n");
           const rows = [
             ...(patient.birthdate ? [{ label: t("patients.birthdate"), value: (() => {
               const birth = new Date(patient.birthdate + "T00:00:00");
@@ -49,15 +128,19 @@ export function ResumenTab({
               return `${birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })} (${age} ${t("patients.yearsOld")})`;
             })() }] : []),
             { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
+            { label: t("patients.schedules"), value: scheduleValue, multiline: schedules.length > 1 },
+            ...(patient.start_date ? [{ label: t("patients.startDate"), value: formatISODateLong(patient.start_date) }] : []),
+            ...(!isEnded && nextSessionDate ? [{ label: t("home.nextSession"), value: formatISODateLong(nextSessionDate) }] : []),
+            ...(isEnded && lastSessionDate ? [{ label: t("patients.endDate"), value: formatISODateLong(lastSessionDate) }] : []),
             ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
             ...(patient.tutor_frequency ? [{ label: t("expediente.tutorFrequencyRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
           ];
           return (
             <>
               {rows.map((row, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", minHeight:42, padding:"10px 16px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none" }}>
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems: row.multiline ? "flex-start" : "center", minHeight:42, padding:"10px 16px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none", gap:12 }}>
                   <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, fontWeight:600, color:"var(--charcoal)" }}>{row.value}</span>
+                  <span style={{ fontSize:"var(--text-sm)", lineHeight:1.35, fontWeight:600, color:"var(--charcoal)", textAlign:"right", whiteSpace:"pre-line" }}>{row.value}</span>
                 </div>
               ))}
             </>

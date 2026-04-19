@@ -425,43 +425,50 @@ export function PatientExpediente({
 
         {/* Header */}
         <div style={{ padding:"0 16px 0" }}>
+          {/* Row 1 — name always gets full width so long names don't get
+              truncated by the action icons that used to share this row. */}
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={startClose} aria-label={t("back")}
-            style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
-            <IconChevron size={20} />
-          </button>
-          <Avatar initials={patient.initials} color={getClientColor(patient.colorIdx)}
-            style={{ width:48, height:48, fontSize:"var(--text-lg)" }} />
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{patient.name}</div>
-            <div style={{ marginTop:3 }}>
-              <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
+            <button onClick={startClose} aria-label={t("back")}
+              style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
+              <IconChevron size={20} />
+            </button>
+            <Avatar initials={patient.initials} color={getClientColor(patient.colorIdx)}
+              style={{ width:48, height:48, fontSize:"var(--text-lg)" }} />
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", wordBreak:"break-word", lineHeight:1.15 }}>{patient.name}</div>
+              <div style={{ marginTop:3 }}>
+                <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
+              </div>
             </div>
           </div>
-          {patient.phone && (
-            <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
-              onClick={e => e.stopPropagation()}
-              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
-              <IconPhone size={16} />
-            </a>
-          )}
-          {patient.email && (
-            <a href={emailHref(patient.email)} aria-label={t("settings.email")}
-              onClick={e => e.stopPropagation()}
-              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
-              <IconMail size={16} />
-            </a>
-          )}
-          <button type="button" onClick={() => openNewNote()} aria-label={t("notes.addNote")}
-            style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
-            <IconClipboard size={16} />
-          </button>
-          <button onClick={() => onEdit(patient)}
-            style={{ padding:"6px 14px", fontSize:"var(--text-sm)", fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
-            {t("edit")}
-          </button>
-          <HelpTip tipsKey="help.expediente" />
-        </div>
+          {/* Row 2 — contact + quick actions. Kept on its own line so the
+              name in Row 1 never gets pushed or ellipsized. */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, flexWrap:"wrap" }}>
+            {patient.phone && (
+              <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
+                onClick={e => e.stopPropagation()}
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                <IconPhone size={16} />
+              </a>
+            )}
+            {patient.email && (
+              <a href={emailHref(patient.email)} aria-label={t("settings.email")}
+                onClick={e => e.stopPropagation()}
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                <IconMail size={16} />
+              </a>
+            )}
+            <button type="button" onClick={() => openNewNote()} aria-label={t("notes.addNote")}
+              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
+              <IconClipboard size={16} />
+            </button>
+            <div style={{ flex:1 }} />
+            <button onClick={() => onEdit(patient)}
+              style={{ padding:"6px 14px", fontSize:"var(--text-sm)", fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
+              {t("edit")}
+            </button>
+            <HelpTip tipsKey="help.expediente" />
+          </div>
         {/* Tabs */}
         <div role="tablist" style={{ display:"flex", gap:0, marginTop:14 }}>
           {tabs.map(t => (
