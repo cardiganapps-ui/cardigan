@@ -1,6 +1,16 @@
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { useT } from "../../i18n/index";
+
+const FILTER_LABEL_STYLE = {
+  fontSize: "10px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "var(--charcoal-xl)",
+  marginBottom: 6,
+};
 
 export function SesionesTab({
   pSessions, pNotes, sessCounts,
@@ -21,39 +31,41 @@ export function SesionesTab({
 
   return (
     <div style={{ padding:"16px" }}>
-      {/* Filters */}
-      <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
-        {/* Type filter */}
+      {/* Filters — two clearly-grouped segmented controls. The previous
+          double-row of identical chips read as "a bunch of random
+          buttons"; labeling each group (Tipo / Estado) and swapping the
+          loose chips for a single slider-style control per row makes the
+          relationship obvious. Tipo only appears when the patient has
+          any tutor sessions. */}
+      <div style={{ marginBottom:12, display:"flex", flexDirection:"column", gap:12 }}>
         {sessCounts.tutor > 0 && (
-          <div style={{ display:"flex", gap:4 }}>
-            {[
-              { key: "all", label: t("expediente.allTypes") },
-              { key: "patient", label: t("expediente.patientType") },
-              { key: "tutor", label: t("expediente.tutorType") },
-            ].map(f => (
-              <button key={f.key} type="button"
-                className={`chip ${sessTypeFilter === f.key ? "active" : ""}`}
-                style={sessTypeFilter === f.key && f.key === "tutor" ? { background:"var(--purple)", borderColor:"var(--purple)", color:"var(--white)" } : undefined}
-                onClick={() => setSessTypeFilter(f.key)}>
-                {f.label}
-              </button>
-            ))}
+          <div>
+            <div style={FILTER_LABEL_STYLE}>{t("expediente.type")}</div>
+            <SegmentedControl
+              value={sessTypeFilter}
+              onChange={setSessTypeFilter}
+              ariaLabel={t("expediente.type")}
+              items={[
+                { k: "all",     l: t("expediente.allTypes") },
+                { k: "patient", l: t("expediente.patientType") },
+                { k: "tutor",   l: t("expediente.tutorType") },
+              ]}
+            />
           </div>
         )}
-        {/* Status filter */}
-        <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-          {[
-            { key: "all", label: t("expediente.allStatuses") },
-            { key: "completed", label: t("expediente.attended") },
-            { key: "cancelled_any", label: t("expediente.cancelled") },
-            { key: "scheduled", label: t("sessions.scheduled") },
-          ].map(f => (
-            <button key={f.key} type="button"
-              className={`chip ${sessStatusFilter === f.key ? "active" : ""}`}
-              onClick={() => setSessStatusFilter(f.key)}>
-              {f.label}
-            </button>
-          ))}
+        <div>
+          <div style={FILTER_LABEL_STYLE}>{t("expediente.filterStatus")}</div>
+          <SegmentedControl
+            value={sessStatusFilter}
+            onChange={setSessStatusFilter}
+            ariaLabel={t("expediente.filterStatus")}
+            items={[
+              { k: "all",            l: t("expediente.allStatuses") },
+              { k: "scheduled",      l: t("sessions.scheduled") },
+              { k: "completed",      l: t("expediente.attended") },
+              { k: "cancelled_any",  l: t("expediente.cancelled") },
+            ]}
+          />
         </div>
       </div>
 
