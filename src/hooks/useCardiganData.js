@@ -165,13 +165,18 @@ export function useCardiganData(user, viewAsUserId) {
     // (expediente, Finances filter) — not implemented yet but the data
     // model and shape stay compatible.
     const now = new Date();
-    const sessionsSince = new Date(now); sessionsSince.setMonth(now.getMonth() - 6);
     const paymentsSince = new Date(now); paymentsSince.setMonth(now.getMonth() - 12);
+    // Fetch the full session history for accounting. The amountDue
+    // calculation iterates every non-cancelled session, so a `created_at`
+    // window would silently drop sessions that pre-date it — past
+    // completed sessions would vanish from the "consumed" side and old
+    // future-scheduled sessions would vanish from the "to-subtract" side,
+    // both of which have been reported in the wild as inflated balances.
     let pRes, sRes, pmRes, nRes, dRes;
     try {
       [pRes, sRes, pmRes, nRes, dRes] = await Promise.all([
         q("patients").order("name"),
-        q("sessions", 10000).gte("created_at", sessionsSince.toISOString()).order("created_at"),
+        q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
         q("notes", 500).order("updated_at", { ascending: false }),
         q("documents", 500).order("created_at", { ascending: false }),
@@ -250,7 +255,7 @@ export function useCardiganData(user, viewAsUserId) {
         if (didExtend) {
           const [pRes2, sRes2] = await Promise.all([
             q("patients").order("name"),
-            q("sessions", 10000).gte("created_at", sessionsSince.toISOString()).order("created_at"),
+            q("sessions", 10000).order("created_at"),
           ]);
           pData = mapRows(pRes2.data);
           sData = mapRows(sRes2.data);
@@ -274,7 +279,7 @@ export function useCardiganData(user, viewAsUserId) {
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
-  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate } =
+  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateCancelReason } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment, updatePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
@@ -302,33 +307,27 @@ export function useCardiganData(user, viewAsUserId) {
   }, [upcomingSessions]);
 
   const enrichedPatients = useMemo(() => {
-    const now = new Date();
-    // amountDue = stored patient.billed (all-time cumulative of non-
-    // cancelled sessions at their actual rates) minus sessions that are
-    // still scheduled for the future (those already count in billed but
-    // haven't happened yet) minus what's been paid. This formula works
-    // even when the session window filter hides old past sessions, and
-    // matches the documented spec in CLAUDE.md.
-    const futureByPatient = new Map();
+    // amountDue is derived from the actual session rows (via
+    // enrichedSessions, which auto-completes past scheduled sessions)
+    // rather than the denormalized patient.billed counter. This makes the
+    // balance self-healing: any historical drift in patient.billed from
+    // past accounting bugs is ignored and the visible number matches the
+    // sum of real consumed sessions minus recorded payments.
+    const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
+    const consumedByPatient = new Map();
     for (const s of enrichedSessions) {
-      if (s.status !== SESSION_STATUS.SCHEDULED) continue;
       if (!s.patient_id) continue;
-      const d = parseShortDate(s.date);
-      if (s.time) {
-        const [h, m] = s.time.split(":");
-        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
-      }
-      if (d <= now) continue;
-      if (!futureByPatient.has(s.patient_id)) futureByPatient.set(s.patient_id, []);
-      futureByPatient.get(s.patient_id).push(s);
+      // A session counts toward billed once it's been "consumed":
+      // completed (real or auto) or cancelled-with-charge. Scheduled
+      // future sessions and no-charge cancellations contribute nothing.
+      if (s.status !== SESSION_STATUS.COMPLETED && s.status !== SESSION_STATUS.CHARGED) continue;
+      const rate = s.rate != null ? s.rate : (rateById.get(s.patient_id) || 0);
+      consumedByPatient.set(s.patient_id, (consumedByPatient.get(s.patient_id) || 0) + rate);
     }
     return patients.map(p => {
-      let futureBilled = 0;
-      const fs = futureByPatient.get(p.id) || [];
-      for (const s of fs) futureBilled += (s.rate != null ? s.rate : p.rate) || 0;
-      const billed = p.billed || 0;
+      const consumed = consumedByPatient.get(p.id) || 0;
       const paid = p.paid || 0;
-      return { ...p, amountDue: Math.max(0, billed - futureBilled - paid) };
+      return { ...p, amountDue: Math.max(0, consumed - paid) };
     });
   }, [patients, enrichedSessions]);
 
@@ -361,6 +360,7 @@ export function useCardiganData(user, viewAsUserId) {
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
     finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality), updateSessionRate: guard(updateSessionRate),
+    updateCancelReason: guard(updateCancelReason),
     createPayment: guard(createPayment), deletePayment: guard(deletePayment), updatePayment: guard(updatePayment),
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
     togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), deleteNotes: guard(deleteNotes),

@@ -46,7 +46,7 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -475,6 +475,7 @@ export function Home({ setScreen, userName }) {
         onReschedule={rescheduleSession}
         onUpdateModality={updateSessionModality}
         onUpdateRate={updateSessionRate}
+        onUpdateCancelReason={updateCancelReason}
         mutating={mutating}
       />
 

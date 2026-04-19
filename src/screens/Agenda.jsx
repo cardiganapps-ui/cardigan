@@ -482,7 +482,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView } = useCardigan();
   const { t } = useT();
   const { isDesktop } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -651,6 +651,11 @@ export function Agenda() {
         onUpdateRate={async (id, rate) => {
           const ok = await updateSessionRate(id, rate);
           if (ok) setSelectedSession(prev => prev ? { ...prev, rate: Number(rate) } : prev);
+          return ok;
+        }}
+        onUpdateCancelReason={async (id, reason) => {
+          const ok = await updateCancelReason(id, reason);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, cancel_reason: reason.trim() || null } : prev);
           return ok;
         }}
         mutating={mutating}

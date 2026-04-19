@@ -11,7 +11,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onOpenNote, onAttachDocument, mutating }) {
+export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, onOpenNote, onAttachDocument, mutating }) {
   const { t } = useT();
   const { openExpediente } = useCardigan();
   useEscape(session ? onClose : null);
@@ -33,6 +33,8 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const [rescheduleErr, setRescheduleErr] = useState("");
   const [editingRate, setEditingRate] = useState(false);
   const [rateInput, setRateInput] = useState("");
+  const [editingReason, setEditingReason] = useState(false);
+  const [reasonInput, setReasonInput] = useState("");
   if (!session) return null;
   const sessionRate = session.rate != null ? session.rate : (patients?.find(p => p.name === session.patient)?.rate || 0);
   const rateDisplay = `$${sessionRate.toLocaleString()}`;
@@ -142,11 +144,43 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
             </div>
           </div>
 
-          {/* Cancel reason display for already-cancelled sessions */}
-          {isCancelled && session.cancel_reason && (
+          {/* Cancel reason for already-cancelled sessions — tap to add or
+              edit. A session cancelled without a reason can still be
+              annotated later without reverting its status. */}
+          {isCancelled && onUpdateCancelReason && (
             <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius)", padding:"10px 14px", marginBottom:14, fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5 }}>
-              <div style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, textTransform:"uppercase", color:"var(--amber)", marginBottom:4 }}>{t("sessions.cancelMotivo")}</div>
-              {session.cancel_reason}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+                <div style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, textTransform:"uppercase", color:"var(--amber)" }}>{t("sessions.cancelMotivo")}</div>
+                {!editingReason && (
+                  <button type="button"
+                    onClick={() => { setReasonInput(session.cancel_reason || ""); setEditingReason(true); }}
+                    style={{ background:"transparent", border:"none", color:"var(--amber)", fontSize:"var(--text-eyebrow)", fontWeight:700, textTransform:"uppercase", cursor:"pointer", padding:0, minHeight:"unset" }}>
+                    {session.cancel_reason ? t("edit") : t("add")}
+                  </button>
+                )}
+              </div>
+              {editingReason ? (
+                <>
+                  <textarea className="input" value={reasonInput} onChange={e => setReasonInput(e.target.value)}
+                    placeholder={t("sessions.cancelReasonPlaceholder")}
+                    rows={2} autoFocus
+                    style={{ resize:"none", fontFamily:"var(--font)", fontSize:13, background:"var(--white)" }} />
+                  <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                    <button className="btn btn-secondary" style={{ flex:1, height:36, fontSize:12 }}
+                      onClick={() => setEditingReason(false)}>{t("cancel")}</button>
+                    <button className="btn" style={{ flex:1, height:36, fontSize:12, background:"var(--amber)", color:"var(--white)", boxShadow:"none", fontWeight:700 }}
+                      disabled={mutating}
+                      onClick={async () => {
+                        const ok = await onUpdateCancelReason(session.id, reasonInput);
+                        if (ok) setEditingReason(false);
+                      }}>{mutating ? t("saving") : t("save")}</button>
+                  </div>
+                </>
+              ) : session.cancel_reason ? (
+                <div>{session.cancel_reason}</div>
+              ) : (
+                <div style={{ color:"var(--charcoal-xl)", fontStyle:"italic" }}>{t("sessions.cancelReasonEmpty")}</div>
+              )}
             </div>
           )}
 

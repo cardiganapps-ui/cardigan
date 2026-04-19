@@ -245,6 +245,7 @@ export default {
     status: "Estado",
     rate: "Honorarios",
     cancelMotivo: "Motivo de cancelaci\u00f3n",
+    cancelReasonEmpty: "Sin motivo registrado",
     deleteConfirm: "\u00bfEliminar esta sesi\u00f3n?",
     yesDelete: "S\u00ed, eliminar",
     confirm: "Confirmar",

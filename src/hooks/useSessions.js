@@ -362,5 +362,18 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate };
+  async function updateCancelReason(sessionId, reason) {
+    const trimmed = (reason || "").trim();
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions")
+      .update({ cancel_reason: trimmed || null })
+      .eq("id", sessionId).eq("user_id", userId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, cancel_reason: trimmed || null } : s));
+    return true;
+  }
+
+  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateCancelReason };
 }

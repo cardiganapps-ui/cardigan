@@ -25,23 +25,20 @@ export function useDemoData() {
     });
   }, [data.sessions]);
 
-  // Enrich patients with amountDue
+  // Enrich patients with amountDue — derived from session rows so the
+  // visible balance always matches consumed sessions minus payments,
+  // mirroring useCardiganData.
   const enrichedPatients = useMemo(() => {
-    const now = new Date();
+    const consumedByPatient = new Map();
+    for (const s of enrichedSessions) {
+      if (!s.patient_id) continue;
+      if (s.status !== "completed" && s.status !== "charged") continue;
+      const rate = s.rate != null ? s.rate : 0;
+      consumedByPatient.set(s.patient_id, (consumedByPatient.get(s.patient_id) || 0) + rate);
+    }
     return data.patients.map(p => {
-      let futureCount = 0;
-      enrichedSessions.forEach(s => {
-        if (s.patient_id !== p.id) return;
-        if (s.status === "cancelled") return;
-        const d = parseShortDate(s.date);
-        if (s.time) {
-          const [h, m] = s.time.split(":");
-          d.setHours(parseInt(h) || 0, parseInt(m) || 0);
-        }
-        if (d > now) futureCount++;
-      });
-      const pastBilled = p.billed - (futureCount * p.rate);
-      return { ...p, amountDue: Math.max(0, pastBilled - p.paid) };
+      const consumed = consumedByPatient.get(p.id) || 0;
+      return { ...p, amountDue: Math.max(0, consumed - (p.paid || 0)) };
     });
   }, [data.patients, enrichedSessions]);
 
@@ -68,7 +65,7 @@ export function useDemoData() {
     createPatient: noop, updatePatient: noop, deletePatient: noop,
     createSession: noop, updateSessionStatus: noop, deleteSession: noop,
     rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
-    updateSessionModality: noop, updateSessionRate: noop,
+    updateSessionModality: noop, updateSessionRate: noop, updateCancelReason: noop,
     createPayment: noop, deletePayment: noop, updatePayment: noop,
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,

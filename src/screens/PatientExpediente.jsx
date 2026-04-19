@@ -28,7 +28,7 @@ export function PatientExpediente({
 }) {
   const inline = layout === "inline";
   const { t, strings } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, deletePayment } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment } = useCardigan();
 
   // ── Enter/close animation state ──
   // `entering` is true for the first paint so the panel mounts at
@@ -530,6 +530,11 @@ export function PatientExpediente({
         onUpdateRate={async (id, rate) => {
           const ok = await updateSessionRate(id, rate);
           if (ok) setSelectedSession(prev => prev ? { ...prev, rate: Number(rate) } : prev);
+          return ok;
+        }}
+        onUpdateCancelReason={async (id, reason) => {
+          const ok = await updateCancelReason(id, reason);
+          if (ok) setSelectedSession(prev => prev ? { ...prev, cancel_reason: reason.trim() || null } : prev);
           return ok;
         }}
         mutating={mutating}
