@@ -46,7 +46,7 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -493,7 +493,12 @@ export function Home({ setScreen, userName }) {
           <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...selectedPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">{selected.name}</span>
+              <button type="button"
+                className="sheet-title"
+                onClick={() => { const p = selected; setSelected(null); openExpediente(p); }}
+                style={{ background:"transparent", border:"none", padding:0, font:"inherit", color:"inherit", textAlign:"left", cursor:"pointer", minHeight:"unset" }}>
+                {selected.name}
+              </button>
               <button className="sheet-close" aria-label={t("close")} onClick={() => setSelected(null)}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
@@ -518,7 +523,7 @@ export function Home({ setScreen, userName }) {
                 </div>
               ))}
               <div style={{ marginTop:20 }}>
-                <button className="btn btn-primary" onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
+                <button className="btn btn-primary-teal" onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
                   {mutating ? t("saving") : t("finances.recordPayment")}
                 </button>
               </div>
