@@ -132,38 +132,46 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
         {sessions.map(s => {
           const tutor = isTutorSession(s);
           const hasNote = pNotes.some(n => n.session_id === s.id);
+          const hasSecondLine = tutor || hasNote;
           return (
             <div className="row-item" key={s.id} onClick={() => onSelect(s)}>
               <div className="row-content">
-                <div className="row-title" style={{ fontFamily:"var(--font-d)", fontWeight:700 }}>
-                  {s.date} · {s.time}
-                </div>
-                <div style={{ marginTop:3, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                  <span className={`session-status ${statusClass(s.status)}`}>
+                {/* Title row: time on the left, status pill pinned to the
+                    right of the same line. Keeps the row a single line when
+                    there's no tutor/note badge, so the list feels denser. */}
+                <div style={{ display:"flex", alignItems:"center", gap:8, minHeight:22 }}>
+                  <div className="row-title" style={{ fontFamily:"var(--font-d)", fontWeight:700, flex:1, minWidth:0 }}>
+                    {s.date} · {s.time}
+                  </div>
+                  <span className={`session-status ${statusClass(s.status)}`} style={{ flexShrink:0 }}>
                     {t(`sessions.${s.status}`)}
                   </span>
-                  {tutor && (
-                    <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
-                      {t("sessions.tutor")}
-                    </span>
-                  )}
-                  {hasNote && (
-                    onOpenNote ? (
-                      <button type="button"
-                        onClick={(e) => { e.stopPropagation(); onOpenNote(s); }}
-                        aria-label={t("notes.noteAttached")}
-                        style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3, background:"none", border:"none", padding:0, margin:0, minHeight:"unset", cursor:"pointer", fontFamily:"var(--font)", WebkitTapHighlightColor:"transparent" }}>
-                        <IconClipboard size={11} />
-                        {t("notes.noteAttached")}
-                      </button>
-                    ) : (
-                      <span style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
-                        <IconClipboard size={11} />
-                        {t("notes.noteAttached")}
-                      </span>
-                    )
-                  )}
                 </div>
+                {hasSecondLine && (
+                  <div style={{ marginTop:3, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                    {tutor && (
+                      <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
+                        {t("sessions.tutor")}
+                      </span>
+                    )}
+                    {hasNote && (
+                      onOpenNote ? (
+                        <button type="button"
+                          onClick={(e) => { e.stopPropagation(); onOpenNote(s); }}
+                          aria-label={t("notes.noteAttached")}
+                          style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3, background:"none", border:"none", padding:0, margin:0, minHeight:"unset", cursor:"pointer", fontFamily:"var(--font)", WebkitTapHighlightColor:"transparent" }}>
+                          <IconClipboard size={11} />
+                          {t("notes.noteAttached")}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize:"var(--text-eyebrow)", color:"var(--teal-dark)", fontWeight:600, display:"inline-flex", alignItems:"center", gap:3 }}>
+                          <IconClipboard size={11} />
+                          {t("notes.noteAttached")}
+                        </span>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
               <span className="row-chevron">›</span>
             </div>
