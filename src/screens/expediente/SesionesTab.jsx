@@ -1,6 +1,5 @@
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
-import { SessionStatusToggle } from "../../components/SessionStatusToggle";
 import { useT } from "../../i18n/index";
 
 export function SesionesTab({
@@ -9,7 +8,6 @@ export function SesionesTab({
   sessDateFrom, setSessDateFrom, sessDateTo, setSessDateTo,
   filteredPSessions, upcomingPSessions, pastPSessions,
   onSelectSession, onOpenNote,
-  onMarkCompleted, readOnly, mutating,
 }) {
   const { t } = useT();
 
@@ -87,9 +85,6 @@ export function SesionesTab({
               pNotes={pNotes}
               onSelect={onSelectSession}
               onOpenNote={onOpenNote}
-              onMarkCompleted={onMarkCompleted}
-              readOnly={readOnly}
-              mutating={mutating}
               t={t}
             />
           )}
@@ -102,9 +97,6 @@ export function SesionesTab({
                 pNotes={pNotes}
                 onSelect={onSelectSession}
                 onOpenNote={onOpenNote}
-                onMarkCompleted={onMarkCompleted}
-                readOnly={readOnly}
-                mutating={mutating}
                 t={t}
               />
             </div>
@@ -124,7 +116,7 @@ const SECTION_LABEL_STYLE = {
   marginBottom: 6,
 };
 
-function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, onMarkCompleted, readOnly, mutating, t }) {
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, t }) {
   if (sessions.length === 0) {
     return (
       <>
@@ -150,9 +142,6 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                   <span className={`session-status ${statusClass(s.status)}`}>
                     {t(`sessions.${s.status}`)}
                   </span>
-                  {!readOnly && onMarkCompleted && (
-                    <SessionStatusToggle session={s} onToggle={onMarkCompleted} disabled={mutating} />
-                  )}
                   {tutor && (
                     <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
                       {t("sessions.tutor")}

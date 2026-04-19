@@ -23,7 +23,7 @@
    textareas, note content, and .note-card-pressing are unaffected. */
 .row-item, .bal-row, .week-event, .chip, .drawer-item, .bottom-tab,
 .kpi-card, .stat-tile, .cal-day, .month-cell, .fab, .fab-action,
-.drawer-user, .hamburger, .icon-btn, .avatar-sm, .session-toggle,
+.drawer-user, .hamburger, .icon-btn, .avatar-sm,
 .topbar-brand, .topbar-new-btn, .topbar-new-item, .topbar-search-btn,
 .segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab,
 .session-status, .session-row, .see-all, .sheet-close, .sheet-handle,
@@ -407,43 +407,6 @@ button.kpi-card:active {
   padding: 3px 10px; border-radius: var(--radius-pill);
   font-size: var(--text-xs); font-weight: 700; display: inline-block;
 }
-
-/* ── INLINE SESSION STATUS TOGGLE ──
-   Small circular button placed in .row-right next to the status pill.
-   Empty (outline) = scheduled, tap marks completed. Filled green =
-   completed, tap reverts to scheduled. Hit target 44×44 via invisible
-   padding so it satisfies the HIG; the visible circle stays compact. */
-.session-toggle {
-  position: relative;
-  width: 44px; height: 44px; min-width: 44px; min-height: 44px;
-  padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: none; cursor: pointer;
-  color: transparent;
-  -webkit-tap-highlight-color: transparent;
-  margin-left: 4px; flex-shrink: 0;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.session-toggle::before {
-  content: "";
-  position: absolute;
-  width: 26px; height: 26px;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
-.session-toggle--pending::before {
-  background: var(--white);
-  border: 1.5px solid var(--border);
-}
-.session-toggle--done::before {
-  background: var(--green);
-  border: 1.5px solid var(--green);
-}
-.session-toggle--done { color: var(--white); }
-.session-toggle:active { transform: scale(0.88); }
-.session-toggle:disabled { opacity: 0.5; cursor: default; }
 
 /* SESSION ROW RAIL — 3px status-colored accent on the left edge.
    Used on .row-item instances that represent a session, applied via
