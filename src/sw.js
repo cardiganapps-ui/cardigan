@@ -11,15 +11,15 @@ import { ExpirationPlugin } from "workbox-expiration";
 precacheAndRoute(self.__WB_MANIFEST);
 
 // ── Update lifecycle ──
-// Without these, every new SW we ship lands in "waiting" state and
-// only takes over once the user force-closes all PWA windows —
-// which on iOS can mean waiting days for a restart. skipWaiting +
-// clients.claim() make the new SW activate immediately, which fires
-// `controllerchange` on the client and triggers the reload wired up
-// in main.jsx. Combined with the visibility + polled update checks,
-// bookmarked PWAs now pick up deploys on the next focus.
-self.addEventListener("install", () => {
-  self.skipWaiting();
+// New SWs stay in "waiting" state until the user explicitly opts in
+// via the UpdatePrompt toast — clicking it posts {type:"SKIP_WAITING"}
+// which calls skipWaiting() below. clients.claim() in activate then
+// takes over all open tabs, which fires `controllerchange` on each
+// client and triggers the reload wired up in main.jsx.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());

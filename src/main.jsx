@@ -9,11 +9,14 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-/* ── Service Worker: aggressive update checks for iOS standalone ──
-   Pair this with self.skipWaiting() / clients.claim() in sw.js — without
-   those, a new SW sits in "waiting" indefinitely and the reload below
-   never fires. `updateViaCache: 'none'` stops iOS from serving a cached
-   /sw.js from HTTP cache, so `reg.update()` actually hits the network. */
+/* ── Service Worker: aggressive update checks + opt-in activation ──
+   We check for new SWs on every focus and every 30 min, but instead of
+   activating them automatically (which would reload mid-action), we
+   surface a "Actualización disponible" toast via UpdatePrompt. The
+   user taps it → we post {type:'SKIP_WAITING'} to the waiting SW →
+   sw.js calls skipWaiting + clients.claim → controllerchange fires →
+   we reload. `updateViaCache: 'none'` stops iOS from serving /sw.js
+   out of HTTP cache, so reg.update() actually hits the network. */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     const reg = await navigator.serviceWorker.register('/sw.js', {
@@ -25,6 +28,22 @@ if ('serviceWorker' in navigator) {
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!refreshing) { refreshing = true; window.location.reload(); }
+    });
+
+    // Announce a waiting SW to the app so it can render the update toast.
+    // Only counts as an "update" when there's already a controller — the
+    // very first SW install on a fresh visit shouldn't prompt a reload.
+    const announce = (sw) => {
+      if (!sw || !navigator.serviceWorker.controller) return;
+      window.dispatchEvent(new CustomEvent('cardigan-update-ready', { detail: sw }));
+    };
+    if (reg.waiting) announce(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const sw = reg.installing;
+      if (!sw) return;
+      sw.addEventListener('statechange', () => {
+        if (sw.state === 'installed') announce(sw);
+      });
     });
 
     // Check for updates when the app regains focus (iOS standalone wakeup)

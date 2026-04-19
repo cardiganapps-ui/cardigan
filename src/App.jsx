@@ -29,6 +29,7 @@ import { Settings } from "./screens/Settings";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
 import { BugReportSheet } from "./components/BugReportFab";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
 import { useNotifications } from "./hooks/useNotifications";
 import "./utils/logBuffer";
@@ -64,7 +65,14 @@ function CardiganApp() {
 }
 
 export default function Cardigan() {
-  return <I18nProvider><CardiganApp /></I18nProvider>;
+  return (
+    <I18nProvider>
+      <CardiganApp />
+      {/* Mount UpdatePrompt outside CardiganApp so the "Actualización
+          disponible" toast shows even on the auth screen / demo mode. */}
+      <UpdatePrompt />
+    </I18nProvider>
+  );
 }
 
 /* ── LoadingSkeleton ──
