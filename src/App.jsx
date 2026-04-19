@@ -190,10 +190,11 @@ function AppShell({ user, signOut, demo, theme }) {
 
     const onTouchStart = (e) => {
       if (drawerOpenRef.current) return;
-      // Narrow 20px edge — anything wider conflicts with the Home
-      // carousel's horizontal pan. The old 28px band was eating swipes
-      // meant for the Hoy/Mañana panels.
-      if (e.touches[0].clientX < 20) {
+      // 32px edge band — wide enough to catch natural thumb swipes from
+      // the left side. Home carousel's onTouchStart ignores < 50px, so a
+      // 32px drawer band leaves an 18px dead-zone between them (no
+      // double-fire).
+      if (e.touches[0].clientX < 32) {
         edgeRef.current = {
           startX: e.touches[0].clientX,
           startY: e.touches[0].clientY,

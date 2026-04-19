@@ -89,8 +89,33 @@ html, body {
   height: 100%;
   overflow: hidden;
   touch-action: manipulation;
+  /* Block the OS text-selection / magnifier loupe from firing on
+     long-press by default. Anything that's meaningful to copy (notes,
+     patient info, cancel reasons, etc.) opts back in via .selectable. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 #root { height: 100%; }
+
+/* Opt-in: re-enable native text selection + the iOS magnifier for
+   content where copying is plausible (note bodies, free-form text, etc.). */
+.selectable,
+.selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* Keep the iOS callout on phone / email links so long-press still opens
+   the native "Call / Add to Contacts / Copy" menu. */
+a[href^="tel:"], a[href^="mailto:"] {
+  -webkit-touch-callout: default;
+}
 
 .shell {
   display: flex; flex-direction: column;
