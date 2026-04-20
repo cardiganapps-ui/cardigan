@@ -285,7 +285,10 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   pointer-events: all;
   display: flex; flex-direction: column;
   will-change: transform;
-  box-shadow: 4px 0 40px rgba(0,0,0,0.3);
+  /* No box-shadow here — a 40px blur on a translated-off-screen drawer
+     bleeds its shadow into the visible viewport's left edge as a faint
+     dark strip, always visible to the left of the home tab. The drawer's
+     dark nav-bg background is enough visual weight when it slides in. */
 }
 
 .drawer-header {
