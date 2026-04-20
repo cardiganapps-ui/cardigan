@@ -23,7 +23,16 @@ export const IconUser = (p) => (
 );
 
 export const IconUsers = (p) => (
-  <I {...p}><circle cx="9" cy="8" r="4"/><path d="M1 21v-1a6 6 0 0112 0v1"/><path d="M16 3.13a4 4 0 010 7.75M23 21v-1a4 4 0 00-3-3.87"/></I>
+  <I {...p}>
+    {/* Two back silhouettes: heads up top, shoulders peeking from the sides */}
+    <circle cx="7" cy="7" r="2.5"/>
+    <circle cx="17" cy="7" r="2.5"/>
+    <path d="M2 14.5a5 5 0 014.5-4.5"/>
+    <path d="M22 14.5a5 5 0 00-4.5-4.5"/>
+    {/* Full front silhouette — larger, centered, slightly lower */}
+    <circle cx="12" cy="10" r="3.5"/>
+    <path d="M5 21v-1a7 7 0 0114 0v1"/>
+  </I>
 );
 
 export const IconDollar = (p) => (
