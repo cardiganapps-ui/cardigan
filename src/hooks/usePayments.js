@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { PAYMENT_METHOD } from "../data/constants";
-import { formatShortDate, getInitials, normalizeShortDate } from "../utils/dates";
+import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 
 export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
@@ -125,45 +125,5 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     return true;
   }
 
-  // The initial fetch in useCardiganData windows payments to the last 12
-  // months. For a single patient's Finanzas tab the therapist may need
-  // older history — this pulls every payment older than what's already
-  // loaded for that patient and merges it into local state. Returns the
-  // count of rows added (0 means there is nothing older in the DB).
-  async function loadOlderPayments(patientId) {
-    if (!patientId || !userId) return 0;
-    setMutationError("");
-
-    const oldestISO = payments.reduce((min, p) => {
-      if (p.patient_id !== patientId || !p.created_at) return min;
-      return (!min || p.created_at < min) ? p.created_at : min;
-    }, null);
-
-    let query = supabase.from("payments").select("*")
-      .eq("user_id", userId)
-      .eq("patient_id", patientId)
-      .order("created_at", { ascending: false });
-    if (oldestISO) query = query.lt("created_at", oldestISO);
-
-    const { data, error } = await query;
-    if (error) { setMutationError(error.message); return 0; }
-
-    const rows = (data || []).map(r => ({
-      ...r,
-      date: r.date ? normalizeShortDate(r.date) : r.date,
-      colorIdx: r.color_idx,
-    }));
-    if (rows.length === 0) return 0;
-
-    let added = 0;
-    setPayments(prev => {
-      const existing = new Set(prev.map(p => p.id));
-      const fresh = rows.filter(r => !existing.has(r.id));
-      added = fresh.length;
-      return fresh.length === 0 ? prev : [...prev, ...fresh];
-    });
-    return added;
-  }
-
-  return { createPayment, deletePayment, updatePayment, loadOlderPayments };
+  return { createPayment, deletePayment, updatePayment };
 }

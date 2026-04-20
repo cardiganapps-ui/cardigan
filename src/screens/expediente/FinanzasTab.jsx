@@ -3,24 +3,12 @@ import { shortDateToISO, todayISO } from "../../utils/dates";
 import { exportPayments } from "../../utils/export";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { SwipeableRow } from "../../components/SwipeableRow";
-import { useCardigan } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 
 export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }) {
   const { t } = useT();
-  const { loadOlderPayments } = useCardigan();
   const [payPeriod, setPayPeriod] = useState("all");
   const [confirmDeletePayId, setConfirmDeletePayId] = useState(null);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  const [noMoreOlder, setNoMoreOlder] = useState(false);
-
-  const handleLoadOlder = async () => {
-    if (loadingOlder || noMoreOlder) return;
-    setLoadingOlder(true);
-    const added = await loadOlderPayments(patient.id);
-    setLoadingOlder(false);
-    if (!added) setNoMoreOlder(true);
-  };
 
   const { payFiltered, payTotal } = useMemo(() => {
     const getPayDateFrom = (p) => {
@@ -123,22 +111,6 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
             })}
           </div>
       }
-
-      {/* Load older payments — the initial fetch windows to 12 months, so
-          this pulls the remaining history for this patient on demand. */}
-      {!noMoreOlder ? (
-        <div style={{ marginTop:12, display:"flex", justifyContent:"center" }}>
-          <button type="button" className="btn btn-secondary"
-            onClick={handleLoadOlder} disabled={loadingOlder}
-            style={{ height:36, padding:"0 16px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 }}>
-            {loadingOlder ? t("finances.loadingOlderPayments") : t("finances.loadOlderPayments")}
-          </button>
-        </div>
-      ) : (
-        <div style={{ marginTop:12, textAlign:"center", fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>
-          {t("finances.noOlderPayments")}
-        </div>
-      )}
     </div>
   );
 }
