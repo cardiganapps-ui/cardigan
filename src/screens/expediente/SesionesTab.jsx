@@ -47,8 +47,8 @@ const FILTER_LABEL_STYLE = {
 };
 
 export function SesionesTab({
-  pSessions, pNotes, sessCounts,
-  sessTypeFilter, setSessTypeFilter, sessStatusFilter, setSessStatusFilter,
+  pSessions, pNotes,
+  sessStatusFilter, setSessStatusFilter,
   sessDateFrom, setSessDateFrom, sessDateTo, setSessDateTo,
   filteredPSessions, upcomingPSessions, pastPSessions,
   onSelectSession, onOpenNote,
@@ -65,12 +65,8 @@ export function SesionesTab({
 
   return (
     <div style={{ padding:"16px" }}>
-      {/* Filters — two clearly-grouped segmented controls. The previous
-          double-row of identical chips read as "a bunch of random
-          buttons"; labeling each group (Tipo / Estado) and swapping the
-          loose chips for a single slider-style control per row makes the
-          relationship obvious. Tipo only appears when the patient has
-          any tutor sessions. */}
+      {/* Filters — Período (date range) + Estado (status). Each group
+          is labeled and uses a single slider-style control per row. */}
       <div style={{ marginBottom:12, display:"flex", flexDirection:"column", gap:12 }}>
         <div>
           <div style={FILTER_LABEL_STYLE}>{t("expediente.period")}</div>
@@ -87,21 +83,6 @@ export function SesionesTab({
             ]}
           />
         </div>
-        {sessCounts.tutor > 0 && (
-          <div>
-            <div style={FILTER_LABEL_STYLE}>{t("expediente.type")}</div>
-            <SegmentedControl
-              value={sessTypeFilter}
-              onChange={setSessTypeFilter}
-              ariaLabel={t("expediente.type")}
-              items={[
-                { k: "all",     l: t("expediente.allTypes") },
-                { k: "patient", l: t("expediente.patientType") },
-                { k: "tutor",   l: t("expediente.tutorType") },
-              ]}
-            />
-          </div>
-        )}
         <div>
           <div style={FILTER_LABEL_STYLE}>{t("expediente.filterStatus")}</div>
           <SegmentedControl

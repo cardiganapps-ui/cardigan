@@ -100,7 +100,6 @@ export function PatientExpediente({
   const [dateTo, setDateTo] = useState(todayISO());
 
   // Session filter state (sesiones tab — also set by Resumen tile clicks)
-  const [sessTypeFilter, setSessTypeFilter] = useState("all");
   const [sessStatusFilter, setSessStatusFilter] = useState("all");
   const [sessDateFrom, setSessDateFrom] = useState(null);
   const [sessDateTo, setSessDateTo] = useState(null);
@@ -131,8 +130,6 @@ export function PatientExpediente({
 
   const filteredPSessions = useMemo(() => {
     return pSessions.filter(s => {
-      if (sessTypeFilter === "patient" && isTutorSession(s)) return false;
-      if (sessTypeFilter === "tutor" && !isTutorSession(s)) return false;
       if (sessStatusFilter !== "all") {
         if (sessStatusFilter === "cancelled_any") {
           if (s.status !== "cancelled" && s.status !== "charged") return false;
@@ -147,7 +144,7 @@ export function PatientExpediente({
       }
       return true;
     });
-  }, [pSessions, sessTypeFilter, sessStatusFilter, sessDateFrom, sessDateTo]);
+  }, [pSessions, sessStatusFilter, sessDateFrom, sessDateTo]);
 
   const { upcomingPSessions, pastPSessions } = useMemo(() => {
     const todayIso = todayISO();
@@ -268,9 +265,8 @@ export function PatientExpediente({
   };
 
   // ── Navigation callbacks for Resumen → other tabs ──
-  const goToSesiones = useCallback((statusFilter, typeFilter = "all") => {
+  const goToSesiones = useCallback((statusFilter) => {
     setSessStatusFilter(statusFilter);
-    setSessTypeFilter(typeFilter);
     setSessDateFrom(dateFrom);
     setSessDateTo(dateTo);
     setTab("sesiones");
@@ -505,8 +501,7 @@ export function PatientExpediente({
 
         {tab === "sesiones" && (
           <SesionesTab
-            pSessions={pSessions} pNotes={pNotes} sessCounts={sessCounts}
-            sessTypeFilter={sessTypeFilter} setSessTypeFilter={setSessTypeFilter}
+            pSessions={pSessions} pNotes={pNotes}
             sessStatusFilter={sessStatusFilter} setSessStatusFilter={setSessStatusFilter}
             sessDateFrom={sessDateFrom} setSessDateFrom={setSessDateFrom}
             sessDateTo={sessDateTo} setSessDateTo={setSessDateTo}

@@ -272,7 +272,7 @@ export function ResumenTab({
               <div style={labelStyle}>{t("expediente.cancelled")}</div>
             </button>
             {showTutor && (
-              <button type="button" onClick={() => onGoToSesiones("all", "tutor")}
+              <button type="button" onClick={() => onGoToSesiones("all")}
                 style={{ ...tileStyle, background:"var(--purple-bg)" }}>
                 <div style={{ ...valStyle, color:"var(--purple)" }}>{fTutor}</div>
                 <div style={labelStyle}>{t("sessions.tutor")}</div>
