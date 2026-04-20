@@ -17,7 +17,7 @@
   @media (prefers-color-scheme: dark) {
     body, .shell { background-color: #1B1815 !important; }
     .card { background-color: #262220 !important; border-color: #3A342F !important; box-shadow: 0 12px 40px rgba(0,0,0,0.4) !important; }
-    .plate { background-color: #203036 !important; box-shadow: 0 8px 32px rgba(127,185,204,0.18) !important; }
+    .plate { background-color: #203036 !important; box-shadow: 0 6px 20px rgba(127,185,204,0.20) !important; }
     .ink { color: #F3EDE3 !important; }
     .ink-soft { color: #C7BEB1 !important; }
     .ink-muted { color: #8F8779 !important; }
@@ -29,11 +29,10 @@
     .note-card { background-color: #1F1C1A !important; border-color: #3A342F !important; }
     .chip { background-color: #1F1C1A !important; border-color: #3A342F !important; }
     .footer-link { color: #C7BEB1 !important; }
-    
   }
   @media only screen and (max-width: 600px) {
-    .card-inner { padding-left: 30px !important; padding-right: 30px !important; }
-    .headline { font-size: 28px !important; }
+    .card-inner { padding-left: 26px !important; padding-right: 26px !important; }
+    .headline { font-size: 26px !important; }
   }
 </style>
 </head>
@@ -42,43 +41,41 @@
 <div style="display:none; font-size:1px; color:#F5F0EB; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">Te damos la bienvenida. Confirma tu correo y empecemos a poner tu consultorio en orden.</div>
 
 <table role="presentation" class="shell" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F0EB;">
-<tr><td align="center" style="padding:64px 20px 40px;">
+<tr><td align="center" style="padding:28px 20px 28px;">
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+  <!-- Brand row: plated teal mark + wordmark side-by-side -->
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px;">
     <tr>
-      <td align="center">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="plate" style="background-color:#EAF4F7; border-radius:22px; box-shadow: 0 10px 30px rgba(91,155,175,0.22);">
-          <tr>
-            <td style="padding:16px; line-height:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="330 240 370 280" width="44" height="40" style="display:block;" aria-hidden="true">
-                <path fill="#5B9BAF" d="M465.486908,353.571228 C474.090210,336.407806 482.106873,319.350922 491.049652,302.794220 C507.495972,272.345459 533.544800,256.787231 567.993652,255.748184 C599.452759,254.799316 625.348145,266.962311 644.410645,291.838776 C680.562561,339.016815 657.004272,409.877563 600.107971,427.019165 C588.789185,430.429291 577.294495,431.815765 565.639832,432.090698 C551.631104,432.421143 541.504761,437.837585 534.487610,450.592590 C520.503235,476.011749 498.809967,491.664398 470.558411,498.628937 C426.776581,509.422028 378.399597,487.563873 359.407501,446.857910 C338.089233,401.166321 357.395447,347.117218 407.480682,325.787262 C425.934418,317.928314 445.234436,317.533417 464.516876,317.984039 C464.901245,318.817078 465.234009,319.205627 465.144745,319.392456 C460.128296,329.888000 455.130615,340.393311 449.992065,350.829224 C448.645355,353.564301 445.784424,353.049988 443.325989,353.217987 C427.544678,354.296600 413.335907,359.111908 401.960358,370.648560 C382.453339,390.431671 380.663818,420.755676 397.709930,442.677643 C420.052704,471.411346 461.031647,475.683807 488.679413,451.990387 C494.767212,446.773315 499.888123,440.578857 503.628876,433.390350 C516.228882,409.177155 536.942078,398.494415 563.450317,397.793243 C573.520630,397.526855 583.406982,396.570374 592.815247,392.808777 C617.522583,382.930389 628.672119,357.778625 626.331421,337.888367 C622.858276,308.375580 595.711487,290.757385 574.521301,290.039307 C549.799683,289.201508 531.911194,298.969116 520.917480,321.527832 C508.438812,347.133484 495.429779,372.480957 482.609070,397.919342 C478.609131,405.855865 472.895386,411.532715 463.257568,411.202484 C450.846710,410.777252 442.988129,397.964691 448.448853,386.801544 C453.863129,375.733368 459.678528,364.861420 465.486908,353.571228z"/>
-              </svg>
-            </td>
-          </tr>
-        </table>
-        <div class="ink" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:18px; font-weight:800; color:#2E2E2E; letter-spacing:-0.02em; margin-top:14px;">cardigan</div>
+      <td valign="middle" class="plate" style="background-color:#EAF4F7; border-radius:14px; box-shadow: 0 6px 20px rgba(91,155,175,0.22); padding:10px; line-height:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="330 240 370 280" width="24" height="22" style="display:block;" aria-hidden="true">
+          <path fill="#5B9BAF" d="M465.486908,353.571228 C474.090210,336.407806 482.106873,319.350922 491.049652,302.794220 C507.495972,272.345459 533.544800,256.787231 567.993652,255.748184 C599.452759,254.799316 625.348145,266.962311 644.410645,291.838776 C680.562561,339.016815 657.004272,409.877563 600.107971,427.019165 C588.789185,430.429291 577.294495,431.815765 565.639832,432.090698 C551.631104,432.421143 541.504761,437.837585 534.487610,450.592590 C520.503235,476.011749 498.809967,491.664398 470.558411,498.628937 C426.776581,509.422028 378.399597,487.563873 359.407501,446.857910 C338.089233,401.166321 357.395447,347.117218 407.480682,325.787262 C425.934418,317.928314 445.234436,317.533417 464.516876,317.984039 C464.901245,318.817078 465.234009,319.205627 465.144745,319.392456 C460.128296,329.888000 455.130615,340.393311 449.992065,350.829224 C448.645355,353.564301 445.784424,353.049988 443.325989,353.217987 C427.544678,354.296600 413.335907,359.111908 401.960358,370.648560 C382.453339,390.431671 380.663818,420.755676 397.709930,442.677643 C420.052704,471.411346 461.031647,475.683807 488.679413,451.990387 C494.767212,446.773315 499.888123,440.578857 503.628876,433.390350 C516.228882,409.177155 536.942078,398.494415 563.450317,397.793243 C573.520630,397.526855 583.406982,396.570374 592.815247,392.808777 C617.522583,382.930389 628.672119,357.778625 626.331421,337.888367 C622.858276,308.375580 595.711487,290.757385 574.521301,290.039307 C549.799683,289.201508 531.911194,298.969116 520.917480,321.527832 C508.438812,347.133484 495.429779,372.480957 482.609070,397.919342 C478.609131,405.855865 472.895386,411.532715 463.257568,411.202484 C450.846710,410.777252 442.988129,397.964691 448.448853,386.801544 C453.863129,375.733368 459.678528,364.861420 465.486908,353.571228z"/>
+        </svg>
+      </td>
+      <td valign="middle" style="padding-left:12px;">
+        <span class="ink" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:19px; font-weight:800; color:#2E2E2E; letter-spacing:-0.02em;">cardigan</span>
       </td>
     </tr>
   </table>
 
-  <table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px; background:#FFFFFF; border-radius:24px; border:1px solid #EDE8E2; box-shadow: 0 2px 4px rgba(46,46,46,0.04), 0 12px 36px rgba(46,46,46,0.08);">
+  <!-- Card -->
+  <table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; background:#FFFFFF; border-radius:22px; border:1px solid #EDE8E2; box-shadow: 0 2px 4px rgba(46,46,46,0.04), 0 10px 30px rgba(46,46,46,0.08);">
 
     <tr>
-      <td class="card-inner" style="padding:60px 56px 0;">
-        <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:18px;">Bienvenida</div>
-        <h1 class="ink headline" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:34px; font-weight:900; color:#2E2E2E; line-height:1.08; letter-spacing:-0.035em;">Qué gusto<br>tenerte aquí.</h1>
-        <p class="ink-soft" style="margin:22px 0 0; font-size:17px; line-height:1.65; color:#4A4A4A;">Confirma tu correo y empecemos. En un momento, tu consultorio quedará en orden.</p>
+      <td class="card-inner" style="padding:34px 44px 0;">
+        <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:12px;">Bienvenida</div>
+        <h1 class="ink headline" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:30px; font-weight:900; color:#2E2E2E; line-height:1.12; letter-spacing:-0.03em;">Qué gusto tenerte.</h1>
+        <p class="ink-soft" style="margin:14px 0 0; font-size:16px; line-height:1.55; color:#4A4A4A;">Confirma tu correo y empecemos. En un momento, tu consultorio quedará en orden.</p>
       </td>
     </tr>
 
     
 
     <tr>
-      <td class="card-inner" style="padding:36px 56px 0;">
+      <td class="card-inner" style="padding:22px 44px 0;">
         <table role="presentation" class="cta" cellpadding="0" cellspacing="0" border="0" width="100%">
           <tr>
             <td align="center" style="border-radius:100px; background-color:#2E2E2E; box-shadow: 0 6px 18px rgba(46,46,46,0.18);">
-              <a href="{{ .ConfirmationURL }}" target="_blank" style="display:block; padding:18px 44px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:15px; font-weight:800; color:#FFFFFF; text-decoration:none; border-radius:100px; letter-spacing:0.01em;">Verificar mi correo →</a>
+              <a href="{{ .ConfirmationURL }}" target="_blank" style="display:block; padding:15px 40px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:15px; font-weight:800; color:#FFFFFF; text-decoration:none; border-radius:100px; letter-spacing:0.01em;">Verificar mi correo →</a>
             </td>
           </tr>
         </table>
@@ -86,24 +83,24 @@
     </tr>
 
     <tr>
-      <td class="card-inner" style="padding:22px 56px 0;">
-        <p class="ink-muted" style="margin:0; font-size:13px; line-height:1.55; color:#A1A1A1; text-align:center;">¿El botón no funciona? Copia este enlace:</p>
-        <p class="ink-teal" style="margin:6px 0 0; font-size:12px; line-height:1.55; color:#5B9BAF; text-align:center; word-break:break-all;">{{ .ConfirmationURL }}</p>
+      <td class="card-inner" style="padding:14px 44px 0;">
+        <p class="ink-muted" style="margin:0; font-size:12px; line-height:1.5; color:#A1A1A1; text-align:center;">¿El botón no funciona? Copia este enlace:</p>
+        <p class="ink-teal" style="margin:4px 0 0; font-size:11px; line-height:1.5; color:#5B9BAF; text-align:center; word-break:break-all;">{{ .ConfirmationURL }}</p>
       </td>
     </tr>
 
     <tr>
-      <td class="card-inner" style="padding:40px 56px 0;">
+      <td class="card-inner" style="padding:24px 44px 0;">
         <div class="rule" style="height:1px; background-color:#EDE8E2; line-height:1px; font-size:0;">&nbsp;</div>
       </td>
     </tr>
 
     <tr>
-      <td class="card-inner" style="padding:24px 56px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="note-card" style="background-color:#FAF7F3; border:1px solid #EDE8E2; border-radius:14px;">
+      <td class="card-inner" style="padding:16px 44px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="note-card" style="background-color:#FAF7F3; border:1px solid #EDE8E2; border-radius:12px;">
           <tr>
-            <td style="padding:14px 18px;">
-              <p class="ink-muted" style="margin:0; font-size:13px; line-height:1.55; color:#7C7C7C;">El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este correo sin preocuparte.</p>
+            <td style="padding:12px 16px;">
+              <p class="ink-muted" style="margin:0; font-size:12px; line-height:1.5; color:#7C7C7C;">El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este correo sin preocuparte.</p>
             </td>
           </tr>
         </table>
@@ -111,29 +108,19 @@
     </tr>
 
     <tr>
-      <td class="card-inner" align="center" style="padding:36px 56px 52px;">
-        <div class="ink-muted" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:#A1A1A1;">Tu consultorio, en orden.</div>
+      <td class="card-inner" align="center" style="padding:20px 44px 28px;">
+        <div class="ink-muted" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:10px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:#A1A1A1;">Tu consultorio, en orden.</div>
       </td>
     </tr>
 
   </table>
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px; margin-top:32px;">
+  <!-- Outer footer (below the fold is fine) -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; margin-top:20px;">
     <tr>
-      <td align="center" style="padding:0 12px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
-          <tr>
-            <td valign="middle" style="padding-right:6px; line-height:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="330 240 370 280" width="14" height="13" style="display:block;" aria-hidden="true">
-                <path fill="#A1A1A1" d="M465.486908,353.571228 C474.090210,336.407806 482.106873,319.350922 491.049652,302.794220 C507.495972,272.345459 533.544800,256.787231 567.993652,255.748184 C599.452759,254.799316 625.348145,266.962311 644.410645,291.838776 C680.562561,339.016815 657.004272,409.877563 600.107971,427.019165 C588.789185,430.429291 577.294495,431.815765 565.639832,432.090698 C551.631104,432.421143 541.504761,437.837585 534.487610,450.592590 C520.503235,476.011749 498.809967,491.664398 470.558411,498.628937 C426.776581,509.422028 378.399597,487.563873 359.407501,446.857910 C338.089233,401.166321 357.395447,347.117218 407.480682,325.787262 C425.934418,317.928314 445.234436,317.533417 464.516876,317.984039 C464.901245,318.817078 465.234009,319.205627 465.144745,319.392456 C460.128296,329.888000 455.130615,340.393311 449.992065,350.829224 C448.645355,353.564301 445.784424,353.049988 443.325989,353.217987 C427.544678,354.296600 413.335907,359.111908 401.960358,370.648560 C382.453339,390.431671 380.663818,420.755676 397.709930,442.677643 C420.052704,471.411346 461.031647,475.683807 488.679413,451.990387 C494.767212,446.773315 499.888123,440.578857 503.628876,433.390350 C516.228882,409.177155 536.942078,398.494415 563.450317,397.793243 C573.520630,397.526855 583.406982,396.570374 592.815247,392.808777 C617.522583,382.930389 628.672119,357.778625 626.331421,337.888367 C622.858276,308.375580 595.711487,290.757385 574.521301,290.039307 C549.799683,289.201508 531.911194,298.969116 520.917480,321.527832 C508.438812,347.133484 495.429779,372.480957 482.609070,397.919342 C478.609131,405.855865 472.895386,411.532715 463.257568,411.202484 C450.846710,410.777252 442.988129,397.964691 448.448853,386.801544 C453.863129,375.733368 459.678528,364.861420 465.486908,353.571228z"/>
-              </svg>
-            </td>
-            <td valign="middle">
-              <a class="footer-link" href="https://cardigan.mx" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:12px; font-weight:700; color:#7C7C7C; text-decoration:none; letter-spacing:-0.01em;">cardigan.mx</a>
-            </td>
-          </tr>
-        </table>
-        <p class="ink-muted" style="margin:0; font-size:11px; line-height:1.6; color:#A1A1A1;">© 2026 Cardigan · Gestión de consultorio para terapeutas</p>
+      <td align="center">
+        <a class="footer-link" href="https://cardigan.mx" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:700; color:#A1A1A1; text-decoration:none; letter-spacing:-0.01em;">cardigan.mx</a>
+        <p class="ink-muted" style="margin:4px 0 0; font-size:11px; line-height:1.5; color:#A1A1A1;">© 2026 Cardigan · Gestión de consultorio para terapeutas</p>
       </td>
     </tr>
   </table>
