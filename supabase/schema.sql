@@ -52,7 +52,7 @@ create table if not exists payments (
   initials text not null,
   amount integer not null check (amount > 0),
   date text not null,
-  method text default 'Transferencia',
+  method text default 'Transferencia' check (method in ('Transferencia', 'Efectivo', 'Tarjeta', 'Retiro sin Tarjeta', 'Otro')),
   note text default null,
   color_idx integer default 0,
   created_at timestamptz default now()
