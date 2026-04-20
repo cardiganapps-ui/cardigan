@@ -28,7 +28,7 @@ npm run bugs -- list     # CLI bug report viewer; also: show <id>, delete <id>, 
 
 Tests live in `src/utils/__tests__/` and cover the pure utilities (dates, sessions, contact, files). No component or hook tests exist — don't invent a testing framework for them.
 
-The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work.
+The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work. `.env.local` additionally carries `SUPABASE_PAT` (Supabase Management API personal access token) and `VERCEL_TOKEN` (Vercel API token) — use these freely for DB admin and deploy operations; the user has accepted the risk and asked that they stay in place.
 
 ## Architecture
 
@@ -51,7 +51,7 @@ Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so e
 - **Duplicate patient names are rejected** at creation.
 
 ### Database & security
-- `supabase/schema.sql` is the canonical schema; incremental changes go in numbered files under `supabase/migrations/`. Keep the `sessions.status` check constraint in sync with `SESSION_STATUS` and keep `ADMIN_EMAIL` (`data/constants.js`) in sync with the `is_admin()` function in `schema.sql`.
+- `supabase/schema.sql` is the canonical schema; forward-looking incremental changes go in numbered files under `supabase/migrations/`. Already-applied catch-up migrations live in `supabase/migrations/archive/` (kept for history, don't re-run). Keep the `sessions.status` and `payments.method` check constraints in sync with `SESSION_STATUS` / `PAYMENT_METHODS` (`data/constants.js`), and keep `ADMIN_EMAIL` in sync with the `is_admin()` function in `schema.sql`.
 - Every table has RLS `auth.uid() = user_id`. Admin read-all policies use the `is_admin()` SQL helper (checks JWT email).
 - Service-role key is ONLY used in `api/` (Vercel serverless) via `api/_admin.js::getServiceClient()`. Admin endpoints must call `requireAdmin(req, res)` first. Never reference `SUPABASE_SERVICE_ROLE_KEY` from anything under `src/`.
 
@@ -74,6 +74,37 @@ Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so e
 - Demo: `AuthScreen → "Ver demo"` bypasses login with `useDemoData`. Teal banner, FAB hidden, all mutations no-op.
 
 Both flows rely on a single `readOnly` flag branching — don't split the rendering paths.
+
+## Ops — running things against live infra
+
+The tokens in `.env.local` give you direct access to the live DB and Vercel project. Prefer small one-off `.mjs` scripts at the repo root (so `@supabase/supabase-js` resolves), run with `node --env-file=.env.local <file>`, then delete when done — they shouldn't accumulate under `scripts/`.
+
+### Supabase Management API (for DDL / arbitrary SQL)
+`POST https://api.supabase.com/v1/projects/{ref}/database/query` with `Authorization: Bearer $SUPABASE_PAT` and JSON body `{ "query": "<sql>" }`. Extract `{ref}` from `SUPABASE_URL` hostname (`<ref>.supabase.co`). This is the only way to run DDL or any statement that PostgREST won't accept.
+
+Runs as the `postgres` role, which has limits:
+- ✅ Arbitrary DML, DDL (`ALTER TABLE`, `CREATE FUNCTION`, etc.), reads from `cron.job` / `cron.job_run_details` / `pg_catalog.*`.
+- ❌ `ALTER DATABASE postgres SET ...` — permission denied. Configure things at role or job scope instead.
+
+For regular data operations, `supabase-js` + the service-role key is simpler and still bypasses RLS.
+
+### Vercel API (for env vars, deploys, project settings)
+Base: `https://api.vercel.com`, header `Authorization: Bearer $VERCEL_TOKEN`. Project name is `cardigan` (find ID via `GET /v9/projects?search=cardigan`).
+
+Gotchas that cost an hour this session:
+- **`type:"encrypted"` env writes work, but reading them back with `?decrypt=true` returns ciphertext** (~1176 chars starting with `eyJ`) because this token lacks the env-decrypt permission. Don't trust read-back to verify a write — verify by redeploying and checking that the running function sees the value. `type:"plain"` reads back as plaintext if you need fast verification.
+- **Redeploy = `POST /v13/deployments`** with `target:"production"`, `name:"cardigan"`, and a `gitSource` `{ type:"github", repoId, ref:"main", sha }`. Get `repoId` from any previous deployment's `meta.githubRepoId` (it's a string in the API — cast to Number before sending). `sha` must actually exist on the given `ref`, so re-read `git rev-parse origin/main` right before triggering.
+- Env var changes take effect **only on next deploy** — you must redeploy after any `CRON_SECRET`/etc. update or the old value stays injected.
+
+### pg_cron + net.http_post quirks
+The only cron job is `send-session-reminders` (every 5 min). The job command is stored as plain text in `cron.job.command` — **secrets are baked into the command text**, not read dynamically from `current_setting()` (that pattern was tried but stored the literal at schedule-time). To rotate the secret: `select cron.alter_job((select jobid from cron.job where jobname='send-session-reminders'), command => $cmd$...$cmd$)`.
+
+- **Call the canonical URL `https://cardigan-app.vercel.app`, not `cardigan-fawn.vercel.app`.** The fawn URL 307-redirects, and cross-origin redirects strip the `Authorization` header per Fetch spec, causing silent 401s. This is also why push reminders hadn't actually been delivering before the fix.
+- After any rotation: update the cron command **and** the Vercel `CRON_SECRET` env var **and** redeploy. Bursty diagnostic failures bloat `net.http_request_queue` and you'll see "Out of memory" in `cron.job_run_details` until it drains. Self-heals within a few ticks.
+- History lives in `cron.job_run_details` — first stop when debugging cron.
+
+### Vercel serverless routes (`api/`)
+Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
 
 ## Conventions
 - **Spanish** for all user-visible text (use `useT()` from `src/i18n`).
