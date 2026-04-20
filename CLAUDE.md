@@ -11,7 +11,7 @@ Mobile-first PWA for therapists to manage patients, sessions, payments, notes, a
 - **Backend:** Supabase (PostgreSQL + Auth + RLS) for data; Cloudflare R2 (via AWS S3 SDK) for document storage
 - **Serverless:** Vercel functions under `api/` for admin ops, R2 presigned URLs, and web-push reminders
 - **PWA:** `vite-plugin-pwa` with `injectManifest` strategy, custom `src/sw.js`
-- **Hosting:** Vercel, auto-deploys from `main`. Live at https://cardigan-fawn.vercel.app
+- **Hosting:** Vercel, auto-deploys from `main`. Live at https://cardigan-app.vercel.app (the older `cardigan-fawn.vercel.app` 307-redirects here — don't point cron / server-to-server calls at the fawn URL; cross-origin redirects strip `Authorization`).
 
 ## Commands
 
