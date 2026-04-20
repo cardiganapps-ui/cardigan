@@ -11,7 +11,8 @@ Mobile-first PWA for therapists to manage patients, sessions, payments, notes, a
 - **Backend:** Supabase (PostgreSQL + Auth + RLS) for data; Cloudflare R2 (via AWS S3 SDK) for document storage
 - **Serverless:** Vercel functions under `api/` for admin ops, R2 presigned URLs, and web-push reminders
 - **PWA:** `vite-plugin-pwa` with `injectManifest` strategy, custom `src/sw.js`
-- **Hosting:** Vercel, auto-deploys from `main`. Live at https://cardigan-app.vercel.app (the older `cardigan-fawn.vercel.app` 307-redirects here — don't point cron / server-to-server calls at the fawn URL; cross-origin redirects strip `Authorization`).
+- **Hosting:** Vercel, auto-deploys from `main`. Live at **https://cardigan.mx** (canonical custom domain — Cloudflare DNS → Vercel). The `.vercel.app` URLs (`cardigan-app.vercel.app`, legacy `cardigan-fawn.vercel.app`) still work but aren't canonical. Don't point server-to-server calls at `cardigan-fawn` — it 307-redirects and cross-origin redirects strip `Authorization`.
+- **Transactional email:** Resend (SMTP) sending from `no-reply@cardigan.mx` via Supabase Auth SMTP. DNS managed in Cloudflare.
 
 ## Commands
 
@@ -28,7 +29,11 @@ npm run bugs -- list     # CLI bug report viewer; also: show <id>, delete <id>, 
 
 Tests live in `src/utils/__tests__/` and cover the pure utilities (dates, sessions, contact, files). No component or hook tests exist — don't invent a testing framework for them.
 
-The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work. `.env.local` additionally carries `SUPABASE_PAT` (Supabase Management API personal access token) and `VERCEL_TOKEN` (Vercel API token) — use these freely for DB admin and deploy operations; the user has accepted the risk and asked that they stay in place.
+The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work. `.env.local` additionally carries admin tokens for full autonomous control — use them freely; the user has accepted the risk and asked they stay in place:
+- `SUPABASE_PAT` — Supabase Management API PAT (DDL, auth config, SMTP settings)
+- `VERCEL_TOKEN` — Vercel API token (env vars, deploys, domains)
+- `CF_API_TOKEN` — Cloudflare API token with full zone + account access on `cardigan.mx` (DNS, SSL, pages, workers, SSL/TLS)
+- `RESEND_API_KEY` — Resend API key (domains, sending, logs)
 
 ## Architecture
 
@@ -102,6 +107,16 @@ The only cron job is `send-session-reminders` (every 5 min). The job command is 
 - **Call the canonical URL `https://cardigan-app.vercel.app`, not `cardigan-fawn.vercel.app`.** The fawn URL 307-redirects, and cross-origin redirects strip the `Authorization` header per Fetch spec, causing silent 401s. This is also why push reminders hadn't actually been delivering before the fix.
 - After any rotation: update the cron command **and** the Vercel `CRON_SECRET` env var **and** redeploy. Bursty diagnostic failures bloat `net.http_request_queue` and you'll see "Out of memory" in `cron.job_run_details` until it drains. Self-heals within a few ticks.
 - History lives in `cron.job_run_details` — first stop when debugging cron.
+
+### Email (Resend + Supabase SMTP + Cloudflare DNS)
+Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, user `resend`, pass = `RESEND_API_KEY`) → Resend → user's inbox, sent from `Cardigan <no-reply@cardigan.mx>`. Templates live in `supabase/emails/*.html` and are uploaded to Supabase via the Management API's `/config/auth` endpoint (fields `mailer_templates_*_content` + `mailer_subjects_*`).
+
+- Supabase hides `smtp_pass` behind a hash on read-back — don't verify writes via read; verify by triggering an auth email and watching Resend logs (`GET https://api.resend.com/emails`).
+- Supabase's default `rate_limit_email_sent` is 2/hour. Bumped to 100/hour.
+- Resend's sandbox sender `onboarding@resend.dev` **only sends to the account owner's email** — useless for real users. A verified custom domain is required.
+- Cloudflare holds DNS for `cardigan.mx`. Adding Resend domain = 3 records (TXT DKIM `resend._domainkey`, MX `send`, TXT SPF `send`). Verification takes ~60s on Cloudflare.
+- `mailer_autoconfirm: false` — new signups must click "Verificar mi correo" before they can sign in. The `AuthScreen`'s `VerifyPendingPanel` surfaces this (same panel is reused when an unverified user tries to sign in).
+- Canonical custom domain CNAMEs (apex + www) point at `cname.vercel-dns.com`, proxied=false so Vercel SSL issuance doesn't bounce off Cloudflare's proxy.
 
 ### Vercel serverless routes (`api/`)
 Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
