@@ -1,27 +1,32 @@
 /* PAGE ──
    `overflow-y: scroll` (not auto) guarantees the container is always a
-   scroll area on iOS Safari, even when content fits in the viewport —
-   so elastic rubber-band bounce is consistent on every screen. Pair it
-   with `overscroll-behavior-y: contain` to keep the bounce inside the
-   page (bounce happens) without chaining up to <body> (which has
-   overflow:hidden anyway). The 1px ::after below guarantees the content
-   is always at least 1px taller than the container, so iOS fires its
-   bounce even when a screen has less content than the viewport can show
-   (e.g. empty Patients list). Padding-bottom clears the fixed tab bar
-   (+ a small breathing margin) so the last row isn't hidden when the
-   user scrolls to the bottom. */
+   scroll area on iOS Safari. For elastic rubber-band bounce to actually
+   fire on short pages (e.g. Pacientes with just 1 patient), the scroll
+   CONTENT must be at least 1px taller than the container — otherwise
+   iOS has nothing to spring from. The flex + filler below forces that:
+   `.page` is a flex column, all children stack at their natural size
+   (flex-shrink:0 prevents compression), and `::after` grows to fill any
+   leftover space plus at least 1px. On overflowing content the filler
+   contributes only its 1px minimum. Padding-bottom clears the fixed
+   tab bar so the last row isn't hidden. */
 .page {
   flex: 1;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  /* Matches the compacted tab-bar height (h + trimmed-sab) + 8px buffer */
+  display: flex;
+  flex-direction: column;
   padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
 }
 .page::-webkit-scrollbar { display: none; }
-/* iOS elastic-bounce enabler — see the page comment above. Reused by
-   other scroll containers via the shared selector below. */
-.page::after,
+.page > * { flex-shrink: 0; }
+.page::after {
+  content: "";
+  flex: 1 0 1px;
+  pointer-events: none;
+}
+/* iOS bounce enabler for non-.page scroll containers — simple 1px
+   pseudo works where the flex-filler trick above would change layout. */
 .drawer-nav::after,
 .cmdp-list::after,
 .sheet-panel::after,
