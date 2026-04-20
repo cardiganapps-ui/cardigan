@@ -6,6 +6,56 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 
+/* ── Verification panel ──
+   Shown inside the auth sheet when signUp returns pendingVerification
+   (email verification is required) or when a signIn attempt is rejected
+   because the email hasn't been verified yet. Same look & feel as the
+   branded email templates: teal accent bar, big Nunito headline, warm
+   muted body copy, charcoal primary CTA. */
+function VerifyPendingPanel({ email, onGoToLogin, t }) {
+  const [resending, setResending] = useState(false);
+  const [resentAt, setResentAt] = useState(0);
+  const [resendError, setResendError] = useState("");
+
+  const resend = async () => {
+    if (resending) return;
+    setResendError("");
+    setResending(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setResending(false);
+    if (error) { setResendError(t("auth.verifyResendError")); return; }
+    setResentAt(Date.now());
+  };
+
+  const resentRecently = resentAt && (Date.now() - resentAt < 4000);
+
+  return (
+    <div style={{ paddingTop: 4 }}>
+      <div style={{ width: 32, height: 3, background: "var(--teal)", borderRadius: 100, marginBottom: 18 }} />
+      <div style={{ fontFamily: "var(--font-d)", fontSize: 24, fontWeight: 900, color: "var(--charcoal)", letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 12 }}>
+        {t("auth.verifyTitle")}
+      </div>
+      <div style={{ fontSize: 15, color: "var(--charcoal-md)", lineHeight: 1.6 }}>
+        {t("auth.verifyBodyBefore")}
+        <strong style={{ color: "var(--charcoal)", fontWeight: 700, wordBreak: "break-all" }}>{email}</strong>
+        {t("auth.verifyBodyAfter")}
+      </div>
+      <div style={{ marginTop: 14, padding: "10px 14px", background: "var(--teal-pale)", borderRadius: "var(--radius)", fontSize: 13, color: "var(--teal-dark)", lineHeight: 1.5 }}>
+        {t("auth.verifyTip")}
+      </div>
+      {resendError && <div style={{ fontSize: 13, color: "var(--red)", marginTop: 12 }}>{resendError}</div>}
+      <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8 }}>
+        <button className="btn btn-primary" type="button" onClick={onGoToLogin}>
+          {t("auth.verifyGoToLogin")}
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={resend} disabled={resending}>
+          {resending ? t("auth.verifyResending") : resentRecently ? t("auth.verifyResendSent") : t("auth.verifyResend")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Auth form (reused inside sheet) ──
    The landing page is English; the auth form stays in Spanish to match
    the rest of the app, which is Spanish-only per CLAUDE.md. */
@@ -17,8 +67,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   const [submitting, setSubmitting] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
   const [message, setMessage] = useState("");
+  // When non-null, render the VerifyPendingPanel instead of the form.
+  // Set by signUp (fresh signup waiting for verification) or by signIn
+  // (tried to log in with an unverified account).
+  const [pendingEmail, setPendingEmail] = useState(null);
 
-  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); };
+  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); };
 
   const handleProvider = async (provider) => {
     if (!onProvider || providerBusy) return;
@@ -52,13 +106,25 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
       const result = await onSignUp({ email, password, name: name.trim() });
       setSubmitting(false);
       if (result.error) { setError(result.error); return; }
+      if (result.pendingVerification) { setPendingEmail(result.email || email); return; }
       return;
     }
 
     const result = await onSignIn({ email, password });
     setSubmitting(false);
+    if (result.pendingVerification) { setPendingEmail(result.email || email); return; }
     if (result.error) { setError(result.error); return; }
   };
+
+  if (pendingEmail) {
+    return (
+      <VerifyPendingPanel
+        email={pendingEmail}
+        onGoToLogin={() => { setPendingEmail(null); switchMode("login"); }}
+        t={t}
+      />
+    );
+  }
 
   if (message) {
     return (

@@ -118,6 +118,16 @@ export default {
     continueWithApple: "Continuar con Apple",
     orWithEmail: "o continúa con tu correo",
     providerError: "No se pudo iniciar sesión. Intenta de nuevo.",
+    verifyTitle: "Revisa tu correo",
+    verifyBodyBefore: "Te enviamos un enlace de verificación a ",
+    verifyBodyAfter: ". Ábrelo para activar tu cuenta antes de iniciar sesión.",
+    verifyTip: "¿No lo ves? Revisa la carpeta de spam o promociones.",
+    verifyResend: "Reenviar correo",
+    verifyResendSent: "Correo reenviado",
+    verifyResending: "Enviando\u2026",
+    verifyGoToLogin: "Ya verifiqué, iniciar sesión",
+    verifyResendError: "No pudimos reenviar el correo. Intenta de nuevo en un momento.",
+    notConfirmedError: "Debes verificar tu correo antes de iniciar sesión.",
   },
 
   // ── Patients ──

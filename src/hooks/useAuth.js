@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
+// Supabase returns this exact message when a user tries to sign in with
+// an email that hasn't been verified yet. Detected so the UI can surface
+// a "check your inbox / resend" panel instead of a raw error string.
+const EMAIL_NOT_CONFIRMED = /email not confirmed/i;
+
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,30 +27,25 @@ export function useAuth() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { full_name: name },
-      },
+      options: { data: { full_name: name } },
     });
     if (error) return { error: error.message };
-    // If the Supabase project still has "Confirm email" on, signUp returns
-    // no session. Try to sign in immediately so the user lands in the app
-    // without needing a confirmation click.
-    if (!data.session) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) return { error: signInError.message };
-    }
+    // With email verification on (mailer_autoconfirm=false), signUp returns
+    // no session. Don't attempt a silent signInWithPassword — it would fail
+    // with "Email not confirmed" and mask the real next step. Surface a
+    // verification signal so the UI can show the "check your inbox" panel.
+    if (!data.session) return { pendingVerification: true, email };
     return { data };
   }
 
   async function signIn({ email, password }) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) return { error: error.message };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (EMAIL_NOT_CONFIRMED.test(error.message)) {
+        return { pendingVerification: true, email };
+      }
+      return { error: error.message };
+    }
     return { data };
   }
 
