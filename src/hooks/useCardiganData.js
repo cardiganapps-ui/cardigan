@@ -290,7 +290,7 @@ export function useCardiganData(user, viewAsUserId) {
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
   const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateCancelReason } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
-  const { createPayment, deletePayment, updatePayment } =
+  const { createPayment, deletePayment, updatePayment, loadOlderPayments } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
   const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes } =
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError);
@@ -371,6 +371,7 @@ export function useCardiganData(user, viewAsUserId) {
     finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality), updateSessionRate: guard(updateSessionRate),
     updateCancelReason: guard(updateCancelReason),
     createPayment: guard(createPayment), deletePayment: guard(deletePayment), updatePayment: guard(updatePayment),
+    loadOlderPayments,
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
     togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), deleteNotes: guard(deleteNotes),
     uploadDocument: guard(uploadDocument), renameDocument: guard(renameDocument),

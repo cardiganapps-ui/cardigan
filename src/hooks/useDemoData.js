@@ -67,6 +67,7 @@ export function useDemoData() {
     rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
     updateSessionModality: noop, updateSessionRate: noop, updateCancelReason: noop,
     createPayment: noop, deletePayment: noop, updatePayment: noop,
+    loadOlderPayments: async () => 0,
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,
     refresh: async () => {},
