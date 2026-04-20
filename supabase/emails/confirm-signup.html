@@ -3,204 +3,99 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>Confirma tu cuenta — Cardigan</title>
-<!--[if mso]>
-<noscript>
-<xml>
-<o:OfficeDocumentSettings>
-<o:PixelsPerInch>96</o:PixelsPerInch>
-</o:OfficeDocumentSettings>
-</xml>
-</noscript>
-<![endif]-->
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
 <style>
-  /* Reset */
   body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
   table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
   img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
   body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
   a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
-
-  /* Base */
-  body {
-    font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #F5F0EB;
-    color: #2E2E2E;
-  }
-
-  /* Dark mode */
+  body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F5F0EB; color: #2E2E2E; }
   @media (prefers-color-scheme: dark) {
-    body { background-color: #1A1A1A !important; }
-    .email-body { background-color: #242424 !important; }
-    .email-card { background-color: #2A2A2A !important; border-color: #3D3D3D !important; }
-    .text-charcoal { color: #E8E8E8 !important; }
-    .text-muted { color: #9E9E9E !important; }
-    .text-teal { color: #7AB5C7 !important; }
-    .divider { border-color: #3D3D3D !important; }
-    .feature-card { background-color: #333333 !important; border-color: #3D3D3D !important; }
-    .footer-text { color: #777 !important; }
-    .btn-primary { background-color: #5B9BAF !important; color: #FFFFFF !important; }
+    body, .shell { background-color: #1F1C18 !important; }
+    .card { background-color: #262220 !important; border-color: #3A342F !important; box-shadow: 0 4px 20px rgba(0,0,0,0.32) !important; }
+    .ink { color: #F3EDE3 !important; }
+    .ink-soft { color: #C7BEB1 !important; }
+    .ink-muted { color: #8F8779 !important; }
+    .ink-teal { color: #7FB9CC !important; }
+    .rule { background-color: #3A342F !important; }
+    .accent { background-color: #7FB9CC !important; }
+    .cta td { background-color: #F3EDE3 !important; }
+    .cta a { color: #262220 !important; }
+    .brand-mark { filter: invert(1) brightness(0.92); }
+  }
+  @media only screen and (max-width: 560px) {
+    .card-inner { padding-left: 28px !important; padding-right: 28px !important; }
   }
 </style>
 </head>
-<body style="margin:0; padding:0; background-color:#F5F0EB; font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<body style="margin:0; padding:0; background-color:#F5F0EB;">
 
-<!-- Preheader (hidden text for email preview) -->
-<div style="display:none; font-size:1px; color:#F5F0EB; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
-  Tu cuenta de Cardigan está casi lista. Confirma tu correo para comenzar a gestionar tu consultorio.
-</div>
+<div style="display:none; font-size:1px; color:#F5F0EB; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">Verifica tu correo para activar tu cuenta de Cardigan y empezar a poner tu consultorio en orden.</div>
 
-<!-- Outer wrapper -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F0EB;" class="email-body">
-<tr>
-<td align="center" style="padding: 40px 20px 48px;">
+<table role="presentation" class="shell" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F0EB;">
+<tr><td align="center" style="padding:56px 20px;">
 
-  <!-- Main card -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px; background:#FFFFFF; border-radius:16px; border:1px solid #EDE8E2; box-shadow:0 2px 12px rgba(46,46,46,0.06);" class="email-card">
-
-    <!-- Logo header -->
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
     <tr>
-      <td align="center" style="padding: 40px 40px 0;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td valign="middle" style="padding-right:9px;">
-              <!-- Cardigan logo mark (inline SVG) -->
-              <img src="https://cardigan-fawn.vercel.app/icon-192.png" alt="Cardigan" width="28" height="28" style="display:block; width:28px; height:28px;" />
-            </td>
-            <td valign="middle">
-              <span style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:20px; font-weight:800; color:#2E2E2E; letter-spacing:-0.3px;" class="text-charcoal">cardigan</span>
-            </td>
-          </tr>
-        </table>
+      <td valign="middle" style="padding-right:10px;">
+        <img class="brand-mark" src="https://cardigan-app.vercel.app/icon-192.png" alt="" width="26" height="26" style="display:block; width:26px; height:26px;">
+      </td>
+      <td valign="middle">
+        <span class="ink" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:20px; font-weight:800; color:#2E2E2E; letter-spacing:-0.02em;">cardigan</span>
       </td>
     </tr>
-
-    <!-- Divider -->
-    <tr>
-      <td style="padding: 28px 40px 0;">
-        <div style="border-top:1px solid #EDE8E2;" class="divider"></div>
-      </td>
-    </tr>
-
-    <!-- Headline -->
-    <tr>
-      <td style="padding: 32px 40px 0;">
-        <h1 style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:28px; font-weight:900; color:#2E2E2E; line-height:1.15; letter-spacing:-0.02em;" class="text-charcoal">
-          Bienvenido a Cardigan.
-        </h1>
-      </td>
-    </tr>
-
-    <!-- Body copy -->
-    <tr>
-      <td style="padding: 16px 40px 0;">
-        <p style="margin:0; font-size:16px; line-height:1.65; color:#555;" class="text-muted">
-          Tu cuenta está casi lista. Solo falta confirmar tu correo electrónico para comenzar a gestionar tu consultorio.
-        </p>
-      </td>
-    </tr>
-
-    <!-- CTA button -->
-    <tr>
-      <td align="center" style="padding: 32px 40px 0;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td align="center" style="border-radius:100px; background-color:#2E2E2E;" class="btn-primary">
-              <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:16px 40px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:100px; letter-spacing:-0.01em;">
-                Confirmar mi cuenta
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Fallback link -->
-    <tr>
-      <td style="padding: 20px 40px 0;">
-        <p style="margin:0; font-size:13px; line-height:1.6; color:#9E9E9E; text-align:center;" class="footer-text">
-          Si el botón no funciona, copia y pega este enlace en tu navegador:
-        </p>
-        <p style="margin:6px 0 0; font-size:12px; line-height:1.5; color:#5B9BAF; text-align:center; word-break:break-all;" class="text-teal">
-          {{ .ConfirmationURL }}
-        </p>
-      </td>
-    </tr>
-
-    <!-- Divider -->
-    <tr>
-      <td style="padding: 32px 40px 0;">
-        <div style="border-top:1px solid #EDE8E2;" class="divider"></div>
-      </td>
-    </tr>
-
-    <!-- Feature highlights -->
-    <tr>
-      <td style="padding: 28px 40px 0;">
-        <p style="margin:0 0 16px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#9E9E9E;" class="footer-text">
-          Lo que te espera
-        </p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="padding-bottom:10px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F5F0EB; border-radius:12px; border:1px solid #EDE8E2;" class="feature-card">
-                <tr>
-                  <td style="padding:16px 18px;">
-                    <p style="margin:0 0 4px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:14px; font-weight:800; color:#2E2E2E; letter-spacing:-0.01em;" class="text-charcoal">Tu día, claramente organizado</p>
-                    <p style="margin:0; font-size:13px; line-height:1.5; color:#777;" class="text-muted">Agenda, disponibilidad y sesiones de un vistazo.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:10px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F5F0EB; border-radius:12px; border:1px solid #EDE8E2;" class="feature-card">
-                <tr>
-                  <td style="padding:16px 18px;">
-                    <p style="margin:0 0 4px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:14px; font-weight:800; color:#2E2E2E; letter-spacing:-0.01em;" class="text-charcoal">Cada paciente en una sola vista</p>
-                    <p style="margin:0; font-size:13px; line-height:1.5; color:#777;" class="text-muted">Historial, notas y pagos al instante.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F5F0EB; border-radius:12px; border:1px solid #EDE8E2;" class="feature-card">
-                <tr>
-                  <td style="padding:16px 18px;">
-                    <p style="margin:0 0 4px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:14px; font-weight:800; color:#2E2E2E; letter-spacing:-0.01em;" class="text-charcoal">Sabe exactamente cómo vas</p>
-                    <p style="margin:0; font-size:13px; line-height:1.5; color:#777;" class="text-muted">Pagos, saldos e ingresos en tiempo real.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="padding: 32px 40px 36px;">
-        <p style="margin:0; font-size:12px; line-height:1.5; color:#9E9E9E; text-align:center;" class="footer-text">
-          Gestión de consultorio, simplificada.
-        </p>
-        <p style="margin:6px 0 0; font-size:11px; line-height:1.5; color:#9E9E9E; text-align:center;" class="footer-text">
-          Si no creaste esta cuenta, puedes ignorar este mensaje.
-        </p>
-      </td>
-    </tr>
-
   </table>
-  <!-- /Main card -->
 
-</td>
-</tr>
+  <table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px; background:#FFFFFF; border-radius:20px; border:1px solid #EDE8E2; box-shadow:0 4px 20px rgba(46,46,46,0.06);">
+    <tr>
+      <td class="card-inner" style="padding:52px 48px 0;">
+        <div class="accent" style="width:32px; height:3px; background:#5B9BAF; border-radius:100px; line-height:3px; font-size:0;">&nbsp;</div>
+        <h1 class="ink" style="margin:26px 0 0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:30px; font-weight:900; color:#2E2E2E; line-height:1.12; letter-spacing:-0.03em;">Verifica tu correo.</h1>
+        <p class="ink-soft" style="margin:18px 0 0; font-size:16px; line-height:1.65; color:#4A4A4A;">Un paso más para activar tu cuenta y empezar a poner tu consultorio en orden.</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="card-inner" align="center" style="padding:32px 48px 0;">
+        <table role="presentation" class="cta" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td align="center" style="border-radius:100px; background-color:#2E2E2E;">
+              <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:16px 44px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:100px; letter-spacing:-0.01em;">Verificar mi correo</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td class="card-inner" style="padding:22px 48px 0;">
+        <p class="ink-muted" style="margin:0; font-size:13px; line-height:1.55; color:#A1A1A1; text-align:center;">¿No funciona el botón? Copia este enlace:</p>
+        <p class="ink-teal" style="margin:6px 0 0; font-size:12px; line-height:1.5; color:#5B9BAF; text-align:center; word-break:break-all;">{{ .ConfirmationURL }}</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="card-inner" style="padding:40px 48px 0;">
+        <div class="rule" style="height:1px; background-color:#EDE8E2; line-height:1px; font-size:0;">&nbsp;</div>
+      </td>
+    </tr>
+    <tr>
+      <td class="card-inner" align="center" style="padding:24px 48px 44px;">
+        <p class="ink-muted" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#A1A1A1;">Tu consultorio, en orden.</p>
+      </td>
+    </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px; margin-top:22px;">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <p class="ink-muted" style="margin:0; font-size:12px; line-height:1.55; color:#A1A1A1;">Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
+      </td>
+    </tr>
+  </table>
+
+</td></tr>
 </table>
-
 </body>
 </html>
