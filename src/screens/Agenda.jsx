@@ -452,9 +452,13 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
             <span className="month-cell-num">{cell.num}</span>
             {(hasPresencial || hasVirtual || hasTutor) && (
               <div className="month-dots">
-                {hasPresencial && <span className="month-dot-color" style={{ background: "var(--teal)" }} />}
-                {hasVirtual && <span className="month-dot-color" style={{ background: "var(--blue)" }} />}
-                {hasTutor && <span className="month-dot-color" style={{ background: "var(--purple)" }} />}
+                {/* Saturated dot-only variants: brand teal/blue/purple all land
+                    in the same cool-blue band at this size and become
+                    indistinguishable. Deeper teal + true blue + magenta-leaning
+                    purple pull each hue into its own corner of the wheel. */}
+                {hasPresencial && <span className="month-dot-color" style={{ background: "#1F7A8C" }} />}
+                {hasVirtual && <span className="month-dot-color" style={{ background: "#2550C7" }} />}
+                {hasTutor && <span className="month-dot-color" style={{ background: "#A347C9" }} />}
               </div>
             )}
           </div>

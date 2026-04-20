@@ -73,8 +73,11 @@
 .month-cell.today:not(.active) .month-cell-num { color: var(--teal-dark); }
 .month-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--teal); position: absolute; bottom: 4px; }
 .month-cell.active .month-dot { background: rgba(255,255,255,0.7); }
-.month-dots { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 3px; }
-.month-dot-color { width: 5px; height: 5px; border-radius: 50%; }
+.month-dots { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 4px; }
+/* Slightly larger than .month-dot and with a thin dark outline so the
+   three modality hues stay distinguishable at a glance — plain fills
+   at 5px read as the same cool-blue blob against a light cell. */
+.month-dot-color { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18); }
 .month-cell.active .month-dot-color { box-shadow: 0 0 0 1px rgba(255,255,255,0.7); }
 
 /* WEEK GRID */
