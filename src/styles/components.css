@@ -1,32 +1,34 @@
 /* PAGE ──
    `overflow-y: scroll` (not auto) guarantees the container is always a
-   scroll area on iOS Safari. For elastic rubber-band bounce to actually
-   fire on short pages (e.g. Pacientes with just 1 patient), the scroll
-   CONTENT must be at least 1px taller than the container — otherwise
-   iOS has nothing to spring from. The flex + filler below forces that:
-   `.page` is a flex column, all children stack at their natural size
-   (flex-shrink:0 prevents compression), and `::after` grows to fill any
-   leftover space plus at least 1px. On overflowing content the filler
-   contributes only its 1px minimum. Padding-bottom clears the fixed
-   tab bar so the last row isn't hidden. */
+   scroll area on iOS Safari. Padding-bottom clears the fixed tab bar
+   so the last row isn't hidden. `position: relative` anchors the
+   absolutely-positioned bounce enabler in ::after. */
 .page {
+  position: relative;
   flex: 1;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  display: flex;
-  flex-direction: column;
   padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
 }
 .page::-webkit-scrollbar { display: none; }
-.page > * { flex-shrink: 0; }
+/* Force rubber-band bounce on short pages. An abs-positioned 1px pseudo
+   anchored at top:100% sits just past the bottom of the visible area
+   (percent-tops on abs children resolve to the container's padding-box,
+   not its scroll-content size). Result: scroll content = max(real
+   content, container + 1px), so short pages overflow by exactly 1px
+   and long pages are unaffected. Doesn't participate in flow, so it
+   also doesn't interfere with flex-centered empty-state layouts. */
 .page::after {
   content: "";
-  flex: 1 0 1px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 1px;
   pointer-events: none;
 }
-/* iOS bounce enabler for non-.page scroll containers — simple 1px
-   pseudo works where the flex-filler trick above would change layout. */
+/* iOS bounce enabler for non-.page scroll containers. */
 .drawer-nav::after,
 .cmdp-list::after,
 .sheet-panel::after,
