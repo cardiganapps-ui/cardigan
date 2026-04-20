@@ -404,10 +404,10 @@ button.kpi-card:active {
   background: none; color: #7AB5C7; padding: 2px 8px;
 }
 
-/* ── Install prompt (iOS Safari only, dismissible) ── */
+/* ── Install prompt (iOS Safari only) ── */
 .install-prompt {
   position: relative; flex-shrink: 0;
-  margin: 8px 12px 0; padding: 10px 12px 10px 14px;
+  margin: 4px 12px 0; padding: 6px 12px 6px 10px;
   background: var(--teal-pale);
   border: 1px solid rgba(91,155,175,0.28);
   border-radius: var(--radius);
@@ -423,7 +423,7 @@ button.kpi-card:active {
   min-width: 0;
 }
 .install-prompt-icon {
-  width: 32px; height: 32px; flex-shrink: 0;
+  width: 28px; height: 28px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--white); color: var(--teal-dark);
   border-radius: var(--radius-sm);
