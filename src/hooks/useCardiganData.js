@@ -14,7 +14,7 @@ import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
 import { createDocumentActions } from "./useDocuments";
 import { recalcPatientCounters } from "../utils/patients";
-import { getTutorReminders } from "../utils/sessions";
+import { getTutorReminders, isTutorSession } from "../utils/sessions";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -220,23 +220,37 @@ export function useCardiganData(user, viewAsUserId) {
           if (patient.status !== PATIENT_STATUS.ACTIVE) continue;
           const allPSess = sData.filter(s => s.patient_id === patient.id);
           if (allPSess.length === 0) continue;
-          const activePSess = allPSess.filter(
-            s => s.status !== SESSION_STATUS.CANCELLED && s.status !== SESSION_STATUS.CHARGED
+          // The current recurring schedule is reflected ONLY in
+          // currently-scheduled, non-tutor sessions. Walking every past
+          // session caused two real bugs:
+          //   1. After a schedule change (Mon → Wed) the old day/time
+          //      was still in schedMap from history, so auto-extend
+          //      generated duplicate sessions on the abandoned slot.
+          //   2. One-off tutor sessions at unique day/times got picked
+          //      up as part of the recurring schedule and propagated.
+          const scheduledRegular = allPSess.filter(
+            s => s.status === SESSION_STATUS.SCHEDULED && !isTutorSession(s)
           );
+          if (scheduledRegular.length === 0) continue;
           const schedMap = new Map();
-          allPSess.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time, duration: s.duration || 60, modality: s.modality || "presencial" }));
+          scheduledRegular.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time, duration: s.duration || 60, modality: s.modality || "presencial" }));
           const existingDates = new Set(allPSess.map(s => s.date));
           let latest = null;
-          activePSess.forEach(s => {
+          scheduledRegular.forEach(s => {
             const d = parseShortDate(s.date);
             if (!latest || d > latest) latest = d;
           });
           if (!latest || latest > threshold) continue;
-          const nextDay = new Date(latest);
-          nextDay.setDate(nextDay.getDate() + 1);
+          // Never generate sessions in the past. If the patient's last
+          // scheduled session is already behind us (long hiatus, or the
+          // window expired between logins), start from today instead of
+          // back-filling — those sessions never happened and would
+          // auto-complete into `consumed`, inflating amountDue.
+          const startMs = Math.max(latest.getTime() + 86400000, today.getTime());
+          const startISO = toISODate(new Date(startMs));
           const rows = [];
           for (const sched of schedMap.values()) {
-            getRecurringDates(sched.day, toISODate(nextDay), extendEnd).forEach(d => {
+            getRecurringDates(sched.day, startISO, extendEnd).forEach(d => {
               const ds = formatShortDate(d);
               if (!existingDates.has(ds)) {
                 rows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
