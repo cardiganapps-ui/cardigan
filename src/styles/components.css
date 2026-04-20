@@ -78,8 +78,6 @@
   padding-bottom: max(calc(var(--sab) / 2), 10px);
   height: calc(var(--bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
   background: var(--white);
-  border-top: 1px solid var(--border-lt);
-  box-shadow: 0 -2px 12px rgba(46,46,46,0.05);
   display: flex; align-items: stretch;
   z-index: 40;
 }
