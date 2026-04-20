@@ -285,11 +285,25 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   pointer-events: all;
   display: flex; flex-direction: column;
   will-change: transform;
-  /* No box-shadow here — a 40px blur on a translated-off-screen drawer
-     bleeds its shadow into the visible viewport's left edge as a faint
-     dark strip, always visible to the left of the home tab. The drawer's
-     dark nav-bg background is enough visual weight when it slides in. */
 }
+/* Right-edge shadow as a pseudo-element instead of box-shadow so we can:
+   1. Fade it in only when the drawer is visible (box-shadow on the
+      translated-off-screen panel leaks into the viewport edge)
+   2. Stop the shadow above the bottom tab bar (bottom: calc(...))
+      so it doesn't bleed over the tabs when the drawer is open. */
+.drawer-panel::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 40px;
+  bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
+  background: linear-gradient(to right, rgba(0,0,0,0.22), rgba(0,0,0,0));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.drawer-panel--visible::after { opacity: 1; }
 
 .drawer-header {
   padding: calc(var(--sat) + 20px) 24px 24px;
