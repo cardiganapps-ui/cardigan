@@ -17,6 +17,7 @@ import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
 import Tooltip from "./components/Tooltip";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { Tutorial } from "./components/Tutorial/Tutorial";
 import { STEP_IDS_REQUIRING_FAB } from "./components/Tutorial/tutorialSteps";
 import { useTutorial } from "./hooks/useTutorial";
@@ -336,6 +337,10 @@ function AppShell({ user, signOut, demo, theme }) {
 
       <div className="main-content">
         <div className="status-bar" />
+
+        {/* iOS Safari-only install nudge. Hidden in PWA mode, demo mode,
+            and readonly mode. Dismissed state persists in localStorage. */}
+        {!demo && !readOnly && <InstallPrompt />}
 
         {/* Demo banner */}
         {demo && (
