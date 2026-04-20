@@ -23,25 +23,30 @@ export function BottomTabs() {
   const { t } = useT();
 
   return (
-    <nav className="bottom-tabs" role="tablist" aria-label={t("nav.menu")}>
-      {TABS.map(tab => {
-        const active = screen === tab.key;
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            className={`bottom-tab ${active ? "bottom-tab--active" : ""}`}
-            onClick={() => {
-              if (!active) haptic.tap();
-              navigate(tab.key);
-            }}>
-            <span className="bottom-tab-icon"><tab.Icon size={20} /></span>
-            <span className="bottom-tab-label">{t(tab.tKey)}</span>
-          </button>
-        );
-      })}
-    </nav>
+    <>
+      <nav className="bottom-tabs" role="tablist" aria-label={t("nav.menu")}>
+        {TABS.map(tab => {
+          const active = screen === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`bottom-tab ${active ? "bottom-tab--active" : ""}`}
+              onClick={() => {
+                if (!active) haptic.tap();
+                navigate(tab.key);
+              }}>
+              <span className="bottom-tab-icon"><tab.Icon size={20} /></span>
+              <span className="bottom-tab-label">{t(tab.tKey)}</span>
+            </button>
+          );
+        })}
+      </nav>
+      {/* Fills the iOS PWA home-indicator safe-area with a solid color
+          so no page content can bleed through beneath the tab bar. */}
+      <div className="bottom-tabs-safezone" aria-hidden="true" />
+    </>
   );
 }

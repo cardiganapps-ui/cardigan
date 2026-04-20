@@ -72,26 +72,28 @@
 .bottom-tabs {
   position: fixed; left: 0; right: 0;
   bottom: 0;
-  /* Trim the safe-area padding aggressively — Apple's full 34px sab is
-     the gesture zone; icons can sit ~14px closer without interfering
-     with the home-indicator swipe. Keeps the bar feeling anchored and
-     immersive instead of floating ~60px above the physical bottom. */
-  height: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px));
-  padding-bottom: max(calc(var(--sab) - 14px), 8px);
+  /* Aggressive: half the sab (~17px on iPhone) instead of the full 34px.
+     Icons sit just barely above the home-indicator gesture area, so the
+     bar reads as anchored-to-the-bottom instead of floating. */
+  padding-bottom: max(calc(var(--sab) / 2), 10px);
+  height: calc(var(--bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
   background: var(--white);
   border-top: 1px solid var(--border-lt);
   box-shadow: 0 -2px 12px rgba(46,46,46,0.05);
   display: flex; align-items: stretch;
   z-index: 40;
 }
-/* Sub-pixel overshoot: iOS PWA sometimes leaves a 1-2px gap at the
-   physical viewport bottom when bottom:0 meets the home-indicator area.
-   A pseudo fill strip below the bar covers that gap so no page content
-   bleeds through. */
-.bottom-tabs::after {
-  content: ""; position: absolute;
-  top: 100%; left: 0; right: 0; height: 20px;
+/* Separate fixed fill strip locked to the viewport bottom. iOS PWA
+   sometimes renders `bottom: 0` at the top of the home-indicator area
+   (not the physical bottom), leaving the last ~34px as a strip where
+   page content can bleed through during scroll bounce. This element
+   sits permanently at the true viewport bottom, painted white, so
+   nothing leaks through regardless of where the tab bar itself lands. */
+.bottom-tabs-safezone {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: env(safe-area-inset-bottom);
   background: var(--white);
+  z-index: 39;
   pointer-events: none;
 }
 .bottom-tab {
