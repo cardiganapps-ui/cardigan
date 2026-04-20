@@ -1,244 +1,84 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Cardigan
 
-Practice management app for therapists. Built for mobile-first use (PWA).
+Mobile-first PWA for therapists to manage patients, sessions, payments, notes, and documents. All UI text is Spanish. No TypeScript — plain JS/JSX.
 
 ## Tech Stack
-- **Frontend:** React 19 + Vite 5, JavaScript (no TypeScript)
-- **Backend:** Supabase (PostgreSQL + Auth + RLS)
-- **Hosting:** Vercel (auto-deploys from `main` branch)
-- **Styling:** Custom CSS with design tokens, no UI library
-- **Fonts:** Nunito (display), Nunito Sans (body)
-- **Language:** Spanish (all UI text)
+- **Frontend:** React 19 + Vite 5, custom CSS with design tokens (no UI library)
+- **Backend:** Supabase (PostgreSQL + Auth + RLS) for data; Cloudflare R2 (via AWS S3 SDK) for document storage
+- **Serverless:** Vercel functions under `api/` for admin ops, R2 presigned URLs, and web-push reminders
+- **PWA:** `vite-plugin-pwa` with `injectManifest` strategy, custom `src/sw.js`
+- **Hosting:** Vercel, auto-deploys from `main`. Live at https://cardigan-fawn.vercel.app
 
-## Live URL
-https://cardigan-fawn.vercel.app
+## Commands
+
+```bash
+npm run dev              # Local dev server
+npm run build            # Production build
+npm run preview          # Preview production build
+npm run lint             # ESLint (ignores dist/ and scripts/)
+npm run test             # Run vitest once
+npm run test:watch       # Vitest watch mode
+npm run test -- dates    # Run a single test file (matches utils/__tests__/dates.test.js)
+npm run bugs -- list     # CLI bug report viewer; also: show <id>, delete <id>, clear
+```
+
+Tests live in `src/utils/__tests__/` and cover the pure utilities (dates, sessions, contact, files). No component or hook tests exist — don't invent a testing framework for them.
+
+The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work.
 
 ## Architecture
 
-### File Structure
-```
-src/
-├── utils/              # Shared utilities
-│   ├── dates.js        # Date formatting, parsing, ISO conversion
-│   ├── sessions.js     # Session status helpers, tutor detection
-│   ├── patients.js     # Patient display helpers
-│   ├── contact.js      # Phone/email formatting (MX format)
-│   ├── files.js        # File type detection (Word docs, etc.)
-│   ├── export.js       # CSV export for sessions and payments
-│   └── logBuffer.js    # In-memory log ring buffer
-├── hooks/              # Data & interaction hooks
-│   ├── useCardiganData.js  # Main coordinator (refresh, enrichment, auto-extend)
-│   ├── usePatients.js      # Patient CRUD
-│   ├── useSessions.js      # Session CRUD, recurring, schedule changes
-│   ├── usePayments.js      # Payment CRUD
-│   ├── useNotes.js         # Note CRUD
-│   ├── useDocuments.js     # Document upload/rename/tag/delete
-│   ├── useDemoData.js      # Demo mode data generator hook
-│   ├── useSwipe.js         # Shared touch swipe hook
-│   ├── useAuth.js          # Supabase auth (signup, signin, signout)
-│   ├── useLayer.js         # Escape-key / back-button layer stack
-│   ├── useEscape.js        # Escape key listener
-│   ├── useNavigation.js    # Screen navigation + URL hash sync
-│   ├── useTheme.js         # Light/dark mode toggle
-│   └── useTutorial.js      # Onboarding tutorial state machine
-├── components/
-│   ├── sheets/             # Modal forms (extracted from QuickActions)
-│   │   ├── NewPatientSheet.jsx
-│   │   ├── NewSessionSheet.jsx
-│   │   └── NewDocumentSheet.jsx
-│   ├── Tutorial/           # Onboarding tour
-│   │   ├── Tutorial.jsx        # Tour orchestrator
-│   │   ├── TutorialSpotlight.jsx
-│   │   ├── TutorialTooltip.jsx
-│   │   ├── TutorialWelcome.jsx
-│   │   └── tutorialSteps.js    # Step definitions
-│   ├── landing/            # Marketing landing page
-│   │   ├── LandingPage.jsx
-│   │   └── ProductPreview.jsx
-│   ├── QuickActions.jsx    # FAB menu coordinator
-│   ├── SessionSheet.jsx    # Session detail overlay (from Agenda)
-│   ├── NoteEditor.jsx      # iPhone Notes-style editor + NoteCard
-│   ├── PaymentModal.jsx    # Payment recording form
-│   ├── DocumentList.jsx    # Reusable document list with actions
-│   ├── DocumentViewer.jsx  # Full-screen doc/image viewer
-│   ├── PullToRefresh.jsx   # Pull-to-refresh wrapper
-│   ├── Drawer.jsx          # Navigation drawer with swipe open/close
-│   ├── Toggle.jsx          # Shared toggle switch component
-│   ├── SegmentedControl.jsx # Shared pill-tab control
-│   ├── StatusBadge.jsx     # Session status badge component
-│   ├── MoneyInput.jsx      # Currency input with $ prefix
-│   ├── Avatar.jsx          # Colored-circle avatar component
-│   ├── Toast.jsx           # Toast notification component
-│   ├── HelpTip.jsx         # Contextual help popover (? icon)
-│   ├── LayerWrapper.jsx    # Layer stack backdrop handler
-│   ├── BugReportFab.jsx    # Bug report sheet (triggered from drawer)
-│   ├── LogoMark.jsx        # SVG logo icon component
-│   └── Icons.jsx           # All SVG icons as components
-├── screens/
-│   ├── Home.jsx            # Dashboard with KPIs, today's sessions, saldos
-│   ├── Agenda.jsx          # Calendar (day/week/month views with swipe + patient filter)
-│   ├── Patients.jsx        # Patient list + edit sheet
-│   ├── PatientExpediente.jsx # Patient profile shell (header + tab router)
-│   ├── expediente/         # Expediente tab components (split for token efficiency)
-│   │   ├── ResumenTab.jsx      # Overview: info, financials, attendance stats
-│   │   ├── SesionesTab.jsx     # Session list with filters
-│   │   ├── FinanzasTab.jsx     # Payment history + period filters
-│   │   └── ArchivoTab.jsx      # Notes + documents
-│   ├── Finances.jsx        # Saldos, pagos, ingresos tabs + export
-│   ├── Notes.jsx           # Global notes list + search
-│   ├── Documents.jsx       # Global documents view
-│   ├── Settings.jsx        # Profile, currency, plan, password
-│   ├── AuthScreen.jsx      # Login/signup/password reset + demo button
-│   └── AdminPanel.jsx      # Admin-only user account viewer
-├── context/
-│   └── CardiganContext.jsx # React context for shared app state
-├── i18n/
-│   ├── index.jsx           # useT() hook + TranslationProvider
-│   └── es.js               # Spanish translation strings
-├── data/
-│   ├── seedData.js         # Constants (colors, nav items, day/month names)
-│   ├── constants.js        # App-wide constants
-│   ├── noteTemplates.js    # Pre-built note templates
-│   ├── demoData.js         # Demo mode: 20 patients, 9 months simulated data
-│   └── api.js              # Re-exports from utils/dates for compatibility
-├── styles/                 # CSS split by domain (for token efficiency)
-│   ├── index.css           # Import aggregator
-│   ├── base.css            # Variables, reset, typography, shell, topbar, drawer
-│   ├── components.css      # Cards, KPIs, badges, rows, inputs, buttons, FAB
-│   ├── screens.css         # Settings, sheets, calendar, week/month grid, finances
-│   ├── landing.css         # Marketing landing page (.lp-* classes)
-│   ├── tutorial.css        # Onboarding tour + help tips (.tut-* classes)
-│   ├── responsive.css      # Desktop 768px+, hover, focus, reduced motion
-│   └── dark.css            # Dark/night mode overrides
-├── supabaseClient.js       # Supabase client init
-├── App.jsx                 # App shell, routing, state coordination
-├── main.jsx                # Entry point + service worker registration
-└── index.css               # Minimal base reset
-```
+### Data flow — one hook to rule them all
+`src/hooks/useCardiganData.js` is the coordinator. It owns network fetches and composes 5 domain action modules (`usePatients`, `useSessions`, `usePayments`, `useNotes`, `useDocuments`). On load it:
+1. Fetches all rows filtered by `user_id` in parallel, mapping `color_idx` → `colorIdx`.
+2. Auto-extends recurring sessions: if an active patient's last session is within `RECURRENCE_EXTEND_THRESHOLD_DAYS` (105) of today, appends `RECURRENCE_WINDOW_WEEKS` (15) more weeks. A module-level `_extending` lock prevents concurrent extension from duplicating rows.
+3. Returns `enrichedPatients` with computed `amountDue` and `enrichedSessions` with display-only auto-complete.
 
-### Data Flow
-- `useCardiganData` is the main hook. It coordinates 5 domain hooks (patients, sessions, payments, notes, documents).
-- On load, it fetches all data filtered by `user_id`, auto-extends recurring sessions.
-- Returns `enrichedPatients` (with `amountDue` computed) and `enrichedSessions` (with display-only auto-complete).
-- All mutations go through the domain hooks which update both Supabase and local state optimistically.
-- Demo mode uses `useDemoData` which returns the same shape with all mutations disabled.
+Mutations go through the domain hooks, which update Supabase and local state optimistically. The result is injected into `CardiganContext` (`src/context/CardiganContext.jsx`) and consumed via `useCardigan()`.
 
-### Key Design Decisions
-- **Dates stored as "D MMM" strings** (e.g., "8 Abr") in the database. Converted to/from ISO for date inputs.
-- **amountDue formula:** `patient.billed - (futureSessionCount × currentRate) - patient.paid`. This preserves historical rate accuracy.
-- **Tutor sessions:** Marked by `"T·"` prefix in the `initials` field. Purple styling throughout.
-- **Session statuses:** `scheduled`, `completed`, `cancelled` (no charge), `charged` (cancelled but billed).
-- **Auto-extend:** On each load, if an active patient's last session is within 4 weeks of today, generates 12 more weeks of sessions.
-- **Auto-complete:** Display-only — past scheduled sessions show as "completed" in UI but are NOT persisted to DB. User can override any session status.
-- **Cancel reasons:** Optional text stored in `session.cancel_reason`, displayed in session detail.
+Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so every screen works unmodified.
 
-## Database Schema (Supabase)
+### Critical business rules
+- **`amountDue = patient.billed − (futureSessionCount × currentRate) − patient.paid`** — preserves historical rate accuracy when rates change.
+- **Dates are stored as `"D MMM"` strings** (Spanish months: `"8 Abr"`) in `sessions.date` and `payments.date`. Convert with `utils/dates.js` (`formatShortDate`, `shortDateToISO`, `isoToShortDate`). Date inputs use ISO; display uses short form.
+- **Auto-complete is display-only.** Past `scheduled` sessions render as `completed` but are NOT persisted. Users can override any session's status to any other (including reverting to scheduled). See `SESSION_STATUS` in `data/constants.js` — the DB check constraint mirrors this and must stay in sync.
+- **Tutor sessions** (for minor patients) are marked by a `"T·"` prefix on `sessions.initials`. Helpers in `utils/sessions.js`. Purple styling is derived from this prefix.
+- **Schedule/rate changes** take an effective date, delete future sessions, and regenerate at the new rate.
+- **Duplicate patient names are rejected** at creation.
 
-### Tables
-- **patients:** id, user_id, name, parent, initials, rate, day, time, status, billed, paid, sessions, color_idx
-- **sessions:** id, user_id, patient_id (FK cascade), patient, initials, time, day, date, status, cancel_reason, color_idx
-- **payments:** id, user_id, patient_id (FK set null), patient, initials, amount, date, method, color_idx
-- **notes:** id, user_id, patient_id (FK cascade), session_id (FK set null), title, content, created_at, updated_at
+### Database & security
+- `supabase/schema.sql` is the canonical schema; incremental changes go in numbered files under `supabase/migrations/`. Keep the `sessions.status` check constraint in sync with `SESSION_STATUS` and keep `ADMIN_EMAIL` (`data/constants.js`) in sync with the `is_admin()` function in `schema.sql`.
+- Every table has RLS `auth.uid() = user_id`. Admin read-all policies use the `is_admin()` SQL helper (checks JWT email).
+- Service-role key is ONLY used in `api/` (Vercel serverless) via `api/_admin.js::getServiceClient()`. Admin endpoints must call `requireAdmin(req, res)` first. Never reference `SUPABASE_SERVICE_ROLE_KEY` from anything under `src/`.
 
-### RLS Policies
-- All tables: `auth.uid() = user_id` for user data isolation
-- Admin read: `is_admin()` function checks JWT email = `gaxioladiego@gmail.com`
-- Admin helper: `get_user_profiles()` RPC to list auth.users (admin only)
+### Serverless API (`api/`)
+- `_admin.js`, `_r2.js`, `_push.js` are shared helpers — they must verify the caller's JWT before using the service-role client.
+- `upload-url.js` / `document-url.js` / `delete-document.js` issue presigned R2 URLs; `_r2.js::validatePath` enforces `${userId}/…` prefix and blocks traversal.
+- `send-session-reminders.js` is the web-push cron (auth'd by `CRON_SECRET`). `push-subscribe.js` / `push-unsubscribe.js` manage `push_subscriptions`. See `supabase/migrations/006_push_notifications.sql` and `007_push_cron.sql`.
+- `admin-block-user.js` / `admin-delete-user.js` are admin-only mutations over `auth.users`.
 
-### Session Status Constraint
-```sql
-check (status in ('scheduled', 'completed', 'cancelled', 'charged'))
-```
+### Service worker & updates
+`main.jsx` registers `/sw.js` with `updateViaCache: 'none'`, polls for updates on focus and every 30 min, and dispatches `cardigan-update-ready` events. `components/UpdatePrompt.jsx` surfaces the "Actualización disponible" toast; tapping it posts `SKIP_WAITING` and reloads on `controllerchange`. Do NOT auto-activate waiting SWs — it would reload mid-action.
 
-## Admin System
-- Admin email: `gaxioladiego@gmail.com`
-- Gear icon in topbar (admin only) opens AdminPanel
-- "Ver como usuario" loads another user's data in read-only mode
-- Dark "Modo lectura" banner with "Salir" button
-- FAB hidden, writes blocked in read-only mode
+### Screens & layering
+- Routing is hash-based (`useNavigation`). App shell in `App.jsx` renders one screen at a time; overlays (sheets, modals, viewers) stack via `useLayer` which wires Escape/back-button dismissal.
+- `screens/expediente/*` splits the patient profile into tab components (Resumen/Sesiones/Finanzas/Archivo) for token efficiency — keep that split when editing.
+- `styles/` is also split by domain (`base`, `components`, `screens`, `landing`, `tutorial`, `responsive`, `dark`) with `index.css` as the aggregator. Same reason — keep files narrow.
 
-## Demo Mode
-- "Ver demo" button on auth screen bypasses login
-- Generates 20 patients with 9+ months of realistic data (sessions, payments, notes)
-- 3 minor patients with tutor sessions
-- Teal banner "Modo demo — datos ficticios" with "Crear cuenta" CTA
-- All screens read-only, FAB hidden
-- Exit via banner or Settings → Cerrar sesión
+### Admin & demo modes (read-only UIs)
+- Admin: `gear icon → AdminPanel → "Ver como usuario"` loads another user's data. Dark "Modo lectura" banner, FAB hidden, writes blocked.
+- Demo: `AuthScreen → "Ver demo"` bypasses login with `useDemoData`. Teal banner, FAB hidden, all mutations no-op.
 
-## Features
-
-### Patients
-- Create with name, minor toggle (tutor field), rate, recurring schedules (multi day/time)
-- Schedule/rate changes with effective date (deletes future sessions, regenerates at new rate)
-- Patient expediente: full-screen profile with Resumen/Sesiones/Finanzas/Archivo tabs
-- Date-filtered financials (vendido, cobrado, saldo período/actual)
-- Attendance stats with quick period buttons (1m, 3m, 6m, 1y)
-- Tutor session count for minors
-- Duplicate name prevention
-
-### Sessions
-- Recurring generation with start/optional end date, auto-extend
-- Status editable on ANY session (past or future, any current status)
-- Cancel with charge ("charged") or without ("cancelled") + optional reason
-- Revert completed/cancelled sessions back to scheduled
-- Reschedule from Agenda session detail
-- Tutor sessions for minor patients (purple styling, custom rate)
-- Display-only auto-complete for past sessions (no DB override)
-
-### Payments
-- Record with patient, amount (auto-fills amountDue), method (including custom "Otro"), date
-- Dynamic month filters in Finances
-- Delete payments with inline confirmation
-- CSV export of filtered payments
-
-### Notes
-- iPhone Notes-style editor (title + body, auto-save with 800ms debounce)
-- Linked to patient + optionally to specific session
-- Accessible from: patient expediente, session detail in Agenda, FAB menu
-- Tutor note toggle for minor patients
-- Auto-links to most recent past session when creating from FAB
-- Past sessions on top in session dropdown, future sessions below
-
-### UX
-- Interactive swipe: drawer open/close, Agenda day/week/month navigation
-- Pull-to-refresh on all screens
-- PWA with service worker (offline support via vite-plugin-pwa)
-- iOS install prompt for Add to Home Screen
-- Screen persistence via URL hash
-- Left-edge swipe to open drawer from any screen
-- "Hoy" button in Agenda to jump to today
-- Patient filter dropdown in Agenda
-- Real Cardigan logo across all branding touchpoints
-- FAB hidden in patient expediente (CSS :has() + portal)
+Both flows rely on a single `readOnly` flag branching — don't split the rendering paths.
 
 ## Conventions
-- Spanish for all UI text
-- No TypeScript — plain JS/JSX
-- Inline styles for component-specific styling, CSS files in `src/styles/` for shared classes
-- Currency: MXN, formatted with `.toLocaleString()`
-- Commit messages: conventional commits (feat/fix/refactor/style/chore)
-- Don't deploy on every commit — batch changes and deploy when asked
-
-## Development
-```bash
-npm install
-npm run dev     # Local dev server
-npm run build   # Production build
-```
-
-## CLI Scripts
-
-### Bug Reports
-```bash
-npm run bugs -- list              # List all bug reports
-npm run bugs -- show <id>         # View a specific bug report
-npm run bugs -- delete <id>       # Delete a specific bug report
-npm run bugs -- clear             # Delete all bug reports
-```
-Requires `.env.local` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
-
-## Deployment
-- Push to `main` branch triggers Vercel deploy
-- Free tier: 100 deploys/day limit — batch changes
-- To deploy manually: `git push -u origin main`
-- Vercel limit resets at midnight UTC
+- **Spanish** for all user-visible text (use `useT()` from `src/i18n`).
+- **Currency MXN**, formatted with `.toLocaleString()`.
+- **Inline styles** for component-one-offs; reach for `src/styles/*.css` when a class is reused.
+- **Conventional commits** (`feat:`, `fix:`, `refactor:`, `style:`, `chore:`).
+- **Don't deploy on every commit** — Vercel free tier caps at 100 deploys/day (resets midnight UTC). Batch changes and push when asked.
+- When adding or changing a session status / payment method / patient lifecycle value, update `data/constants.js` AND the DB check constraint in `supabase/schema.sql` (plus a migration).

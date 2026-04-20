@@ -509,7 +509,7 @@ export default {
     allTypes: "Todas",
     patientType: "Paciente",
     tutorType: "Tutor",
-    allStatuses: "Todos",
+    allStatuses: "Todas",
     type: "Tipo",
     filterStatus: "Estado",
   },
