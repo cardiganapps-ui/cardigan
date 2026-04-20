@@ -1,10 +1,8 @@
 /* PAGE ──
    `overflow-y: scroll` (not auto) guarantees the container is always a
    scroll area on iOS Safari. Padding-bottom clears the fixed tab bar
-   so the last row isn't hidden. `position: relative` anchors the
-   absolutely-positioned bounce enabler in ::after. */
+   so the last row isn't hidden. */
 .page {
-  position: relative;
   flex: 1;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
@@ -12,23 +10,11 @@
   padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
 }
 .page::-webkit-scrollbar { display: none; }
-/* Force rubber-band bounce on short pages. An abs-positioned 1px pseudo
-   anchored at top:100% sits just past the bottom of the visible area
-   (percent-tops on abs children resolve to the container's padding-box,
-   not its scroll-content size). Result: scroll content = max(real
-   content, container + 1px), so short pages overflow by exactly 1px
-   and long pages are unaffected. Doesn't participate in flow, so it
-   also doesn't interfere with flex-centered empty-state layouts. */
-.page::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 1px;
-  pointer-events: none;
-}
-/* iOS bounce enabler for non-.page scroll containers. */
+/* 1px spacer pseudo — nudges the scrollable content just past the
+   container edge so iOS has something to rubber-band against on pages
+   that happen to fit the viewport exactly. Plain in-flow block, never
+   interferes with layout or touch handling. */
+.page::after,
 .drawer-nav::after,
 .cmdp-list::after,
 .sheet-panel::after,
