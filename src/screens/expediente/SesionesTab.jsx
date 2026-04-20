@@ -1,7 +1,10 @@
+import { useState, useEffect } from "react";
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { useT } from "../../i18n/index";
+
+const SESSIONS_COLLAPSED_COUNT = 5;
 
 const FILTER_LABEL_STYLE = {
   fontSize: "10px",
@@ -129,6 +132,11 @@ const SECTION_LABEL_STYLE = {
 };
 
 function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, t }) {
+  const [expanded, setExpanded] = useState(false);
+  // Collapse again whenever the filtered list changes so switching filters
+  // doesn't leave a stale "expanded" view visible.
+  useEffect(() => { setExpanded(false); }, [sessions]);
+
   if (sessions.length === 0) {
     return (
       <>
@@ -137,11 +145,15 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
       </>
     );
   }
+  const canCollapse = sessions.length > SESSIONS_COLLAPSED_COUNT;
+  const visible = canCollapse && !expanded
+    ? sessions.slice(0, SESSIONS_COLLAPSED_COUNT)
+    : sessions;
   return (
     <>
       <div style={SECTION_LABEL_STYLE}>{title}</div>
       <div className="card">
-        {sessions.map(s => {
+        {visible.map(s => {
           const tutor = isTutorSession(s);
           const hasNote = pNotes.some(n => n.session_id === s.id);
           const hasSecondLine = tutor || hasNote;
@@ -189,6 +201,16 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
             </div>
           );
         })}
+        {canCollapse && (
+          <button type="button"
+            onClick={() => setExpanded(e => !e)}
+            className="row-item"
+            style={{ width:"100%", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", color:"var(--teal-dark)", fontWeight:700, fontSize:"var(--text-sm)", justifyContent:"center", textAlign:"center" }}>
+            {expanded
+              ? t("expediente.showLessSessions")
+              : t("expediente.showMoreSessions", { count: sessions.length - SESSIONS_COLLAPSED_COUNT })}
+          </button>
+        )}
       </div>
     </>
   );

@@ -512,6 +512,8 @@ export default {
     allStatuses: "Todas",
     type: "Tipo",
     filterStatus: "Estado",
+    showMoreSessions: "Ver {count} m\u00e1s",
+    showLessSessions: "Ver menos",
   },
 
   // ── Time periods ──
