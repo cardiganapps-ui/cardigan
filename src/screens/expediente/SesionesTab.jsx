@@ -2,9 +2,40 @@ import { useState, useEffect } from "react";
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import { isoToShortDate, todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 
 const SESSIONS_COLLAPSED_COUNT = 5;
+
+// Map a period key ("1m"/"3m"/"6m"/"1y") to a from-ISO date N months before
+// today. Null is returned for "all". Mirrors the Pagos tab behavior.
+function periodFromKey(key) {
+  if (key === "all" || !key) return null;
+  const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
+  const m = months[key];
+  if (!m) return null;
+  const d = new Date(); d.setMonth(d.getMonth() - m);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+// Derive the active period chip from the current sessDateFrom/sessDateTo.
+// Returns "" when the range was set to something other than a canonical
+// period (e.g. navigated in from a Resumen tile with a custom earliest date).
+function sessPeriodKey(from, to) {
+  if (!from && !to) return "all";
+  const today = todayISO();
+  if (to !== today) return "";
+  for (const k of ["1m", "3m", "6m", "1y"]) {
+    if (from === periodFromKey(k)) return k;
+  }
+  return "";
+}
+
+function applySessPeriod(key, setFrom, setTo) {
+  if (key === "all") { setFrom(null); setTo(null); return; }
+  setFrom(periodFromKey(key));
+  setTo(todayISO());
+}
 
 const FILTER_LABEL_STYLE = {
   fontSize: "10px",
@@ -41,6 +72,21 @@ export function SesionesTab({
           relationship obvious. Tipo only appears when the patient has
           any tutor sessions. */}
       <div style={{ marginBottom:12, display:"flex", flexDirection:"column", gap:12 }}>
+        <div>
+          <div style={FILTER_LABEL_STYLE}>{t("expediente.period")}</div>
+          <SegmentedControl
+            value={sessPeriodKey(sessDateFrom, sessDateTo)}
+            onChange={(k) => applySessPeriod(k, setSessDateFrom, setSessDateTo)}
+            ariaLabel={t("expediente.period")}
+            items={[
+              { k: "all", l: t("periods.all") },
+              { k: "1m",  l: t("periods.1m") },
+              { k: "3m",  l: t("periods.3m") },
+              { k: "6m",  l: t("periods.6m") },
+              { k: "1y",  l: t("periods.1y") },
+            ]}
+          />
+        </div>
         {sessCounts.tutor > 0 && (
           <div>
             <div style={FILTER_LABEL_STYLE}>{t("expediente.type")}</div>
@@ -76,8 +122,8 @@ export function SesionesTab({
       {(sessDateFrom || sessDateTo) && (
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:12, padding:"6px 12px", background:"var(--teal-pale)", borderRadius:"var(--radius-pill)", fontSize:"var(--text-xs)", fontWeight:600, color:"var(--teal-dark)" }}>
           <span>{t("expediente.dateRangeApplied", {
-            from: sessDateFrom ? sessDateFrom.slice(5) : "—",
-            to: sessDateTo ? sessDateTo.slice(5) : "—",
+            from: sessDateFrom ? isoToShortDate(sessDateFrom) : "—",
+            to: sessDateTo ? isoToShortDate(sessDateTo) : "—",
           })}</span>
           <button type="button"
             onClick={() => { setSessDateFrom(null); setSessDateTo(null); }}
@@ -100,6 +146,7 @@ export function SesionesTab({
               pNotes={pNotes}
               onSelect={onSelectSession}
               onOpenNote={onOpenNote}
+              moreLabelKey="expediente.showMoreSessions"
               t={t}
             />
           )}
@@ -112,6 +159,7 @@ export function SesionesTab({
                 pNotes={pNotes}
                 onSelect={onSelectSession}
                 onOpenNote={onOpenNote}
+                moreLabelKey="expediente.showMorePastSessions"
                 t={t}
               />
             </div>
@@ -131,11 +179,11 @@ const SECTION_LABEL_STYLE = {
   marginBottom: 6,
 };
 
-function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, t }) {
-  const [expanded, setExpanded] = useState(false);
-  // Collapse again whenever the filtered list changes so switching filters
-  // doesn't leave a stale "expanded" view visible.
-  useEffect(() => { setExpanded(false); }, [sessions]);
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, t }) {
+  const [visibleCount, setVisibleCount] = useState(SESSIONS_COLLAPSED_COUNT);
+  // Reset to the initial window whenever the filtered list changes so
+  // switching filters doesn't leave a stale expanded view visible.
+  useEffect(() => { setVisibleCount(SESSIONS_COLLAPSED_COUNT); }, [sessions]);
 
   if (sessions.length === 0) {
     return (
@@ -145,10 +193,10 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
       </>
     );
   }
-  const canCollapse = sessions.length > SESSIONS_COLLAPSED_COUNT;
-  const visible = canCollapse && !expanded
-    ? sessions.slice(0, SESSIONS_COLLAPSED_COUNT)
-    : sessions;
+  const hasMore = sessions.length > visibleCount;
+  const canCollapse = visibleCount > SESSIONS_COLLAPSED_COUNT;
+  const visible = hasMore ? sessions.slice(0, visibleCount) : sessions;
+  const remaining = sessions.length - visibleCount;
   return (
     <>
       <div style={SECTION_LABEL_STYLE}>{title}</div>
@@ -201,14 +249,20 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
             </div>
           );
         })}
-        {canCollapse && (
+        {hasMore && (
           <button type="button"
-            onClick={() => setExpanded(e => !e)}
+            onClick={() => setVisibleCount(n => n + SESSIONS_COLLAPSED_COUNT)}
             className="row-item"
             style={{ width:"100%", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", color:"var(--teal-dark)", fontWeight:700, fontSize:"var(--text-sm)", justifyContent:"center", textAlign:"center" }}>
-            {expanded
-              ? t("expediente.showLessSessions")
-              : t("expediente.showMoreSessions", { count: sessions.length - SESSIONS_COLLAPSED_COUNT })}
+            {t(moreLabelKey, { count: remaining })}
+          </button>
+        )}
+        {!hasMore && canCollapse && (
+          <button type="button"
+            onClick={() => setVisibleCount(SESSIONS_COLLAPSED_COUNT)}
+            className="row-item"
+            style={{ width:"100%", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font)", color:"var(--teal-dark)", fontWeight:700, fontSize:"var(--text-sm)", justifyContent:"center", textAlign:"center" }}>
+            {t("expediente.showLessSessions")}
           </button>
         )}
       </div>

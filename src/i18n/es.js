@@ -512,7 +512,8 @@ export default {
     allStatuses: "Todas",
     type: "Tipo",
     filterStatus: "Estado",
-    showMoreSessions: "Ver {count} m\u00e1s",
+    showMoreSessions: "Ver m\u00e1s",
+    showMorePastSessions: "Ver m\u00e1s ({count} anteriores)",
     showLessSessions: "Ver menos",
   },
 

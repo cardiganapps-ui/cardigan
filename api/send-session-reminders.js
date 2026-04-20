@@ -1,4 +1,4 @@
-import { getServiceClient, sendPush, verifyCronSecret, formatShortDate } from "./_push.js";
+import { getServiceClient, sendPush, verifyCronSecret, formatShortDate, formatShortDateLegacy } from "./_push.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -36,13 +36,16 @@ export default async function handler(req, res) {
       const now = new Date();
       const userNow = toTimezone(now, timezone);
       const todayShort = formatShortDate(userNow);
+      const todayShortLegacy = formatShortDateLegacy(userNow);
 
-      // 3. Fetch today's scheduled sessions for this user
+      // 3. Fetch today's scheduled sessions for this user. Match both the
+      // new "D-MMM" and legacy "D MMM" forms so the cron keeps firing
+      // for accounts whose historical rows haven't been migrated yet.
       const { data: sessions, error: sessError } = await supabase
         .from("sessions")
         .select("id, patient, time, initials")
         .eq("user_id", user_id)
-        .eq("date", todayShort)
+        .in("date", [todayShort, todayShortLegacy])
         .eq("status", "scheduled");
 
       if (sessError || !sessions || sessions.length === 0) continue;

@@ -44,7 +44,7 @@ Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so e
 
 ### Critical business rules
 - **`amountDue = patient.billed − (futureSessionCount × currentRate) − patient.paid`** — preserves historical rate accuracy when rates change.
-- **Dates are stored as `"D MMM"` strings** (Spanish months: `"8 Abr"`) in `sessions.date` and `payments.date`. Convert with `utils/dates.js` (`formatShortDate`, `shortDateToISO`, `isoToShortDate`). Date inputs use ISO; display uses short form.
+- **Dates are stored as `"D-MMM"` strings** (Spanish months: `"8-Abr"`) in `sessions.date` and `payments.date`. Parsers accept the legacy space-separated form too, and `useCardiganData::mapRows` normalizes on read so the UI never sees the old format. Convert with `utils/dates.js` (`formatShortDate`, `shortDateToISO`, `isoToShortDate`; `formatShortDateWithYear`/`isoToShortDateWithYear` for the rare case where year context matters, rendered as `"8-Abr-26"`). Date inputs use ISO; display uses short form.
 - **Auto-complete is display-only.** Past `scheduled` sessions render as `completed` but are NOT persisted. Users can override any session's status to any other (including reverting to scheduled). See `SESSION_STATUS` in `data/constants.js` — the DB check constraint mirrors this and must stay in sync.
 - **Tutor sessions** (for minor patients) are marked by a `"T·"` prefix on `sessions.initials`. Helpers in `utils/sessions.js`. Purple styling is derived from this prefix.
 - **Schedule/rate changes** take an effective date, delete future sessions, and regenerate at the new rate.

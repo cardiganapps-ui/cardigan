@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
-import { formatShortDate, parseShortDate, toISODate } from "../utils/dates";
+import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
 import {
   ADMIN_EMAIL,
   PATIENT_STATUS,
@@ -20,7 +20,16 @@ import { getTutorReminders } from "../utils/sessions";
 let _extending = false;
 
 function mapRows(rows) {
-  return (rows || []).map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }));
+  // Normalize `date` to the canonical "D-MMM" form so the UI doesn't have to
+  // care whether historical rows were saved with a space separator. New
+  // writes already go through formatShortDate (which emits "D-MMM"); this
+  // covers any rows that predate migration 008_date_format_hyphens.sql.
+  return (rows || []).map(r => ({
+    ...r,
+    date: r.date ? normalizeShortDate(r.date) : r.date,
+    colorIdx: r.color_idx,
+    modality: r.modality || "presencial",
+  }));
 }
 
 export function isAdmin(user) {

@@ -7,6 +7,12 @@ import { createClient } from "@supabase/supabase-js";
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 export function formatShortDate(date) {
+  return `${date.getDate()}-${SHORT_MONTHS[date.getMonth()]}`;
+}
+
+// Legacy space-separated form. Still present in historical DB rows until the
+// 008_date_format_hyphens migration normalizes them. The cron matches both.
+export function formatShortDateLegacy(date) {
   return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
 }
 

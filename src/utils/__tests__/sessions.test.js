@@ -54,7 +54,7 @@ describe("statusLabel", () => {
 
 describe("sessionDisplayLabel", () => {
   it("formats session for display", () => {
-    const s = { date: "10 Abr", time: "16:00", status: "completed" };
-    expect(sessionDisplayLabel(s)).toBe("10 Abr · 16:00 — Completada");
+    const s = { date: "10-Abr", time: "16:00", status: "completed" };
+    expect(sessionDisplayLabel(s)).toBe("10-Abr · 16:00 — Completada");
   });
 });
