@@ -637,7 +637,7 @@ export function Agenda() {
         onClose={() => setEditingNote(null)}
       />
     )}
-    <div className="page">
+    <div className="page" data-tour="agenda-section">
       <div style={{ paddingTop:16 }}>
         <div style={{ padding:"0 16px 14px" }}>
           <SegmentedControl

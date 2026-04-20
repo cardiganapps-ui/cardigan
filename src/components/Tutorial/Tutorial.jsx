@@ -76,7 +76,6 @@ export function Tutorial() {
     tutorial,
     navigate,
     screen,
-    setHideFab,
     drawerOpen,
     setDrawerOpen,
   } = useCardigan();
@@ -148,19 +147,20 @@ export function Tutorial() {
     return () => timers.forEach(clearTimeout);
   }, [isActive, step?.id]);
 
-  // ── Hide FAB during the tour except on the FAB step ──
+  // ── Boost FAB z-index above the tutorial overlay on the FAB step ──
+  //
+  // The FAB's visibility is driven upstream (App.jsx derives `hideFab`
+  // from tutorial state directly), so here we only manage the z-index
+  // boost class — no setState that would run on tutorial unmount and
+  // cause a one-frame lag where the overlay is gone but BottomTabs
+  // haven't remounted yet.
   useEffect(() => {
     if (!isActive || !step) return;
     const needFab = STEP_IDS_REQUIRING_FAB.has(step.id);
-    setHideFab?.(!needFab);
-    // Boost FAB z-index above tutorial overlay so it's visible in the spotlight
     if (needFab) document.body.classList.add("tut-fab-active");
     else document.body.classList.remove("tut-fab-active");
-    return () => {
-      setHideFab?.(false);
-      document.body.classList.remove("tut-fab-active");
-    };
-  }, [isActive, step, setHideFab]);
+    return () => document.body.classList.remove("tut-fab-active");
+  }, [isActive, step]);
 
   // ── Boost drawer z-index above tutorial overlay during drawer steps ──
   useEffect(() => {

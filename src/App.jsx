@@ -18,6 +18,7 @@ import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
 import Tooltip from "./components/Tooltip";
 import { Tutorial } from "./components/Tutorial/Tutorial";
+import { STEP_IDS_REQUIRING_FAB } from "./components/Tutorial/tutorialSteps";
 import { useTutorial } from "./hooks/useTutorial";
 import { Toast } from "./components/Toast";
 import { Home } from "./screens/Home";
@@ -117,7 +118,13 @@ function AppShell({ user, signOut, demo, theme }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [hideFab, setHideFab] = useState(false);
+  // `localHideFab` is controlled by non-tutorial callers (e.g. the Patients
+  // expediente drawer). The tutorial contributes its own reason to hide
+  // the FAB, derived synchronously from `tutorial` state below — that way
+  // when the tutorial ends there's no single-frame lag where the tutorial
+  // overlay is gone but BottomTabs haven't mounted back yet (which used
+  // to show as dark bands on the safe areas in dark mode).
+  const [localHideFab, setHideFab] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const admin = !demo && isAdmin(user);
 
@@ -157,6 +164,9 @@ function AppShell({ user, signOut, demo, theme }) {
   const pendingExpedienteRef = useRef(null);
 
   const tutorial = useTutorial({ user, demo, readOnly });
+  const tutorialHidesFab = tutorial?.isActive
+    && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
+  const hideFab = localHideFab || tutorialHidesFab;
   const notifications = useNotifications(demo ? null : user);
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");

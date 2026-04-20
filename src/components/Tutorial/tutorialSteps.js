@@ -73,11 +73,14 @@ export const TUTORIAL_STEPS = [
   {
     id: "agenda",
     screen: "agenda",
-    selector: '[data-tour="agenda-toggle"]',
-    placement: "bottom",
+    // Highlight the whole agenda section (the screen container) rather
+    // than the small day/week/month toggle — keeps the "this is a
+    // section" framing consistent with kpis, patients-list, etc.
+    selector: '[data-tour="agenda-section"]',
+    placement: "center",
     titleKey: "tutorial.steps.agendaTitle",
     bodyKey: "tutorial.steps.agendaBody",
-    padding: 8,
+    padding: 0,
   },
   // ── Drawer → Patients ──
   {
@@ -113,11 +116,14 @@ export const TUTORIAL_STEPS = [
   {
     id: "finances",
     screen: "finances",
-    selector: '[data-tour="finances-tabs"]',
-    placement: "bottom",
+    // Same as agenda — highlight the whole finances section rather than
+    // only the internal tabs, so each drawer-nav step introduces a
+    // "this is where X lives" rather than a narrow widget.
+    selector: '[data-tour="finances-section"]',
+    placement: "center",
     titleKey: "tutorial.steps.financesTitle",
     bodyKey: "tutorial.steps.financesBody",
-    padding: 8,
+    padding: 0,
   },
   {
     id: "done",

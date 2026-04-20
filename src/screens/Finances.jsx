@@ -387,7 +387,7 @@ export function Finances() {
   const noPatients    = patients.length === 0;
 
   return (
-    <div className="page">
+    <div className="page" data-tour="finances-section">
       <div style={{ padding:"16px 16px 16px" }}>
         <SegmentedControl
           dataTour="finances-tabs"
