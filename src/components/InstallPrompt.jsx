@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import { IconX } from "./Icons";
 import { useT } from "../i18n/index";
-
-const LS_KEY = "cardigan-install-dismissed";
 
 // True only for iOS Safari tab mode (not PWA). PWA and every other browser
 // get nothing. This is the one environment where the app can meaningfully
@@ -17,31 +14,23 @@ function isIOSSafariNotInstalled() {
 }
 
 /**
- * Thin dismissible banner shown only to iOS Safari users (not PWA users).
- * Explains how to install the app to the home screen in two steps — the
- * Cardigan PWA in standalone mode has no browser chrome, which reclaims
- * a lot of vertical real estate and eliminates the 307-redirect auth
- * edge cases that come with Safari tab mode.
+ * Non-dismissible install nudge shown only to iOS Safari users. The prompt
+ * is intentionally persistent: the only way to get rid of it is to actually
+ * install the app to the home screen, at which point the standalone check
+ * above returns true and this component renders nothing. That's by design —
+ * a dismissed banner is a forgotten banner, and we want every iOS Safari
+ * user to land in the PWA eventually.
+ *
+ * Tap to expand/collapse the numbered two-step install instructions.
  */
 export function InstallPrompt() {
   const { t } = useT();
   const [show, setShow] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    if (!isIOSSafariNotInstalled()) return;
-    let dismissed = false;
-    try { dismissed = !!localStorage.getItem(LS_KEY); } catch {}
-    if (dismissed) return;
-    setShow(true);
-  }, []);
+  useEffect(() => { setShow(isIOSSafariNotInstalled()); }, []);
 
   if (!show) return null;
-
-  const dismiss = () => {
-    setShow(false);
-    try { localStorage.setItem(LS_KEY, "1"); } catch {}
-  };
 
   return (
     <div className="install-prompt" role="region" aria-label={t("install.title")}>
@@ -62,13 +51,6 @@ export function InstallPrompt() {
           <strong>{t("install.title")}</strong>
           <span className="install-prompt-sub">{expanded ? t("install.addToHome") : t("install.instructions", { icon: "↑" })}</span>
         </span>
-      </button>
-      <button
-        type="button"
-        className="install-prompt-dismiss"
-        onClick={dismiss}
-        aria-label={t("install.dontShowAgain")}>
-        <IconX size={12} />
       </button>
       {expanded && (
         <div className="install-prompt-steps">
