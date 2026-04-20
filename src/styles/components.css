@@ -4,7 +4,10 @@
    so elastic rubber-band bounce is consistent on every screen. Pair it
    with `overscroll-behavior-y: contain` to keep the bounce inside the
    page (bounce happens) without chaining up to <body> (which has
-   overflow:hidden anyway). Padding-bottom clears the fixed tab bar
+   overflow:hidden anyway). The 1px ::after below guarantees the content
+   is always at least 1px taller than the container, so iOS fires its
+   bounce even when a screen has less content than the viewport can show
+   (e.g. empty Patients list). Padding-bottom clears the fixed tab bar
    (+ a small breathing margin) so the last row isn't hidden when the
    user scrolls to the bottom. */
 .page {
@@ -16,6 +19,23 @@
   padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
 }
 .page::-webkit-scrollbar { display: none; }
+/* iOS elastic-bounce enabler — see the page comment above. Reused by
+   other scroll containers via the shared selector below. */
+.page::after,
+.drawer-nav::after,
+.cmdp-list::after,
+.sheet-panel::after,
+.sheet-scroll::after,
+.lp-root::after,
+.split-view-list::after,
+.split-view-detail::after,
+.patients-list-pane::after,
+.patients-detail-pane::after,
+.notes-list-col::after,
+.note-editor-desktop::after,
+.expediente-scroll::after {
+  content: ""; display: block; height: 1px; pointer-events: none;
+}
 
 /* ── TAP-ONLY SURFACES ──
    List rows, tabs, chips, calendar events, and KPI tiles are meant to be
@@ -707,7 +727,10 @@ button.kpi-card:active {
   letter-spacing: 0.04em;
 }
 .cmdp-list {
-  flex: 1; min-height: 0; overflow-y: auto;
+  flex: 1; min-height: 0;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   padding: 6px 6px 10px;
 }
 .cmdp-tips {

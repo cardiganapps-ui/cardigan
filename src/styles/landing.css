@@ -7,8 +7,9 @@
   height: 100dvh;
   background: var(--white);
   color: var(--charcoal);
-  overflow-y: auto;
+  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   font-family: var(--font);
   position: relative;
 }

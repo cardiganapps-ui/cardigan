@@ -484,6 +484,7 @@ export function PatientExpediente({
 
       {/* Content */}
       <div ref={contentRef}
+        className="expediente-scroll"
         onTouchStart={inline ? undefined : (e) => { onContentTouchStart(e); onTabContentTouchStart(e); }}
         onTouchMove={inline ? undefined : (e) => { onDragMove(e); onTabContentTouchMove(e); }}
         onTouchEnd={inline ? undefined : (e) => { onDragEnd(e); onTabContentTouchEnd(e); }}
