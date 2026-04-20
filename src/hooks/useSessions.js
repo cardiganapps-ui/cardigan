@@ -2,31 +2,14 @@ import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import {
   PATIENT_STATUS,
-  RECURRENCE_WINDOW_WEEKS,
   SESSION_STATUS,
 } from "../data/constants";
-import { getInitials, formatShortDate, parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
+import { getInitials, formatShortDate, parseShortDate, parseLocalDate } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
+import { getRecurringDates } from "../utils/recurrence";
 
-const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
-
-export function getRecurringDates(dayName, startDateStr, endDateStr) {
-  const target = DAY_TO_JS[dayName];
-  if (target == null) return [];
-  const start = parseLocalDate(startDateStr);
-  let diff = target - start.getDay();
-  if (diff < 0) diff += 7;
-  const end = endDateStr ? parseLocalDate(endDateStr) : new Date(start);
-  if (!endDateStr) end.setDate(end.getDate() + RECURRENCE_WINDOW_WEEKS * 7);
-  const dates = [];
-  const current = new Date(start);
-  current.setDate(start.getDate() + diff);
-  while (current <= end) {
-    dates.push(new Date(current));
-    current.setDate(current.getDate() + 7);
-  }
-  return dates;
-}
+// Re-export for callers that historically imported it from this module.
+export { getRecurringDates };
 
 export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
 

@@ -1,0 +1,246 @@
+import { describe, it, expect } from "vitest";
+import { computeAutoExtendRows, getRecurringDates } from "../recurrence";
+import { formatShortDate, toISODate } from "../dates";
+import { PATIENT_STATUS, SESSION_STATUS, RECURRENCE_EXTEND_THRESHOLD_DAYS, RECURRENCE_WINDOW_WEEKS } from "../../data/constants";
+
+// Tests below lock in two real accounting bugs that previously
+// inflated amountDue in production:
+//   1. Auto-extend back-filling past dates → phantom completed
+//      sessions → consumed > reality → amountDue too high.
+//   2. Auto-extend pulling old day/time slots from history (after a
+//      schedule change) → duplicate weekly sessions on abandoned
+//      slots → both consumed and the visible calendar wrong.
+// If you're touching utils/recurrence.js and any of these turn red,
+// STOP and verify the accounting impact before changing the test.
+
+const DAY_MS = 86400000;
+
+function buildContext(today) {
+  const t = new Date(today);
+  t.setHours(0, 0, 0, 0);
+  const threshold = new Date(t);
+  threshold.setDate(t.getDate() + RECURRENCE_EXTEND_THRESHOLD_DAYS);
+  const extendEnd = toISODate(new Date(t.getTime() + RECURRENCE_WINDOW_WEEKS * 7 * DAY_MS));
+  return { today: t, threshold, extendEnd, userId: "user-1" };
+}
+
+function activePatient(overrides = {}) {
+  return {
+    id: "p1", name: "Ana", initials: "AN",
+    status: PATIENT_STATUS.ACTIVE,
+    rate: 700, sessions: 0, billed: 0, paid: 0,
+    color_idx: 0,
+    ...overrides,
+  };
+}
+
+function scheduledMon10(daysFromToday, today) {
+  const d = new Date(today.getTime() + daysFromToday * DAY_MS);
+  return {
+    id: `s-${daysFromToday}`,
+    patient_id: "p1",
+    status: SESSION_STATUS.SCHEDULED,
+    initials: "AN",
+    day: "Lunes", time: "10:00",
+    duration: 60, rate: 700,
+    modality: "presencial",
+    date: formatShortDate(d),
+  };
+}
+
+describe("computeAutoExtendRows — accounting safety", () => {
+  it("returns no rows for an inactive patient", () => {
+    const ctx = buildContext(new Date());
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient({ status: PATIENT_STATUS.ENDED }),
+      allPSess: [scheduledMon10(7, ctx.today)],
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it("returns no rows when patient has no sessions", () => {
+    const ctx = buildContext(new Date());
+    expect(computeAutoExtendRows({
+      ...ctx, patient: activePatient(), allPSess: [],
+    })).toEqual([]);
+  });
+
+  it("returns no rows when only completed/cancelled sessions exist (no current schedule)", () => {
+    const ctx = buildContext(new Date());
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [
+        { ...scheduledMon10(-30, ctx.today), status: SESSION_STATUS.COMPLETED },
+        { ...scheduledMon10(-23, ctx.today), status: SESSION_STATUS.COMPLETED },
+        { ...scheduledMon10(-16, ctx.today), status: SESSION_STATUS.CANCELLED },
+      ],
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it("returns no rows when latest scheduled is past the extend threshold", () => {
+    const ctx = buildContext(new Date());
+    // Latest scheduled is RECURRENCE_EXTEND_THRESHOLD_DAYS + 30 days out — well in the future.
+    const days = RECURRENCE_EXTEND_THRESHOLD_DAYS + 30;
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [scheduledMon10(days, ctx.today)],
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it("BUG REGRESSION: never generates sessions in the past when latest is behind today", () => {
+    // Patient took a hiatus — latest scheduled session is 60 days ago.
+    // The OLD code would back-fill weekly Monday sessions from that
+    // point forward, including 8+ Mondays in the past. Those would
+    // auto-complete in display and inflate amountDue by 8 × rate.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [scheduledMon10(-60, ctx.today)],
+    });
+    const todayISO = toISODate(ctx.today);
+    for (const r of rows) {
+      // We assert via formatted `date` field (D-MMM, no year) by
+      // re-constructing an ISO from the row's order — but the easier
+      // and stronger assertion is: every generated row's intended
+      // date must be >= today. We check by parsing with the same
+      // helper used elsewhere.
+      const iso = isoFromShortDate(r.date, ctx.today);
+      expect(iso >= todayISO).toBe(true);
+    }
+  });
+
+  it("BUG REGRESSION: only the current schedule slot is extended after a schedule change", () => {
+    // Patient used to be on Lunes 10:00, then switched to Miércoles 15:00.
+    // History keeps Lunes COMPLETED rows; future has Miércoles SCHEDULED.
+    // The OLD code built schedMap from EVERY past row, so it kept
+    // generating Lunes 10:00 sessions alongside the current Miércoles
+    // ones. That doubled up the calendar AND doubled amountDue.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const oldSchedule = [-30, -23, -16, -9].map(d => ({
+      ...scheduledMon10(d, ctx.today),
+      status: SESSION_STATUS.COMPLETED,
+    }));
+    const newSchedule = [7, 14, 21].map(d => {
+      const dt = new Date(ctx.today.getTime() + d * DAY_MS);
+      return {
+        id: `w-${d}`,
+        patient_id: "p1",
+        status: SESSION_STATUS.SCHEDULED,
+        initials: "AN",
+        day: "Miércoles", time: "15:00",
+        duration: 60, rate: 700,
+        modality: "presencial",
+        date: formatShortDate(dt),
+      };
+    });
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...oldSchedule, ...newSchedule],
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.day).toBe("Miércoles");
+      expect(r.time).toBe("15:00");
+    }
+  });
+
+  it("BUG REGRESSION: tutor sessions don't pollute the recurring schedule", () => {
+    // One-off Sábado tutor session shouldn't make the auto-extend
+    // think the patient meets every Saturday.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const regularMon = [7, 14, 21].map(d => scheduledMon10(d, ctx.today));
+    const sat = new Date(ctx.today.getTime() + 12 * DAY_MS);
+    const tutorSat = {
+      id: "t-1",
+      patient_id: "p1",
+      status: SESSION_STATUS.SCHEDULED,
+      initials: "T·MR",
+      day: "Sábado", time: "11:00",
+      duration: 60, rate: 700,
+      modality: "presencial",
+      date: formatShortDate(sat),
+    };
+    const rows = computeAutoExtendRows({
+      ...ctx, patient: activePatient(),
+      allPSess: [...regularMon, tutorSat],
+    });
+    for (const r of rows) {
+      expect(r.day).toBe("Lunes");
+      expect(r.time).toBe("10:00");
+    }
+  });
+
+  it("does not re-emit dates that already exist (including cancelled)", () => {
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    // Three future Mondays scheduled. We also have one of the dates
+    // already CANCELLED (vacation week). Auto-extend mustn't recreate
+    // the cancelled one.
+    const seven = scheduledMon10(7, ctx.today);
+    const fourteen = { ...scheduledMon10(14, ctx.today), status: SESSION_STATUS.CANCELLED };
+    const twentyOne = scheduledMon10(21, ctx.today);
+    const rows = computeAutoExtendRows({
+      ...ctx, patient: activePatient(),
+      allPSess: [seven, fourteen, twentyOne],
+    });
+    const dates = new Set(rows.map(r => r.date));
+    expect(dates.has(fourteen.date)).toBe(false);
+    expect(dates.has(seven.date)).toBe(false);
+    expect(dates.has(twentyOne.date)).toBe(false);
+  });
+
+  it("emits rows stamped with the correct user_id, patient fields, and rate", () => {
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient({ rate: 850, color_idx: 3 }),
+      allPSess: [scheduledMon10(7, ctx.today)],
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.user_id).toBe("user-1");
+      expect(r.patient_id).toBe("p1");
+      expect(r.patient).toBe("Ana");
+      expect(r.initials).toBe("AN");
+      expect(r.rate).toBe(850);
+      expect(r.color_idx).toBe(3);
+      expect(r.modality).toBe("presencial");
+    }
+  });
+});
+
+describe("getRecurringDates", () => {
+  it("returns empty for unknown day name", () => {
+    expect(getRecurringDates("Xunday", "2026-04-20")).toEqual([]);
+  });
+
+  it("includes dates from start (inclusive) to end (inclusive) on the target weekday", () => {
+    // 2026-04-20 is a Monday. Asking for Mondays through 2026-05-04 yields 3.
+    const dates = getRecurringDates("Lunes", "2026-04-20", "2026-05-04");
+    expect(dates).toHaveLength(3);
+    expect(dates[0].getDay()).toBe(1);
+  });
+});
+
+// Local helper: convert a "D-MMM" short date (Spanish) to ISO using the
+// year of `referenceDate`. Tests only — production parsers handle this.
+function isoFromShortDate(short, referenceDate) {
+  const MONTHS = { Ene:0, Feb:1, Mar:2, Abr:3, May:4, Jun:5, Jul:6, Ago:7, Sep:8, Oct:9, Nov:10, Dic:11 };
+  const [d, m] = short.split("-");
+  const monthIdx = MONTHS[m];
+  // Pick the year that puts the resulting date closest to referenceDate
+  // (within +/- 6 months) so end-of-year wraps work.
+  const refYear = referenceDate.getFullYear();
+  for (const y of [refYear, refYear + 1, refYear - 1]) {
+    const dt = new Date(y, monthIdx, parseInt(d, 10));
+    const diffMs = Math.abs(dt.getTime() - referenceDate.getTime());
+    if (diffMs < 200 * DAY_MS) return toISODate(dt);
+  }
+  return toISODate(new Date(refYear, monthIdx, parseInt(d, 10)));
+}

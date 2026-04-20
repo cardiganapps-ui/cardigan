@@ -3,7 +3,6 @@ import { supabase } from "../supabaseClient";
 import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
 import {
   ADMIN_EMAIL,
-  PATIENT_STATUS,
   RECURRENCE_EXTEND_THRESHOLD_DAYS,
   RECURRENCE_WINDOW_WEEKS,
   SESSION_STATUS,
@@ -14,7 +13,8 @@ import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
 import { createDocumentActions } from "./useDocuments";
 import { recalcPatientCounters } from "../utils/patients";
-import { getTutorReminders, isTutorSession } from "../utils/sessions";
+import { getTutorReminders } from "../utils/sessions";
+import { computeAutoExtendRows } from "../utils/recurrence";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -203,7 +203,11 @@ export function useCardiganData(user, viewAsUserId) {
     let pData = mapRows(pRes.data);
     let sData = mapRows(sRes.data);
 
-    // Auto-extend recurring sessions (skip in read-only or if already extending)
+    // Auto-extend recurring sessions (skip in read-only or if already extending).
+    // The decision logic — which dates to insert for which schedule —
+    // lives in utils/recurrence.js as a pure function so it can be
+    // unit-tested without supabase. This module is responsible only
+    // for the side effects (insert + counter update).
     if (userId && !readOnly && !_extending) {
       _extending = true;
       try {
@@ -217,61 +221,19 @@ export function useCardiganData(user, viewAsUserId) {
         let didExtend = false;
 
         for (const patient of pData) {
-          if (patient.status !== PATIENT_STATUS.ACTIVE) continue;
           const allPSess = sData.filter(s => s.patient_id === patient.id);
-          if (allPSess.length === 0) continue;
-          // The current recurring schedule is reflected ONLY in
-          // currently-scheduled, non-tutor sessions. Walking every past
-          // session caused two real bugs:
-          //   1. After a schedule change (Mon → Wed) the old day/time
-          //      was still in schedMap from history, so auto-extend
-          //      generated duplicate sessions on the abandoned slot.
-          //   2. One-off tutor sessions at unique day/times got picked
-          //      up as part of the recurring schedule and propagated.
-          const scheduledRegular = allPSess.filter(
-            s => s.status === SESSION_STATUS.SCHEDULED && !isTutorSession(s)
-          );
-          if (scheduledRegular.length === 0) continue;
-          const schedMap = new Map();
-          scheduledRegular.forEach(s => schedMap.set(`${s.day}|${s.time}`, { day: s.day, time: s.time, duration: s.duration || 60, modality: s.modality || "presencial" }));
-          const existingDates = new Set(allPSess.map(s => s.date));
-          let latest = null;
-          scheduledRegular.forEach(s => {
-            const d = parseShortDate(s.date);
-            if (!latest || d > latest) latest = d;
-          });
-          if (!latest || latest > threshold) continue;
-          // Never generate sessions in the past. If the patient's last
-          // scheduled session is already behind us (long hiatus, or the
-          // window expired between logins), start from today instead of
-          // back-filling — those sessions never happened and would
-          // auto-complete into `consumed`, inflating amountDue.
-          const startMs = Math.max(latest.getTime() + 86400000, today.getTime());
-          const startISO = toISODate(new Date(startMs));
-          const rows = [];
-          for (const sched of schedMap.values()) {
-            getRecurringDates(sched.day, startISO, extendEnd).forEach(d => {
-              const ds = formatShortDate(d);
-              if (!existingDates.has(ds)) {
-                rows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
-                  initials: patient.initials, time: sched.time, day: sched.day,
-                  date: ds, duration: sched.duration, rate: patient.rate,
-                  modality: sched.modality, color_idx: patient.color_idx || 0 });
-                existingDates.add(ds);
-              }
-            });
-          }
-          if (rows.length > 0) {
-            const { data, error } = await supabase.from("sessions").insert(rows).select();
-            if (!error && data) {
-              const newSessions = patient.sessions + data.length;
-              const newBilled = patient.billed + patient.rate * data.length;
-              const { error: pErr } = await supabase.from("patients")
-                .update({ sessions: newSessions, billed: newBilled })
-                .eq("id", patient.id);
-              if (pErr) await recalcPatientCounters(patient.id);
-              didExtend = true;
-            }
+          const rows = computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId });
+          if (rows.length === 0) continue;
+
+          const { data, error } = await supabase.from("sessions").insert(rows).select();
+          if (!error && data) {
+            const newSessions = patient.sessions + data.length;
+            const newBilled = patient.billed + patient.rate * data.length;
+            const { error: pErr } = await supabase.from("patients")
+              .update({ sessions: newSessions, billed: newBilled })
+              .eq("id", patient.id);
+            if (pErr) await recalcPatientCounters(patient.id);
+            didExtend = true;
           }
         }
 
