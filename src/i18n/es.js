@@ -306,7 +306,7 @@ export default {
     monthlyCollected: "Cobrado (Mes)",
     outstanding: "No Cobrado",
     paymentNote: "Nota (opcional)",
-    paymentNotePlaceholder: "Cheque posfechado, pago parcial...",
+    paymentNotePlaceholder: "Comentarios",
     deleteConfirm: "\u00bfEliminar este pago?",
     deleteWarning: "Esta acci\u00f3n no se puede deshacer. El saldo del paciente se actualizar\u00e1.",
     deleted: "Pago eliminado",
