@@ -32,6 +32,15 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const isMinor = selectedPatient && !!selectedPatient.parent;
   const isTutor = sessionType === "tutor";
 
+  // Resolve the fee the user typed, accepting any finite value >= 0
+  // (pro-bono is valid). Empty / NaN / negative falls back to the
+  // patient's default rate. Don't use `||` here — it collapses 0.
+  const effectiveRate = (() => {
+    const n = customRate === "" ? NaN : Number(customRate);
+    if (Number.isFinite(n) && n >= 0) return n;
+    return selectedPatient?.rate ?? 0;
+  })();
+
   const handlePatientChange = (name) => {
     setPatientName(name);
     const p = patients.find(pt => pt.name === name);
@@ -56,7 +65,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
     if (isTutor) {
       params.isTutor = true;
       params.tutorName = selectedPatient.parent;
-      params.customRate = Number(customRate) || selectedPatient.rate;
+      params.customRate = effectiveRate;
     }
     try {
       const ok = await onSubmit(params);
@@ -154,7 +163,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
             <button className={`btn ${isTutor ? "" : "btn-primary-teal"}`} type="submit" disabled={mutating || !!conflict}
               style={isTutor ? { background:"var(--purple)", color:"var(--white)", boxShadow:"none", width:"100%" } : undefined}>
-              {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${(Number(customRate) || selectedPatient?.rate || 0).toLocaleString()}` : t("sessions.schedule")}
+              {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${effectiveRate.toLocaleString()}` : t("sessions.schedule")}
             </button>
           </div>
         </form>

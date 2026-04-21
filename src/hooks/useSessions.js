@@ -24,7 +24,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const sessionInitials = isTutor
       ? "T·" + getInitials(tutorName || patient.parent || "Tutor")
       : patient.initials;
-    const sessionRate = (customRate != null && Number(customRate) > 0) ? Number(customRate) : patient.rate;
+    // Accept any finite customRate >= 0 (pro-bono / sliding-scale sessions
+    // legitimately use 0). Only fall back to patient.rate when the caller
+    // didn't provide a rate or passed a non-numeric value.
+    const parsedCustomRate = customRate == null || customRate === "" ? NaN : Number(customRate);
+    const sessionRate = Number.isFinite(parsedCustomRate) && parsedCustomRate >= 0
+      ? parsedCustomRate
+      : patient.rate;
     const sessionDuration = Number(duration) > 0 ? Number(duration) : 60;
 
     setMutating(true);
@@ -314,7 +320,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
   async function updateSessionRate(sessionId, newRate) {
     const rate = Number(newRate);
-    if (!rate || rate <= 0) return false;
+    // Allow any non-negative finite number. Zero is valid (pro-bono).
+    if (!Number.isFinite(rate) || rate < 0) return false;
     const session = upcomingSessions.find(s => s.id === sessionId);
     if (!session) return false;
     const oldRate = session.rate != null ? session.rate : 0;
