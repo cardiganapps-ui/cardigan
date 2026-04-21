@@ -31,13 +31,47 @@ export function getServiceClient() {
 }
 
 // Push-provider response codes that indicate the subscription is
-// permanently unusable with our VAPID keys. Callers drop these rows so
-// they don't keep erroring every 5 minutes.
-//   410 Gone                — browser revoked the subscription
-//   404 Not Found           — endpoint forgotten by the push service
-//   403 Forbidden           — VAPID mismatch / key rotated underneath us
-//   400 Bad Request         — malformed p256dh/auth; can't recover
-export const TERMINAL_PUSH_STATUSES = new Set([400, 403, 404, 410]);
+// permanently unusable. Callers drop these rows so they don't keep
+// erroring every 5 minutes.
+//   410 Gone         — browser revoked the subscription
+//   404 Not Found    — endpoint forgotten by the push service
+//   400 Bad Request  — malformed p256dh/auth; can't recover
+// 403 is intentionally NOT included: FCM has been observed to return it
+// transiently during VAPID key propagation windows. Keep it loud (log)
+// but don't drop the row.
+export const TERMINAL_PUSH_STATUSES = new Set([400, 404, 410]);
+
+// Subscriptions must point at one of the real push service backends a
+// browser would ever assign. The /api/push-resubscribe endpoint is
+// unauthenticated (auth is the opaque token), so this allowlist is the
+// belt-and-suspenders defense against redirecting a rotated row at an
+// attacker-controlled URL if a (endpoint, token) pair ever leaks.
+const ALLOWED_PUSH_HOSTS = new Set([
+  "fcm.googleapis.com",
+  "web.push.apple.com",
+  "updates.push.services.mozilla.com",
+  "wns.windows.com",
+  "push.services.mozilla.com",
+  "notify.windows.com",
+]);
+
+export function isAllowedPushEndpoint(urlString) {
+  try {
+    const u = new URL(urlString);
+    if (u.protocol !== "https:") return false;
+    // Allow exact match or subdomains of the big-two regional pushers
+    // (e.g. china.push.apple.com, asia.web.push.apple.com) — Apple and
+    // Google have used several regional hosts over the years.
+    if (ALLOWED_PUSH_HOSTS.has(u.host)) return true;
+    return (
+      u.host.endsWith(".push.apple.com") ||
+      u.host.endsWith(".googleapis.com") ||
+      u.host.endsWith(".push.services.mozilla.com")
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Prefer the canonical names (VAPID_PUBLIC_KEY, VAPID_SUBJECT). During
 // the migration away from the historical VITE_/EMAIL names we still

@@ -8,6 +8,20 @@ import { NetworkFirst, CacheFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { getPushState, putPushState } from "./pushStore.js";
 
+// Vite injects VITE_VAPID_PUBLIC_KEY into this file at build time. Used
+// to reconstruct subscribe() options when `event.oldSubscription` is
+// null on pushsubscriptionchange — a documented Chromium quirk.
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
 // ── Precache manifest (injected by vite-plugin-pwa at build time) ──
 precacheAndRoute(self.__WB_MANIFEST);
 
@@ -108,8 +122,17 @@ self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil((async () => {
     try {
       const { endpoint: oldEndpoint, resubToken } = await getPushState();
-      const options = event.oldSubscription?.options;
-      if (!options || !oldEndpoint || !resubToken) return;
+      if (!oldEndpoint || !resubToken) return;
+
+      // Prefer the browser-provided options (carries the exact key the
+      // old subscription used). Fall back to reconstructing them from
+      // the build-time VAPID public key when the browser omits
+      // oldSubscription — Chromium has shipped builds that do this.
+      const options = event.oldSubscription?.options || (VAPID_PUBLIC_KEY ? {
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      } : null);
+      if (!options) return;
 
       const newSub = await self.registration.pushManager.subscribe(options);
       const resp = await fetch("/api/push-resubscribe", {

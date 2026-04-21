@@ -13,7 +13,7 @@
    Response: { ok: true, resubToken: <newToken> } on success, 404 on mismatch. */
 
 import crypto from "node:crypto";
-import { getServiceClient } from "./_push.js";
+import { getServiceClient, isAllowedPushEndpoint } from "./_push.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -27,6 +27,14 @@ export default async function handler(req, res) {
     !subscription?.keys?.auth
   ) {
     return res.status(400).json({ error: "Invalid body" });
+  }
+
+  // The token proves the caller once held a valid subscription, but
+  // doesn't constrain WHERE the row can be redirected. Enforce that the
+  // new endpoint is on a real push-service backend so a leaked token
+  // can't be used to point the row at an attacker's own server.
+  if (!isAllowedPushEndpoint(subscription.endpoint) || !isAllowedPushEndpoint(oldEndpoint)) {
+    return res.status(400).json({ error: "Invalid endpoint" });
   }
 
   const supabase = getServiceClient();
@@ -50,18 +58,22 @@ export default async function handler(req, res) {
 
   // Single-statement swap. The WHERE clause still matches on both old
   // endpoint and old token so a concurrent second call can't race and
-  // overwrite the already-rotated row.
-  const { error: updErr } = await supabase
+  // overwrite the already-rotated row. We `.select()` to distinguish a
+  // successful update from a zero-row match (concurrent rotation beat
+  // us, or the row was deleted) — supabase-js treats zero-row updates
+  // as non-errors, which would otherwise let us return a fabricated
+  // token the DB never persisted.
+  const { data: updated, error: updErr } = await supabase
     .from("push_subscriptions")
     .update({
       endpoint: subscription.endpoint,
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
       resub_token: newToken,
-      created_at: new Date().toISOString(),
     })
     .eq("endpoint", oldEndpoint)
-    .eq("resub_token", resubToken);
+    .eq("resub_token", resubToken)
+    .select("id");
 
   if (updErr) {
     // Likely a uniqueness clash on endpoint — the push provider assigned
@@ -69,6 +81,12 @@ export default async function handler(req, res) {
     // will fall back to mount-time reconciliation on next app open.
     console.error("push-resubscribe swap failed:", updErr.message);
     return res.status(409).json({ error: "Swap failed" });
+  }
+  if (!updated || updated.length !== 1) {
+    // Zero rows matched: either a concurrent rotation already swapped
+    // the row (token is now T2, ours is T1), or the row was deleted.
+    // Either way, our client must fall back to mount-time reconciliation.
+    return res.status(404).json({ error: "Unknown subscription" });
   }
 
   console.log(JSON.stringify({

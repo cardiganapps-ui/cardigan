@@ -132,9 +132,11 @@ export function useNotifications(user) {
             // actually exists — a common timing pitfall where the
             // user hits "Send test" in the first second after load
             // and the server still has stale (or no) subs.
-            const { ok } = await postSubscription(existing);
+            await postSubscription(existing);
             if (cancelled) return;
-            setEnabled(ok || true); // keep UI optimistic; next test will self-heal
+            // Trust the browser subscription — if the server re-post
+            // failed (network blip), the next action self-heals.
+            setEnabled(true);
           } else if (Notification.permission === "granted") {
             // Re-subscribe silently — no UI prompt when permission
             // is already granted.

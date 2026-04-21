@@ -22,7 +22,10 @@ export default async function handler(req, res) {
     // endpoint matches on (endpoint, resub_token) to authorize the swap.
     const resubToken = crypto.randomBytes(32).toString("base64url");
 
-    // Upsert push subscription (unique on endpoint)
+    // Upsert push subscription (unique on endpoint). We omit created_at
+    // so the column's DEFAULT now() fires on initial insert but isn't
+    // overwritten on every mount-time re-post — preserves accurate row
+    // age for future TTL / cleanup sweeps.
     const { error: subError } = await supabase
       .from("push_subscriptions")
       .upsert(
@@ -32,7 +35,6 @@ export default async function handler(req, res) {
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
           resub_token: resubToken,
-          created_at: new Date().toISOString(),
         },
         { onConflict: "endpoint" }
       );

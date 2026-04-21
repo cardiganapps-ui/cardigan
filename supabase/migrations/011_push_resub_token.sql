@@ -39,7 +39,14 @@ as $$
         'jobname', j.jobname,
         'schedule', j.schedule,
         'active', j.active,
-        'command_preview', substring(j.command from 1 for 400)
+        -- Bearer token is baked literal into the cron command; redact it
+        -- before exposing through the admin diagnose endpoint.
+        'command_preview', regexp_replace(
+          substring(j.command from 1 for 400),
+          'Bearer [A-Za-z0-9+/=_-]+',
+          'Bearer [REDACTED]',
+          'g'
+        )
       )
       from cron.job j
       where j.jobname = 'send-session-reminders'
