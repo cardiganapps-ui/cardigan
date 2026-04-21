@@ -390,6 +390,18 @@ button.kpi-card:active {
 .input.input-error { border-color: var(--red); }
 .input.input-error:focus { box-shadow: 0 0 0 3px rgba(217,107,107,0.15); }
 
+/* iOS Safari centers the rendered value inside date and time inputs
+   by default, which reads as inconsistent with every text/number
+   input next to it (Paciente, Monto, Método…). Force the value to
+   the left both on the input and on the WebKit pseudos — the
+   pseudo rule is the one that actually wins on iOS. */
+.input[type="date"],
+.input[type="time"] { text-align: left; }
+.input[type="date"]::-webkit-date-and-time-value,
+.input[type="time"]::-webkit-date-and-time-value { text-align: left; }
+.input[type="date"]::-webkit-datetime-edit,
+.input[type="time"]::-webkit-datetime-edit { text-align: left; }
+
 /* Money input — standard .input with a "$" prefix sitting inside the
    field. The input itself gets extra left padding so the number doesn't
    sit under the symbol. */
