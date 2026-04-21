@@ -56,6 +56,27 @@ html[data-theme="dark"] .btn-primary {
   background: #EAEAEA;
   color: #1A1A1A;
 }
+/* Teal surfaces keep their brand color in dark mode — the `color:
+   var(--white)` rule in components.css would otherwise flip to dark
+   text (because --white inverts to #1A1A1A), showing as muddy black
+   on teal. Hard-code literal #FFFFFF for every teal-backgrounded
+   control so the look matches light mode and text stays legible.
+   Icons inside these controls use currentColor, so they inherit. */
+html[data-theme="dark"] .btn-primary-teal,
+html[data-theme="dark"] .btn-teal {
+  color: #FFFFFF;
+}
+html[data-theme="dark"] .app-banner--demo .app-banner-text,
+html[data-theme="dark"] .app-banner--demo .app-banner-text--muted,
+html[data-theme="dark"] .app-banner--demo .app-banner-action {
+  color: #FFFFFF;
+}
+html[data-theme="dark"] .app-banner--demo .app-banner-text--muted {
+  color: rgba(255, 255, 255, 0.7);
+}
+html[data-theme="dark"] .cmdp-item--active .cmdp-item-icon {
+  color: #FFFFFF;
+}
 html[data-theme="dark"] .fab {
   /* Keep the teal gradient in dark mode too — it's meant to look
      special, so we don't fall through to the --charcoal swap. */

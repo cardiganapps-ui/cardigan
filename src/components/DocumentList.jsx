@@ -78,7 +78,7 @@ export function DocumentList({
                     <input className="input" value={renameValue} onChange={e => setRenameValue(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") { setRenamingDoc(null); setRenameValue(""); } }}
                       autoFocus style={{ fontSize:12, padding:"4px 6px", flex:1 }} />
-                    <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:"var(--text-xs)", fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"var(--white)", cursor:"pointer" }}>{t("ok")}</button>
+                    <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:"var(--text-xs)", fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"#FFFFFF", cursor:"pointer" }}>{t("ok")}</button>
                   </div>
                 ) : (
                   <>

@@ -1,4 +1,26 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { IN_SCREEN_SWIPE_DEAD_ZONE, isOwned, isOwnedBy, release, tryClaim } from "./swipeCoordinator";
+
+/* ── useSwipe ──
+   3-panel horizontal strip with finger-follow + settle-and-commit.
+   Used by Agenda's day / week / month navigation.
+
+   Gesture safety:
+     - Ignores touches starting in the left-edge dead zone so App.jsx's
+       drawer edge-swipe can claim them unambiguously.
+     - Claims the global swipe coordinator on activation; if the
+       drawer (or any other horizontal-swipe owner) already holds it
+       we bail out. This is the case a dead zone alone can't cover:
+       a finger that starts outside the band but drifts back toward
+       the edge while the drawer has already taken ownership.
+     - Resets all state on touchcancel (iOS cancels gestures on
+       multi-touch, incoming calls, system edge-swipe). Without this,
+       ref.current and offset/swiping flags leaked into the next
+       gesture — visible as a phantom "half-swipe" on the first touch
+       after nav/drawer use.
+*/
+
+const OWNER_ID = "in-screen-swipe";
 
 export function useSwipe(onLeft, onRight) {
   const ref = useRef(null);
@@ -6,17 +28,46 @@ export function useSwipe(onLeft, onRight) {
   const [swiping, setSwiping] = useState(false);
   const [settling, setSettling] = useState(false);
 
+  // Release the coordinator lock on unmount — the owner screen may
+  // unmount mid-gesture (e.g. user navigates while settling).
+  useEffect(() => () => {
+    release(OWNER_ID);
+  }, []);
+
+  const resetGesture = useCallback(() => {
+    ref.current = null;
+    setSwiping(false);
+    setOffset(0);
+    setSettling(false);
+    release(OWNER_ID);
+  }, []);
+
   const onTouchStart = useCallback((e) => {
-    if (e.touches[0].clientX < 30) return;
+    // Defensive: if a stale ref lingers from an aborted gesture,
+    // drop it before deciding on the new touch.
+    ref.current = null;
+    if (e.touches[0].clientX < IN_SCREEN_SWIPE_DEAD_ZONE) return;
+    // If another swipe handler already owns the gesture (typically the
+    // drawer edge-swipe claimed mid-drag), don't start a competing one.
+    if (isOwned() && !isOwnedBy(OWNER_ID)) return;
     ref.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
   }, []);
 
   const onTouchMove = useCallback((e) => {
     if (!ref.current) return;
+    // If ownership flipped to another handler while we were tracking
+    // (edge-swipe took over), fold this gesture out cleanly.
+    if (isOwned() && !isOwnedBy(OWNER_ID)) {
+      resetGesture();
+      return;
+    }
     const dx = e.touches[0].clientX - ref.current.x;
     const dy = e.touches[0].clientY - ref.current.y;
     if (!ref.current.active) {
       if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        // Claim the lock at the moment we commit to a horizontal swipe.
+        // If the claim fails (drawer just took it), abort silently.
+        if (!tryClaim(OWNER_ID)) { ref.current = null; return; }
         ref.current.active = true;
         setSwiping(true);
       } else if (Math.abs(dy) > 10) {
@@ -25,10 +76,14 @@ export function useSwipe(onLeft, onRight) {
       } else return;
     }
     if (ref.current.active) setOffset(dx);
-  }, []);
+  }, [resetGesture]);
 
   const onTouchEnd = useCallback((e) => {
-    if (!ref.current?.active) { ref.current = null; return; }
+    if (!ref.current?.active) {
+      ref.current = null;
+      release(OWNER_ID);
+      return;
+    }
     const dx = e.changedTouches[0].clientX - ref.current.x;
     ref.current = null;
     setSwiping(false);
@@ -36,7 +91,9 @@ export function useSwipe(onLeft, onRight) {
     const triggered = Math.abs(dx) > 80;
 
     if (triggered) {
-      // Animate to full panel width, then navigate
+      // Animate to full panel width, then navigate. Keep the lock until
+      // the settle animation completes so a racing edge-swipe can't
+      // start while the strip is still in motion.
       const dir = dx < 0 ? -1 : 1;
       setSettling(true);
       setOffset(dir * window.innerWidth);
@@ -45,14 +102,22 @@ export function useSwipe(onLeft, onRight) {
         else onRight();
         setOffset(0);
         setSettling(false);
+        release(OWNER_ID);
       }, 250);
     } else {
       // Snap back
       setSettling(true);
       setOffset(0);
-      setTimeout(() => setSettling(false), 250);
+      setTimeout(() => {
+        setSettling(false);
+        release(OWNER_ID);
+      }, 250);
     }
   }, [onLeft, onRight]);
+
+  const onTouchCancel = useCallback(() => {
+    resetGesture();
+  }, [resetGesture]);
 
   // The offset for the 3-panel strip: center panel starts at -100% (of container width / 3)
   // Container is 300% wide, showing the middle third by default
@@ -62,6 +127,7 @@ export function useSwipe(onLeft, onRight) {
     onTouchStart,
     onTouchMove,
     onTouchEnd,
+    onTouchCancel,
     // touch-action: pan-y reserves vertical pans for native scroll while
     // letting our JS handle horizontal swipes — keeps the page scrollable
     // even when the swipeable region covers the full viewport.

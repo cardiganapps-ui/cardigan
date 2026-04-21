@@ -11,6 +11,7 @@ import { QuickActions } from "./components/QuickActions";
 import TopbarActions from "./components/TopbarActions";
 import CommandPalette from "./components/CommandPalette";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { DRAWER_EDGE_BAND, release as releaseSwipe, tryClaim as trySwipeClaim } from "./hooks/swipeCoordinator";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { BottomTabs } from "./components/BottomTabs";
 import { LogoIcon } from "./components/LogoMark";
@@ -197,24 +198,39 @@ function AppShell({ user, signOut, demo, theme }) {
      That prevents iOS Safari's native "edge-swipe-back" gesture from racing
      with our drawer open (the combo the user reported as "the drawer opens
      AND the screen goes back"). React's synthetic touch handlers are always
-     passive, so this has to go through addEventListener directly. */
+     passive, so this has to go through addEventListener directly.
+
+     Coordination with in-screen horizontal swipes (Agenda day/week/month):
+     we claim the global swipeCoordinator lock the moment we commit to a
+     horizontal drag and release it on end/cancel. useSwipe() reads the
+     lock and bails out, so even a finger that crosses the edge band
+     mid-drag can't drive two animations at once. */
   const shellRef = useRef(null);
   const edgeRef = useRef(null);
   const drawerOpenRef = useRef(drawerOpen);
   drawerOpenRef.current = drawerOpen;
+  // Screen-slide animations from bottom-tab nav play for ~500ms. If we
+  // let the edge-swipe activate during that window, the user sees the
+  // screen still sliding into place AND the drawer sliding in — reads
+  // as "other screens are moving". The ref mirrors `direction` so the
+  // native handlers (closure-scoped, effect runs once) always see the
+  // current value.
+  const screenSlidingRef = useRef(false);
+  screenSlidingRef.current = !!direction;
   const [swipeProgress, setSwipeProgress] = useState(0);
 
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
 
+    const EDGE_OWNER_ID = "drawer-edge";
+
     const onTouchStart = (e) => {
       if (drawerOpenRef.current) return;
-      // 32px edge band — wide enough to catch natural thumb swipes from
-      // the left side. Home carousel's onTouchStart ignores < 50px, so a
-      // 32px drawer band leaves an 18px dead-zone between them (no
-      // double-fire).
-      if (e.touches[0].clientX < 32) {
+      if (screenSlidingRef.current) return;
+      // DRAWER_EDGE_BAND is shared with useSwipe's IN_SCREEN_SWIPE_DEAD_ZONE
+      // so the two gesture owners never race at start.
+      if (e.touches[0].clientX < DRAWER_EDGE_BAND) {
         edgeRef.current = {
           startX: e.touches[0].clientX,
           startY: e.touches[0].clientY,
@@ -232,6 +248,13 @@ function AppShell({ user, signOut, demo, theme }) {
       const dy = e.touches[0].clientY - edgeRef.current.startY;
       if (!edgeRef.current.active) {
         if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
+          // Claim exclusive ownership of the horizontal-swipe arbiter.
+          // If some other handler already owns it (unlikely at start,
+          // but possible during settle animations), back off.
+          if (!trySwipeClaim(EDGE_OWNER_ID)) {
+            edgeRef.current = null;
+            return;
+          }
           edgeRef.current.active = true;
         } else if (Math.abs(dy) > 10 || dx < -5) {
           edgeRef.current = null;
@@ -247,9 +270,11 @@ function AppShell({ user, signOut, demo, theme }) {
       }
     };
 
-    const onTouchEnd = (e) => {
+    const finishGesture = (e) => {
       if (!edgeRef.current?.active) {
         edgeRef.current = null;
+        releaseSwipe(EDGE_OWNER_ID);
+        setSwipeProgress(0);
         return;
       }
       const dx = e.changedTouches[0].clientX - edgeRef.current.startX;
@@ -260,18 +285,29 @@ function AppShell({ user, signOut, demo, theme }) {
         setDrawerOpen(true);
       }
       setSwipeProgress(0);
+      // Release AFTER setSwipeProgress so any in-flight render reads
+      // "still owned" and won't kick off a competing in-screen swipe.
+      releaseSwipe(EDGE_OWNER_ID);
+    };
+
+    const onTouchCancel = () => {
+      // Cancelled gesture — reset everything without committing.
+      edgeRef.current = null;
+      setSwipeProgress(0);
+      releaseSwipe(EDGE_OWNER_ID);
     };
 
     shell.addEventListener("touchstart", onTouchStart, { passive: true });
     shell.addEventListener("touchmove", onTouchMove, { passive: false });
-    shell.addEventListener("touchend", onTouchEnd, { passive: true });
-    shell.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    shell.addEventListener("touchend", finishGesture, { passive: true });
+    shell.addEventListener("touchcancel", onTouchCancel, { passive: true });
 
     return () => {
       shell.removeEventListener("touchstart", onTouchStart);
       shell.removeEventListener("touchmove", onTouchMove);
-      shell.removeEventListener("touchend", onTouchEnd);
-      shell.removeEventListener("touchcancel", onTouchEnd);
+      shell.removeEventListener("touchend", finishGesture);
+      shell.removeEventListener("touchcancel", onTouchCancel);
+      releaseSwipe(EDGE_OWNER_ID);
     };
   }, []);
 
