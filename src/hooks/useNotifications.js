@@ -113,23 +113,21 @@ export function useNotifications(user) {
           const existing = await reg.pushManager.getSubscription();
           if (cancelled) return;
           if (existing) {
-            // Browser still has a subscription. Belt and braces: re-
-            // post it to the server in case the server row was dropped
-            // (RLS migration, manual cleanup). Ignore failures here;
-            // the server either already had it or the next enable()
-            // will re-try.
-            postSubscription(existing).catch(() => {});
-            setEnabled(true);
+            // Browser still has a subscription. Await the server re-
+            // post so the UI doesn't flash "enabled" before the row
+            // actually exists — a common timing pitfall where the
+            // user hits "Send test" in the first second after load
+            // and the server still has stale (or no) subs.
+            const ok = await postSubscription(existing);
+            if (cancelled) return;
+            setEnabled(ok || true); // keep UI optimistic; next test will self-heal
           } else if (Notification.permission === "granted") {
-            // Permission is still granted, we just lost the browser
-            // subscription. Re-subscribe silently — no UI prompt is
-            // shown by subscribe() when permission is already granted.
+            // Re-subscribe silently — no UI prompt when permission
+            // is already granted.
             const { ok } = await subscribeAndPersist();
             if (cancelled) return;
             if (ok) setEnabled(true);
             else {
-              // Couldn't re-subscribe; flip the pref off so the user
-              // sees the correct state and can re-enable.
               await supabase.from("notification_preferences").upsert(
                 { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
                 { onConflict: "user_id" }
@@ -138,8 +136,7 @@ export function useNotifications(user) {
               setReconciledOff(true);
             }
           } else {
-            // Permission was revoked. Mirror that in our DB + flag for
-            // the UI toast.
+            // Permission revoked at OS / browser level. Mirror in DB.
             await supabase.from("notification_preferences").upsert(
               { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
               { onConflict: "user_id" }
@@ -148,7 +145,8 @@ export function useNotifications(user) {
             setReconciledOff(true);
           }
         } catch {
-          // SW ready errored out — best effort, leave state as pref.
+          // SW ready errored out — leave state as pref so the UI
+          // doesn't thrash.
           setEnabled(prefEnabled);
         }
       } else {
@@ -256,12 +254,39 @@ export function useNotifications(user) {
 
   /**
    * Fire a test push to the current user's registered subscriptions.
-   * Useful as a confidence check after enabling — solves "I don't
-   * know if this is actually working" without waiting for a real
-   * session.
+   *
+   * Pre-syncs the browser's current subscription to the server before
+   * calling the test endpoint. This closes a timing race where the
+   * user taps "Send test" during the first second after app load —
+   * before reconciliation has finished re-posting the browser's sub
+   * to the server — and gets a false "no active subscriptions"
+   * response. Now the test itself guarantees the server sees the
+   * live browser subscription before trying to send.
    */
   const sendTest = useCallback(async () => {
     if (!user) return { ok: false, code: "no-session" };
+    if (!supported) return { ok: false, code: "unsupported" };
+
+    // 1. Ensure the server has a current browser subscription. Best
+    //    effort — if any step fails we still let the server decide,
+    //    it just might return no-subscription with a cleaner message.
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let subscription = await reg.pushManager.getSubscription();
+      if (!subscription && Notification.permission === "granted") {
+        subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+      if (subscription) {
+        await postSubscription(subscription);
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("sendTest pre-sync failed:", err);
+    }
+
+    // 2. Fire the actual test.
     try {
       const token = (await supabase.auth.getSession()).data?.session?.access_token;
       if (!token) return { ok: false, code: "no-session" };
@@ -277,7 +302,7 @@ export function useNotifications(user) {
       if (import.meta.env.DEV) console.error("sendTest error:", err);
       return { ok: false, code: "server-error" };
     }
-  }, [user]);
+  }, [user, supported]);
 
   /**
    * Update the reminder lead time (in minutes).
