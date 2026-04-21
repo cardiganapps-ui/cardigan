@@ -195,11 +195,18 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         )}
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             <span className="sheet-title">{t("patients.newPatient")}</span>
-            <span style={{ fontSize:11, color:"var(--charcoal-xl)", fontWeight:600 }}>
-              {t("patients.stepIndicator", { current: step, total: 2 })}
-            </span>
+            {/* Progress strips. Current step is always teal; subsequent
+                steps fade to the neutral border color. Role=progressbar
+                + aria-valuenow keep it meaningful to screen readers even
+                though the visual is just two bars. */}
+            <div role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={step}
+              aria-label={t("patients.stepIndicator", { current: step, total: 2 })}
+              style={{ display:"flex", gap:6 }}>
+              <span aria-hidden style={{ height:4, width:44, borderRadius:2, background:"var(--teal)", transition:"background 0.3s" }} />
+              <span aria-hidden style={{ height:4, width:44, borderRadius:2, background: step >= 2 ? "var(--teal)" : "var(--border)", transition:"background 0.3s" }} />
+            </div>
           </div>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose} disabled={submitting}><IconX size={14} /></button>
         </div>
