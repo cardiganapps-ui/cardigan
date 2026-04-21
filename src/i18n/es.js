@@ -485,6 +485,27 @@ export default {
     disabled: "Notificaciones desactivadas",
     permissionDenied: "Activa las notificaciones en los ajustes de tu dispositivo",
     installRequired: "Instala Cardigan en tu pantalla de inicio para recibir notificaciones",
+    // Toast feedback for enable/disable/test actions
+    toastEnabled: "Recordatorios activados",
+    toastDisabled: "Recordatorios desactivados",
+    toastPermissionDenied: "Las notificaciones están bloqueadas. Activa el permiso en los ajustes del navegador para recibir recordatorios.",
+    toastInstallRequired: "Primero instala Cardigan desde Compartir → Agregar a inicio.",
+    toastSubscribeFailed: "No pudimos configurar las notificaciones. Revisa tu conexión e intenta de nuevo.",
+    toastServerError: "No pudimos guardar tu preferencia. Intenta de nuevo en un momento.",
+    toastUnsupported: "Tu navegador no admite notificaciones push.",
+    reconciledOff: "Se desactivaron los recordatorios porque la suscripción expiró. Actívalos de nuevo.",
+    sendTest: "Enviar notificación de prueba",
+    sendingTest: "Enviando…",
+    testSent: "Notificación de prueba enviada",
+    testFailedNoSub: "No hay suscripciones activas. Desactiva y vuelve a activar los recordatorios.",
+    testFailed: "No pudimos enviar la notificación de prueba. Intenta de nuevo.",
+    // First-run prompt shown on Home when user is eligible but hasn't
+    // enabled push yet. Gentle — can be dismissed and never reappears
+    // for that device.
+    promptTitle: "No pierdas ninguna sesión",
+    promptBody: "Activa los recordatorios para recibir un aviso unos minutos antes de cada cita.",
+    promptEnable: "Activar",
+    promptDismiss: "Ahora no",
   },
 
   // ── Expediente ──

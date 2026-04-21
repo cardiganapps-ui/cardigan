@@ -8,6 +8,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
+import { NotificationsPrompt } from "../components/NotificationsPrompt";
 import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
@@ -216,6 +217,8 @@ export function Home({ setScreen, userName }) {
           </button>
         </div>
       )}
+
+      <NotificationsPrompt />
 
       <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>

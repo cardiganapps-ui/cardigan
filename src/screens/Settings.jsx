@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { IconUser, IconStar, IconClipboard, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
@@ -8,9 +8,62 @@ import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 
+// Map typed error codes from useNotifications to user-readable i18n
+// keys. Keeping this as a pure mapping means the hook stays decoupled
+// from locale strings.
+function notifErrorKey(code) {
+  switch (code) {
+    case "permission-denied": return "notifications.toastPermissionDenied";
+    case "install-required":  return "notifications.toastInstallRequired";
+    case "subscribe-failed":  return "notifications.toastSubscribeFailed";
+    case "server-error":      return "notifications.toastServerError";
+    case "unsupported":       return "notifications.toastUnsupported";
+    default:                  return "notifications.toastSubscribeFailed";
+  }
+}
+
 export function Settings({ user, signOut }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, notifications } = useCardigan();
+  const { tutorial, navigate, theme, notifications, showToast } = useCardigan();
+
+  // Surface the reconciliation message exactly once per session — the
+  // hook raised the flag because we silently flipped enabled off on
+  // load (browser subscription expired).
+  useEffect(() => {
+    if (notifications?.reconciledOff) {
+      showToast(t("notifications.reconciledOff"), "warning");
+      notifications.clearReconciliationMessage?.();
+    }
+    // showToast + t are stable-ish; rerun if the flag toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications?.reconciledOff]);
+
+  const [testing, setTesting] = useState(false);
+  const handleToggleNotifications = async () => {
+    if (!notifications) return;
+    if (notifications.needsInstall) {
+      showToast(t("notifications.toastInstallRequired"), "warning");
+      return;
+    }
+    if (notifications.enabled) {
+      const res = await notifications.disable();
+      if (res?.ok) showToast(t("notifications.toastDisabled"), "info");
+      else showToast(t(notifErrorKey(res?.code)), "error");
+    } else {
+      const res = await notifications.enable();
+      if (res?.ok) showToast(t("notifications.toastEnabled"), "success");
+      else showToast(t(notifErrorKey(res?.code)), res?.code === "permission-denied" ? "warning" : "error");
+    }
+  };
+  const handleSendTest = async () => {
+    if (!notifications || testing) return;
+    setTesting(true);
+    const res = await notifications.sendTest();
+    setTesting(false);
+    if (res?.ok) showToast(t("notifications.testSent"), "success");
+    else if (res?.code === "no-subscription") showToast(t("notifications.testFailedNoSub"), "warning");
+    else showToast(t("notifications.testFailed"), "error");
+  };
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -127,29 +180,34 @@ export function Settings({ user, signOut }) {
               </div>
               <Toggle
                 on={notifications.enabled}
-                onToggle={async () => {
-                  if (notifications.needsInstall) return;
-                  if (notifications.enabled) {
-                    await notifications.disable();
-                  } else {
-                    await notifications.enable();
-                  }
-                }}
+                onToggle={handleToggleNotifications}
               />
             </div>
             {notifications.enabled && (
-              <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("reminderTime")}>
-                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCheck size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("notifications.reminderTime")}</div>
-                  <div className="settings-row-sub">
-                    {notifications.reminderMinutes === 15 ? t("notifications.15min")
-                      : notifications.reminderMinutes === 60 ? t("notifications.60min")
-                      : t("notifications.30min")}
+              <>
+                <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("reminderTime")}>
+                  <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCheck size={18} /></div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">{t("notifications.reminderTime")}</div>
+                    <div className="settings-row-sub">
+                      {notifications.reminderMinutes === 15 ? t("notifications.15min")
+                        : notifications.reminderMinutes === 60 ? t("notifications.60min")
+                        : t("notifications.30min")}
+                    </div>
+                  </div>
+                  <IconChevron />
+                </div>
+                <div className="settings-row" role="button" tabIndex={0}
+                  onClick={handleSendTest}
+                  style={{ cursor: testing ? "default" : "pointer", opacity: testing ? 0.6 : 1 }}>
+                  <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconBell size={18} /></div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">
+                      {testing ? t("notifications.sendingTest") : t("notifications.sendTest")}
+                    </div>
                   </div>
                 </div>
-                <IconChevron />
-              </div>
+              </>
             )}
           </div>
         </>

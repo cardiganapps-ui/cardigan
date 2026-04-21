@@ -12,13 +12,21 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- Schedule: call the reminder endpoint every 5 minutes
+-- Schedule: call the reminder endpoint every 5 minutes.
+--
+-- IMPORTANT: use the canonical `cardigan-app.vercel.app` host, NOT
+-- the auto-assigned `cardigan-fawn.vercel.app` alias. The fawn URL
+-- 307-redirects to the canonical deployment and cross-origin
+-- redirects strip the Authorization header per the Fetch spec, so
+-- the endpoint silently returns 401 and no reminders are sent.
+-- (Discovered in production — reminders were queued by pg_net but
+-- never actually delivered until the host was switched.)
 select cron.schedule(
   'send-session-reminders',
   '*/5 * * * *',
   $$
   select net.http_post(
-    url := 'https://cardigan-fawn.vercel.app/api/send-session-reminders',
+    url := 'https://cardigan-app.vercel.app/api/send-session-reminders',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.cron_secret', true)

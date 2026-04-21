@@ -148,6 +148,11 @@ function AppShell({ user, signOut, demo, theme }) {
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [editingPayment, setEditingPayment] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
+  // Generic UI toast — distinct from the success-only `successMsg` so
+  // non-success feedback (permission-denied, sync errors, etc.) can
+  // render with the appropriate color rather than a misleading green.
+  const [uiToast, setUiToast] = useState({ msg: "", type: "info" });
+  const showToast = useCallback((msg, type = "info") => setUiToast({ msg, type }), []);
   // Online/offline indicator — navigator.onLine is imperfect but "good
   // enough" for a surface warning; combined with explicit error toasts
   // for actual request failures it catches the common cases.
@@ -332,7 +337,7 @@ function AppShell({ user, signOut, demo, theme }) {
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
     userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
-    screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess: setSuccessMsg,
+    screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess: setSuccessMsg, showToast,
     pendingFabAction,
     requestFabAction: setPendingFabAction,
     consumeFabAction: () => setPendingFabAction(null),
@@ -353,7 +358,7 @@ function AppShell({ user, signOut, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg, online, pendingFabAction]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg, showToast, online, pendingFabAction]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
@@ -438,6 +443,7 @@ function AppShell({ user, signOut, demo, theme }) {
         </div>
         <Toast message={mutationError} type="error" persistent onDismiss={clearMutationError} onRetry={refresh} />
         <Toast message={successMsg} type="success" onDismiss={() => setSuccessMsg("")} />
+        <Toast message={uiToast.msg} type={uiToast.type} onDismiss={() => setUiToast({ msg: "", type: "info" })} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{
             flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
