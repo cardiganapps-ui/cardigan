@@ -199,6 +199,8 @@ export default {
     phonePlaceholder: "81 1234 5678",
     emailPlaceholder: "correo@ejemplo.com",
     addPatient: "Agregar paciente",
+    configuring: "Configurando nuevo paciente",
+    configuringHint: "Generando sesiones y agenda…",
     recurringAppts: "Citas recurrentes",
     start: "Inicio",
     day: "D\u00eda",

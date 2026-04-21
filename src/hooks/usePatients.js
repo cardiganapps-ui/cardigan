@@ -15,6 +15,23 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     const patientRate = Number(rate) || 0;
     const colorIdx = patients.length % 7;
 
+    // Pre-compute the recurring session rows client-side so the initial
+    // patient INSERT can include final `sessions` and `billed` counters.
+    // Saves an entire round-trip vs. the previous flow (insert → insert
+    // sessions → update counters).
+    const sessionSeeds = [];
+    if (recurring && startDate) {
+      for (const s of sched) {
+        const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
+        const mod = s.modality || "presencial";
+        getRecurringDates(s.day, startDate, endDate).forEach(d =>
+          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, date: formatShortDate(d) })
+        );
+      }
+    }
+    const seedCount = sessionSeeds.length;
+    const seedBilled = patientRate * seedCount;
+
     setMutating(true);
     setMutationError("");
     const { data, error } = await supabase.from("patients").insert({
@@ -31,42 +48,37 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       start_date: recurring && startDate ? startDate : null,
       birthdate: birthdate || null,
       tutor_frequency: tutorFrequency || null,
+      sessions: seedCount,
+      billed: seedBilled,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     const newPatient = { ...data, colorIdx: data.color_idx };
     let updatedPatient = newPatient;
 
-    if (recurring && startDate) {
-      const allRows = [];
-      for (const s of sched) {
-        const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
-        // Honor the modality the user picked per schedule row. Missing
-        // this field was letting the DB default every auto-generated
-        // session to "presencial" even when the user chose "virtual".
-        const mod = s.modality || "presencial";
-        getRecurringDates(s.day, startDate, endDate).forEach(d =>
-          allRows.push({ user_id: userId, patient_id: data.id, patient: name.trim(),
-            initials: getInitials(name), time: s.time, day: s.day,
-            date: formatShortDate(d), duration: dur, rate: patientRate,
-            modality: mod, color_idx: colorIdx }));
-      }
-      if (allRows.length > 0) {
-        const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
-        if (!sessErr && sessData) {
-          const n = sessData.length;
-          const billed = patientRate * n;
-          const { error: pErr } = await supabase.from("patients").update({ sessions: n, billed }).eq("id", data.id).eq("user_id", userId);
-          if (pErr) {
-            const fixed = await recalcPatientCounters(data.id);
-            if (fixed) updatedPatient = { ...newPatient, ...fixed };
-          } else {
-            updatedPatient = { ...newPatient, sessions: n, billed };
-          }
-          // Match the shape produced by mapRows() so a subsequent full
-          // refresh doesn't introduce reference churn / duplicate keys.
-          setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
+    if (sessionSeeds.length > 0) {
+      const allRows = sessionSeeds.map(s => ({
+        user_id: userId, patient_id: data.id, patient: name.trim(),
+        initials: getInitials(name), time: s.time, day: s.day,
+        date: s.date, duration: s.duration, rate: patientRate,
+        modality: s.modality, color_idx: colorIdx,
+      }));
+      const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
+      if (!sessErr && sessData) {
+        // Match the shape produced by mapRows() so a subsequent full
+        // refresh doesn't introduce reference churn / duplicate keys.
+        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
+        // If the returned row count doesn't match the counters we
+        // pre-stamped on the patient, reconcile via recalc.
+        if (sessData.length !== seedCount) {
+          const fixed = await recalcPatientCounters(data.id);
+          if (fixed) updatedPatient = { ...newPatient, ...fixed };
         }
+      } else {
+        // Session insert failed — roll the counters back on the patient
+        // so amountDue doesn't show a phantom balance.
+        const fixed = await recalcPatientCounters(data.id);
+        if (fixed) updatedPatient = { ...newPatient, ...fixed };
       }
     }
 

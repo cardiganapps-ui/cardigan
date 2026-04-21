@@ -53,6 +53,11 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [endDate, setEndDate] = useState("");
 
   const [err, setErr] = useState("");
+  // Tracks the submit → createPatient → optimistic state round-trip so we
+  // can cover the sheet with a "Configurando nuevo paciente" overlay.
+  // Scoped locally instead of reusing the shared `mutating` prop so it
+  // only fires for patient creation, not for other concurrent writes.
+  const [submitting, setSubmitting] = useState(false);
 
   const conflicts = useMemo(() => {
     if (!sessions || !schedules.length) return [];
@@ -72,6 +77,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
       setErr(t("patients.duplicateName")); return;
     }
     setErr("");
+    setSubmitting(true);
     try {
       const ok = await onSubmit({
         name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
@@ -83,18 +89,37 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         endDate: hasEndDate ? endDate : null,
       });
       if (ok) onClose();
+      else setSubmitting(false);
     } catch (ex) {
       setErr(ex?.message || "Error al guardar");
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh" }}>
+    <div className="sheet-overlay" onClick={submitting ? undefined : onClose}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", position:"relative" }}>
+        {submitting && (
+          <div role="status" aria-live="polite"
+            style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,
+              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+              padding:"40px 24px", gap:14, animation:"fadeIn 0.18s ease" }}>
+            <div aria-hidden
+              style={{ width:46, height:46, borderRadius:"50%",
+                border:"3px solid var(--cream-deeper)", borderTopColor:"var(--teal)",
+                animation:"ptr-spin 0.9s linear infinite" }} />
+            <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", textAlign:"center" }}>
+              {t("patients.configuring")}
+            </div>
+            <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", textAlign:"center" }}>
+              {t("patients.configuringHint")}
+            </div>
+          </div>
+        )}
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.newPatient")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose} disabled={submitting}><IconX size={14} /></button>
         </div>
 
         <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
