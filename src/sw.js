@@ -6,6 +6,7 @@ import { precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, CacheFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
+import { getPushState, putPushState } from "./pushStore.js";
 
 // ── Precache manifest (injected by vite-plugin-pwa at build time) ──
 precacheAndRoute(self.__WB_MANIFEST);
@@ -97,16 +98,37 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 // ── Push subscription change — auto-resubscribe on expiry ──
+// The SW has no Supabase session, so /api/push-subscribe (JWT-gated)
+// is unreachable from here. Instead we call /api/push-resubscribe and
+// authenticate with the one-shot token stashed in IDB at subscribe
+// time. If the IDB pair is missing (first install on a new device, or
+// post-storage-clear), we silently drop — the mount-time reconciliation
+// in useNotifications.js will rebuild from scratch on the next app open.
 self.addEventListener("pushsubscriptionchange", (event) => {
-  event.waitUntil(
-    self.registration.pushManager
-      .subscribe(event.oldSubscription.options)
-      .then((newSub) =>
-        fetch("/api/push-subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription: newSub.toJSON() }),
-        })
-      )
-  );
+  event.waitUntil((async () => {
+    try {
+      const { endpoint: oldEndpoint, resubToken } = await getPushState();
+      const options = event.oldSubscription?.options;
+      if (!options || !oldEndpoint || !resubToken) return;
+
+      const newSub = await self.registration.pushManager.subscribe(options);
+      const resp = await fetch("/api/push-resubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          oldEndpoint,
+          resubToken,
+          subscription: newSub.toJSON(),
+        }),
+      });
+      if (resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        if (body.resubToken) {
+          await putPushState({ endpoint: newSub.endpoint, resubToken: body.resubToken });
+        }
+      }
+    } catch {
+      // Reconciliation will heal on next app open.
+    }
+  })());
 });

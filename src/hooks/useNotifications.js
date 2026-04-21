@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
+import { putPushState, clearPushState } from "../pushStore";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
@@ -27,17 +28,30 @@ function isIOSNotStandalone() {
 }
 
 /**
- * POST the given PushSubscription to the server. Returns true on success.
+ * POST the given PushSubscription to the server. On success, persists
+ * the returned resubscribe token to IndexedDB so the service worker can
+ * re-authenticate after a browser-initiated endpoint rotation. Returns
+ * { ok } so call sites that only care about success stay readable.
  */
 async function postSubscription(subscription) {
   const token = (await supabase.auth.getSession()).data?.session?.access_token;
-  if (!token) return false;
+  if (!token) return { ok: false };
   const resp = await fetch("/api/push-subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ subscription: subscription.toJSON() }),
   });
-  return resp.ok;
+  if (!resp.ok) return { ok: false };
+  const body = await resp.json().catch(() => ({}));
+  if (body?.resubToken) {
+    try {
+      await putPushState({ endpoint: subscription.endpoint, resubToken: body.resubToken });
+    } catch {
+      // Non-fatal: SW resubscribe will fail but mount-time reconciliation
+      // will re-create the sub next app open.
+    }
+  }
+  return { ok: true };
 }
 
 /**
@@ -52,7 +66,7 @@ async function subscribeAndPersist() {
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
   });
-  const ok = await postSubscription(subscription);
+  const { ok } = await postSubscription(subscription);
   return { ok, subscription };
 }
 
@@ -118,7 +132,7 @@ export function useNotifications(user) {
             // actually exists — a common timing pitfall where the
             // user hits "Send test" in the first second after load
             // and the server still has stale (or no) subs.
-            const ok = await postSubscription(existing);
+            const { ok } = await postSubscription(existing);
             if (cancelled) return;
             setEnabled(ok || true); // keep UI optimistic; next test will self-heal
           } else if (Notification.permission === "granted") {
@@ -196,7 +210,7 @@ export function useNotifications(user) {
       return { ok: false, code: "subscribe-failed" };
     }
 
-    const serverOk = await postSubscription(subscription);
+    const { ok: serverOk } = await postSubscription(subscription);
     if (!serverOk) {
       // Browser-level subscription exists but the server didn't accept
       // it. Undo the browser subscription so state stays consistent.
@@ -244,6 +258,7 @@ export function useNotifications(user) {
         { onConflict: "user_id" }
       );
 
+      try { await clearPushState(); } catch { /* ignore */ }
       setEnabled(false);
       return { ok: true };
     } catch (err) {

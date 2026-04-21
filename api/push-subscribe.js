@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_push.js";
 
@@ -15,6 +16,12 @@ export default async function handler(req, res) {
 
     const supabase = getServiceClient();
 
+    // Opaque one-shot token that lets the SW re-register the subscription
+    // after a browser-initiated rotation without being able to hold a JWT.
+    // The SW stores it in IDB; the unauthenticated /api/push-resubscribe
+    // endpoint matches on (endpoint, resub_token) to authorize the swap.
+    const resubToken = crypto.randomBytes(32).toString("base64url");
+
     // Upsert push subscription (unique on endpoint)
     const { error: subError } = await supabase
       .from("push_subscriptions")
@@ -24,6 +31,7 @@ export default async function handler(req, res) {
           endpoint: subscription.endpoint,
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
+          resub_token: resubToken,
           created_at: new Date().toISOString(),
         },
         { onConflict: "endpoint" }
@@ -50,7 +58,7 @@ export default async function handler(req, res) {
       console.error("notification_preferences upsert error:", prefError.message);
     }
 
-    res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true, resubToken });
   } catch (err) {
     console.error("push-subscribe error:", err);
     res.status(500).json({ error: "Subscription failed" });

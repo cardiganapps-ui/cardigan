@@ -1,4 +1,11 @@
-import { getServiceClient, sendPush, verifyCronSecret, formatShortDate, formatShortDateLegacy } from "./_push.js";
+import {
+  getServiceClient,
+  sendPush,
+  verifyCronSecret,
+  formatShortDate,
+  formatShortDateLegacy,
+  TERMINAL_PUSH_STATUSES,
+} from "./_push.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -7,6 +14,8 @@ export default async function handler(req, res) {
   if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+
+  const startedAt = Date.now();
 
   try {
     const supabase = getServiceClient();
@@ -23,11 +32,13 @@ export default async function handler(req, res) {
     }
 
     if (!prefs || prefs.length === 0) {
+      logRun({ usersScanned: 0, sessionsMatched: 0, remindersSent: 0, subscriptionsCleaned: 0, startedAt });
       return res.status(200).json({ sent: 0, message: "No users with notifications enabled" });
     }
 
     let totalSent = 0;
     let staleRemoved = 0;
+    let totalSessionsMatched = 0;
 
     for (const pref of prefs) {
       const { user_id, reminder_minutes = 30, timezone = "America/Mexico_City" } = pref;
@@ -76,6 +87,8 @@ export default async function handler(req, res) {
 
       if (newSessions.length === 0) continue;
 
+      totalSessionsMatched += newSessions.length;
+
       // 6. Fetch push subscriptions for this user
       const { data: subs } = await supabase
         .from("push_subscriptions")
@@ -96,15 +109,19 @@ export default async function handler(req, res) {
           try {
             await sendPush(sub, payload);
           } catch (err) {
-            // 410 Gone = subscription expired, remove it
-            if (err.statusCode === 410 || err.statusCode === 404) {
+            if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
               await supabase
                 .from("push_subscriptions")
                 .delete()
                 .eq("endpoint", sub.endpoint);
               staleRemoved++;
             } else {
-              console.error("Push send error:", err.statusCode, err.message);
+              console.error(JSON.stringify({
+                evt: "push.send.error",
+                endpoint_host: safeHost(sub.endpoint),
+                statusCode: err.statusCode,
+                message: err.message,
+              }));
             }
           }
         }
@@ -119,6 +136,13 @@ export default async function handler(req, res) {
       }
     }
 
+    logRun({
+      usersScanned: prefs.length,
+      sessionsMatched: totalSessionsMatched,
+      remindersSent: totalSent,
+      subscriptionsCleaned: staleRemoved,
+      startedAt,
+    });
     res.status(200).json({ sent: totalSent, staleRemoved });
   } catch (err) {
     console.error("send-session-reminders error:", err);
@@ -134,4 +158,20 @@ export default async function handler(req, res) {
 function toTimezone(date, tz) {
   const str = date.toLocaleString("en-US", { timeZone: tz });
   return new Date(str);
+}
+
+function logRun({ usersScanned, sessionsMatched, remindersSent, subscriptionsCleaned, startedAt }) {
+  console.log(JSON.stringify({
+    evt: "cron.send-session-reminders",
+    ts: new Date().toISOString(),
+    usersScanned,
+    sessionsMatched,
+    remindersSent,
+    subscriptionsCleaned,
+    durationMs: Date.now() - startedAt,
+  }));
+}
+
+function safeHost(u) {
+  try { return new URL(u).host; } catch { return "?"; }
 }

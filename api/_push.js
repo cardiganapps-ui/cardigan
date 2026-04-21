@@ -30,13 +30,36 @@ export function getServiceClient() {
   });
 }
 
-export function sendPush(subscription, payload) {
-  webpush.setVapidDetails(
-    process.env.VAPID_EMAIL || "mailto:noreply@example.com",
-    process.env.VITE_VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+// Push-provider response codes that indicate the subscription is
+// permanently unusable with our VAPID keys. Callers drop these rows so
+// they don't keep erroring every 5 minutes.
+//   410 Gone                — browser revoked the subscription
+//   404 Not Found           — endpoint forgotten by the push service
+//   403 Forbidden           — VAPID mismatch / key rotated underneath us
+//   400 Bad Request         — malformed p256dh/auth; can't recover
+export const TERMINAL_PUSH_STATUSES = new Set([400, 403, 404, 410]);
 
+// Prefer the canonical names (VAPID_PUBLIC_KEY, VAPID_SUBJECT). During
+// the migration away from the historical VITE_/EMAIL names we still
+// accept those as fallbacks so the transition can happen without a
+// key rotation — the legacy names were set by an older .env.example.
+export function readVapidConfig() {
+  const subject = process.env.VAPID_SUBJECT || process.env.VAPID_EMAIL;
+  const pub = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  const missing = [];
+  if (!subject || !subject.startsWith("mailto:")) missing.push("VAPID_SUBJECT");
+  if (!pub) missing.push("VAPID_PUBLIC_KEY");
+  if (!priv) missing.push("VAPID_PRIVATE_KEY");
+  return { subject, pub, priv, missing };
+}
+
+export function sendPush(subscription, payload) {
+  const { subject, pub, priv, missing } = readVapidConfig();
+  if (missing.length) {
+    throw new Error(`Missing or invalid VAPID env var(s): ${missing.join(", ")}`);
+  }
+  webpush.setVapidDetails(subject, pub, priv);
   return webpush.sendNotification(
     {
       endpoint: subscription.endpoint,

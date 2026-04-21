@@ -4,7 +4,7 @@
    without waiting for a real session reminder. Drops expired rows
    (410 / 404 from the push provider) just like the cron endpoint. */
 
-import { getServiceClient, sendPush } from "./_push.js";
+import { getServiceClient, sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       await sendPush(sub, payload);
       sent++;
     } catch (err) {
-      if (err.statusCode === 410 || err.statusCode === 404) {
+      if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
         await supabase
           .from("push_subscriptions")
           .delete()
