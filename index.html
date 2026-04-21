@@ -5,6 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- iOS 18+ dark-mode home screen + iOS 18/26 tinted / Liquid Glass
+         appearance. iOS picks the variant that matches the user's home-
+         screen appearance; the monochrome SVG is used as a tint mask. -->
+    <link rel="apple-touch-icon" href="/icon-dark.svg" media="(prefers-color-scheme: dark)" />
+    <link rel="mask-icon" href="/icon-mono.svg" color="#5B9BAF" />
     <meta name="theme-color" content="#FFFFFF" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

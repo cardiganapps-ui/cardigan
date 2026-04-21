@@ -39,29 +39,13 @@ export function UpdatePrompt() {
         zIndex: "var(--z-install)",
         animation: "toastIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}>
-      <div style={{
-        background: "var(--charcoal)", color: "var(--white)",
-        padding: "12px 16px", borderRadius: "var(--radius)",
-        fontSize: "var(--text-md)", fontWeight: 600,
-        fontFamily: "var(--font)",
-        boxShadow: "var(--shadow-lg)",
-        display: "flex", alignItems: "center", gap: 10,
-      }}>
+      <div className="update-prompt-toast">
         <span style={{ flex: 1 }}>{t("updateAvailable")}</span>
         <button
           type="button"
+          className="update-prompt-action"
           onClick={apply}
-          disabled={applying}
-          style={{
-            background: "var(--teal)",
-            color: "var(--white)", border: "none",
-            borderRadius: "var(--radius-pill)",
-            padding: "6px 14px",
-            fontSize: "var(--text-sm)", fontWeight: 700,
-            fontFamily: "var(--font)",
-            cursor: "pointer", flexShrink: 0, minHeight: 0,
-            opacity: applying ? 0.6 : 1,
-          }}>
+          disabled={applying}>
           {applying ? t("saving") : t("updateNow")}
         </button>
       </div>
