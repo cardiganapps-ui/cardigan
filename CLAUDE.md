@@ -39,21 +39,24 @@ The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_UR
 
 ### Data flow — one hook to rule them all
 `src/hooks/useCardiganData.js` is the coordinator. It owns network fetches and composes 5 domain action modules (`usePatients`, `useSessions`, `usePayments`, `useNotes`, `useDocuments`). On load it:
-1. Fetches all rows filtered by `user_id` in parallel, mapping `color_idx` → `colorIdx`.
-2. Auto-extends recurring sessions: if an active patient's last session is within `RECURRENCE_EXTEND_THRESHOLD_DAYS` (105) of today, appends `RECURRENCE_WINDOW_WEEKS` (15) more weeks. A module-level `_extending` lock prevents concurrent extension from duplicating rows.
+1. Fetches rows filtered by `user_id` in parallel. `patients` is unbounded, `sessions` capped at 10k, `payments` windowed to the last 12 months and capped at 2k, `notes`/`documents` capped at 500. `mapRows` normalizes `color_idx` → `colorIdx`, coerces historical space-separated dates to canonical `D-MMM`, and defaults `modality` to `"presencial"`.
+2. Auto-extends recurring sessions: if an active patient's last session is within `RECURRENCE_EXTEND_THRESHOLD_DAYS` (105) of today, appends `RECURRENCE_WINDOW_WEEKS` (15) more weeks. The decision logic is a pure function in `utils/recurrence.js::computeAutoExtendRows` (unit-tested). A module-level `_extending` lock plus a hard floor at `today` (and a `rowISO < today` belt-and-suspenders check) prevent duplicate/past-dated rows.
 3. Returns `enrichedPatients` with computed `amountDue` and `enrichedSessions` with display-only auto-complete.
 
 Mutations go through the domain hooks, which update Supabase and local state optimistically. The result is injected into `CardiganContext` (`src/context/CardiganContext.jsx`) and consumed via `useCardigan()`.
 
 Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so every screen works unmodified.
 
+Note: the session fetch pulls the **full history** (no `created_at` window) even though it's capped at 10k, because `amountDue` iterates every non-cancelled session and a window would silently drop old completions / old scheduled-future sessions, both of which have produced inflated balances in the wild.
+
 ### Critical business rules
-- **`amountDue = patient.billed − (futureSessionCount × currentRate) − patient.paid`** — preserves historical rate accuracy when rates change.
-- **Dates are stored as `"D-MMM"` strings** (Spanish months: `"8-Abr"`) in `sessions.date` and `payments.date`. Parsers accept the legacy space-separated form too, and `useCardiganData::mapRows` normalizes on read so the UI never sees the old format. Convert with `utils/dates.js` (`formatShortDate`, `shortDateToISO`, `isoToShortDate`; `formatShortDateWithYear`/`isoToShortDateWithYear` for the rare case where year context matters, rendered as `"8-Abr-26"`). Date inputs use ISO; display uses short form.
-- **Auto-complete is display-only.** Past `scheduled` sessions render as `completed` but are NOT persisted. Users can override any session's status to any other (including reverting to scheduled). See `SESSION_STATUS` in `data/constants.js` — the DB check constraint mirrors this and must stay in sync.
-- **Tutor sessions** (for minor patients) are marked by a `"T·"` prefix on `sessions.initials`. Helpers in `utils/sessions.js`. Purple styling is derived from this prefix.
+- **`amountDue = Σ(rate for sessions with status completed|charged) − patient.paid`**, floored at 0. `rate` is per-session (captured at the time the row was written) with a fallback to the current `patient.rate`. Derived in `useCardiganData::enrichedPatients` from `enrichedSessions`, NOT from the denormalized `patient.billed`/`patient.sessions` counters — so historical drift in those counters is self-healing and the number always matches actually-consumed sessions. Scheduled future sessions and no-charge cancellations contribute nothing. Auto-completed (display-only) past `scheduled` sessions DO count.
+- **Dates are stored as `"D-MMM"` strings** (Spanish months: `"8-Abr"`) in `sessions.date` and `payments.date`. `utils/dates.js` exports write (`formatShortDate`, `formatShortDateWithYear`), parse (`parseShortDate`, `shortDateToISO`, `isoToShortDate`, `isoToShortDateWithYear`), and `normalizeShortDate` helpers. Parsers tolerate the legacy space-separated form; `mapRows` normalizes on read; migration `010_normalize_date_format.sql` installs BEFORE INSERT/UPDATE triggers on `sessions` and `payments` that normalize on write so stale PWA clients can't reintroduce drift. Date inputs use ISO; display uses short form.
+- **Session rate of 0 is valid** (pro-bono sessions). The DB `check (rate >= 0)` and `MoneyInput` both allow zero; don't treat falsy rates as "unset".
+- **Auto-complete is display-only.** Past `scheduled` sessions render as `completed` (with `_autoCompleted: true`) but are NOT persisted. Users can override any session's status to any other (including reverting to scheduled). See `SESSION_STATUS` in `data/constants.js` — the DB check constraint mirrors this and must stay in sync.
+- **Tutor sessions** (for minor patients) are marked by a `"T·"` prefix on `sessions.initials`. Helpers in `utils/sessions.js`. Purple styling is derived from this prefix. Auto-extend explicitly ignores tutor sessions when reconstructing the "current schedule" — it only walks non-tutor `scheduled` rows.
 - **Schedule/rate changes** take an effective date, delete future sessions, and regenerate at the new rate.
-- **Duplicate patient names are rejected** at creation.
+- **Duplicate patient names are rejected** at creation. After `createPatient` succeeds, `useCardiganData` triggers a background `refresh()` so newly-generated recurring sessions always appear without a manual pull-to-refresh.
 
 ### Database & security
 - `supabase/schema.sql` is the canonical schema; forward-looking incremental changes go in numbered files under `supabase/migrations/`. Already-applied catch-up migrations live in `supabase/migrations/archive/` (kept for history, don't re-run). Keep the `sessions.status` and `payments.method` check constraints in sync with `SESSION_STATUS` / `PAYMENT_METHODS` (`data/constants.js`), and keep `ADMIN_EMAIL` in sync with the `is_admin()` function in `schema.sql`.
@@ -71,8 +74,11 @@ Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so e
 
 ### Screens & layering
 - Routing is hash-based (`useNavigation`). App shell in `App.jsx` renders one screen at a time; overlays (sheets, modals, viewers) stack via `useLayer` which wires Escape/back-button dismissal.
-- `screens/expediente/*` splits the patient profile into tab components (Resumen/Sesiones/Finanzas/Archivo) for token efficiency — keep that split when editing.
+- `screens/expediente/*` splits the patient profile into tab components (Resumen/Sesiones/Finanzas/Archivo) for token efficiency — keep that split when editing. The Resumen tutor tile links into the Sesiones tab with a tutor-only filter applied; don't add a separate tutor screen.
 - `styles/` is also split by domain (`base`, `components`, `screens`, `landing`, `tutorial`, `responsive`, `dark`) with `index.css` as the aggregator. Same reason — keep files narrow.
+
+### Gestures (drawer edge-swipe + in-screen swipes)
+`hooks/swipeCoordinator.js` is a global single-owner lock. The left-edge drawer swipe in `App.jsx` (native `addEventListener`, `passive:false` so it can `preventDefault()` iOS's native back-peek) and the in-screen horizontal swipes in `useSwipe` both go through `trySwipeClaim(ownerId)` / `release(ownerId)`. This is what prevents "drawer opens AND screen goes back" on iOS Safari — do NOT add a third horizontal-swipe handler that bypasses the coordinator. `DRAWER_EDGE_BAND` is exported from there and reused as `IN_SCREEN_SWIPE_DEAD_ZONE` so the two never race at touchstart.
 
 ### Admin & demo modes (read-only UIs)
 - Admin: `gear icon → AdminPanel → "Ver como usuario"` loads another user's data. Dark "Modo lectura" banner, FAB hidden, writes blocked.
@@ -128,3 +134,4 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 - **Conventional commits** (`feat:`, `fix:`, `refactor:`, `style:`, `chore:`).
 - **Don't deploy on every commit** — Vercel free tier caps at 100 deploys/day (resets midnight UTC). Batch changes and push when asked.
 - When adding or changing a session status / payment method / patient lifecycle value, update `data/constants.js` AND the DB check constraint in `supabase/schema.sql` (plus a migration).
+- Recurrence / accounting logic is accounting-critical. `utils/recurrence.js` is pure and has tests in `utils/__tests__/recurrence.test.js` — changes there should come with test updates, not just spot-checks in the UI.
