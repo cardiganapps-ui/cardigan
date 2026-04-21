@@ -103,6 +103,11 @@ export function PatientExpediente({
   const [sessStatusFilter, setSessStatusFilter] = useState("all");
   const [sessDateFrom, setSessDateFrom] = useState(null);
   const [sessDateTo, setSessDateTo] = useState(null);
+  // Tutor-only filter is orthogonal to status — it's not part of the
+  // segmented control (only ~minors have tutor sessions) so we track
+  // it separately and surface it via a dismissible pill on the
+  // Sesiones tab. Triggered from the Resumen tutor tile.
+  const [sessTutorOnly, setSessTutorOnly] = useState(false);
 
   // ── Shared memos ──
   const pSessions = useMemo(() =>
@@ -130,6 +135,7 @@ export function PatientExpediente({
 
   const filteredPSessions = useMemo(() => {
     return pSessions.filter(s => {
+      if (sessTutorOnly && !isTutorSession(s)) return false;
       if (sessStatusFilter !== "all") {
         if (sessStatusFilter === "cancelled_any") {
           if (s.status !== "cancelled" && s.status !== "charged") return false;
@@ -144,7 +150,7 @@ export function PatientExpediente({
       }
       return true;
     });
-  }, [pSessions, sessStatusFilter, sessDateFrom, sessDateTo]);
+  }, [pSessions, sessStatusFilter, sessDateFrom, sessDateTo, sessTutorOnly]);
 
   const { upcomingPSessions, pastPSessions } = useMemo(() => {
     const todayIso = todayISO();
@@ -265,10 +271,11 @@ export function PatientExpediente({
   };
 
   // ── Navigation callbacks for Resumen → other tabs ──
-  const goToSesiones = useCallback((statusFilter) => {
+  const goToSesiones = useCallback((statusFilter, opts = {}) => {
     setSessStatusFilter(statusFilter);
     setSessDateFrom(dateFrom);
     setSessDateTo(dateTo);
+    setSessTutorOnly(!!opts.tutorOnly);
     setTab("sesiones");
   }, [dateFrom, dateTo]);
 
@@ -506,6 +513,7 @@ export function PatientExpediente({
             sessStatusFilter={sessStatusFilter} setSessStatusFilter={setSessStatusFilter}
             sessDateFrom={sessDateFrom} setSessDateFrom={setSessDateFrom}
             sessDateTo={sessDateTo} setSessDateTo={setSessDateTo}
+            sessTutorOnly={sessTutorOnly} setSessTutorOnly={setSessTutorOnly}
             filteredPSessions={filteredPSessions}
             upcomingPSessions={upcomingPSessions} pastPSessions={pastPSessions}
             onSelectSession={setSelectedSession}

@@ -505,6 +505,7 @@ export default {
     cancelled: "Canceladas",
     dateRangeApplied: "Periodo: {from} — {to}",
     clearDateRange: "Limpiar",
+    tutorFilterActive: "Solo sesiones con tutor",
     chargedCancelled: "{count} cancelada{plural} cobrada{plural}",
     perSession: "por sesi\u00f3n",
     noSessions: "Sin sesiones registradas",

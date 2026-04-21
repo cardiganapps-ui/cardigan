@@ -50,6 +50,7 @@ export function SesionesTab({
   pSessions, pNotes,
   sessStatusFilter, setSessStatusFilter,
   sessDateFrom, setSessDateFrom, sessDateTo, setSessDateTo,
+  sessTutorOnly, setSessTutorOnly,
   filteredPSessions, upcomingPSessions, pastPSessions,
   onSelectSession, onOpenNote,
 }) {
@@ -98,6 +99,22 @@ export function SesionesTab({
           />
         </div>
       </div>
+
+      {/* Active tutor-only indicator. Surfaced because the Sesiones tab
+          has no UI control for this filter — it's only triggered from
+          the Resumen tutor tile, so the user needs a visible signal
+          that the list is scoped. Reuses the purple accent so it reads
+          as "tutor-flavoured" at a glance, matching the tile's color. */}
+      {sessTutorOnly && (
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:12, padding:"6px 12px", background:"var(--purple-bg)", borderRadius:"var(--radius-pill)", fontSize:"var(--text-xs)", fontWeight:600, color:"var(--purple)" }}>
+          <span>{t("expediente.tutorFilterActive")}</span>
+          <button type="button"
+            onClick={() => setSessTutorOnly(false)}
+            style={{ background:"none", border:"none", color:"var(--purple)", fontWeight:700, cursor:"pointer", fontFamily:"var(--font)", fontSize:"var(--text-xs)", padding:0 }}>
+            {t("expediente.clearDateRange")}
+          </button>
+        </div>
+      )}
 
       {/* Session lists */}
       {filteredPSessions.length === 0 ? (
