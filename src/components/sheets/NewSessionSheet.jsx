@@ -93,7 +93,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
             <select className="input" required value={patientName} onChange={e => handlePatientChange(e.target.value)}>
               <option value="">{t("finances.selectPatient")}</option>
               {patients.filter(p => p.status === "active").map(p => (
-                <option key={p.id} value={p.name}>{p.name}{p.parent ? ` ${t("patients.minor")}` : ""}</option>
+                <option key={p.id} value={p.name}>{p.name}</option>
               ))}
             </select>
           </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { isoToShortDate, todayISO } from "../../utils/dates";
+import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 
 const SESSIONS_COLLAPSED_COUNT = 5;
@@ -98,21 +98,6 @@ export function SesionesTab({
           />
         </div>
       </div>
-
-      {/* Active date range indicator */}
-      {(sessDateFrom || sessDateTo) && (
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:12, padding:"6px 12px", background:"var(--teal-pale)", borderRadius:"var(--radius-pill)", fontSize:"var(--text-xs)", fontWeight:600, color:"var(--teal-dark)" }}>
-          <span>{t("expediente.dateRangeApplied", {
-            from: sessDateFrom ? isoToShortDate(sessDateFrom) : "—",
-            to: sessDateTo ? isoToShortDate(sessDateTo) : "—",
-          })}</span>
-          <button type="button"
-            onClick={() => { setSessDateFrom(null); setSessDateTo(null); }}
-            style={{ background:"none", border:"none", color:"var(--teal-dark)", fontWeight:700, cursor:"pointer", fontFamily:"var(--font)", fontSize:"var(--text-xs)", padding:0 }}>
-            {t("expediente.clearDateRange")}
-          </button>
-        </div>
-      )}
 
       {/* Session lists */}
       {filteredPSessions.length === 0 ? (
