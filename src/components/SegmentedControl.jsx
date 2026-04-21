@@ -14,6 +14,15 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
   const containerRef = useRef(null);
   const btnRefs = useRef({});
   const [slider, setSlider] = useState(null);
+  // Track which edge (if any) the slider just arrived at so we can
+  // play a momentum-squish animation anchored to that wall. The
+  // bouncy transition on left/width overshoots the container when
+  // the target is the first or last tab — instead of clipping the
+  // overflow, we swap to a softer slide + compress the slider
+  // against the wall, then spring back to shape. Nulled out after
+  // the animation duration so repeating the same selection replays.
+  const [edgeBounce, setEdgeBounce] = useState(null); // 'left' | 'right' | null
+  const prevValueRef = useRef(value);
 
   const measure = useCallback(() => {
     const container = containerRef.current;
@@ -37,6 +46,31 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
 
+  // Detect arrivals at the leftmost / rightmost tab and tag the
+  // slider with the right edge class for the duration of the bounce.
+  useEffect(() => {
+    if (prevValueRef.current === value) return;
+    prevValueRef.current = value;
+    if (!items?.length) return;
+    if (items[0].k === value) setEdgeBounce("left");
+    else if (items[items.length - 1].k === value) setEdgeBounce("right");
+    else setEdgeBounce(null);
+  }, [value, items]);
+
+  // Clear the edge flag after the animation finishes so the next
+  // selection (including re-selecting the same tab) re-arms it.
+  useEffect(() => {
+    if (!edgeBounce) return;
+    const id = setTimeout(() => setEdgeBounce(null), 620);
+    return () => clearTimeout(id);
+  }, [edgeBounce]);
+
+  const sliderClass = `segmented-slider${
+    edgeBounce === "left" ? " segmented-slider--edge-left"
+      : edgeBounce === "right" ? " segmented-slider--edge-right"
+      : ""
+  }`;
+
   return (
     <div
       ref={containerRef}
@@ -48,7 +82,7 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
     >
       {slider && (
         <span
-          className="segmented-slider"
+          className={sliderClass}
           style={{ left: slider.left, width: slider.width }}
         />
       )}

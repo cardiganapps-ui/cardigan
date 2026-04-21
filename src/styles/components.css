@@ -299,6 +299,42 @@ button.kpi-card:active {
   transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none; z-index: 0;
 }
+/* When the slider lands on the leftmost or rightmost tab, the bouncy
+   overshoot would poke past the container. Swap the transition to a
+   flat ease-out (no overshoot) and run a scaleX "squish-against-the-
+   wall" keyframe anchored to the hit side, so the pill still feels
+   momentumful — it just compresses instead of overflowing. */
+.segmented-slider--edge-left,
+.segmented-slider--edge-right {
+  transition: left 0.38s cubic-bezier(0.22, 0.61, 0.36, 1), width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.segmented-slider--edge-left {
+  transform-origin: left center;
+  animation: segmentedSquishLeft 0.55s cubic-bezier(0.34, 1.3, 0.56, 1) both;
+}
+.segmented-slider--edge-right {
+  transform-origin: right center;
+  animation: segmentedSquishRight 0.55s cubic-bezier(0.34, 1.3, 0.56, 1) both;
+}
+/* Hold scale(1) while the slider is still traveling, then compress
+   right as it meets the wall (~0.26s in), spring back past rest with
+   a tiny overshoot, settle. Anchored to the edge via transform-origin
+   so the opposite edge of the pill is what actually moves during the
+   squash — visually reading as momentum being absorbed by the wall. */
+@keyframes segmentedSquishLeft {
+  0%   { transform: scaleX(1); }
+  48%  { transform: scaleX(1); }
+  68%  { transform: scaleX(0.86); }
+  84%  { transform: scaleX(1.04); }
+  100% { transform: scaleX(1); }
+}
+@keyframes segmentedSquishRight {
+  0%   { transform: scaleX(1); }
+  48%  { transform: scaleX(1); }
+  68%  { transform: scaleX(0.86); }
+  84%  { transform: scaleX(1.04); }
+  100% { transform: scaleX(1); }
+}
 .segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab {
   flex: 1; padding: 7px 8px;
   font-size: var(--text-sm); font-weight: 600;
@@ -538,16 +574,24 @@ button.kpi-card:active {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: all 0.35s;
 }
-.cal-day.active { background: var(--teal); }
 .cal-day.has-sessions { position: relative; }
 .cal-day.has-sessions::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--teal); }
-.cal-day.active::after { background: white; }
 .cal-day-name { font-size: 10px; font-weight: 700; color: var(--charcoal-xl); text-transform: uppercase; }
-.cal-day.active .cal-day-name { color: rgba(255,255,255,0.8); }
-.cal-day-num { font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); }
-.cal-day.active .cal-day-num { color: white; }
-.cal-day.today:not(.active) { background: var(--teal-pale); }
-.cal-day.today:not(.active) .cal-day-num { color: var(--teal-dark); }
+.cal-day.active .cal-day-name { color: var(--teal-dark); }
+/* Pill → circle: wrap only the date number in a fixed-size round
+   chip so the "selected day" indicator is a perfect circle even
+   though the parent cal-day is flex:1 (stretches with the week row).
+   The old rule put the teal bg on the full cal-day, producing an
+   oval/pill at wider viewports. */
+.cal-day-num {
+  font-family: var(--font-d); font-size: 16px; font-weight: 800;
+  color: var(--charcoal);
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.3s, color 0.3s;
+}
+.cal-day.active .cal-day-num { background: var(--teal); color: #FFFFFF; }
+.cal-day.today:not(.active) .cal-day-num { background: var(--teal-pale); color: var(--teal-dark); }
 
 /* BALANCE BAR */
 .balance-bar { height: 6px; background: var(--cream-dark); border-radius: 3px; overflow: hidden; margin-top: 6px; min-height: 6px; }
