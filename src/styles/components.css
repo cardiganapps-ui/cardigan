@@ -570,7 +570,7 @@ button.kpi-card:active {
 .cal-strip { display: flex; padding: 0 16px 4px; }
 .cal-day {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 0; border-radius: var(--radius); flex: 1;
+  padding: 8px 0 14px; border-radius: var(--radius); flex: 1;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: all 0.35s;
 }
