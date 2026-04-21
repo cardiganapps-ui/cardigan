@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../../utils/contact";
@@ -84,7 +84,19 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [hasEndDate, setHasEndDate] = useState(false);
   const [endDate, setEndDate] = useState("");
 
-  const [err, setErr] = useState("");
+  // Transient feedback for missed-field / conflict nudges on tap of
+  // "Siguiente" or "Agregar paciente". A silently-disabled button was
+  // leaving the user wondering why the form wasn't advancing — this
+  // fades in the exact reason for ~2.6s and blurs out. `id` forces
+  // the animation to replay when the same message is set twice.
+  const [feedback, setFeedback] = useState(null);
+  useEffect(() => {
+    if (!feedback) return;
+    const id = setTimeout(() => setFeedback(null), 2600);
+    return () => clearTimeout(id);
+  }, [feedback]);
+  const flash = (msg) => setFeedback({ msg, id: Date.now() });
+
   const [submitting, setSubmitting] = useState(false);
 
   // External conflicts: any form schedule collides with an existing
@@ -120,18 +132,22 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     });
   };
 
-  // Gate for moving from step 1 to step 2 — all fields required to
-  // create a patient with a schedule must be valid AND conflict-free.
-  const canAdvance = !!name.trim() && Number(rate) > 0 && schedules.length > 0 && !hasConflict;
+  // Gate used for UI affordances (disabled indicators etc.) — not
+  // enforced by the button itself. Keeping "Siguiente" clickable so
+  // the user always gets feedback is the whole point of the flash
+  // toast.
+  const rateNum = Number(rate);
+  const rateValid = rate !== "" && Number.isFinite(rateNum) && rateNum >= 0;
+  const canAdvance = !!name.trim() && rateValid && schedules.length > 0 && !hasConflict;
 
   const goNext = () => {
-    if (!name.trim()) { setErr(t("patients.enterName")); return; }
+    if (!name.trim()) { flash(t("patients.enterName")); return; }
     if (patients?.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
-      setErr(t("patients.duplicateName")); return;
+      flash(t("patients.duplicateName")); return;
     }
-    if (!Number(rate) && rate !== "0") { setErr(t("patients.enterRate")); return; }
-    if (hasConflict) { setErr(t("patients.resolveConflicts")); return; }
-    setErr("");
+    if (!rateValid) { flash(t("patients.enterRate")); return; }
+    if (hasConflict) { flash(t("patients.resolveConflicts")); return; }
+    setFeedback(null);
     setStep(2);
     // Scroll to top on step change so the user sees the first field
     // rather than landing mid-scroll.
@@ -139,7 +155,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   };
 
   const goBack = () => {
-    setErr("");
+    setFeedback(null);
     setStep(1);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   };
@@ -147,11 +163,10 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const submit = async (e) => {
     e?.preventDefault();
     if (step === 1) { goNext(); return; }
-    // Step 2: final validation — nothing new is required, but re-check
-    // gate in case user bounced back to step 1 and introduced a
-    // conflict before coming back.
-    if (!canAdvance) { setStep(1); setErr(t("patients.resolveConflicts")); return; }
-    setErr("");
+    // Step 2: re-check the gate in case the user bounced back to step 1
+    // and introduced a conflict before coming back.
+    if (!canAdvance) { setStep(1); flash(t("patients.resolveConflicts")); return; }
+    setFeedback(null);
     setSubmitting(true);
     try {
       const ok = await onSubmit({
@@ -166,7 +181,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
       if (ok) onClose();
       else setSubmitting(false);
     } catch (ex) {
-      setErr(ex?.message || "Error al guardar");
+      flash(ex?.message || "Error al guardar");
       setSubmitting(false);
     }
   };
@@ -204,8 +219,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
             <div role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={step}
               aria-label={t("patients.stepIndicator", { current: step, total: 2 })}
               style={{ display:"flex", gap:6 }}>
-              <span aria-hidden style={{ height:4, width:44, borderRadius:2, background:"var(--teal)", transition:"background 0.3s" }} />
-              <span aria-hidden style={{ height:4, width:44, borderRadius:2, background: step >= 2 ? "var(--teal)" : "var(--border)", transition:"background 0.3s" }} />
+              <span aria-hidden style={{ height:4, width:72, borderRadius:2, background:"var(--teal)", transition:"background 0.3s" }} />
+              <span aria-hidden style={{ height:4, width:72, borderRadius:2, background: step >= 2 ? "var(--teal)" : "var(--border)", transition:"background 0.3s" }} />
             </div>
           </div>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose} disabled={submitting}><IconX size={14} /></button>
@@ -404,12 +419,37 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
             </>
           )}
 
-          {err && <div className="form-error">{err}</div>}
           </div>
+
+          {/* Fade-in / hold / blur-out toast. Rendered sibling to the
+              sticky footer so it floats just above the Siguiente / Agregar
+              paciente button without shifting the layout. `key` ties the
+              animation to the feedback id so replays work. */}
+          {feedback && (
+            <div key={feedback.id} role="alert" aria-live="polite"
+              style={{
+                position:"sticky", bottom:78, left:0, right:0,
+                pointerEvents:"none", display:"flex", justifyContent:"center",
+                marginTop:-12, marginBottom:-42, zIndex:2,
+                animation:"formFeedbackFade 2.6s ease forwards",
+              }}>
+              <div style={{
+                background:"var(--red-bg)", color:"var(--red)",
+                padding:"9px 16px", borderRadius:"var(--radius-pill)",
+                fontSize:"var(--text-sm)", fontWeight:600,
+                fontFamily:"var(--font)", textAlign:"center",
+                boxShadow:"var(--shadow-sm)",
+                border:"1px solid rgba(217,107,107,0.22)",
+                maxWidth:"calc(100% - 24px)",
+              }}>
+                {feedback.msg}
+              </div>
+            </div>
+          )}
 
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
             {step === 1 ? (
-              <button className="btn btn-primary-teal" type="submit" disabled={!canAdvance}>
+              <button className="btn btn-primary-teal" type="submit">
                 {t("next")}
               </button>
             ) : (
