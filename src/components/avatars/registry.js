@@ -1,28 +1,34 @@
 import { createElement } from "react";
 import {
-  Sprig, Flower, Leaf, Sun, Moon, Wave, Mountain, Arch,
-  Heart, CardiganGarment, YarnBall, Spark,
+  Dog, Cat, Plant, Coffee, Mountain, Cloud,
+  Book, Moon, Heart, Avocado, Sheep, House,
 } from "./presets.jsx";
 
 /* ── Cardigan preset avatar registry ────────────────────────────────
-   Maps preset ids to their component + human-readable label. Kept
-   separate from `presets.jsx` so the components-only file satisfies
-   the react-refresh lint rule and the render helper can live next
-   to the data without needing JSX syntax. */
+   Maps preset ids to their component + human-readable Spanish label.
+   Kept separate from `presets.jsx` so the components-only file
+   satisfies the react-refresh lint rule and the render helper can
+   live next to the data without needing JSX syntax.
+
+   Each avatar is a subject wearing a teal cardigan on a pastel
+   backdrop. Ids are stable — changing them would strand users who
+   already picked that preset (their user_metadata stores e.g.
+   "preset:dog-01"). Retain the `-01` suffix so a future redesign
+   could ship `dog-02` etc. alongside. */
 
 export const PRESET_AVATARS = {
-  "sprig-01":     { label: "Ramita",    Component: Sprig },
-  "flower-01":    { label: "Flor",      Component: Flower },
-  "leaf-01":      { label: "Hoja",      Component: Leaf },
-  "sun-01":       { label: "Sol",       Component: Sun },
-  "moon-01":      { label: "Luna",      Component: Moon },
-  "wave-01":      { label: "Ondas",     Component: Wave },
-  "mountain-01":  { label: "Monte",     Component: Mountain },
-  "arch-01":      { label: "Arcos",     Component: Arch },
-  "heart-01":     { label: "Corazón",   Component: Heart },
-  "cardigan-01":  { label: "Cardigan",  Component: CardiganGarment },
-  "yarn-01":      { label: "Estambre",  Component: YarnBall },
-  "spark-01":     { label: "Destello",  Component: Spark },
+  "dog-01":      { label: "Perro",    Component: Dog },
+  "cat-01":      { label: "Gato",     Component: Cat },
+  "plant-01":    { label: "Planta",   Component: Plant },
+  "coffee-01":   { label: "Café",     Component: Coffee },
+  "mountain-01": { label: "Montaña",  Component: Mountain },
+  "cloud-01":    { label: "Nube",     Component: Cloud },
+  "book-01":     { label: "Libro",    Component: Book },
+  "moon-01":     { label: "Luna",     Component: Moon },
+  "heart-01":    { label: "Corazón",  Component: Heart },
+  "avocado-01":  { label: "Aguacate", Component: Avocado },
+  "sheep-01":    { label: "Oveja",    Component: Sheep },
+  "house-01":    { label: "Casa",     Component: House },
 };
 
 export const PRESET_AVATAR_IDS = Object.keys(PRESET_AVATARS);
