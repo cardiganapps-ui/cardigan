@@ -39,10 +39,17 @@ export default async function handler(req, res) {
 
   let sent = 0;
   let staleRemoved = 0;
+  // Capture per-subscription outcomes so the client can surface "the send
+  // went out but the provider rejected" differently from "no subs on file".
+  // Without this, every non-terminal error path collapsed to sent=0 and
+  // the client showed the misleading "no active subscriptions" toast.
+  const results = [];
   for (const sub of subs) {
+    const host = (() => { try { return new URL(sub.endpoint).host; } catch { return "?"; } })();
     try {
       await sendPush(sub, payload);
       sent++;
+      results.push({ host, ok: true });
     } catch (err) {
       if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
         await supabase
@@ -50,11 +57,13 @@ export default async function handler(req, res) {
           .delete()
           .eq("endpoint", sub.endpoint);
         staleRemoved++;
+        results.push({ host, ok: false, terminal: true, statusCode: err.statusCode, message: err.message });
       } else {
         console.error("push-test send error:", err.statusCode, err.message);
+        results.push({ host, ok: false, terminal: false, statusCode: err.statusCode || null, message: err.message });
       }
     }
   }
 
-  return res.status(200).json({ sent, staleRemoved });
+  return res.status(200).json({ sent, staleRemoved, results });
 }

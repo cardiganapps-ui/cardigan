@@ -313,8 +313,20 @@ export function useNotifications(user) {
       });
       if (!resp.ok) return { ok: false, code: "server-error" };
       const body = await resp.json().catch(() => ({}));
-      if (!body?.sent) return { ok: false, code: "no-subscription" };
-      return { ok: true };
+      if (body?.sent) return { ok: true };
+      // sent=0 but the server tried: distinguish "no subs on file" from
+      // "tried to send but provider rejected every one" so the UI doesn't
+      // always blame missing subscriptions.
+      const results = Array.isArray(body?.results) ? body.results : [];
+      if (results.length === 0) return { ok: false, code: "no-subscription" };
+      const firstErr = results.find((r) => !r.ok) || {};
+      if (import.meta.env.DEV) console.error("sendTest results:", results);
+      return {
+        ok: false,
+        code: "send-failed",
+        statusCode: firstErr.statusCode ?? null,
+        message: firstErr.message ?? null,
+      };
     } catch (err) {
       if (import.meta.env.DEV) console.error("sendTest error:", err);
       return { ok: false, code: "server-error" };

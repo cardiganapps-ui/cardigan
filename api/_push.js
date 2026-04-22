@@ -77,12 +77,17 @@ export function isAllowedPushEndpoint(urlString) {
 // the migration away from the historical VITE_/EMAIL names we still
 // accept those as fallbacks so the transition can happen without a
 // key rotation — the legacy names were set by an older .env.example.
+// If the subject is missing or malformed we fall back to a real mailto
+// instead of throwing: webpush's own validator handles it, and throwing
+// here would collapse to "sent=0" at call sites without a usable error.
 export function readVapidConfig() {
-  const subject = process.env.VAPID_SUBJECT || process.env.VAPID_EMAIL;
+  const rawSubject = process.env.VAPID_SUBJECT || process.env.VAPID_EMAIL || "";
+  const subject = rawSubject && (rawSubject.startsWith("mailto:") || rawSubject.startsWith("https:"))
+    ? rawSubject
+    : "mailto:noreply@cardigan.mx";
   const pub = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
   const missing = [];
-  if (!subject || !subject.startsWith("mailto:")) missing.push("VAPID_SUBJECT");
   if (!pub) missing.push("VAPID_PUBLIC_KEY");
   if (!priv) missing.push("VAPID_PRIVATE_KEY");
   return { subject, pub, priv, missing };
