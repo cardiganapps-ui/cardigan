@@ -1,14 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Café">
   <circle cx="100" cy="100" r="100" fill="#D4DDDD"/>
-  <g fill="none" stroke="#2C2C2C" stroke-width="2.4" stroke-linecap="round">
-    <path d="M84 30 Q92 42 86 54"/>
-    <path d="M100 24 Q108 38 100 50"/>
-    <path d="M116 30 Q108 42 114 54"/>
+  <g fill="none" stroke="#2E2E2E" stroke-width="2.8" stroke-linecap="round">
+    <path d="M80 32 Q88 46 80 60"/>
+    <path d="M100 26 Q108 42 100 58"/>
+    <path d="M120 32 Q112 46 120 60"/>
   </g>
-  <path d="M52 66 L148 66 L140 140 Q138 152 126 152 L74 152 Q62 152 60 140 Z" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M60 78 L140 78" stroke="#BFA884" stroke-width="6" stroke-linecap="round"/>
-  <path d="M148 82 Q174 84 174 104 Q174 124 148 126" fill="none" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
-  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
+  <path d="M48 74 L144 74 L136 156 Q134 168 122 168 L70 168 Q58 168 56 156 Z" fill="#F2E8D9" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M58 90 L134 90" stroke="#6B4B34" stroke-width="8" stroke-linecap="round"/>
+  <path d="M144 88 Q172 90 172 114 Q172 138 144 140" fill="none" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
 </svg>

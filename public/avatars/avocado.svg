@@ -1,9 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Aguacate">
   <circle cx="100" cy="100" r="100" fill="#DED4E4"/>
-  <path d="M100 30 Q70 30 68 74 Q68 120 100 126 Q132 120 132 74 Q130 30 100 30 Z" fill="#A5BFA1" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M100 42 Q80 42 78 76 Q78 114 100 118 Q122 114 122 76 Q120 42 100 42 Z" fill="#EADFCD" stroke="#2C2C2C" stroke-width="2.4"/>
-  <circle cx="100" cy="80" r="13" fill="#8A6A4A" stroke="#2C2C2C" stroke-width="2.4"/>
-  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
-  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
+  <path d="M100 30 Q62 30 60 84 Q60 148 100 164 Q140 148 140 84 Q138 30 100 30 Z" fill="#7A9B77" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M100 46 Q78 46 76 88 Q76 140 100 152 Q124 140 124 88 Q122 46 100 46 Z" fill="#EADFCD" stroke="#2E2E2E" stroke-width="2.6"/>
+  <circle cx="100" cy="100" r="18" fill="#6B4B34" stroke="#2E2E2E" stroke-width="2.6"/>
 </svg>
