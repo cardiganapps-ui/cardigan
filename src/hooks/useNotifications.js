@@ -152,13 +152,18 @@ export function useNotifications(user) {
               setReconciledOff(true);
             }
           } else {
-            // Permission revoked at OS / browser level. Mirror in DB.
+            // Permission is either "denied" (user actively revoked) or
+            // "default" (never asked — e.g. fresh PWA install on a new
+            // device). Mirror to DB either way, but only surface the
+            // "your subscription vanished" banner on actual revocation.
+            // For "default" the NotificationsPrompt will re-offer the
+            // native prompt; a scary banner there is misleading.
             await supabase.from("notification_preferences").upsert(
               { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
               { onConflict: "user_id" }
             );
             setEnabled(false);
-            setReconciledOff(true);
+            if (Notification.permission === "denied") setReconciledOff(true);
           }
         } catch {
           // SW ready errored out — leave state as pref so the UI
@@ -231,6 +236,11 @@ export function useNotifications(user) {
     );
 
     setEnabled(true);
+    // A successful enable supersedes any leftover "subscription vanished"
+    // banner — typically surfaced by mount-time reconciliation when prefs
+    // said enabled but no browser sub existed yet, then the user hit the
+    // native prompt and we came back here with a fresh, valid sub.
+    setReconciledOff(false);
     return { ok: true };
   }, [supported, user, reminderMinutes, needsInstall]);
 
