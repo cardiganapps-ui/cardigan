@@ -214,6 +214,7 @@ button.avatar-sm::before {
   z-index: var(--z-drawer-overlay); backdrop-filter: blur(2px);
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes toastIn {
   0%   { opacity: 0; transform: translateY(-18px) scale(0.96); }
   60%  { opacity: 1; transform: translateY(4px) scale(1.01); }
@@ -354,6 +355,14 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   position: relative;
 }
 .drawer-item:active { background: rgba(255,255,255,0.06); }
+@media (hover: hover) {
+  .drawer-item:not(.active):hover { background: rgba(255,255,255,0.04); }
+}
+.drawer-item:focus-visible {
+  outline: none;
+  background: rgba(255,255,255,0.08);
+  box-shadow: inset 3px 0 0 var(--teal-light);
+}
 .drawer-item.active { background: rgba(91,155,175,0.18); }
 .drawer-item.active::before {
   content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;

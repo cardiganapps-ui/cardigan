@@ -63,42 +63,62 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
+  // Optimistic: local state flips immediately and the function returns
+  // truthy in the next microtask — the cancel/reschedule sheet can
+  // dismiss in the same visual frame. Network fires in the background;
+  // on error we revert both session status and patient.billed and
+  // raise the mutationError (surfaces as the app-level error toast).
   async function updateSessionStatus(sessionId, status, charge, cancelReason) {
-    setMutating(true);
-    setMutationError("");
+    const session = upcomingSessions.find(s => s.id === sessionId);
+    if (!session) return false;
     const newStatus = (status === SESSION_STATUS.CANCELLED && charge) ? SESSION_STATUS.CHARGED : status;
     const update = { status: newStatus };
     if (cancelReason !== undefined) update.cancel_reason = cancelReason || null;
     if (newStatus === SESSION_STATUS.SCHEDULED || newStatus === SESSION_STATUS.COMPLETED) update.cancel_reason = null;
 
-    const session = upcomingSessions.find(s => s.id === sessionId);
-    const oldStatus = session?.status;
+    const oldStatus = session.status;
     const wasCancelled = oldStatus === SESSION_STATUS.CANCELLED;
     const nowCancelled = newStatus === SESSION_STATUS.CANCELLED;
+    const prevSession = { ...session };
+    const patient = session.patient_id ? patients.find(p => p.id === session.patient_id) : null;
+    const prevPatient = patient ? { ...patient } : null;
 
-    const { error } = await supabase.from("sessions")
-      .update(update).eq("id", sessionId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    // Compute the billed delta once so both the optimistic update and
+    // the eventual server write agree on the same target number.
+    let targetBilled = null;
+    if (patient && wasCancelled !== nowCancelled) {
+      const sessRate = session.rate != null ? session.rate : patient.rate;
+      targetBilled = nowCancelled
+        ? Math.max(0, patient.billed - sessRate)
+        : patient.billed + sessRate;
+    }
+
+    // Apply optimistic state now.
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...update } : s));
+    if (patient && targetBilled != null) {
+      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: targetBilled } : p));
+    }
+    setMutationError("");
 
-    // Adjust billed when cancelling without charge or reverting a cancellation
-    if (session?.patient_id && wasCancelled !== nowCancelled) {
-      const patient = patients.find(p => p.id === session.patient_id);
-      if (patient) {
-        const sessRate = session.rate != null ? session.rate : patient.rate;
-        const newBilled = nowCancelled
-          ? Math.max(0, patient.billed - sessRate)   // cancelling: remove from billed
-          : patient.billed + sessRate;                // reverting: add back to billed
-        const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id).eq("user_id", userId);
+    // Fire network in the background. Any failure → revert both tables.
+    (async () => {
+      const { error } = await supabase.from("sessions")
+        .update(update).eq("id", sessionId).eq("user_id", userId);
+      if (error) {
+        setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+        setMutationError(error.message);
+        return;
+      }
+      if (patient && targetBilled != null) {
+        const { error: pErr } = await supabase.from("patients")
+          .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
         if (pErr) {
           const fixed = await recalcPatientCounters(patient.id);
           if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-        } else {
-          setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
         }
       }
-    }
+    })();
 
     return true;
   }
@@ -139,19 +159,30 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
+  // Optimistic: updates local state immediately so the SessionSheet
+  // can dismiss without waiting on the network round-trip. Reverts
+  // the session row on server error and surfaces it via mutationError.
   async function rescheduleSession(sessionId, newDate, newTime, newDuration) {
     if (!newDate?.trim() || !newTime?.trim()) return false;
+    const prevSession = upcomingSessions.find(s => s.id === sessionId);
+    if (!prevSession) return false;
+
     const dateObj = parseShortDate(newDate);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
-
-    setMutating(true);
-    setMutationError("");
     const patch = { date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED };
     if (newDuration != null && Number(newDuration) > 0) patch.duration = Number(newDuration);
-    const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...patch } : s));
+    setMutationError("");
+
+    (async () => {
+      const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+      if (error) {
+        setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+        setMutationError(error.message);
+      }
+    })();
+
     return true;
   }
 

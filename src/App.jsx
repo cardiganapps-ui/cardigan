@@ -22,7 +22,7 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { Tutorial } from "./components/Tutorial/Tutorial";
 import { STEP_IDS_REQUIRING_FAB } from "./components/Tutorial/tutorialSteps";
 import { useTutorial } from "./hooks/useTutorial";
-import { Toast } from "./components/Toast";
+import { ToastStack } from "./components/Toast";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -78,12 +78,84 @@ export default function Cardigan() {
   );
 }
 
+/* ── SkeletonCrossfade ──
+   Wraps the first-load swap from LoadingSkeleton → real content with
+   a 250ms crossfade so the transition doesn't read as a hard cut.
+   When `showContent` flips true, both layers remain mounted for the
+   fade duration: content fades in from 0 while the skeleton fades out
+   on top, giving the eye a continuous handoff. */
+function SkeletonCrossfade({ showContent, skeletonScreen, children }) {
+  const [keepSkeleton, setKeepSkeleton] = useState(!showContent);
+  useEffect(() => {
+    if (showContent && keepSkeleton) {
+      const id = setTimeout(() => setKeepSkeleton(false), 260);
+      return () => clearTimeout(id);
+    }
+    // Re-raise the skeleton when the app transitions back to loading
+    // (rare — pull-to-refresh while the patient list is empty). The
+    // set is synchronous in the effect on purpose: the skeleton needs
+    // to be visible in the same frame we lose the content.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!showContent && !keepSkeleton) setKeepSkeleton(true);
+  }, [showContent, keepSkeleton]);
+
+  return (
+    <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      {showContent && (
+        <div style={{
+          flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
+          animation: keepSkeleton ? "fadeIn 0.25s ease" : undefined,
+        }}>
+          {children}
+        </div>
+      )}
+      {keepSkeleton && (
+        <div style={{
+          position: showContent ? "absolute" : "static",
+          inset: 0,
+          flex: showContent ? undefined : 1,
+          minHeight: 0,
+          display: "flex", flexDirection: "column",
+          animation: showContent ? "fadeOut 0.25s ease forwards" : undefined,
+          pointerEvents: showContent ? "none" : undefined,
+        }}>
+          <LoadingSkeleton screen={skeletonScreen} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── LoadingSkeleton ──
    Shown on first load (before any data has been fetched) instead of a
-   blank screen or a bare "Cargando..." line. Uses the same card + KPI
-   tile shapes as Home, so the transition feels continuous once data
-   arrives. */
-function LoadingSkeleton() {
+   blank screen or a bare "Cargando..." line. Variant defaults to the
+   Home layout (KPI tiles + list), with a simpler "header + list rows"
+   variant for screens that aren't Home — avoids the jarring
+   shape-shift when a user cold-starts on Agenda/Patients/Finances. */
+function LoadingSkeleton({ screen = "home" }) {
+  if (screen !== "home") {
+    return (
+      <div className="page" aria-hidden>
+        <div style={{ padding:"20px 16px 10px" }}>
+          <div className="sk-bar sk-bar-lg" style={{ width:"40%", marginBottom:8 }} />
+          <div className="sk-bar sk-bar-sm" style={{ width:"60%" }} />
+        </div>
+        <div style={{ padding:"0 16px" }}>
+          <div className="card">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="row-item" style={{ cursor:"default" }}>
+                <div className="sk-circle" />
+                <div className="row-content">
+                  <div className="sk-bar sk-bar-md" style={{ width:`${45 + (i * 7) % 35}%`, marginBottom:6 }} />
+                  <div className="sk-bar sk-bar-xs" style={{ width:`${25 + (i * 11) % 25}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="page" aria-hidden>
       <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -147,12 +219,75 @@ function AppShell({ user, signOut, demo, theme }) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [editingPayment, setEditingPayment] = useState(null);
-  const [successMsg, setSuccessMsg] = useState("");
-  // Generic UI toast — distinct from the success-only `successMsg` so
-  // non-success feedback (permission-denied, sync errors, etc.) can
-  // render with the appropriate color rather than a misleading green.
-  const [uiToast, setUiToast] = useState({ msg: "", type: "info" });
-  const showToast = useCallback((msg, type = "info") => setUiToast({ msg, type }), []);
+
+  /* ── Toast queue (single source of truth) ──
+     Previously three separate toast slots (success, mutationError,
+     uiToast) rendered independently, which meant rapid mutations
+     could clobber their own channel and the three channels could also
+     collide on screen. Now every surface pushes into one queue; the
+     UI renders up to MAX_TOASTS with a stagger, oldest fading out
+     first. Persistent toasts (the mutationError) don't auto-dismiss. */
+  const [toasts, setToasts] = useState([]);
+  const nextToastIdRef = useRef(0);
+  const showToast = useCallback((msg, type = "info", opts = {}) => {
+    if (!msg) return null;
+    const id = ++nextToastIdRef.current;
+    setToasts(prev => {
+      // Drop an earlier entry with the same key (e.g. reopening the
+      // mutation-error channel) before appending, so the user only
+      // sees one copy of a recurring message at a time.
+      const base = opts.key ? prev.filter(t => t.key !== opts.key) : prev;
+      const next = [...base, {
+        id, kind: type, message: msg,
+        persistent: !!opts.persistent,
+        onRetry: opts.onRetry,
+        key: opts.key,
+      }];
+      if (next.length <= 5) return next;
+      // Over cap: drop oldest non-persistent first.
+      const out = [];
+      let toDrop = next.length - 5;
+      for (const t of next) {
+        if (toDrop > 0 && !t.persistent) { toDrop--; continue; }
+        out.push(t);
+      }
+      return out;
+    });
+    return id;
+  }, []);
+  // When the user dismisses the mutation-error toast we also clear
+  // the underlying data-layer error so a subsequent failure with the
+  // same message can re-raise (setMutationError is a no-op when the
+  // new value matches the stale one).
+  const dismissToast = useCallback((id) => {
+    setToasts(prev => {
+      const toast = prev.find(t => t.id === id);
+      if (toast?.key === "mutation-error") clearMutationError?.();
+      return prev.filter(t => t.id !== id);
+    });
+  }, [clearMutationError]);
+  const showSuccess = useCallback((msg) => {
+    if (!msg) return;
+    showToast(msg, "success");
+  }, [showToast]);
+  // Surface mutationError from the data layer as a persistent,
+  // keyed entry in the toast queue. The `mutation-error` key makes
+  // showToast de-dup: re-raising replaces the existing entry rather
+  // than stacking. When mutationError clears, strip any lingering
+  // entry with that key.
+  useEffect(() => {
+    if (mutationError) {
+      showToast(mutationError, "error", {
+        persistent: true,
+        onRetry: refresh,
+        key: "mutation-error",
+      });
+    } else {
+      setToasts(prev => prev.some(t => t.key === "mutation-error")
+        ? prev.filter(t => t.key !== "mutation-error")
+        : prev);
+    }
+  }, [mutationError, showToast, refresh]);
   // Online/offline indicator — navigator.onLine is imperfect but "good
   // enough" for a surface warning; combined with explicit error toasts
   // for actual request failures it catches the common cases.
@@ -327,9 +462,9 @@ function AppShell({ user, signOut, demo, theme }) {
   // still receive a function with the original signature.
   const withSuccess = useCallback((fn, msg) => async (...args) => {
     const ok = await fn(...args);
-    if (ok) setSuccessMsg(msg);
+    if (ok) showSuccess(msg);
     return ok;
-  }, []);
+  }, [showSuccess]);
   const ctxValue = useMemo(() => ({
     ...data,
     deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
@@ -337,7 +472,7 @@ function AppShell({ user, signOut, demo, theme }) {
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
     userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
-    screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess: setSuccessMsg, showToast,
+    screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
     pendingFabAction,
     requestFabAction: setPendingFabAction,
     consumeFabAction: () => setPendingFabAction(null),
@@ -358,7 +493,7 @@ function AppShell({ user, signOut, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, setSuccessMsg, showToast, online, pendingFabAction]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
@@ -441,9 +576,7 @@ function AppShell({ user, signOut, demo, theme }) {
             </Tooltip>
           </div>
         </div>
-        <Toast message={mutationError} type="error" persistent onDismiss={clearMutationError} onRetry={refresh} />
-        <Toast message={successMsg} type="success" onDismiss={() => setSuccessMsg("")} />
-        <Toast message={uiToast.msg} type={uiToast.type} onDismiss={() => setUiToast({ msg: "", type: "info" })} />
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
         <PullToRefresh onRefresh={refresh}>
           <div style={{
             flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
@@ -451,11 +584,16 @@ function AppShell({ user, signOut, demo, theme }) {
             animation: direction === "left" ? "screenSlideLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" :
                        direction === "right" ? "screenSlideRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : undefined,
           }}>
-            {loading && patients.length === 0 ? <LoadingSkeleton /> : screenMap[screen]}
+            <SkeletonCrossfade
+              showContent={!(loading && patients.length === 0)}
+              skeletonScreen={screen}
+            >
+              {screenMap[screen]}
+            </SkeletonCrossfade>
           </div>
         </PullToRefresh>
         {!readOnly && (
-          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) setSuccessMsg(msg); }}
+          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }}
             initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
         )}
         {!readOnly && !hideFab && <QuickActions />}

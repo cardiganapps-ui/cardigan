@@ -192,10 +192,14 @@ export function Home({ setScreen, userName }) {
   const baseShift = -carouselPage * 50;
   const dragPx = carouselSwiping ? carouselOffset : 0;
   const carouselTransform = `translateX(calc(${baseShift}% + ${dragPx}px))`;
+  // Align the settle easing with the rest of the app's springy curve
+  // (`cubic-bezier(0.34, 1.56, 0.64, 1)`) — the old Material standard
+  // easing made the carousel read as stiff next to sheets, toggles,
+  // and the segmented control, which all overshoot subtly.
   const carouselTransition = carouselSwiping
     ? "none"
     : carouselSettling
-      ? "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)"
+      ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
       : "none";
 
   return (

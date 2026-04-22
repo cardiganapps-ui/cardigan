@@ -3,6 +3,11 @@
 .settings-row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-lt); cursor: pointer; min-height: 52px; -webkit-tap-highlight-color: transparent; gap: 12px; background: var(--white); }
 .settings-row:last-child { border-bottom: none; }
 .settings-row:active { background: var(--teal-mist); }
+.settings-row:focus-visible {
+  outline: none;
+  background: var(--teal-mist);
+  box-shadow: inset 0 0 0 2px var(--teal);
+}
 .settings-row-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .settings-row-title { font-size: 14px; font-weight: 600; color: var(--charcoal); }
 .settings-row-sub { font-size: 12px; color: var(--charcoal-xl); margin-top: 1px; }
@@ -140,9 +145,19 @@
   font-size: 9px; font-weight: 700; color: var(--teal-dark);
   overflow: hidden; cursor: pointer;
   display: flex; flex-direction: column;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
 }
 .week-event-time { display: none; }
 .week-event.cancelled { background: var(--cream-dark); border-left-color: var(--charcoal-xl); color: var(--charcoal-lt); }
+/* Long-press in-flight: a held finger before the 500 ms timer fires
+   now produces immediate visible feedback. Scale + subtle shadow
+   signal "something is about to happen" so the gesture doesn't read
+   as a dead tap. */
+.week-event--pressing {
+  transform: scale(0.96);
+  filter: brightness(0.96);
+  box-shadow: inset 0 0 0 1px var(--teal);
+}
 
 /* FINANCES: tabs use the shared .segmented block (above) */
 

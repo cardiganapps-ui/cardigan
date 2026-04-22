@@ -25,10 +25,16 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
   const timer = useRef(null);
   const firedRef = useRef(false);
   const startPos = useRef(null);
+  // Visual press feedback: true while the 500 ms timer is running.
+  // Before this, a held touch produced no visible change and the
+  // gesture read as an unresponsive tap. The `.week-event--pressing`
+  // class (see responsive.css) scales + brightens in-place.
+  const [pressing, setPressing] = useState(false);
 
   const clearTimer = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
+    setPressing(false);
   };
 
   const onTouchStart = (e) => {
@@ -36,8 +42,10 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
     firedRef.current = false;
     const t0 = e.touches[0];
     startPos.current = { x: t0.clientX, y: t0.clientY };
+    setPressing(true);
     timer.current = setTimeout(() => {
       firedRef.current = true;
+      setPressing(false);
       haptic.warn();
       onSelectSession(session, "reschedule");
     }, 500);
@@ -53,7 +61,7 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
 
   return (
     <div
-      className={`week-event ${isCancelledStatus(session.status)?"cancelled":""} ${isDraggable ? "week-event--draggable" : ""} ${touchLongPressable ? "week-event--longpress" : ""}`}
+      className={`week-event ${isCancelledStatus(session.status)?"cancelled":""} ${isDraggable ? "week-event--draggable" : ""} ${touchLongPressable ? "week-event--longpress" : ""} ${pressing ? "week-event--pressing" : ""}`}
       draggable={isDraggable}
       onDragStart={isDraggable ? (e) => {
         e.dataTransfer.setData("text/plain", session.id);
