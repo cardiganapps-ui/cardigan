@@ -438,6 +438,23 @@ export default {
     copied: "Copiado al portapapeles",
     readingTime: "{mins} min de lectura",
     wordCountLabel: "{count} palabra{plural}",
+    emptyTitle: "Sin notas a\u00fan",
+    emptyBody: "Crea tu primera nota con el bot\u00f3n de arriba. Las notas que vincules a pacientes aparecer\u00e1n en sus expedientes.",
+    groups: {
+      pinned: "Fijadas",
+      today: "Hoy",
+      yesterday: "Ayer",
+      thisWeek: "Esta semana",
+      thisMonth: "Este mes",
+      lastMonth: "Mes anterior",
+    },
+    find: {
+      placeholder: "Buscar en la nota\u2026",
+      noMatches: "Sin coincidencias",
+      match: "{current} de {total}",
+    },
+    outline: "\u00cdndice",
+    outlineEmpty: "Agrega t\u00edtulos con # para ver el \u00edndice.",
   },
 
   // ── Documents ──

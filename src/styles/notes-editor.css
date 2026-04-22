@@ -550,3 +550,25 @@
   background: var(--teal-pale);
   color: var(--charcoal);
 }
+
+/* ── Notes list group headers ──────────────────────────────────────
+   Section dividers in the notes list ("Hoy", "Ayer", "Esta semana",
+   monthly). Matches the .section-title typography vocabulary. */
+.notes-group-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--charcoal-xl);
+  padding: 10px 2px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.notes-group-header::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-lt);
+  opacity: 0.6;
+}

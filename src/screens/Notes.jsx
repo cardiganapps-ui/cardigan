@@ -3,12 +3,14 @@ import { IconSearch, IconClipboard, IconX, IconStar, IconTrash, IconEdit, IconDo
 import { haptic } from "../utils/haptics";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SwipeableRow } from "../components/SwipeableRow";
+import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
 import { NOTE_TEMPLATES } from "../data/noteTemplates";
+import { groupNotesByRecency } from "../utils/noteGrouping";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
@@ -55,6 +57,8 @@ export function Notes() {
       return (b.updated_at || "").localeCompare(a.updated_at || "");
     });
   }, [notes, search, filterPatient, favoritesOnly, patients]);
+
+  const groupedNotes = useMemo(() => groupNotesByRecency(filteredNotes, t), [filteredNotes, t]);
 
   const handleSaveNote = useCallback(async ({ title, content }) => {
     if (editingNote?.id) await updateNote(editingNote.id, { title, content });
@@ -199,63 +203,33 @@ export function Notes() {
       </div>
 
       {filteredNotes.length === 0
-        ? <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)" }}>
-            <div style={{ marginBottom:8, color:"var(--teal-light)" }}><IconClipboard size={32} /></div>
-            <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:4 }}>
-              {(notes || []).length === 0 ? t("notes.noNotes") : t("docs.noResults")}
-            </div>
-            {(notes || []).length === 0 && (
-              <div style={{ fontSize:"var(--text-sm)", lineHeight:1.5 }}>
-                {t("notes.createFirstHint")}
-              </div>
-            )}
-          </div>
-        : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {filteredNotes.map(n => {
-              const p = n.patient_id ? patients.find(pt => pt.id === n.patient_id) : null;
-              const linkedSession = n.session_id ? (upcomingSessions || []).find(s => s.id === n.session_id) : null;
-              const isSelected = selected.has(n.id);
-
-              const isLongPressing = longPressingId === n.id;
-              const noteContent = (
-                <div className={isLongPressing ? "note-card-pressing" : ""} style={{ position:"relative", background:"var(--white)", borderRadius:"var(--radius)", border:"1px solid var(--border-lt)", boxShadow:"var(--shadow-sm)", overflow:"hidden", transition:"transform 0.4s ease, background 0.4s ease" }}>
-                  <div style={{ display:"flex", alignItems:"center" }}>
-                    {selectMode && (
-                      <div onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}
-                        style={{ padding:"12px 0 12px 12px", cursor:"pointer", flexShrink:0 }}>
-                        <div style={{
-                          width:22, height:22, borderRadius:"50%",
-                          border: isSelected ? "none" : "2px solid var(--border)",
-                          background: isSelected ? "var(--teal)" : "transparent",
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          transition:"all 0.4s",
-                        }}>
-                          {isSelected && <span style={{ color:"var(--white)", fontSize:"var(--text-sm)", fontWeight:800 }}>✓</span>}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{ flex:1, minWidth:0, WebkitUserSelect:"none", userSelect:"none" }}
-                      onTouchStart={() => !selectMode && startLongPress(n)}
-                      onTouchEnd={cancelLongPress} onTouchMove={cancelLongPress}
-                      onTouchCancel={cancelLongPress}>
-                      <NoteCard note={n} onClick={() => handleNoteClick(n)}
-                        patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null}
-                        onPatientClick={p ? () => openExpediente(p) : undefined} />
-                    </div>
-                  </div>
-                  {isLongPressing && <div className="note-longpress-progress" aria-hidden="true" />}
-                </div>
-              );
-
-              return selectMode ? (
-                <div key={n.id}>{noteContent}</div>
-              ) : (
-                <SwipeableRow key={n.id} onAction={() => deleteNote(n.id)} actionLabel={t("delete")} actionTone="danger">
-                  {noteContent}
-                </SwipeableRow>
-              );
-            })}
-          </div>
+        ? ((notes || []).length === 0
+            ? <EmptyState
+                kind="notes"
+                title={t("notes.emptyTitle")}
+                body={t("notes.emptyBody")}
+              />
+            : <EmptyState
+                kind="notes"
+                title={t("docs.noResults")}
+                body={t("notes.createFirstHint")}
+                compact
+              />)
+        : <NoteGroupedList
+            buckets={groupedNotes}
+            patients={patients}
+            upcomingSessions={upcomingSessions}
+            selected={selected}
+            selectMode={selectMode}
+            longPressingId={longPressingId}
+            onSelectToggle={toggleSelect}
+            onNoteClick={handleNoteClick}
+            onLongPressStart={startLongPress}
+            onLongPressCancel={cancelLongPress}
+            openExpediente={openExpediente}
+            deleteNote={deleteNote}
+            t={t}
+          />
       }
 
       {/* Multi-select action bar */}
@@ -392,5 +366,101 @@ export function Notes() {
     )}
     </div>
     </>
+  );
+}
+
+/* ── Grouped list rendering ─────────────────────────────────────────
+   Renders the bucketed output of groupNotesByRecency with date-group
+   headers ("Hoy", "Ayer", …) and per-row stagger entry animation.
+   Keeps the row rendering inline (not a separate NoteRow component)
+   to avoid shuffling props through yet another layer. */
+function NoteGroupedList({
+  buckets,
+  patients,
+  upcomingSessions,
+  selected,
+  selectMode,
+  longPressingId,
+  onSelectToggle,
+  onNoteClick,
+  onLongPressStart,
+  onLongPressCancel,
+  openExpediente,
+  deleteNote,
+  t,
+}) {
+  // Precompute the absolute row index for each note so the stagger
+  // animation delay accounts for rows in earlier buckets. Doing this
+  // during render (not with a mutable let) keeps the component pure.
+  const rowIndexById = new Map();
+  {
+    let i = 0;
+    for (const bucket of buckets) {
+      for (const note of bucket.notes) {
+        rowIndexById.set(note.id, i);
+        i += 1;
+      }
+    }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {buckets.map((bucket) => (
+        <div key={bucket.key} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="notes-group-header">{bucket.label}</div>
+          {bucket.notes.map(n => {
+            const p = n.patient_id ? patients.find(pt => pt.id === n.patient_id) : null;
+            const linkedSession = n.session_id ? (upcomingSessions || []).find(s => s.id === n.session_id) : null;
+            const isSelected = selected.has(n.id);
+            const isLongPressing = longPressingId === n.id;
+            const staggerIdx = Math.min(rowIndexById.get(n.id) ?? 0, 12);
+            const noteContent = (
+              <div
+                className={"list-entry-stagger" + (isLongPressing ? " note-card-pressing" : "")}
+                style={{
+                  position: "relative",
+                  background: "var(--white)",
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--border-lt)",
+                  boxShadow: "var(--shadow-sm)",
+                  overflow: "hidden",
+                  transition: "transform 0.4s ease, background 0.4s ease",
+                  "--stagger-i": staggerIdx,
+                }}>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  {selectMode && (
+                    <div onClick={(e) => { e.stopPropagation(); onSelectToggle(n.id); }}
+                      style={{ padding: "12px 0 12px 12px", cursor: "pointer", flexShrink: 0 }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: "50%",
+                        border: isSelected ? "none" : "2px solid var(--border)",
+                        background: isSelected ? "var(--teal)" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.4s",
+                      }}>
+                        {isSelected && <span style={{ color: "var(--white)", fontSize: "var(--text-sm)", fontWeight: 800 }}>✓</span>}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0, WebkitUserSelect: "none", userSelect: "none" }}
+                    onTouchStart={() => !selectMode && onLongPressStart(n)}
+                    onTouchEnd={onLongPressCancel} onTouchMove={onLongPressCancel}
+                    onTouchCancel={onLongPressCancel}>
+                    <NoteCard note={n} onClick={() => onNoteClick(n)}
+                      patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null}
+                      onPatientClick={p ? () => openExpediente(p) : undefined} />
+                  </div>
+                </div>
+                {isLongPressing && <div className="note-longpress-progress" aria-hidden="true" />}
+              </div>
+            );
+            return selectMode
+              ? <div key={n.id}>{noteContent}</div>
+              : <SwipeableRow key={n.id} onAction={() => deleteNote(n.id)} actionLabel={t("delete")} actionTone="danger">
+                  {noteContent}
+                </SwipeableRow>;
+          })}
+        </div>
+      ))}
+    </div>
   );
 }

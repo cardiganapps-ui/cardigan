@@ -50,6 +50,60 @@ function EmptyIllustration({ kind, size = 160 }) {
     );
   }
 
+  if (kind === "notes") {
+    // Line-art notepad with a folded corner, spiral binding dots, and
+    // a teal bookmark ribbon. The curved pen sits at the upper-right
+    // to hint at the "start writing" action without a literal cursor.
+    return (
+      <svg width={size} height={size * 0.7} viewBox="0 0 200 140" aria-hidden="true">
+        {/* Soft spotlight */}
+        <circle cx="100" cy="72" r="58" fill={tint} opacity="0.4" />
+        <ellipse cx="100" cy="122" rx="56" ry="6" fill={tint} opacity="0.55" />
+
+        {/* Notepad body, folded-corner */}
+        <path
+          d="M 60 24
+             L 132 24
+             L 148 40
+             L 148 114
+             L 60 114 Z"
+          fill="var(--white)"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+        />
+        {/* Folded corner highlight */}
+        <path d="M 132 24 L 132 40 L 148 40"
+          fill={tint} stroke={stroke} strokeWidth="2.2" strokeLinejoin="round" />
+
+        {/* Spiral binding dots */}
+        <g fill={stroke}>
+          <circle cx="60" cy="38" r="2.2" />
+          <circle cx="60" cy="56" r="2.2" />
+          <circle cx="60" cy="74" r="2.2" />
+          <circle cx="60" cy="92" r="2.2" />
+          <circle cx="60" cy="110" r="2.2" opacity="0.5" />
+        </g>
+
+        {/* Body text lines — faint so the shape reads as texture */}
+        <g stroke={stroke} strokeWidth="1.5" strokeLinecap="round" opacity="0.3">
+          <line x1="74" y1="56" x2="136" y2="56" />
+          <line x1="74" y1="70" x2="130" y2="70" />
+          <line x1="74" y1="84" x2="120" y2="84" />
+        </g>
+
+        {/* Teal bookmark ribbon tucked under top edge */}
+        <path
+          d="M 110 22 L 110 52 L 118 46 L 126 52 L 126 22 Z"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
   if (kind === "finances") {
     // Outlined receipt with a teal $-emblem. Line-art (no opaque
     // fills) so the shape reads on both light and dark backgrounds
