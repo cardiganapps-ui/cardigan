@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Borrego">
   <circle cx="100" cy="100" r="100" fill="#F0E3C6"/>
-  <path d="M148 148 Q158 140 158 128 Q168 122 162 108 Q172 96 160 86 Q168 74 154 68 Q158 52 140 50 Q136 36 120 42 Q114 28 100 34 Q86 28 80 42 Q64 36 60 50 Q42 52 46 68 Q32 74 40 86 Q28 96 38 108 Q32 122 42 128 Q42 140 52 148 Q60 160 76 156 Q86 168 100 162 Q114 168 124 156 Q140 160 148 148 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
-  <ellipse cx="100" cy="114" rx="28" ry="22" fill="#3A2A22" stroke="#3D3228" stroke-width="2.8"/>
+  <path d="M100 26 Q112 18 126 28 Q142 22 150 38 Q166 40 166 58 Q180 66 170 82 Q184 94 170 108 Q180 124 162 130 Q166 148 144 146 Q142 164 122 158 Q114 172 100 166 Q86 172 78 158 Q58 164 56 146 Q38 148 42 130 Q24 124 34 108 Q20 94 34 82 Q24 66 38 58 Q38 40 54 38 Q62 22 78 28 Q88 18 100 26 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <ellipse cx="100" cy="112" rx="32" ry="26" fill="#3A2A22" stroke="#3D3228" stroke-width="2.8"/>
   <g fill="#F2B5AC" opacity="0.85">
-    <ellipse cx="80" cy="122" rx="6" ry="3.2"/>
-    <ellipse cx="120" cy="122" rx="6" ry="3.2"/>
+    <ellipse cx="78" cy="120" rx="6.5" ry="3.4"/>
+    <ellipse cx="122" cy="120" rx="6.5" ry="3.4"/>
   </g>
   <g fill="#F6EBD8">
-    <circle cx="90" cy="110" r="3.8"/>
-    <circle cx="110" cy="110" r="3.8"/>
+    <circle cx="90" cy="108" r="4.2"/>
+    <circle cx="110" cy="108" r="4.2"/>
   </g>
   <g fill="#3D3228">
-    <circle cx="90" cy="110" r="1.8"/>
-    <circle cx="110" cy="110" r="1.8"/>
+    <circle cx="90" cy="108" r="2"/>
+    <circle cx="110" cy="108" r="2"/>
   </g>
-  <path d="M94 122 Q100 126 106 122" fill="none" stroke="#F6EBD8" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M94 122 Q100 126 106 122" fill="none" stroke="#F6EBD8" stroke-width="2.4" stroke-linecap="round"/>
 </svg>

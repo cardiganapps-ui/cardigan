@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Casa">
   <circle cx="100" cy="100" r="100" fill="#D5DEDE"/>
   <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M32 104 Q32 96 40 92 L96 48 Q100 44 104 48 L160 92 Q168 96 168 104 L168 160 Q168 168 160 168 L40 168 Q32 168 32 160 Z" fill="#F6EBD8"/>
-    <path d="M128 60 Q128 56 132 56 L144 56 Q148 56 148 60 L148 78 Q148 82 144 82 L132 82 Q128 82 128 78 Z" fill="#D4A37E"/>
-    <path d="M76 118 Q76 112 82 112 L110 112 Q116 112 116 118 L116 168 L76 168 Z" fill="#8FB08A"/>
-    <circle cx="108" cy="142" r="2.4" fill="#3D3228" stroke="none"/>
+    <path d="M28 110 Q24 96 40 88 L92 50 Q100 44 108 50 L160 88 Q176 96 172 110 Q178 120 172 128 L172 156 Q172 170 158 170 L42 170 Q28 170 28 156 L28 128 Q22 120 28 110 Z" fill="#F6EBD8"/>
+    <path d="M128 60 Q128 54 134 54 L146 54 Q152 54 152 60 L152 78 Q152 84 146 84 L134 84 Q128 84 128 78 Z" fill="#D4A37E"/>
+    <path d="M78 124 Q78 118 84 118 L108 118 Q114 118 114 124 L114 170 L78 170 Z" fill="#8FB08A"/>
+    <circle cx="107" cy="146" r="2.8" fill="#3D3228" stroke="none"/>
   </g>
   <g stroke="#3D3228" stroke-width="2.6" stroke-linejoin="round">
-    <path d="M128 112 Q128 108 132 108 L152 108 Q156 108 156 112 L156 134 Q156 138 152 138 L132 138 Q128 138 128 134 Z" fill="#F2B5AC"/>
-    <path d="M142 108 L142 138 M128 123 L156 123" fill="none" stroke-width="2.2"/>
+    <path d="M128 114 Q126 108 132 108 L154 108 Q160 108 158 114 L158 138 Q158 142 152 142 L134 142 Q128 142 128 138 Z" fill="#F2B5AC"/>
+    <path d="M143 108 L143 142 M128 125 L158 125" fill="none" stroke-width="2.2"/>
   </g>
 </svg>

@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Nube">
   <circle cx="100" cy="100" r="100" fill="#F0DDC9"/>
-  <path d="M44 132 Q24 132 24 110 Q24 86 50 88 Q54 60 82 58 Q100 56 112 72 Q126 60 144 68 Q168 78 166 104 Q184 108 180 128 Q178 146 152 148 L54 148 Q44 148 44 132 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M40 140 Q18 142 16 118 Q14 90 42 86 Q46 54 76 52 Q100 48 112 68 Q128 52 150 60 Q178 72 174 104 Q190 112 184 134 Q178 154 150 156 L52 156 Q40 156 40 140 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
   <g fill="#F2B5AC" opacity="0.85">
-    <ellipse cx="76" cy="118" rx="10" ry="5.5"/>
-    <ellipse cx="124" cy="118" rx="10" ry="5.5"/>
+    <ellipse cx="72" cy="128" rx="11" ry="6"/>
+    <ellipse cx="128" cy="128" rx="11" ry="6"/>
   </g>
   <g fill="none" stroke="#3D3228" stroke-width="3" stroke-linecap="round">
-    <path d="M80 106 Q84 112 88 106"/>
-    <path d="M112 106 Q116 112 120 106"/>
+    <path d="M78 112 Q82 118 86 112"/>
+    <path d="M114 112 Q118 118 122 112"/>
   </g>
-  <path d="M92 122 Q100 128 108 122" fill="none" stroke="#3D3228" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M90 130 Q100 138 110 130" fill="none" stroke="#3D3228" stroke-width="2.6" stroke-linecap="round"/>
 </svg>

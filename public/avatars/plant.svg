@@ -1,19 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Planta">
   <circle cx="100" cy="100" r="100" fill="#F2DFC9"/>
-  <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M100 116 Q66 104 62 68 Q88 66 100 100 Z" fill="#A9C6A3"/>
-    <path d="M100 116 Q134 104 138 68 Q112 66 100 100 Z" fill="#A9C6A3"/>
-    <path d="M100 114 Q98 86 100 56" fill="none"/>
+  <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="#A9C6A3">
+    <path d="M100 116 Q68 120 56 90 Q52 64 78 66 Q100 76 100 116 Z"/>
+    <path d="M100 116 Q132 120 144 90 Q148 64 122 66 Q100 76 100 116 Z"/>
+    <path d="M100 112 Q86 96 88 62 Q100 68 112 62 Q114 96 100 112 Z" fill="#8FAE8C"/>
   </g>
-  <path d="M68 130 Q64 118 78 118 L122 118 Q136 118 132 130 L126 172 Q124 180 116 180 L84 180 Q76 180 74 172 Z" fill="#D4A37E" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M64 126 L136 126" stroke="#3D3228" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <g fill="#F2B5AC" opacity="0.8">
-    <ellipse cx="88" cy="152" rx="7" ry="4"/>
-    <ellipse cx="112" cy="152" rx="7" ry="4"/>
+  <path d="M60 126 Q56 118 64 114 Q100 110 136 114 Q144 118 140 126 L134 168 Q132 178 122 180 L78 180 Q68 178 66 168 Z" fill="#D4A37E" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#F2B5AC" opacity="0.85">
+    <ellipse cx="86" cy="154" rx="8" ry="4.5"/>
+    <ellipse cx="114" cy="154" rx="8" ry="4.5"/>
   </g>
   <g fill="#3D3228">
-    <circle cx="92" cy="146" r="2.4"/>
-    <circle cx="108" cy="146" r="2.4"/>
+    <circle cx="91" cy="146" r="2.6"/>
+    <circle cx="109" cy="146" r="2.6"/>
   </g>
-  <path d="M96 154 Q100 158 104 154" fill="none" stroke="#3D3228" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M94 156 Q100 161 106 156" fill="none" stroke="#3D3228" stroke-width="2.4" stroke-linecap="round"/>
 </svg>
