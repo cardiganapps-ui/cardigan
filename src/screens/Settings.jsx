@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell } from "../components/Icons";
+import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
+import { AvatarPicker } from "../components/AvatarPicker";
+import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Expando } from "../components/Expando";
 import { NotificationPreview } from "../components/NotificationPreview";
@@ -52,7 +54,8 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, notifications, showToast, upcomingSessions } = useCardigan();
+  const { tutorial, navigate, theme, notifications, showToast, upcomingSessions, readOnly } = useCardigan();
+  const { imageUrl: avatarImageUrl, presetId: avatarPresetId } = useAvatarUrl(user?.user_metadata?.avatar);
 
   // Inline "next reminder" hint + preview-card data.
   const nextReminder = useMemo(() => computeNextReminder(upcomingSessions), [upcomingSessions]);
@@ -212,7 +215,28 @@ export function Settings({ user, signOut }) {
       <div className="section" style={{ paddingTop:16 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
-            <Avatar initials={userInitial} color="var(--teal)" size="lg" />
+            <div
+              className="av-settings-avatar"
+              role={readOnly ? undefined : "button"}
+              tabIndex={readOnly ? undefined : 0}
+              aria-label={readOnly ? undefined : (t("avatar.changePhoto") || "Cambiar foto")}
+              aria-disabled={readOnly ? "true" : undefined}
+              onClick={readOnly ? undefined : () => setActiveSheet("avatar")}
+              onKeyDown={readOnly ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveSheet("avatar"); } }}
+            >
+              <Avatar
+                initials={userInitial}
+                color="var(--teal)"
+                size="lg"
+                imageUrl={avatarImageUrl}
+                presetId={avatarPresetId}
+              />
+              {!readOnly && (
+                <span className="av-settings-avatar-badge" aria-hidden="true">
+                  <IconEdit size={11} />
+                </span>
+              )}
+            </div>
             <div style={{ flex:1 }}>
               <div style={{ fontFamily:"var(--font-d)",fontSize:"var(--text-lg)",fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
               <div style={{ fontSize:"var(--text-sm)",color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
@@ -569,6 +593,16 @@ export function Settings({ user, signOut }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── AVATAR PICKER SHEET ── */}
+      {activeSheet === "avatar" && (
+        <AvatarPicker
+          user={user}
+          currentAvatar={user?.user_metadata?.avatar || null}
+          onClose={() => setActiveSheet(null)}
+          onSaved={() => showToast?.(t("saved") || "Guardado")}
+        />
       )}
 
       {/* ── THEME SHEET ── */}

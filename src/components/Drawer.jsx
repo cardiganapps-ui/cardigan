@@ -2,6 +2,8 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { navItems } from "../data/seedData";
 import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut, IconBug } from "./Icons";
 import { LogoIcon } from "./LogoMark";
+import { AvatarContent } from "./Avatar";
+import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useT } from "../i18n/index";
 
 const NAV_ICONS = {
@@ -28,6 +30,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
+  const { imageUrl: avatarImageUrl, presetId: avatarPresetId } = useAvatarUrl(user?.user_metadata?.avatar);
 
   /* ── Close swipe: track leftward drag on the open panel ── */
   const dragRef = useRef(null);
@@ -152,7 +155,14 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
             <div className="drawer-user" role="button" tabIndex={0}
               onClick={() => handleNav("settings")}
               style={{ cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
-              <div className="drawer-avatar">{userInitial}</div>
+              <div className="drawer-avatar">
+                <AvatarContent
+                  initials={userInitial}
+                  imageUrl={avatarImageUrl}
+                  presetId={avatarPresetId}
+                  size={44}
+                />
+              </div>
               <div>
                 <div className="drawer-user-name">{userName}</div>
                 <div className="drawer-user-sub">{userEmail}</div>

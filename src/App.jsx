@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { useAvatarUrl } from "./hooks/useAvatarUrl";
+import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { haptic } from "./utils/haptics";
 import { useDemoData } from "./hooks/useDemoData";
@@ -314,6 +316,7 @@ function AppShell({ user, signOut, demo, theme }) {
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
+  const { imageUrl: avatarImageUrl, presetId: avatarPresetId } = useAvatarUrl(demo ? null : user?.user_metadata?.avatar);
 
   const openEditPaymentModal = (payment) => {
     if (readOnly) return;
@@ -576,7 +579,9 @@ function AppShell({ user, signOut, demo, theme }) {
                 returns null when the screen's tip array is empty. */}
             <HelpTip tipsKey={`help.${screen}`} />
             <Tooltip label={t("nav.settings")} placement="bottom">
-              <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none" }}>{userInitial}</button>
+              <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none", overflow: (avatarImageUrl || avatarPresetId) ? "hidden" : undefined }}>
+                <AvatarContent initials={userInitial} imageUrl={avatarImageUrl} presetId={avatarPresetId} size={28} />
+              </button>
             </Tooltip>
           </div>
         </div>

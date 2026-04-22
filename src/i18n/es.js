@@ -457,6 +457,29 @@ export default {
     outlineEmpty: "Agrega t\u00edtulos con # para ver el \u00edndice.",
   },
 
+  // ── Avatar ──
+  avatar: {
+    title: "Cambiar foto",
+    changePhoto: "Cambiar foto",
+    tabGallery: "Galer\u00eda",
+    tabUpload: "Subir",
+    dropTitle: "Sube tu propia foto",
+    dropSub: "JPG o PNG hasta 10 MB. Se recorta autom\u00e1ticamente en c\u00edrculo.",
+    chooseFile: "Elegir archivo",
+    takePhoto: "C\u00e1mara",
+    remove: "Quitar foto",
+    noPhoto: "Sin foto",
+    uploaded: "Foto actual",
+    uploadedPending: "Foto lista para guardar",
+    err: {
+      tooLarge: "La imagen debe pesar menos de 10 MB.",
+      notImage: "Selecciona una imagen v\u00e1lida.",
+      generic: "No se pudo procesar la imagen.",
+      upload: "No se pudo subir la imagen. Intenta de nuevo.",
+      save: "No se pudo guardar. Intenta de nuevo.",
+    },
+  },
+
   // ── Documents ──
   docs: {
     title: "Documentos",
