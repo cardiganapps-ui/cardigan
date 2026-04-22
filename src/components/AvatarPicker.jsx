@@ -329,11 +329,14 @@ function sameAvatar(a, b) {
   return a.kind === b.kind && a.value === b.value;
 }
 
-/* Upload the resized avatar blob to R2 via the existing presigned-URL
-   flow. Throws with a `stage` property so the caller can show
-   stage-specific user copy and log enough context to diagnose. */
+/* Upload the resized avatar blob through our own server-side endpoint
+   (/api/upload-avatar), which proxies to R2. Avatars are small enough
+   (< 50 KB post-resize) that the extra hop is cheap, and going server-
+   side sidesteps the two classes of browser-direct-upload pitfalls we
+   hit: SDK default checksum headers leaking into signed URLs and R2
+   bucket CORS needing explicit origin/header whitelists. Throws with
+   a `stage` property so the caller can show stage-specific copy. */
 async function uploadBlobToR2(path, blob) {
-  // ── Stage 1: get a presigned PUT URL from our own API.
   let token;
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -343,45 +346,33 @@ async function uploadBlobToR2(path, blob) {
   }
   if (!token) throw Object.assign(new Error("no_session"), { stage: "presign" });
 
-  let presignRes;
+  // Blob → data URL. FileReader is available on every browser that
+  // can also do the canvas resize, so no feature-detect needed.
+  let dataUrl;
   try {
-    presignRes = await fetch("/api/upload-url", {
+    dataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error("read_failed"));
+      fr.readAsDataURL(blob);
+    });
+  } catch (e) {
+    throw Object.assign(new Error(e?.message || "encode_failed"), { stage: "put", cause: e });
+  }
+
+  let res;
+  try {
+    res = await fetch("/api/upload-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ path, contentType: "image/jpeg" }),
+      body: JSON.stringify({ path, dataUrl }),
     });
   } catch (e) {
-    throw Object.assign(new Error(e?.message || "presign_fetch_failed"), { stage: "presign", cause: e });
-  }
-  if (!presignRes.ok) {
-    const body = await presignRes.text().catch(() => "");
-    throw Object.assign(new Error(`presign_${presignRes.status}`), { stage: "presign", body });
-  }
-  let url;
-  try {
-    ({ url } = await presignRes.json());
-  } catch (e) {
-    throw Object.assign(new Error("presign_parse_failed"), { stage: "presign", cause: e });
-  }
-  if (!url) throw Object.assign(new Error("presign_no_url"), { stage: "presign" });
-
-  // ── Stage 2: PUT the blob directly to R2 using the signed URL.
-  let putRes;
-  try {
-    putRes = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "image/jpeg" },
-      body: blob,
-    });
-  } catch (e) {
-    // A CORS preflight rejection or network error lands here. The
-    // message is usually "Failed to fetch" (Chrome) or "Load failed"
-    // (Safari) — neither is super actionable without the URL origin.
     throw Object.assign(new Error(e?.message || "put_fetch_failed"), { stage: "put", cause: e });
   }
-  if (!putRes.ok) {
-    const body = await putRes.text().catch(() => "");
-    throw Object.assign(new Error(`put_${putRes.status}`), { stage: "put", body });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw Object.assign(new Error(`put_${res.status}`), { stage: "put", body });
   }
   return true;
 }
