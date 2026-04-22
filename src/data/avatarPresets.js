@@ -1,31 +1,13 @@
-/* Preset avatar gallery — a curated set of line-art illustrations
-   (dog, cat, plant, coffee, mountain, cloud, book, moon, heart,
-   avocado, sheep, house) served as static SVGs from /avatars/*.svg.
+/* Preset avatar gallery — intentionally empty.
+   Artwork is in-progress; the picker shows a "coming soon"
+   placeholder while this array is empty (see AvatarPicker).
 
-   Each preset is referenced by its id (e.g. "dog"). The id is what
-   we persist in user_metadata.avatar as
-     { kind: "preset", value: "<id>" }
-   so the canonical art can be updated without migrating user data.
+   To ship presets: drop `<id>.svg` into public/avatars/ and add
+   an entry here. The picker, avatarMeta, and useAvatarUrl already
+   handle `{ kind: "preset", value: "<id>" }` — no other wiring
+   needed. */
 
-   Adding a preset: drop `<id>.svg` into public/avatars/ and append
-   an entry below. Removing/renaming an id is a breaking change —
-   existing users with that value will silently fall back to
-   initials (see resolveAvatar). */
-
-export const AVATAR_PRESETS = [
-  { id: "dog",      labelKey: "avatar.preset.dog" },
-  { id: "cat",      labelKey: "avatar.preset.cat" },
-  { id: "plant",    labelKey: "avatar.preset.plant" },
-  { id: "coffee",   labelKey: "avatar.preset.coffee" },
-  { id: "mountain", labelKey: "avatar.preset.mountain" },
-  { id: "cloud",    labelKey: "avatar.preset.cloud" },
-  { id: "book",     labelKey: "avatar.preset.book" },
-  { id: "moon",     labelKey: "avatar.preset.moon" },
-  { id: "heart",    labelKey: "avatar.preset.heart" },
-  { id: "avocado",  labelKey: "avatar.preset.avocado" },
-  { id: "sheep",    labelKey: "avatar.preset.sheep" },
-  { id: "house",    labelKey: "avatar.preset.house" },
-];
+export const AVATAR_PRESETS = [];
 
 const PRESET_IDS = new Set(AVATAR_PRESETS.map(p => p.id));
 

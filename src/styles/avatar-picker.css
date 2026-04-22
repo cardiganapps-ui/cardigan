@@ -67,6 +67,27 @@
   margin-bottom: 14px;
 }
 
+.av-picker-coming-soon {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--teal-mist);
+  padding: 22px 18px;
+  text-align: center;
+  color: var(--charcoal-md);
+}
+.av-picker-coming-soon-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin-bottom: 4px;
+}
+.av-picker-coming-soon-sub {
+  font-size: 12px;
+  color: var(--charcoal-xl);
+  line-height: 1.4;
+}
+
 .av-picker-section-label {
   font-family: var(--font-d);
   font-size: 11px;

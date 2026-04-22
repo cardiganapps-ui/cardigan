@@ -184,24 +184,35 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
           <div className="av-picker-section-label">
             {t("avatar.presetTitle") || "Elige un avatar"}
           </div>
-          <div className="av-picker-grid" role="radiogroup" aria-label={t("avatar.presetTitle") || "Elige un avatar"}>
-            {AVATAR_PRESETS.map((p) => {
-              const selected = p.id === selectedPresetId;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={t(p.labelKey) || p.id}
-                  className={"av-picker-tile" + (selected ? " is-selected" : "")}
-                  onClick={() => onPickPreset(p.id)}
-                >
-                  <img src={presetUrl(p.id)} alt="" draggable={false} />
-                </button>
-              );
-            })}
-          </div>
+          {AVATAR_PRESETS.length > 0 ? (
+            <div className="av-picker-grid" role="radiogroup" aria-label={t("avatar.presetTitle") || "Elige un avatar"}>
+              {AVATAR_PRESETS.map((p) => {
+                const selected = p.id === selectedPresetId;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={t(p.labelKey) || p.id}
+                    className={"av-picker-tile" + (selected ? " is-selected" : "")}
+                    onClick={() => onPickPreset(p.id)}
+                  >
+                    <img src={presetUrl(p.id)} alt="" draggable={false} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="av-picker-coming-soon" role="note">
+              <div className="av-picker-coming-soon-title">
+                {t("avatar.presetComingSoon") || "Avatares próximamente"}
+              </div>
+              <div className="av-picker-coming-soon-sub">
+                {t("avatar.presetComingSoonSub") || "Por ahora puedes subir tu propia foto."}
+              </div>
+            </div>
+          )}
 
           <div className="av-picker-section-label av-picker-section-label-sep">
             {t("avatar.uploadTitle") || "O sube tu propia foto"}
