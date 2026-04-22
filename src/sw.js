@@ -87,6 +87,13 @@ self.addEventListener("push", (event) => {
     body: data.body || "",
     icon: "/icon-192.png",
     badge: "/icon-192.png",
+    // tag collapses successive reminders for the same session into a
+    // single system banner (rather than piling up on the lock screen).
+    tag: data.tag || undefined,
+    // Explicit actions render as tappable buttons on platforms that
+    // support them (Android). iOS ignores, which is fine — the default
+    // notification tap falls through to `notificationclick` below.
+    actions: Array.isArray(data.actions) ? data.actions : undefined,
     data: { url: data.url || "/" },
   };
 
@@ -97,6 +104,10 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
+  // Action buttons carry their own semantics; right now every action
+  // we ship resolves to "open the URL baked into the notification",
+  // so the branch is short. Leaving the switch explicit so adding a
+  // "dismiss" or "snooze" action later doesn't need to re-plumb this.
   const targetUrl = event.notification.data?.url || "/";
 
   event.waitUntil(

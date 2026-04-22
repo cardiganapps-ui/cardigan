@@ -322,27 +322,12 @@ export function useNotifications(user) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
       const body = await resp.json().catch(() => ({}));
-      // Unconditionally log the server's reply so Safari remote inspector
-      // can see it while we're still diagnosing. Cheap, no PII.
-      console.log("sendTest server reply:", resp.status, body);
-      if (!resp.ok) {
-        return {
-          ok: false,
-          code: "server-error",
-          statusCode: resp.status,
-          message: body?.message || body?.error || null,
-        };
-      }
+      if (import.meta.env.DEV) console.log("sendTest server reply:", resp.status, body);
+      if (!resp.ok) return { ok: false, code: "server-error" };
       if (body?.sent) return { ok: true };
       const results = Array.isArray(body?.results) ? body.results : [];
       if (results.length === 0) return { ok: false, code: "no-subscription" };
-      const firstErr = results.find((r) => !r.ok) || {};
-      return {
-        ok: false,
-        code: "send-failed",
-        statusCode: firstErr.statusCode ?? null,
-        message: firstErr.message ?? null,
-      };
+      return { ok: false, code: "send-failed" };
     } catch (err) {
       if (import.meta.env.DEV) console.error("sendTest error:", err);
       return { ok: false, code: "server-error" };

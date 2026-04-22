@@ -111,7 +111,25 @@ export function NotificationsPrompt() {
             className="btn btn-teal"
             onClick={handleEnable}
             disabled={busy}
-            style={{ height: 34, padding: "0 14px", fontSize: "var(--text-sm)", width: "auto", minHeight: 0 }}>
+            style={{
+              height: 34, padding: "0 14px",
+              fontSize: "var(--text-sm)",
+              width: "auto", minHeight: 0,
+              display: "inline-flex", alignItems: "center", gap: 6,
+              opacity: busy ? 0.85 : 1,
+            }}>
+            {busy && (
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 12, height: 12, borderRadius: "50%",
+                  border: "2px solid rgba(255,255,255,0.45)",
+                  borderTopColor: "#FFFFFF",
+                  animation: "togglePendingSpin 0.7s linear infinite",
+                  boxSizing: "border-box",
+                }}
+              />
+            )}
             {t("notifications.promptEnable")}
           </button>
           <button

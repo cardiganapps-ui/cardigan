@@ -73,6 +73,51 @@
   100% { background-position: -200% 0; }
 }
 
+/* ── Push notifications UI ── */
+@keyframes togglePendingSpin { to { transform: rotate(360deg); } }
+@keyframes bellRing {
+  0%   { transform: rotate(0deg); }
+  15%  { transform: rotate(-12deg); }
+  30%  { transform: rotate(10deg); }
+  45%  { transform: rotate(-6deg); }
+  60%  { transform: rotate(4deg); }
+  80%  { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes bellGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0.45); }
+  60%  { box-shadow: 0 0 0 10px rgba(42, 157, 143, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0); }
+}
+.bell-ring { animation: bellRing 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; transform-origin: top center; }
+.bell-glow { animation: bellGlow 0.9s ease-out both; border-radius: 50%; }
+@keyframes testResultPulse {
+  0%   { background: transparent; }
+  40%  { background: var(--teal-pale); }
+  100% { background: transparent; }
+}
+.test-row-pulse { animation: testResultPulse 1.2s ease-out both; }
+.push-amber-card {
+  margin: 0 16px;
+  padding: 14px;
+  background: var(--amber-bg);
+  border: 1px solid rgba(224, 138, 30, 0.28);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.push-inline-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 10px 14px 0;
+  background: var(--amber-bg);
+  border: 1px solid rgba(224, 138, 30, 0.28);
+  border-radius: 12px;
+}
+
 /* ── BOTTOM TAB BAR (mobile) ──
    Primary nav for Home / Agenda / Patients / Finances. Hidden on ≥768px
    (desktop uses the sidebar drawer) via responsive.css.

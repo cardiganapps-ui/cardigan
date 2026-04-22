@@ -99,10 +99,20 @@ export default async function handler(req, res) {
 
       // 7. Send push notifications
       for (const session of newSessions) {
+        // Minutes-until is computed against the same userNow snapshot
+        // the window filter used, so the copy the user reads lines up
+        // with the decision to send.
+        const [sh, sm] = String(session.time || "").split(":").map(Number);
+        const sessionMinutes = (sh || 0) * 60 + (sm || 0);
+        const minutesUntil = Math.max(1, sessionMinutes - nowMinutes);
         const payload = {
           title: "Recordatorio de sesión",
-          body: `${session.patient} a las ${session.time}`,
+          body: `${session.patient} a las ${session.time} — en ${minutesUntil} min`,
           url: "/#agenda",
+          // Collapse repeat reminders for the same session into a single
+          // system banner rather than stacking.
+          tag: `session-${session.id}`,
+          actions: [{ action: "open", title: "Ver agenda" }],
         };
 
         for (const sub of subs) {

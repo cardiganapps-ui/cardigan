@@ -497,8 +497,36 @@ export default {
     sendTest: "Enviar notificación de prueba",
     sendingTest: "Enviando…",
     testSent: "Notificación de prueba enviada",
+    testSentShort: "Enviada",
+    testRetry: "Reintenta",
     testFailedNoSub: "No hay suscripciones activas. Desactiva y vuelve a activar los recordatorios.",
     testFailed: "No pudimos enviar la notificación de prueba. Intenta de nuevo.",
+    // Preview card
+    previewTitle: "Recordatorio de sesión",
+    previewExampleBody: "Juanito López a las 09:00",
+    previewExampleHint: "en 15 minutos",
+    previewExampleTag: "Ejemplo",
+    previewAriaLabel: "Vista previa del recordatorio",
+    // Next-reminder hint
+    nextReminderNone: "Sin sesiones próximas en las siguientes 24 horas.",
+    nextReminderLabel: "Tu próximo recordatorio",
+    // Permission-denied card
+    blockedTitle: "Permiso bloqueado",
+    blockedBody: "Para reactivar los recordatorios, ve a Ajustes del iPhone → Cardigan → Notificaciones y permite “Permitir notificaciones”.",
+    blockedStepsToggle: "Ver pasos",
+    blockedStep1: "Abre la app Ajustes de tu iPhone.",
+    blockedStep2: "Desplázate y toca “Cardigan”.",
+    blockedStep3: "Activa “Permitir notificaciones”.",
+    // PWA install gate
+    installTitle: "Agrega Cardigan a tu pantalla de inicio",
+    installBody: "Para recibir recordatorios, primero instala Cardigan como una app.",
+    installStep1: "Toca el botón Compartir",
+    installStep2: "Elige “Añadir a pantalla de inicio”",
+    installStep3: "Abre Cardigan desde el nuevo ícono",
+    // Reconciliation inline banner
+    reconciledBannerTitle: "Tu suscripción expiró",
+    reconciledBannerBody: "Reactiva los recordatorios para seguir recibiendo avisos.",
+    reconciledBannerAction: "Reactivar",
     // First-run prompt shown on Home when user is eligible but hasn't
     // enabled push yet. Gentle — can be dismissed and never reappears
     // for that device.

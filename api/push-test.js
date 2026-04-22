@@ -36,6 +36,10 @@ export default async function handler(req, res) {
       title: "Cardigan",
       body: "Las notificaciones están configuradas correctamente.",
       url: "/",
+      // Test notifications replace each other rather than stacking on
+      // repeat taps — keeps the lock screen tidy during setup.
+      tag: "cardigan-test",
+      actions: [{ action: "open", title: "Abrir Cardigan" }],
     };
 
     let sent = 0;
