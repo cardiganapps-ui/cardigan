@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Libro">
+  <circle cx="100" cy="100" r="100" fill="#D6E0D8"/>
+  <g stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round">
+    <path d="M62 45 L138 45 L138 128 L62 128 Z" fill="#4A8799"/>
+    <path d="M70 45 L70 128" fill="none"/>
+    <path d="M78 60 L130 60" fill="none" stroke-linecap="round"/>
+    <path d="M78 72 L122 72" fill="none" stroke-linecap="round"/>
+  </g>
+  <path d="M55 135 Q55 118 100 118 Q145 118 145 135 L145 185 L55 185 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M100 118 L86 138 L100 160 L114 138 Z" fill="#D6E0D8" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="100" cy="148" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+</svg>

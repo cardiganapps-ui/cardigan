@@ -37,12 +37,24 @@ export function invalidateAvatarUrl(path) {
 
 export function useAvatarUrl(avatar) {
   const resolved = resolveAvatar(avatar);
-  const [imageUrl, setImageUrl] = useState(() =>
-    resolved.kind === "uploaded" ? urlCache.get(resolved.path) || null : null
-  );
+  // Presets resolve synchronously to a static public path; uploaded
+  // avatars need an async presigned URL from R2.
+  const initialUrl =
+    resolved.kind === "preset" ? resolved.url :
+    resolved.kind === "uploaded" ? urlCache.get(resolved.path) || null :
+    null;
+  const [imageUrl, setImageUrl] = useState(initialUrl);
   const lastPathRef = useRef(null);
 
+  const uploadedPath = resolved.kind === "uploaded" ? resolved.path : null;
+  const presetAssetUrl = resolved.kind === "preset" ? resolved.url : null;
+
   useEffect(() => {
+    if (resolved.kind === "preset") {
+      if (imageUrl !== resolved.url) setImageUrl(resolved.url);
+      lastPathRef.current = null;
+      return;
+    }
     if (resolved.kind !== "uploaded") {
       if (imageUrl !== null) setImageUrl(null);
       lastPathRef.current = null;
@@ -58,7 +70,7 @@ export function useAvatarUrl(avatar) {
     });
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolved.kind, resolved.kind === "uploaded" ? resolved.path : null]);
+  }, [resolved.kind, uploadedPath, presetAssetUrl]);
 
   return { imageUrl };
 }

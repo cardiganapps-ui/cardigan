@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Luna">
+  <circle cx="100" cy="100" r="100" fill="#3E6A78"/>
+  <path d="M118 30 Q80 40 80 78 Q80 116 118 126 Q96 114 96 78 Q96 42 118 30 Z" fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <g fill="#FAF6EE" stroke="#2E2E2E" stroke-width="1.6">
+    <path d="M140 55 L142 62 L149 64 L142 66 L140 73 L138 66 L131 64 L138 62 Z"/>
+    <path d="M148 90 L149 95 L154 96 L149 97 L148 102 L147 97 L142 96 L147 95 Z"/>
+  </g>
+  <path d="M55 140 Q55 122 100 122 Q145 122 145 140 L145 186 L55 186 Z" fill="#2C4A52" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M100 122 L86 142 L100 162 L114 142 Z" fill="#3E6A78" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="100" cy="152" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+</svg>

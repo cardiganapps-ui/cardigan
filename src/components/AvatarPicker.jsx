@@ -7,16 +7,22 @@ import { resizeToSquareJpeg, avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
 import { invalidateAvatarUrl } from "../hooks/useAvatarUrl";
+import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
 
 /* ── Cardigan avatar picker ─────────────────────────────────────────
-   Upload-only bottom sheet. Users pick an image (camera / library /
-   file drop), it's resized client-side to a 256² JPEG, uploaded
-   through /api/upload-url (server-proxied to R2), and recorded in
-   user_metadata.avatar as { kind: "uploaded", value: "<path>" }.
+   Bottom sheet with two ways to set a profile photo:
 
-   The preset gallery was removed — only the upload path remains. */
+   1. Preset gallery — a curated set of line-art avatars
+      (dog, cat, plant, …) stored as static SVGs in /avatars/.
+      Saved in user_metadata.avatar as
+        { kind: "preset", value: "<id>" }.
+   2. Upload — user picks an image (camera / library / drop zone),
+      it's resized client-side to a 256² JPEG, uploaded via
+      /api/upload-url (server-proxied to R2), and saved as
+        { kind: "uploaded", value: "<path>" }. */
 
 const KIND_UPLOADED = "uploaded";
+const KIND_PRESET   = "preset";
 
 export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const { t } = useT();
@@ -76,6 +82,13 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     haptic.warn();
   };
 
+  const onPickPreset = (id) => {
+    if (!isPresetId(id)) return;
+    setError("");
+    setDraft({ kind: KIND_PRESET, id });
+    haptic.tap();
+  };
+
   const save = async () => {
     setError("");
     setSaving(true);
@@ -89,6 +102,9 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
         await uploadBlobToR2(path, draft.blob);
         if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
         nextAvatar = { kind: KIND_UPLOADED, value: path };
+      } else if (draft.kind === KIND_PRESET) {
+        if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
+        nextAvatar = { kind: KIND_PRESET, value: draft.id };
       } else {
         onClose();
         return;
@@ -118,15 +134,19 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const previewNode = useMemo(() => {
     if (draft.kind === "uploaded-file") return <img src={draft.previewUrl} alt="" />;
     if (draft.kind === KIND_UPLOADED) return <img src={draft.imageUrl} alt="" />;
+    if (draft.kind === KIND_PRESET) return <img src={presetUrl(draft.id)} alt="" />;
     return initial;
   }, [draft, initial]);
 
   const previewLabel = useMemo(() => {
     if (draft.kind === "uploaded-file") return t("avatar.uploadedPending") || "Foto lista para guardar";
     if (draft.kind === KIND_UPLOADED) return t("avatar.uploaded") || "Foto actual";
+    if (draft.kind === KIND_PRESET) return t("avatar.presetSelected") || "Avatar seleccionado";
     if (draft.kind === "remove") return t("avatar.noPhoto") || "Sin foto";
     return userName;
   }, [draft, userName, t]);
+
+  const selectedPresetId = draft.kind === KIND_PRESET ? draft.id : null;
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -161,6 +181,31 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
             </div>
           </div>
 
+          <div className="av-picker-section-label">
+            {t("avatar.presetTitle") || "Elige un avatar"}
+          </div>
+          <div className="av-picker-grid" role="radiogroup" aria-label={t("avatar.presetTitle") || "Elige un avatar"}>
+            {AVATAR_PRESETS.map((p) => {
+              const selected = p.id === selectedPresetId;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={t(p.labelKey) || p.id}
+                  className={"av-picker-tile" + (selected ? " is-selected" : "")}
+                  onClick={() => onPickPreset(p.id)}
+                >
+                  <img src={presetUrl(p.id)} alt="" draggable={false} />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="av-picker-section-label av-picker-section-label-sep">
+            {t("avatar.uploadTitle") || "O sube tu propia foto"}
+          </div>
           <div
             className={"av-picker-drop" + (dropHover ? " is-hover" : "")}
             onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
@@ -215,6 +260,9 @@ function fromCurrent(a) {
   if (a.kind === KIND_UPLOADED && typeof a.value === "string") {
     return { kind: KIND_UPLOADED, path: a.value };
   }
+  if (a.kind === KIND_PRESET && isPresetId(a.value)) {
+    return { kind: KIND_PRESET, id: a.value };
+  }
   return { kind: "none" };
 }
 
@@ -223,6 +271,7 @@ function draftToStored(d) {
   if (d.kind === "remove") return null;
   if (d.kind === "uploaded-file") return { kind: "uploaded-file" }; // sentinel — never equal to currentAvatar
   if (d.kind === KIND_UPLOADED) return { kind: KIND_UPLOADED, value: d.path };
+  if (d.kind === KIND_PRESET) return { kind: KIND_PRESET, value: d.id };
   return null;
 }
 

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Corazón">
+  <circle cx="100" cy="100" r="100" fill="#F5F0EB"/>
+  <path d="M100 115 L65 80 Q52 66 62 52 Q75 36 90 50 L100 62 L110 50 Q125 36 138 52 Q148 66 135 80 Z" fill="#CFC3E2" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M55 140 Q55 120 100 120 Q145 120 145 140 L145 185 L55 185 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M100 120 L86 140 L100 162 L114 140 Z" fill="#F5F0EB" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="100" cy="150" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+</svg>

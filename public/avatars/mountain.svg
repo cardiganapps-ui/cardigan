@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Montaña">
+  <circle cx="100" cy="100" r="100" fill="#E5E0EC"/>
+  <g stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round">
+    <path d="M40 130 L85 55 L130 130 Z" fill="#7FA7B5"/>
+    <path d="M72 78 L85 55 L98 78 L92 88 L85 80 L78 88 Z" fill="#FAF6EE"/>
+  </g>
+  <g fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.2" stroke-linejoin="round">
+    <path d="M118 62 Q108 62 108 70 Q102 70 102 78 Q102 86 112 86 L146 86 Q156 86 156 78 Q156 70 148 70 Q148 62 138 62 Q134 58 128 58 Q122 58 118 62 Z"/>
+  </g>
+  <path d="M45 128 Q45 118 100 118 Q155 118 155 128 L155 182 L45 182 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M100 118 L85 140 L100 162 L115 140 Z" fill="#E5E0EC" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="100" cy="150" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+</svg>

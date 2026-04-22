@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Nube">
+  <circle cx="100" cy="100" r="100" fill="#F2F9FB"/>
+  <path d="M60 95 Q50 95 50 82 Q50 68 66 68 Q70 54 86 54 Q98 54 104 64 Q112 56 124 60 Q138 64 138 78 Q150 78 150 90 Q150 105 136 105 L64 105 Q60 105 60 95 Z" fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M55 130 Q55 108 100 108 Q145 108 145 130 L145 182 L55 182 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M100 108 L86 130 L100 152 L114 130 Z" fill="#F2F9FB" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="100" cy="140" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+</svg>

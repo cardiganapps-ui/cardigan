@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Café">
+  <circle cx="100" cy="100" r="100" fill="#E3ECEF"/>
+  <g fill="none" stroke="#2E2E2E" stroke-width="2.2" stroke-linecap="round">
+    <path d="M90 42 Q96 52 90 62"/>
+    <path d="M104 38 Q110 50 104 62"/>
+  </g>
+  <path d="M55 80 L138 80 L132 150 Q131 160 121 160 L72 160 Q62 160 61 150 Z" fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M62 88 L131 88" stroke="#BFA884" stroke-width="7" stroke-linecap="round"/>
+  <path d="M138 95 Q162 95 162 115 Q162 135 138 135" fill="none" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M55 118 Q55 108 85 108 Q115 108 115 118 L115 160 Q115 168 107 168 L63 168 Q55 168 55 160 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M85 108 L75 125 L85 145 L95 125 Z" fill="#E3ECEF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="85" cy="135" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+</svg>
