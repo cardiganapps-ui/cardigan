@@ -227,6 +227,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   readOnly = false,
   onContentChange,
   onSelectionChange,
+  onRequestFind,
   autoFocus = false,
   placeholder = PLACEHOLDER,
 }, ref) {
@@ -375,6 +376,26 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       const c = caretRef.current;
       return activeFormatsAt(lines[c.line] || "", c.col);
     },
+    /* Jump to a range in the document: select it and scroll into
+       view. Used by find-in-note and the outline drawer. */
+    jumpTo({ line, startCol, endCol }) {
+      if (line == null || line >= lines.length) return;
+      const targetLine = Math.max(0, Math.min(line, lines.length - 1));
+      const s = Math.max(0, startCol ?? 0);
+      const e = Math.max(s, endCol ?? s);
+      caretRef.current = { line: targetLine, col: s, endLine: targetLine, endCol: e };
+      setCaretVersion(v => v + 1);
+      requestAnimationFrame(() => {
+        rootRef.current?.focus({ preventScroll: true });
+        const div = lineDivsRef.current[targetLine];
+        if (div) div.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (s !== e) {
+          placeSelection(lineDivsRef.current, targetLine, s, targetLine, e);
+        } else {
+          placeCaret(lineDivsRef.current[targetLine], s);
+        }
+      });
+    },
   }), [lines, readOnly]);
 
   /* ── Event handlers ─────────────────────────────────────────────── */
@@ -490,6 +511,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       if (e.shiftKey && k === "7") { e.preventDefault(); applyBlockAt("ol"); return; }
       if (e.shiftKey && k === "8") { e.preventDefault(); applyBlockAt("ul"); return; }
       if (e.shiftKey && k === "9") { e.preventDefault(); applyBlockAt("task"); return; }
+      if (k === "f" && onRequestFind) { e.preventDefault(); onRequestFind(); return; }
     }
     if (e.key === "Tab") {
       e.preventDefault();

@@ -551,6 +551,138 @@
   color: var(--charcoal);
 }
 
+/* ── Find-in-note bar ───────────────────────────────────────────────
+   Slim floating bar pinned between the toolbar and body. Slide-in
+   animation; Esc / X closes. */
+.mde-find {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--teal-mist);
+  border-bottom: 1px solid var(--border-lt);
+  flex-shrink: 0;
+  animation: findIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes findIn {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: none; }
+}
+.mde-find-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: 9px;
+  padding: 5px 10px;
+  min-width: 0;
+}
+.mde-find-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--charcoal);
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+}
+.mde-find-counter {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--charcoal-xl);
+  min-width: 48px;
+  text-align: right;
+  white-space: nowrap;
+}
+.mde-find-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--charcoal-md);
+  transition: background 0.18s ease, transform 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.mde-find-btn:hover:not(:disabled) { background: var(--white); color: var(--charcoal); }
+.mde-find-btn:active:not(:disabled) { transform: scale(0.9); }
+.mde-find-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── Outline drawer ─────────────────────────────────────────────── */
+.mde-outline {
+  padding: 10px 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mde-outline-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--charcoal-xl);
+  margin-bottom: 10px;
+}
+.mde-outline-empty {
+  font-size: 13px;
+  color: var(--charcoal-xl);
+  padding: 20px 0;
+  text-align: center;
+}
+.mde-outline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mde-outline-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--charcoal);
+  transition: background 0.18s ease, transform 0.18s ease;
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-outline-item:hover { background: var(--cream); }
+.mde-outline-item:active { transform: scale(0.99); }
+.mde-outline-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex-shrink: 0;
+}
+.mde-outline-text {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mde-outline-lvl-1 .mde-outline-text { font-weight: 800; font-family: var(--font-d); font-size: 15px; }
+.mde-outline-lvl-2 { padding-left: 22px; }
+.mde-outline-lvl-2 .mde-outline-dot { background: var(--teal-light); }
+.mde-outline-lvl-2 .mde-outline-text { font-weight: 700; font-size: 13.5px; }
+.mde-outline-lvl-3 { padding-left: 34px; }
+.mde-outline-lvl-3 .mde-outline-dot { background: var(--teal-pale); width: 5px; height: 5px; }
+.mde-outline-lvl-3 .mde-outline-text { font-weight: 600; font-size: 13px; color: var(--charcoal-md); }
+
+.mde-icon-btn.is-active { background: var(--teal-pale); color: var(--teal-dark); }
+
 /* ── Notes list group headers ──────────────────────────────────────
    Section dividers in the notes list ("Hoy", "Ayer", "Esta semana",
    monthly). Matches the .section-title typography vocabulary. */

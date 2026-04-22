@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { IconStar, IconTrash, IconEdit, IconCheck, IconDocument, IconClipboard, IconUser, IconDownload } from "./Icons";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { IconStar, IconTrash, IconEdit, IconCheck, IconDocument, IconClipboard, IconUser, IconDownload, IconSearch } from "./Icons";
+
+const IconSearchMenu = () => <IconSearch size={15} />;
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
@@ -7,8 +9,12 @@ import { NOTE_TEMPLATES } from "../data/noteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
 import { FormatToolbar } from "./notes/FormatToolbar";
 import { NoteContextChip } from "./notes/NoteContextChip";
+import { FindInNote } from "./notes/FindInNote";
+import { NoteOutline } from "./notes/NoteOutline";
+import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
+import { useViewport } from "../hooks/useViewport";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
@@ -53,6 +59,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const inlineMode = layout === "inline";
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly } = useCardigan();
+  const { isDesktop } = useViewport();
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
@@ -65,6 +72,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [activeFormats, setActiveFormats] = useState(new Set());
   const [exiting, setExiting] = useState(false);
   const [toast, setToast] = useState("");
+  const [findOpen, setFindOpen] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const saveTimer = useRef(null);
   const toastTimer = useRef(null);
   const scrollRef = useRef(null);
@@ -161,6 +170,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const onInlineFormat = (kind) => editorRef.current?.applyInlineFormat(kind);
   const onBlockFormat = (block) => editorRef.current?.applyBlockFormat(block);
 
+  /* ── Find + outline ────────────────────────────────────────────── */
+  const handleJumpToMatch = useCallback((match) => {
+    editorRef.current?.jumpTo(match);
+  }, []);
+  const handleJumpToLine = useCallback((line) => {
+    editorRef.current?.jumpTo({ line, startCol: 0, endCol: 0 });
+    if (!isDesktop) setOutlineOpen(false);
+  }, [isDesktop]);
+  const hasHeadings = useMemo(() => extractOutline(content).length > 0, [content]);
+
   /* ── Template pick — only for brand-new empty notes ────────────── */
   const pickTemplate = (tpl) => {
     setTitle(tpl.title);
@@ -255,6 +274,21 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               {saveState === "saving" ? t("notes.saving") : saveState === "saved" ? t("notes.saved") : ""}
             </span>
           )}
+          {hasHeadings && (
+            <button
+              className={"mde-icon-btn" + (outlineOpen ? " is-active" : "")}
+              onClick={() => setOutlineOpen(v => !v)}
+              aria-label={t("notes.outline")}
+              aria-pressed={outlineOpen ? "true" : "false"}
+              title={t("notes.outline")}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+                <line x1="4" y1="7" x2="20" y2="7" />
+                <line x1="8" y1="12" x2="20" y2="12" />
+                <line x1="8" y1="17" x2="16" y2="17" />
+              </svg>
+            </button>
+          )}
           {!readOnly && note?.id && (
             <button
               className={"mde-icon-btn" + (pinned ? " is-pinned" : "")}
@@ -281,6 +315,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               </button>
               {menuOpen && (
                 <div className="mde-menu" role="menu">
+                  <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setFindOpen(true); }}>
+                    <IconSearchMenu />
+                    <span>{t("notes.find.placeholder")}</span>
+                  </button>
+                  <div className="mde-menu-sep" />
                   <button className="mde-menu-item" role="menuitem" onClick={copyPlain}>
                     <IconClipboard size={15} />
                     <span>{t("notes.copyPlain")}</span>
@@ -315,6 +354,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           active={activeFormats}
           onInline={onInlineFormat}
           onBlock={onBlockFormat}
+        />
+      )}
+
+      {/* ── Find-in-note bar ───────────────────────────────────── */}
+      {findOpen && !readOnly && (
+        <FindInNote
+          title={title}
+          content={content}
+          onJump={handleJumpToMatch}
+          onClose={() => { setFindOpen(false); editorRef.current?.focus(); }}
         />
       )}
 
@@ -396,6 +445,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           readOnly={readOnly}
           onContentChange={handleContentChange}
           onSelectionChange={handleSelectionChange}
+          onRequestFind={() => setFindOpen(true)}
           placeholder={t("notes.bodyPlaceholder")}
         />
       </div>
@@ -409,6 +459,26 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           {t("notes.wordCountLabel", { count: wordCount, plural: wordCount === 1 ? "" : "s" })}
         </span>
       </div>
+
+      {/* ── Outline drawer / sheet ──────────────────────────────── */}
+      {outlineOpen && (
+        <div className="sheet-overlay" onClick={() => setOutlineOpen(false)}>
+          <div
+            className="sheet-panel mde-outline-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("notes.outline")}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sheet-handle" />
+            <NoteOutline
+              content={content}
+              onJump={(line) => { setOutlineOpen(false); handleJumpToLine(line); }}
+              variant={isDesktop ? "drawer" : "sheet"}
+            />
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div style={{
