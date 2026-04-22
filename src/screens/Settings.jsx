@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit } from "../components/Icons";
+import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
@@ -169,6 +169,61 @@ export function Settings({ user, signOut }) {
   const [editName, setEditName] = useState(userName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [updateChecking, setUpdateChecking] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null); // { msg, tone: "ok" | "info" | "err" }
+
+  /* ── Manual update check ────────────────────────────────────────
+     Escape hatch for when the automatic SW update flow has missed a
+     deploy (iOS standalone PWA occasionally stalls on updatefound;
+     the event fires before our listener attaches and the banner
+     never appears). Triggers reg.update() directly, then inspects
+     reg.waiting / reg.installing and surfaces an inline status
+     instead of relying on the toast. If a waiting SW is found, we
+     tell the user to tap once more to apply — keeping the "no
+     unexpected reload" guarantee. */
+  const checkForUpdate = useCallback(async () => {
+    if (updateChecking) return;
+    if (!("serviceWorker" in navigator)) {
+      setUpdateStatus({ msg: t("settings.updateUnsupported") || "Tu navegador no soporta actualizaciones automáticas.", tone: "err" });
+      return;
+    }
+    setUpdateChecking(true);
+    setUpdateStatus({ msg: t("settings.updateChecking") || "Buscando…", tone: "info" });
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        setUpdateStatus({ msg: t("settings.updateNoReg") || "No se detectó una instalación activa. Cierra y vuelve a abrir la app.", tone: "err" });
+        return;
+      }
+      await reg.update();
+
+      // If there's already a waiting SW, apply immediately — this is the
+      // common iOS case where a prior update was silently installed but
+      // the banner never appeared.
+      if (reg.waiting) {
+        setUpdateStatus({ msg: t("settings.updateApplying") || "Actualizando…", tone: "info" });
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        // controllerchange in main.jsx reloads the page.
+        return;
+      }
+      if (reg.installing) {
+        const sw = reg.installing;
+        setUpdateStatus({ msg: t("settings.updateInstalling") || "Descargando nueva versión…", tone: "info" });
+        sw.addEventListener("statechange", () => {
+          if (sw.state === "installed" && navigator.serviceWorker.controller) {
+            setUpdateStatus({ msg: t("settings.updateApplying") || "Actualizando…", tone: "info" });
+            sw.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+        return;
+      }
+      setUpdateStatus({ msg: t("settings.updateNone") || "Ya tienes la versión más reciente.", tone: "ok" });
+    } catch {
+      setUpdateStatus({ msg: t("settings.updateErr") || "No se pudo buscar actualizaciones. Revisa tu conexión.", tone: "err" });
+    } finally {
+      setUpdateChecking(false);
+    }
+  }, [updateChecking, t]);
 
   const saveProfile = async () => {
     if (!editName.trim()) return;
@@ -556,6 +611,14 @@ export function Settings({ user, signOut }) {
             {message && activeSheet === null && <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>}
           </div>
           <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} onClick={checkForUpdate}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconRefresh size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.checkUpdate") || "Buscar actualización"}</div>
+            {updateStatus && <div className="settings-row-sub" style={{ color: updateStatus.tone === "err" ? "var(--red)" : updateStatus.tone === "ok" ? "var(--green)" : "var(--charcoal-xl)" }}>{updateStatus.msg}</div>}
+          </div>
+          {updateChecking ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
         </div>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={signOut}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
