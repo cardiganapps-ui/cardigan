@@ -1,6 +1,16 @@
 import { S3Client } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 
+/* ── R2 client ───────────────────────────────────────────────────────
+   Starting with @aws-sdk/client-s3 v3.729, the SDK injects a default
+   request-checksum middleware that bakes `x-amz-sdk-checksum-algorithm`
+   + `x-amz-checksum-crc32` into the signed URL. A browser fetch()
+   doing a direct PUT to the signed URL doesn't send those headers,
+   so R2 rejects the signature mismatch — the request manifests as a
+   CORS preflight failure and fetch() throws a generic TypeError.
+   Setting both calculation modes to WHEN_REQUIRED restores the
+   pre-v3.729 behavior (no unnecessary checksum headers), which is
+   what R2 / presigned browser uploads need. */
 export const r2 = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -8,6 +18,8 @@ export const r2 = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
   },
+  requestChecksumCalculation: "WHEN_REQUIRED",
+  responseChecksumValidation: "WHEN_REQUIRED",
 });
 
 export const BUCKET = process.env.R2_BUCKET_NAME || "cardigan-documents";

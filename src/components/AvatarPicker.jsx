@@ -103,8 +103,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
         nextAvatar = { kind: KIND_PRESET, value: `preset:${draft.presetId}` };
       } else if (draft.kind === "uploaded-file") {
         const path = avatarPath(user.id);
-        const ok = await uploadBlobToR2(path, draft.blob);
-        if (!ok) throw new Error("upload_failed");
+        await uploadBlobToR2(path, draft.blob);
         // If we're replacing a prior uploaded avatar, drop its cached URL.
         if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
         nextAvatar = { kind: KIND_UPLOADED, value: path };
@@ -117,14 +116,21 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       const { error: updErr } = await supabase.auth.updateUser({
         data: { avatar: nextAvatar },
       });
-      if (updErr) throw new Error(updErr.message || "update_failed");
+      if (updErr) throw Object.assign(new Error(updErr.message || "update_failed"), { stage: "update" });
 
       haptic.success();
       onSaved?.(nextAvatar);
       onClose();
     } catch (err) {
-      const msg = err?.message || "";
-      if (msg === "upload_failed") setError(t("avatar.err.upload") || "No se pudo subir la imagen. Intenta de nuevo.");
+      // Surface a stage-specific user message AND log the raw error so
+      // anything that sneaks through (network timeout, CORS preflight
+      // reject, Supabase rate limit, etc.) is diagnosable from the
+      // browser console.
+      console.error("[avatar] save failed", { stage: err?.stage, message: err?.message, err });
+      const stage = err?.stage;
+      if (stage === "presign")   setError(t("avatar.err.presign") || "No se pudo iniciar la subida. Revisa tu conexión.");
+      else if (stage === "put")  setError(t("avatar.err.upload")  || "No se pudo subir la imagen. Intenta de nuevo.");
+      else if (stage === "update") setError(t("avatar.err.update") || "La foto se subió pero no se guardó tu perfil. Intenta de nuevo.");
       else setError(t("avatar.err.save") || "No se pudo guardar. Intenta de nuevo.");
     } finally {
       setSaving(false);
@@ -323,24 +329,59 @@ function sameAvatar(a, b) {
   return a.kind === b.kind && a.value === b.value;
 }
 
+/* Upload the resized avatar blob to R2 via the existing presigned-URL
+   flow. Throws with a `stage` property so the caller can show
+   stage-specific user copy and log enough context to diagnose. */
 async function uploadBlobToR2(path, blob) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) return false;
+  // ── Stage 1: get a presigned PUT URL from our own API.
+  let token;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    token = session?.access_token;
+  } catch (e) {
+    throw Object.assign(new Error("session_failed"), { stage: "presign", cause: e });
+  }
+  if (!token) throw Object.assign(new Error("no_session"), { stage: "presign" });
 
-  const presign = await fetch("/api/upload-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ path, contentType: "image/jpeg" }),
-  });
-  if (!presign.ok) return false;
-  const { url } = await presign.json();
-  if (!url) return false;
+  let presignRes;
+  try {
+    presignRes = await fetch("/api/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ path, contentType: "image/jpeg" }),
+    });
+  } catch (e) {
+    throw Object.assign(new Error(e?.message || "presign_fetch_failed"), { stage: "presign", cause: e });
+  }
+  if (!presignRes.ok) {
+    const body = await presignRes.text().catch(() => "");
+    throw Object.assign(new Error(`presign_${presignRes.status}`), { stage: "presign", body });
+  }
+  let url;
+  try {
+    ({ url } = await presignRes.json());
+  } catch (e) {
+    throw Object.assign(new Error("presign_parse_failed"), { stage: "presign", cause: e });
+  }
+  if (!url) throw Object.assign(new Error("presign_no_url"), { stage: "presign" });
 
-  const put = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "image/jpeg" },
-    body: blob,
-  });
-  return put.ok;
+  // ── Stage 2: PUT the blob directly to R2 using the signed URL.
+  let putRes;
+  try {
+    putRes = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "image/jpeg" },
+      body: blob,
+    });
+  } catch (e) {
+    // A CORS preflight rejection or network error lands here. The
+    // message is usually "Failed to fetch" (Chrome) or "Load failed"
+    // (Safari) — neither is super actionable without the URL origin.
+    throw Object.assign(new Error(e?.message || "put_fetch_failed"), { stage: "put", cause: e });
+  }
+  if (!putRes.ok) {
+    const body = await putRes.text().catch(() => "");
+    throw Object.assign(new Error(`put_${putRes.status}`), { stage: "put", body });
+  }
+  return true;
 }
