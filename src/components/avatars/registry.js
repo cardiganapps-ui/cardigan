@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import {
-  Dog, Cat, Plant, Coffee, Mountain, Cloud,
-  Book, Moon, Heart, Avocado, Sheep, House,
+  Dog, Cat, Plant, Coffee, Mountain, Silueta,
+  Book, Moon, Heart, Avocado, Cloud, House,
 } from "./presets.jsx";
 
 /* ── Cardigan preset avatar registry ────────────────────────────────
@@ -10,11 +10,12 @@ import {
    satisfies the react-refresh lint rule and the render helper can
    live next to the data without needing JSX syntax.
 
-   Each avatar is a subject wearing a teal cardigan on a pastel
-   backdrop. Ids are stable — changing them would strand users who
+   Each avatar is a simple line-art subject on a pastel backdrop with
+   a tiny teal cardigan triangle at the bottom as the unifying brand
+   motif. Ids are stable — changing them would strand users who
    already picked that preset (their user_metadata stores e.g.
-   "preset:dog-01"). Retain the `-01` suffix so a future redesign
-   could ship `dog-02` etc. alongside. */
+   "preset:dog-01"). The `-01` suffix leaves room for a future ship
+   of refreshed variants (`dog-02`). */
 
 export const PRESET_AVATARS = {
   "dog-01":      { label: "Perro",    Component: Dog },
@@ -22,12 +23,12 @@ export const PRESET_AVATARS = {
   "plant-01":    { label: "Planta",   Component: Plant },
   "coffee-01":   { label: "Café",     Component: Coffee },
   "mountain-01": { label: "Montaña",  Component: Mountain },
-  "cloud-01":    { label: "Nube",     Component: Cloud },
+  "silueta-01":  { label: "Silueta",  Component: Silueta },
   "book-01":     { label: "Libro",    Component: Book },
   "moon-01":     { label: "Luna",     Component: Moon },
   "heart-01":    { label: "Corazón",  Component: Heart },
   "avocado-01":  { label: "Aguacate", Component: Avocado },
-  "sheep-01":    { label: "Oveja",    Component: Sheep },
+  "cloud-01":    { label: "Nube",     Component: Cloud },
   "house-01":    { label: "Casa",     Component: House },
 };
 
