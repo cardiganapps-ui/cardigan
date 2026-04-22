@@ -51,17 +51,51 @@ function EmptyIllustration({ kind, size = 160 }) {
   }
 
   if (kind === "finances") {
+    // Outlined receipt with a teal $-emblem. Line-art (no opaque
+    // fills) so the shape reads on both light and dark backgrounds
+    // — the prior stacked-ellipses "coin pile" washed out in dark
+    // mode because it depended on --white which inverts. The zigzag
+    // bottom is the classic receipt-tear silhouette.
     return (
       <svg width={size} height={size * 0.7} viewBox="0 0 200 140" aria-hidden="true">
-        <ellipse cx="100" cy="122" rx="60" ry="8" fill={tint} opacity="0.7" />
-        <g stroke={stroke} strokeWidth="2.4" strokeLinejoin="round">
-          <ellipse cx="100" cy="100" rx="48" ry="10" fill={fill} />
-          <ellipse cx="100" cy="80" rx="48" ry="10" fill="var(--teal-pale)" />
-          <ellipse cx="100" cy="60" rx="48" ry="10" fill={fill} />
-          <ellipse cx="100" cy="40" rx="48" ry="10" fill="var(--white)" />
-        </g>
-        <text x="100" y="46" textAnchor="middle" fontFamily="var(--font-d)"
-              fontWeight="800" fontSize="18" fill={stroke}>$</text>
+        {/* Soft spotlight so the subject pops off the page */}
+        <circle cx="100" cy="72" r="58" fill={tint} opacity="0.35" />
+        <ellipse cx="100" cy="120" rx="54" ry="6" fill={tint} opacity="0.55" />
+
+        {/* Receipt — outlined, no fill. Coords picked so the zigzag
+           lands on even pixels at the default render size. */}
+        <path
+          d="M 66 26
+             L 134 26
+             L 134 100
+             L 126 108 L 118 100 L 110 108 L 102 100
+             L 94 108 L 86 100 L 78 108 L 70 100 L 66 104 Z"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {/* $ chip — solid teal, pure-white glyph. The glyph uses a
+           hard-coded white because the chip's teal is a constant,
+           not theme-relative. */}
+        <circle cx="100" cy="52" r="15" fill={fill} />
+        <text
+          x="100" y="58.5"
+          textAnchor="middle"
+          fontFamily="var(--font-d), Nunito, sans-serif"
+          fontWeight="800"
+          fontSize="17"
+          fill="#FFFFFF"
+        >$</text>
+
+        {/* Placeholder "rows" on the receipt body — faint so they
+           read as texture rather than content. */}
+        <line x1="76" y1="78" x2="124" y2="78"
+              stroke={stroke} strokeWidth="1.5" strokeLinecap="round" opacity="0.32" />
+        <line x1="76" y1="88" x2="112" y2="88"
+              stroke={stroke} strokeWidth="1.5" strokeLinecap="round" opacity="0.32" />
       </svg>
     );
   }
