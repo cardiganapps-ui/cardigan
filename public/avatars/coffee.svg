@@ -1,13 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Café">
-  <circle cx="100" cy="100" r="100" fill="#E3ECEF"/>
-  <g fill="none" stroke="#2E2E2E" stroke-width="2.2" stroke-linecap="round">
-    <path d="M90 42 Q96 52 90 62"/>
-    <path d="M104 38 Q110 50 104 62"/>
+  <circle cx="100" cy="100" r="100" fill="#D4DDDD"/>
+  <g fill="none" stroke="#2C2C2C" stroke-width="2.4" stroke-linecap="round">
+    <path d="M84 30 Q92 42 86 54"/>
+    <path d="M100 24 Q108 38 100 50"/>
+    <path d="M116 30 Q108 42 114 54"/>
   </g>
-  <path d="M55 80 L138 80 L132 150 Q131 160 121 160 L72 160 Q62 160 61 150 Z" fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M62 88 L131 88" stroke="#BFA884" stroke-width="7" stroke-linecap="round"/>
-  <path d="M138 95 Q162 95 162 115 Q162 135 138 135" fill="none" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M55 118 Q55 108 85 108 Q115 108 115 118 L115 160 Q115 168 107 168 L63 168 Q55 168 55 160 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M85 108 L75 125 L85 145 L95 125 Z" fill="#E3ECEF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="85" cy="135" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <path d="M52 66 L148 66 L140 140 Q138 152 126 152 L74 152 Q62 152 60 140 Z" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M60 78 L140 78" stroke="#BFA884" stroke-width="6" stroke-linecap="round"/>
+  <path d="M148 82 Q174 84 174 104 Q174 124 148 126" fill="none" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>

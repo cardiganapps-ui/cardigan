@@ -1,22 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Gato">
-  <circle cx="100" cy="100" r="100" fill="#E5E0EC"/>
-  <g fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round">
-    <path d="M66 55 L76 88 L58 88 Z"/>
-    <path d="M134 55 L142 88 L124 88 Z"/>
-    <path d="M68 88 Q68 54 100 54 Q132 54 132 88 Q132 116 100 118 Q68 116 68 88 Z"/>
+  <circle cx="100" cy="100" r="100" fill="#DDD5E4"/>
+  <g stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M62 50 L80 90 L56 88 Z" fill="#F2E8D9"/>
+    <path d="M138 50 L144 88 L120 90 Z" fill="#F2E8D9"/>
+    <path d="M100 52 Q68 52 66 86 Q66 116 100 122 Q134 116 134 86 Q132 52 100 52 Z" fill="#F2E8D9"/>
   </g>
-  <g fill="#2E2E2E">
-    <circle cx="88" cy="88" r="2.6"/>
-    <circle cx="112" cy="88" r="2.6"/>
+  <circle cx="86" cy="90" r="3" fill="#2C2C2C"/>
+  <circle cx="114" cy="90" r="3" fill="#2C2C2C"/>
+  <path d="M96 100 L100 106 L104 100" fill="none" stroke="#2C2C2C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <g stroke="#2C2C2C" stroke-width="1.8" stroke-linecap="round" fill="none">
+    <path d="M72 96 L58 92"/>
+    <path d="M72 101 L58 104"/>
+    <path d="M128 96 L142 92"/>
+    <path d="M128 101 L142 104"/>
   </g>
-  <g fill="none" stroke="#2E2E2E" stroke-width="2" stroke-linecap="round">
-    <path d="M92 100 L100 104 L108 100"/>
-    <path d="M74 95 L64 92"/>
-    <path d="M74 99 L62 100"/>
-    <path d="M126 95 L136 92"/>
-    <path d="M126 99 L138 100"/>
-  </g>
-  <path d="M55 150 Q55 128 100 128 Q145 128 145 150 L145 185 L55 185 Z" fill="#7FA398" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M100 128 L86 148 L100 168 L114 148 Z" fill="#E5E0EC" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="100" cy="158" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>

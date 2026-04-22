@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Planta">
-  <circle cx="100" cy="100" r="100" fill="#F4E8DC"/>
-  <g fill="#A8C4A4" stroke="#2E2E2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M100 105 Q72 92 68 60 Q88 60 100 85 Z"/>
-    <path d="M100 105 Q128 92 132 60 Q112 60 100 85 Z"/>
-    <path d="M100 95 Q96 70 100 48 Q104 70 100 95 Z" fill="#8EB19A"/>
+  <circle cx="100" cy="100" r="100" fill="#F0E6D6"/>
+  <g stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M100 102 Q74 90 68 58 Q90 58 100 84 Z" fill="#A5BFA1"/>
+    <path d="M100 102 Q126 90 132 58 Q110 58 100 84 Z" fill="#A5BFA1"/>
   </g>
-  <path d="M100 85 L100 115" fill="none" stroke="#2E2E2E" stroke-width="2"/>
-  <path d="M60 135 Q60 110 100 110 Q140 110 140 135 L140 182 L60 182 Z" fill="#EFE4D3" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M100 110 L86 135 L100 158 L114 135 Z" fill="#F4E8DC" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="100" cy="145" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <path d="M100 84 L100 120" stroke="#2C2C2C" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#EADFCD" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F0E6D6" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>

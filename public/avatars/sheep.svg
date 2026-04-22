@@ -1,11 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Borrego">
-  <circle cx="100" cy="100" r="100" fill="#DCECE5"/>
-  <path d="M66 70 Q58 70 58 58 Q58 46 72 46 Q76 34 90 36 Q98 28 108 34 Q122 30 130 42 Q144 40 146 54 Q152 60 148 72 Q152 80 144 86 Q144 98 132 98 Q128 108 116 106 Q110 114 100 110 Q90 114 84 106 Q72 108 68 98 Q56 98 56 86 Q50 80 54 72 Q48 60 58 54 Z" fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <g fill="#2E2E2E">
-    <circle cx="90" cy="78" r="2.4"/>
-    <circle cx="110" cy="78" r="2.4"/>
-  </g>
-  <path d="M55 140 Q55 120 100 120 Q145 120 145 140 L145 185 L55 185 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M100 120 L86 140 L100 162 L114 140 Z" fill="#DCECE5" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="100" cy="150" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <circle cx="100" cy="100" r="100" fill="#DED4E4"/>
+  <path d="M60 66 Q48 66 48 54 Q48 42 62 42 Q66 30 82 32 Q90 22 102 28 Q116 24 126 36 Q142 34 146 48 Q158 52 156 66 Q164 74 154 86 Q158 100 142 102 Q140 116 124 114 Q118 126 104 120 Q94 128 84 120 Q70 124 64 110 Q48 108 50 92 Q40 86 46 74 Q38 58 52 54 Z" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="92" cy="82" r="3" fill="#2C2C2C"/>
+  <circle cx="112" cy="82" r="3" fill="#2C2C2C"/>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>

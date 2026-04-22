@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Perro">
-  <circle cx="100" cy="100" r="100" fill="#DCECE5"/>
-  <g fill="none" stroke="#2E2E2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M60 70 Q55 95 68 108" fill="#FAF6EE"/>
-    <path d="M140 70 Q145 95 132 108" fill="#FAF6EE"/>
-    <path d="M70 82 Q70 50 100 50 Q130 50 130 82 Q130 112 100 115 Q70 112 70 82 Z" fill="#FAF6EE"/>
-    <circle cx="88" cy="85" r="2.6" fill="#2E2E2E"/>
-    <circle cx="112" cy="85" r="2.6" fill="#2E2E2E"/>
-    <ellipse cx="100" cy="97" rx="4" ry="3" fill="#2E2E2E"/>
-    <path d="M100 100 L100 106" />
+  <circle cx="100" cy="100" r="100" fill="#D0DED3"/>
+  <g stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M58 58 Q44 90 52 118 Q62 118 70 105 Q66 82 72 62 Z" fill="#F2E8D9"/>
+    <path d="M142 58 Q156 90 148 118 Q138 118 130 105 Q134 82 128 62 Z" fill="#F2E8D9"/>
+    <path d="M100 46 Q68 46 66 84 Q66 116 100 122 Q134 116 134 84 Q132 46 100 46 Z" fill="#F2E8D9"/>
   </g>
-  <path d="M55 150 Q55 128 100 128 Q145 128 145 150 L145 185 L55 185 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M100 128 L86 148 L100 168 L114 148 Z" fill="#DCECE5" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="100" cy="158" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <circle cx="87" cy="90" r="3.2" fill="#2C2C2C"/>
+  <circle cx="113" cy="90" r="3.2" fill="#2C2C2C"/>
+  <ellipse cx="100" cy="103" rx="4.8" ry="3.4" fill="#2C2C2C"/>
+  <path d="M100 106 L100 111 Q96 114 93 112 M100 111 Q104 114 107 112" fill="none" stroke="#2C2C2C" stroke-width="2" stroke-linecap="round"/>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>

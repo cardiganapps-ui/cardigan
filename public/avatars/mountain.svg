@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Montaña">
-  <circle cx="100" cy="100" r="100" fill="#E5E0EC"/>
-  <g stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round">
-    <path d="M40 130 L85 55 L130 130 Z" fill="#7FA7B5"/>
-    <path d="M72 78 L85 55 L98 78 L92 88 L85 80 L78 88 Z" fill="#FAF6EE"/>
+  <circle cx="100" cy="100" r="100" fill="#DED4E4"/>
+  <g stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M30 140 L84 44 L138 140 Z" fill="#7E9CA9"/>
+    <path d="M68 78 L84 44 L100 78 L92 90 L84 80 L76 90 Z" fill="#F2E8D9"/>
   </g>
-  <g fill="#FAF6EE" stroke="#2E2E2E" stroke-width="2.2" stroke-linejoin="round">
-    <path d="M118 62 Q108 62 108 70 Q102 70 102 78 Q102 86 112 86 L146 86 Q156 86 156 78 Q156 70 148 70 Q148 62 138 62 Q134 58 128 58 Q122 58 118 62 Z"/>
+  <g fill="#F2E8D9" stroke="#2C2C2C" stroke-width="2.6" stroke-linejoin="round">
+    <path d="M132 56 Q122 54 120 64 Q112 64 112 72 Q112 80 122 80 L156 80 Q166 80 166 72 Q166 64 158 64 Q158 54 148 54 Q144 50 139 52 Q135 50 132 56 Z"/>
   </g>
-  <path d="M45 128 Q45 118 100 118 Q155 118 155 128 L155 182 L45 182 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M100 118 L85 140 L100 162 L115 140 Z" fill="#E5E0EC" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="100" cy="150" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>

@@ -1,12 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Casa">
-  <circle cx="100" cy="100" r="100" fill="#E3ECEF"/>
-  <g stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round">
-    <path d="M48 92 L100 44 L152 92 L152 140 L48 140 Z" fill="#FAF6EE"/>
-    <path d="M128 50 L128 68 L140 68 L140 62" fill="#FAF6EE"/>
-    <path d="M84 100 L116 100 L116 132 L84 132 Z" fill="#2E2E2E"/>
-    <path d="M100 100 L100 132 M84 116 L116 116" stroke="#E3ECEF" stroke-width="2.4"/>
+  <circle cx="100" cy="100" r="100" fill="#CFDADA"/>
+  <g stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round">
+    <path d="M40 94 L100 34 L160 94 L160 150 L40 150 Z" fill="#F2E8D9"/>
+    <path d="M130 46 L130 68 L146 68 L146 60" fill="#F2E8D9"/>
+    <path d="M80 104 L120 104 L120 140 L80 140 Z" fill="#2C2C2C"/>
   </g>
-  <path d="M55 140 Q55 124 100 124 Q145 124 145 140 L145 186 L55 186 Z" fill="#5B9BAF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M100 124 L86 144 L100 164 L114 144 Z" fill="#E3ECEF" stroke="#2E2E2E" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="100" cy="154" r="3" fill="#FFFFFF" stroke="#2E2E2E" stroke-width="1.4"/>
+  <g stroke="#CFDADA" stroke-width="3">
+    <line x1="100" y1="104" x2="100" y2="140"/>
+    <line x1="80" y1="122" x2="120" y2="122"/>
+  </g>
+  <path d="M22 200 L22 140 C22 114 36 106 56 112 C80 118 92 132 100 152 C108 132 120 118 144 112 C164 106 178 114 178 140 L178 200 Z" fill="#5E8790" stroke="#2C2C2C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 152 L100 200" stroke="#2C2C2C" stroke-width="2.2"/>
+  <circle cx="100" cy="174" r="3.6" fill="#F2E8D9" stroke="#2C2C2C" stroke-width="1.6"/>
 </svg>
