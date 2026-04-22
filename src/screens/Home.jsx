@@ -548,7 +548,12 @@ export function Home({ setScreen, userName }) {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
                 {[
                   { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
-                  { label: t("finances.balance"), value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
+                  // When the patient has overpaid, swap the "Balance
+                  // $0" tile for "Saldo a favor +$X" (green) so the
+                  // prepayment doesn't read as a null state.
+                  selected.credit > 0
+                    ? { label: t("finances.credit"),  value:`+$${selected.credit.toLocaleString()}`, color:"var(--green)" }
+                    : { label: t("finances.balance"), value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                 ].map((s,i) => (
                   <div key={i} className="stat-tile" style={{ textAlign:"center" }}>
                     <div className="stat-tile-label">{s.label}</div>

@@ -38,7 +38,12 @@ export function useDemoData() {
     }
     return data.patients.map(p => {
       const consumed = consumedByPatient.get(p.id) || 0;
-      return { ...p, amountDue: Math.max(0, consumed - (p.paid || 0)) };
+      const delta = consumed - (p.paid || 0);
+      return {
+        ...p,
+        amountDue: Math.max(0, delta),
+        credit:    Math.max(0, -delta),
+      };
     });
   }, [data.patients, enrichedSessions]);
 

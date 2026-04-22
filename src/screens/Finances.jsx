@@ -545,7 +545,18 @@ export function Finances() {
                       <div className="bal-name">{p.name}</div>
                       <div className="bal-sub">${p.paid.toLocaleString()} {t("finances.paidAmount")}</div>
                     </div>
-                    <div className="bal-amt amount-paid"><IconCheck size={16} /></div>
+                    {p.credit > 0 ? (
+                      // Prepaid patients still live in the "Al
+                      // corriente" bucket but get a green pill showing
+                      // how much they've paid ahead — otherwise there's
+                      // no visible distinction from someone who paid
+                      // exactly what they owed.
+                      <span className="badge badge-green" style={{ fontSize: 11, fontWeight: 700 }}>
+                        +${p.credit.toLocaleString()} {t("finances.creditShort")}
+                      </span>
+                    ) : (
+                      <div className="bal-amt amount-paid"><IconCheck size={16} /></div>
+                    )}
                   </div>
                 ))}
               </div>

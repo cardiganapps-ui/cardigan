@@ -208,8 +208,23 @@ export function ResumenTab({
           <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>${patient.paid.toLocaleString()}</div>
         </div>
         <div className="stat-tile" style={{ textAlign:"center" }}>
-          <div className="stat-tile-label">{t("finances.balance")}</div>
-          <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-xl)" }}>${patient.amountDue.toLocaleString()}</div>
+          {/* When a patient has overpaid (credit > 0), the tile flips
+              from "No Cobrado $0" (which read as "nothing owed, nothing
+              special") to "Saldo a favor +$X" so you can tell at a
+              glance they've prepaid future sessions. The main status
+              badge still reads "Al corriente" — credit is an
+              additional signal, not a different category. */}
+          {patient.credit > 0 ? (
+            <>
+              <div className="stat-tile-label">{t("finances.credit")}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>+${patient.credit.toLocaleString()}</div>
+            </>
+          ) : (
+            <>
+              <div className="stat-tile-label">{t("finances.balance")}</div>
+              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-xl)" }}>${patient.amountDue.toLocaleString()}</div>
+            </>
+          )}
         </div>
       </div>
 

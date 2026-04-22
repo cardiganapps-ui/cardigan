@@ -327,7 +327,17 @@ export function useCardiganData(user, viewAsUserId) {
     return patients.map(p => {
       const consumed = consumedByPatient.get(p.id) || 0;
       const paid = p.paid || 0;
-      return { ...p, amountDue: Math.max(0, consumed - paid) };
+      const delta = consumed - paid;
+      // Mutually exclusive: amountDue > 0 means the patient owes money,
+      // credit > 0 means they've prepaid beyond their consumed sessions.
+      // UI surfaces amountDue in red and credit in green (as "saldo a
+      // favor") wherever the old code showed $0 for at-corriente
+      // patients — that hid the fact that prepayers had paid ahead.
+      return {
+        ...p,
+        amountDue: Math.max(0, delta),
+        credit:    Math.max(0, -delta),
+      };
     });
   }, [patients, enrichedSessions]);
 
