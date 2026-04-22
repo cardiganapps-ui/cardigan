@@ -311,16 +311,22 @@ export function useNotifications(user) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
-      if (!resp.ok) return { ok: false, code: "server-error" };
       const body = await resp.json().catch(() => ({}));
+      // Unconditionally log the server's reply so Safari remote inspector
+      // can see it while we're still diagnosing. Cheap, no PII.
+      console.log("sendTest server reply:", resp.status, body);
+      if (!resp.ok) {
+        return {
+          ok: false,
+          code: "server-error",
+          statusCode: resp.status,
+          message: body?.message || body?.error || null,
+        };
+      }
       if (body?.sent) return { ok: true };
-      // sent=0 but the server tried: distinguish "no subs on file" from
-      // "tried to send but provider rejected every one" so the UI doesn't
-      // always blame missing subscriptions.
       const results = Array.isArray(body?.results) ? body.results : [];
       if (results.length === 0) return { ok: false, code: "no-subscription" };
       const firstErr = results.find((r) => !r.ok) || {};
-      if (import.meta.env.DEV) console.error("sendTest results:", results);
       return {
         ok: false,
         code: "send-failed",

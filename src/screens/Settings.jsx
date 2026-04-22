@@ -60,16 +60,21 @@ export function Settings({ user, signOut }) {
     setTesting(true);
     const res = await notifications.sendTest();
     setTesting(false);
-    if (res?.ok) showToast(t("notifications.testSent"), "success");
-    else if (res?.code === "no-subscription") showToast(t("notifications.testFailedNoSub"), "warning");
-    else if (res?.code === "send-failed") {
-      // Surface the provider status code so it's debuggable without
-      // opening DevTools. Apple/FCM return 410 for revoked subs, 403
-      // for VAPID mismatch, 429 for rate limit, etc.
-      const suffix = res?.statusCode ? ` (HTTP ${res.statusCode})` : "";
-      showToast(t("notifications.testFailed") + suffix, "error");
+    if (res?.ok) {
+      showToast(t("notifications.testSent"), "success");
+      return;
     }
-    else showToast(t("notifications.testFailed"), "error");
+    if (res?.code === "no-subscription") {
+      showToast(t("notifications.testFailedNoSub"), "warning");
+      return;
+    }
+    // Diagnostic: surface the status code / error message verbatim so
+    // we can debug from the phone without a remote inspector.
+    const parts = [t("notifications.testFailed")];
+    if (res?.statusCode) parts.push(`HTTP ${res.statusCode}`);
+    if (res?.code) parts.push(res.code);
+    if (res?.message) parts.push(res.message);
+    showToast(parts.join(" · "), "error");
   };
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
