@@ -73,6 +73,17 @@ export function isAllowedPushEndpoint(urlString) {
   }
 }
 
+// web-push 3.6.7 strictly requires URL-safe base64 without padding
+// (regex [A-Za-z0-9\-_]+). A value stored with trailing "=" padding
+// or with standard "+/" chars throws "Vapid public key must be a URL
+// safe Base 64 (without '=')" BEFORE the HTTP call is attempted — which
+// silently broke every push send in the background until now. Both
+// forms represent the same binary key, so normalising is safe.
+function toUrlSafeBase64(s) {
+  if (!s || typeof s !== "string") return s;
+  return s.trim().replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 // Prefer the canonical names (VAPID_PUBLIC_KEY, VAPID_SUBJECT). During
 // the migration away from the historical VITE_/EMAIL names we still
 // accept those as fallbacks so the transition can happen without a
@@ -85,8 +96,8 @@ export function readVapidConfig() {
   const subject = rawSubject && (rawSubject.startsWith("mailto:") || rawSubject.startsWith("https:"))
     ? rawSubject
     : "mailto:noreply@cardigan.mx";
-  const pub = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
+  const pub = toUrlSafeBase64(process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY);
+  const priv = toUrlSafeBase64(process.env.VAPID_PRIVATE_KEY);
   const missing = [];
   if (!pub) missing.push("VAPID_PUBLIC_KEY");
   if (!priv) missing.push("VAPID_PRIVATE_KEY");
