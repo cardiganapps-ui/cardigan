@@ -12,13 +12,11 @@ import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { haptic } from "../utils/haptics";
-import { parseShortDate, SHORT_MONTHS } from "../utils/dates";
-
-const WEEKDAYS_SHORT_ES = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+import { parseShortDate } from "../utils/dates";
 
 // Compute the next scheduled session within the next 24 hours. Returns
-// { session, atDate } or null if none. Used by both the preview card
-// (0.3) and the "next reminder" hint (0.4).
+// { session, atDate } or null if none. Drives the NotificationPreview
+// card so the sample reminder matches real upcoming data.
 function computeNextReminder(upcomingSessions) {
   if (!Array.isArray(upcomingSessions) || upcomingSessions.length === 0) return null;
   const now = new Date();
@@ -36,15 +34,6 @@ function computeNextReminder(upcomingSessions) {
     if (!best || ts < best.ts) best = { ts, session: s, atDate: d };
   }
   return best ? { session: best.session, atDate: best.atDate } : null;
-}
-
-function formatNextReminder(atDate, patientName) {
-  const pad = (n) => String(n).padStart(2, "0");
-  const dow = WEEKDAYS_SHORT_ES[atDate.getDay()];
-  const day = atDate.getDate();
-  const mon = SHORT_MONTHS[atDate.getMonth()];
-  const time = `${pad(atDate.getHours())}:${pad(atDate.getMinutes())}`;
-  return `${dow} ${day} ${mon} ${time} · ${patientName}`;
 }
 
 // Map typed error codes from useNotifications to user-readable i18n
@@ -515,17 +504,6 @@ export function Settings({ user, signOut }) {
                       {t("notifications.testRetry")}
                     </span>
                   )}
-                </div>
-
-                {/* ── Next-reminder hint (0.4) ── */}
-                <div style={{
-                  padding:"0 16px 14px",
-                  fontSize:12, color:"var(--charcoal-xl)",
-                  lineHeight:1.4,
-                }}>
-                  {nextReminder
-                    ? `${t("notifications.nextReminderLabel")}: ${formatNextReminder(nextReminder.atDate, nextReminder.session.patient)}`
-                    : t("notifications.nextReminderNone")}
                 </div>
               </Expando>
             </div>
