@@ -24,9 +24,16 @@ if ('serviceWorker' in navigator) {
       updateViaCache: 'none',
     });
 
-    // When a new SW takes over, reload to pick up fresh assets
+    // When a new SW takes over, reload to pick up fresh assets — but
+    // only when there was already a controller at page load. On a
+    // first-ever visit the SW installs/activates and grabs the tab,
+    // which fires controllerchange too; reloading then made the
+    // landing page randomly refresh during the user's first sign-in
+    // attempt. Returning visits still reload as designed.
+    const hadInitialController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadInitialController) return;
       if (!refreshing) { refreshing = true; window.location.reload(); }
     });
 

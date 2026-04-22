@@ -11,14 +11,31 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
    (email verification is required) or when a signIn attempt is rejected
    because the email hasn't been verified yet. Same look & feel as the
    branded email templates: teal accent bar, big Nunito headline, warm
-   muted body copy, charcoal primary CTA. */
+   muted body copy, charcoal primary CTA.
+
+   Resend is rate-limited to once per 90 s with a live countdown on the
+   button so users who think "maybe it failed" don't fire multiple
+   requests and burn their Supabase/Resend quota. */
+const RESEND_COOLDOWN_MS = 90_000;
+
 function VerifyPendingPanel({ email, onGoToLogin, t }) {
   const [resending, setResending] = useState(false);
   const [resentAt, setResentAt] = useState(0);
   const [resendError, setResendError] = useState("");
+  // Tick once per second while a cooldown is active so the countdown
+  // rerenders. Idle when no resend has fired (saves the interval).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!resentAt) return;
+    const elapsed = Date.now() - resentAt;
+    if (elapsed >= RESEND_COOLDOWN_MS) return;
+    const id = setInterval(() => setTick(x => x + 1), 1000);
+    return () => clearInterval(id);
+  }, [resentAt]);
 
   const resend = async () => {
     if (resending) return;
+    if (resentAt && Date.now() - resentAt < RESEND_COOLDOWN_MS) return;
     setResendError("");
     setResending(true);
     const { error } = await supabase.auth.resend({ type: "signup", email });
@@ -27,7 +44,10 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
     setResentAt(Date.now());
   };
 
-  const resentRecently = resentAt && (Date.now() - resentAt < 4000);
+  const elapsed = resentAt ? Date.now() - resentAt : Infinity;
+  const remaining = Math.max(0, Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000));
+  const cooling = remaining > 0;
+  const justSent = resentAt && elapsed < 4000;
 
   return (
     <div style={{ paddingTop: 4 }}>
@@ -48,8 +68,14 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
         <button className="btn btn-primary" type="button" onClick={onGoToLogin}>
           {t("auth.verifyGoToLogin")}
         </button>
-        <button className="btn btn-ghost" type="button" onClick={resend} disabled={resending}>
-          {resending ? t("auth.verifyResending") : resentRecently ? t("auth.verifyResendSent") : t("auth.verifyResend")}
+        <button className="btn btn-ghost" type="button" onClick={resend} disabled={resending || cooling}>
+          {resending
+            ? t("auth.verifyResending")
+            : justSent
+              ? t("auth.verifyResendSent")
+              : cooling
+                ? t("auth.verifyResendCooldown", { seconds: remaining })
+                : t("auth.verifyResend")}
         </button>
       </div>
     </div>
@@ -186,7 +212,21 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
         )}
         <div className="input-group">
           <label className="input-label">{t("settings.email")}</label>
-          <input className="input" placeholder={t("auth.emailPlaceholder")} type="email" autoComplete="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} />
+          {/* type=email + inputMode=email together suppress iOS text-shortcut
+              substitution (e.g. user-defined "@@" → email expansion). Drop
+              inputMode and rely on type=email to surface the @-keyboard
+              while keeping autocorrect/replace pipeline intact. */}
+          <input
+            className="input"
+            placeholder={t("auth.emailPlaceholder")}
+            type="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
         </div>
         {mode !== "reset" && (
           <div className="input-group">

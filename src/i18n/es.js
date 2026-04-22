@@ -42,7 +42,7 @@ export default {
 
   // ── Home ──
   home: {
-    welcome: "Bienvenido",
+    welcome: "Te damos la bienvenida",
     sessionsToday: "Sesiones hoy",
     patientCount: "paciente{plural}",
     seeWeek: "Ver semana",
@@ -121,12 +121,13 @@ export default {
     verifyTitle: "Revisa tu correo",
     verifyBodyBefore: "Te enviamos un enlace de verificación a ",
     verifyBodyAfter: ". Ábrelo para activar tu cuenta antes de iniciar sesión.",
-    verifyTip: "¿No lo ves? Revisa la carpeta de spam o promociones.",
+    verifyTip: "Suele llegar en menos de un minuto, pero a veces tarda algunos. Si no lo ves, revisa la carpeta de spam o promociones.",
     verifyResend: "Reenviar correo",
     verifyResendSent: "Correo reenviado",
     verifyResending: "Enviando\u2026",
     verifyGoToLogin: "Ya verifiqué, iniciar sesión",
     verifyResendError: "No pudimos reenviar el correo. Intenta de nuevo en un momento.",
+    verifyResendCooldown: "Espera {seconds}s para volver a enviar",
     notConfirmedError: "Debes verificar tu correo antes de iniciar sesión.",
   },
 
@@ -686,7 +687,7 @@ export default {
 
   // ── Tutorial / onboarding ──
   tutorial: {
-    welcomeTitle: "\u00a1Bienvenido a Cardigan!",
+    welcomeTitle: "\u00a1Te damos la bienvenida a Cardigan!",
     welcomeBody: "\u00bfQuieres un recorrido r\u00e1pido para conocer lo esencial? Puedes hacerlo despu\u00e9s desde Ajustes.",
     welcomeYes: "S\u00ed, ens\u00e9\u00f1ame",
     welcomeNo: "Ahora no",
@@ -700,7 +701,7 @@ export default {
     settingsRow: "Tutorial",
     settingsRowSub: "Vuelve a ver el recorrido guiado",
     steps: {
-      welcomeTitle: "\u00a1Bienvenido a Cardigan!",
+      welcomeTitle: "\u00a1Te damos la bienvenida a Cardigan!",
       welcomeBody: "Tu espacio para organizar pacientes, agenda y cobros. Te muestro lo esencial en menos de un minuto.",
       kpisTitle: "Tu d\u00eda de un vistazo",
       kpisBody: "Sesiones de hoy, ingresos del mes y saldos pendientes. Todo se actualiza solo.",

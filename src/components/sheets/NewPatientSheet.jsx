@@ -147,6 +147,14 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     }
     if (!rateValid) { flash(t("patients.enterRate")); return; }
     if (hasConflict) { flash(t("patients.resolveConflicts")); return; }
+    // Dismiss the iOS keyboard when stepping past step 1 (rate input).
+    // Without this, the soft keyboard stays open over step 2's date
+    // pickers because the previously-focused MoneyInput unmounts but
+    // iOS doesn't release the keyboard until something explicitly
+    // blurs the active element.
+    if (typeof document !== "undefined" && document.activeElement && typeof document.activeElement.blur === "function") {
+      document.activeElement.blur();
+    }
     setFeedback(null);
     setStep(2);
     // Scroll to top on step change so the user sees the first field
