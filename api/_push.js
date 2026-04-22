@@ -92,7 +92,12 @@ function toUrlSafeBase64(s) {
 // instead of throwing: webpush's own validator handles it, and throwing
 // here would collapse to "sent=0" at call sites without a usable error.
 export function readVapidConfig() {
-  const rawSubject = process.env.VAPID_SUBJECT || process.env.VAPID_EMAIL || "";
+  // Trim to defend against a trailing "\n" paste into the Vercel env
+  // editor — web-push embeds the subject into the VAPID JWT "sub" claim
+  // verbatim, and Apple's push gateway rejects any JWT whose "sub"
+  // contains a newline with {"reason":"BadJwtToken"} → 403. Lost ~2h
+  // this session chasing that, worth the explicit .trim().
+  const rawSubject = (process.env.VAPID_SUBJECT || process.env.VAPID_EMAIL || "").trim();
   const subject = rawSubject && (rawSubject.startsWith("mailto:") || rawSubject.startsWith("https:"))
     ? rawSubject
     : "mailto:noreply@cardigan.mx";
