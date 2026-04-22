@@ -429,7 +429,7 @@ export function Settings({ user, signOut }) {
                     items={[
                       { k: 15, l: "15 min" },
                       { k: 30, l: "30 min" },
-                      { k: 60, l: "1 h" },
+                      { k: 60, l: "1 hr" },
                     ]}
                     value={notifications.reminderMinutes}
                     onChange={(v) => {
