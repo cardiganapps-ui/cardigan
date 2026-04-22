@@ -52,9 +52,25 @@ export function Home({ setScreen, userName }) {
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
 
-  const totalOwed     = patients.reduce((s,p) => s + p.amountDue, 0);
-  const activeCount   = patients.filter(p=>p.status==="active").length;
-  const todaySessions = upcomingSessions.filter(s => s.date === todayStr).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  // All three derivations sit in the render path on a screen that
+  // re-renders on any CardiganContext change (notes, documents,
+  // drawerOpen, etc). Memo scopes recomputation to the inputs that
+  // actually affect the result — cheap individually, but Home is
+  // rendered ~50ms on a mid-range phone so every bit counts.
+  const totalOwed = useMemo(
+    () => patients.reduce((s, p) => s + p.amountDue, 0),
+    [patients]
+  );
+  const activeCount = useMemo(
+    () => patients.filter(p => p.status === "active").length,
+    [patients]
+  );
+  const todaySessions = useMemo(
+    () => upcomingSessions
+      .filter(s => s.date === todayStr)
+      .sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+    [upcomingSessions, todayStr]
+  );
 
   // Next-day carousel data
   const nextDay = useMemo(() => getNextDay(TODAY, upcomingSessions), [upcomingSessions]);

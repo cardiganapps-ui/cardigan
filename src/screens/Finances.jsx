@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { getClientColor } from "../data/seedData";
 import { IconCheck, IconTrendingUp, IconUsers, IconPlus, IconDollar } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
@@ -9,12 +9,22 @@ import { Avatar } from "../components/Avatar";
 import { SwipeableRow } from "../components/SwipeableRow";
 import { useT } from "../i18n/index";
 
+const FINANCES_INITIAL_WINDOW = 60;
+const FINANCES_WINDOW_INCREMENT = 40;
+
 function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
   const { t, strings } = useT();
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);
   const [period, setPeriod] = useState("all");
+  // Lazy-load window. Rendering every payment row up-front was the
+  // single worst scroll-jank source on iOS Safari — a therapist with
+  // 1000+ payments paid ~500ms layout cost on tab open. With the
+  // window, first paint renders 60 rows; an IntersectionObserver
+  // sentinel pulls 40 more as the user scrolls toward the end.
+  const [visibleCount, setVisibleCount] = useState(FINANCES_INITIAL_WINDOW);
+  const sentinelRef = useRef(null);
 
   // Compute date-from based on period selection
   const getDateFrom = (p) => {
@@ -28,6 +38,17 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
     }
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   };
+
+  // Reset the visible window on filter change. The deps intentionally
+  // don't include the full `filtered` array (changes on every render
+  // due to identity); `period` + `groupByClient` capture the real
+  // user-initiated reasons to re-anchor. Synchronous setState in the
+  // effect is deliberate — the new window needs to be in place in the
+  // same commit or the user sees a flash of the old row count.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setVisibleCount(FINANCES_INITIAL_WINDOW);
+  }, [period, groupByClient, payments.length]);
 
   const { filtered, totalFiltered, grouped } = useMemo(() => {
     const dateFrom = getDateFrom(period);
@@ -46,6 +67,25 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
     }
     return { filtered: list, totalFiltered: total, grouped: byPatient };
   }, [payments, period]);
+
+  // Hook the sentinel to grow the window as the user scrolls. The
+  // observer is (re)created whenever the filtered count changes so a
+  // new sentinel (after the list shrinks below the previous window)
+  // gets picked up. rootMargin preloads before the sentinel enters the
+  // viewport — a therapist scrolling fast shouldn't feel the stall.
+  useEffect(() => {
+    if (visibleCount >= filtered.length) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) {
+        setVisibleCount(n => Math.min(n + FINANCES_WINDOW_INCREMENT, filtered.length));
+      }
+    }, { rootMargin: "240px 0px" });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleCount, filtered.length]);
 
   const renderRow = (p, i) => {
     const patient = patients.find(pt => pt.name === p.patient);
@@ -175,7 +215,23 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
                 );
               })}
             </div>
-          : <div className="card">{filtered.map((p,i) => renderRow(p,i))}</div>
+          : (
+            <div className="card">
+              {filtered.slice(0, visibleCount).map((p, i) => renderRow(p, i))}
+              {visibleCount < filtered.length && (
+                // Sentinel + subtle hint so the blank band below the
+                // last visible row doesn't read as "no more rows".
+                <div ref={sentinelRef} style={{
+                  padding: "14px 16px",
+                  textAlign: "center",
+                  fontSize: "var(--text-xs)",
+                  color: "var(--charcoal-xl)",
+                }}>
+                  …
+                </div>
+              )}
+            </div>
+          )
       }
 
     </div>

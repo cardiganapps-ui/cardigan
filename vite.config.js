@@ -18,6 +18,6 @@ export default defineConfig({
     }),
   ],
   build: {
-    cssMinify: false
-  }
+    cssMinify: true,
+  },
 })

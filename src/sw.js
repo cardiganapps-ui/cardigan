@@ -42,12 +42,16 @@ self.addEventListener("activate", (event) => {
 
 // ── Runtime caching (replicated from previous generateSW config) ──
 
-// Supabase API — network-first with short-lived cache fallback
+// Supabase API — network-first with a 5-minute cache fallback. Bumped
+// from 60s because the previous window meant the SW discarded valid
+// responses for the common "reopen the app after coffee" pattern. 5
+// minutes still expires well inside a typical session; stale rows
+// only surface when the network is down.
 registerRoute(
   /^https:\/\/axyuqfkmifcaupwhzfuw\.supabase\.co\/.*/i,
   new NetworkFirst({
     cacheName: "supabase-api",
-    plugins: [new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 60 })],
+    plugins: [new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 300 })],
   })
 );
 

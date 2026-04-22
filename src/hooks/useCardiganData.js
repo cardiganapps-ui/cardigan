@@ -218,7 +218,16 @@ export function useCardiganData(user, viewAsUserId) {
         const extendEnd = toISODate(
           new Date(today.getTime() + RECURRENCE_WINDOW_WEEKS * 7 * 86400000)
         );
-        let didExtend = false;
+
+        // Accumulate the rows returned by each insert + the fresh
+        // patient counter figures. Previously we discarded these and
+        // re-ran the top-level fetch to reload canonical state —
+        // ~200-400 ms round-trip on every cold start of a user with
+        // active recurring patients. The inserted row set + the
+        // patient (sessions, billed) targets we just computed are
+        // exactly the canonical state, so merge locally instead.
+        const insertedRows = [];
+        const patientUpdates = new Map();
 
         for (const patient of pData) {
           const allPSess = sData.filter(s => s.patient_id === patient.id);
@@ -227,23 +236,29 @@ export function useCardiganData(user, viewAsUserId) {
 
           const { data, error } = await supabase.from("sessions").insert(rows).select();
           if (!error && data) {
+            insertedRows.push(...data);
             const newSessions = patient.sessions + data.length;
             const newBilled = patient.billed + patient.rate * data.length;
             const { error: pErr } = await supabase.from("patients")
               .update({ sessions: newSessions, billed: newBilled })
               .eq("id", patient.id);
-            if (pErr) await recalcPatientCounters(patient.id);
-            didExtend = true;
+            if (pErr) {
+              const fixed = await recalcPatientCounters(patient.id);
+              if (fixed) patientUpdates.set(patient.id, fixed);
+            } else {
+              patientUpdates.set(patient.id, { sessions: newSessions, billed: newBilled });
+            }
           }
         }
 
-        if (didExtend) {
-          const [pRes2, sRes2] = await Promise.all([
-            q("patients").order("name"),
-            q("sessions", 10000).order("created_at"),
-          ]);
-          pData = mapRows(pRes2.data);
-          sData = mapRows(sRes2.data);
+        if (insertedRows.length > 0) {
+          sData = [...sData, ...mapRows(insertedRows)];
+        }
+        if (patientUpdates.size > 0) {
+          pData = pData.map(p => {
+            const u = patientUpdates.get(p.id);
+            return u ? { ...p, ...u } : p;
+          });
         }
       } finally {
         _extending = false;
