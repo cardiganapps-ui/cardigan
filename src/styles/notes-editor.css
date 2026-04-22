@@ -1,0 +1,552 @@
+/* ── Cardigan notes — live markdown editor ────────────────────────────
+   Styles for MarkdownEditor.jsx. The editor body is a contenteditable
+   <div class="mde-root"> containing one <div class="mde-line"> per
+   line of raw markdown. When the caret is on a line (`.has-caret`),
+   raw syntax stays visible (at reduced opacity) so the user can edit
+   it. When the caret leaves, syntax collapses to zero width and
+   decorators (bullet dot, ordered number, heading size) take over.
+
+   The DOM always contains the raw markdown as text — decorators are
+   pure CSS ::before content, so caret positions map 1:1 to raw-text
+   columns. */
+
+.mde-root {
+  outline: none;
+  caret-color: var(--teal-dark);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--charcoal);
+  padding: 4px 0 120px;
+  /* Allow long words to break on mobile */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* Allow selection of the editor text */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.mde-root[aria-readonly="true"] {
+  caret-color: transparent;
+}
+
+.mde-line {
+  position: relative;
+  min-height: 1.7em;
+  padding: 2px 0;
+  transition: padding 0.2s ease;
+}
+
+/* Raw markdown syntax (**, #, -, etc.) — visible only on the line
+   with the caret. Off-caret, we collapse them to zero width so they
+   stop occupying space. Using font-size:0 over display:none so the
+   nodes remain in the DOM and caret math works. */
+.mde-syntax, .md-syntax {
+  color: var(--teal-light);
+  opacity: 0.6;
+  font-weight: 400;
+  transition: opacity 0.18s ease;
+}
+.mde-line:not(.has-caret) .md-syntax {
+  font-size: 0;
+  letter-spacing: -0.5em;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Zero-width end-of-line anchor so caret can always land at line end.
+   Contains a single U+200B (zero-width space). */
+.mde-eol {
+  display: inline;
+}
+
+/* Inline format visuals */
+.md-strong { font-weight: 800; }
+.md-em     { font-style: italic; }
+.md-strike { text-decoration: line-through; text-decoration-color: var(--charcoal-lt); }
+.md-code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--cream);
+  padding: 1px 6px;
+  border-radius: 6px;
+  color: var(--charcoal-md);
+}
+
+/* Headings — full display size off-caret, a touch smaller on-caret so
+   editing doesn't jump the layout too much. */
+.md-heading {
+  font-family: var(--font-d);
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.01em;
+  display: inline;
+}
+.mde-line--h1 { margin-top: 14px; }
+.mde-line--h2 { margin-top: 10px; }
+.mde-line--h3 { margin-top: 6px; }
+.mde-line--h1:first-child,
+.mde-line--h2:first-child,
+.mde-line--h3:first-child { margin-top: 0; }
+
+.mde-line--h1 .md-heading { font-size: 22px; line-height: 1.3; }
+.mde-line--h2 .md-heading { font-size: 18px; line-height: 1.35; }
+.mde-line--h3 .md-heading { font-size: 15.5px; line-height: 1.4; }
+.mde-line--h1.has-caret .md-heading,
+.mde-line--h2.has-caret .md-heading,
+.mde-line--h3.has-caret .md-heading { /* same size, just keeps syntax visible alongside */ }
+
+/* Empty heading placeholder — show "Encabezado" hint when line is
+   empty (after `# `) and not focused. Cheap UX win. */
+.md-heading.is-empty::after {
+  content: "";
+}
+
+/* ── List decorators (visible only off-caret) ────────────────────────
+   Pure CSS ::before markers. They replace the raw `- ` / `1. ` /
+   `[ ] ` that's dimmed to zero width. Padding-left moves the line's
+   text over to make room. */
+.mde-line--ul, .mde-line--ol, .mde-line--task {
+  padding-left: 26px;
+  text-indent: 0;
+}
+.mde-line--ul[data-indent="1"],
+.mde-line--ol[data-indent="1"],
+.mde-line--task[data-indent="1"] { padding-left: 42px; }
+.mde-line--ul[data-indent="2"],
+.mde-line--ol[data-indent="2"],
+.mde-line--task[data-indent="2"] { padding-left: 58px; }
+.mde-line--ul[data-indent="3"],
+.mde-line--ol[data-indent="3"],
+.mde-line--task[data-indent="3"] { padding-left: 74px; }
+
+/* Off-caret bullet + ordered markers */
+.mde-line--ul:not(.has-caret)::before {
+  content: "•";
+  position: absolute;
+  left: 10px;
+  color: var(--teal);
+  font-weight: 700;
+  font-size: 1.25em;
+  line-height: 1.5;
+  top: 2px;
+}
+.mde-line--ul[data-indent="1"]:not(.has-caret)::before { left: 26px; }
+.mde-line--ul[data-indent="2"]:not(.has-caret)::before { left: 42px; }
+.mde-line--ul[data-indent="3"]:not(.has-caret)::before { left: 58px; }
+
+.mde-line--ol:not(.has-caret)::before {
+  content: attr(data-marker);
+  position: absolute;
+  left: 6px;
+  color: var(--teal-dark);
+  font-weight: 700;
+  font-size: 0.92em;
+  line-height: 1.85;
+  top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.mde-line--ol[data-indent="1"]:not(.has-caret)::before { left: 22px; }
+.mde-line--ol[data-indent="2"]:not(.has-caret)::before { left: 38px; }
+.mde-line--ol[data-indent="3"]:not(.has-caret)::before { left: 54px; }
+
+/* ── Task checkbox ───────────────────────────────────────────────────
+   Real interactive button overlaid at the line's left margin. Visible
+   always (even on-caret), centered in the indent gutter. The raw
+   "[ ] " / "[x] " markdown still lives in a zero-width-off-caret
+   span for column-math; the button is the only thing the user sees
+   as a "checkbox". */
+.mde-check {
+  position: absolute;
+  left: 4px;
+  top: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.8px solid var(--charcoal-xl);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-line--task[data-indent="1"] .mde-check { left: 20px; }
+.mde-line--task[data-indent="2"] .mde-check { left: 36px; }
+.mde-line--task[data-indent="3"] .mde-check { left: 52px; }
+
+.mde-check:hover { border-color: var(--teal-dark); }
+.mde-check:active { transform: scale(0.88); }
+.mde-check.is-checked {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.mde-check.is-checked::after {
+  content: "";
+  position: absolute;
+  left: 3.5px;
+  top: 1px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.mde-check:disabled { cursor: default; }
+
+.mde-line--task.is-checked .md-heading,
+.mde-line--task.is-checked { color: var(--charcoal-xl); }
+.mde-line--task.is-checked:not(.has-caret) {
+  text-decoration: line-through;
+  text-decoration-color: var(--charcoal-xl);
+}
+
+/* ── Placeholder when the whole editor is empty ─────────────────────── */
+.mde-root[data-empty="true"] .mde-line:first-child::after {
+  content: attr(data-placeholder);
+  color: var(--charcoal-xl);
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 2px;
+  opacity: 0.7;
+}
+.mde-line--ul.mde-root[data-empty="true"]::after { left: 26px; }
+
+/* ── Format toolbar ───────────────────────────────────────────────── */
+.mde-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  background: var(--cream);
+  border-bottom: 1px solid var(--border-lt);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mde-toolbar::-webkit-scrollbar { display: none; }
+
+.mde-tool {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  color: var(--charcoal-md);
+  flex-shrink: 0;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--font);
+}
+.mde-tool:hover:not(:disabled) { background: rgba(255, 255, 255, 0.6); color: var(--charcoal); }
+.mde-tool:active:not(:disabled) { transform: scale(0.92); }
+.mde-tool:disabled { opacity: 0.35; cursor: default; }
+
+.mde-tool.is-active {
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  transform: scale(1.04);
+}
+
+.mde-tool-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Desktop hint badge on hover (keyboard shortcut) */
+.mde-tool-hint {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--charcoal);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: var(--shadow);
+}
+@media (hover: hover) {
+  .mde-tool:hover .mde-tool-hint { display: block; }
+}
+
+/* ── Editor shell entrance animation (mobile overlay) ──────────────── */
+@keyframes noteEditorIn {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.985); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes noteEditorOut {
+  0%   { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(12px) scale(0.99); }
+}
+.note-editor-enter {
+  animation: noteEditorIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+.note-editor-exit {
+  animation: noteEditorOut 0.28s cubic-bezier(0.32, 0.72, 0.0, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-editor-enter, .note-editor-exit { animation: none; }
+  .mde-tool { transition: none; }
+  .mde-check { transition: none; }
+}
+
+/* ── Header scroll-shadow ──────────────────────────────────────────── */
+.mde-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--sat, 0px) + 10px) 14px 10px;
+  border-bottom: 1px solid transparent;
+  flex-shrink: 0;
+  background: var(--white);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  z-index: 2;
+}
+.mde-header.is-scrolled {
+  border-bottom-color: var(--border-lt);
+  box-shadow: 0 1px 0 rgba(46, 46, 46, 0.03);
+}
+.note-editor-inline .mde-header {
+  padding-top: 10px;
+}
+
+.mde-back {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teal-dark);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  padding: 6px 2px;
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-back:active { opacity: 0.6; }
+
+.mde-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mde-save-indicator {
+  font-size: 11px;
+  color: var(--charcoal-xl);
+  margin-right: 4px;
+  transition: color 0.25s ease, opacity 0.25s ease;
+  font-variant-numeric: tabular-nums;
+}
+.mde-save-indicator.is-saving { color: var(--amber); }
+.mde-save-indicator.is-saved  { color: var(--charcoal-xl); }
+
+.mde-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--charcoal-md);
+  transition: background 0.18s ease, color 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-icon-btn:hover { background: var(--cream); }
+.mde-icon-btn:active { transform: scale(0.92); }
+.mde-icon-btn.is-pinned { color: var(--amber); }
+.mde-icon-btn.is-danger { color: var(--red); }
+
+/* ── Context chip (patient/session pill) ───────────────────────────── */
+.mde-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  background: var(--cream);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--charcoal-md);
+  cursor: pointer;
+  max-width: 100%;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--font);
+}
+.mde-context-chip:hover { background: var(--white); border-color: var(--teal-light); }
+.mde-context-chip:active { transform: scale(0.97); }
+.mde-context-chip.is-linked { color: var(--teal-dark); border-color: var(--teal-light); background: var(--teal-mist); }
+.mde-context-chip.is-linked .mde-context-sep { color: var(--teal-light); }
+.mde-context-chip .mde-context-icon { color: var(--charcoal-xl); flex-shrink: 0; }
+.mde-context-chip.is-linked .mde-context-icon { color: var(--teal); }
+.mde-context-chip .mde-context-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.mde-context-row {
+  display: flex;
+  padding: 10px 16px 4px;
+  flex-shrink: 0;
+}
+
+/* ── Editor body container ─────────────────────────────────────────── */
+.mde-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 20px 60px;
+}
+
+.mde-title {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin-bottom: 10px;
+  font-family: var(--font-d);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--charcoal);
+  background: transparent;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.mde-title::placeholder { color: var(--charcoal-xl); font-weight: 700; }
+
+.mde-date {
+  font-size: 11px;
+  color: var(--charcoal-xl);
+  text-align: center;
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mde-footer {
+  padding: 8px 20px calc(var(--sab, 0px) + 6px);
+  border-top: 1px solid var(--border-lt);
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--charcoal-xl);
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--white);
+}
+.mde-footer-left { color: var(--charcoal-xl); }
+.mde-footer-right { color: var(--charcoal-xl); }
+
+/* ── Templates bar (shown only for brand-new empty notes) ─────────── */
+.mde-templates {
+  margin-bottom: 16px;
+}
+.mde-templates-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--charcoal-xl);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.mde-template-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mde-template-pill {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  color: var(--charcoal-md);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-template-pill:hover { border-color: var(--teal-light); background: var(--teal-mist); color: var(--teal-dark); }
+.mde-template-pill:active { transform: scale(0.96); }
+
+/* ── Context sheet (patient/session editor) ────────────────────────── */
+.mde-context-sheet {
+  padding: 0 20px 22px;
+}
+.mde-context-sheet .input-group + .input-group { margin-top: 6px; }
+
+/* ── Overflow menu (⋯) dropdown ────────────────────────────────────── */
+.mde-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 10px;
+  min-width: 200px;
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 5;
+  animation: noteEditorIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mde-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--charcoal);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-menu-item:hover { background: var(--cream); }
+.mde-menu-item.is-danger { color: var(--red); }
+.mde-menu-item.is-danger:hover { background: var(--red-bg); }
+.mde-menu-sep {
+  height: 1px;
+  background: var(--border-lt);
+  margin: 2px 0;
+}
+
+/* ── Selection highlight — match brand teal ──────────────────────── */
+.mde-root ::selection {
+  background: var(--teal-pale);
+  color: var(--charcoal);
+}

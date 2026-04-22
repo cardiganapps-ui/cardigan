@@ -112,6 +112,7 @@ export function Notes() {
     <>
     {editingNote && !isDesktop && (
       <NoteEditor
+        key={editingNote.id || "new"}
         note={editingNote}
         onSave={handleSaveNote}
         onDelete={editingNote.id ? handleDeleteNote : undefined}
@@ -373,6 +374,7 @@ export function Notes() {
       <div className="notes-detail-col">
         {editingNote ? (
           <NoteEditor
+            key={editingNote.id || "new"}
             note={editingNote}
             onSave={handleSaveNote}
             onDelete={editingNote.id ? handleDeleteNote : undefined}

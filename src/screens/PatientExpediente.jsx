@@ -607,6 +607,7 @@ export function PatientExpediente({
     )}
     {editingNote && (
       <NoteEditor
+        key={editingNote.id || "new"}
         note={editingNote}
         onSave={handleSaveNote}
         onDelete={editingNote.id ? handleDeleteNote : undefined}
