@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { IconSearch, IconClipboard, IconX, IconStar, IconTrash, IconEdit, IconDocument, IconCheck, IconUser } from "../components/Icons";
+import { haptic } from "../utils/haptics";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SwipeableRow } from "../components/SwipeableRow";
 import { useCardigan } from "../context/CardiganContext";
@@ -318,6 +319,7 @@ export function Notes() {
                 <button className="btn" style={{ flex:0, padding:"0 16px", background: propsNote.pinned ? "var(--amber)" : "var(--cream)", color: propsNote.pinned ? "var(--white)" : "var(--charcoal-md)", boxShadow:"none" }}
                   aria-label={t("favorite") || "Favorito"}
                   onClick={async () => {
+                    haptic.tap();
                     await togglePinNote(propsNote.id);
                     setPropsNote(prev => ({ ...prev, pinned: !prev.pinned }));
                   }}>

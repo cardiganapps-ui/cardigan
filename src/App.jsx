@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
+import { haptic } from "./utils/haptics";
 import { useDemoData } from "./hooks/useDemoData";
 import { useNavigation } from "./hooks/useNavigation";
 import { CardiganProvider } from "./context/CardiganContext";
@@ -462,7 +463,10 @@ function AppShell({ user, signOut, demo, theme }) {
   // still receive a function with the original signature.
   const withSuccess = useCallback((fn, msg) => async (...args) => {
     const ok = await fn(...args);
-    if (ok) showSuccess(msg);
+    if (ok) {
+      haptic.tap();
+      showSuccess(msg);
+    }
     return ok;
   }, [showSuccess]);
   const ctxValue = useMemo(() => ({

@@ -14,7 +14,20 @@
 .settings-chevron { color: var(--border); margin-left: auto; display: flex; align-items: center; }
 
 /* DETAIL SHEET */
-.sheet-overlay { position: fixed; inset: 0; background: rgba(46,46,46,0.4); z-index: var(--z-sheet); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior: contain; animation: fadeIn 0.4s ease; }
+.sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(46,46,46,0.38);
+  /* iOS-style frosted backdrop: blur + slight saturation boost makes
+     the content behind feel present rather than erased. -webkit- alias
+     for older iOS (safari-backdrop-filter didn't drop the prefix
+     until 17). */
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+  z-index: var(--z-sheet);
+  display: flex; align-items: flex-end; justify-content: center;
+  overscroll-behavior: contain;
+  animation: fadeIn 0.4s ease;
+}
 .sheet-panel {
   background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%;

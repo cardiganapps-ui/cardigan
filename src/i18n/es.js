@@ -342,6 +342,7 @@ export default {
     periodAll: "Todo",
     paymentCount: "{count} pago{plural}",
     noPaymentsInPeriod: "Sin pagos en este per\u00edodo",
+    emptyBody: "Cuando registres un pago aparecer\u00e1 aqu\u00ed.",
     pendingCollection: "Pendientes de cobro",
     perSession: "sesi\u00f3n",
     collect: "Cobrar",

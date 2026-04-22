@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
+import { haptic } from "../utils/haptics";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
@@ -12,6 +13,7 @@ import { Toggle } from "../components/Toggle";
 import { MoneyInput } from "../components/MoneyInput";
 import { Avatar } from "../components/Avatar";
 import { PatientExpediente } from "./PatientExpediente";
+import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 
@@ -190,6 +192,7 @@ export function Patients() {
     if (isFinalizingPatient) {
       const ok = await finalizePatient(selected.id, finishDate);
       if (ok) {
+        haptic.success();
         // Also save any basic info changes
         await updatePatient(selected.id, {
           name: editName.trim(),
@@ -298,21 +301,21 @@ export function Patients() {
   // Empty state
   if (patients.length === 0) {
     return (
-      <div className="page" data-tour="patients-list" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"40px 24px" }}>
-        <div style={{ width:56, height:56, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, color:"var(--teal)" }}>
-          <IconUsers size={26} />
-        </div>
-        <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>{t("patients.noPatients")}</div>
-        <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:18 }}>{t("patients.addFirst")}</div>
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => requestFabAction?.("patient")}
-            className="btn btn-primary"
-            style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
-            <IconPlus size={16} /> {t("patients.addFirstCta")}
-          </button>
-        )}
+      <div className="page" data-tour="patients-list" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+        <EmptyState
+          kind="patients"
+          title={t("patients.noPatients")}
+          body={t("patients.addFirst")}
+          cta={!readOnly && (
+            <button
+              type="button"
+              onClick={() => requestFabAction?.("patient")}
+              className="btn btn-primary"
+              style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+              <IconPlus size={16} /> {t("patients.addFirstCta")}
+            </button>
+          )}
+        />
       </div>
     );
   }
@@ -338,7 +341,10 @@ export function Patients() {
           {filtered.length === 0
             ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
             : filtered.map((p,i) => (
-              <div className={`row-item ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""}`} key={p.id} onClick={() => openDetail(p)} onContextMenu={(e) => openPatientContextMenu(e, p)}>
+              <div
+                className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""}`}
+                style={{ "--stagger-i": Math.min(i, 12) }}
+                key={p.id} onClick={() => openDetail(p)} onContextMenu={(e) => openPatientContextMenu(e, p)}>
                 <Avatar initials={p.initials} color={getClientColor(i)} size="md" />
                 <div className="row-content">
                   <div className="row-title">{p.name}</div>

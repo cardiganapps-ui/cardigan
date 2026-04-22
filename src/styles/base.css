@@ -215,6 +215,18 @@ button.avatar-sm::before {
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+/* Stagger-in for list rows — applied with inline --stagger-i to
+   offset each entry. fill-mode: both keeps the end state after the
+   animation settles, so re-renders don't re-trigger it. Cap the
+   index at 12 in the caller so long lists don't animate forever. */
+@keyframes listEntryIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.list-entry-stagger {
+  animation: listEntryIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--stagger-i, 0) * 32ms);
+}
 @keyframes toastIn {
   0%   { opacity: 0; transform: translateY(-18px) scale(0.96); }
   60%  { opacity: 1; transform: translateY(4px) scale(1.01); }

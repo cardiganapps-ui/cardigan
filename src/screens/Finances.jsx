@@ -7,6 +7,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
 import { SwipeableRow } from "../components/SwipeableRow";
+import { EmptyState } from "../components/EmptyState";
 import { useT } from "../i18n/index";
 
 const FINANCES_INITIAL_WINDOW = 60;
@@ -106,7 +107,11 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
       </div>
     );
     return (
-      <div key={p.id}>
+      <div
+        key={p.id}
+        className="list-entry-stagger"
+        style={{ "--stagger-i": Math.min(i, 12) }}
+      >
         <SwipeableRow
           onAction={async () => { if (!mutating) await onDeletePayment(p.id); }}
           actionLabel={t("delete")}
@@ -195,7 +200,14 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
       </div>
 
       {filtered.length === 0
-        ? <div className="card empty-hint">{t("finances.noPaymentsInPeriod")}</div>
+        ? <div className="card" style={{ padding: 0 }}>
+            <EmptyState
+              kind="finances"
+              compact
+              title={t("finances.noPaymentsInPeriod")}
+              body={t("finances.emptyBody")}
+            />
+          </div>
         : groupByClient
           ? <div className="card">
               {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, pList], gi) => {

@@ -15,6 +15,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
 import { SegmentedControl } from "../components/SegmentedControl";
+import { EmptyState } from "../components/EmptyState";
 
 /* ── LongPressEvent ──
    Mobile users can't drag HTML5 draggables; this wraps the week-event so a
@@ -152,7 +153,19 @@ function SessionRow({ s, onClick, compact }) {
       <div className="row-content">
         <div className="row-title">
           {s.patient}
-          {tutor && <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+          {tutor && (
+            <span
+              className="badge badge-purple"
+              style={{
+                marginLeft: 6,
+                fontSize: "var(--text-eyebrow)",
+                textTransform: "uppercase",
+                letterSpacing: 0.3,
+              }}
+            >
+              {t("sessions.tutor")}
+            </span>
+          )}
         </div>
         <div className="row-sub">
           {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
@@ -679,11 +692,11 @@ export function Agenda() {
         )}
       </div>
       {upcomingSessions.length === 0 && (
-        <div style={{ padding:"32px 24px", textAlign:"center" }}>
-          <div style={{ color:"var(--teal-light)", marginBottom:10 }}><IconSun size={32} /></div>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:700, color:"var(--charcoal)", marginBottom:6 }}>{t("sessions.noSessions")}</div>
-          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5 }}>{t("agenda.emptyHint")}</div>
-        </div>
+        <EmptyState
+          kind="agenda"
+          title={t("sessions.noSessions")}
+          body={t("agenda.emptyHint")}
+        />
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} onEventContextMenu={isDesktop ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}

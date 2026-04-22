@@ -58,10 +58,13 @@ export function DocumentList({
           ? (sessions || []).filter(s => s.patient_id === doc.patient_id).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
           : [];
 
-        const itemClass = isCards ? "card" : "";
-        const itemStyle = isCards
-          ? { overflow: "hidden" }
-          : { borderBottom: i < documents.length - 1 ? "1px solid var(--border-lt)" : "none" };
+        const itemClass = `${isCards ? "card" : ""} list-entry-stagger`.trim();
+        const itemStyle = {
+          "--stagger-i": Math.min(i, 12),
+          ...(isCards
+            ? { overflow: "hidden" }
+            : { borderBottom: i < documents.length - 1 ? "1px solid var(--border-lt)" : "none" }),
+        };
 
         return (
           <div key={doc.id} className={itemClass} style={itemStyle}>

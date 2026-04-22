@@ -72,7 +72,10 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
     if (!newTime.trim()) { setRescheduleErr(t("sessions.selectTime")); return; }
     setRescheduleErr("");
     const ok = await onReschedule(session.id, isoToShortDate(newDate), newTime, Number(newDuration) || 60);
-    if (ok) setRescheduling(false);
+    if (ok) {
+      haptic.success();
+      setRescheduling(false);
+    }
   };
 
   const startCancel = () => {
