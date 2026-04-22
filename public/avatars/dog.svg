@@ -1,12 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Perro">
-  <circle cx="100" cy="100" r="100" fill="#D0DED3"/>
-  <g stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" fill="#F2E8D9">
-    <path d="M52 70 Q40 102 50 138 Q64 140 72 122 Q66 94 74 70 Z"/>
-    <path d="M148 70 Q160 102 150 138 Q136 140 128 122 Q134 94 126 70 Z"/>
-    <path d="M100 54 Q60 54 58 96 Q58 136 100 144 Q142 136 142 96 Q140 54 100 54 Z"/>
+  <circle cx="100" cy="100" r="100" fill="#D6E3D7"/>
+  <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="#F6EBD8">
+    <path d="M46 80 Q34 120 52 152 Q72 154 78 132 Q70 104 78 78 Q62 74 46 80 Z"/>
+    <path d="M154 80 Q166 120 148 152 Q128 154 122 132 Q130 104 122 78 Q138 74 154 80 Z"/>
+    <path d="M100 62 Q56 62 54 104 Q54 144 100 150 Q146 144 146 104 Q144 62 100 62 Z"/>
   </g>
-  <circle cx="84" cy="100" r="4.2" fill="#2E2E2E"/>
-  <circle cx="116" cy="100" r="4.2" fill="#2E2E2E"/>
-  <ellipse cx="100" cy="118" rx="6.5" ry="4.8" fill="#2E2E2E"/>
-  <path d="M100 122 L100 128 Q94 132 90 128 M100 128 Q106 132 110 128" fill="none" stroke="#2E2E2E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <g fill="#F2B5AC" opacity="0.85">
+    <ellipse cx="74" cy="118" rx="11" ry="6"/>
+    <ellipse cx="126" cy="118" rx="11" ry="6"/>
+  </g>
+  <g fill="#3D3228">
+    <circle cx="82" cy="104" r="5.2"/>
+    <circle cx="118" cy="104" r="5.2"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="84.5" cy="101.5" r="1.8"/>
+    <circle cx="120.5" cy="101.5" r="1.8"/>
+  </g>
+  <ellipse cx="100" cy="122" rx="5.5" ry="4" fill="#3D3228"/>
+  <path d="M100 126 Q100 132 96 134 M100 132 Q100 132 104 134" fill="none" stroke="#3D3228" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

@@ -1,15 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Libro">
-  <circle cx="100" cy="100" r="100" fill="#C9D2C7"/>
-  <g stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M100 58 Q86 46 40 52 L40 146 Q86 140 100 152 Q114 140 160 146 L160 52 Q114 46 100 58 Z" fill="#F2E8D9"/>
-    <path d="M100 58 L100 152" fill="none"/>
+  <circle cx="100" cy="100" r="100" fill="#CCD4C4"/>
+  <path d="M100 60 Q86 50 44 56 Q36 56 36 64 L36 150 Q36 158 44 158 Q86 152 100 162 Q114 152 156 158 Q164 158 164 150 L164 64 Q164 56 156 56 Q114 50 100 60 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 60 L100 162" stroke="#3D3228" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <g stroke="#7A98A3" stroke-width="2.4" stroke-linecap="round" fill="none" opacity="0.8">
+    <path d="M52 78 L88 76"/>
+    <path d="M52 92 L84 90"/>
+    <path d="M52 106 L86 104"/>
+    <path d="M52 120 L82 118"/>
+    <path d="M114 76 L150 78"/>
+    <path d="M116 90 L148 92"/>
+    <path d="M114 104 L148 106"/>
+    <path d="M116 118 L146 120"/>
   </g>
-  <g stroke="#6E8C96" stroke-width="2.2" stroke-linecap="round" fill="none">
-    <path d="M54 74 L88 72"/>
-    <path d="M54 88 L86 86"/>
-    <path d="M54 102 L84 100"/>
-    <path d="M114 72 L148 74"/>
-    <path d="M114 86 L146 88"/>
-    <path d="M114 100 L144 102"/>
-  </g>
+  <path d="M134 42 L134 86 L128 78 L122 86 L122 42" fill="#E08B8B" stroke="#3D3228" stroke-width="2.4" stroke-linejoin="round"/>
 </svg>

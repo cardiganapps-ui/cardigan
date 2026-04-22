@@ -1,17 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Gato">
-  <circle cx="100" cy="100" r="100" fill="#DDD5E4"/>
-  <g stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" fill="#F2E8D9">
-    <path d="M58 44 L82 90 L50 92 Z"/>
-    <path d="M142 44 L150 92 L118 90 Z"/>
-    <path d="M100 56 Q60 56 58 96 Q58 136 100 144 Q142 136 142 96 Q140 56 100 56 Z"/>
+  <circle cx="100" cy="100" r="100" fill="#E6D4DC"/>
+  <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="#F6EBD8">
+    <path d="M58 46 Q54 44 54 52 L78 96 Q68 96 62 88 Z"/>
+    <path d="M142 46 Q146 44 146 52 L122 96 Q132 96 138 88 Z"/>
+    <path d="M100 60 Q58 60 56 102 Q56 144 100 150 Q144 144 144 102 Q142 60 100 60 Z"/>
   </g>
-  <circle cx="84" cy="102" r="4" fill="#2E2E2E"/>
-  <circle cx="116" cy="102" r="4" fill="#2E2E2E"/>
-  <path d="M93 116 L100 122 L107 116" fill="none" stroke="#2E2E2E" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
-  <g stroke="#2E2E2E" stroke-width="2.2" stroke-linecap="round" fill="none">
-    <path d="M70 110 L54 106"/>
-    <path d="M70 116 L54 120"/>
-    <path d="M130 110 L146 106"/>
-    <path d="M130 116 L146 120"/>
+  <g fill="#F2B5AC" opacity="0.85">
+    <ellipse cx="74" cy="116" rx="10" ry="5.5"/>
+    <ellipse cx="126" cy="116" rx="10" ry="5.5"/>
+  </g>
+  <g fill="#3D3228">
+    <circle cx="82" cy="102" r="5"/>
+    <circle cx="118" cy="102" r="5"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="84.2" cy="99.8" r="1.6"/>
+    <circle cx="120.2" cy="99.8" r="1.6"/>
+  </g>
+  <path d="M94 118 L100 122 L106 118" fill="none" stroke="#3D3228" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M94 122 Q100 128 106 122" fill="none" stroke="#3D3228" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <g stroke="#3D3228" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M68 116 L52 112"/>
+    <path d="M68 122 L52 126"/>
+    <path d="M132 116 L148 112"/>
+    <path d="M132 122 L148 126"/>
   </g>
 </svg>

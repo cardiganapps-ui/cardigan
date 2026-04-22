@@ -1,6 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Aguacate">
-  <circle cx="100" cy="100" r="100" fill="#DED4E4"/>
-  <path d="M100 30 Q62 30 60 84 Q60 148 100 164 Q140 148 140 84 Q138 30 100 30 Z" fill="#7A9B77" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
-  <path d="M100 46 Q78 46 76 88 Q76 140 100 152 Q124 140 124 88 Q122 46 100 46 Z" fill="#EADFCD" stroke="#2E2E2E" stroke-width="2.6"/>
-  <circle cx="100" cy="100" r="18" fill="#6B4B34" stroke="#2E2E2E" stroke-width="2.6"/>
+  <circle cx="100" cy="100" r="100" fill="#DFD2DD"/>
+  <path d="M100 28 Q58 28 58 86 Q58 152 100 172 Q142 152 142 86 Q142 28 100 28 Z" fill="#8FB08A" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 44 Q74 44 74 90 Q74 144 100 158 Q126 144 126 90 Q126 44 100 44 Z" fill="#F1E3CA" stroke="#3D3228" stroke-width="2.6"/>
+  <circle cx="100" cy="104" r="22" fill="#6E4A36" stroke="#3D3228" stroke-width="2.6"/>
+  <g fill="#F2B5AC" opacity="0.75">
+    <ellipse cx="84" cy="118" rx="6" ry="3.5"/>
+    <ellipse cx="116" cy="118" rx="6" ry="3.5"/>
+  </g>
+  <g fill="none" stroke="#F6EBD8" stroke-width="2.6" stroke-linecap="round">
+    <path d="M91 104 Q94 108 97 104"/>
+    <path d="M103 104 Q106 108 109 104"/>
+  </g>
+  <path d="M94 114 Q100 120 106 114" fill="none" stroke="#F6EBD8" stroke-width="2.4" stroke-linecap="round"/>
 </svg>

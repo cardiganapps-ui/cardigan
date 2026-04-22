@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Planta">
-  <circle cx="100" cy="100" r="100" fill="#F0E6D6"/>
-  <path d="M70 132 L76 168 Q76 176 86 176 L114 176 Q124 176 124 168 L130 132 Z" fill="#C9A982" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
-  <path d="M64 132 L136 132" stroke="#2E2E2E" stroke-width="3.2" stroke-linecap="round"/>
-  <g stroke="#2E2E2E" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="#A5BFA1">
-    <path d="M100 130 Q74 116 66 80 Q92 80 100 112 Z"/>
-    <path d="M100 130 Q126 116 134 80 Q108 80 100 112 Z"/>
-    <path d="M100 128 Q96 98 100 62 Q104 98 100 128 Z" fill="#8FAE8C"/>
+  <circle cx="100" cy="100" r="100" fill="#F2DFC9"/>
+  <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M100 116 Q66 104 62 68 Q88 66 100 100 Z" fill="#A9C6A3"/>
+    <path d="M100 116 Q134 104 138 68 Q112 66 100 100 Z" fill="#A9C6A3"/>
+    <path d="M100 114 Q98 86 100 56" fill="none"/>
   </g>
-  <path d="M100 128 L100 132" stroke="#2E2E2E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M68 130 Q64 118 78 118 L122 118 Q136 118 132 130 L126 172 Q124 180 116 180 L84 180 Q76 180 74 172 Z" fill="#D4A37E" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M64 126 L136 126" stroke="#3D3228" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <g fill="#F2B5AC" opacity="0.8">
+    <ellipse cx="88" cy="152" rx="7" ry="4"/>
+    <ellipse cx="112" cy="152" rx="7" ry="4"/>
+  </g>
+  <g fill="#3D3228">
+    <circle cx="92" cy="146" r="2.4"/>
+    <circle cx="108" cy="146" r="2.4"/>
+  </g>
+  <path d="M96 154 Q100 158 104 154" fill="none" stroke="#3D3228" stroke-width="2.2" stroke-linecap="round"/>
 </svg>

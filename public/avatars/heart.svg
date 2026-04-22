@@ -1,4 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Corazón">
-  <circle cx="100" cy="100" r="100" fill="#F2E8D9"/>
-  <path d="M100 160 L46 104 Q26 82 44 58 Q66 34 88 54 L100 66 L112 54 Q134 34 156 58 Q174 82 154 104 Z" fill="#CFC2DE" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
+  <circle cx="100" cy="100" r="100" fill="#F5E9D8"/>
+  <path d="M100 164 Q60 132 42 104 Q26 78 46 58 Q68 38 88 58 Q96 66 100 74 Q104 66 112 58 Q132 38 154 58 Q174 78 158 104 Q140 132 100 164 Z" fill="#E8A2B3" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#D27F92" opacity="0.75">
+    <ellipse cx="74" cy="116" rx="8" ry="4.5"/>
+    <ellipse cx="126" cy="116" rx="8" ry="4.5"/>
+  </g>
+  <g fill="#3D3228">
+    <circle cx="82" cy="104" r="3.4"/>
+    <circle cx="118" cy="104" r="3.4"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="83.5" cy="102.5" r="1.2"/>
+    <circle cx="119.5" cy="102.5" r="1.2"/>
+  </g>
+  <path d="M92 118 Q100 124 108 118" fill="none" stroke="#3D3228" stroke-width="2.4" stroke-linecap="round"/>
 </svg>

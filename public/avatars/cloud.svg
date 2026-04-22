@@ -1,4 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Nube">
-  <circle cx="100" cy="100" r="100" fill="#E4D4C6"/>
-  <path d="M44 130 Q24 130 24 108 Q24 86 50 86 Q54 62 82 62 Q100 62 110 78 Q124 66 144 72 Q166 80 164 106 Q182 108 180 128 Q178 146 152 146 L52 146 Q44 146 44 130 Z" fill="#F2E8D9" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
+  <circle cx="100" cy="100" r="100" fill="#F0DDC9"/>
+  <path d="M44 132 Q24 132 24 110 Q24 86 50 88 Q54 60 82 58 Q100 56 112 72 Q126 60 144 68 Q168 78 166 104 Q184 108 180 128 Q178 146 152 148 L54 148 Q44 148 44 132 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#F2B5AC" opacity="0.85">
+    <ellipse cx="76" cy="118" rx="10" ry="5.5"/>
+    <ellipse cx="124" cy="118" rx="10" ry="5.5"/>
+  </g>
+  <g fill="none" stroke="#3D3228" stroke-width="3" stroke-linecap="round">
+    <path d="M80 106 Q84 112 88 106"/>
+    <path d="M112 106 Q116 112 120 106"/>
+  </g>
+  <path d="M92 122 Q100 128 108 122" fill="none" stroke="#3D3228" stroke-width="2.6" stroke-linecap="round"/>
 </svg>

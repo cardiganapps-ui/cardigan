@@ -1,9 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Luna">
-  <circle cx="100" cy="100" r="100" fill="#4E7079"/>
-  <path d="M138 30 Q78 36 72 100 Q68 164 134 172 Q90 148 92 100 Q94 52 138 30 Z" fill="#F2E8D9" stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round"/>
-  <g fill="#F2E8D9" stroke="#2E2E2E" stroke-width="2" stroke-linejoin="round">
-    <path d="M154 60 L158 70 L168 74 L158 78 L154 88 L150 78 L140 74 L150 70 Z"/>
-    <path d="M164 116 L166 124 L174 126 L166 128 L164 136 L162 128 L154 126 L162 124 Z"/>
-    <path d="M140 154 L142 160 L148 162 L142 164 L140 170 L138 164 L132 162 L138 160 Z"/>
+  <circle cx="100" cy="100" r="100" fill="#445E68"/>
+  <path d="M140 28 Q74 32 68 100 Q62 168 136 174 Q88 150 92 100 Q96 50 140 28 Z" fill="#F6EBD8" stroke="#3D3228" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#F2B5AC" opacity="0.85">
+    <ellipse cx="96" cy="118" rx="7" ry="4"/>
+  </g>
+  <g fill="none" stroke="#3D3228" stroke-width="2.8" stroke-linecap="round">
+    <path d="M84 100 Q88 106 92 100"/>
+    <path d="M104 100 Q108 106 112 100"/>
+    <path d="M92 122 Q98 128 104 122"/>
+  </g>
+  <g fill="#F6EBD8" stroke="#3D3228" stroke-width="2" stroke-linejoin="round">
+    <path d="M152 52 L155 62 L165 66 L155 70 L152 80 L149 70 L139 66 L149 62 Z"/>
+    <path d="M162 112 L164 120 L172 122 L164 124 L162 132 L160 124 L152 122 L160 120 Z"/>
+    <path d="M142 150 L144 156 L150 158 L144 160 L142 166 L140 160 L134 158 L140 156 Z"/>
   </g>
 </svg>

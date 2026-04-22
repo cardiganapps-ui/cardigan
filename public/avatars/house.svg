@@ -1,11 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Casa">
-  <circle cx="100" cy="100" r="100" fill="#CFDADA"/>
-  <g stroke="#2E2E2E" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M100 38 L172 98 L160 98 L160 162 L40 162 L40 98 L28 98 Z" fill="#F2E8D9"/>
-    <path d="M134 54 L134 78 L150 78 L150 64" fill="#F2E8D9"/>
-    <path d="M72 116 L112 116 L112 162 L72 162 Z" fill="#C9A982"/>
-    <circle cx="104" cy="140" r="2.6" fill="#2E2E2E" stroke="none"/>
-    <path d="M128 112 L150 112 L150 134 L128 134 Z" fill="#CFDADA"/>
-    <path d="M139 112 L139 134 M128 123 L150 123" fill="none" stroke-width="2.4"/>
+  <circle cx="100" cy="100" r="100" fill="#D5DEDE"/>
+  <g stroke="#3D3228" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32 104 Q32 96 40 92 L96 48 Q100 44 104 48 L160 92 Q168 96 168 104 L168 160 Q168 168 160 168 L40 168 Q32 168 32 160 Z" fill="#F6EBD8"/>
+    <path d="M128 60 Q128 56 132 56 L144 56 Q148 56 148 60 L148 78 Q148 82 144 82 L132 82 Q128 82 128 78 Z" fill="#D4A37E"/>
+    <path d="M76 118 Q76 112 82 112 L110 112 Q116 112 116 118 L116 168 L76 168 Z" fill="#8FB08A"/>
+    <circle cx="108" cy="142" r="2.4" fill="#3D3228" stroke="none"/>
+  </g>
+  <g stroke="#3D3228" stroke-width="2.6" stroke-linejoin="round">
+    <path d="M128 112 Q128 108 132 108 L152 108 Q156 108 156 112 L156 134 Q156 138 152 138 L132 138 Q128 138 128 134 Z" fill="#F2B5AC"/>
+    <path d="M142 108 L142 138 M128 123 L156 123" fill="none" stroke-width="2.2"/>
   </g>
 </svg>
