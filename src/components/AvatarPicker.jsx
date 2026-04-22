@@ -362,7 +362,7 @@ async function uploadBlobToR2(path, blob) {
 
   let res;
   try {
-    res = await fetch("/api/upload-avatar", {
+    res = await fetch("/api/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ path, dataUrl }),
