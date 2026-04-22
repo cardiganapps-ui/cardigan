@@ -40,25 +40,50 @@ if ('serviceWorker' in navigator) {
     // Announce a waiting SW to the app so it can render the update toast.
     // Only counts as an "update" when there's already a controller — the
     // very first SW install on a fresh visit shouldn't prompt a reload.
+    // Idempotent: the announcedSet guards against re-announcing the same
+    // SW when multiple listeners fire (e.g. updatefound AND the
+    // reg.installing self-check on startup).
+    const announcedSet = new WeakSet();
     const announce = (sw) => {
       if (!sw || !navigator.serviceWorker.controller) return;
+      if (announcedSet.has(sw)) return;
+      announcedSet.add(sw);
       window.dispatchEvent(new CustomEvent('cardigan-update-ready', { detail: sw }));
     };
-    if (reg.waiting) announce(reg.waiting);
-    reg.addEventListener('updatefound', () => {
-      const sw = reg.installing;
+
+    // Track a SW through its lifecycle. Idempotent — calling twice for
+    // the same SW just re-attaches a listener that fires once on its
+    // terminal state; the announcedSet guard above dedupes the event.
+    const track = (sw) => {
       if (!sw) return;
+      if (sw.state === 'installed') { announce(sw); return; }
       sw.addEventListener('statechange', () => {
         if (sw.state === 'installed') announce(sw);
       });
-    });
+    };
 
-    // Check for updates when the app regains focus (iOS standalone wakeup)
+    // Pick up anything we missed: the `updatefound` event fires while
+    // `register()` is still pending (before our `.then()` handler runs),
+    // so by the time we'd attach a listener it's already too late on
+    // some browsers. Read `reg.installing` / `reg.waiting` directly at
+    // hydration time — that's the authoritative state.
+    const drainState = () => {
+      if (reg.waiting) announce(reg.waiting);
+      if (reg.installing) track(reg.installing);
+    };
+    drainState();
+
+    reg.addEventListener('updatefound', () => track(reg.installing));
+
+    // Check for updates when the app regains focus (iOS standalone wakeup).
+    // Re-drain afterward — if a prior update check produced a waiting SW
+    // that we missed announcing, this recovers it without a reload.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') reg.update();
+      if (document.visibilityState !== 'visible') return;
+      reg.update().then(drainState).catch(() => {});
     });
 
-    // Safety net: poll every 30 minutes
-    setInterval(() => reg.update(), 30 * 60 * 1000);
+    // Safety net: poll every 30 minutes.
+    setInterval(() => reg.update().then(drainState).catch(() => {}), 30 * 60 * 1000);
   });
 }
