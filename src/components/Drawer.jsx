@@ -30,7 +30,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase();
-  const { imageUrl: avatarImageUrl, presetId: avatarPresetId } = useAvatarUrl(user?.user_metadata?.avatar);
+  const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
 
   /* ── Close swipe: track leftward drag on the open panel ── */
   const dragRef = useRef(null);
@@ -159,8 +159,6 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
                 <AvatarContent
                   initials={userInitial}
                   imageUrl={avatarImageUrl}
-                  presetId={avatarPresetId}
-                  size={44}
                 />
               </div>
               <div>

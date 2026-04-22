@@ -3,19 +3,15 @@ import { supabase } from "../supabaseClient";
 import { resolveAvatar } from "../utils/avatarMeta";
 
 /* ── Resolve user_metadata.avatar into render props ─────────────────
-   Cardigan stores avatars in two flavors:
-     - { kind: "preset",   value: "preset:sprig-01" }
-     - { kind: "uploaded", value: "<userid>/profile/avatar-{ts}.jpg" }
-
-   Uploaded images live in a private R2 bucket, so this hook asks
+   Uploaded avatars live in a private R2 bucket, so this hook asks
    the existing /api/document-url serverless function for a presigned
    GET URL. URLs are cached module-level for the life of the tab so
    the drawer / chrome / settings card don't each issue separate
    presign requests for the same image.
 
-   Presigned URLs are valid for an hour — longer than a typical
-   session. If one expires mid-session, <Avatar>'s onError silently
-   falls back to initials; the next mount re-fetches. */
+   Presigned URLs are valid 1 hour — longer than a typical session.
+   If one expires mid-session, <Avatar>'s onError silently falls back
+   to initials; the next mount re-fetches. */
 
 const urlCache = new Map();
 
@@ -61,12 +57,8 @@ export function useAvatarUrl(avatar) {
       if (active) setImageUrl(url);
     });
     return () => { active = false; };
-  // `resolved` is derived from `avatar`; depending on primitive fields
-  // avoids re-running on every object-identity change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolved.kind, resolved.kind === "uploaded" ? resolved.path : null]);
 
-  if (resolved.kind === "preset") return { presetId: resolved.presetId, imageUrl: null };
-  if (resolved.kind === "uploaded") return { presetId: null, imageUrl };
-  return { presetId: null, imageUrl: null };
+  return { imageUrl };
 }

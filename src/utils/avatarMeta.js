@@ -3,25 +3,20 @@
    the network-backed signed-URL lookup for uploaded avatars lives
    in useAvatarUrl().
 
-   Shape:
-     { kind: "preset",   value: "preset:sprig-01" }
+   Shape stored in user_metadata:
      { kind: "uploaded", value: "<userId>/profile/avatar-{ts}.jpg" }
 
    Returns:
-     { kind: null }                      — no avatar / malformed
-     { kind: "preset", presetId: "…" }   — a preset by id
+     { kind: null }                      — no avatar / malformed / legacy
+                                           preset values (preset gallery
+                                           was removed; those fall back
+                                           to initials).
      { kind: "uploaded", path: "…" }     — R2 object path; URL is
-                                           resolved asynchronously
-                                           by useAvatarUrl. */
+                                           resolved asynchronously by
+                                           useAvatarUrl. */
 
 export function resolveAvatar(avatar) {
   if (!avatar || typeof avatar !== "object") return { kind: null };
-  if (avatar.kind === "preset" && typeof avatar.value === "string") {
-    const id = avatar.value.startsWith("preset:")
-      ? avatar.value.slice("preset:".length)
-      : avatar.value;
-    return { kind: "preset", presetId: id };
-  }
   if (avatar.kind === "uploaded" && typeof avatar.value === "string") {
     return { kind: "uploaded", path: avatar.value };
   }

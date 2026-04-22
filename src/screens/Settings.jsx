@@ -55,7 +55,7 @@ function notifErrorKey(code) {
 export function Settings({ user, signOut }) {
   const { t } = useT();
   const { tutorial, navigate, theme, notifications, showToast, upcomingSessions, readOnly } = useCardigan();
-  const { imageUrl: avatarImageUrl, presetId: avatarPresetId } = useAvatarUrl(user?.user_metadata?.avatar);
+  const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
 
   // Inline "next reminder" hint + preview-card data.
   const nextReminder = useMemo(() => computeNextReminder(upcomingSessions), [upcomingSessions]);
@@ -284,7 +284,6 @@ export function Settings({ user, signOut }) {
                 color="var(--teal)"
                 size="lg"
                 imageUrl={avatarImageUrl}
-                presetId={avatarPresetId}
               />
               {!readOnly && (
                 <span className="av-settings-avatar-badge" aria-hidden="true">

@@ -3,24 +3,19 @@ import { IconX, IconCamera, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useEscape } from "../hooks/useEscape";
-import { SegmentedControl } from "./SegmentedControl";
-import { PRESET_AVATARS, PRESET_AVATAR_IDS, renderPresetAvatar } from "./avatars/registry";
 import { resizeToSquareJpeg, avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
 import { invalidateAvatarUrl } from "../hooks/useAvatarUrl";
 
 /* ── Cardigan avatar picker ─────────────────────────────────────────
-   Bottom sheet with two tabs:
-     - "Galería"  → grid of 12 hand-drawn presets
-     - "Subir"    → upload / replace with a user photo
+   Upload-only bottom sheet. Users pick an image (camera / library /
+   file drop), it's resized client-side to a 256² JPEG, uploaded
+   through /api/upload-url (server-proxied to R2), and recorded in
+   user_metadata.avatar as { kind: "uploaded", value: "<path>" }.
 
-   Opens from the Settings profile card. Saves via
-   supabase.auth.updateUser({ data: { avatar } }); that mutation fires
-   onAuthStateChange on the app, which refreshes `user` everywhere the
-   avatar is rendered (drawer, chrome, settings). */
+   The preset gallery was removed — only the upload path remains. */
 
-const KIND_PRESET = "preset";
 const KIND_UPLOADED = "uploaded";
 
 export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
@@ -29,19 +24,16 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 
-  // Working state: whatever the user has "touched" but not yet saved.
-  // Kind is either "preset", "uploaded-file" (local, not yet uploaded),
-  // or "remove" (user wants to revert to initials).
+  // Working state. Kind is either "uploaded-file" (new local file,
+  // not yet uploaded), "uploaded" (current saved image), "remove"
+  // (user wants to revert to initials), or "none".
   const [draft, setDraft] = useState(() => fromCurrent(currentAvatar));
-  const [tab, setTab] = useState(draft.kind === "uploaded-file" || draft.kind === KIND_UPLOADED ? "upload" : "gallery");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [dropHover, setDropHover] = useState(false);
   const previewUrlRef = useRef(null);
-  // Revoke any in-flight object-URL we created when the sheet closes
-  // or the next file replaces it.
   useEffect(() => () => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
   }, []);
@@ -53,12 +45,6 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     return !sameAvatar(draftToStored(draft), currentAvatar);
   }, [draft, currentAvatar]);
 
-  const onPickPreset = (id) => {
-    setError("");
-    setDraft({ kind: KIND_PRESET, presetId: id });
-    haptic.tap();
-  };
-
   const onFile = useCallback(async (file) => {
     setError("");
     if (!file) return;
@@ -68,7 +54,6 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       const previewUrl = URL.createObjectURL(blob);
       previewUrlRef.current = previewUrl;
       setDraft({ kind: "uploaded-file", blob, previewUrl });
-      setTab("upload");
       haptic.tap();
     } catch (err) {
       const msg = err?.message || "";
@@ -99,16 +84,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
       if (draft.kind === "remove") {
         nextAvatar = null;
-      } else if (draft.kind === KIND_PRESET) {
-        nextAvatar = { kind: KIND_PRESET, value: `preset:${draft.presetId}` };
       } else if (draft.kind === "uploaded-file") {
         const path = avatarPath(user.id);
         await uploadBlobToR2(path, draft.blob);
-        // If we're replacing a prior uploaded avatar, drop its cached URL.
         if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
         nextAvatar = { kind: KIND_UPLOADED, value: path };
       } else {
-        // No effective change; just close.
         onClose();
         return;
       }
@@ -122,14 +103,10 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       onSaved?.(nextAvatar);
       onClose();
     } catch (err) {
-      // Surface a stage-specific user message AND log the raw error so
-      // anything that sneaks through (network timeout, CORS preflight
-      // reject, Supabase rate limit, etc.) is diagnosable from the
-      // browser console.
       console.error("[avatar] save failed", { stage: err?.stage, message: err?.message, err });
       const stage = err?.stage;
-      if (stage === "presign")   setError(t("avatar.err.presign") || "No se pudo iniciar la subida. Revisa tu conexión.");
-      else if (stage === "put")  setError(t("avatar.err.upload")  || "No se pudo subir la imagen. Intenta de nuevo.");
+      if (stage === "presign")    setError(t("avatar.err.presign") || "No se pudo iniciar la subida. Revisa tu conexión.");
+      else if (stage === "put")   setError(t("avatar.err.upload")  || "No se pudo subir la imagen. Intenta de nuevo.");
       else if (stage === "update") setError(t("avatar.err.update") || "La foto se subió pero no se guardó tu perfil. Intenta de nuevo.");
       else setError(t("avatar.err.save") || "No se pudo guardar. Intenta de nuevo.");
     } finally {
@@ -137,23 +114,14 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     }
   };
 
-  // ── Preview (top of sheet) ────────────────────────────────────────
+  // Preview at the top of the sheet
   const previewNode = useMemo(() => {
-    if (draft.kind === KIND_PRESET) {
-      return renderPresetAvatar(draft.presetId, 96);
-    }
-    if (draft.kind === "uploaded-file") {
-      return <img src={draft.previewUrl} alt="" />;
-    }
-    if (draft.kind === KIND_UPLOADED) {
-      return <img src={draft.imageUrl} alt="" />;
-    }
-    // "remove" or nothing selected → initials
+    if (draft.kind === "uploaded-file") return <img src={draft.previewUrl} alt="" />;
+    if (draft.kind === KIND_UPLOADED) return <img src={draft.imageUrl} alt="" />;
     return initial;
   }, [draft, initial]);
 
   const previewLabel = useMemo(() => {
-    if (draft.kind === KIND_PRESET) return PRESET_AVATARS[draft.presetId]?.label || "";
     if (draft.kind === "uploaded-file") return t("avatar.uploadedPending") || "Foto lista para guardar";
     if (draft.kind === KIND_UPLOADED) return t("avatar.uploaded") || "Foto actual";
     if (draft.kind === "remove") return t("avatar.noPhoto") || "Sin foto";
@@ -193,92 +161,36 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
             </div>
           </div>
 
-          <div className="av-picker-tabs">
-            <SegmentedControl
-              items={[
-                { k: "gallery", l: t("avatar.tabGallery") || "Galería" },
-                { k: "upload",  l: t("avatar.tabUpload")  || "Subir" },
-              ]}
-              value={tab}
-              onChange={setTab}
-              ariaLabel={t("avatar.title") || "Cambiar foto"}
-            />
+          <div
+            className={"av-picker-drop" + (dropHover ? " is-hover" : "")}
+            onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
+            onDragLeave={() => setDropHover(false)}
+            onDrop={onDrop}
+          >
+            <div className="av-picker-drop-icon">
+              <IconUpload size={22} />
+            </div>
+            <div className="av-picker-drop-title">
+              {t("avatar.dropTitle") || "Sube tu propia foto"}
+            </div>
+            <div className="av-picker-drop-sub">
+              {t("avatar.dropSub") || "JPG o PNG hasta 10 MB. Se recorta automáticamente en círculo."}
+            </div>
+            <div className="av-picker-drop-buttons">
+              <button type="button" className="av-picker-drop-btn" onClick={() => fileInputRef.current?.click()}>
+                <IconUpload size={14} />
+                {t("avatar.chooseFile") || "Elegir archivo"}
+              </button>
+              <button type="button" className="av-picker-drop-btn" onClick={() => cameraInputRef.current?.click()}>
+                <IconCamera size={14} />
+                {t("avatar.takePhoto") || "Cámara"}
+              </button>
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }}
+              onChange={(e) => onFile(e.target.files?.[0])} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="user" style={{ display: "none" }}
+              onChange={(e) => onFile(e.target.files?.[0])} />
           </div>
-
-          {tab === "gallery" && (
-            <div className="av-picker-grid" role="radiogroup" aria-label={t("avatar.tabGallery") || "Galería"}>
-              {PRESET_AVATAR_IDS.map((id) => {
-                const isSel = draft.kind === KIND_PRESET && draft.presetId === id;
-                const preset = PRESET_AVATARS[id];
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    className={"av-picker-tile" + (isSel ? " is-selected" : "")}
-                    onClick={() => onPickPreset(id)}
-                    aria-label={preset.label}
-                    aria-pressed={isSel ? "true" : "false"}
-                    role="radio"
-                    aria-checked={isSel ? "true" : "false"}
-                  >
-                    {renderPresetAvatar(id, 96)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {tab === "upload" && (
-            <div
-              className={"av-picker-drop" + (dropHover ? " is-hover" : "")}
-              onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
-              onDragLeave={() => setDropHover(false)}
-              onDrop={onDrop}
-            >
-              <div className="av-picker-drop-icon">
-                <IconUpload size={22} />
-              </div>
-              <div className="av-picker-drop-title">
-                {t("avatar.dropTitle") || "Sube tu propia foto"}
-              </div>
-              <div className="av-picker-drop-sub">
-                {t("avatar.dropSub") || "JPG o PNG hasta 10 MB. Se recorta automáticamente en círculo."}
-              </div>
-              <div className="av-picker-drop-buttons">
-                <button
-                  type="button"
-                  className="av-picker-drop-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <IconUpload size={14} />
-                  {t("avatar.chooseFile") || "Elegir archivo"}
-                </button>
-                <button
-                  type="button"
-                  className="av-picker-drop-btn"
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  <IconCamera size={14} />
-                  {t("avatar.takePhoto") || "Cámara"}
-                </button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => onFile(e.target.files?.[0])}
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                style={{ display: "none" }}
-                onChange={(e) => onFile(e.target.files?.[0])}
-              />
-            </div>
-          )}
 
           {error && <div className="av-picker-error" role="alert">{error}</div>}
 
@@ -286,11 +198,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
             <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
               {t("cancel") || "Cancelar"}
             </button>
-            <button
-              className="btn btn-primary-teal"
-              onClick={save}
-              disabled={!isDirty || saving}
-            >
+            <button className="btn btn-primary-teal" onClick={save} disabled={!isDirty || saving}>
               {saving ? (t("saving") || "Guardando…") : (t("save") || "Guardar")}
             </button>
           </div>
@@ -304,10 +212,6 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
 function fromCurrent(a) {
   if (!a) return { kind: "none" };
-  if (a.kind === KIND_PRESET && typeof a.value === "string") {
-    const id = a.value.startsWith("preset:") ? a.value.slice("preset:".length) : a.value;
-    return { kind: KIND_PRESET, presetId: id };
-  }
   if (a.kind === KIND_UPLOADED && typeof a.value === "string") {
     return { kind: KIND_UPLOADED, path: a.value };
   }
@@ -317,7 +221,6 @@ function fromCurrent(a) {
 function draftToStored(d) {
   if (!d || d.kind === "none") return null;
   if (d.kind === "remove") return null;
-  if (d.kind === KIND_PRESET) return { kind: KIND_PRESET, value: `preset:${d.presetId}` };
   if (d.kind === "uploaded-file") return { kind: "uploaded-file" }; // sentinel — never equal to currentAvatar
   if (d.kind === KIND_UPLOADED) return { kind: KIND_UPLOADED, value: d.path };
   return null;
@@ -329,13 +232,6 @@ function sameAvatar(a, b) {
   return a.kind === b.kind && a.value === b.value;
 }
 
-/* Upload the resized avatar blob through our own server-side endpoint
-   (/api/upload-avatar), which proxies to R2. Avatars are small enough
-   (< 50 KB post-resize) that the extra hop is cheap, and going server-
-   side sidesteps the two classes of browser-direct-upload pitfalls we
-   hit: SDK default checksum headers leaking into signed URLs and R2
-   bucket CORS needing explicit origin/header whitelists. Throws with
-   a `stage` property so the caller can show stage-specific copy. */
 async function uploadBlobToR2(path, blob) {
   let token;
   try {
@@ -346,8 +242,6 @@ async function uploadBlobToR2(path, blob) {
   }
   if (!token) throw Object.assign(new Error("no_session"), { stage: "presign" });
 
-  // Blob → data URL. FileReader is available on every browser that
-  // can also do the canvas resize, so no feature-detect needed.
   let dataUrl;
   try {
     dataUrl = await new Promise((resolve, reject) => {

@@ -461,8 +461,6 @@ export default {
   avatar: {
     title: "Cambiar foto",
     changePhoto: "Cambiar foto",
-    tabGallery: "Galer\u00eda",
-    tabUpload: "Subir",
     dropTitle: "Sube tu propia foto",
     dropSub: "JPG o PNG hasta 10 MB. Se recorta autom\u00e1ticamente en c\u00edrculo.",
     chooseFile: "Elegir archivo",
