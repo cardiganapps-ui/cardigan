@@ -473,7 +473,6 @@ export default {
     presetComingSoon: "Avatares próximamente",
     presetComingSoonSub: "Estamos preparando una colección. Por ahora puedes subir tu propia foto.",
     preset: {
-      nube: "Nube",
       perrito: "Perrito",
     },
     err: {
