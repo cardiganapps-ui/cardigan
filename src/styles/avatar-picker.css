@@ -102,11 +102,14 @@
 .av-picker-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 16px;
   max-height: 320px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 4px 2px 2px;
+  /* Padding must accommodate .av-picker-tile.is-selected::after which
+     extends 4px outside the tile with a 3px border — without breathing
+     room here, the selection ring gets clipped by the grid bounds. */
+  padding: 10px 10px 12px;
 }
 @media (min-width: 560px) {
   .av-picker-grid { grid-template-columns: repeat(4, 1fr); max-height: 380px; }
