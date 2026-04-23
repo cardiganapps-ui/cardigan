@@ -270,8 +270,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         <button className="mde-back" onClick={handleClose}>‹ {t("back")}</button>
         <div className="mde-header-actions">
           {!readOnly && (
-            <span className={"mde-save-indicator " + (saveState === "saving" ? "is-saving" : "is-saved")}>
-              {saveState === "saving" ? t("notes.saving") : saveState === "saved" ? t("notes.saved") : ""}
+            <span className={"mde-save-indicator " + (saveState === "saved" ? "is-saved" : "is-saving")}>
+              {saveState === "saved" ? t("notes.saved") : t("notes.saving")}
             </span>
           )}
           {hasHeadings && (
