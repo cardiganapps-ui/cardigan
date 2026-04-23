@@ -131,7 +131,9 @@ export function Home({ setScreen, userName }) {
       }
     }
     setCarouselOffset(0);
-    setTimeout(() => setCarouselSettling(false), 380);
+    // Match the 550ms settle transition above with a tiny buffer so we
+    // don't strip easing one frame before the transform reaches its end.
+    setTimeout(() => setCarouselSettling(false), 540);
   }, [carouselPage]);
 
   const currentMonthPayments = payments.filter(p => {
@@ -220,14 +222,14 @@ export function Home({ setScreen, userName }) {
   const baseShift = -carouselPage * 50;
   const dragPx = carouselSwiping ? carouselOffset : 0;
   const carouselTransform = `translateX(calc(${baseShift}% + ${dragPx}px))`;
-  // Align the settle easing with the rest of the app's springy curve
-  // (`cubic-bezier(0.34, 1.56, 0.64, 1)`) — the old Material standard
-  // easing made the carousel read as stiff next to sheets, toggles,
-  // and the segmented control, which all overshoot subtly.
+  // Settle eases with the app's springy curve and a slightly slower
+  // duration (550ms) — at 400ms the panels snapped past each other too
+  // quickly to read as "moving through space", which made the carousel
+  // feel mechanical. The longer arc gives the panel a beat of weight.
   const carouselTransition = carouselSwiping
     ? "none"
     : carouselSettling
-      ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+      ? "transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)"
       : "none";
 
   return (
