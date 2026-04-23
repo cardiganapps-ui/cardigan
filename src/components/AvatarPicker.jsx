@@ -118,12 +118,21 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       onSaved?.(nextAvatar);
       onClose();
     } catch (err) {
-      console.error("[avatar] save failed", { stage: err?.stage, message: err?.message, err });
+      console.error("[avatar] save failed", {
+        stage: err?.stage,
+        status: err?.status,
+        code: err?.code,
+        hint: err?.hint,
+        message: err?.message,
+        info: err?.info,
+        err,
+      });
       const stage = err?.stage;
-      if (stage === "presign")    setError(t("avatar.err.presign") || "No se pudo iniciar la subida. Revisa tu conexión.");
-      else if (stage === "put")   setError(t("avatar.err.upload")  || "No se pudo subir la imagen. Intenta de nuevo.");
-      else if (stage === "update") setError(t("avatar.err.update") || "La foto se subió pero no se guardó tu perfil. Intenta de nuevo.");
-      else setError(t("avatar.err.save") || "No se pudo guardar. Intenta de nuevo.");
+      const tag = err?.code || err?.status ? ` (${err?.code || `HTTP ${err?.status}`})` : "";
+      if (stage === "presign")    setError((t("avatar.err.presign") || "No se pudo iniciar la subida. Revisa tu conexión.") + tag);
+      else if (stage === "put")   setError((t("avatar.err.upload")  || "No se pudo subir la imagen. Intenta de nuevo.") + tag);
+      else if (stage === "update") setError((t("avatar.err.update") || "La foto se subió pero no se guardó tu perfil. Intenta de nuevo.") + tag);
+      else setError((t("avatar.err.save") || "No se pudo guardar. Intenta de nuevo.") + tag);
     } finally {
       setSaving(false);
     }
@@ -321,8 +330,16 @@ async function uploadBlobToR2(path, blob) {
     throw Object.assign(new Error(e?.message || "put_fetch_failed"), { stage: "put", cause: e });
   }
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw Object.assign(new Error(`put_${res.status}`), { stage: "put", body });
+    let info = null;
+    try { info = await res.clone().json(); }
+    catch (_) { info = { text: await res.text().catch(() => "") }; }
+    throw Object.assign(new Error(`put_${res.status}`), {
+      stage: "put",
+      status: res.status,
+      code: info?.code || null,
+      hint: info?.hint || info?.error || info?.text || null,
+      info,
+    });
   }
   return true;
 }

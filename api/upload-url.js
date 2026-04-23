@@ -25,24 +25,24 @@ import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
 const MAX_DIRECT_BYTES = 512 * 1024; // post-base64-decode ceiling
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed", code: "method_not_allowed" });
 
   try {
     const user = await getAuthUser(req);
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    if (!user) return res.status(401).json({ error: "Unauthorized", code: "unauthorized" });
 
     const { path, contentType, dataUrl } = req.body || {};
     if (!validatePath(path, user.id)) {
-      return res.status(400).json({ error: "Invalid path" });
+      return res.status(400).json({ error: "Invalid path", code: "invalid_path" });
     }
 
     // ── Mode B: server-proxied upload ──
     if (typeof dataUrl === "string" && dataUrl.length > 0) {
       const match = /^data:image\/(jpeg|png);base64,(.+)$/.exec(dataUrl);
-      if (!match) return res.status(400).json({ error: "Invalid image data" });
+      if (!match) return res.status(400).json({ error: "Invalid image data", code: "invalid_image_data" });
       const buffer = Buffer.from(match[2], "base64");
-      if (!buffer.length) return res.status(400).json({ error: "Empty image" });
-      if (buffer.length > MAX_DIRECT_BYTES) return res.status(413).json({ error: "Too large" });
+      if (!buffer.length) return res.status(400).json({ error: "Empty image", code: "empty_image" });
+      if (buffer.length > MAX_DIRECT_BYTES) return res.status(413).json({ error: "Too large", code: "too_large" });
       const ct = match[1] === "png" ? "image/png" : "image/jpeg";
 
       await r2.send(new PutObjectCommand({
@@ -66,7 +66,17 @@ export default async function handler(req, res) {
 
     res.status(200).json({ url });
   } catch (err) {
-    console.error("[upload-url] failed:", err?.name, err?.message, err?.$metadata?.httpStatusCode);
-    res.status(500).json({ error: "Upload failed" });
+    const name = err?.name || "Error";
+    const http = err?.$metadata?.httpStatusCode;
+    const message = err?.message || "";
+    console.error("[upload-url] failed:", { name, http, message });
+    // Surface a stable code the client can log + a short human hint.
+    // These are diagnostic — no stack traces or secrets.
+    res.status(500).json({
+      error: "Upload failed",
+      code: `r2_${name}`.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+      hint: message.slice(0, 200),
+      http: http || null,
+    });
   }
 }
