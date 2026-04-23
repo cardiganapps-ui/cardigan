@@ -14,6 +14,7 @@ import { QuickActions } from "./components/QuickActions";
 import TopbarActions from "./components/TopbarActions";
 import CommandPalette from "./components/CommandPalette";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useViewport } from "./hooks/useViewport";
 import { DRAWER_EDGE_BAND, release as releaseSwipe, tryClaim as trySwipeClaim } from "./hooks/swipeCoordinator";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { BottomTabs } from "./components/BottomTabs";
@@ -193,6 +194,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { isTablet } = useViewport();
   const [viewAsUserId, setViewAsUserId] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
   // `localHideFab` is controlled by non-tutorial callers (e.g. the Patients
@@ -364,6 +366,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const [swipeProgress, setSwipeProgress] = useState(0);
 
   useEffect(() => {
+    // Skip edge-swipe-to-open entirely once the sidebar is persistent
+    // (≥768px). Catching a touchstart on the left edge would be confusing
+    // when the drawer is already visible. Mobile (iPhone) keeps the gesture.
+    if (isTablet) return;
     const shell = shellRef.current;
     if (!shell) return;
 
@@ -453,7 +459,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       shell.removeEventListener("touchcancel", onTouchCancel);
       releaseSwipe(EDGE_OWNER_ID);
     };
-  }, []);
+  }, [isTablet]);
 
   const [pendingFabAction, setPendingFabAction] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);

@@ -17,7 +17,7 @@ const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: Ico
 export function Notes() {
   const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente } = useCardigan();
   const { t } = useT();
-  const { isDesktop } = useViewport();
+  const { isTabletSplit } = useViewport();
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -114,7 +114,7 @@ export function Notes() {
 
   return (
     <>
-    {editingNote && !isDesktop && (
+    {editingNote && !isTabletSplit && (
       <NoteEditor
         key={editingNote.id || "new"}
         note={editingNote}
@@ -123,7 +123,7 @@ export function Notes() {
         onClose={() => setEditingNote(null)}
       />
     )}
-    <div className={`page ${isDesktop ? "notes-page--split" : ""}`} style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
+    <div className={`page ${isTabletSplit ? "notes-page--split" : ""}`} style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
     <div className="notes-list-col">
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, gap:8 }}>
         <div className="section-title">{t("notes.title")}</div>
@@ -344,7 +344,7 @@ export function Notes() {
         </div>
       )}
     </div>
-    {isDesktop && (
+    {isTabletSplit && (
       <div className="notes-detail-col">
         {editingNote ? (
           <NoteEditor

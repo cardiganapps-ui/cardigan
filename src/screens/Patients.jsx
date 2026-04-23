@@ -46,7 +46,7 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 
 export function Patients() {
   const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate } = useCardigan();
-  const { isDesktop } = useViewport();
+  const { isTabletSplit } = useViewport();
   const ctxMenu = useContextMenu();
   const { t, strings } = useT();
   const [search, setSearch]     = useState("");
@@ -93,7 +93,7 @@ export function Patients() {
     setExpediente(p);
     // Desktop split view keeps the topbar + FAB visible; the expediente
     // renders inline alongside the list so nothing is covered.
-    if (!isDesktop) setHideFab?.(true);
+    if (!isTabletSplit) setHideFab?.(true);
   };
 
   // Close helper — also sends the user back to the screen that opened
@@ -102,7 +102,7 @@ export function Patients() {
   // navigated there themselves.
   const closeExpediente = () => {
     setExpediente(null);
-    if (!isDesktop) setHideFab?.(false);
+    if (!isTabletSplit) setHideFab?.(false);
     const origin = expedienteOrigin;
     setExpedienteOrigin(null);
     if (origin && origin !== "patients") navigate(origin);
@@ -320,7 +320,7 @@ export function Patients() {
     );
   }
 
-  const splitMode = isDesktop && !!expediente;
+  const splitMode = isTabletSplit && !!expediente;
 
   const listJSX = (
     <>
@@ -374,11 +374,11 @@ export function Patients() {
   );
 
   return (
-    <div className={isDesktop ? "patients-split-view" : "page"} data-tour="patients-list">
-      {isDesktop ? (
+    <div className={isTabletSplit ? "patients-split-view" : "page"} data-tour="patients-list">
+      {isTabletSplit ? (
         <div className="patients-list-pane">{listJSX}</div>
       ) : listJSX}
-      {isDesktop && (
+      {isTabletSplit && (
         <div className="patients-detail-pane">
           {expediente ? (
             <PatientExpediente
@@ -723,7 +723,7 @@ export function Patients() {
         </div>
       )}
 
-      {expediente && !isDesktop && createPortal(
+      {expediente && !isTabletSplit && createPortal(
         <PatientExpediente
           patient={patients.find(p => p.id === expediente.id) || expediente}
           upcomingSessions={upcomingSessions}

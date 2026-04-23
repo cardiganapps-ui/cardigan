@@ -42,16 +42,20 @@
   .topbar-brand { position: static; transform: none; }
   .topbar-brand:active { background: var(--teal-pale); color: var(--teal-dark); transform: scale(0.9); }
 
-  /* Page: wider padding, centered */
-  .page { padding: 20px 32px; max-width: 900px; margin: 0 auto; }
+  /* Page: wider padding, centered. iPad landscape (≈1024–1180) needs more
+     horizontal room than the legacy 900px max — bump to 1100px so the
+     content actually fills the canvas instead of leaving 100px gutters. */
+  .page { padding: 20px 32px; max-width: 1100px; margin: 0 auto; }
 
-  /* Sheets: centered modal instead of bottom sheet */
+  /* Sheets: centered modal instead of bottom sheet. Width fluidly
+     scales with the viewport so iPad shows a generously sized panel
+     instead of a stranded 520px box on a 1024–1366px canvas. */
   .sheet-overlay { align-items: center; }
   .sheet-panel {
-    max-width: 520px;
+    max-width: clamp(520px, 70vw, 720px);
     border-radius: var(--radius-lg);
     animation: sheetScaleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-    max-height: 80dvh;
+    max-height: 85dvh;
   }
   .sheet-handle { display: none; }
 
@@ -244,8 +248,11 @@
   }
 }
 
-/* ── DESKTOP POINTER: tighter sizing ── */
-@media (hover: hover) and (min-width: 768px) {
+/* ── DESKTOP POINTER: tighter sizing ──
+   Gated on `pointer: fine` AND ≥1024px so iPad (which reports
+   `hover: hover` once a Magic Keyboard is attached but is still a
+   touch-first device with `pointer: coarse`) keeps 44px iOS HIG targets. */
+@media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
   button, a, select { min-height: 36px; }
   .icon-btn { min-width: 36px; min-height: 36px; }
   .btn { height: 42px; font-size: 14px; }
@@ -312,10 +319,11 @@
   .drawer-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
 }
 
-/* ── NOTES SPLIT VIEW (≥1024px) ──
+/* ── NOTES SPLIT VIEW (≥820px) ──
    List on the left, inline NoteEditor on the right. Same pattern as
-   patients master-detail. */
-@media (min-width: 1024px) {
+   patients master-detail. Activates at 820px so iPad portrait (≥iPad
+   non-mini) and every iPad landscape get the split layout. */
+@media (min-width: 820px) {
   .notes-page--split {
     display: flex !important;
     flex-direction: row;
@@ -325,10 +333,10 @@
     overflow: hidden;
   }
   .notes-page--split .notes-list-col {
-    width: 360px; flex-shrink: 0;
+    width: 300px; flex-shrink: 0;
     border-right: 1px solid var(--border-lt);
     overflow-y: auto; -webkit-overflow-scrolling: touch;
-    padding: 16px;
+    padding: 14px;
   }
   .notes-page--split .notes-detail-col {
     flex: 1; min-width: 0; display: flex; flex-direction: column;
@@ -357,10 +365,17 @@
   }
 }
 
-/* ── PATIENTS SPLIT VIEW (≥1024px) ──
-   Left-side list + inline expediente on the right. Replaces the
-   .expediente-desktop-panel overlay at true-desktop breakpoint. */
+/* iPad-portrait Notes list pane gets a wider 360px treatment at 1024+
+   so the desktop-class layout doesn't feel cramped after the 820px tier
+   widened to 300px. */
 @media (min-width: 1024px) {
+  .notes-page--split .notes-list-col { width: 360px; padding: 16px; }
+}
+
+/* ── PATIENTS SPLIT VIEW (≥820px) ──
+   Left-side list + inline expediente on the right. Replaces the
+   .expediente-desktop-panel overlay at the tablet-split tier. */
+@media (min-width: 820px) {
   .patients-split-view {
     display: flex; flex: 1; min-height: 0;
     width: 100%; max-width: none;
@@ -368,7 +383,7 @@
     overflow: hidden;
   }
   .patients-split-view .patients-list-pane {
-    width: 380px; flex-shrink: 0;
+    width: 320px; flex-shrink: 0;
     border-right: 1px solid var(--border-lt);
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: var(--white);
@@ -409,6 +424,36 @@
   }
 }
 
+/* iPad-portrait Patients list pane is 320px (above) so a 14-col patient
+   row stays scannable; bump back up to 380px at 1024+ for spacious
+   desktop. */
+@media (min-width: 1024px) {
+  .patients-split-view .patients-list-pane { width: 380px; }
+}
+
+/* ── iPad LANDSCAPE: respect device safe-area-inset on left/right ──
+   Newer iPads (Pro/Air with Face ID) have rounded corners and a home
+   indicator that creates lateral safe-area insets in landscape. The
+   default 32px page padding may sit underneath the curve. Using
+   max(32px, env(...)) preserves desktop spacing while honoring the
+   inset where the device reports one. */
+@media (min-width: 820px) {
+  .page {
+    padding-left: max(32px, env(safe-area-inset-left));
+    padding-right: max(32px, env(safe-area-inset-right));
+  }
+}
+
+/* ── FINANCES iPad density (≥820px) ──
+   The KPI tiles default to `1fr 1fr`, leaving them ~500px wide on iPad
+   landscape. Auto-fit at a sane min so the row compresses to 3-4 tiles
+   and stops looking sparse. */
+@media (min-width: 820px) {
+  .fin-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
 /* ── RESPONSIVE: LAPTOP (1024px+) ── */
 @media (min-width: 1024px) {
   /* Density: slightly taller rows + more generous card padding.
@@ -425,7 +470,7 @@
   .page { max-width: 1040px; padding: 24px 40px; }
   .drawer { width: 260px; }
   .drawer-panel { width: 260px; }
-  .sheet-panel { max-width: 560px; }
+  .sheet-panel { max-width: clamp(620px, 60vw, 880px); }
   .expediente-desktop-panel {
     width: 620px !important;
   }

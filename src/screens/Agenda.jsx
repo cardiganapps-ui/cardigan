@@ -570,10 +570,13 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 export function Agenda() {
   const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView } = useCardigan();
   const { t } = useT();
-  const { isDesktop } = useViewport();
+  const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
   // mobile. A cross-screen pending view (consumeAgendaView) always wins.
-  const [view, setView] = useState(() => consumeAgendaView?.() || (isDesktop ? "week" : "day"));
+  // iPad portrait/landscape (820+) gets the week view by default — there's
+  // room for it, and the week is the most useful agenda layout when not
+  // strictly mobile. Phone stays on day view.
+  const [view, setView] = useState(() => consumeAgendaView?.() || (isTabletSplit ? "week" : "day"));
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
   // "reschedule" when the sheet was opened via a long-press on a week
@@ -699,7 +702,7 @@ export function Agenda() {
         />
       )}
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isDesktop} onEventContextMenu={isDesktop ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {newSessionPrefill && (
         <NewSessionSheet
