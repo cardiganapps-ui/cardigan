@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Shared circular avatar — initials fallback or uploaded image.
@@ -27,7 +27,13 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
 
   const bg = imageUrl ? "transparent" : (color || (tutor ? "var(--purple)" : "var(--teal)"));
 
+  // Reset the failed flag whenever the URL changes so a fresh upload
+  // (or a re-signed URL after expiry) gets a new attempt. The topbar
+  // and drawer avatars mount once for the app's lifetime, so without
+  // this reset a single transient failure permanently stuck those
+  // surfaces on initials even after a successful re-upload.
   const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => { setImgFailed(false); }, [imageUrl]);
   const showImage = imageUrl && !imgFailed;
 
   return (
@@ -65,6 +71,7 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
    can adopt the new render shape without duplicating logic. */
 export function AvatarContent({ initials, imageUrl }) {
   const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => { setImgFailed(false); }, [imageUrl]);
   const showImage = imageUrl && !imgFailed;
   if (showImage) {
     return (

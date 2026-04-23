@@ -6,7 +6,7 @@ import { useEscape } from "../hooks/useEscape";
 import { resizeToSquareJpeg, avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
-import { invalidateAvatarUrl } from "../hooks/useAvatarUrl";
+import { invalidateAvatarUrl, useAvatarUrl } from "../hooks/useAvatarUrl";
 import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
 
 /* ── Cardigan avatar picker ─────────────────────────────────────────
@@ -45,6 +45,11 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const initial = (userName.charAt(0) || "?").toUpperCase();
+
+  // Signed URL for the user's current uploaded avatar, used only by
+  // the preview at the top of the sheet. Resolves to null for preset
+  // / no-avatar states; the preview falls through to the initials.
+  const { imageUrl: currentUploadedUrl } = useAvatarUrl(currentAvatar);
 
   const isDirty = useMemo(() => {
     return !sameAvatar(draftToStored(draft), currentAvatar);
@@ -114,12 +119,13 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       });
       if (updErr) throw Object.assign(new Error(updErr.message || "update_failed"), { stage: "update" });
 
-      // Force the session to reload so onAuthStateChange fires and
-      // React state picks up the new user_metadata. supabase-js 2.x
-      // doesn't consistently emit USER_UPDATED when only metadata
-      // changes — refreshSession reliably delivers TOKEN_REFRESHED
-      // with the updated user embedded.
-      try { await supabase.auth.refreshSession(); } catch (_) { /* non-fatal */ }
+      // updateUser already emits USER_UPDATED with the fresh user on
+      // supabase-js 2.x, and Settings' onSaved pushes the returned
+      // user into React state directly. An extra refreshSession call
+      // here used to race against that path — its TOKEN_REFRESHED
+      // event could deliver a session whose user_metadata trailed the
+      // in-flight write, overwriting the fresh user we'd just set and
+      // leaving every avatar surface stuck on initials.
 
       haptic.success();
       onSaved?.(nextAvatar, updData?.user || null);
@@ -148,10 +154,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   // Preview at the top of the sheet
   const previewNode = useMemo(() => {
     if (draft.kind === "uploaded-file") return <img src={draft.previewUrl} alt="" />;
-    if (draft.kind === KIND_UPLOADED) return <img src={draft.imageUrl} alt="" />;
+    if (draft.kind === KIND_UPLOADED) {
+      return currentUploadedUrl ? <img src={currentUploadedUrl} alt="" /> : initial;
+    }
     if (draft.kind === KIND_PRESET) return <img src={presetUrl(draft.id)} alt="" />;
     return initial;
-  }, [draft, initial]);
+  }, [draft, initial, currentUploadedUrl]);
 
   const previewLabel = useMemo(() => {
     if (draft.kind === "uploaded-file") return t("avatar.uploadedPending") || "Foto lista para guardar";

@@ -663,8 +663,12 @@ export function Settings({ user, signOut, refreshUser }) {
           user={user}
           currentAvatar={user?.user_metadata?.avatar || null}
           onClose={() => setActiveSheet(null)}
-          onSaved={() => {
-            refreshUser?.();
+          onSaved={(_, freshUser) => {
+            // AvatarPicker returns the freshly-updated user from
+            // supabase.auth.updateUser. Pushing that directly into
+            // React state is race-free; the getUser fallback only
+            // fires if the save path didn't surface a fresh user.
+            refreshUser?.(freshUser);
             showToast?.(t("saved") || "Guardado");
           }}
         />
