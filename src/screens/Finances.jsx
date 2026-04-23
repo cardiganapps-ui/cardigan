@@ -505,8 +505,10 @@ export function Finances() {
               )}
             </div>
           )}
-          {!noPatients && balanceFilter !== "paid" && (
-            <div style={{ padding:"0 16px 8px" }}>
+          {!noPatients && (
+          <div className="finances-balances-cols">
+          {balanceFilter !== "paid" && (
+            <div className="finances-balances-col" style={{ padding:"0 16px 8px" }}>
               <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
               <div className="card">
                 {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
@@ -532,8 +534,8 @@ export function Finances() {
               </div>
             </div>
           )}
-          {!noPatients && balanceFilter !== "owing" && (
-            <div style={{ padding: balanceFilter === "paid" ? "0 16px 8px" : "16px 16px 0" }}>
+          {balanceFilter !== "owing" && (
+            <div className="finances-balances-col" style={{ padding: balanceFilter === "paid" ? "0 16px 8px" : "16px 16px 0" }}>
               <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
               <div className="card">
                 {patients.filter(p=>p.amountDue<=0).map((p,i) => (
@@ -561,6 +563,8 @@ export function Finances() {
                 ))}
               </div>
             </div>
+          )}
+          </div>
           )}
         </div>
       )}

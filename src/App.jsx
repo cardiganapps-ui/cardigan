@@ -466,7 +466,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   useKeyboardShortcuts({
     "meta+k": () => setPaletteOpen(true),
     "ctrl+k": () => setPaletteOpen(true),
-  }, { enabled: !readOnly && !demo });
+    "meta+f": () => setPaletteOpen(true),
+    "ctrl+f": () => setPaletteOpen(true),
+    "/": () => setPaletteOpen(true),
+    "meta+n": () => setPendingFabAction("patient"),
+    "ctrl+n": () => setPendingFabAction("patient"),
+  }, {
+    enabled: !readOnly && !demo,
+    leader: "g",
+    leaderBindings: {
+      h: () => navigate("home"),
+      a: () => navigate("agenda"),
+      p: () => navigate("patients"),
+      f: () => navigate("finances"),
+      n: () => navigate("archivo"),
+    },
+  });
   // Wrap delete actions so we show a success toast on completion. Keeps
   // callers (SessionSheet, Finances, NoteEditor, etc.) unchanged — they
   // still receive a function with the original signature.

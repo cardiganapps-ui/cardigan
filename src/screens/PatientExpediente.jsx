@@ -493,22 +493,41 @@ export function PatientExpediente({
             </button>
             <HelpTip tipsKey="help.expediente" />
           </div>
-        {/* Tabs */}
-        <div role="tablist" style={{ display:"flex", gap:0, marginTop:14 }}>
-          {tabs.map(t => (
-            <button key={t.k} role="tab" aria-selected={tab === t.k} onClick={() => setTab(t.k)}
-              style={{
-                flex:1, padding:"10px 0 12px", fontSize:"var(--text-sm)", fontWeight:700,
-                fontFamily:"var(--font)", color: tab === t.k ? "var(--charcoal)" : "var(--charcoal-xl)",
-                background:"none", border:"none", borderBottom: tab === t.k ? "2px solid var(--charcoal)" : "2px solid transparent",
-                cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5,
-              }}>
-              <t.Icon size={14} /> {t.l}
-            </button>
-          ))}
-        </div>
+        {/* Horizontal tabs — overlay/mobile only. Inline mode uses a
+            left rail rendered below so the detail panel reads natively
+            on iPad / desktop with a trackpad. */}
+        {!inline && (
+          <div role="tablist" style={{ display:"flex", gap:0, marginTop:14 }}>
+            {tabs.map(tt => (
+              <button key={tt.k} role="tab" aria-selected={tab === tt.k} onClick={() => setTab(tt.k)}
+                style={{
+                  flex:1, padding:"10px 0 12px", fontSize:"var(--text-sm)", fontWeight:700,
+                  fontFamily:"var(--font)", color: tab === tt.k ? "var(--charcoal)" : "var(--charcoal-xl)",
+                  background:"none", border:"none", borderBottom: tab === tt.k ? "2px solid var(--charcoal)" : "2px solid transparent",
+                  cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+                }}>
+                <tt.Icon size={14} /> {tt.l}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       </div>
+
+      {/* Body — two columns on inline (rail + content), single column otherwise. */}
+      <div className={inline ? "expediente-inline-body" : "expediente-overlay-body"}>
+        {inline && (
+          <nav className="expediente-inline-tabs" role="tablist" aria-orientation="vertical">
+            {tabs.map(tt => (
+              <button key={tt.k} type="button" role="tab" aria-selected={tab === tt.k}
+                onClick={() => setTab(tt.k)}
+                className={`expediente-inline-tab ${tab === tt.k ? "expediente-inline-tab--active" : ""}`}>
+                <tt.Icon size={16} />
+                <span>{tt.l}</span>
+              </button>
+            ))}
+          </nav>
+        )}
 
       {/* Content */}
       <div ref={contentRef}
@@ -562,6 +581,7 @@ export function PatientExpediente({
             renameDocument={renameDocument} tagDocumentSession={tagDocumentSession} deleteDocument={deleteDocument}
           />
         )}
+      </div>
       </div>
     </div>
 
