@@ -36,14 +36,18 @@
   --shadow-sm:   0 1px 4px rgba(46,46,46,0.07);
   --shadow:      0 2px 12px rgba(46,46,46,0.09);
   --shadow-lg:   0 8px 28px rgba(46,46,46,0.12);
-  /* Type scale — 7 steps. Use var(--text-*) instead of raw px. */
+  /* Type scale — 7 steps. Use var(--text-*) instead of raw px.
+     --text-scale is overridden at iPad+ breakpoints to bump body sizes
+     without re-tuning every inline style. Eyebrow stays literal at 10px —
+     tracked labels look wrong when fractionally scaled. */
+  --text-scale: 1;
   --text-eyebrow: 10px;  /* uppercase tracked labels */
-  --text-xs:      11px;  /* meta, sub rows, badges */
-  --text-sm:      12px;  /* secondary labels, chips */
-  --text-md:      14px;  /* body default, row titles */
-  --text-lg:      16px;  /* sheet titles, emphasized body */
-  --text-xl:      20px;  /* KPI numbers */
-  --text-2xl:     24px;  /* page-level numbers */
+  --text-xs:      calc(11px * var(--text-scale));  /* meta, sub rows, badges */
+  --text-sm:      calc(12px * var(--text-scale));  /* secondary labels, chips */
+  --text-md:      calc(14px * var(--text-scale));  /* body default, row titles */
+  --text-lg:      calc(16px * var(--text-scale));  /* sheet titles, emphasized body */
+  --text-xl:      calc(20px * var(--text-scale));  /* KPI numbers */
+  --text-2xl:     calc(24px * var(--text-scale));  /* page-level numbers */
   --font:        'Nunito Sans', sans-serif;
   --font-d:      'Nunito', sans-serif;
   --sat: env(safe-area-inset-top, 44px);

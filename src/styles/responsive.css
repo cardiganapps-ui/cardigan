@@ -7,6 +7,10 @@
   /* Override safe area insets for desktop (no notch) */
   :root { --sat: 0px; --sab: 0px; --bottom-tabs-h: 0px; }
 
+  /* iPad/tablet type scale — bumps 12px body to ~12.8px and 14px to ~15px.
+     Token-level so every inline style picks it up without edits. */
+  :root { --text-scale: 1.07; }
+
   /* Bottom tab bar is mobile-only; desktop uses the sidebar drawer. */
   .bottom-tabs { display: none !important; }
 
@@ -431,6 +435,71 @@
   .patients-split-view .patients-list-pane { width: 380px; }
 }
 
+/* ── EXPEDIENTE BODY — rail vs single-column ──
+   The overlay body stays as a single flex column so the scroll area
+   fills remaining height. Inline mode (≥820px) switches to a flex row
+   with a left rail for vertical tabs. */
+.expediente-overlay-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+@media (min-width: 820px) {
+  .expediente-inline-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+  }
+  .expediente-inline-tabs {
+    flex-shrink: 0;
+    width: 168px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 10px;
+    border-right: 1px solid var(--border-lt);
+    background: var(--cream);
+    overflow-y: auto;
+  }
+  .expediente-inline-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--charcoal-lt);
+    text-align: left;
+    transition: background 0.2s, color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 40px;
+  }
+  .expediente-inline-tab:active { opacity: 0.75; }
+  .expediente-inline-tab--active {
+    background: var(--white);
+    color: var(--charcoal);
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+  }
+}
+@media (hover: hover) {
+  .expediente-inline-tab:not(.expediente-inline-tab--active):hover {
+    background: var(--teal-mist);
+    color: var(--teal-dark);
+  }
+}
+@media (min-width: 1024px) {
+  .expediente-inline-tabs { width: 188px; padding: 16px 12px; }
+  .expediente-inline-tab { font-size: var(--text-md); padding: 11px 14px; gap: 12px; }
+}
+
 /* ── iPad LANDSCAPE: respect device safe-area-inset on left/right ──
    Newer iPads (Pro/Air with Face ID) have rounded corners and a home
    indicator that creates lateral safe-area insets in landscape. The
@@ -452,14 +521,28 @@
   .fin-stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
+  /* Balances tab: show "Adeudan" + "Al corriente" side-by-side on iPad
+     instead of stacked. auto-fit falls back to a single column when a
+     filter hides one of the lists, so the visible column fills width. */
+  .finances-balances-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+  /* Kill the leading top padding on the "Al corriente" column when
+     both lists are visible — the grid gap handles vertical rhythm. */
+  .finances-balances-cols .finances-balances-col + .finances-balances-col {
+    padding-top: 0 !important;
+  }
 }
 
 /* ── RESPONSIVE: LAPTOP (1024px+) ── */
 @media (min-width: 1024px) {
-  /* Density: slightly taller rows + more generous card padding.
-     Body text stays at the same 14px base — bumping it would require
-     re-tuning dozens of inline styles. Card/row/KPI spacing gives the
-     laptop layout its breathing room instead. */
+  /* Laptop type scale bumps a further ~3% (12→13.2, 14→15.4). */
+  :root { --text-scale: 1.1; }
+
+  /* Density: slightly taller rows + more generous card padding. */
   .row-item { padding: 16px 20px; min-height: 70px; }
   .row-title { font-size: var(--text-md); }
   .kpi-card { padding: 20px 22px; }
@@ -536,7 +619,16 @@
   .home-col-main { padding: 0 0 14px; }
 }
 
+/* ── iPad Pro 12.9" / wide desktop (1200px+) ──
+   The split-view list pane widens slightly and the overlay expediente
+   grows past its 620px cap so the huge landscape canvas isn't wasted. */
+@media (min-width: 1200px) {
+  .patients-split-view .patients-list-pane { width: 420px; }
+  .expediente-desktop-panel { width: 720px !important; }
+}
+
 /* ── RESPONSIVE: WIDE DESKTOP (1440px+) ── */
 @media (min-width: 1440px) {
   .page { max-width: 1200px; }
+  .expediente-desktop-panel { width: 780px !important; }
 }
