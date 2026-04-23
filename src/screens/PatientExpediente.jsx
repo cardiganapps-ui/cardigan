@@ -12,7 +12,10 @@ import { HelpTip } from "../components/HelpTip";
 import { Avatar } from "../components/Avatar";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
+import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 import { useT } from "../i18n/index";
+
+const TAB_SWIPE_OWNER_ID = "expediente-tab-swipe";
 
 import { ResumenTab } from "./expediente/ResumenTab";
 import { SesionesTab } from "./expediente/SesionesTab";
@@ -293,6 +296,12 @@ export function PatientExpediente({
   // Pattern mirrors the Home carousel: 60px threshold, must be strongly
   // horizontal (|dx| > |dy|) so vertical scroll inside the tab body keeps
   // working. Advances one tab per gesture; stops at the ends (no wrap).
+  //
+  // Cooperates with `swipeCoordinator`: a SwipeableRow inside a tab body
+  // (e.g. payment rows on Finanzas) claims the lock at ~8px of leftward
+  // motion. Without coordination, the tab handler at 12px would also
+  // activate and yank the user to the next tab while they're trying to
+  // reveal the row's delete button.
   const tabSwipeRef = useRef(null);
   const onTabContentTouchStart = (e) => {
     if (inline) return;
@@ -310,6 +319,13 @@ export function PatientExpediente({
     const dy = e.touches[0].clientY - tabSwipeRef.current.y;
     if (!tabSwipeRef.current.active) {
       if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+        // If a SwipeableRow (or any other handler) already owns the
+        // gesture, defer — they were faster off the mark and the user
+        // intends to interact with that row, not switch tabs.
+        if (!trySwipeClaim(TAB_SWIPE_OWNER_ID)) {
+          tabSwipeRef.current = null;
+          return;
+        }
         tabSwipeRef.current.active = true;
       } else if (Math.abs(dy) > 10) {
         tabSwipeRef.current = null;
@@ -317,13 +333,18 @@ export function PatientExpediente({
     }
   };
   const onTabContentTouchEnd = (e) => {
-    if (!tabSwipeRef.current?.active) { tabSwipeRef.current = null; return; }
+    if (!tabSwipeRef.current?.active) { tabSwipeRef.current = null; releaseSwipe(TAB_SWIPE_OWNER_ID); return; }
     const dx = e.changedTouches[0].clientX - tabSwipeRef.current.x;
     tabSwipeRef.current = null;
+    releaseSwipe(TAB_SWIPE_OWNER_ID);
     if (Math.abs(dx) < 60) return;
     const i = tabs.findIndex(tx => tx.k === tab);
     const next = dx < 0 ? Math.min(tabs.length - 1, i + 1) : Math.max(0, i - 1);
     if (next !== i) setTab(tabs[next].k);
+  };
+  const onTabContentTouchCancel = () => {
+    tabSwipeRef.current = null;
+    releaseSwipe(TAB_SWIPE_OWNER_ID);
   };
 
   // ── Swipe-to-dismiss ──
@@ -495,6 +516,7 @@ export function PatientExpediente({
         onTouchStart={inline ? undefined : (e) => { onContentTouchStart(e); onTabContentTouchStart(e); }}
         onTouchMove={inline ? undefined : (e) => { onDragMove(e); onTabContentTouchMove(e); }}
         onTouchEnd={inline ? undefined : (e) => { onDragEnd(e); onTabContentTouchEnd(e); }}
+        onTouchCancel={inline ? undefined : onTabContentTouchCancel}
         style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0 }}>
 
         {tab === "resumen" && (

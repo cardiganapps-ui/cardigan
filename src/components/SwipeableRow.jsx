@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { haptic } from "../utils/haptics";
+import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
+
+const ROW_OWNER_ID = "swipeable-row";
 
 /* ── Swipeable row ──
    Reveals a 80px-wide action slot to the right of the content when the
@@ -51,6 +54,15 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
       const horizontal = Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
       const leftward = dx < 0;
       if (horizontal && (revealed || leftward)) {
+        // Claim the global horizontal-swipe lock so an ancestor handler
+        // (e.g. PatientExpediente's tab-swipe on .expediente-scroll)
+        // can't also process this finger and hijack it as a tab change.
+        // If something else already owns (rare — only if the touch
+        // started inside another active swipe), back off cooperatively.
+        if (!trySwipeClaim(ROW_OWNER_ID)) {
+          ref.current = null;
+          return;
+        }
         ref.current.active = true;
         setSwiping(true);
       } else if (Math.abs(dy) > 8 || (!revealed && dx > 5)) {
@@ -65,7 +77,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
   }, []);
 
   const onTouchEnd = useCallback(() => {
-    if (!ref.current?.active) { ref.current = null; return; }
+    if (!ref.current?.active) { ref.current = null; releaseSwipe(ROW_OWNER_ID); return; }
     ref.current = null;
     setSwiping(false);
     setOffset(prev => {
@@ -74,6 +86,16 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
       revealedRef.current = reveal;
       return reveal ? REVEAL_PX : 0;
     });
+    releaseSwipe(ROW_OWNER_ID);
+  }, []);
+
+  // Touch can be system-cancelled (e.g. iOS edge-back gesture). Without
+  // this, a leaked claim would block every subsequent horizontal swipe
+  // app-wide until a fresh row gesture happened to release.
+  const onTouchCancel = useCallback(() => {
+    ref.current = null;
+    setSwiping(false);
+    releaseSwipe(ROW_OWNER_ID);
   }, []);
 
   const background = TONE_BG[actionTone] || TONE_BG.danger;
@@ -95,7 +117,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
         }}>
         {actionLabel}
       </div>
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchCancel}
         style={{
           transform: `translateX(${offset}px)`,
           transition: swiping ? "none" : "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
