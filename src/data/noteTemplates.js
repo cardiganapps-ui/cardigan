@@ -7,36 +7,26 @@ export const NOTE_TEMPLATES = [
     content: "",
   },
   {
-    id: "soap",
-    name: "Nota SOAP",
-    icon: "clipboard",
-    title: "Nota SOAP",
-    content: `# Subjetivo
-- Lo que el paciente reporta:
+    id: "initial",
+    name: "Evaluación inicial",
+    icon: "user",
+    title: "Evaluación inicial",
+    content: `# Datos del paciente
+- Nombre:
+- Edad:
+- Motivo de consulta:
 
-# Objetivo
-- Observaciones del terapeuta:
+# Historia clínica
+- Antecedentes relevantes:
 
-# Análisis
-- Interpretación y diagnóstico:
+# Evaluación
+- Observaciones iniciales:
 
-# Plan
-- Próximos pasos:
-`,
-  },
-  {
-    id: "dap",
-    name: "Nota DAP",
-    icon: "document",
-    title: "Nota DAP",
-    content: `# Datos
-- Información relevante de la sesión:
-
-# Análisis
-- Evaluación clínica:
-
-# Plan
-- Intervenciones y seguimiento:
+# Plan de tratamiento
+- Frecuencia sugerida:
+- Objetivos terapéuticos:
+- [ ]
+- [ ]
 `,
   },
   {
@@ -60,26 +50,36 @@ export const NOTE_TEMPLATES = [
 `,
   },
   {
-    id: "initial",
-    name: "Evaluación inicial",
-    icon: "user",
-    title: "Evaluación inicial",
-    content: `# Datos del paciente
-- Nombre:
-- Edad:
-- Motivo de consulta:
+    id: "dap",
+    name: "Nota DAP",
+    icon: "document",
+    title: "Nota DAP",
+    content: `# Datos
+- Información relevante de la sesión:
 
-# Historia clínica
-- Antecedentes relevantes:
+# Análisis
+- Evaluación clínica:
 
-# Evaluación
-- Observaciones iniciales:
+# Plan
+- Intervenciones y seguimiento:
+`,
+  },
+  {
+    id: "soap",
+    name: "Nota SOAP",
+    icon: "clipboard",
+    title: "Nota SOAP",
+    content: `# Subjetivo
+- Lo que el paciente reporta:
 
-# Plan de tratamiento
-- Frecuencia sugerida:
-- Objetivos terapéuticos:
-- [ ]
-- [ ]
+# Objetivo
+- Observaciones del terapeuta:
+
+# Análisis
+- Interpretación y diagnóstico:
+
+# Plan
+- Próximos pasos:
 `,
   },
 ];
