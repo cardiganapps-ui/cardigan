@@ -42,7 +42,7 @@ import "./utils/logBuffer";
 import "./styles/index.css";
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signOut, signInWithProvider } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signOut, signInWithProvider, refreshUser } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button so the user doesn't bounce through
@@ -67,7 +67,7 @@ function CardiganApp() {
     return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
   }
 
-  return <AppShell user={user} signOut={signOut} theme={theme} />;
+  return <AppShell user={user} signOut={signOut} refreshUser={refreshUser} theme={theme} />;
 }
 
 export default function Cardigan() {
@@ -188,7 +188,7 @@ function LoadingSkeleton({ screen = "home" }) {
   );
 }
 
-function AppShell({ user, signOut, demo, theme }) {
+function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const { t } = useT();
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
@@ -508,7 +508,7 @@ function AppShell({ user, signOut, demo, theme }) {
     patients: <Patients />,
     finances: <Finances />,
     archivo: <Archivo />,
-    settings: <Settings user={user} signOut={signOut} />,
+    settings: <Settings user={user} signOut={signOut} refreshUser={refreshUser} />,
   };
 
   return (
