@@ -13,7 +13,7 @@ export function Toast({ message, type = "error", duration = 3000, onDismiss, onR
     if (persistent) return;
     const timer = setTimeout(() => {
       setLeaving(true);
-      setTimeout(() => { setVisible(false); onDismiss?.(); }, 500);
+      setTimeout(() => { setVisible(false); onDismiss?.(); }, 180);
     }, duration);
     return () => clearTimeout(timer);
   }, [message, duration, onDismiss, persistent]);
@@ -21,7 +21,7 @@ export function Toast({ message, type = "error", duration = 3000, onDismiss, onR
   if (!visible || !message) return null;
 
   const bg = type === "error" ? "var(--red)" : type === "success" ? "var(--green)" : type === "warning" ? "var(--amber)" : "var(--charcoal)";
-  const dismiss = () => { setLeaving(true); setTimeout(() => { setVisible(false); onDismiss?.(); }, 500); };
+  const dismiss = () => { setLeaving(true); setTimeout(() => { setVisible(false); onDismiss?.(); }, 180); };
 
   // Stacking offset: each subsequent toast is ~58px further down, with
   // a slight scale fade so older entries recede visually rather than
@@ -34,7 +34,7 @@ export function Toast({ message, type = "error", duration = 3000, onDismiss, onR
     <div style={{
       position:"fixed", top, left:12, right:12,
       zIndex:"var(--z-install)", pointerEvents:"auto",
-      animation: leaving ? "toastOut 0.4s ease forwards" : "toastIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)",
+      animation: leaving ? "toastOut 0.18s ease forwards" : "toastIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)",
       opacity,
       transform: `scale(${scale})`,
       transformOrigin: "top center",
