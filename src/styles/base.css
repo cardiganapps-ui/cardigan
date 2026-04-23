@@ -50,8 +50,13 @@
   --text-2xl:     calc(24px * var(--text-scale));  /* page-level numbers */
   --font:        'Nunito Sans', sans-serif;
   --font-d:      'Nunito', sans-serif;
-  --sat: env(safe-area-inset-top, 44px);
-  --sab: env(safe-area-inset-bottom, 34px);
+  /* Safe-area insets. Fallback is 0 so desktop browsers (which resolve
+     env() to 0) behave correctly; real iPhone/iPad values come through
+     env(). Previously these fell back to 44/34 and were then blanket-
+     overridden to 0 at 768+, which stole iPad's actual home-indicator
+     inset and put the FAB underneath the indicator in landscape. */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
   --week-row-h: 48px;
   /* ── Z-index scale ──
      10   banners (demo, read-only)
@@ -301,6 +306,25 @@ button.avatar-sm::before {
 .expediente-desktop-panel {
   left: 0; right: 0;
   border-radius: 24px 24px 0 0;
+}
+
+/* Bottom padding on the scroll container accounts for the iPad home
+   indicator (landscape ~21px, portrait ~34px on Face ID iPads) plus a
+   small breathing buffer, so the last list row never sits on top of
+   the indicator's gesture zone. */
+.expediente-scroll {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+/* Subtle fade when switching tabs so the content change reads as a
+   transition rather than a hard swap. Keyed on `tab` in JSX so React
+   remounts this wrapper each switch and the animation replays. */
+@keyframes expedienteTabContentIn {
+  from { opacity: 0; transform: translateX(3px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.expediente-tab-content {
+  animation: expedienteTabContentIn 0.22s ease-out both;
 }
 
 /* Hide FAB + bottom tabs when expediente is open */

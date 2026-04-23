@@ -4,8 +4,10 @@
 
 /* ── RESPONSIVE: DESKTOP (768px+) ── */
 @media (min-width: 768px) {
-  /* Override safe area insets for desktop (no notch) */
-  :root { --sat: 0px; --sab: 0px; --bottom-tabs-h: 0px; }
+  /* Bottom-tab bar doesn't exist on desktop/iPad (sidebar drawer
+     replaces it), so zero its reserved height. Safe-area insets stay
+     as-is so the iPad home indicator and Face-ID notch are honored. */
+  :root { --bottom-tabs-h: 0px; }
 
   /* iPad/tablet type scale — bumps 12px body to ~12.8px and 14px to ~15px.
      Token-level so every inline style picks it up without edits. */
@@ -341,10 +343,13 @@
     border-right: 1px solid var(--border-lt);
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 14px;
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
   .notes-page--split .notes-detail-col {
     flex: 1; min-width: 0; display: flex; flex-direction: column;
     background: var(--white);
+    padding-right: env(safe-area-inset-right, 0px);
   }
   .notes-detail-empty {
     flex: 1; display: flex; flex-direction: column;
@@ -391,11 +396,14 @@
     border-right: 1px solid var(--border-lt);
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: var(--white);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .patients-split-view .patients-detail-pane {
     flex: 1; min-width: 0; display: flex; flex-direction: column;
     background: var(--white);
     border-radius: 0;
+    padding-right: env(safe-area-inset-right, 0px);
   }
   /* At ≥1024px the expediente overlay must NOT render when it is inline;
      the Patients.jsx branch already skips the portal, but we also reset

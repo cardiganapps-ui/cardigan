@@ -452,10 +452,12 @@ export function PatientExpediente({
           {/* Row 1 — name always gets full width so long names don't get
               truncated by the action icons that used to share this row. */}
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <button onClick={startClose} aria-label={t("back")}
-              style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
-              <IconChevron size={20} />
-            </button>
+            {!inline && (
+              <button onClick={startClose} aria-label={t("back")}
+                style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-lt)", flexShrink:0, transform:"rotate(180deg)" }}>
+                <IconChevron size={20} />
+              </button>
+            )}
             <Avatar initials={patient.initials} color={getClientColor(patient.colorIdx)}
               style={{ width:48, height:48, fontSize:"var(--text-lg)" }} />
             <div style={{ flex:1, minWidth:0 }}>
@@ -471,20 +473,20 @@ export function PatientExpediente({
             {patient.phone && (
               <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
                 onClick={e => e.stopPropagation()}
-                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
-                <IconPhone size={16} />
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                <IconPhone size={18} />
               </a>
             )}
             {patient.email && (
               <a href={emailHref(patient.email)} aria-label={t("settings.email")}
                 onClick={e => e.stopPropagation()}
-                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
-                <IconMail size={16} />
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                <IconMail size={18} />
               </a>
             )}
             <button type="button" onClick={() => openNewNote()} aria-label={t("notes.addNote")}
-              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
-              <IconClipboard size={16} />
+              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
+              <IconClipboard size={18} />
             </button>
             <div style={{ flex:1 }} />
             <button onClick={() => onEdit(patient)}
@@ -538,6 +540,7 @@ export function PatientExpediente({
         onTouchCancel={inline ? undefined : onTabContentTouchCancel}
         style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0 }}>
 
+        <div key={tab} className="expediente-tab-content">
         {tab === "resumen" && (
           <ResumenTab
             patient={patient} upcomingSessions={upcomingSessions}
@@ -581,6 +584,7 @@ export function PatientExpediente({
             renameDocument={renameDocument} tagDocumentSession={tagDocumentSession} deleteDocument={deleteDocument}
           />
         )}
+        </div>
       </div>
       </div>
     </div>
