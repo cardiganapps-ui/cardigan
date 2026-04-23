@@ -208,6 +208,25 @@ button.avatar-sm::before {
   z-index: -1;
 }
 
+/* Inner span used inside button.avatar-sm to host either the
+   initials text or an <img> avatar. Clips the image to the visible
+   28px circle (vs the button's 44px hit area). Non-button
+   .avatar-sm usages don't need this wrapper — they're already 28px. */
+.avatar-sm-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  overflow: hidden;
+  font-family: var(--font-d);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 /* DRAWER OVERLAY */
 .drawer-overlay {
   position: fixed; inset: 0; background: rgba(20,35,40,0.5);

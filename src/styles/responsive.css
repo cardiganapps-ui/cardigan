@@ -83,6 +83,7 @@
   .topbar-right .avatar-sm { background: var(--teal); color: var(--white); }
   .topbar-right button.avatar-sm { background: transparent; }
   .topbar-right button.avatar-sm::before { background: var(--teal); }
+  .topbar-right .avatar-sm-circle { background: var(--teal); color: var(--white); }
   .admin-btn { color: var(--charcoal-xl); }
   /* Dark help button variant is used for the mobile topbar; swap it back
      to the light styling inside the desktop (white) topbar. */

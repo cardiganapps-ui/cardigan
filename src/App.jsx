@@ -579,8 +579,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
                 returns null when the screen's tip array is empty. */}
             <HelpTip tipsKey={`help.${screen}`} />
             <Tooltip label={t("nav.settings")} placement="bottom">
-              <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none", overflow: avatarImageUrl ? "hidden" : undefined }}>
-                <AvatarContent initials={userInitial} imageUrl={avatarImageUrl} />
+              <button type="button" className="avatar-sm" onClick={() => navigate("settings")} aria-label={t("nav.settings")} style={{ cursor:"pointer", border:"none" }}>
+                <span className="avatar-sm-circle">
+                  <AvatarContent initials={userInitial} imageUrl={avatarImageUrl} />
+                </span>
               </button>
             </Tooltip>
           </div>
