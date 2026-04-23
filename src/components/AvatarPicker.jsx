@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { IconX, IconCamera, IconUpload } from "./Icons";
+import { IconX, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useEscape } from "../hooks/useEscape";
@@ -37,7 +37,6 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
   const [dropHover, setDropHover] = useState(false);
   const previewUrlRef = useRef(null);
   useEffect(() => () => {
@@ -219,6 +218,15 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
           </div>
           <div
             className={"av-picker-drop" + (dropHover ? " is-hover" : "")}
+            role="button"
+            tabIndex={0}
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
             onDragLeave={() => setDropHover(false)}
             onDrop={onDrop}
@@ -232,19 +240,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
             <div className="av-picker-drop-sub">
               {t("avatar.dropSub") || "JPG o PNG hasta 10 MB. Se recorta automáticamente en círculo."}
             </div>
-            <div className="av-picker-drop-buttons">
-              <button type="button" className="av-picker-drop-btn" onClick={() => fileInputRef.current?.click()}>
-                <IconUpload size={14} />
-                {t("avatar.chooseFile") || "Elegir archivo"}
-              </button>
-              <button type="button" className="av-picker-drop-btn" onClick={() => cameraInputRef.current?.click()}>
-                <IconCamera size={14} />
-                {t("avatar.takePhoto") || "Cámara"}
-              </button>
-            </div>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }}
-              onChange={(e) => onFile(e.target.files?.[0])} />
-            <input ref={cameraInputRef} type="file" accept="image/*" capture="user" style={{ display: "none" }}
               onChange={(e) => onFile(e.target.files?.[0])} />
           </div>
 

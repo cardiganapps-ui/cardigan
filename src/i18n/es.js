@@ -466,8 +466,6 @@ export default {
     uploadTitle: "O sube tu propia foto",
     dropTitle: "Sube tu propia foto",
     dropSub: "JPG o PNG hasta 10 MB. Se recorta autom\u00e1ticamente en c\u00edrculo.",
-    chooseFile: "Elegir archivo",
-    takePhoto: "C\u00e1mara",
     remove: "Quitar foto",
     noPhoto: "Sin foto",
     uploaded: "Foto actual",
