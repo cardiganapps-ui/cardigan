@@ -474,6 +474,7 @@ export default {
     presetComingSoonSub: "Estamos preparando una colección. Por ahora puedes subir tu propia foto.",
     preset: {
       nube: "Nube",
+      perrito: "Perrito",
     },
     err: {
       tooLarge: "La imagen debe pesar menos de 10 MB.",

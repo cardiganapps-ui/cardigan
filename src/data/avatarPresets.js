@@ -8,7 +8,8 @@
    needed. */
 
 export const AVATAR_PRESETS = [
-  { id: "nube", labelKey: "avatar.preset.nube" },
+  { id: "nube",     labelKey: "avatar.preset.nube" },
+  { id: "perrito",  labelKey: "avatar.preset.perrito" },
 ];
 
 const PRESET_IDS = new Set(AVATAR_PRESETS.map(p => p.id));
