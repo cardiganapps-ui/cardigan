@@ -52,7 +52,7 @@ function notifErrorKey(code) {
   }
 }
 
-export function Settings({ user, signOut, refreshUser }) {
+export function Settings({ user, signOut }) {
   const { t } = useT();
   const { tutorial, navigate, theme, notifications, showToast, upcomingSessions, readOnly } = useCardigan();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
@@ -663,10 +663,7 @@ export function Settings({ user, signOut, refreshUser }) {
           user={user}
           currentAvatar={user?.user_metadata?.avatar || null}
           onClose={() => setActiveSheet(null)}
-          onSaved={() => {
-            refreshUser?.();
-            showToast?.(t("saved") || "Guardado");
-          }}
+          onSaved={() => showToast?.(t("saved") || "Guardado")}
         />
       )}
 

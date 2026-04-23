@@ -42,7 +42,7 @@ import "./utils/logBuffer";
 import "./styles/index.css";
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signOut, signInWithProvider, refreshUser } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signOut, signInWithProvider } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button so the user doesn't bounce through
@@ -508,7 +508,7 @@ function AppShell({ user, signOut, demo, theme }) {
     patients: <Patients />,
     finances: <Finances />,
     archivo: <Archivo />,
-    settings: <Settings user={user} signOut={signOut} refreshUser={refreshUser} />,
+    settings: <Settings user={user} signOut={signOut} />,
   };
 
   return (

@@ -23,22 +23,6 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Force-refresh the React user state from the server. Used after
-  // supabase.auth.updateUser() because supabase-js 2.x doesn't
-  // consistently emit USER_UPDATED through onAuthStateChange when
-  // only user_metadata changes — without this, components bound to
-  // `user` (Settings avatar card, Drawer header) render stale.
-  async function refreshUser() {
-    try {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) return null;
-      if (data?.user) setUser(data.user);
-      return data?.user ?? null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   async function signUp({ email, password, name }) {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -81,5 +65,5 @@ export function useAuth() {
     return {};
   }
 
-  return { user, loading, signUp, signIn, signOut, signInWithProvider, refreshUser };
+  return { user, loading, signUp, signIn, signOut, signInWithProvider };
 }
