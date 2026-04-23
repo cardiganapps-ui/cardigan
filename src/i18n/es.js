@@ -472,6 +472,9 @@ export default {
     uploadedPending: "Foto lista para guardar",
     presetComingSoon: "Avatares próximamente",
     presetComingSoonSub: "Estamos preparando una colección. Por ahora puedes subir tu propia foto.",
+    preset: {
+      cardigan: "Cardigan",
+    },
     err: {
       tooLarge: "La imagen debe pesar menos de 10 MB.",
       notImage: "Selecciona una imagen v\u00e1lida.",

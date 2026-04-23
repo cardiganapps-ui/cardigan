@@ -7,7 +7,9 @@
    handle `{ kind: "preset", value: "<id>" }` — no other wiring
    needed. */
 
-export const AVATAR_PRESETS = [];
+export const AVATAR_PRESETS = [
+  { id: "cardigan", labelKey: "avatar.preset.cardigan" },
+];
 
 const PRESET_IDS = new Set(AVATAR_PRESETS.map(p => p.id));
 
