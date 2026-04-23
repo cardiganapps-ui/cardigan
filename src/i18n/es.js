@@ -475,6 +475,7 @@ export default {
     preset: {
       perrito: "Perrito",
       gatito: "Gatito",
+      plantita: "Plantita",
     },
     err: {
       tooLarge: "La imagen debe pesar menos de 10 MB.",
