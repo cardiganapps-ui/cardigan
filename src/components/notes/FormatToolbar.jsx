@@ -57,12 +57,6 @@ const IconStrike = () => (
     <path d="M15 15c0 2-1.5 3-4 3-2.5 0-4-1.3-4-3"/>
   </svg>
 );
-const IconCode = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="8,7 3,12 8,17"/>
-    <polyline points="16,7 21,12 16,17"/>
-  </svg>
-);
 const IconH1 = () => (
   <svg width="20" height="18" viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 6v12M12 6v12M4 12h8"/>
@@ -78,7 +72,7 @@ const IconH2 = () => (
 const IconH3 = () => (
   <svg width="20" height="18" viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 6v12M12 6v12M4 12h8"/>
-    <path d="M17 9c0-1 1-1.5 2.3-1.5S22 8.2 22 9.5 21 11 19.5 11M17 17c0 1 1 1.5 2.3 1.5s2.7-0.8 2.7-2.2S21 15 19.5 15"/>
+    <text x="15.5" y="18.5" fontSize="13" fontWeight="800" fontFamily="Nunito, sans-serif" fill="currentColor" stroke="none">3</text>
   </svg>
 );
 const IconBullet = () => (
@@ -124,9 +118,6 @@ export function FormatToolbar({ active, onInline, onBlock, disabled }) {
       </Tool>
       <Tool label={t("notes.strike") || "Tachado"} hint={`${MOD_LABEL}⇧X`} active={has("strike")} onClick={() => onInline("strike")} disabled={disabled}>
         <IconStrike />
-      </Tool>
-      <Tool label={t("notes.code") || "Código"} hint={`${MOD_LABEL}E`} active={has("code")} onClick={() => onInline("code")} disabled={disabled}>
-        <IconCode />
       </Tool>
       <Sep />
       <Tool label={t("notes.h1") || "Título 1"} hint={`${MOD_LABEL}1`} active={has("h1")} onClick={() => onBlock("h1")} disabled={disabled}>

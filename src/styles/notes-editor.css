@@ -194,6 +194,21 @@
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
+/* Task lines: the button IS the checkbox UI. Other list blocks swap
+   between ::before marker (off-caret) and raw syntax (on-caret), but
+   task lines render the button always — so if we also show the raw
+   "[ ] " / "[x] " on the focused line the user sees two checkboxes in
+   a row and the text gets pushed out. Keep the block syntax span
+   collapsed on task lines regardless of caret. Use `> .md-syntax` so
+   inline markdown syntax nested inside <strong>/<em>/etc. (which the
+   user DOES want to see while editing) stays visible. */
+.mde-line--task > .md-syntax {
+  font-size: 0;
+  letter-spacing: -0.5em;
+  opacity: 0;
+  pointer-events: none;
+}
 .mde-check:disabled { cursor: default; }
 
 .mde-line--task.is-checked .md-heading,
