@@ -234,28 +234,72 @@ export function PatientExpediente({
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
-    const sessionId = pendingDocSessionId;
-    setPendingDocSessionId(null);
-    if (files.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
+  const processFiles = async (rawFiles, sessionId) => {
+    const files = Array.from(rawFiles || []);
+    if (files.length === 0) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
-    if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
+    if (valid.length === 0) return;
     setUploading(true);
     for (const file of valid) {
       await uploadDocument({ patientId: patient.id, file, sessionId, name: file.name });
     }
     setUploading(false);
+  };
+
+  const handleFileUpload = async (e) => {
+    const sessionId = pendingDocSessionId;
+    setPendingDocSessionId(null);
+    await processFiles(e.target.files, sessionId);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const triggerUpload = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
+
+  // Drag-and-drop upload. Enabled only on the Archivo tab to avoid
+  // accidental uploads while users are browsing sesiones/finanzas.
+  // Tracks whether a Files drag is currently over the container so the
+  // UI can surface a drop-zone hint.
+  const [dragOverFiles, setDragOverFiles] = useState(false);
+  const dragDepthRef = useRef(0);
+  const hasFilePayload = (e) => {
+    const types = e.dataTransfer?.types;
+    if (!types) return false;
+    for (let i = 0; i < types.length; i++) { if (types[i] === "Files") return true; }
+    return false;
+  };
+  const onDragEnterArchivo = (e) => {
+    if (tab !== "archivo" || readOnly) return;
+    if (!hasFilePayload(e)) return;
+    e.preventDefault();
+    dragDepthRef.current += 1;
+    if (!dragOverFiles) setDragOverFiles(true);
+  };
+  const onDragOverArchivo = (e) => {
+    if (tab !== "archivo" || readOnly) return;
+    if (!hasFilePayload(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+  };
+  const onDragLeaveArchivo = (e) => {
+    if (tab !== "archivo" || readOnly) return;
+    if (!hasFilePayload(e)) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDragOverFiles(false);
+  };
+  const onDropArchivo = async (e) => {
+    if (tab !== "archivo" || readOnly) return;
+    if (!hasFilePayload(e)) return;
+    e.preventDefault();
+    dragDepthRef.current = 0;
+    setDragOverFiles(false);
+    await processFiles(e.dataTransfer.files, null);
+  };
 
   const attachDocToSession = useCallback((session) => {
     setPendingDocSessionId(session.id);
@@ -352,6 +396,14 @@ export function PatientExpediente({
   const contentRef = useRef(null);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
+
+  // Reset scroll to the top on every tab switch so the new tab's header
+  // is visible regardless of where the previous tab was scrolled. Without
+  // this, switching from a long Sesiones list into Resumen (much shorter)
+  // leaves the viewport clamped at the bottom of the new content.
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  }, [tab]);
 
   const onDragStart = (e) => {
     dragRef.current = { y: e.touches[0].clientY, active: false };
@@ -533,12 +585,16 @@ export function PatientExpediente({
 
       {/* Content */}
       <div ref={contentRef}
-        className="expediente-scroll"
+        className={`expediente-scroll ${dragOverFiles && tab === "archivo" ? "expediente-scroll--drop" : ""}`}
         onTouchStart={inline ? undefined : (e) => { onContentTouchStart(e); onTabContentTouchStart(e); }}
         onTouchMove={inline ? undefined : (e) => { onDragMove(e); onTabContentTouchMove(e); }}
         onTouchEnd={inline ? undefined : (e) => { onDragEnd(e); onTabContentTouchEnd(e); }}
         onTouchCancel={inline ? undefined : onTabContentTouchCancel}
-        style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0 }}>
+        onDragEnter={onDragEnterArchivo}
+        onDragOver={onDragOverArchivo}
+        onDragLeave={onDragLeaveArchivo}
+        onDrop={onDropArchivo}
+        style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0, position:"relative" }}>
 
         <div key={tab} className="expediente-tab-content">
         {tab === "resumen" && (
@@ -585,6 +641,14 @@ export function PatientExpediente({
           />
         )}
         </div>
+        {dragOverFiles && tab === "archivo" && (
+          <div className="expediente-drop-overlay" aria-hidden>
+            <div className="expediente-drop-overlay-card">
+              <IconUpload size={28} />
+              <div className="expediente-drop-overlay-title">{t("docs.dropHere") || "Soltar para subir"}</div>
+            </div>
+          </div>
+        )}
       </div>
       </div>
     </div>

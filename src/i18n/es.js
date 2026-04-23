@@ -494,6 +494,7 @@ export default {
     upload: "Subir documento",
     uploading: "Subiendo...",
     uploadBtn: "Subir",
+    dropHere: "Soltar para subir",
     selectFiles: "Seleccionar archivos",
     searchPlaceholder: "Buscar por nombre o paciente...",
     general: "General (sin paciente)",

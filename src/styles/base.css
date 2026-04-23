@@ -327,6 +327,43 @@ button.avatar-sm::before {
   animation: expedienteTabContentIn 0.22s ease-out both;
 }
 
+/* Drop-zone state for drag-and-drop file upload on the Archivo tab.
+   The overlay is an absolutely-positioned sticky card inside the
+   scroll container; it stays centered even if the user is scrolled
+   mid-list. pointer-events:none so the drop still fires on the
+   underlying scroll container. */
+.expediente-scroll--drop {
+  background: var(--teal-mist) !important;
+}
+.expediente-drop-overlay {
+  position: sticky;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+  margin-top: -80px;
+}
+.expediente-drop-overlay-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 28px;
+  background: var(--white);
+  color: var(--teal-dark);
+  border: 2px dashed var(--teal);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.expediente-drop-overlay-title {
+  font-family: var(--font-d);
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--charcoal);
+}
+
 /* Hide FAB + bottom tabs when expediente is open */
 .expediente-open ~ .fab,
 .expediente-open ~ .fab-overlay,

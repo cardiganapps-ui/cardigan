@@ -39,6 +39,10 @@
     transform: none !important; transition: none !important;
     animation: none !important;
   }
+  /* Right-edge slide-out shadow is for the overlay drawer on mobile;
+     in persistent mode it reads as a stray drop-shadow next to the
+     main content, so suppress it. */
+  .drawer-panel::after { display: none !important; }
   .drawer-header { padding: 20px 16px 16px; }
 
   /* Main content area: no extra height constraint — flex:1 from base is enough */
@@ -223,7 +227,7 @@
     width: 580px !important;
     max-width: 50vw !important;
     border-radius: var(--radius-lg) 0 0 var(--radius-lg) !important;
-    animation: slideInRight 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    animation: slideInRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   }
   .expediente-desktop-panel .expediente-drag-handle { display: none; }
 
@@ -496,6 +500,13 @@
     font-weight: 700;
     box-shadow: var(--shadow-sm);
   }
+  /* Focus ring sits inside the pill so it doesn't clip against the
+     rail's right border. outline-offset: -2px keeps it readable on
+     both active (white bg) and inactive (cream bg) states. */
+  .expediente-inline-tab:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: -2px;
+  }
 }
 @media (hover: hover) {
   .expediente-inline-tab:not(.expediente-inline-tab--active):hover {
@@ -575,6 +586,12 @@
   .week-time-row, .week-cell { min-height: 60px; }
   .week-event { font-size: 11px; padding: 4px 8px; }
   .fin-stats-grid { gap: 14px; }
+}
+
+/* iPad Pro 12.9" landscape (1366px) had sheets capped at 880px which
+   left large gutters. Give them another ~100px of room at wide tiers. */
+@media (min-width: 1280px) {
+  .sheet-panel { max-width: clamp(720px, 62vw, 980px); }
 }
 
 /* ── HOME DASHBOARD (≥1024px) ──
