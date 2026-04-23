@@ -109,13 +109,20 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
         return;
       }
 
-      const { error: updErr } = await supabase.auth.updateUser({
+      const { data: updData, error: updErr } = await supabase.auth.updateUser({
         data: { avatar: nextAvatar },
       });
       if (updErr) throw Object.assign(new Error(updErr.message || "update_failed"), { stage: "update" });
 
+      // Force the session to reload so onAuthStateChange fires and
+      // React state picks up the new user_metadata. supabase-js 2.x
+      // doesn't consistently emit USER_UPDATED when only metadata
+      // changes — refreshSession reliably delivers TOKEN_REFRESHED
+      // with the updated user embedded.
+      try { await supabase.auth.refreshSession(); } catch (_) { /* non-fatal */ }
+
       haptic.success();
-      onSaved?.(nextAvatar);
+      onSaved?.(nextAvatar, updData?.user || null);
       onClose();
     } catch (err) {
       console.error("[avatar] save failed", {
