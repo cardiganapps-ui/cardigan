@@ -473,7 +473,7 @@ export default {
     presetComingSoon: "Avatares próximamente",
     presetComingSoonSub: "Estamos preparando una colección. Por ahora puedes subir tu propia foto.",
     preset: {
-      cardigan: "Cardigan",
+      nube: "Nube",
     },
     err: {
       tooLarge: "La imagen debe pesar menos de 10 MB.",
