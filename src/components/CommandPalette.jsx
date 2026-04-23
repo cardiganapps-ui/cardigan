@@ -130,24 +130,37 @@ export default function CommandPalette({ open, onClose }) {
         </div>
         <div ref={listRef} className="cmdp-list" role="listbox">
           {!query.trim() && (
-            <div className="cmdp-tips" aria-hidden>
-              <span className="cmdp-tip">
-                <kbd className="cmdp-kbd">↑</kbd><kbd className="cmdp-kbd">↓</kbd>
-                <span>Navegar</span>
-              </span>
-              <span className="cmdp-tip">
-                <kbd className="cmdp-kbd">↵</kbd>
-                <span>Abrir</span>
-              </span>
-              <span className="cmdp-tip">
-                <kbd className="cmdp-kbd">esc</kbd>
-                <span>Cerrar</span>
-              </span>
-              <span className="cmdp-tip">
-                <kbd className="cmdp-kbd">⌘K</kbd>
-                <span>Abrir desde cualquier pantalla</span>
-              </span>
-            </div>
+            <>
+              <div className="cmdp-tips" aria-hidden>
+                <span className="cmdp-tip">
+                  <kbd className="cmdp-kbd">↑</kbd><kbd className="cmdp-kbd">↓</kbd>
+                  <span>Navegar</span>
+                </span>
+                <span className="cmdp-tip">
+                  <kbd className="cmdp-kbd">↵</kbd>
+                  <span>Abrir</span>
+                </span>
+                <span className="cmdp-tip">
+                  <kbd className="cmdp-kbd">esc</kbd>
+                  <span>Cerrar</span>
+                </span>
+              </div>
+              <div className="cmdp-tips cmdp-tips--shortcuts" aria-hidden>
+                <span className="cmdp-tip">
+                  <kbd className="cmdp-kbd">⌘K</kbd><kbd className="cmdp-kbd">/</kbd>
+                  <span>Abrir este buscador</span>
+                </span>
+                <span className="cmdp-tip">
+                  <kbd className="cmdp-kbd">⌘N</kbd>
+                  <span>Nuevo paciente</span>
+                </span>
+                <span className="cmdp-tip">
+                  <kbd className="cmdp-kbd">g</kbd>
+                  <kbd className="cmdp-kbd">h</kbd><kbd className="cmdp-kbd">a</kbd><kbd className="cmdp-kbd">p</kbd><kbd className="cmdp-kbd">f</kbd><kbd className="cmdp-kbd">n</kbd>
+                  <span>Ir a pantalla</span>
+                </span>
+              </div>
+            </>
           )}
           {filtered.length === 0 ? (
             <div className="cmdp-empty">{t("cmdp.empty") || "Sin resultados"}</div>

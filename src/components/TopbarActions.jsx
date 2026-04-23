@@ -39,6 +39,7 @@ export default function TopbarActions({ onOpenPalette }) {
           className="topbar-search-btn"
           onClick={onOpenPalette}
           aria-label={t("cmdp.open") || "Buscar / comandos"}
+          title={isMac ? "\u2318K o /" : "Ctrl+K o /"}
         >
           <IconSearch size={14} />
           <span className="topbar-search-hint">{t("cmdp.placeholder") || "Buscar\u2026"}</span>
