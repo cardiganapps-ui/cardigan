@@ -3,15 +3,20 @@ import { supabase } from "../supabaseClient";
 import { resolveAvatar } from "../utils/avatarMeta";
 
 /* ── Resolve user_metadata.avatar into render props ─────────────────
-   Uploaded avatars live in a private R2 bucket, so this hook asks
-   the existing /api/document-url serverless function for a presigned
-   GET URL. URLs are cached module-level for the life of the tab so
-   the drawer / chrome / settings card don't each issue separate
-   presign requests for the same image.
+   Two shapes the hook returns an imageUrl for:
 
-   Presigned URLs are valid 1 hour — longer than a typical session.
-   If one expires mid-session, <Avatar>'s onError silently falls back
-   to initials; the next mount re-fetches. */
+     preset   — derived synchronously from the avatar id, served as
+                a static SVG out of /avatars/. No network, no state.
+     uploaded — lives in a private R2 bucket; we ask /api/document-url
+                for a presigned GET URL and cache module-level so the
+                drawer / chrome / settings card share one lookup.
+
+   Presets compute synchronously and bypass React state entirely so a
+   user saving a preset sees every avatar surface (Drawer header,
+   top-right chrome, Settings card) update in the same render. The
+   earlier useState+useEffect variant occasionally left chrome
+   surfaces stuck on initials because the effect didn't re-run under
+   some render timing. */
 
 const urlCache = new Map();
 
@@ -37,40 +42,34 @@ export function invalidateAvatarUrl(path) {
 
 export function useAvatarUrl(avatar) {
   const resolved = resolveAvatar(avatar);
-  // Presets resolve synchronously to a static public path; uploaded
-  // avatars need an async presigned URL from R2.
-  const initialUrl =
-    resolved.kind === "preset" ? resolved.url :
-    resolved.kind === "uploaded" ? urlCache.get(resolved.path) || null :
-    null;
-  const [imageUrl, setImageUrl] = useState(initialUrl);
+  const uploadedPath = resolved.kind === "uploaded" ? resolved.path : null;
+  const [uploadedUrl, setUploadedUrl] = useState(() =>
+    uploadedPath ? urlCache.get(uploadedPath) || null : null
+  );
   const lastPathRef = useRef(null);
 
-  const uploadedPath = resolved.kind === "uploaded" ? resolved.path : null;
-  const presetAssetUrl = resolved.kind === "preset" ? resolved.url : null;
-
   useEffect(() => {
-    if (resolved.kind === "preset") {
-      if (imageUrl !== resolved.url) setImageUrl(resolved.url);
+    if (!uploadedPath) {
+      if (uploadedUrl !== null) setUploadedUrl(null);
       lastPathRef.current = null;
       return;
     }
-    if (resolved.kind !== "uploaded") {
-      if (imageUrl !== null) setImageUrl(null);
-      lastPathRef.current = null;
-      return;
-    }
-    if (lastPathRef.current === resolved.path) return;
-    lastPathRef.current = resolved.path;
-    const cached = urlCache.get(resolved.path);
-    if (cached) { setImageUrl(cached); return; }
+    if (lastPathRef.current === uploadedPath) return;
+    lastPathRef.current = uploadedPath;
+    const cached = urlCache.get(uploadedPath);
+    if (cached) { setUploadedUrl(cached); return; }
     let active = true;
-    fetchSignedUrl(resolved.path).then(url => {
-      if (active) setImageUrl(url);
+    fetchSignedUrl(uploadedPath).then(url => {
+      if (active) setUploadedUrl(url);
     });
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolved.kind, uploadedPath, presetAssetUrl]);
+  }, [uploadedPath]);
+
+  const imageUrl =
+    resolved.kind === "preset"   ? resolved.url :
+    resolved.kind === "uploaded" ? uploadedUrl :
+    null;
 
   return { imageUrl };
 }
