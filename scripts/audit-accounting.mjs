@@ -19,11 +19,48 @@
      • Global totals and anomaly summary
 
    Formula (canonical, see CLAUDE.md Prime Directive):
-     consumed  = Σ(rate fallback patient.rate)
-                 over sessions where status ∈ {completed, charged}
+     consumed  = Σ(rate fallback patient.rate) over sessions where:
+                   • status = completed, OR
+                   • status = charged, OR
+                   • status = scheduled AND (date+time+1h) ≤ now
      amountDue = max(0, consumed − patient.paid)
      credit    = max(0, patient.paid − consumed)
 */
+
+const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+// Mirror parseShortDate + sessionCountsTowardBalance from src/utils so
+// the audit tool is a faithful off-DB double-check of the live formula.
+function parseSessionEnd(dateStr, timeStr, now) {
+  if (!dateStr) return null;
+  const parts = dateStr.split(/[\s-]+/);
+  const day = parseInt(parts[0]);
+  const mIdx = SHORT_MONTHS.indexOf(parts[1]);
+  if (!day || mIdx < 0) return null;
+  // Pick the closest year to `now` — matches inferYear() in utils/dates.
+  const refYear = now.getFullYear();
+  let best = refYear, bestDiff = Infinity;
+  for (const y of [refYear - 1, refYear, refYear + 1]) {
+    const diff = Math.abs(new Date(y, mIdx, day) - now);
+    if (diff < bestDiff) { bestDiff = diff; best = y; }
+  }
+  const d = new Date(best, mIdx, day);
+  if (timeStr) {
+    const [h, m] = timeStr.split(":");
+    d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+  }
+  d.setTime(d.getTime() + 60 * 60 * 1000);
+  return d;
+}
+
+function sessionCountsTowardBalance(s, now) {
+  if (s.status === "completed" || s.status === "charged") return true;
+  if (s.status === "scheduled") {
+    const end = parseSessionEnd(s.date, s.time, now);
+    return end != null && now >= end;
+  }
+  return false;
+}
 
 const PAT = process.env.SUPABASE_PAT;
 const REF = process.env.SUPABASE_PROJECT_REF
@@ -120,7 +157,7 @@ async function main() {
     console.log("");
     console.log(
       pad("Patient", 24) + pad("rate", 7) + pad("paid", 9) +
-      pad("compl+chrg", 12) + pad("consumed", 11) +
+      pad("cp+ch+ps", 12) + pad("consumed", 11) +
       pad("amountDue", 12) + pad("credit", 10) +
       pad("billed", 9) + "flags"
     );
@@ -128,16 +165,19 @@ async function main() {
 
     let uOwedTotal = 0, uCreditTotal = 0;
 
+    const now = new Date();
     for (const p of plist) {
       const rate = p.rate || 0;
       const psess = sessByPatient.get(p.id) || [];
       const ppays = payByPatient.get(p.id) || [];
 
-      let nCompleted = 0, nCharged = 0;
+      let nCompleted = 0, nCharged = 0, nPastSched = 0;
       let consumed = 0;
       for (const s of psess) {
-        if (s.status !== "completed" && s.status !== "charged") continue;
-        if (s.status === "completed") nCompleted++; else nCharged++;
+        if (!sessionCountsTowardBalance(s, now)) continue;
+        if (s.status === "completed") nCompleted++;
+        else if (s.status === "charged") nCharged++;
+        else nPastSched++;  // scheduled & past
         consumed += (s.rate != null ? s.rate : rate);
       }
       const paidSum = ppays.reduce((a, b) => a + (b.amount || 0), 0);
@@ -156,7 +196,7 @@ async function main() {
 
       console.log(
         pad(p.name, 24) + pad(fmt(rate), 7) + pad(fmt(p.paid), 9) +
-        pad(`${nCompleted}+${nCharged}`, 12) + pad(fmt(consumed), 11) +
+        pad(`${nCompleted}+${nCharged}+${nPastSched}`, 12) + pad(fmt(consumed), 11) +
         pad(fmt(amountDue), 12) + pad(fmt(credit), 10) +
         pad(fmt(p.billed), 9) + flags
       );
