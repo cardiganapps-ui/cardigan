@@ -238,17 +238,42 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
     useCallback(() => setSelectedDate(d => addDays(d, 1)), [setSelectedDate]),
     useCallback(() => setSelectedDate(d => addDays(d, -1)), [setSelectedDate])
   );
+  // Separate swipe for the week strip: ±7 days so horizontal drags on
+  // the day-of-week row jump a whole week instead of a single day.
+  const weekSwipe = useSwipe(
+    useCallback(() => setSelectedDate(d => addDays(d, 7)), [setSelectedDate]),
+    useCallback(() => setSelectedDate(d => addDays(d, -7)), [setSelectedDate])
+  );
   const prevDay = addDays(selectedDate, -1);
   const nextDay = addDays(selectedDate, 1);
   const shared = { onSelectSession, upcomingSessions, filterPatientName };
 
   const weekDays = getWeekDays(selectedDate);
+  const prevWeekDays = getWeekDays(addDays(selectedDate, -7));
+  const nextWeekDays = getWeekDays(addDays(selectedDate, 7));
   const monday = weekDays[0];
   const sunday = weekDays[6];
   const weekLabel = monday.getMonth() === sunday.getMonth()
     ? `${monday.getDate()}–${sunday.getDate()} ${strings.monthsShort[monday.getMonth()]}`
     : `${formatShortDate(monday)} – ${formatShortDate(sunday)}`;
   const isCurrent = isSameDay(selectedDate, TODAY);
+
+  const renderCalStrip = (days) => (
+    <div className="cal-strip">
+      {days.map((d,i) => {
+        const ds = formatShortDate(d);
+        const isActive = isSameDay(d, selectedDate);
+        const isToday = isSameDay(d, TODAY);
+        const hasSess = sessionDateSet.has(ds);
+        return (
+          <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} role="button" tabIndex={0} onClick={() => setSelectedDate(d)}>
+            <span className="cal-day-name">{DOW[i]}</span>
+            <span className="cal-day-num">{d.getDate()}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <>
@@ -259,21 +284,11 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
         </HeaderLabel>
         <button className="month-nav-btn" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>›</button>
       </div>
-      {/* Static week strip — does NOT swipe with the day list */}
-      <div style={{ paddingBottom:8 }}>
-        <div className="cal-strip">
-          {weekDays.map((d,i) => {
-            const ds = formatShortDate(d);
-            const isActive = isSameDay(d, selectedDate);
-            const isToday = isSameDay(d, TODAY);
-            const hasSess = sessionDateSet.has(ds);
-            return (
-              <div key={i} className={`cal-day ${isActive?"active":""} ${hasSess?"has-sessions":""} ${isToday&&!isActive?"today":""}`} role="button" tabIndex={0} onClick={() => setSelectedDate(d)}>
-                <span className="cal-day-name">{DOW[i]}</span>
-                <span className="cal-day-num">{d.getDate()}</span>
-              </div>
-            );
-          })}
+      <div {...weekSwipe.containerProps} style={{ ...weekSwipe.containerProps.style, paddingBottom: 8 }}>
+        <div style={weekSwipe.stripStyle}>
+          <div style={weekSwipe.panelStyle}>{renderCalStrip(prevWeekDays)}</div>
+          <div style={weekSwipe.panelStyle}>{renderCalStrip(weekDays)}</div>
+          <div style={weekSwipe.panelStyle}>{renderCalStrip(nextWeekDays)}</div>
         </div>
       </div>
       <div {...swipe.containerProps}>
