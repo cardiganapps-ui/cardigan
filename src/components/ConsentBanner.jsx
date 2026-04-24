@@ -32,7 +32,7 @@ export default function ConsentBanner({ user, onAccepted }) {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error("Sesión inválida");
-      const res = await fetch("/api/privacy?action=consent", {
+      const res = await fetch("/api/record-consent", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,

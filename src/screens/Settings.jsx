@@ -278,7 +278,7 @@ export function Settings({ user, signOut, refreshUser }) {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { showToast(t("settings.privacyExportError"), "error"); return; }
-      const res = await fetch("/api/privacy?action=export", {
+      const res = await fetch("/api/export-user-data", {
         headers: { "Authorization": `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -311,7 +311,7 @@ export function Settings({ user, signOut, refreshUser }) {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { setDeleteError(t("settings.privacyDeleteError")); return; }
-      const res = await fetch("/api/privacy?action=delete", {
+      const res = await fetch("/api/delete-my-account", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,

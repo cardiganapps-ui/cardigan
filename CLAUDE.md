@@ -159,11 +159,10 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 ### Privacy & LFPDPPP compliance
 - **Policy version** lives in `src/data/privacy.js::POLICY_VERSION`. When the policy body changes materially, bump the version string; users whose latest accepted version no longer matches are re-prompted on next login via `components/ConsentBanner.jsx`.
 - **Consent storage** is both local (`localStorage['cardigan.consent.v']`) for UX and server-side (`public.user_consents`) for audit. The consent banner writes both.
-- **ARCO flows** (Acceso, Rectificación, Cancelación, Oposición) are wired through `/api/privacy?action=…`:
-  - `?action=consent` (POST) — stamps a `user_consents` row.
-  - `?action=export` (GET) — returns a JSON attachment with all user-owned data and 1-hour presigned document URLs. Rate-limited to 1/hour via `export_audit`.
-  - `?action=delete` (POST) — cascade-deletes the user (via `api/_admin.js::deleteUserCascade`, shared with `admin-delete-user.js` so both flows can't drift). Requires `confirmation: "ELIMINAR"` in the body.
-  Routes are consolidated in a single Vercel function to stay under the Hobby 12-function limit.
+- **ARCO flows** (Acceso, Rectificación, Cancelación, Oposición) are wired through three endpoints:
+  - `POST /api/record-consent` — stamps a `user_consents` row.
+  - `GET /api/export-user-data` — returns a JSON attachment with all user-owned data and 1-hour presigned document URLs. Rate-limited to 1/hour via `export_audit`.
+  - `POST /api/delete-my-account` — cascade-deletes the user (via `api/_admin.js::deleteUserCascade`, shared with `admin-delete-user.js` so both flows can't drift). Requires `confirmation: "ELIMINAR"` in the body.
 - **ARCO contact** is `privacy@cardigan.mx`. Update both the policy body and any external-facing copy if this changes.
 - **Legal review before marketing**: the policy text shipped is a first draft. Get a Mexican data-privacy lawyer to review before claiming LFPDPPP compliance externally.
 
