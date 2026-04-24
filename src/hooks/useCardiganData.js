@@ -15,6 +15,7 @@ import { createDocumentActions } from "./useDocuments";
 import { recalcPatientCounters } from "../utils/patients";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows } from "../utils/recurrence";
+import { enrichPatientsWithBalance } from "../utils/accounting";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -306,53 +307,16 @@ export function useCardiganData(user, viewAsUserId) {
     });
   }, [upcomingSessions]);
 
-  const enrichedPatients = useMemo(() => {
-    // amountDue is derived from the actual session rows (via
-    // enrichedSessions, which auto-completes past scheduled sessions)
-    // rather than the denormalized patient.billed counter. This makes the
-    // balance self-healing: any historical drift in patient.billed from
-    // past accounting bugs is ignored and the visible number matches the
-    // sum of real consumed sessions minus recorded payments.
-    const now = new Date();
-    const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
-    const consumedByPatient = new Map();
-    for (const s of enrichedSessions) {
-      if (!s.patient_id) continue;
-      // A session counts toward billed once it's been "consumed":
-      // completed (real or auto) or cancelled-with-charge. Scheduled
-      // future sessions and no-charge cancellations contribute nothing.
-      if (s.status !== SESSION_STATUS.COMPLETED && s.status !== SESSION_STATUS.CHARGED) continue;
-      // Future-dated completed/charged sessions don't count yet — a
-      // cancel-with-charge on a session weeks out, or a future session
-      // marked completed ahead of time, would otherwise spike amountDue
-      // for an event that hasn't happened. Auto-completed past scheduled
-      // sessions always pass this check (they auto-complete *because*
-      // their date is past).
-      const d = parseShortDate(s.date);
-      if (s.time) {
-        const [h, m] = s.time.split(":");
-        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
-      }
-      if (d > now) continue;
-      const rate = s.rate != null ? s.rate : (rateById.get(s.patient_id) || 0);
-      consumedByPatient.set(s.patient_id, (consumedByPatient.get(s.patient_id) || 0) + rate);
-    }
-    return patients.map(p => {
-      const consumed = consumedByPatient.get(p.id) || 0;
-      const paid = p.paid || 0;
-      const delta = consumed - paid;
-      // Mutually exclusive: amountDue > 0 means the patient owes money,
-      // credit > 0 means they've prepaid beyond their consumed sessions.
-      // UI surfaces amountDue in red and credit in green (as "saldo a
-      // favor") wherever the old code showed $0 for at-corriente
-      // patients — that hid the fact that prepayers had paid ahead.
-      return {
-        ...p,
-        amountDue: Math.max(0, delta),
-        credit:    Math.max(0, -delta),
-      };
-    });
-  }, [patients, enrichedSessions]);
+  // amountDue / credit follow the canonical formula in CLAUDE.md — and
+  // CRITICALLY iterate the raw DB sessions (upcomingSessions), not the
+  // display-enriched ones. The auto-complete in enrichedSessions is a UI
+  // affordance; feeding it into accounting would make every past
+  // un-maintained scheduled session silently count as "consumed" and
+  // inflate balances by months of phantom activity.
+  const enrichedPatients = useMemo(
+    () => enrichPatientsWithBalance(patients, upcomingSessions),
+    [patients, upcomingSessions]
+  );
 
   const tutorReminders = useMemo(() =>
     getTutorReminders(enrichedPatients, enrichedSessions),

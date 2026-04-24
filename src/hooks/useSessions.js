@@ -190,15 +190,28 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !schedules?.length || !startDate) return false;
 
+    // Skip slots this patient already has — prevents dupes when a user
+    // runs "generar sesiones" on a patient that already has some. Dedup
+    // by (date, time) to mirror uniq_sessions_patient_date_time.
+    const existingSlots = new Set(
+      upcomingSessions
+        .filter(s => s.patient_id === patientId)
+        .map(s => `${s.date}|${s.time}`)
+    );
     const allRows = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
-      getRecurringDates(s.day, startDate, endDate).forEach(d =>
+      getRecurringDates(s.day, startDate, endDate).forEach(d => {
+        const ds = formatShortDate(d);
+        const slot = `${ds}|${s.time}`;
+        if (existingSlots.has(slot)) return;
         allRows.push({ user_id: userId, patient_id: patient.id, patient: patient.name,
           initials: patient.initials, time: s.time, day: s.day,
-          date: formatShortDate(d), duration: dur, rate: patient.rate,
+          date: ds, duration: dur, rate: patient.rate,
           modality: s.modality || "presencial",
-          color_idx: patient.colorIdx || 0 }));
+          color_idx: patient.colorIdx || 0 });
+        existingSlots.add(slot);
+      });
     }
     if (allRows.length === 0) return false;
 
@@ -261,25 +274,30 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     // Exclude the rows we just deleted — the local `upcomingSessions` still
     // references them (setState hasn't flushed) and including their dates
-    // would skip regenerating the same dates at the new rate.
+    // would skip regenerating the same slots at the new rate. Dedup key
+    // is (date, time), not date alone, so two schedules on the same day
+    // at different times are both generated and a cancelled slot at one
+    // time doesn't block a new slot at a different time. Mirrors
+    // uniq_sessions_patient_date_time in the DB.
     const deletedIds = new Set(toDelete.map(s => s.id));
-    const existingDates = new Set(
+    const existingSlots = new Set(
       upcomingSessions
         .filter(s => s.patient_id === patientId && !deletedIds.has(s.id))
-        .map(s => s.date)
+        .map(s => `${s.date}|${s.time}`)
     );
     const allRows = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
       getRecurringDates(s.day, effectiveDate, endDate).forEach(d => {
         const ds = formatShortDate(d);
-        if (!existingDates.has(ds)) {
+        const slot = `${ds}|${s.time}`;
+        if (!existingSlots.has(slot)) {
           allRows.push({ user_id: userId, patient_id: patientId, patient: updated.name,
             initials: updated.initials, time: s.time, day: s.day,
             date: ds, duration: dur, rate: newRate,
             modality: s.modality || "presencial",
             color_idx: updated.color_idx || 0 });
-          existingDates.add(ds);
+          existingSlots.add(slot);
         }
       });
     }

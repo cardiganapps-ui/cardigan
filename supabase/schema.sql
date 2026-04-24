@@ -133,6 +133,12 @@ create table if not exists sent_reminders (
 create index if not exists idx_patients_user_id on patients(user_id);
 create index if not exists idx_sessions_user_id on sessions(user_id);
 create index if not exists idx_sessions_patient_id on sessions(patient_id);
+-- One session per (patient, date, time). DB-level guard against dupes;
+-- client-side dedup alone has proven unreliable (stale state across tabs,
+-- date-only comparisons, regen paths re-inserting cancelled slots).
+-- Partial on patient_id NOT NULL because the column is nullable.
+create unique index if not exists uniq_sessions_patient_date_time
+  on sessions (patient_id, date, time) where patient_id is not null;
 create index if not exists idx_payments_user_id on payments(user_id);
 create index if not exists idx_payments_patient_id on payments(patient_id);
 create index if not exists idx_notes_user_id on notes(user_id);

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { generateDemoData } from "../data/demoData";
 import { parseShortDate } from "../utils/dates";
 import { getTutorReminders } from "../utils/sessions";
+import { enrichPatientsWithBalance } from "../utils/accounting";
 
 const noop = async () => false;
 const noopNote = async () => null;
@@ -25,37 +26,13 @@ export function useDemoData() {
     });
   }, [data.sessions]);
 
-  // Enrich patients with amountDue — derived from session rows so the
-  // visible balance always matches consumed sessions minus payments,
-  // mirroring useCardiganData.
-  const enrichedPatients = useMemo(() => {
-    const now = new Date();
-    const consumedByPatient = new Map();
-    for (const s of enrichedSessions) {
-      if (!s.patient_id) continue;
-      if (s.status !== "completed" && s.status !== "charged") continue;
-      // Skip future-dated completed/charged sessions — they inflate
-      // amountDue for events that haven't happened yet. See the matching
-      // guard in useCardiganData.js::enrichedPatients.
-      const d = parseShortDate(s.date);
-      if (s.time) {
-        const [h, m] = s.time.split(":");
-        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
-      }
-      if (d > now) continue;
-      const rate = s.rate != null ? s.rate : 0;
-      consumedByPatient.set(s.patient_id, (consumedByPatient.get(s.patient_id) || 0) + rate);
-    }
-    return data.patients.map(p => {
-      const consumed = consumedByPatient.get(p.id) || 0;
-      const delta = consumed - (p.paid || 0);
-      return {
-        ...p,
-        amountDue: Math.max(0, delta),
-        credit:    Math.max(0, -delta),
-      };
-    });
-  }, [data.patients, enrichedSessions]);
+  // Mirror useCardiganData: iterate raw DB sessions (data.sessions), NOT
+  // the enrichedSessions memo. Auto-completed display state must not
+  // influence accounting — see CLAUDE.md Prime Directive.
+  const enrichedPatients = useMemo(
+    () => enrichPatientsWithBalance(data.patients, data.sessions),
+    [data.patients, data.sessions]
+  );
 
   const tutorReminders = useMemo(() =>
     getTutorReminders(enrichedPatients, enrichedSessions),

@@ -78,7 +78,11 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
     modality: s.modality || "presencial",
   }));
 
-  const existingDates = new Set(allPSess.map(s => s.date));
+  // Dedup key is (date, time) — not date alone. A patient can have two
+  // sessions on the same day at different times, and a cancelled slot at
+  // 10:00 must not block a new 14:00 slot on the same date. Mirrors the
+  // DB unique index uniq_sessions_patient_date_time.
+  const existingSlots = new Set(allPSess.map(s => `${s.date}|${s.time}`));
 
   let latest = null;
   scheduledRegular.forEach(s => {
@@ -100,7 +104,8 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   for (const sched of schedMap.values()) {
     getRecurringDates(sched.day, startISO, extendEnd).forEach(d => {
       const ds = formatShortDate(d);
-      if (existingDates.has(ds)) return;
+      const slot = `${ds}|${sched.time}`;
+      if (existingSlots.has(slot)) return;
       // Belt-and-suspenders: even though startISO is clamped to today,
       // we re-check each generated row before pushing. If anything
       // upstream regresses (timezone bug, off-by-one, etc.), we'd
@@ -118,7 +123,7 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
         modality: sched.modality,
         color_idx: patient.color_idx || 0,
       });
-      existingDates.add(ds);
+      existingSlots.add(slot);
     });
   }
   return rows;

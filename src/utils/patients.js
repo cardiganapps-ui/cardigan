@@ -2,11 +2,20 @@ import { supabase } from "../supabaseClient";
 import { SESSION_STATUS } from "../data/constants";
 
 /**
- * Recompute a patient's denormalized counters (sessions, billed, paid) from
- * the actual sessions and payments in the database. This is the source-of-truth
- * fallback when an optimistic counter update fails.
+ * Recompute a patient's denormalized counters (sessions, billed, paid)
+ * from the actual sessions and payments in the database. This is the
+ * source-of-truth fallback when an optimistic counter update fails.
  *
- * Returns the corrected { sessions, billed, paid } and persists them to the DB.
+ * Invariants (see CLAUDE.md Prime Directive):
+ *   sessions = total rows for this patient (includes cancelled)
+ *   billed   = Σ rate over sessions where status ∈ {completed, charged}
+ *              — matches the canonical amountDue formula. Older revisions
+ *              counted every non-cancelled session here, which inflated
+ *              billed by months of un-maintained SCHEDULED rows and
+ *              disagreed with the live amountDue calc.
+ *   paid     = Σ amount over all payment rows for this patient
+ *
+ * Returns the corrected { sessions, billed, paid } and persists them.
  * On failure returns null (caller should surface the error).
  */
 export async function recalcPatientCounters(patientId) {
@@ -16,15 +25,11 @@ export async function recalcPatientCounters(patientId) {
   ]);
   if (sErr || pErr) return null;
 
-  // sessions = total rows in DB (matches live counter semantics: +1 on
-  // create, -1 on delete, untouched on status change). billed = sum of
-  // rates for non-cancelled sessions only (cancelled without charge is
-  // removed from billed at cancel time).
   let sessions = 0;
   let billed = 0;
   for (const s of sessRows || []) {
     sessions++;
-    if (s.status !== SESSION_STATUS.CANCELLED) {
+    if (s.status === SESSION_STATUS.COMPLETED || s.status === SESSION_STATUS.CHARGED) {
       billed += s.rate || 0;
     }
   }

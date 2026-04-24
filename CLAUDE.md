@@ -2,6 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# ⚠️ PRIME DIRECTIVE — FINANCIAL DATA INTEGRITY
+
+**Maintaining the integrity of users' financial data is the #1 priority of this codebase.** Cardigan's viability as a business rests on therapists trusting the numbers they see. Any change that touches sessions, payments, patient counters, or accounting derivations must be reasoned through carefully and tested before landing.
+
+Concrete rules — all enforced above every other consideration:
+
+1. **Never duplicate sessions.** Any code path that inserts into `sessions` must be idempotent against existing rows for the same `(patient_id, date, time)`. The DB has a partial unique index enforcing this (`uniq_sessions_patient_date_time` in `supabase/schema.sql`); keep it in sync with any schema changes and handle the `23505` unique-violation error path cleanly (skip / merge, never crash).
+2. **Never silently mark sessions completed.** The "auto-complete past scheduled → completed" behavior is **display-only**. It MUST NOT influence `amountDue`, `patient.billed`, or any other persisted accounting number. If you iterate sessions for money math, iterate `upcomingSessions` (raw DB state), not `enrichedSessions`.
+3. **The canonical amountDue formula is fixed and must not drift.**
+   ```
+   amountDue = Σ(rate) over sessions where status ∈ {completed, charged}  −  paymentsReceived
+   ```
+   - `rate` is per-session (`session.rate`, falling back to `patient.rate`) — preserves historical accuracy across rate changes.
+   - `paymentsReceived` is the sum of every payment row for that patient (or the `patient.paid` counter, which must stay in sync with that sum).
+   - **No** `SCHEDULED` sessions count. **No** auto-completed past sessions count. **No** `CANCELLED` (without-charge) sessions count.
+   - If you add a new session status to `SESSION_STATUS`, explicitly decide whether it contributes and document it in the formula block above.
+4. **Denormalized counters (`patient.billed`, `patient.paid`, `patient.sessions`) and their fallback recalc (`utils/patients.js::recalcPatientCounters`) must use the same formula as the live amountDue calc.** A mismatch silently inflates or deflates balances on the next recalc.
+5. **Every mutation that touches money has a revert path.** Optimistic updates to counters must capture the prior value and restore it on server error, or call `recalcPatientCounters` to rebuild from truth. Never leave a half-applied update.
+6. **Money math belongs in pure, unit-tested helpers.** Tests live in `src/utils/__tests__/`. Any new accounting branch gets a test before shipping.
+7. **When in doubt, audit.** `scripts/audit-accounting.mjs` (run with `node --env-file=.env.local scripts/audit-accounting.mjs`) walks every patient, re-derives their balance from raw rows, and flags drift vs. the denormalized counters plus any duplicate sessions. Run it after any change in this area and before declaring an accounting bug "fixed."
+
+If you are about to touch anything in `useCardiganData`, `usePatients`, `useSessions`, `usePayments`, `utils/patients.js`, `utils/recurrence.js`, `supabase/schema.sql`, or the `sessions` / `payments` / `patients` tables — re-read this section first.
+
+---
+
 # Cardigan
 
 Mobile-first PWA for therapists to manage patients, sessions, payments, notes, and documents. All UI text is Spanish. No TypeScript — plain JS/JSX.
