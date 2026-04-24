@@ -4,7 +4,7 @@ import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
 import { haptic } from "../utils/haptics";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
-import { todayISO, isoToShortDate, shortDateToISO, parseLocalDate } from "../utils/dates";
+import { todayISO, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -45,10 +45,10 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, generateRecurringSessions, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate } = useCardigan();
   const { isTabletSplit } = useViewport();
   const ctxMenu = useContextMenu();
-  const { t, strings } = useT();
+  const { t } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
   const [selected, setSelected] = useState(null);
@@ -153,29 +153,6 @@ export function Patients() {
       openDetail(match);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const startEdit = () => {
-    const recentSess = upcomingSessions.find(s => s.patient_id === selected.id && s.day === selected.day && s.time === selected.time);
-    const scheds = [{ day: selected.day, time: selected.time, duration: "60", modality: recentSess?.modality || "presencial" }];
-    setEditName(selected.name);
-    setEditIsMinor(!!selected.parent);
-    setEditParent(selected.parent || "");
-    setEditRate(String(selected.rate));
-    setEditTutorFrequency(selected.tutor_frequency ? String(selected.tutor_frequency) : "");
-    setEditPhone(formatPhoneMX(selected.phone));
-    setEditEmail(selected.email || "");
-    setEditBirthdate(selected.birthdate || "");
-    setEditStartDate(selected.start_date || "");
-    setEditStatus(selected.status);
-    setEditSchedules(scheds);
-    setOrigRate(selected.rate);
-    setOrigSchedules(JSON.stringify(scheds));
-    setEffectiveDate(todayISO());
-    setHasEndDate(false);
-    setEndDate("");
-    setFinishDate(todayISO());
-    setEditing(true);
-  };
 
   const updateEditSched = (i, f, v) => setEditSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
 

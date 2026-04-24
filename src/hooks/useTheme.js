@@ -48,7 +48,7 @@ export function useTheme() {
   }, [preference]);
 
   const setPreference = useCallback((value) => {
-    try { localStorage.setItem(LS_KEY, value); } catch {}
+    try { localStorage.setItem(LS_KEY, value); } catch { /* private mode / quota — non-fatal */ }
     setPreferenceState(value);
   }, []);
 

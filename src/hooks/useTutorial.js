@@ -13,7 +13,7 @@ function readLocalDone(userId) {
   try { return !!localStorage.getItem(localDoneKey(userId)); } catch { return false; }
 }
 function writeLocalDone(userId) {
-  try { localStorage.setItem(localDoneKey(userId), "1"); } catch {}
+  try { localStorage.setItem(localDoneKey(userId), "1"); } catch { /* private mode / quota — non-fatal */ }
 }
 function readLocalProgress(userId) {
   try {
@@ -25,10 +25,10 @@ function readLocalProgress(userId) {
   } catch { return null; }
 }
 function writeLocalProgress(userId, stepIndex) {
-  try { localStorage.setItem(localProgressKey(userId), JSON.stringify({ stepIndex })); } catch {}
+  try { localStorage.setItem(localProgressKey(userId), JSON.stringify({ stepIndex })); } catch { /* private mode / quota — non-fatal */ }
 }
 function clearLocalProgress(userId) {
-  try { localStorage.removeItem(localProgressKey(userId)); } catch {}
+  try { localStorage.removeItem(localProgressKey(userId)); } catch { /* non-fatal */ }
 }
 
 async function writeMetadataDone() {
@@ -148,7 +148,7 @@ export function useTutorial({ user, demo, readOnly } = {}) {
     try {
       localStorage.removeItem(localDoneKey(userId));
       localStorage.removeItem(localProgressKey(userId));
-    } catch {}
+    } catch { /* non-fatal */ }
     markedDoneRef.current = false;
     // Best-effort: clear the metadata flag so other devices also re-prompt.
     supabase.auth.updateUser({ data: { tutorial_completed_at: null } }).catch(() => {});

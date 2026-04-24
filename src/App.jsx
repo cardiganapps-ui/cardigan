@@ -43,7 +43,7 @@ import "./utils/logBuffer";
 import "./styles/index.css";
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signOut, signInWithProvider, refreshUser } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signOut, refreshUser } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button so the user doesn't bounce through
@@ -210,15 +210,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const liveData = useCardiganData(demo ? null : user, viewAsUserId);
   const demoData = useDemoData();
   const data = demo ? demoData : liveData;
+  /* Only pull out what App.jsx uses directly — everything else flows
+     into context via `...data` spread in ctxValue below. */
   const {
-    patients, upcomingSessions, payments, notes, documents,
-    loading, mutating, mutationError, readOnly, clearMutationError,
-    createPayment, createPatient, createSession,
-    updateSessionStatus, updatePatient, deletePatient,
-    deleteSession, rescheduleSession, deletePayment,
-    generateRecurringSessions, applyScheduleChange, finalizePatient,
-    createNote, updateNote, deleteNote,
-    uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
+    patients,
+    loading, mutationError, readOnly, clearMutationError,
+    updateSessionStatus,
     refresh,
   } = data;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);

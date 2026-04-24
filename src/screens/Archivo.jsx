@@ -2,7 +2,6 @@ import { useState } from "react";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Notes } from "./Notes";
 import { Documents } from "./Documents";
-import { useT } from "../i18n/index";
 
 const TABS = [
   { k: "notas", l: "Notas" },
@@ -10,7 +9,6 @@ const TABS = [
 ];
 
 export function Archivo() {
-  const { t } = useT();
   const [tab, setTab] = useState("notas");
 
   return (

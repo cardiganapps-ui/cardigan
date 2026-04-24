@@ -6,7 +6,7 @@ import { isWordDoc } from "../../utils/files";
 import { useT } from "../../i18n/index";
 
 export function ArchivoTab({
-  patient, pNotes, pSessions, pDocuments,
+  pNotes, pSessions, pDocuments,
   onNewNote, onEditNote,
   uploading, triggerUpload, onOpenDoc,
   renameDocument, tagDocumentSession, deleteDocument,

@@ -171,7 +171,6 @@ export function generateDemoData() {
 
     // Generate payments (roughly monthly, slightly less than billed to create realistic saldos)
     let totalPaid = 0;
-    const completedPast = patientSessions.filter(s => s.status === "completed" || s.status === "charged");
     const monthlyBill = def.rate * 4;
     let payMonth = new Date(startDate);
     // Skip-threshold: months within this many back are "recent" and the

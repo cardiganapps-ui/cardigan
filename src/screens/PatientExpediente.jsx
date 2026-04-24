@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
-import { formatPhoneMX, phoneHref, emailHref } from "../utils/contact";
+import { phoneHref, emailHref } from "../utils/contact";
 import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail } from "../components/Icons";
 import { NoteEditor } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
@@ -24,13 +24,13 @@ import { ArchivoTab } from "./expediente/ArchivoTab";
 
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments, documents,
-  onClose, onRecordPayment, onEdit, createSession, createNote, updateNote, deleteNote,
+  onClose, onRecordPayment, onEdit, createNote, updateNote, deleteNote,
   uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl,
   mutating,
   layout = "overlay",
 }) {
   const inline = layout === "inline";
-  const { t, strings } = useT();
+  const { t } = useT();
   const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly } = useCardigan();
 
   // ── Enter/close animation state ──
@@ -123,18 +123,6 @@ export function PatientExpediente({
       }),
     [upcomingSessions, patient.id]
   );
-
-  const sessCounts = useMemo(() => {
-    let completed = 0, cancelled = 0, charged = 0, scheduled = 0, tutor = 0, regular = 0;
-    for (const s of pSessions) {
-      if (s.status === "completed") completed++;
-      else if (s.status === "cancelled") cancelled++;
-      else if (s.status === "charged") charged++;
-      else if (s.status === "scheduled") scheduled++;
-      if (isTutorSession(s)) tutor++; else regular++;
-    }
-    return { completed, cancelled, charged, scheduled, tutor, regular, total: pSessions.length };
-  }, [pSessions]);
 
   const filteredPSessions = useMemo(() => {
     return pSessions.filter(s => {

@@ -23,7 +23,22 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', {
+        varsIgnorePattern: '^[A-Z_]',
+        argsIgnorePattern: '^_',
+        /* Catch bindings are routinely "ignore and move on" patterns
+           (try { … } catch (e) { /* non-fatal *\/ }). Don't flag them. */
+        caughtErrors: 'none',
+      }],
+    },
+  },
+  {
+    /* api/ files are Vercel serverless functions — Node runtime, not
+       browser. Expose Node globals (process, Buffer, etc.) so legitimate
+       uses of process.env aren't flagged as no-undef. */
+    files: ['api/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
 ])

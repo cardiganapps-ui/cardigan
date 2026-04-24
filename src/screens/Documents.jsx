@@ -8,7 +8,7 @@ import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, mutating, openExpediente } = useCardigan();
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente } = useCardigan();
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | name

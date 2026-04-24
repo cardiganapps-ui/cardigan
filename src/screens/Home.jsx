@@ -473,7 +473,7 @@ export function Home({ setScreen, userName }) {
             ? emptyHint(t("home.emptyNotes"))
             : (notes || []).slice(0,3).map(n => {
               const pat = n.patient_id ? patients.find(p => p.id === n.patient_id) : null;
-              const preview = n.content?.replace(/[*~#\[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
+              const preview = n.content?.replace(/[*~#[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
               return (
                 <div className="row-item" key={n.id} onClick={() => setEditingNote(n)}>
                   <div className="row-icon" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}><IconClipboard size={18} /></div>

@@ -14,7 +14,7 @@ const FINANCES_INITIAL_WINDOW = 60;
 const FINANCES_WINDOW_INCREMENT = 40;
 
 function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
-  const { t, strings } = useT();
+  const { t } = useT();
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);

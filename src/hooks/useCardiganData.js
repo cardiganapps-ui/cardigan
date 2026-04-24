@@ -101,7 +101,7 @@ export async function adminBlockUser(userId, block) {
   });
   if (!res.ok) {
     let msg = "Block failed";
-    try { const j = await res.json(); msg = j.error || msg; } catch {}
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
     throw new Error(msg);
   }
   return res.json();
@@ -116,7 +116,7 @@ export async function adminDeleteUser(userId) {
   });
   if (!res.ok) {
     let msg = "Delete failed";
-    try { const j = await res.json(); msg = j.error || msg; } catch {}
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
     throw new Error(msg);
   }
   return res.json();

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { IconX, IconUpload } from "../Icons";
-import { shortDateToISO, todayISO } from "../../utils/dates";
+import { shortDateToISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -25,7 +25,6 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-  const now = todayISO();
   const patientSessions = patientId
     ? (upcomingSessions || []).filter(s => s.patient_id === patientId)
         .sort((a, b) => {

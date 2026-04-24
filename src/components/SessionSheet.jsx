@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
-import { SESSION_STATUS } from "../data/constants";
 import { isCancelledStatus, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconTrash } from "./Icons";
@@ -12,7 +11,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 
-export function SessionSheet({ session, patients, notes, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, onOpenNote, onAttachDocument, mutating, initialMode }) {
+export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
   const { t } = useT();
   const { openExpediente } = useCardigan();
   useEscape(session ? onClose : null);
@@ -47,8 +46,6 @@ export function SessionSheet({ session, patients, notes, onClose, onCancelSessio
   const sessionRate = session.rate != null ? session.rate : (patients?.find(p => p.name === session.patient)?.rate || 0);
   const rateDisplay = `$${sessionRate.toLocaleString()}`;
   const isCancelled = isCancelledStatus(session.status);
-  const isCompleted = session.status === SESSION_STATUS.COMPLETED;
-  const isScheduled = session.status === SESSION_STATUS.SCHEDULED;
   const statusLbl = t(`sessions.${session.status}`);
   const isTutor = session.initials?.startsWith("T·");
   const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
