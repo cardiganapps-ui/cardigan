@@ -248,7 +248,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
             onDrop={onDrop}
           >
             <div className="av-picker-drop-icon">
-              <IconUpload size={22} />
+              <IconUpload size={16} />
             </div>
             <div className="av-picker-drop-title">
               {t("avatar.dropTitle") || "Sube tu propia foto"}
