@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { useT } from "../i18n/index";
 
-export function Toast({ message, type = "error", duration = 3000, onDismiss, onRetry, persistent = false, stackIndex = 0 }) {
+export function Toast({ message, type = "error", duration, onDismiss, onRetry, persistent = false, stackIndex = 0 }) {
   const { t } = useT();
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
+
+  // Success toasts are brief acknowledgements ("Guardado", "Eliminado"),
+  // so they fade out faster — lingering for 3s on a simple "done"
+  // feels sluggish. Errors and warnings keep the longer window since
+  // the user may need time to read and decide on Reintentar.
+  const effectiveDuration = duration ?? (type === "success" ? 1400 : 3000);
 
   useEffect(() => {
     if (!message) { setVisible(false); return; }
@@ -14,9 +20,9 @@ export function Toast({ message, type = "error", duration = 3000, onDismiss, onR
     const timer = setTimeout(() => {
       setLeaving(true);
       setTimeout(() => { setVisible(false); onDismiss?.(); }, 180);
-    }, duration);
+    }, effectiveDuration);
     return () => clearTimeout(timer);
-  }, [message, duration, onDismiss, persistent]);
+  }, [message, effectiveDuration, onDismiss, persistent]);
 
   if (!visible || !message) return null;
 
