@@ -1,7 +1,11 @@
 /* ── Avatar picker sheet ──────────────────────────────────────────── */
 
 .av-picker-body {
-  padding: 0 20px 22px;
+  /* Extra bottom padding so the Guardar button has breathing room
+     from the sheet edge — otherwise it sits flush against the home
+     indicator / bottom tabs and feels cramped. var(--sab) is already
+     applied on .sheet-panel, so this is purely visual margin. */
+  padding: 0 20px 32px;
 }
 
 .av-picker-preview-row {
@@ -173,7 +177,13 @@
   -webkit-tap-highlight-color: transparent;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
-.av-picker-drop:hover { background: var(--cream-deeper, var(--cream)); }
+/* Scope hover behind (hover: hover) so iOS doesn't treat it as a
+   sticky state that requires a priming tap before the click lands.
+   Without this guard the drop zone needs two taps on touch devices:
+   first to "hover", second to fire onClick. */
+@media (hover: hover) {
+  .av-picker-drop:hover { background: var(--cream-deeper, var(--cream)); }
+}
 .av-picker-drop:active { transform: scale(0.99); }
 .av-picker-drop:focus-visible {
   outline: 2px solid var(--teal);
