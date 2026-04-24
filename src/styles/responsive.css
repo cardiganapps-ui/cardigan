@@ -184,22 +184,6 @@
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* Softened secondary FAB on desktop — primary affordance is "+ Nuevo"
-     in the topbar. Keeps muscle memory for cross-device users without
-     competing for visual weight. */
-  .fab {
-    background: var(--cream-dark);
-    color: var(--charcoal);
-    box-shadow: var(--shadow-sm);
-  }
-  .fab:hover {
-    filter: brightness(1.06);
-    box-shadow:
-      0 12px 32px -4px rgba(91,155,175,0.6),
-      0 4px 14px rgba(46,46,46,0.14),
-      inset 0 1px 0 rgba(255,255,255,0.35);
-  }
-
   /* Multi-column Home dashboard */
   .home-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
   .home-col-main { padding-right: 0; }
@@ -271,6 +255,22 @@
   .cal-day { min-height: 40px; }
   .month-cell { min-height: 36px; }
   .month-nav-btn { min-width: 36px; min-height: 36px; }
+
+  /* Softened secondary FAB on true desktop — primary affordance is
+     "+ Nuevo" in the topbar. iPad (pointer: coarse) keeps the teal
+     gradient from the mobile default so it reads like the iPhone FAB. */
+  .fab {
+    background: var(--cream-dark);
+    color: var(--charcoal);
+    box-shadow: var(--shadow-sm);
+  }
+  .fab:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      0 12px 32px -4px rgba(91,155,175,0.6),
+      0 4px 14px rgba(46,46,46,0.14),
+      inset 0 1px 0 rgba(255,255,255,0.35);
+  }
 }
 
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
