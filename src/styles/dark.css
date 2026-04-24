@@ -165,7 +165,6 @@ html[data-theme="dark"] .cmdp-panel { background: #1F1F1F; border-color: #3A3A3A
 html[data-theme="dark"] .cmdp-footer { background: #242424; }
 html[data-theme="dark"] .cmdp-kbd { background: #2A2A2A; border-color: #3A3A3A; color: #BFBFBF; }
 html[data-theme="dark"] .topbar-search-btn { background: #242424; border-color: #3A3A3A; color: #BFBFBF; }
-html[data-theme="dark"] .topbar-search-kbd { background: #2A2A2A; border-color: #3A3A3A; color: #999; }
 html[data-theme="dark"] .topbar-new-menu { background: #242424; border-color: #3A3A3A; }
 html[data-theme="dark"] .topbar-new-btn { background: #EAEAEA; color: #1A1A1A; }
 html[data-theme="dark"] .topbar-new-btn:hover { background: #FFFFFF; }
