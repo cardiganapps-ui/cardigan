@@ -33,8 +33,10 @@ import { Patients } from "./screens/Patients";
 import { Finances } from "./screens/Finances";
 import { Archivo } from "./screens/Archivo";
 import { Settings } from "./screens/Settings";
+import { PrivacyPolicy } from "./screens/PrivacyPolicy";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
+import ConsentBanner from "./components/ConsentBanner";
 import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
@@ -570,11 +572,16 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     finances: <Finances />,
     archivo: <Archivo />,
     settings: <Settings user={user} signOut={signOut} refreshUser={refreshUser} />,
+    privacy: <PrivacyPolicy />,
   };
 
   return (
     <CardiganProvider value={ctxValue}>
     <div className="shell" ref={shellRef}>
+      {/* LFPDPPP consent gate — blocks the app on first login or after a
+          policy version bump. Skipped in demo mode (no real user) and
+          in admin "view as user" mode (read-only). */}
+      {!demo && !readOnly && user && <ConsentBanner user={user} />}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
         onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setBugReportOpen(true); } : null} />

@@ -156,6 +156,17 @@ Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, us
 ### Vercel serverless routes (`api/`)
 Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` / `_sentry.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
 
+### Privacy & LFPDPPP compliance
+- **Policy version** lives in `src/data/privacy.js::POLICY_VERSION`. When the policy body changes materially, bump the version string; users whose latest accepted version no longer matches are re-prompted on next login via `components/ConsentBanner.jsx`.
+- **Consent storage** is both local (`localStorage['cardigan.consent.v']`) for UX and server-side (`public.user_consents`) for audit. The consent banner writes both.
+- **ARCO flows** (Acceso, Rectificación, Cancelación, Oposición) are wired through `/api/privacy?action=…`:
+  - `?action=consent` (POST) — stamps a `user_consents` row.
+  - `?action=export` (GET) — returns a JSON attachment with all user-owned data and 1-hour presigned document URLs. Rate-limited to 1/hour via `export_audit`.
+  - `?action=delete` (POST) — cascade-deletes the user (via `api/_admin.js::deleteUserCascade`, shared with `admin-delete-user.js` so both flows can't drift). Requires `confirmation: "ELIMINAR"` in the body.
+  Routes are consolidated in a single Vercel function to stay under the Hobby 12-function limit.
+- **ARCO contact** is `privacy@cardigan.mx`. Update both the policy body and any external-facing copy if this changes.
+- **Legal review before marketing**: the policy text shipped is a first draft. Get a Mexican data-privacy lawyer to review before claiming LFPDPPP compliance externally.
+
 ### Observability (Sentry + health check)
 - **Client errors** are captured via `src/lib/sentry.js` (init in `main.jsx`) + `src/components/ErrorBoundary.jsx`. Init no-ops when `VITE_SENTRY_DSN` is unset or in dev — no noise in local work. `beforeSend` scrubs fields listed in the `PII_FIELDS` set (`patient`, `note`, `content`, `initials`, `email`, `phone`, etc.) before events leave the browser.
 - **Serverless errors** route through `api/_sentry.js::withSentry(handler, { name })`. Every mutating route wraps its default export with this. The wrapper reports unhandled exceptions and any 5xx response; 4xx responses in `EXPECTED_STATUSES` (401/403/404/405/409/413/429) are treated as noise and not reported. Secrets/PII are scrubbed the same way as the client.

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh } from "../components/Icons";
+import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
@@ -263,6 +263,73 @@ export function Settings({ user, signOut, refreshUser }) {
   const restartTutorial = () => {
     navigate("home");
     setTimeout(() => { tutorial?.reset?.(); }, 340);
+  };
+
+  // ── Privacy / ARCO actions ─────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const exportMyData = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { showToast(t("settings.privacyExportError"), "error"); return; }
+      const res = await fetch("/api/privacy?action=export", {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        let msg = t("settings.privacyExportError");
+        try { const j = await res.json(); if (j.hint) msg = j.hint; else if (j.error) msg = j.error; } catch { /* keep default */ }
+        showToast(msg, res.status === 429 ? "warning" : "error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      a.download = `cardigan-export-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(t("settings.privacyExportDone"), "success");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { setDeleteError(t("settings.privacyDeleteError")); return; }
+      const res = await fetch("/api/privacy?action=delete", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ confirmation: deleteConfirm }),
+      });
+      if (!res.ok) {
+        let msg = t("settings.privacyDeleteError");
+        try { const j = await res.json(); if (j.error) msg = j.error; } catch { /* keep default */ }
+        setDeleteError(msg);
+        return;
+      }
+      // Cascade completed — sign out to clear the (now-orphan) session.
+      await signOut();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -601,6 +668,38 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       </div>
 
+      <div className="settings-label">{t("settings.privacyLabel")}</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => navigate("privacy")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.privacyPolicy")}</div>
+            <div className="settings-row-sub">{t("settings.privacyPolicySub")}</div>
+          </div>
+          <IconChevron />
+        </div>
+        {!readOnly && (
+          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }} onClick={exportMyData}>
+            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.privacyExport")}</div>
+              <div className="settings-row-sub">{t("settings.privacyExportSub")}</div>
+            </div>
+            {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
+          </div>
+        )}
+        {!readOnly && (
+          <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}>
+            <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.privacyDelete")}</div>
+              <div className="settings-row-sub">{t("settings.privacyDeleteSub")}</div>
+            </div>
+            <IconChevron />
+          </div>
+        )}
+      </div>
+
       <div className="settings-label">{t("nav.account")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={resetPassword}>
@@ -715,6 +814,57 @@ export function Settings({ user, signOut, refreshUser }) {
               <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>{t("settings.planValue")}</div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
                 {t("settings.planDescription")}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE ACCOUNT SHEET ── */}
+      {activeSheet === "deleteAccount" && (
+        <div className="sheet-overlay" onClick={() => !deleting && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.privacyDelete")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !deleting && setActiveSheet(null)} disabled={deleting}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                {t("settings.privacyDeleteExplain")}
+              </div>
+              <div style={{ background: "var(--red-pale, #fdecea)", color: "var(--red-dark, #922)", padding: "10px 14px", borderRadius: "var(--radius)", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+                {t("settings.privacyDeleteWarning")}
+              </div>
+              <div className="input-group" style={{ marginBottom: 14 }}>
+                <label className="input-label">{t("settings.privacyDeleteConfirmLabel")}</label>
+                <input
+                  className="input"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder="ELIMINAR"
+                  disabled={deleting}
+                />
+              </div>
+              {deleteError && (
+                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{deleteError}</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={confirmDeleteAccount}
+                  disabled={deleting || deleteConfirm !== "ELIMINAR"}
+                  style={{ background: "var(--red)", color: "#fff" }}
+                >
+                  {deleting ? t("loading") : t("settings.privacyDeleteCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={deleting}>
+                  {t("cancel")}
+                </button>
               </div>
             </div>
           </div>

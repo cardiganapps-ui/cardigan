@@ -92,6 +92,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [consentChecked, setConsentChecked] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
@@ -132,6 +133,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
 
     if (mode === "signup") {
       if (!name.trim()) { setError(t("auth.enterName")); setSubmitting(false); return; }
+      if (!consentChecked) { setError(t("auth.consentRequired")); setSubmitting(false); return; }
       const result = await onSignUp({ email, password, name: name.trim() });
       setSubmitting(false);
       if (result.error) { setError(result.error); return; }
@@ -236,6 +238,29 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
             <label className="input-label">{t("auth.enterPassword")}</label>
             <input className="input" placeholder={t("auth.passwordPlaceholder")} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} />
           </div>
+        )}
+        {mode === "signup" && (
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14, cursor: "pointer", fontSize: 13, color: "var(--charcoal-md)", lineHeight: 1.5 }}>
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              style={{ marginTop: 3, accentColor: "var(--teal)" }}
+            />
+            <span>
+              {t("auth.consentPrefix")}{" "}
+              <a
+                href="/#privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--teal-dark)", textDecoration: "underline" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {t("auth.consentPolicyLink")}
+              </a>
+              {t("auth.consentSuffix")}
+            </span>
+          </label>
         )}
         {error && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{error}</div>}
         {mode === "login" && (

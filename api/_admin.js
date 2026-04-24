@@ -63,3 +63,80 @@ export function isValidUserId(id) {
   return typeof id === "string"
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
+
+/* ── deleteUserCascade ────────────────────────────────────────────────
+   Full cascade of a user account: R2 documents, every app-table row
+   scoped to user_id, and finally the auth.users row. Shared between
+   admin-delete-user.js (admin action) and delete-my-account.js (ARCO
+   "Cancelación" — user-triggered). Factoring it here means both flows
+   are guaranteed to wipe the same data in the same order; they cannot
+   drift.
+
+   Caller is responsible for:
+     - Verifying the caller's JWT (admin: requireAdmin, self: getAuthUser + match)
+     - Providing an already-instantiated service client
+     - Deciding what to do on error (we return the first failing table
+       name so the caller can surface a precise message).
+
+   Optional `tombstone` writes an account_deletions row before wiping
+   auth — pass the user's email and a short reason string. */
+export async function deleteUserCascade({ svc, r2Client, bucket, userId, tombstone } = {}) {
+  if (!svc || !userId) throw new Error("svc and userId are required");
+
+  // 1. R2 documents (best-effort; don't abort on failures).
+  if (r2Client && bucket) {
+    const { data: docs } = await svc
+      .from("documents")
+      .select("file_path")
+      .eq("user_id", userId);
+    if (docs?.length) {
+      const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+      await Promise.all(
+        docs
+          .map((d) => d.file_path)
+          .filter((p) => typeof p === "string" && p.startsWith(`${userId}/`))
+          .map((path) =>
+            r2Client
+              .send(new DeleteObjectCommand({ Bucket: bucket, Key: path }))
+              .catch(() => {})
+          )
+      );
+    }
+  }
+
+  // 2. Tombstone row (best-effort — missing table should not block deletion).
+  if (tombstone) {
+    await svc.from("account_deletions").insert({
+      user_id: userId,
+      email: tombstone.email || null,
+      reason: tombstone.reason || null,
+    }).then(() => {}, () => {});
+  }
+
+  // 3. App tables, child → parent. `user_consents`, `export_audit`, and
+  //    `account_deletions` are excluded: the first two cascade via FK
+  //    (on delete cascade on auth.users); account_deletions intentionally
+  //    survives the auth row's deletion as an audit record.
+  const tables = [
+    "documents",
+    "notes",
+    "payments",
+    "sessions",
+    "patients",
+    "bug_reports",
+  ];
+  for (const table of tables) {
+    const { error } = await svc.from(table).delete().eq("user_id", userId);
+    if (error) {
+      return { ok: false, failedTable: table, error: error.message };
+    }
+  }
+
+  // 4. auth.users row.
+  const { error: authErr } = await svc.auth.admin.deleteUser(userId);
+  if (authErr) {
+    return { ok: false, failedTable: "auth.users", error: authErr.message };
+  }
+
+  return { ok: true };
+}
