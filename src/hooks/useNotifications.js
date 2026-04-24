@@ -201,9 +201,22 @@ export function useNotifications(user) {
     if (!user) return { ok: false, code: "no-session" };
     if (needsInstall) return { ok: false, code: "install-required" };
 
-    const perm = await Notification.requestPermission();
-    setPermission(perm);
-    if (perm !== "granted") return { ok: false, code: "permission-denied" };
+    // Permission is the one step that genuinely blocks on user input —
+    // handle it before flipping optimistic state so a denial doesn't
+    // cause a visible flicker of the toggle turning on then off.
+    let perm = Notification.permission;
+    if (perm !== "granted") {
+      perm = await Notification.requestPermission();
+      setPermission(perm);
+      if (perm !== "granted") return { ok: false, code: "permission-denied" };
+    }
+
+    // Optimistic flip — subscribe + server post + DB upsert are
+    // ~400–1500ms of happy-path work the user shouldn't have to stare
+    // at a spinner through. We revert below on any failure so the
+    // toggle settles on truth before the toast appears.
+    setEnabled(true);
+    setReconciledOff(false);
 
     let subscription;
     try {
@@ -214,6 +227,7 @@ export function useNotifications(user) {
       });
     } catch (err) {
       if (import.meta.env.DEV) console.error("pushManager.subscribe failed:", err);
+      setEnabled(false);
       return { ok: false, code: "subscribe-failed" };
     }
 
@@ -222,6 +236,7 @@ export function useNotifications(user) {
       // Browser-level subscription exists but the server didn't accept
       // it. Undo the browser subscription so state stays consistent.
       try { await subscription.unsubscribe(); } catch { /* ignore */ }
+      setEnabled(false);
       return { ok: false, code: "server-error" };
     }
 
@@ -235,12 +250,6 @@ export function useNotifications(user) {
       { onConflict: "user_id" }
     );
 
-    setEnabled(true);
-    // A successful enable supersedes any leftover "subscription vanished"
-    // banner — typically surfaced by mount-time reconciliation when prefs
-    // said enabled but no browser sub existed yet, then the user hit the
-    // native prompt and we came back here with a fresh, valid sub.
-    setReconciledOff(false);
     return { ok: true };
   }, [supported, user, reminderMinutes, needsInstall]);
 
@@ -249,6 +258,13 @@ export function useNotifications(user) {
    */
   const disable = useCallback(async () => {
     if (!supported || !user) return { ok: false, code: "unsupported" };
+
+    // Optimistic: flip off immediately so the toggle animates on tap.
+    // Revert below if any step throws hard (subscribe/unsubscribe and
+    // network calls are individually .catch()'d and treated as soft
+    // failures — partial cleanup is still better than leaving the
+    // toggle on).
+    setEnabled(false);
 
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -271,10 +287,10 @@ export function useNotifications(user) {
       );
 
       try { await clearPushState(); } catch { /* ignore */ }
-      setEnabled(false);
       return { ok: true };
     } catch (err) {
       if (import.meta.env.DEV) console.error("Push unsubscribe error:", err);
+      setEnabled(true); // revert
       return { ok: false, code: "server-error" };
     }
   }, [supported, user]);

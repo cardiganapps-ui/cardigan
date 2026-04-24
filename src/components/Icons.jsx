@@ -19,7 +19,10 @@ export const IconCalendar = (p) => (
 );
 
 export const IconUser = (p) => (
-  <I {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></I>
+  // Head at cx=12; shoulder arc must also be centered at x=12 (spanning
+  // x=6 → x=18) or the whole silhouette looks tilted left — the bug was
+  // the arc starting at x=4, putting its center at x=10.
+  <I {...p}><circle cx="12" cy="8" r="4"/><path d="M6 21v-1a6 6 0 0112 0v1"/></I>
 );
 
 export const IconUsers = (p) => (

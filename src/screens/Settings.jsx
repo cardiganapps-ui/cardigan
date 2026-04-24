@@ -471,7 +471,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 <Toggle
                   on={notifications.enabled}
                   onToggle={handleToggleNotifications}
-                  pending={togglePending}
+                  disabled={togglePending}
                   ariaLabel={t("notifications.sessionReminders")}
                 />
               </div>

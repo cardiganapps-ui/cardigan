@@ -1,5 +1,10 @@
-export function Toggle({ on, onToggle, pending = false, type, ariaLabel }) {
-  const disabled = pending;
+export function Toggle({ on, onToggle, pending = false, disabled: disabledProp = false, type, ariaLabel }) {
+  // `pending` both disables AND shows the spinner (long ops where the
+  // user needs to see work-in-progress feedback). `disabled` just
+  // disables — used when the underlying state has already flipped
+  // optimistically and we only need a re-tap guard during background
+  // work, with no visual "something is happening" cue.
+  const disabled = pending || disabledProp;
   return (
     <button
       type={type || "button"}
@@ -14,7 +19,7 @@ export function Toggle({ on, onToggle, pending = false, type, ariaLabel }) {
         background: on ? "var(--teal)" : "var(--charcoal-xl)",
         transition: "background 0.4s",
         position: "relative", flexShrink: 0,
-        opacity: disabled ? 0.75 : 1,
+        opacity: pending ? 0.75 : 1,
       }}>
       <div style={{
         width: 20, height: 20, borderRadius: "50%",
