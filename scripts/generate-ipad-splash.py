@@ -6,7 +6,9 @@ public/splash/ at native pixel dimensions for each iPad form factor.
 Run from repo root: python3 scripts/generate-ipad-splash.py
 """
 import os
+import io
 from PIL import Image, ImageDraw, ImageFilter
+import cairosvg
 
 BG_LIGHT = (250, 248, 245)
 TEAL_TOP = (107, 181, 197)
@@ -14,6 +16,7 @@ TEAL_BOTTOM = (67, 125, 140)
 WHITE = (255, 255, 255, 247)
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "public", "splash")
+ICON_SVG = os.path.join(os.path.dirname(__file__), "..", "public", "logos", "icon-white.svg")
 
 DEVICES = [
     ("ipad-mini",   744, 1133),
@@ -42,6 +45,13 @@ def gradient_circle(size):
     return out
 
 
+def render_icon(target_w):
+    """Render the white Cardigan C-loop at target_w pixels wide, aspect
+    preserved. Returns an RGBA PIL image."""
+    png_bytes = cairosvg.svg2png(url=ICON_SVG, output_width=target_w)
+    return Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+
+
 def render(width_pt, height_pt, scale=2):
     w, h = width_pt * scale, height_pt * scale
     img = Image.new("RGB", (w, h), BG_LIGHT)
@@ -59,6 +69,15 @@ def render(width_pt, height_pt, scale=2):
     by = (h - badge_size) // 2
     img.paste(shadow, (bx - shadow_pad, by - shadow_pad + int(badge_size * 0.04)), shadow)
     img.paste(badge, (bx, by), badge)
+
+    # Overlay the white Cardigan C-loop on top of the badge. Sized so
+    # the glyph takes ~60% of the badge width — matches the iOS
+    # app-icon's in-badge scaling.
+    icon_w = int(badge_size * 0.60)
+    icon = render_icon(icon_w)
+    ix = bx + (badge_size - icon.width) // 2
+    iy = by + (badge_size - icon.height) // 2
+    img.paste(icon, (ix, iy), icon)
 
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
