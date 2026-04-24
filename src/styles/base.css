@@ -139,7 +139,11 @@ a[href^="tel:"], a[href^="mailto:"] {
 /* TOPBAR — minimal white bar matching the landing .lp-nav */
 .topbar {
   background: var(--white);
-  padding: 6px 14px;
+  /* Lateral env() keeps the hamburger / avatar out from under the
+     rounded-corner curve in iPad landscape. Vertical safe-area is
+     handled by the sibling .status-bar spacer (height: var(--sat))
+     above — doubling it here would push content down twice on iPhone. */
+  padding: 6px max(14px, env(safe-area-inset-right)) 6px max(14px, env(safe-area-inset-left));
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   position: relative;
