@@ -27,8 +27,12 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
 
   const bg = imageUrl ? "transparent" : (color || (tutor ? "var(--purple)" : "var(--teal)"));
 
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImage = imageUrl && !imgFailed;
+  // Track which URL has failed rather than a sticky boolean — otherwise
+  // a stale signed URL (e.g. expired upload) that fails once keeps the
+  // component on the initials fallback even after the user picks a
+  // fresh preset/upload whose URL differs.
+  const [failedUrl, setFailedUrl] = useState(null);
+  const showImage = imageUrl && failedUrl !== imageUrl;
 
   return (
     <div
@@ -48,7 +52,7 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
         <img
           src={imageUrl}
           alt=""
-          onError={() => setImgFailed(true)}
+          onError={() => setFailedUrl(imageUrl)}
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           draggable={false}
         />
@@ -64,14 +68,14 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
    differently-styled containers (`.drawer-avatar`, `.avatar-sm`)
    can adopt the new render shape without duplicating logic. */
 export function AvatarContent({ initials, imageUrl }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImage = imageUrl && !imgFailed;
+  const [failedUrl, setFailedUrl] = useState(null);
+  const showImage = imageUrl && failedUrl !== imageUrl;
   if (showImage) {
     return (
       <img
         src={imageUrl}
         alt=""
-        onError={() => setImgFailed(true)}
+        onError={() => setFailedUrl(imageUrl)}
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "inherit" }}
         draggable={false}
       />
