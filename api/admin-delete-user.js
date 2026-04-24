@@ -16,8 +16,9 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { r2, BUCKET } from "./_r2.js";
 import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
+import { withSentry } from "./_sentry.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const admin = await requireAdmin(req, res);
@@ -78,3 +79,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err?.message || "Account deletion failed" });
   }
 }
+
+export default withSentry(handler, { name: "admin-delete-user" });

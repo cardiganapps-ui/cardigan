@@ -18,6 +18,7 @@
 import crypto from "crypto";
 import { Buffer } from "buffer";
 import { getServiceClient } from "./_admin.js";
+import { withSentry } from "./_sentry.js";
 
 // Vercel normally JSON-parses the body, but Svix signing requires the
 // raw bytes (byte-for-byte what Resend signed). Disabling the parser
@@ -55,7 +56,7 @@ function verifySvix({ body, id, timestamp, signature, secret }) {
   });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -147,3 +148,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ ok: true });
 }
+
+export default withSentry(handler, { name: "resend-webhook" });

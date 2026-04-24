@@ -1,7 +1,8 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_push.js";
+import { withSentry } from "./_sentry.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
@@ -31,3 +32,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: "Unsubscribe failed" });
   }
 }
+
+export default withSentry(handler, { name: "push-unsubscribe" });

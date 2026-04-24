@@ -11,8 +11,9 @@
 
 import { requireAdmin } from "./_admin.js";
 import { getServiceClient, readVapidConfig } from "./_push.js";
+import { withSentry } from "./_sentry.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const admin = await requireAdmin(req, res);
@@ -82,3 +83,5 @@ function describeKey(v) {
     prefix: v ? v.slice(0, 8) : null,
   };
 }
+
+export default withSentry(handler, { name: "push-diagnose" });

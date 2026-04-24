@@ -14,8 +14,9 @@
 
 import crypto from "node:crypto";
 import { getServiceClient, isAllowedPushEndpoint } from "./_push.js";
+import { withSentry } from "./_sentry.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { oldEndpoint, resubToken, subscription } = req.body || {};
@@ -102,3 +103,5 @@ export default async function handler(req, res) {
 function safeHost(u) {
   try { return new URL(u).host; } catch { return "?"; }
 }
+
+export default withSentry(handler, { name: "push-resubscribe" });

@@ -1,6 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
+import { withSentry } from "./_sentry.js";
 
 /* ── R2 upload endpoint (two modes) ────────────────────────────────
    One endpoint, two shapes — consolidated to stay under Vercel's
@@ -24,7 +25,7 @@ import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
 
 const MAX_DIRECT_BYTES = 512 * 1024; // post-base64-decode ceiling
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed", code: "method_not_allowed" });
 
   try {
@@ -80,3 +81,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSentry(handler, { name: "upload-url" });

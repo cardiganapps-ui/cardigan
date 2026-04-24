@@ -1,8 +1,9 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
+import { withSentry } from "./_sentry.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
@@ -24,3 +25,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: "Document URL generation failed" });
   }
 }
+
+export default withSentry(handler, { name: "document-url" });

@@ -6,8 +6,9 @@
    Auth: caller must be the admin (email === ADMIN_EMAIL) */
 
 import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
+import { withSentry } from "./_sentry.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const admin = await requireAdmin(req, res);
@@ -46,3 +47,5 @@ export default async function handler(req, res) {
     until: block ? "2999-01-01T00:00:00Z" : null,
   });
 }
+
+export default withSentry(handler, { name: "admin-block-user" });

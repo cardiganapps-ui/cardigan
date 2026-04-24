@@ -154,7 +154,14 @@ Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, us
 - Canonical custom domain CNAMEs (apex + www) point at `cname.vercel-dns.com`, proxied=false so Vercel SSL issuance doesn't bounce off Cloudflare's proxy.
 
 ### Vercel serverless routes (`api/`)
-Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
+Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` / `_sentry.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
+
+### Observability (Sentry + health check)
+- **Client errors** are captured via `src/lib/sentry.js` (init in `main.jsx`) + `src/components/ErrorBoundary.jsx`. Init no-ops when `VITE_SENTRY_DSN` is unset or in dev — no noise in local work. `beforeSend` scrubs fields listed in the `PII_FIELDS` set (`patient`, `note`, `content`, `initials`, `email`, `phone`, etc.) before events leave the browser.
+- **Serverless errors** route through `api/_sentry.js::withSentry(handler, { name })`. Every mutating route wraps its default export with this. The wrapper reports unhandled exceptions and any 5xx response; 4xx responses in `EXPECTED_STATUSES` (401/403/404/405/409/413/429) are treated as noise and not reported. Secrets/PII are scrubbed the same way as the client.
+- **Health check:** `GET /api/health` returns `{ status, checks: { supabase, r2 } }` — 200 when both are up, 503 otherwise. Unauthenticated, returns no user data. Point UptimeRobot (or equivalent) at `https://cardigan.mx/api/health` on a 5-minute interval.
+- **Rotating a noisy error:** silence it in the Sentry UI (create an inbound filter or ignore rule) rather than adding a try/catch that hides a real failure. If you need to suppress at the code level, add an allowlist check inside the specific handler — do NOT globally suppress in `_sentry.js`.
+- **Env setup:** `VITE_SENTRY_DSN` (client) and `SENTRY_DSN` (server) must be set in Vercel (Preview + Production) before the first post-merge deploy. Keep them distinct — rotation, routing, and sampling are per-DSN.
 
 ## Conventions
 - **Spanish** for all user-visible text (use `useT()` from `src/i18n`).
