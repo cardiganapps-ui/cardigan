@@ -29,10 +29,20 @@ export function useDemoData() {
   // visible balance always matches consumed sessions minus payments,
   // mirroring useCardiganData.
   const enrichedPatients = useMemo(() => {
+    const now = new Date();
     const consumedByPatient = new Map();
     for (const s of enrichedSessions) {
       if (!s.patient_id) continue;
       if (s.status !== "completed" && s.status !== "charged") continue;
+      // Skip future-dated completed/charged sessions — they inflate
+      // amountDue for events that haven't happened yet. See the matching
+      // guard in useCardiganData.js::enrichedPatients.
+      const d = parseShortDate(s.date);
+      if (s.time) {
+        const [h, m] = s.time.split(":");
+        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+      }
+      if (d > now) continue;
       const rate = s.rate != null ? s.rate : 0;
       consumedByPatient.set(s.patient_id, (consumedByPatient.get(s.patient_id) || 0) + rate);
     }

@@ -313,6 +313,7 @@ export function useCardiganData(user, viewAsUserId) {
     // balance self-healing: any historical drift in patient.billed from
     // past accounting bugs is ignored and the visible number matches the
     // sum of real consumed sessions minus recorded payments.
+    const now = new Date();
     const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
     const consumedByPatient = new Map();
     for (const s of enrichedSessions) {
@@ -321,6 +322,18 @@ export function useCardiganData(user, viewAsUserId) {
       // completed (real or auto) or cancelled-with-charge. Scheduled
       // future sessions and no-charge cancellations contribute nothing.
       if (s.status !== SESSION_STATUS.COMPLETED && s.status !== SESSION_STATUS.CHARGED) continue;
+      // Future-dated completed/charged sessions don't count yet — a
+      // cancel-with-charge on a session weeks out, or a future session
+      // marked completed ahead of time, would otherwise spike amountDue
+      // for an event that hasn't happened. Auto-completed past scheduled
+      // sessions always pass this check (they auto-complete *because*
+      // their date is past).
+      const d = parseShortDate(s.date);
+      if (s.time) {
+        const [h, m] = s.time.split(":");
+        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+      }
+      if (d > now) continue;
       const rate = s.rate != null ? s.rate : (rateById.get(s.patient_id) || 0);
       consumedByPatient.set(s.patient_id, (consumedByPatient.get(s.patient_id) || 0) + rate);
     }
