@@ -725,11 +725,13 @@ export function Agenda() {
         onCancelSession={async (session, charge, reason) => {
           const ok = await onCancelSession(session, charge, reason);
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status: charge ? "charged" : "cancelled", cancel_reason: reason || null } : prev));
+          return ok;
         }}
         onMarkCompleted={async (session, overrideStatus) => {
           const st = overrideStatus || "completed";
           const ok = await onMarkCompleted(session, overrideStatus);
           if (ok) setSelectedSession(prev => (prev ? { ...prev, status: st, cancel_reason: null } : prev));
+          return ok;
         }}
         onDelete={async (id) => { await deleteSession(id); setSelectedSession(null); }}
         onReschedule={async (id, date, time, duration) => {
