@@ -6,13 +6,11 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, p
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  // Acknowledgement toasts (success + info) are brief confirmations —
-  // "Guardado", "Eliminado", "Recordatorios desactivados". Lingering
-  // 3s on a simple "done" feels sluggish, so they fade at 1.4s.
-  // Warnings and errors keep the longer window — the user may need
-  // time to read the problem and decide whether to tap Reintentar.
-  const effectiveDuration =
-    duration ?? (type === "success" || type === "info" ? 1400 : 3000);
+  // Uniform short fade across every type — 3s lingered too long even
+  // for errors and warnings. Error toasts that need persistence
+  // (e.g. mutationError with a Reintentar) opt in via `persistent`,
+  // and any caller can still override with an explicit duration prop.
+  const effectiveDuration = duration ?? 1400;
 
   useEffect(() => {
     if (!message) { setVisible(false); return; }
