@@ -640,6 +640,13 @@
     gap: 14px;
     align-items: start;
   }
+  /* When Tutor reminders aren't rendered (no minors with
+     tutor_frequency) only Saldos + Notas remain. Fill the row as two
+     equal columns instead of leaving the right third empty and the
+     pair hugging the left edge. */
+  .home-col-side:has(> .section:nth-child(2):nth-last-child(1)) {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .home-col-side > .section {
     padding: 0 !important;
     min-width: 0;
