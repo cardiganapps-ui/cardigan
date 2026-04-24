@@ -570,7 +570,18 @@
   .section-title { font-size: var(--text-lg); }
   .card { box-shadow: var(--shadow-sm); }
 
-  .page { max-width: 1040px; margin: 0 auto; padding: 24px 40px; }
+  /* Stretch .page to fill the viewport so the native scrollbar pins to
+     the right edge of the screen (previously it sat at .page's right
+     edge, which with max-width:1040 looked noticeably inset on iPad
+     landscape). Centering is preserved by computing symmetric padding
+     so the 960px inner content band still lines up where it used to. */
+  .page {
+    max-width: none;
+    margin: 0;
+    padding-top: 24px;
+    padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 960px) / 2));
+    padding-right: max(40px, env(safe-area-inset-right), calc((100% - 960px) / 2));
+  }
   .drawer { width: 260px; }
   .drawer-panel { width: 260px; }
   .sheet-panel { max-width: clamp(620px, 60vw, 880px); }
@@ -662,6 +673,12 @@
 
 /* ── RESPONSIVE: WIDE DESKTOP (1440px+) ── */
 @media (min-width: 1440px) {
-  .page { max-width: 1200px; }
+  /* Matches the 1024+ pattern: scrollbar pinned to viewport right,
+     content band widened to 1120px (the old 1200 max-width minus the
+     40px horizontal padding on each side). */
+  .page {
+    padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 1120px) / 2));
+    padding-right: max(40px, env(safe-area-inset-right), calc((100% - 1120px) / 2));
+  }
   .expediente-desktop-panel { width: 780px !important; }
 }
