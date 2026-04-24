@@ -476,6 +476,9 @@ export default {
       perrito: "Perrito",
       gatito: "Gatito",
       plantita: "Plantita",
+      aguacate: "Aguacate",
+      cafecito: "Cafecito",
+      nube: "Nube",
     },
     err: {
       tooLarge: "La imagen debe pesar menos de 10 MB.",
