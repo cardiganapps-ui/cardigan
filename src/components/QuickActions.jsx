@@ -10,6 +10,7 @@ import { haptic } from "../utils/haptics";
 
 /* Shared quick-action list. Reused by the desktop "+ Nuevo" top-bar
    button (TopbarActions) so the menu stays in sync with the mobile FAB. */
+// eslint-disable-next-line react-refresh/only-export-components
 export const QUICK_ACTIONS = [
   { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
   { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },

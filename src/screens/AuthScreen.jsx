@@ -22,14 +22,15 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
   const [resending, setResending] = useState(false);
   const [resentAt, setResentAt] = useState(0);
   const [resendError, setResendError] = useState("");
-  // Tick once per second while a cooldown is active so the countdown
-  // rerenders. Idle when no resend has fired (saves the interval).
-  const [, setTick] = useState(0);
+  // `now` ticks once per second while a cooldown is active so the
+  // countdown rerenders. Using a state value (instead of reading
+  // Date.now() inline) keeps the render pure — impure reads during
+  // render break React Compiler's memoization.
+  const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!resentAt) return;
-    const elapsed = Date.now() - resentAt;
-    if (elapsed >= RESEND_COOLDOWN_MS) return;
-    const id = setInterval(() => setTick(x => x + 1), 1000);
+    if (Date.now() - resentAt >= RESEND_COOLDOWN_MS) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [resentAt]);
 
@@ -41,10 +42,12 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
     const { error } = await supabase.auth.resend({ type: "signup", email });
     setResending(false);
     if (error) { setResendError(t("auth.verifyResendError")); return; }
-    setResentAt(Date.now());
+    const when = Date.now();
+    setResentAt(when);
+    setNow(when);
   };
 
-  const elapsed = resentAt ? Date.now() - resentAt : Infinity;
+  const elapsed = resentAt ? now - resentAt : Infinity;
   const remaining = Math.max(0, Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000));
   const cooling = remaining > 0;
   const justSent = resentAt && elapsed < 4000;
@@ -269,10 +272,13 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen })
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
 
   // When we mount because the user clicked "Crear cuenta" from the demo
-  // banner, jump straight into the signup sheet instead of the marketing page.
-  useEffect(() => {
+  // banner, jump straight into the signup sheet instead of the marketing
+  // page. Adjust-state-during-render on the autoOpen transition.
+  const [prevAutoOpen, setPrevAutoOpen] = useState(autoOpen);
+  if (autoOpen !== prevAutoOpen) {
+    setPrevAutoOpen(autoOpen);
     if (autoOpen === "signup" || autoOpen === "login") openAuth(autoOpen);
-  }, [autoOpen]);
+  }
 
   return (
     <>

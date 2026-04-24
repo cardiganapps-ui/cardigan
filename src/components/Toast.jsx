@@ -12,11 +12,18 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, p
   // and any caller can still override with an explicit duration prop.
   const effectiveDuration = duration ?? 1400;
 
+  // Flip visibility synchronously when the message prop changes —
+  // adjust-state-during-render so the toast enters/exits without a
+  // set-state-in-effect cascade. The auto-dismiss timer stays in an
+  // effect (legitimate async side-effect).
+  const [prevMessage, setPrevMessage] = useState(message);
+  if (message !== prevMessage) {
+    setPrevMessage(message);
+    if (message) { setVisible(true); setLeaving(false); }
+    else { setVisible(false); }
+  }
   useEffect(() => {
-    if (!message) { setVisible(false); return; }
-    setVisible(true);
-    setLeaving(false);
-    if (persistent) return;
+    if (!message || persistent) return;
     const timer = setTimeout(() => {
       setLeaving(true);
       setTimeout(() => { setVisible(false); onDismiss?.(); }, 180);

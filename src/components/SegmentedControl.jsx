@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
 
 /**
  * Shared pill segmented control with animated slider.
@@ -22,7 +22,18 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
   // against the wall, then spring back to shape. Nulled out after
   // the animation duration so repeating the same selection replays.
   const [edgeBounce, setEdgeBounce] = useState(null); // 'left' | 'right' | null
-  const prevValueRef = useRef(value);
+  // Adjust-state-during-render: tag the slider with the edge class the
+  // moment `value` arrives at either end so the bounce animation plays
+  // in sync with the slider move.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (items?.length) {
+      if (items[0].k === value) setEdgeBounce("left");
+      else if (items[items.length - 1].k === value) setEdgeBounce("right");
+      else setEdgeBounce(null);
+    }
+  }
 
   const measure = useCallback(() => {
     const container = containerRef.current;
@@ -36,26 +47,18 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
     });
   }, [value]);
 
-  useEffect(() => {
-    measure();
-  }, [measure, items]);
+  // DOM measurement on mount, value change, or item-list change. The
+  // slider position is derived from layout, so it can't be computed
+  // without reading the rendered DOM — this is the canonical
+  // useLayoutEffect + setState pattern (measure-then-render).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useLayoutEffect(() => { measure(); }, [measure, items]);
 
   // Re-measure on resize (handles orientation changes, font load, etc.)
   useEffect(() => {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
-
-  // Detect arrivals at the leftmost / rightmost tab and tag the
-  // slider with the right edge class for the duration of the bounce.
-  useEffect(() => {
-    if (prevValueRef.current === value) return;
-    prevValueRef.current = value;
-    if (!items?.length) return;
-    if (items[0].k === value) setEdgeBounce("left");
-    else if (items[items.length - 1].k === value) setEdgeBounce("right");
-    else setEdgeBounce(null);
-  }, [value, items]);
 
   // Clear the edge flag after the animation finishes so the next
   // selection (including re-selecting the same tab) re-arms it.

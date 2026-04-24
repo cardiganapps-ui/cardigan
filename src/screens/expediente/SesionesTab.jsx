@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -166,7 +166,12 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
   const [visibleCount, setVisibleCount] = useState(SESSIONS_COLLAPSED_COUNT);
   // Reset to the initial window whenever the filtered list changes so
   // switching filters doesn't leave a stale expanded view visible.
-  useEffect(() => { setVisibleCount(SESSIONS_COLLAPSED_COUNT); }, [sessions]);
+  // Adjust-state-during-render pattern.
+  const [prevSessions, setPrevSessions] = useState(sessions);
+  if (sessions !== prevSessions) {
+    setPrevSessions(sessions);
+    setVisibleCount(SESSIONS_COLLAPSED_COUNT);
+  }
 
   if (sessions.length === 0) {
     return (

@@ -57,6 +57,10 @@ export default function Tooltip({ label, children, placement = "bottom", shortcu
       anchorRef.current = node;
       const { ref } = children;
       if (typeof ref === "function") ref(node);
+      // A ref object's `.current` is explicitly mutable by the React
+      // API contract (that's how refs work). The Compiler's immutability
+      // rule doesn't have a carve-out for ref-merging patterns.
+      // eslint-disable-next-line react-hooks/immutability
       else if (ref && typeof ref === "object") ref.current = node;
     },
     onMouseEnter: (e) => { children.props.onMouseEnter?.(e); show(); },

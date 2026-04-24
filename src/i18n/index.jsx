@@ -29,6 +29,9 @@ export function I18nProvider({ children }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// Colocating the Provider + consumer hook is the standard React
+// context pattern.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useT() {
   const ctx = useContext(I18nContext);
   if (!ctx) throw new Error("useT must be used within I18nProvider");

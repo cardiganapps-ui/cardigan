@@ -7,12 +7,6 @@ function getStored() {
   try { return localStorage.getItem(LS_KEY); } catch { return null; }
 }
 
-function resolve(pref) {
-  if (pref === "dark") return "dark";
-  if (pref === "light") return "light";
-  return window.matchMedia(DARK_QUERY).matches ? "dark" : "light";
-}
-
 function apply(resolved) {
   if (resolved === "dark") {
     document.documentElement.setAttribute("data-theme", "dark");
@@ -25,27 +19,23 @@ function apply(resolved) {
 
 export function useTheme() {
   const [preference, setPreferenceState] = useState(() => getStored() || "system");
-  const [resolvedTheme, setResolved] = useState(() => resolve(preference));
+  const [systemIsDark, setSystemIsDark] = useState(() => window.matchMedia(DARK_QUERY).matches);
 
-  // Apply on mount and whenever preference changes
+  // Track system dark-mode preference as state so resolvedTheme can be
+  // derived purely during render.
   useEffect(() => {
-    const r = resolve(preference);
-    setResolved(r);
-    apply(r);
-  }, [preference]);
-
-  // Listen for system changes when preference is "system"
-  useEffect(() => {
-    if (preference !== "system") return;
     const mql = window.matchMedia(DARK_QUERY);
-    const handler = () => {
-      const r = resolve("system");
-      setResolved(r);
-      apply(r);
-    };
+    const handler = () => setSystemIsDark(mql.matches);
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
-  }, [preference]);
+  }, []);
+
+  const resolvedTheme = preference === "dark" ? "dark"
+    : preference === "light" ? "light"
+    : systemIsDark ? "dark" : "light";
+
+  // Apply resolved theme to the DOM whenever it changes.
+  useEffect(() => { apply(resolvedTheme); }, [resolvedTheme]);
 
   const setPreference = useCallback((value) => {
     try { localStorage.setItem(LS_KEY, value); } catch { /* private mode / quota — non-fatal */ }

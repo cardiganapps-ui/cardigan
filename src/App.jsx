@@ -277,6 +277,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // showToast de-dup: re-raising replaces the existing entry rather
   // than stacking. When mutationError clears, strip any lingering
   // entry with that key.
+  // Surface mutation errors as a persistent toast; clear it when the
+  // error resolves.
   useEffect(() => {
     if (mutationError) {
       showToast(mutationError, "error", {
@@ -285,6 +287,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         key: "mutation-error",
       });
     } else {
+      // Functional updater returns `prev` unchanged when there's
+      // nothing to remove, so React bails out — no cascading render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToasts(prev => prev.some(t => t.key === "mutation-error")
         ? prev.filter(t => t.key !== "mutation-error")
         : prev);
@@ -317,14 +322,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const userInitial = userName.charAt(0).toUpperCase();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(demo ? null : user?.user_metadata?.avatar);
 
-  const openEditPaymentModal = (payment) => {
+  const openEditPaymentModal = useCallback((payment) => {
     if (readOnly) return;
     setEditingPayment(payment);
     setPaymentDraft({ patientName: "", amount: "" });
     setPaymentModalOpen(true);
-  };
+  }, [readOnly]);
 
-  const openRecordPaymentModal = (patient) => {
+  const openRecordPaymentModal = useCallback((patient) => {
     if (readOnly) return;
     setEditingPayment(null);
     setPaymentDraft({
@@ -332,7 +337,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       amount: patient ? String(patient.amountDue || 0) : "",
     });
     setPaymentModalOpen(true);
-  };
+  }, [readOnly]);
 
   /* ── Edge swipe to open drawer ──
      These handlers are attached via a native addEventListener with
@@ -351,7 +356,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const shellRef = useRef(null);
   const edgeRef = useRef(null);
   const drawerOpenRef = useRef(drawerOpen);
-  drawerOpenRef.current = drawerOpen;
   // Screen-slide animations from bottom-tab nav play for ~500ms. If we
   // let the edge-swipe activate during that window, the user sees the
   // screen still sliding into place AND the drawer sliding in — reads
@@ -359,7 +363,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // native handlers (closure-scoped, effect runs once) always see the
   // current value.
   const screenSlidingRef = useRef(false);
-  screenSlidingRef.current = !!direction;
+  useEffect(() => { drawerOpenRef.current = drawerOpen; }, [drawerOpen]);
+  useEffect(() => { screenSlidingRef.current = !!direction; }, [direction]);
   const [swipeProgress, setSwipeProgress] = useState(0);
 
   useEffect(() => {
@@ -518,7 +523,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,

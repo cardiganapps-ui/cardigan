@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { IconBell, IconX } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -34,10 +34,14 @@ export function NotificationsPrompt() {
 
   // Keep the banner hidden once the user enables push, regardless of
   // dismissal state — no reason to keep showing it if they're
-  // already opted in.
-  useEffect(() => {
-    if (notifications?.enabled) setHidden(true);
-  }, [notifications?.enabled]);
+  // already opted in. Adjust-state-during-render pattern on the
+  // enabled transition.
+  const enabled = notifications?.enabled;
+  const [prevEnabled, setPrevEnabled] = useState(enabled);
+  if (enabled !== prevEnabled) {
+    setPrevEnabled(enabled);
+    if (enabled) setHidden(true);
+  }
 
   if (!notifications) return null;
   if (hidden) return null;

@@ -1,15 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useEscape } from "../hooks/useEscape";
 
 const MARGIN = 8;
 
 export default function ContextMenu({ open, x, y, onClose, items }) {
   const panelRef = useRef(null);
-  const [pos, setPos] = useState({ top: y, left: x });
 
   useEscape(open ? onClose : null);
 
-  useEffect(() => {
+  // Measure-and-clamp happens synchronously after mount via layout
+  // effect, writing directly to the element's style. Avoids the
+  // second-render setState cascade you'd get from `setPos` state;
+  // the initial inline style places the panel at (x, y) and the
+  // clamped position overwrites it before paint.
+  useLayoutEffect(() => {
     if (!open) return;
     const el = panelRef.current;
     if (!el) return;
@@ -20,7 +24,8 @@ export default function ContextMenu({ open, x, y, onClose, items }) {
     if (top + r.height + MARGIN > window.innerHeight) top = window.innerHeight - r.height - MARGIN;
     if (left < MARGIN) left = MARGIN;
     if (top < MARGIN) top = MARGIN;
-    setPos({ top, left });
+    el.style.top = `${top}px`;
+    el.style.left = `${left}px`;
   }, [open, x, y]);
 
   useEffect(() => {
@@ -43,7 +48,7 @@ export default function ContextMenu({ open, x, y, onClose, items }) {
       ref={panelRef}
       role="menu"
       className="context-menu"
-      style={{ top: pos.top, left: pos.left }}
+      style={{ top: y, left: x }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {items.map((item, i) => {
@@ -67,6 +72,9 @@ export default function ContextMenu({ open, x, y, onClose, items }) {
   );
 }
 
+// Hook colocated with the component that owns the primitive it
+// controls; splitting would just fragment the module.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useContextMenu() {
   const [state, setState] = useState({ open: false, x: 0, y: 0, items: [] });
   const openAt = (e, items) => {

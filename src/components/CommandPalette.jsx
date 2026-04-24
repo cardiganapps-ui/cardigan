@@ -43,14 +43,22 @@ export default function CommandPalette({ open, onClose }) {
 
   useEscape(open ? onClose : null);
 
-  useEffect(() => {
+  // Reset query + selection when the palette opens. "Adjust state
+   //   during render" is the React-recommended pattern for responding to
+   //   a prop flip without the set-state-in-effect cascade.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setQuery("");
       setActiveIdx(0);
-      // Focus on next tick so the animation can play first.
-      const id = setTimeout(() => inputRef.current?.focus(), 40);
-      return () => clearTimeout(id);
     }
+  }
+  useEffect(() => {
+    if (!open) return;
+    // Focus on next tick so the animation can play first.
+    const id = setTimeout(() => inputRef.current?.focus(), 40);
+    return () => clearTimeout(id);
   }, [open]);
 
   const commands = useMemo(() => {
@@ -78,7 +86,12 @@ export default function CommandPalette({ open, onClose }) {
       .map((x) => x.cmd);
   }, [commands, query]);
 
-  useEffect(() => { setActiveIdx(0); }, [query]);
+  // Reset selection to the top whenever the query changes (new filtered list).
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
+    setActiveIdx(0);
+  }
 
   // Scroll active item into view
   useEffect(() => {

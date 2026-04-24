@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useT } from "../i18n/index";
 
 // True only for iOS Safari tab mode (not PWA). PWA and every other browser
@@ -25,10 +25,8 @@ function isIOSSafariNotInstalled() {
  */
 export function InstallPrompt() {
   const { t } = useT();
-  const [show, setShow] = useState(false);
+  const [show] = useState(isIOSSafariNotInstalled);
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => { setShow(isIOSSafariNotInstalled()); }, []);
 
   if (!show) return null;
 

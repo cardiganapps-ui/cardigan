@@ -42,12 +42,13 @@ export function DocumentList({
   }
 
   const isCards = variant === "cards";
-  const Container = ({ children }) => isCards
-    ? <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{children}</div>
-    : <div className="card" style={{ padding:0 }}>{children}</div>;
+  const containerStyle = isCards
+    ? { display: "flex", flexDirection: "column", gap: 8 }
+    : { padding: 0 };
+  const containerClass = isCards ? undefined : "card";
 
   return (
-    <Container>
+    <div className={containerClass} style={containerStyle}>
       {documents.map((doc, i) => {
         const p = showPatientName ? (patients || []).find(pt => pt.id === doc.patient_id) : null;
         const linkedSession = doc.session_id ? (sessions || []).find(s => s.id === doc.session_id) : null;
@@ -139,6 +140,6 @@ export function DocumentList({
           </div>
         );
       })}
-    </Container>
+    </div>
   );
 }

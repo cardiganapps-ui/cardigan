@@ -150,7 +150,7 @@ export function Home({ setScreen, userName }) {
   const [selectedSession, setSelectedSession] = useState(null);
   const [tutorBooking, setTutorBooking] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
-  const closeSelected = useCallback(() => setSelected(null), []);
+  const closeSelected = useCallback(() => setSelected(null), [setSelected]);
   useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
   const { scrollRef: selectedScrollRef, setPanelEl: setSelectedPanelEl, panelHandlers: selectedPanelHandlers } = useSheetDrag(closeSelected);
   const setSelectedPanel = (el) => { selectedScrollRef.current = el; setSelectedPanelEl(el); };
@@ -164,7 +164,7 @@ export function Home({ setScreen, userName }) {
   const handleDeleteNote = useCallback(async () => {
     if (editingNote?.id) await deleteNote(editingNote.id);
   }, [editingNote, deleteNote]);
-  const handleCloseNote = useCallback(() => setEditingNote(null), []);
+  const handleCloseNote = useCallback(() => setEditingNote(null), [setEditingNote]);
   const owingPatients = patients.filter(p => p.amountDue > 0);
 
   const openPatient = (name) => {

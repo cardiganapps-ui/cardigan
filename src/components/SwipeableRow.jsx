@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { haptic } from "../utils/haptics";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 
@@ -34,7 +34,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
 
   // Keep ref in sync so touch handlers see the latest committed offset
   // without re-binding on every render.
-  offsetRef.current = offset;
+  useEffect(() => { offsetRef.current = offset; }, [offset]);
 
   const onTouchStart = useCallback((e) => {
     ref.current = {

@@ -39,11 +39,16 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
 
   // Reset any stale drag state whenever the drawer transitions closed →
   // open or is closed programmatically (e.g. nav change mid-gesture).
-  useEffect(() => {
-    dragRef.current = null;
+  // Adjust-during-render pattern for setState; ref reset is in an
+  // effect (ref mutation during render is unsafe under concurrent
+  // rendering — an aborted render could leave the ref desynced).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     setDragging(false);
     setDragOffset(0);
-  }, [open]);
+  }
+  useEffect(() => { dragRef.current = null; }, [open]);
 
   const onPanelTouchStart = useCallback((e) => {
     if (!open) return;

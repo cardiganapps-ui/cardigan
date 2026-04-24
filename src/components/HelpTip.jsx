@@ -25,9 +25,12 @@ export function HelpTip({ tipsKey, variant = "default" }) {
   const ariaLabel = t("help.ariaLabel");
 
   // Close on route change — the screen that rendered us is going away.
-  useEffect(() => {
+  // Adjust-state-during-render pattern; avoids the set-state-in-effect cascade.
+  const [prevTipsKey, setPrevTipsKey] = useState(tipsKey);
+  if (tipsKey !== prevTipsKey) {
+    setPrevTipsKey(tipsKey);
     setOpen(false);
-  }, [tipsKey]);
+  }
 
   useEscape(open ? () => setOpen(false) : null);
 

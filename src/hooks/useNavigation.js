@@ -63,7 +63,7 @@ export function useNavigation() {
     suppressPopState.current = false;
     restoreScroll(newScreen);
     setTimeout(() => setDirection(null), 300);
-  }, [screen]);
+  }, [screen, saveScroll, restoreScroll]);
 
   // ── Layer stack (modals/overlays) ──
   const pushLayer = useCallback((key, closeFn) => {

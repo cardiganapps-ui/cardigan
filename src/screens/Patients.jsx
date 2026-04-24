@@ -144,7 +144,10 @@ export function Patients() {
     setConfirmDelete(!!opts.confirmDelete);
   };
 
-  // Open expediente when navigated from another screen
+  // Open expediente when navigated from another screen. Mount-only
+  // consume pattern — consumeExpediente returns the pending patient
+  // once and nulls it, so running this on every render would break
+  // the contract.
   useEffect(() => {
     const pending = consumeExpediente?.();
     if (pending) {
@@ -152,7 +155,8 @@ export function Patients() {
       setExpedienteOrigin(pending.origin || null);
       openDetail(match);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateEditSched = (i, f, v) => setEditSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
 

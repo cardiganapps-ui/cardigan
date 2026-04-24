@@ -224,6 +224,10 @@ function AccountsTab({ onViewAs, currentAdminId }) {
       .catch(e => { setError(e.message || t("admin.loadError")); setLoading(false); });
   }, [t]);
 
+  // setLoading(true) inside load() is a no-op on mount since loading
+  // initialises to true, so the cascade the rule warns about doesn't
+  // actually happen here.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:"var(--text-sm)" }}>{t("admin.loadingAccounts")}</div>;

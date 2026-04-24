@@ -11,20 +11,17 @@ import { useCardigan } from "../context/CardiganContext";
  */
 export function useLayer(key, closeFn) {
   const { pushLayer, removeLayer } = useCardigan();
-  const registered = useRef(false);
+  // Capture the latest closeFn in a ref so the registered layer always
+  // calls the current closure, without re-registering on every render.
+  const closeRef = useRef(closeFn);
+  useEffect(() => { closeRef.current = closeFn; }, [closeFn]);
 
   useEffect(() => {
     // Pass a falsy key (null/undefined/empty) to opt out — e.g. when a
     // component renders inline on desktop and shouldn't participate in the
     // back-button/ESC stack.
-    if (!key || !closeFn) return;
-    if (!registered.current) {
-      pushLayer(key, closeFn);
-      registered.current = true;
-    }
-    return () => {
-      removeLayer(key);
-      registered.current = false;
-    };
-  }, []); // Only on mount/unmount
+    if (!key) return;
+    pushLayer(key, () => closeRef.current?.());
+    return () => removeLayer(key);
+  }, [key, pushLayer, removeLayer]);
 }

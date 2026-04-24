@@ -35,7 +35,7 @@ function normalizeKey(e) {
 export function useKeyboardShortcuts(bindings, { enabled = true, leader = null, leaderBindings = null } = {}) {
   const bindingsRef = useRef(bindings);
   const leaderRef = useRef(null);
-  bindingsRef.current = bindings;
+  useEffect(() => { bindingsRef.current = bindings; }, [bindings]);
 
   useEffect(() => {
     if (!enabled) return;

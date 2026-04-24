@@ -145,6 +145,10 @@ export function Tutorial() {
     }
 
     return () => timers.forEach(clearTimeout);
+    // `step?.id` is the canonical key for a tutorial step — including the
+    // full `step` object would re-run the effect on parent re-renders
+    // even when the user hasn't advanced.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, step?.id]);
 
   // ── Boost FAB z-index above the tutorial overlay on the FAB step ──

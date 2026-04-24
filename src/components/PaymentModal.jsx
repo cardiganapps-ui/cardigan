@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { todayISO, isoToShortDate, shortDateToISO } from "../utils/dates";
 import { PAYMENT_METHOD } from "../data/constants";
 import { IconX } from "./Icons";
@@ -30,32 +30,39 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   const [paymentNote, setPaymentNote] = useState("");
   const [formError, setFormError] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    if (editingPayment) {
-      setPatientName(editingPayment.patient || "");
-      setAmount(String(editingPayment.amount || ""));
-      // Determine if method is a standard one or custom
-      const stdMethods = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.CARD, PAYMENT_METHOD.CARDLESS, PAYMENT_METHOD.OTHER];
-      if (stdMethods.includes(editingPayment.method)) {
-        setMethod(editingPayment.method);
-        setCustomMethod("");
+  // Populate form fields when the modal opens (or when the props
+  // driving it change while it's open). Adjust-state-during-render is
+  // the React-recommended alternative to a reset-in-effect for this
+  // "when inputs change, reset derived state" pattern.
+  const inputKey = open ? `${editingPayment?.id ?? "new"}:${initialPatientName || ""}:${initialAmount || ""}` : null;
+  const [prevInputKey, setPrevInputKey] = useState(null);
+  if (inputKey !== prevInputKey) {
+    setPrevInputKey(inputKey);
+    if (inputKey) {
+      if (editingPayment) {
+        setPatientName(editingPayment.patient || "");
+        setAmount(String(editingPayment.amount || ""));
+        const stdMethods = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.CARD, PAYMENT_METHOD.CARDLESS, PAYMENT_METHOD.OTHER];
+        if (stdMethods.includes(editingPayment.method)) {
+          setMethod(editingPayment.method);
+          setCustomMethod("");
+        } else {
+          setMethod(PAYMENT_METHOD.OTHER);
+          setCustomMethod(editingPayment.method || "");
+        }
+        setDate(editingPayment.date ? shortDateToISO(editingPayment.date) : todayISO());
+        setPaymentNote(editingPayment.note || "");
       } else {
-        setMethod(PAYMENT_METHOD.OTHER);
-        setCustomMethod(editingPayment.method || "");
+        setPatientName(initialPatientName || "");
+        setAmount(initialAmount || "");
+        setMethod(PAYMENT_METHOD.TRANSFER);
+        setCustomMethod("");
+        setDate(todayISO());
+        setPaymentNote("");
       }
-      setDate(editingPayment.date ? shortDateToISO(editingPayment.date) : todayISO());
-      setPaymentNote(editingPayment.note || "");
-    } else {
-      setPatientName(initialPatientName || "");
-      setAmount(initialAmount || "");
-      setMethod(PAYMENT_METHOD.TRANSFER);
-      setCustomMethod("");
-      setDate(todayISO());
-      setPaymentNote("");
+      setFormError("");
     }
-    setFormError("");
-  }, [open, initialPatientName, initialAmount, editingPayment]);
+  }
 
   const handlePatientChange = (name) => {
     setPatientName(name);
