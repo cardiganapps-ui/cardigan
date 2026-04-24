@@ -160,9 +160,23 @@ function LoadingSkeleton({ screen = "home" }) {
       </div>
     );
   }
+  const skeletonRow = (key) => (
+    <div key={key} className="row-item" style={{ cursor:"default" }}>
+      <div className="sk-circle" />
+      <div className="row-content">
+        <div className="sk-bar sk-bar-md" style={{ width:"55%", marginBottom:6 }} />
+        <div className="sk-bar sk-bar-xs" style={{ width:"35%" }} />
+      </div>
+    </div>
+  );
   return (
     <div className="page" aria-hidden>
-      <div style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      {/* Match real Home's classes so the responsive rules kick in —
+         kpi-grid-desktop → 4-col on iPad+, home-columns + .home-col-*
+         give the right main/side split at each breakpoint. Without
+         these the skeleton stayed at 2-col KPIs + single narrow card,
+         which read as "too narrow" on iPad landscape. */}
+      <div className="kpi-grid-desktop" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="kpi-card">
             <div className="sk-bar sk-bar-sm" style={{ width:"50%", marginBottom:10 }} />
@@ -171,15 +185,39 @@ function LoadingSkeleton({ screen = "home" }) {
           </div>
         ))}
       </div>
-      <div style={{ padding:"16px 16px 0" }}>
-        <div className="sk-bar sk-bar-sm" style={{ width:"40%", marginBottom:12 }} />
-        <div className="card">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="row-item" style={{ cursor:"default" }}>
-              <div className="sk-circle" />
-              <div className="row-content">
-                <div className="sk-bar sk-bar-md" style={{ width:"55%", marginBottom:6 }} />
-                <div className="sk-bar sk-bar-xs" style={{ width:"35%" }} />
+      <div className="home-columns">
+        <div className="section home-col-main">
+          <div className="section-header home-carousel" style={{ padding:"0 16px 8px" }}>
+            <div className="sk-bar sk-bar-sm" style={{ width:"45%" }} />
+          </div>
+          {/* Mobile/iPad portrait: single card (carousel panel stand-in) */}
+          <div className="home-carousel" style={{ padding:"0 16px" }}>
+            <div className="card">
+              {Array.from({ length: 3 }).map((_, i) => skeletonRow(i))}
+            </div>
+          </div>
+          {/* iPad landscape / desktop: today + tomorrow side-by-side */}
+          <div className="home-two-panel-desktop">
+            {Array.from({ length: 2 }).map((_, p) => (
+              <div key={p}>
+                <div className="home-panel-meta">
+                  <div className="sk-bar sk-bar-xs" style={{ width:"40%" }} />
+                </div>
+                <div className="card">
+                  {Array.from({ length: 3 }).map((_, i) => skeletonRow(i))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="home-col-side">
+          {Array.from({ length: 2 }).map((_, s) => (
+            <div key={s} className="section" style={{ padding:"16px 16px 0" }}>
+              <div className="section-header">
+                <div className="sk-bar sk-bar-sm" style={{ width:"40%" }} />
+              </div>
+              <div className="card">
+                {Array.from({ length: 3 }).map((_, i) => skeletonRow(i))}
               </div>
             </div>
           ))}
