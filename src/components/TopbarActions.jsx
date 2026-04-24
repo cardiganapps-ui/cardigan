@@ -41,7 +41,7 @@ export default function TopbarActions({ onOpenPalette }) {
           aria-label={t("cmdp.open") || "Buscar / comandos"}
           title={isMac ? "\u2318K o /" : "Ctrl+K o /"}
         >
-          <IconSearch size={15} />
+          <IconSearch size={18} />
         </button>
       )}
       <button
