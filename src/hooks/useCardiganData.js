@@ -42,11 +42,18 @@ export async function fetchAllAccounts() {
   try {
     const { data } = await supabase.from("patients").select("user_id, name, created_at").order("created_at");
     pData = data || [];
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    // Admin-tooling diagnostic — keeps the failure visible in devtools
+    // so a "why is the admin list empty?" trace has a starting point.
+    // Not user-facing; the admin sees a graceful empty list either way.
+    console.error("fetchAllAccounts: patients query failed", e);
+  }
   try {
     const { data } = await supabase.rpc("get_user_profiles");
     profileData = data || [];
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.error("fetchAllAccounts: get_user_profiles RPC failed", e);
+  }
 
   // Start from auth.users so accounts with zero patients still appear —
   // otherwise the admin can't block/delete a freshly-created empty

@@ -5,9 +5,11 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useCardigan } from "../../context/CardiganContext";
 
 export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }) {
   const { t } = useT();
+  const { showToast } = useCardigan();
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
@@ -38,7 +40,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
     if (files.length === 0 || !patientId) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
+      showToast?.(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }

@@ -71,7 +71,7 @@ export function Documents() {
     if (files.length === 0) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
+      showToast(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (fileInputRef.current) fileInputRef.current.value = "";

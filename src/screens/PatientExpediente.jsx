@@ -31,7 +31,7 @@ export function PatientExpediente({
 }) {
   const inline = layout === "inline";
   const { t } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast } = useCardigan();
 
   // ── Enter/close animation state ──
   // `entering` is true for the first paint so the panel mounts at
@@ -227,7 +227,7 @@ export function PatientExpediente({
     if (files.length === 0) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      alert(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }));
+      showToast?.(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
     }
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) return;
