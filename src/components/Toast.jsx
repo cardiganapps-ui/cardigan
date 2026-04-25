@@ -60,7 +60,10 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, p
           boxShadow:"var(--shadow-lg)",
           display:"flex", alignItems:"center", gap:10,
         }}>
-        <span onClick={dismiss} style={{ flex:1, cursor:"pointer" }}>{message}</span>
+        <span role="button" tabIndex={0} onClick={dismiss}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dismiss(); } }}
+          aria-label={t("close")}
+          style={{ flex:1, cursor:"pointer" }}>{message}</span>
         {onRetry && (
           <button onClick={(e) => { e.stopPropagation(); onRetry(); dismiss(); }}
             style={{

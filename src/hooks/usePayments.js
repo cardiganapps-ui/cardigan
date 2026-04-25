@@ -36,33 +36,39 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     setMutationError("");
 
     (async () => {
-      const { data, error } = await supabase.from("payments").insert({
-        user_id: userId,
-        patient_id: patient?.id || null,
-        patient: patientName,
-        initials: patient?.initials || getInitials(patientName),
-        amount: parsedAmount, date, method,
-        note: note || null,
-        color_idx: patient?.colorIdx || 0,
-      }).select().single();
+      try {
+        const { data, error } = await supabase.from("payments").insert({
+          user_id: userId,
+          patient_id: patient?.id || null,
+          patient: patientName,
+          initials: patient?.initials || getInitials(patientName),
+          amount: parsedAmount, date, method,
+          note: note || null,
+          color_idx: patient?.colorIdx || 0,
+        }).select().single();
 
-      if (error) {
+        if (error) {
+          setPayments(prev => prev.filter(p => p.id !== tempId));
+          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+          setMutationError(error.message);
+          return;
+        }
+        // Swap the temp row for the server-assigned one so later edits
+        // and deletes can reference a real DB id.
+        setPayments(prev => prev.map(p => p.id === tempId ? { ...data, colorIdx: data.color_idx } : p));
+
+        if (patient && newPaid != null) {
+          const { error: pErr } = await supabase.from("patients")
+            .update({ paid: newPaid }).eq("id", patient.id).eq("user_id", userId);
+          if (pErr) {
+            const fixed = await recalcPatientCounters(patient.id);
+            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+          }
+        }
+      } catch (e) {
         setPayments(prev => prev.filter(p => p.id !== tempId));
         if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-        setMutationError(error.message);
-        return;
-      }
-      // Swap the temp row for the server-assigned one so later edits
-      // and deletes can reference a real DB id.
-      setPayments(prev => prev.map(p => p.id === tempId ? { ...data, colorIdx: data.color_idx } : p));
-
-      if (patient && newPaid != null) {
-        const { error: pErr } = await supabase.from("patients")
-          .update({ paid: newPaid }).eq("id", patient.id).eq("user_id", userId);
-        if (pErr) {
-          const fixed = await recalcPatientCounters(patient.id);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-        }
+        setMutationError(e?.message || "Network error");
       }
     })();
 
@@ -141,39 +147,47 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     }
     setMutationError("");
 
+    const revertOptimistic = () => {
+      setPayments(prev => prev.map(p => p.id === paymentId ? prevPayment : p));
+      setPatients(prev => prev.map(p => {
+        if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
+        if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
+        return p;
+      }));
+    };
+
     (async () => {
-      const { data, error } = await supabase.from("payments").update({
-        patient_id: newPatient?.id || null,
-        patient: patientName,
-        initials: newPatient?.initials || getInitials(patientName),
-        amount: parsedAmount, date, method,
-        note: note || null,
-        color_idx: newPatient?.colorIdx || 0,
-      }).eq("id", paymentId).eq("user_id", userId).select().single();
+      try {
+        const { data, error } = await supabase.from("payments").update({
+          patient_id: newPatient?.id || null,
+          patient: patientName,
+          initials: newPatient?.initials || getInitials(patientName),
+          amount: parsedAmount, date, method,
+          note: note || null,
+          color_idx: newPatient?.colorIdx || 0,
+        }).eq("id", paymentId).eq("user_id", userId).select().single();
 
-      if (error) {
-        // Revert payment + both patient counters.
-        setPayments(prev => prev.map(p => p.id === paymentId ? prevPayment : p));
-        setPatients(prev => prev.map(p => {
-          if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
-          if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
-          return p;
-        }));
-        setMutationError(error.message);
-        return;
-      }
-      setPayments(prev => prev.map(p => p.id === paymentId ? { ...data, colorIdx: data.color_idx } : p));
-
-      // Persist the same patient.paid targets we applied locally. Two
-      // targets mean two parallel updates; whichever fails falls back
-      // to the recalc helper.
-      for (const [patientId, targetPaid] of patientUpdates.entries()) {
-        const { error: pErr } = await supabase.from("patients")
-          .update({ paid: targetPaid }).eq("id", patientId).eq("user_id", userId);
-        if (pErr) {
-          const fixed = await recalcPatientCounters(patientId);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
+        if (error) {
+          revertOptimistic();
+          setMutationError(error.message);
+          return;
         }
+        setPayments(prev => prev.map(p => p.id === paymentId ? { ...data, colorIdx: data.color_idx } : p));
+
+        // Persist the same patient.paid targets we applied locally. Two
+        // targets mean two parallel updates; whichever fails falls back
+        // to the recalc helper.
+        for (const [patientId, targetPaid] of patientUpdates.entries()) {
+          const { error: pErr } = await supabase.from("patients")
+            .update({ paid: targetPaid }).eq("id", patientId).eq("user_id", userId);
+          if (pErr) {
+            const fixed = await recalcPatientCounters(patientId);
+            if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
+          }
+        }
+      } catch (e) {
+        revertOptimistic();
+        setMutationError(e?.message || "Network error");
       }
     })();
 

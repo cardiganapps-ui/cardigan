@@ -154,13 +154,13 @@ export function NotificationsPrompt() {
         onClick={handleDismiss}
         style={{
           flexShrink: 0,
-          width: 26, height: 26,
+          width: 36, height: 36,
           background: "transparent", border: "none", cursor: "pointer",
           color: "var(--charcoal-xl)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          marginRight: -4, marginTop: -4,
+          marginRight: -8, marginTop: -8,
         }}>
-        <IconX size={12} />
+        <IconX size={14} />
       </button>
     </div>
   );

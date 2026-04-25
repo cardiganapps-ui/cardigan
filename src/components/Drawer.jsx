@@ -26,6 +26,14 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  // Reset the inline confirm whenever the drawer transitions closed
+  // (adjust-during-render — same pattern as prevOpen below).
+  const [prevOpenForConfirm, setPrevOpenForConfirm] = useState(open);
+  if (open !== prevOpenForConfirm) {
+    setPrevOpenForConfirm(open);
+    if (!open) setConfirmSignOut(false);
+  }
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
@@ -183,10 +191,31 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
                 <span className="drawer-item-label">{t("bugReport.title")}</span>
               </button>
             )}
-            <button className="drawer-item" onClick={() => { if (window.confirm(t("nav.signOutConfirm"))) { signOut(); onClose(); } }}>
+            <button className="drawer-item" onClick={() => setConfirmSignOut(v => !v)} aria-expanded={confirmSignOut}>
               <div className="drawer-item-icon"><IconLogOut size={18} /></div>
               <span className="drawer-item-label">{t("nav.signOut")}</span>
             </button>
+            {confirmSignOut && (
+              <div style={{ padding: "4px 24px 12px" }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 8, lineHeight: 1.4 }}>
+                  {t("nav.signOutConfirm")}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setConfirmSignOut(false)}
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: 600, fontFamily: "var(--font)", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    onClick={() => { setConfirmSignOut(false); signOut(); onClose(); }}
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--radius)", border: "none", background: "var(--red)", color: "white", fontSize: 12, fontWeight: 700, fontFamily: "var(--font)", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    {t("nav.signOut")}
+                  </button>
+                </div>
+              </div>
+            )}
           </nav>
           <div className="drawer-footer">
             <div className="drawer-plan">

@@ -101,22 +101,32 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     setMutationError("");
 
     // Fire network in the background. Any failure → revert both tables.
+    // try/catch covers genuinely unexpected throws (the supabase-js client
+    // returns `{ error }` rather than throwing in normal failure modes,
+    // but we don't want a silent unhandled rejection to leave optimistic
+    // state in place if something exotic blows up).
     (async () => {
-      const { error } = await supabase.from("sessions")
-        .update(update).eq("id", sessionId).eq("user_id", userId);
-      if (error) {
+      try {
+        const { error } = await supabase.from("sessions")
+          .update(update).eq("id", sessionId).eq("user_id", userId);
+        if (error) {
+          setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+          setMutationError(error.message);
+          return;
+        }
+        if (patient && targetBilled != null) {
+          const { error: pErr } = await supabase.from("patients")
+            .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
+          if (pErr) {
+            const fixed = await recalcPatientCounters(patient.id);
+            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+          }
+        }
+      } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
         if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-        setMutationError(error.message);
-        return;
-      }
-      if (patient && targetBilled != null) {
-        const { error: pErr } = await supabase.from("patients")
-          .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
-        if (pErr) {
-          const fixed = await recalcPatientCounters(patient.id);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-        }
+        setMutationError(e?.message || "Network error");
       }
     })();
 
@@ -176,10 +186,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     setMutationError("");
 
     (async () => {
-      const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
-      if (error) {
+      try {
+        const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+        if (error) {
+          setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+          setMutationError(error.message);
+        }
+      } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
-        setMutationError(error.message);
+        setMutationError(e?.message || "Network error");
       }
     })();
 

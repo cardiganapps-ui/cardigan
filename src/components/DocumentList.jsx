@@ -102,23 +102,23 @@ export function DocumentList({
               {!isRenaming && (
                 <div style={{ display:"flex", gap:2, flexShrink:0 }}>
                   <button onClick={() => { setRenamingDoc(doc.id); setRenameValue(doc.name || ""); }}
-                    style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)" }} title={t("docs.rename")}>
+                    style={{ padding:10, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)", display:"flex", alignItems:"center", justifyContent:"center" }} title={t("docs.rename")} aria-label={t("docs.rename")}>
                     <IconEdit size={14} />
                   </button>
                   <button onClick={() => setTaggingDoc(taggingDoc === doc.id ? null : doc.id)}
-                    style={{ padding:6, background:"none", border:"none", cursor:"pointer", color: doc.session_id ? "var(--teal-dark)" : "var(--charcoal-xl)" }} title={t("docs.linkSession")}>
+                    style={{ padding:10, background:"none", border:"none", cursor:"pointer", color: doc.session_id ? "var(--teal-dark)" : "var(--charcoal-xl)", display:"flex", alignItems:"center", justifyContent:"center" }} title={t("docs.linkSession")} aria-label={t("docs.linkSession")}>
                     <IconTag size={14} />
                   </button>
                   {isConfirmingDelete ? (
-                    <div style={{ display:"flex", gap:2 }}>
+                    <div style={{ display:"flex", gap:4 }}>
                       <button onClick={() => handleDelete(doc.id)}
-                        style={{ padding:"4px 8px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"var(--white)", cursor:"pointer" }}>{t("yes")}</button>
+                        style={{ padding:"8px 12px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"var(--white)", cursor:"pointer" }}>{t("yes")}</button>
                       <button onClick={() => setConfirmDeleteDoc(null)}
-                        style={{ padding:"4px 8px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>{t("no")}</button>
+                        style={{ padding:"8px 12px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>{t("no")}</button>
                     </div>
                   ) : (
                     <button onClick={() => setConfirmDeleteDoc(doc.id)}
-                      style={{ padding:6, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)" }} title={t("delete")}>
+                      style={{ padding:10, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)", display:"flex", alignItems:"center", justifyContent:"center" }} title={t("delete")} aria-label={t("delete")}>
                       <IconTrash size={14} />
                     </button>
                   )}
