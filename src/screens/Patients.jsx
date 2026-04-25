@@ -518,6 +518,7 @@ export function Patients() {
                               <select className="input" value={s.modality || "presencial"} onChange={e => updateEditSched(i, "modality", e.target.value)}>
                                 <option value="presencial">{t("sessions.presencial")}</option>
                                 <option value="virtual">{t("sessions.virtual")}</option>
+                                <option value="telefonica">{t("sessions.telefonica")}</option>
                               </select>
                             </div>
                           </div>

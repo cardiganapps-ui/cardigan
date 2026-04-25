@@ -182,7 +182,10 @@ export function Home({ setScreen, userName }) {
   const renderSessionRow = (s) => {
     const tutor = isTutorSession(s);
     const isVirtual = s.modality === "virtual";
-    const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
+    const isTelefonica = s.modality === "telefonica";
+    const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : getClientColor(s.colorIdx);
+    const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : "var(--teal-dark)";
+    const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : "sessions.presencial";
     return (
       <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
         <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
@@ -205,8 +208,8 @@ export function Home({ setScreen, userName }) {
           </div>
           <div className="row-sub">
             {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
-            <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
-              {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
+            <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: modalityColor, marginLeft:6, textTransform:"uppercase" }}>
+              {t(modalityKey)}
             </span>
           </div>
         </div>

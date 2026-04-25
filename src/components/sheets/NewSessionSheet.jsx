@@ -144,6 +144,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
               <select className="input" value={modality} onChange={e => setModality(e.target.value)}>
                 <option value="presencial">{t("sessions.presencial")}</option>
                 <option value="virtual">{t("sessions.virtual")}</option>
+                <option value="telefonica">{t("sessions.telefonica")}</option>
               </select>
             </div>
           </div>

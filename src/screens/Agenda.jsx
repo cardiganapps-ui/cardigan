@@ -143,7 +143,10 @@ function SessionRow({ s, onClick, compact }) {
   const { t } = useT();
   const tutor = isTutorSession(s);
   const isVirtual = s.modality === "virtual";
-  const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : getClientColor(s.colorIdx);
+  const isTelefonica = s.modality === "telefonica";
+  const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : getClientColor(s.colorIdx);
+  const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : "var(--teal-dark)";
+  const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : "sessions.presencial";
   return (
     <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => onClick(s)}>
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
@@ -169,8 +172,8 @@ function SessionRow({ s, onClick, compact }) {
         </div>
         <div className="row-sub">
           {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
-          <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: isVirtual ? "var(--blue)" : "var(--teal-dark)", marginLeft:6, textTransform:"uppercase" }}>
-            {isVirtual ? t("sessions.virtual") : t("sessions.presencial")}
+          <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: modalityColor, marginLeft:6, textTransform:"uppercase" }}>
+            {t(modalityKey)}
           </span>
         </div>
       </div>
@@ -375,6 +378,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                   if (isCancelledStatus(sess.status)) return undefined;
                   if (isTutorSession(sess)) return { background:"var(--purple-bg)", borderLeftColor:"var(--purple)", color:"var(--charcoal)" };
                   if (sess.modality === "virtual") return { background:"var(--blue-bg)", borderLeftColor:"var(--blue)", color:"var(--charcoal)" };
+                  if (sess.modality === "telefonica") return { background:"var(--green-bg)", borderLeftColor:"var(--green)", color:"var(--charcoal)" };
                   const c = getClientColor(sess.colorIdx);
                   return { background: `${c}26`, borderLeftColor: c, color: "var(--charcoal)" };
                 })();
@@ -479,21 +483,25 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
         const isToday  = isSameDay(cellDate, TODAY);
         const isActive = isCurrentMonth && cellStr === selectedDateStr;
         const sessions = sessionsByDate.get(cellStr) || [];
-        const hasPresencial = sessions.some(s => !isTutorSession(s) && s.modality !== "virtual");
+        const hasPresencial = sessions.some(s => !isTutorSession(s) && s.modality !== "virtual" && s.modality !== "telefonica");
         const hasVirtual = sessions.some(s => !isTutorSession(s) && s.modality === "virtual");
+        const hasTelefonica = sessions.some(s => !isTutorSession(s) && s.modality === "telefonica");
         const hasTutor = sessions.some(s => isTutorSession(s));
         return (
           <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
             role="button" tabIndex={0} onClick={() => setSelectedDate(cellDate)}>
             <span className="month-cell-num">{cell.num}</span>
-            {(hasPresencial || hasVirtual || hasTutor) && (
+            {(hasPresencial || hasVirtual || hasTelefonica || hasTutor) && (
               <div className="month-dots">
                 {/* Saturated dot-only variants: brand teal/blue/purple all land
                     in the same cool-blue band at this size and become
                     indistinguishable. Deeper teal + true blue + magenta-leaning
-                    purple pull each hue into its own corner of the wheel. */}
+                    purple pull each hue into its own corner of the wheel.
+                    Telefónica reuses brand green so it reads distinct from
+                    presencial's teal at this size. */}
                 {hasPresencial && <span className="month-dot-color" style={{ background: "#1F7A8C" }} />}
                 {hasVirtual && <span className="month-dot-color" style={{ background: "#2550C7" }} />}
+                {hasTelefonica && <span className="month-dot-color" style={{ background: "#3DAB74" }} />}
                 {hasTutor && <span className="month-dot-color" style={{ background: "#A347C9" }} />}
               </div>
             )}

@@ -143,14 +143,22 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
                 <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color:"var(--charcoal)" }}>{rateDisplay}</div>
               )}
             </div>
-            <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, session.modality === "virtual" ? "presencial" : "virtual")}
-              className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
-              style={{ background: session.modality === "virtual" ? "var(--blue-bg)" : "var(--cream)", cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
-              <div className="stat-tile-label">{t("sessions.modality")}</div>
-              <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: session.modality === "virtual" ? "var(--blue)" : "var(--charcoal)", transition:"color 0.5s ease" }}>
-                {session.modality === "virtual" ? t("sessions.virtual") : t("sessions.presencial")}
-              </div>
-            </div>
+            {(() => {
+              const mod = session.modality === "virtual" || session.modality === "telefonica" ? session.modality : "presencial";
+              const next = mod === "presencial" ? "virtual" : mod === "virtual" ? "telefonica" : "presencial";
+              const bg = mod === "virtual" ? "var(--blue-bg)" : mod === "telefonica" ? "var(--green-bg)" : "var(--cream)";
+              const fg = mod === "virtual" ? "var(--blue)" : mod === "telefonica" ? "var(--green)" : "var(--charcoal)";
+              return (
+                <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, next)}
+                  className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
+                  style={{ background: bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+                  <div className="stat-tile-label">{t("sessions.modality")}</div>
+                  <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: fg, transition:"color 0.5s ease" }}>
+                    {t(`sessions.${mod}`)}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Cancel reason for already-cancelled sessions — tap to add or
