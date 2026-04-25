@@ -559,7 +559,7 @@ export function Patients() {
                       </div>
                       <div className="input-group">
                         <label className="input-label">{t("settings.email")}</label>
-                        <input className="input" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                        <input className="input" type="email" inputMode="email" autoComplete="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
                       </div>
                     </div>
                   </EditSection>

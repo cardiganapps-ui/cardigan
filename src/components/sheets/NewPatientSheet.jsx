@@ -414,7 +414,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                 </div>
                 <div className="input-group">
                   <label className="input-label">{t("settings.email")}</label>
-                  <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                  <input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
                 </div>
               </div>
               <div className="input-group">

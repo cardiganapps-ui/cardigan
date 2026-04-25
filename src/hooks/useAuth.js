@@ -11,10 +11,19 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // If getSession() rejects (network meltdown, supabase outage at boot),
+    // we still need to drop out of `loading` — otherwise the app is stuck
+    // on the splash forever. Treat a rejection as "no session" so the
+    // user lands on the auth screen and can retry by signing in.
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);

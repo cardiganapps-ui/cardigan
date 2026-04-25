@@ -22,6 +22,10 @@ async function handler(req, res) {
 
     res.status(200).json({ url });
   } catch (err) {
+    console.error("[document-url]", {
+      name: err?.name, message: err?.message,
+      httpStatus: err?.$metadata?.httpStatusCode,
+    });
     res.status(500).json({ error: "Document URL generation failed" });
   }
 }

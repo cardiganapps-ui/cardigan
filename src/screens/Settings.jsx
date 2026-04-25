@@ -629,10 +629,13 @@ export function Settings({ user, signOut, refreshUser }) {
                       { k: 60, l: "1 hr" },
                     ]}
                     value={notifications.reminderMinutes}
-                    onChange={(v) => {
+                    onChange={async (v) => {
                       if (v === notifications.reminderMinutes) return;
                       haptic.tap();
-                      notifications.setReminderMinutes(v);
+                      const res = await notifications.setReminderMinutes(v);
+                      if (res && !res.ok) {
+                        showToast(t(notifErrorKey(res.code)), "error");
+                      }
                     }}
                   />
                 </div>

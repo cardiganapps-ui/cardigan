@@ -78,6 +78,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const toastTimer = useRef(null);
   const scrollRef = useRef(null);
   const editorRef = useRef(null);
+  // Holds the latest typed args while a debounced save is pending. We
+  // read this on unmount so a tablet-split-view note switch (which
+  // unmounts the editor without going through doClose) doesn't drop
+  // the user's last 800 ms of typing.
+  const pendingSaveArgs = useRef(null);
 
   // Always close through this ref so "empty on close" → delete fires
   // regardless of what triggered the close (back button, ESC, etc.).
@@ -90,6 +95,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const doClose = useCallback(async () => {
     const { title: ti, content: co, onSave: s, onDelete: d, onClose: cl, note: n, readOnly: ro } = closeRef.current;
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    // doClose explicitly persists below, so unmount-flush would double-write.
+    pendingSaveArgs.current = null;
     if (ro) { cl(); return; }
     try {
       if (isEffectivelyEmpty(ti, co)) {
@@ -117,8 +124,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   /* ── Autosave ───────────────────────────────────────────────────── */
   const autoSave = useCallback((newTitle, newContent) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    pendingSaveArgs.current = { title: newTitle, content: newContent };
     setSaveState("dirty");
     saveTimer.current = setTimeout(async () => {
+      pendingSaveArgs.current = null;
       setSaveState("saving");
       try {
         await onSave({ title: newTitle, content: newContent });
@@ -128,6 +137,9 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         // Don't just flip back to "dirty" silently — the user thinks
         // their writes are queued but autosave is broken. Toast it
         // and leave the indicator showing dirty so they know to retry.
+        // Re-arm pendingSaveArgs so unmount can still attempt to
+        // persist what the user typed.
+        pendingSaveArgs.current = { title: newTitle, content: newContent };
         setSaveState("dirty");
         haptic.warn();
         showToast?.(t("notes.saveFailed"), "error");
@@ -135,7 +147,22 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     }, 800);
   }, [onSave, showToast, t]);
 
-  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+  // Flush any pending typed content on unmount. Without this, switching
+  // notes on tablet split view (where the parent swaps `editingNote`
+  // mid-debounce) silently dropped whatever the user typed in the last
+  // 800 ms. Fire-and-forget; if it fails the user still has the toast
+  // path on next mount via the dirty indicator.
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    const pending = pendingSaveArgs.current;
+    if (pending && !closeRef.current?.readOnly) {
+      pendingSaveArgs.current = null;
+      const fn = closeRef.current?.onSave;
+      if (fn) {
+        try { Promise.resolve(fn(pending)).catch(() => {}); } catch { /* ignore */ }
+      }
+    }
+  }, []);
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   const handleTitleChange = (e) => {

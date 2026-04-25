@@ -21,6 +21,14 @@ async function handler(req, res) {
 
     res.status(200).json({ ok: true });
   } catch (err) {
+    // Surface the cause in function logs so an operator can correlate
+    // a user "can't delete document" report with the underlying R2
+    // failure (permissions, key-not-found, network). withSentry will
+    // also report the 5xx response to Sentry for aggregate visibility.
+    console.error("[delete-document]", {
+      name: err?.name, message: err?.message,
+      httpStatus: err?.$metadata?.httpStatusCode,
+    });
     res.status(500).json({ error: "Document deletion failed" });
   }
 }

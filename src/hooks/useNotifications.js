@@ -355,9 +355,10 @@ export function useNotifications(user) {
    */
   const setReminderMinutes = useCallback(
     async (minutes) => {
-      if (!user) return;
+      if (!user) return { ok: false, code: "no-session" };
+      const prev = reminderMinutes;
       setReminderMinutesState(minutes);
-      await supabase.from("notification_preferences").upsert(
+      const { error } = await supabase.from("notification_preferences").upsert(
         {
           user_id: user.id,
           reminder_minutes: minutes,
@@ -365,8 +366,16 @@ export function useNotifications(user) {
         },
         { onConflict: "user_id" }
       );
+      if (error) {
+        // Revert the optimistic update so the dropdown reflects what's
+        // actually stored, and let the caller surface a toast.
+        setReminderMinutesState(prev);
+        if (import.meta.env.DEV) console.error("setReminderMinutes upsert failed:", error);
+        return { ok: false, code: "server-error" };
+      }
+      return { ok: true };
     },
-    [user]
+    [user, reminderMinutes]
   );
 
   return {
