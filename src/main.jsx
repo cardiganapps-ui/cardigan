@@ -1,9 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import './index.css'
 import App from './App.jsx'
 import { initSentry } from './lib/sentry'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import './lib/skewProtection'
 
 initSentry()
 
@@ -11,6 +14,11 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
+      {/* Vercel Analytics + Speed Insights — privacy-first by default
+          (no cookies, no PII), so they don't trip the LFPDPPP banner.
+          Both no-op outside Vercel's production hosting. */}
+      <Analytics />
+      <SpeedInsights />
     </ErrorBoundary>
   </StrictMode>,
 )

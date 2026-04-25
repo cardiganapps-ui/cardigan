@@ -15,7 +15,11 @@ export default defineConfig([
     ],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        // Compile-time constant baked in by vite.config.js's `define`.
+        __VERCEL_DEPLOYMENT_ID__: 'readonly',
+      },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -37,6 +41,13 @@ export default defineConfig([
        browser. Expose Node globals (process, Buffer, etc.) so legitimate
        uses of process.env aren't flagged as no-undef. */
     files: ['api/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+  {
+    /* Build-tool config files run in Node and read process.env. */
+    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js'],
     languageOptions: {
       globals: { ...globals.node },
     },
