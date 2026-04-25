@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
 import { IconX, IconGoogle, IconApple } from "../components/Icons";
+import { PasswordInput } from "../components/PasswordInput";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -236,7 +237,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
         {mode !== "reset" && (
           <div className="input-group">
             <label className="input-label">{t("auth.enterPassword")}</label>
-            <input className="input" placeholder={t("auth.passwordPlaceholder")} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} />
+            <PasswordInput placeholder={t("auth.passwordPlaceholder")} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} />
           </div>
         )}
         {mode === "signup" && (

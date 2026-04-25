@@ -443,6 +443,35 @@ button.kpi-card:active {
 .input.input-error { border-color: var(--red); }
 .input.input-error:focus { box-shadow: 0 0 0 3px rgba(217,107,107,0.15); }
 
+/* Password input: wraps the .input in a relative container so the eye
+   toggle button can sit on the right edge without disrupting form
+   row alignment. The input itself reserves trailing padding for the
+   button so the typed value never collides with the icon. */
+.password-input { position: relative; display: block; }
+.password-input .input { padding-right: 42px; }
+.password-input-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--charcoal-xl);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.password-input-toggle:hover { color: var(--charcoal-md); }
+.password-input-toggle:active { background: var(--cream); }
+.password-input-toggle:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.password-input-toggle[aria-pressed="true"] { color: var(--teal-dark); }
+
 /* iOS Safari centers the rendered value inside date and time inputs
    by default, which reads as inconsistent with every text/number
    input next to it (Paciente, Monto, Método…). Force the value to

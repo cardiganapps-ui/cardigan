@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../../utils/contact";
+import { capitalizeName } from "../../utils/names";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
@@ -247,7 +248,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   {t("settings.fullName")}
                   <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
                 </label>
-                <input className="input" type="text" required value={name} onChange={e => setName(e.target.value)} placeholder={t("patients.namePlaceholder")} />
+                <input className="input" type="text" required value={name} onChange={e => setName(capitalizeName(e.target.value))} placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
               </div>
 
               {/* 2. Minor toggle — second question, immediately after name */}
@@ -272,7 +273,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               {isMinor && (
                 <div className="input-group">
                   <label className="input-label">{t("patients.tutor")}</label>
-                  <input className="input" type="text" value={parent} onChange={e => setParent(e.target.value)} placeholder={t("patients.tutorPlaceholder")} />
+                  <input className="input" type="text" value={parent} onChange={e => setParent(capitalizeName(e.target.value))} placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
                 </div>
               )}
 

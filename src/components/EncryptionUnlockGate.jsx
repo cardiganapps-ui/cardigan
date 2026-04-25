@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PasswordInput } from "./PasswordInput";
 
 /* ── EncryptionUnlockGate ────────────────────────────────────────────
    Blocking modal shown when the user has note encryption enabled but
@@ -62,9 +63,7 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }) {
         </div>
         <div className="input-group" style={{ marginBottom: 12 }}>
           <label className="input-label">Contraseña de notas</label>
-          <input
-            className="input"
-            type="password"
+          <PasswordInput
             autoComplete="off"
             autoFocus
             value={passphrase}

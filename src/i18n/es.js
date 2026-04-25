@@ -112,6 +112,8 @@ export default {
     enterEmail: "Ingresa tu correo",
     enterName: "Ingresa tu nombre",
     enterPassword: "Ingresa tu contrase\u00f1a",
+    showPassword: "Mostrar contrase\u00f1a",
+    hidePassword: "Ocultar contrase\u00f1a",
     demo: "Ver demo",
     tagline: "Gestiona tu pr\u00e1ctica. Sin complicaciones.",
     continueWithGoogle: "Continuar con Google",

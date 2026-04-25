@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash } from "../components/Icons";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
+import { PasswordInput } from "../components/PasswordInput";
 import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
@@ -839,11 +840,11 @@ export function Settings({ user, signOut, refreshUser }) {
               </div>
               <div className="input-group" style={{ marginBottom: 12 }}>
                 <label className="input-label">{t("settings.encNewPassphrase")}</label>
-                <input className="input" type="password" autoComplete="new-password" value={encSetupPass1} onChange={(e) => setEncSetupPass1(e.target.value)} disabled={encBusy} />
+                <PasswordInput autoComplete="new-password" value={encSetupPass1} onChange={(e) => setEncSetupPass1(e.target.value)} disabled={encBusy} />
               </div>
               <div className="input-group" style={{ marginBottom: 14 }}>
                 <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
-                <input className="input" type="password" autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
+                <PasswordInput autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
               </div>
               {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -871,11 +872,11 @@ export function Settings({ user, signOut, refreshUser }) {
             <div style={{ padding:"0 20px 22px" }}>
               <div className="input-group" style={{ marginBottom: 12 }}>
                 <label className="input-label">{t("settings.encNewPassphrase")}</label>
-                <input className="input" type="password" autoComplete="new-password" value={encChangeNew1} onChange={(e) => setEncChangeNew1(e.target.value)} disabled={encBusy} />
+                <PasswordInput autoComplete="new-password" value={encChangeNew1} onChange={(e) => setEncChangeNew1(e.target.value)} disabled={encBusy} />
               </div>
               <div className="input-group" style={{ marginBottom: 14 }}>
                 <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
-                <input className="input" type="password" autoComplete="new-password" value={encChangeNew2} onChange={(e) => setEncChangeNew2(e.target.value)} disabled={encBusy} />
+                <PasswordInput autoComplete="new-password" value={encChangeNew2} onChange={(e) => setEncChangeNew2(e.target.value)} disabled={encBusy} />
               </div>
               {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
