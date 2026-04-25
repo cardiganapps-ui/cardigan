@@ -52,15 +52,6 @@ export function Settings({ user, signOut, refreshUser }) {
     }
   }, [notifications?.enabled]);
 
-  // Test-send state machine: null → "sending" → "ok" | "err". Idle
-  // resets after ~3s so the row goes back to its default affordance.
-  const [testState, setTestState] = useState(null); // null | "sending" | "ok" | "err"
-  useEffect(() => {
-    if (testState !== "ok" && testState !== "err") return;
-    const id = setTimeout(() => setTestState(null), 3000);
-    return () => clearTimeout(id);
-  }, [testState]);
-
   const handleToggleNotifications = async () => {
     if (!notifications || togglePending) return;
     if (notifications.needsInstall) {
@@ -91,26 +82,6 @@ export function Settings({ user, signOut, refreshUser }) {
     } finally {
       setTogglePending(false);
     }
-  };
-
-  const handleSendTest = async () => {
-    if (!notifications || testState === "sending") return;
-    setTestState("sending");
-    const res = await notifications.sendTest();
-    if (res?.ok) {
-      haptic.success();
-      setTestState("ok");
-      return;
-    }
-    haptic.warn();
-    if (res?.code === "no-subscription") {
-      // Distinct actionable case — a toast explains the remediation
-      // (toggle off/on) which doesn't fit the inline pill.
-      setTestState("err");
-      showToast(t("notifications.testFailedNoSub"), "warning");
-      return;
-    }
-    setTestState("err");
   };
 
   const handleReconcileReactivate = async () => {
@@ -290,14 +261,6 @@ export function Settings({ user, signOut, refreshUser }) {
     setCalendarToken(j.token || null);
     setCalendarUrl(j.url || "");
     showToast(t("settings.calendarEnabled"), "success");
-  };
-
-  const rotateCalendar = async () => {
-    const j = await callCalendarToken("POST");
-    if (!j) return;
-    setCalendarToken(j.token || null);
-    setCalendarUrl(j.url || "");
-    showToast(t("settings.calendarRotated"), "success");
   };
 
   const disableCalendar = async () => {
@@ -681,76 +644,6 @@ export function Settings({ user, signOut, refreshUser }) {
                   />
                 </div>
 
-                {/* ── Send test row with inline state machine (0.5) ── */}
-                <div
-                  className={`settings-row${testState === "ok" ? " test-row-pulse" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={testState === "sending" ? undefined : handleSendTest}
-                  onKeyDown={(e) => {
-                    if (testState === "sending") return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSendTest();
-                    }
-                  }}
-                  style={{
-                    cursor: testState === "sending" ? "default" : "pointer",
-                    opacity: testState === "sending" ? 0.75 : 1,
-                  }}
-                >
-                  <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>
-                    <IconBell size={18} />
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div className="settings-row-title">
-                      {testState === "sending"
-                        ? t("notifications.sendingTest")
-                        : t("notifications.sendTest")}
-                    </div>
-                  </div>
-                  {testState === "sending" && (
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width:16, height:16, borderRadius:"50%",
-                        border:"2px solid rgba(12,17,29,0.14)",
-                        borderTopColor:"var(--teal-dark)",
-                        animation:"togglePendingSpin 0.7s linear infinite",
-                        marginRight:4,
-                      }}
-                    />
-                  )}
-                  {testState === "ok" && (
-                    <span
-                      role="status"
-                      style={{
-                        display:"inline-flex", alignItems:"center", gap:4,
-                        padding:"3px 10px",
-                        background:"var(--teal)", color:"#FFFFFF",
-                        borderRadius:999,
-                        fontSize:12, fontWeight:700,
-                      }}
-                    >
-                      <IconCheck size={12} /> {t("notifications.testSentShort")}
-                    </span>
-                  )}
-                  {testState === "err" && (
-                    <span
-                      role="status"
-                      style={{
-                        display:"inline-flex", alignItems:"center", gap:4,
-                        padding:"3px 10px",
-                        background:"var(--amber-bg)", color:"var(--amber)",
-                        border:"1px solid rgba(224,138,30,0.35)",
-                        borderRadius:999,
-                        fontSize:12, fontWeight:700,
-                      }}
-                    >
-                      {t("notifications.testRetry")}
-                    </span>
-                  )}
-                </div>
               </Expando>
             </div>
           )}
@@ -856,9 +749,6 @@ export function Settings({ user, signOut, refreshUser }) {
                 </details>
 
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  <button className="btn btn-ghost" type="button" onClick={rotateCalendar} disabled={calendarBusy}>
-                    {t("settings.calendarRotate")}
-                  </button>
                   <button className="btn btn-ghost" type="button" onClick={disableCalendar} disabled={calendarBusy} style={{ color:"var(--red)" }}>
                     {t("settings.calendarDisable")}
                   </button>
