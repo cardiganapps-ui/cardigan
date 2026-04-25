@@ -222,6 +222,15 @@ curl -s "https://api.vercel.com/v1/security/firewall/config?projectId=prj_b7BGST
   -H "Authorization: Bearer $VERCEL_TOKEN" | jq '.active.rules, .active.crs'
 ```
 
+### Vercel Pro deployment & preview settings
+Set on the project (`prj_b7BGSTkTKwLT1aeKPEiKxAlz9Nmk`):
+- **Function region:** pinned to `iad1` (US-East) in `vercel.json` → `regions`. Lowest latency for Mexico without paying for multi-region. Don't change without re-measuring against MX traffic.
+- **Skew Protection:** `skewProtectionMaxAge: 43200` (12h). Old API surface stays alive 12h after a new deploy so a stale-tab mutation doesn't blow up. Client opts in via `src/lib/skewProtection.js` stamping `x-deployment-id` on every same-origin `/api/*` fetch.
+- **Preview access (`ssoProtection: { deploymentType: "preview" }`):** preview deployments require Vercel team-member login. Production (`cardigan.mx`) remains public. Useful when sharing a preview of the privacy notice with a lawyer for review — give them a Vercel team invite (read-only) instead of a shared password.
+- **Password-based preview protection:** NOT enabled. Vercel returns "Advanced Deployment Protection is not enabled on your team" — that's a paid add-on on top of Pro. Vercel Authentication (above) covers the same use case for free.
+- **Vercel Toolbar / PR comments:** `gitComments.onPullRequest: true` (default-on for Pro). The floating toolbar appears for logged-in team members on preview deployments — no extra config.
+- **Image Optimization:** intentionally not used. Cardigan is Vite + React (not Next.js), avatars stream from R2 directly, and there's no Next `<Image>` equivalent without restructuring the asset pipeline. Re-evaluate if/when avatar bandwidth becomes a real cost.
+
 ### Log Drains (deferred — destination required)
 Vercel Pro retains function logs for 1 day. To export them in real time, create a log drain pointing at Better Stack (free tier), Logtail, Datadog, or Axiom. Recommended provider: **Better Stack** — generous free tier, JSON-friendly, sub-minute search.
 
