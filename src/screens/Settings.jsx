@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconCalendar } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
@@ -7,37 +7,12 @@ import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Expando } from "../components/Expando";
-import { NotificationPreview } from "../components/NotificationPreview";
 import { PushInstallCard } from "../components/PushInstallCard";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { haptic } from "../utils/haptics";
-import { parseShortDate } from "../utils/dates";
-
-// Compute the next scheduled session within the next 24 hours. Returns
-// { session, atDate } or null if none. Drives the NotificationPreview
-// card so the sample reminder matches real upcoming data.
-function computeNextReminder(upcomingSessions) {
-  if (!Array.isArray(upcomingSessions) || upcomingSessions.length === 0) return null;
-  const now = new Date();
-  const cutoff = now.getTime() + 24 * 60 * 60 * 1000;
-  let best = null;
-  for (const s of upcomingSessions) {
-    if (s.status !== "scheduled") continue;
-    if (!s.date || !s.time) continue;
-    const d = parseShortDate(s.date);
-    if (!d) continue;
-    const [h, m] = String(s.time).split(":").map((n) => parseInt(n, 10) || 0);
-    d.setHours(h, m, 0, 0);
-    const ts = d.getTime();
-    if (ts <= now.getTime() || ts > cutoff) continue;
-    if (!best || ts < best.ts) best = { ts, session: s, atDate: d };
-  }
-  return best ? { session: best.session, atDate: best.atDate } : null;
-}
-
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
 // from locale strings.
@@ -54,11 +29,8 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, notifications, showToast, upcomingSessions, readOnly, noteCrypto } = useCardigan();
+  const { tutorial, navigate, theme, notifications, showToast, readOnly, noteCrypto } = useCardigan();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
-
-  // Inline "next reminder" hint + preview-card data.
-  const nextReminder = useMemo(() => computeNextReminder(upcomingSessions), [upcomingSessions]);
 
   // Toggle in-flight — prevents double-taps and shows the spinner knob
   // during the server round-trip for enable/disable.
@@ -708,12 +680,6 @@ export function Settings({ user, signOut, refreshUser }) {
                     }}
                   />
                 </div>
-
-                {/* ── Live preview card (0.3) ── */}
-                <NotificationPreview
-                  upcoming={nextReminder?.session || null}
-                  reminderMinutes={notifications.reminderMinutes}
-                />
 
                 {/* ── Send test row with inline state machine (0.5) ── */}
                 <div

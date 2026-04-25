@@ -98,7 +98,9 @@ begin
     group by created_at::date
   ),
   activity as (
-    select day, count(distinct user_id)::int as cnt
+    -- t.day must be qualified — the function's OUT parameter `day` is in
+    -- scope across the body, so a bare `day` collides ambiguously.
+    select t.day, count(distinct t.user_id)::int as cnt
     from (
       select user_id, created_at::date as day from sessions where created_at >= start_at
       union all
@@ -108,7 +110,7 @@ begin
       union all
       select user_id, created_at::date as day from documents where created_at >= start_at
     ) t
-    group by day
+    group by t.day
   ),
   sessions_per_day as (
     select created_at::date as day, count(*)::int as cnt
