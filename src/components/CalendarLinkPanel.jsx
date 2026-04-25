@@ -1,40 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { IconCalendar } from "./Icons";
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
+import { useCalendarToken, setCalendarToken } from "../hooks/useCalendarToken";
 
 /* Calendar feed link UI — used inline in Settings and inside the
-   CalendarLinkSheet that's opened from the Agenda screen. Self-contained:
-   manages its own token state and talks to /api/calendar-token. */
+   CalendarLinkSheet that's opened from the Agenda screen. Reads token
+   state from the shared `useCalendarToken` hook so the Agenda CTA can
+   hide itself once the user has linked their calendar. */
 export function CalendarLinkPanel({ readOnly = false }) {
   const { t } = useT();
   const { showToast } = useCardigan();
-  const [token, setToken] = useState(null);
-  const [url, setUrl] = useState("");
+  const { token, url } = useCalendarToken();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
-
-  useEffect(() => {
-    if (readOnly) return;
-    let cancelled = false;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const access = session?.access_token;
-      if (!access) return;
-      try {
-        const res = await fetch("/api/calendar-token", {
-          headers: { "Authorization": `Bearer ${access}` },
-        });
-        if (!res.ok || cancelled) return;
-        const j = await res.json();
-        setToken(j.token || null);
-        setUrl(j.url || "");
-      } catch { /* offline / first-load — surface nothing */ }
-    })();
-    return () => { cancelled = true; };
-  }, [readOnly]);
 
   const callCalendarToken = async (method) => {
     if (busy) return null;
@@ -60,8 +41,7 @@ export function CalendarLinkPanel({ readOnly = false }) {
   const enable = async () => {
     const j = await callCalendarToken("POST");
     if (!j) return;
-    setToken(j.token || null);
-    setUrl(j.url || "");
+    setCalendarToken(j.token || null, j.url || "");
     showToast(t("settings.calendarEnabled"), "success");
   };
 

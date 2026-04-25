@@ -12,6 +12,7 @@ import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, s
 import { Avatar } from "../components/Avatar";
 import { useSwipe } from "../hooks/useSwipe";
 import { useViewport } from "../hooks/useViewport";
+import { useCalendarToken } from "../hooks/useCalendarToken";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
@@ -611,6 +612,12 @@ export function Agenda() {
   const [filterPatientId, setFilterPatientId] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState(null);
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
+  // Hide the CTA pill once the user has linked their calendar. Until
+  // the first /api/calendar-token GET resolves we suppress the pill
+  // too — flashing it in for one frame before hiding it again would
+  // be more disruptive than waiting a beat.
+  const calendarFeed = useCalendarToken();
+  const showCalendarCTA = !readOnly && calendarFeed.loaded && !calendarFeed.token;
 
   // "Ahora" tick — re-render every minute so the now-line stays current
   const [now, setNow] = useState(() => new Date());
@@ -692,7 +699,7 @@ export function Agenda() {
     )}
     <div className="page" data-tour="agenda-section">
       <div style={{ paddingTop:16 }}>
-        {!readOnly && (
+        {showCalendarCTA && (
           <div style={{ padding:"0 16px 12px" }}>
             <button
               type="button"
