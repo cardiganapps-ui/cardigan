@@ -27,9 +27,14 @@ export function PrivacyPolicy() {
             <h2 style={{ fontFamily: "var(--font-d)", fontSize: "var(--text-base)", fontWeight: 800, color: "var(--charcoal)", marginBottom: 6 }}>
               {s.title}
             </h2>
-            <p style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.6, margin: 0 }}>
-              {s.body}
-            </p>
+            {s.body.split("\n\n").map((para, i) => (
+              <p
+                key={i}
+                style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.6, margin: i === 0 ? 0 : "10px 0 0" }}
+              >
+                {para}
+              </p>
+            ))}
           </section>
         ))}
 
