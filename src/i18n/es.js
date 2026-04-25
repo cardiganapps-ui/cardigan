@@ -604,6 +604,7 @@ export default {
     encDisableConfirmRequired: "Debes escribir DESCIFRAR para continuar.",
     encDisabledToast: "Cifrado desactivado.",
     privacyLabel: "Privacidad",
+    dangerZone: "Zona peligrosa",
     privacyPolicy: "Aviso de privacidad",
     privacyPolicySub: "Cómo usamos tus datos",
     privacyExport: "Descargar mis datos",

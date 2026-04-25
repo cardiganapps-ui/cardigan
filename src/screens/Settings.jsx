@@ -760,18 +760,6 @@ export function Settings({ user, signOut, refreshUser }) {
         </>
       )}
 
-      <div className="settings-label">{t("settings.plan")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("plan")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.planActive")}</div>
-            <div className="settings-row-sub">{t("settings.planValue")}</div>
-          </div>
-          <IconChevron />
-        </div>
-      </div>
-
       <div className="settings-label">{t("settings.privacyLabel")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => navigate("privacy")}>
@@ -792,22 +780,11 @@ export function Settings({ user, signOut, refreshUser }) {
             {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
           </div>
         )}
-        {!readOnly && (
-          <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}>
-            <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.privacyDelete")}</div>
-              <div className="settings-row-sub">{t("settings.privacyDeleteSub")}</div>
-            </div>
-            <IconChevron />
-          </div>
-        )}
-      </div>
-
-      {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
-        <>
-          <div className="settings-label">{t("settings.encLabel")}</div>
-          <div className="card" style={{ margin:"0 16px" }}>
+        {/* Note encryption — folded into Privacidad since it's a privacy
+            control, not its own settings family. The disabled / locked /
+            unlocked states each render their own affordance(s). */}
+        {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
+          <>
             {noteCrypto.status === "disabled" && (
               <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncSetupPass1(""); setEncSetupPass2(""); setActiveSheet("encSetup"); }}>
                 <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
@@ -856,12 +833,22 @@ export function Settings({ user, signOut, refreshUser }) {
                 )}
               </>
             )}
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
 
       <div className="settings-label">{t("nav.account")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
+        {/* Plan moved here from its own section — it's an account-scoped
+            attribute, not a top-level concern. */}
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("plan")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.planActive")}</div>
+            <div className="settings-row-sub">{t("settings.planValue")}</div>
+          </div>
+          <IconChevron />
+        </div>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={resetPassword}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
           <div style={{ flex:1 }}>
@@ -886,6 +873,24 @@ export function Settings({ user, signOut, refreshUser }) {
           <IconChevron />
         </div>
       </div>
+
+      {/* Account deletion lives in its own bottom-of-page section so it
+          can't be tapped by accident while scanning Settings. */}
+      {!readOnly && (
+        <>
+          <div className="settings-label">{t("settings.dangerZone")}</div>
+          <div className="card" style={{ margin:"0 16px" }}>
+            <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}>
+              <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
+              <div style={{ flex:1 }}>
+                <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.privacyDelete")}</div>
+                <div className="settings-row-sub">{t("settings.privacyDeleteSub")}</div>
+              </div>
+              <IconChevron />
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={{ height:20 }} />
 
