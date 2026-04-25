@@ -112,6 +112,10 @@ export function Tutorial() {
   // Non-drawer steps: close the drawer (if open), navigate to screen, wait, measure.
   useEffect(() => {
     if (!isActive || !step) { setSettling(false); return; }
+    // Strip any leftover target class from the previous step so the
+    // settle-phase dim doesn't show two highlighted drawer items at
+    // once. measure() will re-tag the new target once it resolves.
+    document.querySelectorAll(".tut-target").forEach(n => n.classList.remove("tut-target"));
     const timers = [];
 
     if (step.openDrawer) {
@@ -361,7 +365,16 @@ export function Tutorial() {
 
   return createPortal(
     <>
-      <TutorialSpotlight rect={rect} padding={step.padding} />
+      {/* During drawer steps the panel is z-boosted above the spotlight,
+          which means the spotlight's rectangular cutout + animated ring
+          render behind the drawer and create visible artifacts (the
+          1.6 s top-animation, the pulsing ::after ring, etc.). The
+          drawer-item itself is highlighted via the .tut-target CSS rule
+          in tutorial.css, so we only need a flat full-viewport dim
+          here for the right-side screen content. */}
+      {isDrawerStep
+        ? <div className="tut-dim" />
+        : <TutorialSpotlight rect={rect} padding={step.padding} />}
       <TutorialTooltip
         key={step.id}
         ref={tooltipRef}
