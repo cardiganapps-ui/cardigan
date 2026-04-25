@@ -162,9 +162,10 @@ export async function deleteBugReport(id) {
   if (error) throw error;
 }
 
-export function useCardiganData(user, viewAsUserId) {
+export function useCardiganData(user, viewAsUserId, options = {}) {
   const userId = viewAsUserId || user?.id;
   const readOnly = !!viewAsUserId;
+  const noteCrypto = options.noteCrypto;
   const [patients, setPatients] = useState([]);
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -287,10 +288,28 @@ export function useCardiganData(user, viewAsUserId) {
     setPatients(pData);
     setUpcomingSessions(sData);
     setPayments(mapRows(pmRes.data));
-    setNotes(nRes.data || []);
+    // Decrypt any encrypted notes inline if the user is unlocked.
+    // Locked rows keep their ciphertext + encrypted=true flag and are
+    // displayed as "[cifrado]" by the consumer until unlock triggers
+    // a re-fetch.
+    let notesData = nRes.data || [];
+    if (noteCrypto?.decrypt) {
+      notesData = await Promise.all(notesData.map(async (n) => {
+        if (!n.encrypted) return n;
+        const plain = await noteCrypto.decrypt(n.content, true);
+        return plain == null ? n : { ...n, content: plain };
+      }));
+    }
+    setNotes(notesData);
     setDocuments(dRes.data || []);
     setLoading(false);
-  }, [userId, readOnly]);
+    // Re-run when the crypto status flips so encrypted notes get
+    // re-fetched + decrypted right after the user unlocks. We can't
+    // include the encrypt/decrypt fns in deps directly because they
+    // change identity on every status transition; the boolean is the
+    // correct invariant to depend on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, readOnly, noteCrypto?.canEncrypt]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -303,7 +322,7 @@ export function useCardiganData(user, viewAsUserId) {
   const { createPayment, deletePayment, updatePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
   const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes } =
-    createNoteActions(userId, notes, setNotes, setMutating, setMutationError);
+    createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
 

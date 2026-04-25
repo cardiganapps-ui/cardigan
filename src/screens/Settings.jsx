@@ -54,7 +54,7 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, notifications, showToast, upcomingSessions, readOnly } = useCardigan();
+  const { tutorial, navigate, theme, notifications, showToast, upcomingSessions, readOnly, noteCrypto } = useCardigan();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
 
   // Inline "next reminder" hint + preview-card data.
@@ -344,6 +344,59 @@ export function Settings({ user, signOut, refreshUser }) {
       setTimeout(() => setCalendarCopied(false), 1800);
     } catch {
       showToast(t("settings.calendarCopyError"), "error");
+    }
+  };
+
+  // ── Note encryption ────────────────────────────────────────────────
+  const [encSetupPass1, setEncSetupPass1] = useState("");
+  const [encSetupPass2, setEncSetupPass2] = useState("");
+  const [encChangeNew1, setEncChangeNew1] = useState("");
+  const [encChangeNew2, setEncChangeNew2] = useState("");
+  const [encConfirmDisable, setEncConfirmDisable] = useState("");
+  const [encBusy, setEncBusy] = useState(false);
+  const [encUiError, setEncUiError] = useState("");
+
+  const submitEncryptionSetup = async () => {
+    setEncUiError("");
+    if (encSetupPass1.length < 8) { setEncUiError(t("settings.encMinLength")); return; }
+    if (encSetupPass1 !== encSetupPass2) { setEncUiError(t("settings.encMismatch")); return; }
+    setEncBusy(true);
+    const ok = await noteCrypto?.setup(encSetupPass1);
+    setEncBusy(false);
+    if (ok) {
+      setEncSetupPass1(""); setEncSetupPass2(""); setActiveSheet(null);
+      showToast(t("settings.encEnabledToast"), "success");
+    } else if (noteCrypto?.error) {
+      setEncUiError(noteCrypto.error);
+    }
+  };
+
+  const submitEncryptionChange = async () => {
+    setEncUiError("");
+    if (encChangeNew1.length < 8) { setEncUiError(t("settings.encMinLength")); return; }
+    if (encChangeNew1 !== encChangeNew2) { setEncUiError(t("settings.encMismatch")); return; }
+    setEncBusy(true);
+    const ok = await noteCrypto?.changePassphrase(encChangeNew1);
+    setEncBusy(false);
+    if (ok) {
+      setEncChangeNew1(""); setEncChangeNew2(""); setActiveSheet(null);
+      showToast(t("settings.encChangedToast"), "success");
+    } else if (noteCrypto?.error) {
+      setEncUiError(noteCrypto.error);
+    }
+  };
+
+  const submitEncryptionDisable = async () => {
+    setEncUiError("");
+    if (encConfirmDisable !== "DESCIFRAR") { setEncUiError(t("settings.encDisableConfirmRequired")); return; }
+    setEncBusy(true);
+    const ok = await noteCrypto?.disable();
+    setEncBusy(false);
+    if (ok) {
+      setEncConfirmDisable(""); setActiveSheet(null);
+      showToast(t("settings.encDisabledToast"), "info");
+    } else if (noteCrypto?.error) {
+      setEncUiError(noteCrypto.error);
     }
   };
 
@@ -845,6 +898,62 @@ export function Settings({ user, signOut, refreshUser }) {
         )}
       </div>
 
+      {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
+        <>
+          <div className="settings-label">{t("settings.encLabel")}</div>
+          <div className="card" style={{ margin:"0 16px" }}>
+            {noteCrypto.status === "disabled" && (
+              <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncSetupPass1(""); setEncSetupPass2(""); setActiveSheet("encSetup"); }}>
+                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("settings.encEnable")}</div>
+                  <div className="settings-row-sub">{t("settings.encEnableSub")}</div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
+            {(noteCrypto.status === "locked" || noteCrypto.status === "unlocked") && (
+              <>
+                <div className="settings-row">
+                  <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : "var(--charcoal-md)" }}><IconKey size={18} /></div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">{t("settings.encStatus")}</div>
+                    <div className="settings-row-sub">{noteCrypto.status === "unlocked" ? t("settings.encStatusUnlocked") : t("settings.encStatusLocked")}</div>
+                  </div>
+                </div>
+                {noteCrypto.status === "unlocked" && (
+                  <>
+                    <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncChangeNew1(""); setEncChangeNew2(""); setActiveSheet("encChange"); }}>
+                      <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconEdit size={18} /></div>
+                      <div style={{ flex:1 }}>
+                        <div className="settings-row-title">{t("settings.encChange")}</div>
+                        <div className="settings-row-sub">{t("settings.encChangeSub")}</div>
+                      </div>
+                      <IconChevron />
+                    </div>
+                    <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncConfirmDisable(""); setActiveSheet("encDisable"); }}>
+                      <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
+                      <div style={{ flex:1 }}>
+                        <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.encDisable")}</div>
+                        <div className="settings-row-sub">{t("settings.encDisableSub")}</div>
+                      </div>
+                      <IconChevron />
+                    </div>
+                  </>
+                )}
+                {noteCrypto.status === "locked" && (
+                  <div className="settings-row" style={{ paddingTop:6, paddingBottom:14 }}>
+                    <div style={{ flex:1, fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+                      {t("settings.encLockedHint")}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+
       <div className="settings-label">{t("nav.account")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
         <div className="settings-row" style={{ cursor:"pointer" }} onClick={resetPassword}>
@@ -959,6 +1068,119 @@ export function Settings({ user, signOut, refreshUser }) {
               <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>{t("settings.planValue")}</div>
               <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
                 {t("settings.planDescription")}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ENCRYPTION SETUP SHEET ── */}
+      {activeSheet === "encSetup" && (
+        <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.encEnable")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                {t("settings.encSetupExplain")}
+              </div>
+              <div className="input-group" style={{ marginBottom: 12 }}>
+                <label className="input-label">{t("settings.encNewPassphrase")}</label>
+                <input className="input" type="password" autoComplete="new-password" value={encSetupPass1} onChange={(e) => setEncSetupPass1(e.target.value)} disabled={encBusy} />
+              </div>
+              <div className="input-group" style={{ marginBottom: 14 }}>
+                <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
+                <input className="input" type="password" autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
+              </div>
+              {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button type="button" className="btn btn-primary" onClick={submitEncryptionSetup} disabled={encBusy || encSetupPass1.length < 8}>
+                  {encBusy ? t("loading") : t("settings.encEnableCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ENCRYPTION CHANGE PASSPHRASE SHEET ── */}
+      {activeSheet === "encChange" && (
+        <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.encChange")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div className="input-group" style={{ marginBottom: 12 }}>
+                <label className="input-label">{t("settings.encNewPassphrase")}</label>
+                <input className="input" type="password" autoComplete="new-password" value={encChangeNew1} onChange={(e) => setEncChangeNew1(e.target.value)} disabled={encBusy} />
+              </div>
+              <div className="input-group" style={{ marginBottom: 14 }}>
+                <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
+                <input className="input" type="password" autoComplete="new-password" value={encChangeNew2} onChange={(e) => setEncChangeNew2(e.target.value)} disabled={encBusy} />
+              </div>
+              {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button type="button" className="btn btn-primary" onClick={submitEncryptionChange} disabled={encBusy || encChangeNew1.length < 8}>
+                  {encBusy ? t("loading") : t("settings.encChangeCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ENCRYPTION DISABLE SHEET ── */}
+      {activeSheet === "encDisable" && (
+        <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.encDisable")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ background: "var(--red-pale, #fdecea)", color: "var(--red-dark, #922)", padding: "10px 14px", borderRadius: "var(--radius)", fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>
+                {t("settings.encDisableWarning")}
+              </div>
+              <div className="input-group" style={{ marginBottom: 14 }}>
+                <label className="input-label">{t("settings.encDisableConfirmLabel")}</label>
+                <input
+                  className="input"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  value={encConfirmDisable}
+                  onChange={(e) => setEncConfirmDisable(e.target.value)}
+                  placeholder="DESCIFRAR"
+                  disabled={encBusy}
+                />
+              </div>
+              {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={submitEncryptionDisable}
+                  disabled={encBusy || encConfirmDisable !== "DESCIFRAR"}
+                  style={{ background: "var(--red)", color: "#fff" }}
+                >
+                  {encBusy ? t("loading") : t("settings.encDisableCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
+                  {t("cancel")}
+                </button>
               </div>
             </div>
           </div>

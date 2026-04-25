@@ -163,6 +163,18 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 - **Generator:** `api/_calendar.js::generateICS()` is the pure helper; tests in `api/__tests__/calendar.test.js` lock down the privacy invariant (no full names) plus RFC 5545 envelope shape, line folding, escape rules, and DTSTART/DTEND TZID anchoring.
 - **Timezone:** read from `notification_preferences.timezone`, default `America/Mexico_City`. The embedded `VTIMEZONE` block uses a constant `-0600` offset (Mexico abolished DST in 2022) and is mostly a fallback — major calendar clients prefer their own zoneinfo for known TZIDs.
 
+### Note encryption (opt-in, at rest)
+- **Threat model:** a Supabase DB compromise alone should NOT yield therapy-note plaintext. Crypto code lives in `src/lib/cryptoNotes.js`; tests in `src/utils/__tests__/cryptoNotes.test.js`.
+- **Master key** (32 bytes, AES-256) is generated client-side and never leaves the browser in plaintext. Two wraps are stored on the server in `user_encryption_keys` (migration 017):
+  - `passphrase_wrap` — AES-GCM under a PBKDF2-SHA256(passphrase, salt, 600 000 iters) key. The user's daily unlock path.
+  - `recovery_wrap` — RSA-OAEP-2048 under the public key bundled in the client bundle (`VITE_NOTES_RECOVERY_PUBLIC_KEY`). The matching private key (`NOTES_RECOVERY_PRIVATE_KEY`) lives only in the server env and is read solely by `api/admin-recover-encryption.js`.
+- **A Supabase-only breach** therefore yields ciphertext + wraps, neither of which is decryptable without the user's passphrase OR the server-held private key. Two-vector compromise is required.
+- **Per-note format** (base64 in `notes.content`): `1-byte version || 12-byte IV || GCM ciphertext+tag`. The `notes.encrypted` column flags which lane the read path takes.
+- **Recovery KID** rotation: bump `recovery_kid` in the user_encryption_keys row, write a one-shot script that decrypts each row's `recovery_wrap` with the OLD private key and re-wraps with the NEW public key. Both env vars must be available during the migration.
+- **Lock semantics:** the master key lives in a `useRef` inside `useNoteCrypto`. Closing the tab clears it. Locking via Settings triggers a `lock()` that overwrites the bytes with zeros before nulling the ref. Existing decrypted notes stay in React state until next refresh — there is no instantaneous wipe; document this trade-off if a user asks.
+- **Disable** (Settings → Cifrado → Desactivar) drops the `user_encryption_keys` row. Encrypted notes stay encrypted in the DB and become permanently unreadable. The confirmation requires typing `DESCIFRAR`. Migrating ciphertext back to plaintext on disable is a v2 nice-to-have; ship a script if a user requests it.
+- **Setup script for new envs:** `node scripts/generate-notes-recovery-keypair.mjs` once per environment to mint the RSA keypair. Public key goes in Vercel + `.env.local`; private key goes in Vercel only.
+
 ### Privacy & LFPDPPP compliance
 - **Policy version** lives in `src/data/privacy.js::POLICY_VERSION`. When the policy body changes materially, bump the version string; users whose latest accepted version no longer matches are re-prompted on next login via `components/ConsentBanner.jsx`.
 - **Consent storage** is both local (`localStorage['cardigan.consent.v']`) for UX and server-side (`public.user_consents`) for audit. The consent banner writes both.

@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { useNoteCrypto } from "./hooks/useNoteCrypto";
+import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
@@ -245,9 +247,20 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // to show as dark bands on the safe areas in dark mode).
   const [localHideFab, setHideFab] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  // The encryption unlock prompt is dismissable for the current
+  // session — closing the tab re-prompts on next visit. Until then,
+  // encrypted notes still render as "[cifrado]" since noteCrypto.canEncrypt
+  // stays false.
+  const [cryptoGateDismissed, setCryptoGateDismissed] = useState(false);
   const admin = !demo && isAdmin(user);
 
-  const liveData = useCardiganData(demo ? null : user, viewAsUserId);
+  // Note encryption — opt-in, per-user. The hook self-fetches status
+  // on mount and exposes encrypt/decrypt callbacks that the data layer
+  // threads through to useNotes + the notes fetch path.
+  // Skip in demo mode (no real account) and in admin "view as user"
+  // mode (writes are blocked there anyway).
+  const noteCrypto = useNoteCrypto({ user: (demo || viewAsUserId) ? null : user });
+  const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
   const demoData = useDemoData();
   const data = demo ? demoData : liveData;
   /* Only pull out what App.jsx uses directly — everything else flows
@@ -540,6 +553,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
     deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
+    noteCrypto,
     userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
@@ -563,7 +577,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,
@@ -582,6 +596,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           policy version bump. Skipped in demo mode (no real user) and
           in admin "view as user" mode (read-only). */}
       {!demo && !readOnly && user && <ConsentBanner user={user} />}
+      {!demo && !readOnly && user && !cryptoGateDismissed && (
+        <EncryptionUnlockGate noteCrypto={noteCrypto} onSkip={() => setCryptoGateDismissed(true)} />
+      )}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
         onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setBugReportOpen(true); } : null} />
