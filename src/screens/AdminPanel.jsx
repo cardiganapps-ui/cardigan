@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser } from "../hooks/useCardiganData";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, fetchAdminAnalytics } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
@@ -471,9 +471,161 @@ function BugsTab() {
   );
 }
 
+/* ── Métricas tab ──
+   Operator-facing analytics: how many users we have, how many are
+   active, how much money the platform has tracked, plus a 30-day
+   daily activity series. All numbers come from two SQL functions in
+   migration 016, both of which gate on is_admin() server-side. */
+
+function StatCard({ label, value, sub }) {
+  return (
+    <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
+      <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--charcoal-xl)", marginBottom:4 }}>{label}</div>
+      <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", lineHeight:1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function formatMoney(n) {
+  return `$${(Number(n) || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+}
+
+function DailyBars({ daily, accessor, label, color = "var(--teal)" }) {
+  // Pure-CSS bar chart. Each bar's height is value/max. A row of zero-
+  // height bars renders as a flat baseline so empty days still take
+  // space — visually communicating "no activity" rather than skipping.
+  const values = daily.map(accessor);
+  const max = Math.max(1, ...values);
+  return (
+    <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px" }}>
+      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:10 }}>
+        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--charcoal-xl)" }}>{label}</div>
+        <div style={{ fontSize:11, color:"var(--charcoal-xl)" }}>max {max}</div>
+      </div>
+      <div style={{ display:"flex", alignItems:"flex-end", gap:2, height:60 }}>
+        {daily.map((row) => {
+          const v = accessor(row);
+          const pct = max > 0 ? (v / max) * 100 : 0;
+          return (
+            <div
+              key={row.day}
+              title={`${row.day}: ${v}`}
+              style={{
+                flex:1,
+                minHeight: v > 0 ? 2 : 1,
+                height: `${Math.max(pct, v > 0 ? 4 : 1)}%`,
+                background: v > 0 ? color : "var(--border-lt)",
+                borderRadius:2,
+                transition: "height 0.3s",
+              }}
+            />
+          );
+        })}
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontSize:10, color:"var(--charcoal-xl)" }}>
+        <span>{daily[0]?.day || ""}</span>
+        <span>{daily[daily.length - 1]?.day || ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function MetricsTab() {
+  const { t } = useT();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchAdminAnalytics({ days: 30 })
+      .then((d) => { setData(d); setError(""); setLoading(false); })
+      .catch((e) => { setError(e.message || t("admin.metricsLoadError")); setLoading(false); });
+  }, [t]);
+
+  // setLoading(true) inside load() is a no-op on mount since loading
+  // initialises to true; matches the AccountsTab / BugsTab pattern.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) {
+    return <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>{t("admin.metricsLoading")}</div>;
+  }
+  if (error) {
+    return (
+      <div style={{ textAlign:"center", padding:"12px 14px", background:"var(--red-bg)", borderRadius:"var(--radius-sm)", color:"var(--red)", fontSize:13 }}>
+        <div style={{ marginBottom:8 }}>{error}</div>
+        <button onClick={load}
+          style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)", background:"var(--red)", border:"none", borderRadius:"var(--radius-pill)", padding:"4px 14px", cursor:"pointer", fontFamily:"var(--font)", minHeight:28 }}>
+          {t("retry")}
+        </button>
+      </div>
+    );
+  }
+  const ov = data?.overview || {};
+  const daily = data?.daily || [];
+
+  return (
+    <>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+        <StatCard
+          label={t("admin.metricsUsers")}
+          value={ov.users_total ?? 0}
+          sub={t("admin.metricsUsersSub", { active: ov.users_active_30d ?? 0, blocked: ov.users_blocked ?? 0 })}
+        />
+        <StatCard
+          label={t("admin.metricsSignups30d")}
+          value={ov.users_signups_30d ?? 0}
+          sub={t("admin.metricsSignupsSub")}
+        />
+        <StatCard
+          label={t("admin.metricsMoney")}
+          value={formatMoney(ov.money_tracked_total)}
+          sub={t("admin.metricsMoneySub", { v: formatMoney(ov.money_tracked_30d) })}
+        />
+        <StatCard
+          label={t("admin.metricsPatients")}
+          value={ov.patients_total ?? 0}
+          sub={t("admin.metricsPushSub", { count: ov.push_subscriptions ?? 0 })}
+        />
+        <StatCard
+          label={t("admin.metricsSessions")}
+          value={ov.sessions_total ?? 0}
+          sub={t("admin.metricsLast30", { count: ov.sessions_30d ?? 0 })}
+        />
+        <StatCard
+          label={t("admin.metricsPayments")}
+          value={ov.payments_total ?? 0}
+          sub={t("admin.metricsLast30", { count: ov.payments_30d ?? 0 })}
+        />
+      </div>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        <DailyBars daily={daily} accessor={(r) => r.active_users} label={t("admin.metricsActiveDaily")} />
+        <DailyBars daily={daily} accessor={(r) => r.signups} label={t("admin.metricsSignupsDaily")} color="var(--green)" />
+        <DailyBars daily={daily} accessor={(r) => r.sessions_created} label={t("admin.metricsSessionsDaily")} color="var(--charcoal-md)" />
+      </div>
+
+      <div style={{ marginTop:14, textAlign:"right" }}>
+        <button onClick={load}
+          style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)", background:"none", border:"none", cursor:"pointer", padding:"4px 8px", fontFamily:"var(--font)" }}>
+          {t("admin.metricsRefresh")}
+        </button>
+      </div>
+    </>
+  );
+}
+
 export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
   const { t } = useT();
   const [tab, setTab] = useState("accounts");
+
+  const tabs = [
+    { k: "accounts", l: t("admin.tabAccounts") },
+    { k: "metrics",  l: t("admin.tabMetrics") },
+    { k: "bugs",     l: t("admin.tabBugs") },
+  ];
 
   return (
     <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-expediente)", display:"flex", flexDirection:"column" }}>
@@ -486,7 +638,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
           </button>
         </div>
         <div style={{ display:"flex", background:"rgba(255,255,255,0.08)", borderRadius:"var(--radius-pill)", padding:3, gap:2 }}>
-          {[{k:"accounts",l:t("admin.tabAccounts")},{k:"bugs",l:t("admin.tabBugs")}].map(tb => (
+          {tabs.map(tb => (
             <button key={tb.k} onClick={() => setTab(tb.k)}
               style={{
                 flex:1, padding:"6px 10px", fontSize:12, fontWeight:700,
@@ -503,7 +655,9 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
       </div>
 
       <div style={{ flex:1, minHeight:0, overflowY:"auto", padding:16 }}>
-        {tab === "accounts" ? <AccountsTab onViewAs={onViewAs} currentAdminId={currentAdminId} /> : <BugsTab />}
+        {tab === "accounts" && <AccountsTab onViewAs={onViewAs} currentAdminId={currentAdminId} />}
+        {tab === "metrics"  && <MetricsTab />}
+        {tab === "bugs"     && <BugsTab />}
       </div>
     </div>
   );

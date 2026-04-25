@@ -122,6 +122,24 @@ export async function adminDeleteUser(userId) {
   return res.json();
 }
 
+/**
+ * Pulls the headline numbers for the AdminPanel "Métricas" tab. Both
+ * RPCs are admin-gated server-side via is_admin(); a non-admin caller
+ * gets a thrown error.
+ *
+ * Returned shape:
+ *   { overview: {...counts and sums...}, daily: [{ day, signups, active_users, ... }] }
+ */
+export async function fetchAdminAnalytics({ days = 30 } = {}) {
+  const [ovRes, dailyRes] = await Promise.all([
+    supabase.rpc("admin_analytics_overview"),
+    supabase.rpc("admin_analytics_daily", { days }),
+  ]);
+  if (ovRes.error) throw ovRes.error;
+  if (dailyRes.error) throw dailyRes.error;
+  return { overview: ovRes.data, daily: dailyRes.data || [] };
+}
+
 export async function fetchBugReports({ archived = false } = {}) {
   let q = supabase
     .from("bug_reports")
