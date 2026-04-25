@@ -197,11 +197,17 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     }
   };
 
-  // Día and Hora are fixed-tight (their visible text is short — day
-  // name, "HH:MM"), Duración stays compact, and Modalidad gets the
-  // remaining 1fr so "Presencial" / "Telefónica" render in full
-  // instead of truncating on phone-width viewports.
-  const scheduleRowCols = schedules.length > 1 ? "78px 76px 60px 1fr 28px" : "78px 76px 60px 1fr";
+  // Schedule-row columns are proportional, weighted by the longest
+  // option each cell needs to fit:
+  //   Día        "Miércoles"   (9 chars)
+  //   Hora       "HH:MM"       (5 chars, native time chrome)
+  //   Duración   "1½h"         (3 chars)
+  //   Modalidad  "Telefónica"  (10 chars)
+  // Floors via minmax() guarantee no option truncates on phone-width
+  // viewports while letting all four cells stretch on wider screens.
+  const scheduleRowCols = schedules.length > 1
+    ? "minmax(86px, 1.1fr) minmax(64px, 0.85fr) minmax(48px, 0.6fr) minmax(94px, 1.2fr) 28px"
+    : "minmax(86px, 1.1fr) minmax(64px, 0.85fr) minmax(48px, 0.6fr) minmax(94px, 1.2fr)";
 
   return (
     <div className="sheet-overlay" onClick={submitting ? undefined : onClose}>
