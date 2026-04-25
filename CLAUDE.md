@@ -136,12 +136,14 @@ Gotchas that cost an hour this session:
 - **Redeploy = `POST /v13/deployments`** with `target:"production"`, `name:"cardigan"`, and a `gitSource` `{ type:"github", repoId, ref:"main", sha }`. Get `repoId` from any previous deployment's `meta.githubRepoId` (it's a string in the API — cast to Number before sending). `sha` must actually exist on the given `ref`, so re-read `git rev-parse origin/main` right before triggering.
 - Env var changes take effect **only on next deploy** — you must redeploy after any `CRON_SECRET`/etc. update or the old value stays injected.
 
-### pg_cron + net.http_post quirks
-The only cron job is `send-session-reminders` (every 5 min). The job command is stored as plain text in `cron.job.command` — **secrets are baked into the command text**, not read dynamically from `current_setting()` (that pattern was tried but stored the literal at schedule-time). To rotate the secret: `select cron.alter_job((select jobid from cron.job where jobname='send-session-reminders'), command => $cmd$...$cmd$)`.
+### Cron — Vercel Cron Jobs
+The only scheduled job is `send-session-reminders` (every 5 min, `*/5 * * * *`). It's declared in `vercel.json`'s `crons` array. Vercel sends a `GET` to `/api/send-session-reminders` with `Authorization: Bearer ${CRON_SECRET}`; the endpoint validates via `verifyCronSecret()` in `api/_push.js`. The endpoint is idempotent — `sent_reminders` deduplicates by `(session_id, user_id)` so re-firing within the same window is safe.
 
-- **Call the canonical URL `https://cardigan-app.vercel.app`, not `cardigan-fawn.vercel.app`.** The fawn URL 307-redirects, and cross-origin redirects strip the `Authorization` header per Fetch spec, causing silent 401s. This is also why push reminders hadn't actually been delivering before the fix.
-- After any rotation: update the cron command **and** the Vercel `CRON_SECRET` env var **and** redeploy. Bursty diagnostic failures bloat `net.http_request_queue` and you'll see "Out of memory" in `cron.job_run_details` until it drains. Self-heals within a few ticks.
-- History lives in `cron.job_run_details` — first stop when debugging cron.
+To rotate `CRON_SECRET`: update the Vercel env var in both Production + Preview, then trigger a redeploy (env changes only take effect on next build). No DB-side change needed — the secret lives only in Vercel env now.
+
+To debug a missed reminder: check the function's runtime logs in the Vercel dashboard (filter by `/api/send-session-reminders`) and inspect `sent_reminders` in Supabase to see whether dedupe blocked a re-send.
+
+> Historical note: this used to run from Supabase `pg_cron` calling out via `net.http_post`. We migrated off that in Apr 2026 because pg_cron baked secrets into the job command, bloated `net.http_request_queue` on bursty failures, and stripped `Authorization` on the legacy `cardigan-fawn.vercel.app` cross-origin redirect. The pg_cron job has been `cron.unschedule()`d.
 
 ### Email (Resend + Supabase SMTP + Cloudflare DNS)
 Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, user `resend`, pass = `RESEND_API_KEY`) → Resend → user's inbox, sent from `Cardigan <no-reply@cardigan.mx>`. Templates live in `supabase/emails/*.html` and are uploaded to Supabase via the Management API's `/config/auth` endpoint (fields `mailer_templates_*_content` + `mailer_subjects_*`).
