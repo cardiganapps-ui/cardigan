@@ -402,6 +402,9 @@ export default {
     tplPlan: "Plan de tratamiento",
     saved: "Guardado",
     saving: "Guardando...",
+    saveFailed: "No se pudo guardar la nota. Revisa tu conexión.",
+    copyFailed: "No se pudo copiar al portapapeles.",
+    exportFailed: "No se pudo exportar la nota.",
     deleteConfirm: "\u00bfEliminar esta nota?",
     deleteWarning: "Esta acci\u00f3n no se puede deshacer.",
     onlyFavorites: "Solo favoritos",
@@ -498,6 +501,7 @@ export default {
   // ── Documents ──
   docs: {
     title: "Documentos",
+    openError: "No se pudo abrir el documento. Intenta de nuevo.",
     upload: "Subir documento",
     uploading: "Subiendo...",
     uploadBtn: "Subir",

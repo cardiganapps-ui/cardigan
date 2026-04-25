@@ -58,7 +58,7 @@ function isEffectivelyEmpty(title, content) {
 export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay" }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
-  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast } = useCardigan();
   const { isDesktop } = useViewport();
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
@@ -97,9 +97,13 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       } else {
         await s({ title: ti, content: co });
       }
-    } catch { /* swallow — still close */ }
+    } catch {
+      // Surface the failure before closing — better to leave the user
+      // with a visible error toast than to silently drop their writes.
+      showToast?.(t("notes.saveFailed"), "error");
+    }
     cl();
-  }, []);
+  }, [showToast, t]);
 
   const handleClose = useCallback(() => {
     if (inlineMode) { doClose(); return; }
@@ -121,10 +125,15 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         setSaveState("saved");
         haptic.success();
       } catch {
+        // Don't just flip back to "dirty" silently — the user thinks
+        // their writes are queued but autosave is broken. Toast it
+        // and leave the indicator showing dirty so they know to retry.
         setSaveState("dirty");
+        haptic.warn();
+        showToast?.(t("notes.saveFailed"), "error");
       }
     }, 800);
-  }, [onSave]);
+  }, [onSave, showToast, t]);
 
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
@@ -203,7 +212,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       await navigator.clipboard.writeText(text);
       flashToast(t("notes.copied"));
       haptic.success();
-    } catch { /* ignore */ }
+    } catch {
+      haptic.warn();
+      showToast?.(t("notes.copyFailed"), "error");
+    }
     setMenuOpen(false);
   };
   const copyMarkdown = async () => {
@@ -212,7 +224,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       await navigator.clipboard.writeText(text);
       flashToast(t("notes.copied"));
       haptic.success();
-    } catch { /* ignore */ }
+    } catch {
+      haptic.warn();
+      showToast?.(t("notes.copyFailed"), "error");
+    }
     setMenuOpen(false);
   };
   const exportMd = () => {
@@ -229,7 +244,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       haptic.success();
-    } catch { /* ignore */ }
+    } catch {
+      haptic.warn();
+      showToast?.(t("notes.exportFailed"), "error");
+    }
     setMenuOpen(false);
   };
 

@@ -8,7 +8,7 @@ import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente } = useCardigan();
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast } = useCardigan();
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | name
@@ -94,8 +94,16 @@ export function Documents() {
 
   const openDocViewer = async (doc) => {
     let url;
-    try { url = await getDocumentUrl(doc.file_path); } catch { return; }
-    if (!url) return;
+    try {
+      url = await getDocumentUrl(doc.file_path);
+    } catch {
+      showToast(t("docs.openError"), "error");
+      return;
+    }
+    if (!url) {
+      showToast(t("docs.openError"), "error");
+      return;
+    }
     if (isWordDoc(doc)) {
       window.open(url, "_blank");
       return;
