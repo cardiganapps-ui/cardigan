@@ -77,6 +77,8 @@ export function Patients() {
   const [editTutorFrequency, setEditTutorFrequency] = useState("");
   const [editPhone, setEditPhone]     = useState("");
   const [editEmail, setEditEmail]     = useState("");
+  const [editWhatsappEnabled, setEditWhatsappEnabled] = useState(false);
+  const [editWhatsappConsentAt, setEditWhatsappConsentAt] = useState(null);
   const [editBirthdate, setEditBirthdate] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editStatus, setEditStatus]   = useState("");
@@ -130,6 +132,8 @@ export function Patients() {
     setEditRate(String(p.rate));
     setEditPhone(formatPhoneMX(p.phone));
     setEditEmail(p.email || "");
+    setEditWhatsappEnabled(!!p.whatsapp_enabled);
+    setEditWhatsappConsentAt(p.whatsapp_consent_at || null);
     setEditBirthdate(p.birthdate || "");
     setEditStartDate(p.start_date || "");
     setEditStatus(p.status);
@@ -181,6 +185,8 @@ export function Patients() {
           tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
           phone: phoneDigits(editPhone), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
+          whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
+          whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
         });
         setSelected(null);
         setEditing(false);
@@ -205,6 +211,8 @@ export function Patients() {
           phone: phoneDigits(editPhone), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
           status: editStatus,
+          whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
+          whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
         });
         setSelected(null);
         setEditing(false);
@@ -215,10 +223,12 @@ export function Patients() {
         name: editName.trim(),
         parent: editIsMinor ? editParent.trim() : "",
         tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
-        phone: editPhone.trim(), email: editEmail.trim(),
+        phone: phoneDigits(editPhone), email: editEmail.trim(),
         birthdate: editBirthdate || null, start_date: editStartDate || null,
         rate: Number(editRate) || 0,
         status: editStatus,
+        whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
+        whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
       });
       if (ok) {
         setSelected(null);
@@ -384,6 +394,8 @@ export function Patients() {
                 setEditRate(String(p.rate));
                 setEditPhone(formatPhoneMX(p.phone));
                 setEditEmail(p.email || "");
+                setEditWhatsappEnabled(!!p.whatsapp_enabled);
+                setEditWhatsappConsentAt(p.whatsapp_consent_at || null);
                 setEditBirthdate(p.birthdate || "");
                 setEditStartDate(p.start_date || "");
                 setEditStatus(p.status);
@@ -562,6 +574,30 @@ export function Patients() {
                         <input className="input" type="email" inputMode="email" autoComplete="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
                       </div>
                     </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                          {t("patients.whatsappReminders")}
+                        </div>
+                        <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                          {phoneDigits(editPhone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                        </div>
+                      </div>
+                      <Toggle
+                        on={editWhatsappEnabled && !!phoneDigits(editPhone)}
+                        disabled={!phoneDigits(editPhone)}
+                        ariaLabel={t("patients.whatsappReminders")}
+                        onToggle={() => {
+                          const next = !editWhatsappEnabled;
+                          setEditWhatsappEnabled(next);
+                          if (next && !editWhatsappConsentAt) {
+                            setEditWhatsappConsentAt(new Date().toISOString());
+                          } else if (!next) {
+                            setEditWhatsappConsentAt(null);
+                          }
+                        }}
+                      />
+                    </div>
                   </EditSection>
 
                   {/* ── Fechas y estado (collapsible; force-open while finalizing) ── */}
@@ -733,6 +769,8 @@ export function Patients() {
             setEditRate(String(p.rate));
             setEditPhone(formatPhoneMX(p.phone));
             setEditEmail(p.email || "");
+            setEditWhatsappEnabled(!!p.whatsapp_enabled);
+            setEditWhatsappConsentAt(p.whatsapp_consent_at || null);
             setEditBirthdate(p.birthdate || "");
             setEditStartDate(p.start_date || "");
             setEditStatus(p.status);

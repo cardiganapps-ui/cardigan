@@ -23,7 +23,13 @@
                                 unaffected.
      signups_paused           — informational for now; the AuthScreen
                                 doesn't read it yet (Supabase handles
-                                signup directly). Wire when needed. */
+                                signup directly). Wire when needed.
+     whatsapp_paused          — when true, the WhatsApp branch of
+                                /api/send-session-reminders no-ops.
+                                Web push reminders continue. Use
+                                during a Meta Cloud API outage, a
+                                template-approval issue, or while
+                                investigating a runaway send. */
 
 import { get as edgeGet } from "@vercel/edge-config";
 
@@ -31,6 +37,7 @@ const DEFAULTS = {
   cron_paused: false,
   encryption_setup_enabled: true,
   signups_paused: false,
+  whatsapp_paused: false,
 };
 
 export async function getFlag(name) {

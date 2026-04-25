@@ -8,6 +8,10 @@ import {
 } from "./_push.js";
 import { withSentry } from "./_sentry.js";
 import { getFlag } from "./_flags.js";
+import { sendTemplate, toE164MX } from "./_whatsapp.js";
+
+const WHATSAPP_TEMPLATE = "cardigan_session_reminder";
+const WHATSAPP_LANGUAGE = "es_MX";
 
 async function handler(req, res) {
   // Accept GET (Vercel Cron's default) and POST (legacy pg_cron caller).
@@ -65,9 +69,12 @@ async function handler(req, res) {
       // 3. Fetch today's scheduled sessions for this user. Match both the
       // new "D-MMM" and legacy "D MMM" forms so the cron keeps firing
       // for accounts whose historical rows haven't been migrated yet.
+      // patient_id and modality are pulled in here so the WhatsApp
+      // branch below can resolve the recipient + template variables
+      // without re-querying.
       const { data: sessions, error: sessError } = await supabase
         .from("sessions")
-        .select("id, patient, time, initials")
+        .select("id, patient_id, patient, time, initials, modality")
         .eq("user_id", user_id)
         .in("date", [todayShort, todayShortLegacy])
         .eq("status", "scheduled");
@@ -97,31 +104,38 @@ async function handler(req, res) {
 
       if (sessionsToNotify.length === 0) continue;
 
-      // 5. Check which sessions already have sent reminders
+      // 5. Check which sessions already have sent reminders. The channel
+      // column was added in migration 019; existing rows defaulted to
+      // 'push' so this filter is backward-compatible.
       const sessionIds = sessionsToNotify.map((s) => s.id);
-      const { data: alreadySent } = await supabase
+      const { data: alreadySentPush } = await supabase
         .from("sent_reminders")
         .select("session_id")
         .eq("user_id", user_id)
+        .eq("channel", "push")
         .in("session_id", sessionIds);
 
-      const sentSet = new Set((alreadySent || []).map((r) => r.session_id));
+      const sentSet = new Set((alreadySentPush || []).map((r) => r.session_id));
       const newSessions = sessionsToNotify.filter((s) => !sentSet.has(s.id));
 
-      if (newSessions.length === 0) continue;
-
+      // newSessions drives the push branch only. The WhatsApp branch
+      // below has its own dedup (channel='whatsapp') and runs even if
+      // every push has already been sent.
       totalSessionsMatched += newSessions.length;
 
-      // 6. Fetch push subscriptions for this user
-      const { data: subs } = await supabase
-        .from("push_subscriptions")
-        .select("endpoint, p256dh, auth")
-        .eq("user_id", user_id);
+      // 6. Fetch push subscriptions for this user. Empty list is fine —
+      // the push branch will be a no-op and the WhatsApp branch below
+      // can still run for users who only opted into WhatsApp.
+      const { data: subsRaw } = newSessions.length > 0
+        ? await supabase
+            .from("push_subscriptions")
+            .select("endpoint, p256dh, auth")
+            .eq("user_id", user_id)
+        : { data: [] };
+      const subs = subsRaw || [];
 
-      if (!subs || subs.length === 0) continue;
-
-      // 7. Send push notifications
-      for (const session of newSessions) {
+      // 7. Send push notifications (skipped silently if no subs).
+      for (const session of (subs.length > 0 ? newSessions : [])) {
         // Minutes-until is computed against the same userNow snapshot
         // the window filter used, so the copy the user reads lines up
         // with the decision to send.
@@ -159,14 +173,143 @@ async function handler(req, res) {
           }
         }
 
-        // 8. Mark session as notified
+        // 8. Mark session as notified on the push channel. The unique
+        // key is (session_id, user_id, channel) so push and WhatsApp
+        // dedupe independently.
         await supabase.from("sent_reminders").upsert(
-          { session_id: session.id, user_id },
-          { onConflict: "session_id,user_id" }
+          { session_id: session.id, user_id, channel: "push" },
+          { onConflict: "session_id,user_id,channel" }
         );
 
         totalSent++;
       }
+
+      // ── WhatsApp branch ────────────────────────────────────────
+      // Runs for every user, regardless of push outcome. Patients opt
+      // in per-row via patients.whatsapp_enabled. Each (session, 'whatsapp')
+      // is deduped via sent_reminders. A failed Meta send does NOT write
+      // a sent_reminders row — the next cron tick retries.
+      const whatsappPaused = await getFlag("whatsapp_paused");
+      if (whatsappPaused || sessionsToNotify.length === 0) continue;
+
+      const { data: alreadySentWa } = await supabase
+        .from("sent_reminders")
+        .select("session_id")
+        .eq("user_id", user_id)
+        .eq("channel", "whatsapp")
+        .in("session_id", sessionIds);
+      const sentWaSet = new Set((alreadySentWa || []).map((r) => r.session_id));
+      const sessionsForWa = sessionsToNotify.filter((s) => !sentWaSet.has(s.id) && s.patient_id);
+      if (sessionsForWa.length === 0) continue;
+
+      // Hydrate patient rows so we can read whatsapp_enabled, phone,
+      // name, and parent in a single query.
+      const patientIds = Array.from(new Set(sessionsForWa.map((s) => s.patient_id)));
+      const { data: patientRows } = await supabase
+        .from("patients")
+        .select("id, name, parent, phone, whatsapp_enabled")
+        .in("id", patientIds);
+      const patientsById = new Map((patientRows || []).map((p) => [p.id, p]));
+
+      const targets = sessionsForWa
+        .map((s) => ({ session: s, patient: patientsById.get(s.patient_id) }))
+        .filter(({ patient }) => patient && patient.whatsapp_enabled && patient.phone);
+
+      if (targets.length === 0) continue;
+
+      // Therapist display name — single lookup per user, used as the
+      // signature variable in the template.
+      let therapistName = "";
+      try {
+        const { data: u } = await supabase.auth.admin.getUserById(user_id);
+        therapistName = u?.user?.user_metadata?.full_name
+          || u?.user?.email?.split("@")[0]
+          || "";
+      } catch (err) {
+        console.warn("whatsapp: therapist name lookup failed:", err?.message);
+      }
+
+      await Promise.allSettled(targets.map(async ({ session, patient }) => {
+        const isTutor = typeof session.initials === "string" && session.initials.startsWith("T·");
+        // For minor patients the phone already belongs to the tutor
+        // (per CLAUDE.md / user direction). For tutor-meet sessions we
+        // greet by the tutor's name; for normal sessions of an adult
+        // patient we greet by the patient's name; for normal sessions
+        // of a minor the phone reaches the tutor and we still greet
+        // by the tutor's name (parent field).
+        const recipientName = (isTutor || patient.parent)
+          ? (patient.parent || patient.name || "")
+          : (patient.name || "");
+        const e164 = toE164MX(patient.phone);
+        const modality = (session.modality || "presencial").toLowerCase();
+        const time = String(session.time || "").slice(0, 5);
+
+        // Audit row first so even a network failure in sendTemplate
+        // leaves a trace pointing at the patient/session.
+        const { data: auditRow, error: auditErr } = await supabase
+          .from("whatsapp_audit")
+          .insert({
+            user_id,
+            patient_id: patient.id,
+            session_id: session.id,
+            recipient_phone: e164 || patient.phone,
+            template_name: WHATSAPP_TEMPLATE,
+            status: "pending",
+          })
+          .select("id")
+          .single();
+        if (auditErr) {
+          console.warn("whatsapp: audit insert failed:", auditErr.message);
+          return;
+        }
+
+        if (!e164) {
+          await supabase.from("whatsapp_audit")
+            .update({
+              status: "failed",
+              error_code: "invalid_phone",
+              error_reason: `Could not normalize phone: ${patient.phone}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", auditRow.id);
+          return;
+        }
+
+        const result = await sendTemplate({
+          to: e164,
+          templateName: WHATSAPP_TEMPLATE,
+          languageCode: WHATSAPP_LANGUAGE,
+          variables: [recipientName, modality, time, therapistName],
+        });
+
+        if (result.ok) {
+          await supabase.from("whatsapp_audit")
+            .update({
+              status: "sent",
+              meta_message_id: result.messageId || null,
+              raw_response: result.raw || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", auditRow.id);
+          // Only mark the session as WhatsApp-sent on success — a
+          // failure (template not approved, throttled, bad phone)
+          // should let the next cron tick retry.
+          await supabase.from("sent_reminders").upsert(
+            { session_id: session.id, user_id, channel: "whatsapp" },
+            { onConflict: "session_id,user_id,channel" }
+          );
+        } else {
+          await supabase.from("whatsapp_audit")
+            .update({
+              status: "failed",
+              error_code: result.errorCode || null,
+              error_reason: result.errorReason || null,
+              raw_response: result.raw || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", auditRow.id);
+        }
+      }));
     }
 
     logRun({

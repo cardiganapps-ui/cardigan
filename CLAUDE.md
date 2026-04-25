@@ -158,6 +158,19 @@ Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, us
 ### Vercel serverless routes (`api/`)
 Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` / `_sentry.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
 
+### WhatsApp patient reminders (Meta Cloud API direct)
+- Outbound-only (v1). Sends a session reminder to the patient ~`reminder_minutes` before each session, alongside (and reusing the time-window logic of) the existing therapist push.
+- **Opt-in is per-patient.** `patients.whatsapp_enabled` + `patients.whatsapp_consent_at`. Toggle in NewPatientSheet (creation) and Patients.jsx (edit) — disabled until a phone is set. The consent timestamp is the LFPDPPP audit record.
+- **Recipient is `patients.phone`** in every case. For a minor patient the phone is already the tutor's (per product direction); we don't keep a separate parent-phone column. Greeting variable is `parent` if present, otherwise `name`. Stored as digits-only via `phoneDigits()`; normalized to E.164 at send time via `api/_whatsapp.js::toE164MX()` (prepends `+52` for 10-digit MX numbers).
+- **Single approved template:** `cardigan_session_reminder` (UTILITY, `es_MX`). Body: "Hola {{1}}, te recordamos tu sesión {{2}} hoy a las {{3}}. — {{4}}" (recipient name, modality, time `HH:MM`, therapist name). Submit + approval is via Meta Business → WhatsApp → Message Templates; ~24 h. **Sends fail with `error.code` from Meta until the template is approved** — audit row records the failure, no `sent_reminders` row is written, and the next cron tick retries.
+- **Cron:** the WhatsApp branch lives inside `api/send-session-reminders.js` after the push branch. It reads the same per-user reminder window, fetches `whatsapp_audit`-eligible patients (`whatsapp_enabled=true && phone`), dedupes via `sent_reminders` rows with `channel='whatsapp'` (the unique key changed to `(session_id, user_id, channel)` in migration 019), and fans out via `Promise.allSettled` so one Meta hiccup doesn't stall the loop.
+- **Audit + events:** every send attempt writes a `whatsapp_audit` row (`pending → sent → delivered/read | failed`). Webhook callbacks (Meta → `/api/whatsapp-webhook`) write to `whatsapp_events` and update the matching audit row by `meta_message_id`. `whatsapp_events` is admin-only readable (`is_admin()` policy); `whatsapp_audit` is readable by the owning user via `auth.uid() = user_id`.
+- **Webhook:** `api/whatsapp-webhook.js`. GET handles Meta's subscribe handshake (echoes `hub.challenge` when `hub.verify_token` matches `WHATSAPP_WEBHOOK_VERIFY_TOKEN`). POST verifies HMAC-SHA256 over the raw body using `WHATSAPP_APP_SECRET` against the `X-Hub-Signature-256` header (mirror of `api/resend-webhook.js`). Disable Vercel's body parser via `export const config = { api: { bodyParser: false } }`.
+- **Env vars (Vercel Production + Preview):** `WHATSAPP_ACCESS_TOKEN` (system-user permanent), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Updates take effect on next deploy; redeploy after rotating any of them.
+- **Kill switch:** `whatsapp_paused` Edge Config flag. When true, the WhatsApp branch no-ops; push still fires. Use during a Meta outage or while debugging.
+- **Privacy:** `src/data/privacy.js` enumerates Meta Platforms Ireland as a transferee and lists the fields shared per send. Bumped `POLICY_VERSION` so existing users re-accept via `ConsentBanner`.
+- **Out of scope (v1):** inbound replies (CONFIRMAR / CANCELAR), per-session override, multiple templates, therapist-side WhatsApp (push remains), backoff after N failures.
+
 ### Calendar sync (iCalendar feed)
 - Each user can opt in to a personal `.ics` feed served at `https://cardigan.mx/api/calendar/<token>`. The token is the only credential — calendar clients can't carry a JWT, so we use the standard "secret URL" pattern (Google Calendar, iCloud, Outlook all do this).
 - **Token lifecycle:** managed at `/api/calendar-token` (GET = read, POST = create or rotate, DELETE = revoke). Settings → "Calendario" surfaces the buttons. There's exactly one active token per user (unique constraint on `user_calendar_tokens.user_id`); rotation is an in-place upsert that breaks all existing subscriptions.
@@ -201,6 +214,7 @@ Defined flags (see `_flags.js` for inline docs):
 - `cron_paused` — when true, `/api/send-session-reminders` short-circuits to `{ sent: 0, paused: true }`. Use during a push outage or while debugging duplicate sends. Default: false.
 - `encryption_setup_enabled` — when false, `POST /api/encryption` returns 503. Pauses new encryption sign-ups; existing users are unaffected. Default: true.
 - `signups_paused` — informational only for now (AuthScreen doesn't read it). Reserve for incident-response use; wire when you actually need it.
+- `whatsapp_paused` — when true, the WhatsApp branch of `/api/send-session-reminders` no-ops; web push reminders continue. Default: false. Use during a Meta Cloud API outage, after a template-approval issue, or while investigating a runaway send.
 
 To flip a flag (no redeploy needed):
 ```

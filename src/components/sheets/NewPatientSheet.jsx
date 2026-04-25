@@ -67,6 +67,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [tutorFrequency, setTutorFrequency] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   // Birthdate defaults to today so the control renders a filled-in
   // date picker; we track "untouched" so the placeholder-ish styling
   // doesn't lock us into saving today's date as birthdate.
@@ -181,6 +182,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
         tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
         phone: phoneDigits(phone), email: email.trim(),
+        whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
         birthdate: (birthdate && !birthdateUntouched) ? birthdate : null,
         schedules, recurring: true,
         startDate,
@@ -416,6 +418,22 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   <label className="input-label">{t("settings.email")}</label>
                   <input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
                 </div>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                    {t("patients.whatsappReminders")}
+                  </div>
+                  <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                    {phoneDigits(phone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                  </div>
+                </div>
+                <Toggle
+                  on={whatsappEnabled && !!phoneDigits(phone)}
+                  disabled={!phoneDigits(phone)}
+                  ariaLabel={t("patients.whatsappReminders")}
+                  onToggle={() => setWhatsappEnabled(v => !v)}
+                />
               </div>
               <div className="input-group">
                 <label className="input-label">{t("patients.birthdate")}</label>

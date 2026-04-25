@@ -14,7 +14,7 @@
    Section bodies may contain `\n\n` to render as multiple paragraphs
    in PrivacyPolicy.jsx. */
 
-export const POLICY_VERSION = "2026-04-v2";
+export const POLICY_VERSION = "2026-04-v3";
 export const POLICY_PUBLISHED = "25 de abril de 2026";
 
 export const POLICY_SECTIONS = [
@@ -107,7 +107,11 @@ export const POLICY_SECTIONS = [
       "diagnóstico (los errores se filtran de cualquier dato personal o de paciente antes de salir del " +
       "navegador).\n" +
       "• Google LLC y Apple Inc. — entrega de notificaciones push, únicamente cuando hayas habilitado los " +
-      "recordatorios y a través de los servicios estándar de tu sistema operativo.\n\n" +
+      "recordatorios y a través de los servicios estándar de tu sistema operativo.\n" +
+      "• Meta Platforms Ireland Limited (Irlanda) — envío de recordatorios de sesión por WhatsApp a tus " +
+      "pacientes, únicamente cuando tú actives el interruptor 'Recordatorios por WhatsApp' en el perfil de " +
+      "cada paciente. Por cada envío compartimos con Meta el teléfono y nombre del destinatario, la hora y " +
+      "modalidad de la sesión y tu nombre como remitente.\n\n" +
       "Algunas de estas transferencias implican el envío de datos personales fuera de los Estados Unidos " +
       "Mexicanos. Estos proveedores cuentan con cláusulas contractuales y medidas de seguridad acordes con " +
       "las exigencias de la LFPDPPP. Al utilizar Cardigan otorgas tu consentimiento para estas " +
