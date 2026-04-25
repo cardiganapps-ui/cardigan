@@ -194,6 +194,15 @@ export function Tutorial() {
       return;
     }
     retryRef.current = 0;
+    // Tag the matched element so CSS can highlight it. The drawer is
+    // z-index-boosted above the tutorial dim during drawer steps, which
+    // would otherwise leave every drawer-item at full brightness — the
+    // user couldn't tell which one the tooltip was pointing at. We
+    // strip the marker off the previous target before re-tagging.
+    document.querySelectorAll(".tut-target").forEach(n => {
+      if (n !== el) n.classList.remove("tut-target");
+    });
+    el.classList.add("tut-target");
     const r = el.getBoundingClientRect();
     setRect({
       top: r.top, left: r.left, right: r.right, bottom: r.bottom,
@@ -288,6 +297,7 @@ export function Tutorial() {
     const raf = requestAnimationFrame(() => {
       document.querySelectorAll(".tut-dim, .tut-blocker, .tut-spotlight, .tut-nav-chip").forEach(el => el.remove());
       document.querySelectorAll(".tut-nav-pulse").forEach(el => el.classList.remove("tut-nav-pulse"));
+      document.querySelectorAll(".tut-target").forEach(el => el.classList.remove("tut-target"));
       document.body.classList.remove("tut-drawer-active", "tut-fab-active");
     });
     return () => cancelAnimationFrame(raf);

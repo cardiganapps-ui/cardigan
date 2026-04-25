@@ -255,6 +255,23 @@ body.tut-drawer-active .drawer-overlay {
   backdrop-filter: none !important;
   pointer-events: none !important;
 }
+/* Because the drawer is rendered ABOVE the tutorial dim during drawer
+   steps, the spotlight's box-shadow cutout can't visually distinguish
+   which drawer-item the tooltip is pointing at. Dim the non-target
+   items in JS-painted drawer chrome and brighten the matched one. */
+body.tut-drawer-active .drawer-item:not(.tut-target) {
+  opacity: 0.32;
+  transition: opacity 0.4s ease;
+}
+body.tut-drawer-active .drawer-item.tut-target {
+  opacity: 1;
+  background: rgba(91, 155, 175, 0.22);
+  box-shadow: inset 3px 0 0 var(--teal-light);
+  transition: background 0.4s ease, opacity 0.4s ease;
+}
+body.tut-drawer-active .drawer-section-label {
+  opacity: 0.45;
+}
 
 /* ── CONTEXTUAL HELP TIPS ── */
 .help-icon-btn {
