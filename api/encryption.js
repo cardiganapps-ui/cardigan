@@ -20,6 +20,7 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { getFlag } from "./_flags.js";
 
 function pick(body, keys) {
   const out = {};
@@ -53,6 +54,13 @@ async function handler(req, res) {
   }
 
   if (req.method === "POST") {
+    // Edge Config kill switch — flip encryption_setup_enabled=false to
+    // pause new encryption sign-ups while we investigate a bug. Existing
+    // users with encryption already configured are unaffected (GET/PUT/
+    // DELETE keep working).
+    if (!(await getFlag("encryption_setup_enabled"))) {
+      return res.status(503).json({ error: "Encryption setup temporarily unavailable" });
+    }
     const body = req.body || {};
     const validationError = validateWrap(body);
     if (validationError) return res.status(400).json({ error: validationError });

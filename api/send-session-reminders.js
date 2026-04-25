@@ -7,6 +7,7 @@ import {
   TERMINAL_PUSH_STATUSES,
 } from "./_push.js";
 import { withSentry } from "./_sentry.js";
+import { getFlag } from "./_flags.js";
 
 async function handler(req, res) {
   // Accept GET (Vercel Cron's default) and POST (legacy pg_cron caller).
@@ -19,6 +20,12 @@ async function handler(req, res) {
   // Authenticate: only accept calls with the shared cron secret
   if (!verifyCronSecret(req)) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // Edge Config kill switch — flip cron_paused=true to silence reminder
+  // sends without a redeploy (e.g., during a push outage).
+  if (await getFlag("cron_paused")) {
+    return res.status(200).json({ sent: 0, paused: true });
   }
 
   const startedAt = Date.now();

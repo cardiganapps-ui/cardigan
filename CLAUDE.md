@@ -194,6 +194,45 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 - **Rotating a noisy error:** silence it in the Sentry UI (create an inbound filter or ignore rule) rather than adding a try/catch that hides a real failure. If you need to suppress at the code level, add an allowlist check inside the specific handler — do NOT globally suppress in `_sentry.js`.
 - **Env setup:** `VITE_SENTRY_DSN` (client) and `SENTRY_DSN` (server) must be set in Vercel (Preview + Production) before the first post-merge deploy. Keep them distinct — rotation, routing, and sampling are per-DSN.
 
+### Edge Config (feature flags / kill switches)
+Reader: `api/_flags.js::getFlag(name)`. Pulls from the Vercel Edge Config store `cardigan-flags` (id `ecfg_ym2ipouu2lo2ywnspc5wbgdd9bsc`), connection string in the `EDGE_CONFIG` env var. The helper falls back to a documented default if the service is unreachable, so a brief Edge Config outage can never crash a request.
+
+Defined flags (see `_flags.js` for inline docs):
+- `cron_paused` — when true, `/api/send-session-reminders` short-circuits to `{ sent: 0, paused: true }`. Use during a push outage or while debugging duplicate sends. Default: false.
+- `encryption_setup_enabled` — when false, `POST /api/encryption` returns 503. Pauses new encryption sign-ups; existing users are unaffected. Default: true.
+- `signups_paused` — informational only for now (AuthScreen doesn't read it). Reserve for incident-response use; wire when you actually need it.
+
+To flip a flag (no redeploy needed):
+```
+curl -X PATCH "https://api.vercel.com/v1/edge-config/ecfg_ym2ipouu2lo2ywnspc5wbgdd9bsc/items?teamId=team_0rR9OfIKmnJ8xFDrOXUkHcT3" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \
+  -d '{"items":[{"operation":"upsert","key":"cron_paused","value":true}]}'
+```
+Or use the Vercel dashboard → Storage → Edge Config → cardigan-flags. Reads propagate globally within seconds.
+
+### Vercel Firewall
+Configured via `PUT /v1/security/firewall/config?projectId=...&teamId=...`.
+- **Active rule:** rate limit `/api/*` to 120 req/min per IP (`api-rate-limit`). 429 response when tripped.
+- **CRS modules** (LFI / RFI / RCE / XSS / SQLi managed rule sets) are dashboard-only — the API accepts the JSON but silently keeps them off. Toggle in Vercel dashboard → Settings → Firewall → Managed Rulesets if you want them on.
+- **Always-on (no config):** Pro-tier DDoS mitigation, basic bot detection.
+
+To inspect the live config:
+```
+curl -s "https://api.vercel.com/v1/security/firewall/config?projectId=prj_b7BGSTkTKwLT1aeKPEiKxAlz9Nmk&teamId=team_0rR9OfIKmnJ8xFDrOXUkHcT3" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" | jq '.active.rules, .active.crs'
+```
+
+### Log Drains (deferred — destination required)
+Vercel Pro retains function logs for 1 day. To export them in real time, create a log drain pointing at Better Stack (free tier), Logtail, Datadog, or Axiom. Recommended provider: **Better Stack** — generous free tier, JSON-friendly, sub-minute search.
+
+When ready, sign up at the destination, get an HTTP source URL + token, and:
+```
+curl -X POST "https://api.vercel.com/v1/log-drains?teamId=team_0rR9OfIKmnJ8xFDrOXUkHcT3" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"cardigan-prod","url":"<destination-url>","deliveryFormat":"json","sources":["lambda","static","external","build"],"environments":["production"],"projectIds":["prj_b7BGSTkTKwLT1aeKPEiKxAlz9Nmk"]}'
+```
+Until then, runtime logs are visible only in the Vercel dashboard's Functions tab and live for 24h.
+
 ## Conventions
 - **Spanish** for all user-visible text (use `useT()` from `src/i18n`).
 - **Currency MXN**, formatted with `.toLocaleString()`.
