@@ -769,27 +769,8 @@ export function Settings({ user, signOut, refreshUser }) {
 
       <div className="settings-label">{t("settings.privacyLabel")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => navigate("privacy")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.privacyPolicy")}</div>
-            <div className="settings-row-sub">{t("settings.privacyPolicySub")}</div>
-          </div>
-          <IconChevron />
-        </div>
-        {!readOnly && (
-          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }} onClick={exportMyData}>
-            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">{t("settings.privacyExport")}</div>
-              <div className="settings-row-sub">{t("settings.privacyExportSub")}</div>
-            </div>
-            {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
-          </div>
-        )}
-        {/* Note encryption — folded into Privacidad since it's a privacy
-            control, not its own settings family. The disabled / locked /
-            unlocked states each render their own affordance(s). */}
+        {/* Note encryption — primary affordance. The disabled / locked /
+            unlocked states each render their own row(s). */}
         {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
           <>
             {noteCrypto.status === "disabled" && (
@@ -841,6 +822,15 @@ export function Settings({ user, signOut, refreshUser }) {
               </>
             )}
           </>
+        )}
+        {!readOnly && (
+          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }} onClick={exportMyData}>
+            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.privacyExport")}</div>
+            </div>
+            {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
+          </div>
         )}
       </div>
 
@@ -899,7 +889,27 @@ export function Settings({ user, signOut, refreshUser }) {
         </>
       )}
 
-      <div style={{ height:20 }} />
+      {/* Footnote-style legal link — the policy is rarely consulted but
+          must remain reachable from every account screen for LFPDPPP
+          compliance. Centred, low-contrast, no chrome. */}
+      <div style={{ textAlign:"center", padding:"24px 16px 28px" }}>
+        <button
+          type="button"
+          onClick={() => navigate("privacy")}
+          style={{
+            background:"transparent",
+            border:"none",
+            padding:"4px 8px",
+            fontSize:11,
+            color:"var(--charcoal-xl)",
+            textDecoration:"underline",
+            cursor:"pointer",
+            WebkitTapHighlightColor:"transparent",
+          }}
+        >
+          {t("settings.privacyPolicy")}
+        </button>
+      </div>
 
       {/* ── PROFILE SHEET ── */}
       {activeSheet === "profile" && (
