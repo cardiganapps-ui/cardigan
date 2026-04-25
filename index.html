@@ -11,7 +11,11 @@
     <link rel="apple-touch-icon" href="/icon-dark.svg" media="(prefers-color-scheme: dark)" />
     <link rel="mask-icon" href="/icon-mono.svg" color="#5B9BAF" />
     <meta name="theme-color" content="#FFFFFF" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- maximum-scale=1 prevents iOS Safari from auto-zooming on input
+         focus and (more importantly) failing to restore the original zoom
+         level on blur. Modern iOS still honors user pinch-zoom for
+         accessibility regardless of this setting. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cardigan" />
