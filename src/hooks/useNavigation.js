@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const VALID_SCREENS = ["home", "agenda", "patients", "finances", "archivo", "settings"];
-const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, finances: 3, archivo: 4, settings: 5 };
+const VALID_SCREENS = ["home", "agenda", "patients", "finances", "archivo", "settings", "privacy"];
+// privacy sits "after" settings so the slide direction matches the
+// Settings → Aviso de Privacidad → back flow.
+const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, finances: 3, archivo: 4, settings: 5, privacy: 6 };
 
 function getHashScreen() {
   const hash = window.location.hash.replace("#", "").split("?")[0];
