@@ -9,7 +9,12 @@ import {
 import { withSentry } from "./_sentry.js";
 
 async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  // Accept GET (Vercel Cron's default) and POST (legacy pg_cron caller).
+  // Both paths are gated by the same shared-secret check below, so the
+  // method matters only as a basic shape filter.
+  if (req.method !== "GET" && req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   // Authenticate: only accept calls with the shared cron secret
   if (!verifyCronSecret(req)) {

@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/send-session-reminders",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
