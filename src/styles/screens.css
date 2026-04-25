@@ -75,6 +75,36 @@
 .month-title { font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); }
 .month-grid { padding: 0 16px; }
 .month-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; }
+/* Agenda → calendar-sync CTA. Pill-shaped row above the day/week/month
+   segmented control. Soft teal surface so it reads as a hint rather
+   than a primary action; tappable feedback on press. */
+.agenda-calendar-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--teal-mist);
+  border: 1px solid var(--teal-pale);
+  border-radius: var(--radius-pill);
+  color: var(--teal-dark);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s ease, transform 0.18s ease;
+}
+.agenda-calendar-link:active { background: var(--teal-pale); transform: scale(0.99); }
+.agenda-calendar-link:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.agenda-calendar-link-icon { display: inline-flex; align-items: center; justify-content: center; }
+.agenda-calendar-link-label { flex: 1; text-align: left; }
+html[data-theme="dark"] .agenda-calendar-link {
+  background: rgba(91,155,175,0.12);
+  border-color: rgba(91,155,175,0.25);
+  color: var(--teal-light);
+}
+
 .month-dow { text-align: center; font-size: 10px; font-weight: 700; color: var(--charcoal-xl); text-transform: uppercase; padding: 4px 0; }
 .month-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .month-cell {

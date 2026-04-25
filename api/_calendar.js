@@ -4,11 +4,13 @@
    serving to subscribing calendar clients (Google Calendar, Apple
    Calendar, Outlook, etc.).
 
-   Privacy: SUMMARY uses session.initials, never the patient name.
-   The ICS feed lives behind a long unguessable token but ends up
-   replicated into third-party calendar databases — keeping names out
-   limits exposure if the URL leaks. Modality and a brief status note
-   go into DESCRIPTION.
+   Privacy: SUMMARY uses the full patient name so therapists see at a
+   glance who the session is with from inside their calendar app. The
+   ICS URL behaves like a long unguessable secret — anyone who has it
+   can read the feed, including the third-party calendar service the
+   user pastes it into. Surface this trade-off in the Settings copy
+   whenever the URL is exposed. Modality and a brief status note go
+   into DESCRIPTION.
 
    Timezone: we emit DTSTART/DTEND with TZID=<tz> and include a single
    minimal VTIMEZONE block. Mexico abolished DST nationally in 2022,
@@ -133,7 +135,8 @@ function vtimezoneBlock(tz) {
  * @param {object} options
  * @param {Array<object>} options.sessions - DB rows. Required fields:
  *   id, date ("D-MMM"), time ("HH:MM"), duration (minutes),
- *   status, initials. Optional: modality, cancel_reason.
+ *   status, patient (full name). Optional: initials (fallback for
+ *   missing patient), modality, cancel_reason.
  * @param {string} options.timezone - IANA TZ name. Defaults to America/Mexico_City.
  * @param {string} options.calendarName - Title shown in the subscriber's UI.
  */
@@ -177,7 +180,7 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
       `${pad(endDate.getUTCHours())}:${pad(endDate.getUTCMinutes())}`
     );
 
-    const summary = `Sesión - ${escapeText(s.initials || "?")}`;
+    const summary = `Sesión - ${escapeText(s.patient || s.initials || "?")}`;
     const descParts = [];
     if (s.modality) descParts.push(`Modalidad: ${s.modality}`);
     if (s.status === "charged") descParts.push("Cancelada con cargo.");

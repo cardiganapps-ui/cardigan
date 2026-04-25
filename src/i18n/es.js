@@ -238,6 +238,7 @@ export default {
     allPatients: "Todos los pacientes",
     noSessionsForPatient: "Sin sesiones de {name} este día",
     emptyHint: "Agrega pacientes y citas recurrentes para ver tu agenda aquí.",
+    calendarSyncCTA: "Sincroniza con Apple o Google Calendar",
   },
 
   // ── Sessions ──
@@ -250,7 +251,7 @@ export default {
     scheduling: "Agendando...",
     conflict: "Ya tienes una sesi\u00f3n con {patient} a esa hora.",
     reschedule: "Reagendar",
-    cancelSession: "Cancelar",
+    cancelSession: "Cancelar sesión",
     cancelWithCharge: "Cancelar con cobro",
     cancelWithoutCharge: "Cancelar sin cobro",
     markCompleted: "Marcar completada",
@@ -575,7 +576,7 @@ export default {
     calendarAddGoogle: "Añadir a Google Calendar",
     calendarMoreOptions: "Otras apps (Outlook, Fantastical…)",
     calendarManualHint: "Copia esta URL y pégala en la opción “Suscribirse a un calendario” de tu app.",
-    calendarPrivacyNote: "Cualquier persona con esta URL puede ver tus citas. Se muestran iniciales de pacientes, nunca nombres completos.",
+    calendarPrivacyNote: "Cualquier persona con esta URL puede ver tus citas, incluyendo el nombre completo del paciente. Compártela solo desde tu app de calendario personal.",
     calendarEnable: "Activar sincronización",
     calendarEnabled: "Sincronización activada",
     calendarCopy: "Copiar URL",

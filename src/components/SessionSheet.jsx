@@ -275,16 +275,17 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
               )}
             </div>
           ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {/* Reschedule — neutral native action */}
-              <button className="btn btn-secondary" style={{ height:44 }} onClick={startReschedule}>
+            <div style={{ display:"flex", gap:10 }}>
+              <button className="btn btn-secondary" style={{ flex:1, height:44 }} onClick={startReschedule}>
                 {t("sessions.reschedule")}
               </button>
-
-              {/* Cancel — soft amber warning, single entry point for both charge/no-charge */}
               {!isCancelled && (
-                <button className="btn btn-warning" style={{ height:44, fontSize:13 }}
-                  onClick={startCancel} disabled={mutating}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex:1, height:44, color:"var(--red)", borderColor:"var(--red-bg)" }}
+                  onClick={startCancel}
+                  disabled={mutating}
+                >
                   {t("sessions.cancelSession")}
                 </button>
               )}

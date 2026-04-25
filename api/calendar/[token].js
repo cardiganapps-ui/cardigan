@@ -8,8 +8,10 @@
      - 32-byte CSPRNG token, base64url-encoded → unguessable
      - Rotation = upsert with a new token, breaking existing
        subscriptions on demand (Settings exposes the button)
-     - The feed body uses session.initials, NEVER the patient name —
-       leak surface stays small
+     - The feed body uses the full patient name in SUMMARY so the
+       therapist can read their own calendar at a glance; this means
+       a leaked URL exposes those names to whoever has it. The user-
+       facing copy where the URL is shown must communicate that.
      - last_accessed_at is updated so the user can see whether the
        feed is in active use before rotating
 
@@ -61,7 +63,7 @@ async function handler(req, res) {
   const [sessionsRes, prefsRes] = await Promise.all([
     svc
       .from("sessions")
-      .select("id, date, time, duration, status, initials, modality, cancel_reason")
+      .select("id, date, time, duration, status, patient, initials, modality, cancel_reason")
       .eq("user_id", row.user_id)
       .gte("created_at", oneYearAgo.toISOString())
       .limit(5000),

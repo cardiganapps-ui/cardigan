@@ -4,7 +4,8 @@ import { haptic } from "../utils/haptics";
 import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
-import { IconSun, IconCheck, IconX, IconTrash, IconCalendar } from "../components/Icons";
+import { CalendarLinkSheet } from "../components/sheets/CalendarLinkSheet";
+import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconChevron } from "../components/Icons";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
@@ -591,7 +592,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly } = useCardigan();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -609,6 +610,7 @@ export function Agenda() {
   const [editingNote, setEditingNote] = useState(null);
   const [filterPatientId, setFilterPatientId] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState(null);
+  const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
 
   // "Ahora" tick — re-render every minute so the now-line stays current
   const [now, setNow] = useState(() => new Date());
@@ -690,6 +692,20 @@ export function Agenda() {
     )}
     <div className="page" data-tour="agenda-section">
       <div style={{ paddingTop:16 }}>
+        {!readOnly && (
+          <div style={{ padding:"0 16px 12px" }}>
+            <button
+              type="button"
+              className="agenda-calendar-link"
+              onClick={() => setCalendarSheetOpen(true)}
+              aria-label={t("agenda.calendarSyncCTA")}
+            >
+              <span className="agenda-calendar-link-icon"><IconCalendar size={16} /></span>
+              <span className="agenda-calendar-link-label">{t("agenda.calendarSyncCTA")}</span>
+              <IconChevron />
+            </button>
+          </div>
+        )}
         <div style={{ padding:"0 16px 14px" }}>
           <SegmentedControl
             dataTour="agenda-toggle"
@@ -737,6 +753,9 @@ export function Agenda() {
           initialDate={newSessionPrefill.date}
           initialTime={newSessionPrefill.time}
         />
+      )}
+      {calendarSheetOpen && (
+        <CalendarLinkSheet onClose={() => setCalendarSheetOpen(false)} readOnly={readOnly} />
       )}
       <SessionSheet
         session={selectedSession}

@@ -1,8 +1,8 @@
 /* ── ICS generator tests ──
    Pure unit tests for the calendar feed body. Verifies the ICS shape
    stays compatible with what Google Calendar, Apple Calendar, and
-   Outlook expect, and that privacy invariants hold (initials only,
-   no patient names). */
+   Outlook expect, and that the SUMMARY surfaces the full patient name
+   so the therapist can read their own calendar at a glance. */
 
 import { describe, it, expect } from "vitest";
 import { generateICS, _internals } from "../_calendar.js";
@@ -29,6 +29,7 @@ describe("generateICS", () => {
           time: "10:00",
           duration: 60,
           status: "scheduled",
+          patient: "Ana López",
           initials: "AL",
           modality: "presencial",
         },
@@ -39,15 +40,15 @@ describe("generateICS", () => {
     expect(ics).toContain("UID:00000000-0000-0000-0000-000000000001@cardigan.mx");
     expect(ics).toMatch(/DTSTART;TZID=America\/Mexico_City:\d{4}0408T100000/);
     expect(ics).toMatch(/DTEND;TZID=America\/Mexico_City:\d{4}0408T110000/);
-    expect(ics).toContain("SUMMARY:Sesión - AL");
+    expect(ics).toContain("SUMMARY:Sesión - Ana López");
     expect(ics).toContain("STATUS:CONFIRMED");
     expect(ics).toContain("END:VEVENT");
   });
 
-  // PRIVACY REGRESSION: the feed lives on third-party calendar servers
-  // once the user subscribes. Patient names must never appear in the
-  // body — only initials.
-  it("never includes the full patient name in any line", () => {
+  // SUMMARY uses the full patient name. Anyone with the feed URL can
+  // read it (including third-party calendar services), so the user-
+  // facing copy where the URL is shown communicates that trade-off.
+  it("includes the full patient name in SUMMARY", () => {
     const ics = generateICS({
       sessions: [
         {
@@ -62,9 +63,19 @@ describe("generateICS", () => {
         },
       ],
     });
-    expect(ics).not.toContain("Ana López");
-    expect(ics).not.toContain("Ana");
-    expect(ics).toContain("AL");
+    expect(ics).toContain("SUMMARY:Sesión - Ana López");
+  });
+
+  it("falls back to initials when patient name is missing", () => {
+    const ics = generateICS({
+      sessions: [
+        {
+          id: "s-1", date: "8-Abr", time: "10:00", duration: 60,
+          status: "scheduled", initials: "AL",
+        },
+      ],
+    });
+    expect(ics).toContain("SUMMARY:Sesión - AL");
   });
 
   it("marks cancelled sessions as STATUS:CANCELLED so clients render strikethroughs", () => {
