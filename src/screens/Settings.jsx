@@ -213,6 +213,7 @@ export function Settings({ user, signOut, refreshUser }) {
   const [calendarUrl, setCalendarUrl] = useState("");
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarCopied, setCalendarCopied] = useState(false);
+  const [calendarManualOpen, setCalendarManualOpen] = useState(false);
 
   useEffect(() => {
     if (readOnly) return;
@@ -679,55 +680,62 @@ export function Settings({ user, signOut, refreshUser }) {
                   </div>
                 </div>
 
-                <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
-                  <a
-                    href={webcalUrl}
-                    className="btn btn-teal-soft"
-                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, textDecoration:"none" }}
-                    aria-label={t("settings.calendarAddApple")}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
-                      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM275.8 91.4c20.6-24.4 18.8-46.6 18.2-54.6-18.4 1.1-39.6 12.5-51.7 26.5-13.3 15-21.1 33.5-19.4 53.1 19.9 1.5 37.9-8.8 52.9-25z" />
-                    </svg>
-                    <span>{t("settings.calendarAddApple")}</span>
-                  </a>
-                  <a
-                    href={googleAddUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-teal-soft"
-                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, textDecoration:"none" }}
-                    aria-label={t("settings.calendarAddGoogle")}
-                  >
-                    {/* Stylised "G" mark — single-colour line glyph so it
-                        reads as Google without breaking the line-art icon
-                        language used throughout Settings. */}
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M21 12a9 9 0 1 1-3.5-7.13" />
-                      <path d="M21 12h-7" />
-                    </svg>
-                    <span>{t("settings.calendarAddGoogle")}</span>
-                  </a>
-                </div>
+                {/* Three subscribe options on a single row — equal-flex
+                    btn-teal-soft pills with shorter labels so they fit on
+                    a 320px-wide screen. Monochrome icons inherit
+                    currentColor to stay visually coherent with the rest
+                    of Settings. The "Otras" pill toggles the manual-URL
+                    block below the row instead of using <details>, so
+                    expansion doesn't disrupt the row layout. */}
+                {(() => {
+                  const pillStyle = {
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    textDecoration: "none",
+                    height: 36,
+                    padding: "0 8px",
+                    fontSize: 13,
+                    minWidth: 0,
+                  };
+                  return (
+                    <div style={{ display:"flex", gap:8, marginBottom: calendarManualOpen ? 12 : 0 }}>
+                      <a href={webcalUrl} className="btn btn-teal-soft" style={pillStyle} aria-label={t("settings.calendarAddApple")}>
+                        <svg width="14" height="14" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
+                          <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM275.8 91.4c20.6-24.4 18.8-46.6 18.2-54.6-18.4 1.1-39.6 12.5-51.7 26.5-13.3 15-21.1 33.5-19.4 53.1 19.9 1.5 37.9-8.8 52.9-25z" />
+                        </svg>
+                        <span>Apple</span>
+                      </a>
+                      <a href={googleAddUrl} target="_blank" rel="noopener noreferrer" className="btn btn-teal-soft" style={pillStyle} aria-label={t("settings.calendarAddGoogle")}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M21 12a9 9 0 1 1-3.5-7.13" />
+                          <path d="M21 12h-7" />
+                        </svg>
+                        <span>Google</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setCalendarManualOpen(v => !v)}
+                        className="btn btn-teal-soft"
+                        style={pillStyle}
+                        aria-expanded={calendarManualOpen}
+                        aria-label={t("settings.calendarMoreOptions")}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="5" cy="12" r="1.6" fill="currentColor" />
+                          <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                          <circle cx="19" cy="12" r="1.6" fill="currentColor" />
+                        </svg>
+                        <span>Otras</span>
+                      </button>
+                    </div>
+                  );
+                })()}
 
-                {/* "Otras apps" matches the Apple/Google buttons — same
-                    btn-teal-soft pill, monochrome icon. Native <details>
-                    keeps the disclosure dependency-free; the summary is
-                    styled to be visually identical to the buttons above
-                    so the three options read as a coherent set. */}
-                <details style={{ marginBottom:0 }}>
-                  <summary
-                    className="btn btn-teal-soft"
-                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, listStyle:"none", WebkitTapHighlightColor:"transparent", marginTop:8 }}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <circle cx="5" cy="12" r="1.6" fill="currentColor" />
-                      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
-                      <circle cx="19" cy="12" r="1.6" fill="currentColor" />
-                    </svg>
-                    <span>{t("settings.calendarMoreOptions")}</span>
-                  </summary>
-                  <div style={{ marginTop:12 }}>
+                {calendarManualOpen && (
+                  <div>
                     <div style={{ fontSize:12, color:"var(--charcoal-md)", marginBottom:8, lineHeight:1.5 }}>
                       {t("settings.calendarManualHint")}
                     </div>
@@ -751,7 +759,7 @@ export function Settings({ user, signOut, refreshUser }) {
                       {calendarCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
                     </button>
                   </div>
-                </details>
+                )}
               </>
               );
             })()}
