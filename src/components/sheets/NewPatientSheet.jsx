@@ -284,7 +284,6 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
                 </label>
                 <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
-                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.rateHint")}</div>
               </div>
 
               {/* 4. Schedule */}

@@ -201,7 +201,6 @@ export default {
     namePlaceholder: "Mar\u00eda L\u00f3pez",
     tutorPlaceholder: "Nombre del tutor",
     ratePlaceholder: "700",
-    rateHint: "Ej: 700",
     phone: "Tel\u00e9fono",
     phonePlaceholder: "81 1234 5678",
     emailPlaceholder: "correo@ejemplo.com",
