@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash } from "../components/Icons";
+import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconCalendar } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
@@ -263,6 +263,88 @@ export function Settings({ user, signOut, refreshUser }) {
   const restartTutorial = () => {
     navigate("home");
     setTimeout(() => { tutorial?.reset?.(); }, 340);
+  };
+
+  // ── Calendar sync (ICS feed) ───────────────────────────────────────
+  const [calendarToken, setCalendarToken] = useState(null);
+  const [calendarUrl, setCalendarUrl] = useState("");
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const [calendarCopied, setCalendarCopied] = useState(false);
+
+  useEffect(() => {
+    if (readOnly) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      try {
+        const res = await fetch("/api/calendar-token", {
+          headers: { "Authorization": `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const j = await res.json();
+        setCalendarToken(j.token || null);
+        setCalendarUrl(j.url || "");
+      } catch { /* offline / first-load — surface nothing */ }
+    })();
+    return () => { cancelled = true; };
+  }, [readOnly]);
+
+  const callCalendarToken = async (method) => {
+    if (calendarBusy) return null;
+    setCalendarBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { showToast(t("settings.calendarError"), "error"); return null; }
+      const res = await fetch("/api/calendar-token", {
+        method,
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) { showToast(t("settings.calendarError"), "error"); return null; }
+      return await res.json();
+    } catch {
+      showToast(t("settings.calendarError"), "error");
+      return null;
+    } finally {
+      setCalendarBusy(false);
+    }
+  };
+
+  const enableCalendar = async () => {
+    const j = await callCalendarToken("POST");
+    if (!j) return;
+    setCalendarToken(j.token || null);
+    setCalendarUrl(j.url || "");
+    showToast(t("settings.calendarEnabled"), "success");
+  };
+
+  const rotateCalendar = async () => {
+    const j = await callCalendarToken("POST");
+    if (!j) return;
+    setCalendarToken(j.token || null);
+    setCalendarUrl(j.url || "");
+    showToast(t("settings.calendarRotated"), "success");
+  };
+
+  const disableCalendar = async () => {
+    const j = await callCalendarToken("DELETE");
+    if (!j) return;
+    setCalendarToken(null);
+    setCalendarUrl("");
+    showToast(t("settings.calendarDisabled"), "info");
+  };
+
+  const copyCalendarUrl = async () => {
+    if (!calendarUrl) return;
+    try {
+      await navigator.clipboard.writeText(calendarUrl);
+      setCalendarCopied(true);
+      setTimeout(() => setCalendarCopied(false), 1800);
+    } catch {
+      showToast(t("settings.calendarCopyError"), "error");
+    }
   };
 
   // ── Privacy / ARCO actions ─────────────────────────────────────────
@@ -653,6 +735,69 @@ export function Settings({ user, signOut, refreshUser }) {
               </Expando>
             </div>
           )}
+        </>
+      )}
+
+      {!readOnly && (
+        <>
+          <div className="settings-label">{t("settings.calendarLabel")}</div>
+          <div className="card" style={{ margin:"0 16px", padding:"14px 16px" }}>
+            {!calendarToken && (
+              <>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
+                  <div style={{ color:"var(--teal-dark)", marginTop:2 }}><IconCalendar size={18} /></div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title" style={{ marginBottom:4 }}>{t("settings.calendarTitle")}</div>
+                    <div className="settings-row-sub" style={{ lineHeight:1.5 }}>{t("settings.calendarDescription")}</div>
+                  </div>
+                </div>
+                <button className="btn btn-primary" type="button" onClick={enableCalendar} disabled={calendarBusy}>
+                  {calendarBusy ? t("loading") : t("settings.calendarEnable")}
+                </button>
+              </>
+            )}
+            {calendarToken && (
+              <>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
+                  <div style={{ color:"var(--teal-dark)", marginTop:2 }}><IconCalendar size={18} /></div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">{t("settings.calendarTitle")}</div>
+                    <div className="settings-row-sub" style={{ lineHeight:1.5 }}>{t("settings.calendarHint")}</div>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    background:"var(--teal-pale)",
+                    color:"var(--teal-dark)",
+                    fontFamily:"var(--font-mono, monospace)",
+                    fontSize:12,
+                    padding:"10px 12px",
+                    borderRadius:"var(--radius)",
+                    wordBreak:"break-all",
+                    marginBottom:10,
+                    userSelect:"all",
+                  }}
+                  aria-label="Calendar feed URL"
+                >
+                  {calendarUrl}
+                </div>
+                <div style={{ background:"var(--amber-bg, #fff7e6)", color:"var(--charcoal-md)", fontSize:12, padding:"8px 12px", borderRadius:"var(--radius)", marginBottom:14, lineHeight:1.5 }}>
+                  {t("settings.calendarPrivacyNote")}
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <button className="btn btn-primary" type="button" onClick={copyCalendarUrl} disabled={calendarBusy}>
+                    {calendarCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
+                  </button>
+                  <button className="btn btn-ghost" type="button" onClick={rotateCalendar} disabled={calendarBusy}>
+                    {t("settings.calendarRotate")}
+                  </button>
+                  <button className="btn btn-ghost" type="button" onClick={disableCalendar} disabled={calendarBusy} style={{ color:"var(--red)" }}>
+                    {t("settings.calendarDisable")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </>
       )}
 

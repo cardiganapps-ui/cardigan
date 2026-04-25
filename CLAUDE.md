@@ -156,6 +156,13 @@ Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, us
 ### Vercel serverless routes (`api/`)
 Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` / `_sentry.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
 
+### Calendar sync (iCalendar feed)
+- Each user can opt in to a personal `.ics` feed served at `https://cardigan.mx/api/calendar/<token>`. The token is the only credential — calendar clients can't carry a JWT, so we use the standard "secret URL" pattern (Google Calendar, iCloud, Outlook all do this).
+- **Token lifecycle:** managed at `/api/calendar-token` (GET = read, POST = create or rotate, DELETE = revoke). Settings → "Calendario" surfaces the buttons. There's exactly one active token per user (unique constraint on `user_calendar_tokens.user_id`); rotation is an in-place upsert that breaks all existing subscriptions.
+- **Privacy:** the feed body uses `session.initials`, never the patient name. Surface that to the user in the Settings copy whenever the URL is visible — once the URL is pasted into Google/Apple, the data lives there too.
+- **Generator:** `api/_calendar.js::generateICS()` is the pure helper; tests in `api/__tests__/calendar.test.js` lock down the privacy invariant (no full names) plus RFC 5545 envelope shape, line folding, escape rules, and DTSTART/DTEND TZID anchoring.
+- **Timezone:** read from `notification_preferences.timezone`, default `America/Mexico_City`. The embedded `VTIMEZONE` block uses a constant `-0600` offset (Mexico abolished DST in 2022) and is mostly a fallback — major calendar clients prefer their own zoneinfo for known TZIDs.
+
 ### Privacy & LFPDPPP compliance
 - **Policy version** lives in `src/data/privacy.js::POLICY_VERSION`. When the policy body changes materially, bump the version string; users whose latest accepted version no longer matches are re-prompted on next login via `components/ConsentBanner.jsx`.
 - **Consent storage** is both local (`localStorage['cardigan.consent.v']`) for UX and server-side (`public.user_consents`) for audit. The consent banner writes both.
