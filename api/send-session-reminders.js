@@ -77,7 +77,17 @@ async function handler(req, res) {
       // 4. Filter sessions within the reminder window
       const nowMinutes = userNow.getHours() * 60 + userNow.getMinutes();
       const sessionsToNotify = sessions.filter((s) => {
-        const [h, m] = s.time.split(":").map(Number);
+        // Defensive null/format guard — a single bad row would otherwise
+        // throw inside the filter callback and skip every remaining
+        // user in the cron batch. The DB schema has time NOT NULL, but
+        // the cost of the guard is zero and a corrupted row shouldn't
+        // take down everyone's reminders.
+        if (!s.time || typeof s.time !== "string") return false;
+        const parts = s.time.split(":");
+        if (parts.length < 2) return false;
+        const h = Number(parts[0]);
+        const m = Number(parts[1]);
+        if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
         const sessionMinutes = h * 60 + m;
         const diff = sessionMinutes - nowMinutes;
         // Send reminder if session is between 0 and reminder_minutes from now

@@ -19,7 +19,12 @@ export default function ConsentBanner({ user, onAccepted }) {
 
   useEffect(() => {
     if (!user) { setVisible(false); return; }
-    const stored = localStorage.getItem(LS_KEY);
+    // Safari Private Mode and iOS Lockdown Mode can throw on storage
+    // access. Treat any failure as "not yet accepted" so the banner
+    // still surfaces (consent capture is mandatory) — server-side
+    // user_consents row is the durable record either way.
+    let stored = null;
+    try { stored = localStorage.getItem(LS_KEY); } catch { /* storage blocked */ }
     setVisible(stored !== POLICY_VERSION);
   }, [user]);
 
@@ -32,20 +37,36 @@ export default function ConsentBanner({ user, onAccepted }) {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error("Sesión inválida");
-      const res = await fetch("/api/record-consent", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ policy_version: POLICY_VERSION }),
-      });
+      // Cap the request at 15s. Without this, an unreachable server
+      // (DNS issue, captive portal, mid-deploy) leaves the user staring
+      // at a blocking modal with the spinner spinning forever and no
+      // recourse. The error path below surfaces a retry message.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      let res;
+      try {
+        res = await fetch("/api/record-consent", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ policy_version: POLICY_VERSION }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!res.ok) {
         let msg = "No se pudo guardar el consentimiento.";
         try { const j = await res.json(); msg = j.error || msg; } catch { /* keep default */ }
         throw new Error(msg);
       }
-      localStorage.setItem(LS_KEY, POLICY_VERSION);
+      // Best-effort cache for snappy re-visits. If storage is blocked
+      // (Lockdown / quota), the server-side user_consents row still
+      // counts — next mount will hit /api/record-consent again, which
+      // is idempotent on (user_id, policy_version).
+      try { localStorage.setItem(LS_KEY, POLICY_VERSION); } catch { /* ignore */ }
       setVisible(false);
       onAccepted?.();
     } catch (err) {

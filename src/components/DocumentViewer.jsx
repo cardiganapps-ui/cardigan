@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { IconChevron } from "./Icons";
 import { getFileIcon, formatFileSize, isImageDoc, isPdfDoc } from "../utils/files";
 import { useT } from "../i18n/index";
@@ -6,6 +7,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
   const { t } = useT();
   const isImage = isImageDoc(doc);
   const isPdf = isPdfDoc(doc);
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <>
@@ -42,7 +44,17 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
           </div>
         </div>
         <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "#1a1a1a" : "var(--white)" }}>
-          {isImage && <img src={url} alt={doc.name} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
+          {isImage && !imgFailed && <img src={url} alt={doc.name} onError={() => setImgFailed(true)} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
+          {isImage && imgFailed && (
+            <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>{getFileIcon(doc)}</div>
+              <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:4 }}>{doc.name}</div>
+              <div style={{ fontSize:12, marginBottom:16 }}>{t("docs.openError")}</div>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display:"inline-flex", textDecoration:"none" }}>
+                {t("docs.download")}
+              </a>
+            </div>
+          )}
           {isPdf && <iframe src={url} title={doc.name} sandbox="allow-same-origin allow-scripts" style={{ width:"100%", height:"100%", border:"none" }} />}
           {!isImage && !isPdf && (
             <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>

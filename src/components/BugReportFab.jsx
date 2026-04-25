@@ -17,6 +17,7 @@ export function BugReportSheet({ open, onClose, user, screen }) {
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const closeSheet = () => { setDescription(""); onClose?.(); };
   useEscape(open ? closeSheet : null);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(closeSheet, { isOpen: open });
@@ -25,17 +26,26 @@ export function BugReportSheet({ open, onClose, user, screen }) {
   const submit = async (e) => {
     e.preventDefault();
     setSending(true);
-    await supabase.from("bug_reports").insert({
-      user_id: user?.id || null,
-      user_email: user?.email || null,
-      description: description.trim() || null,
-      screen,
-      logs: getLogs(),
-      user_agent: navigator.userAgent,
-    });
-    setSending(false);
-    setSent(true);
-    setTimeout(() => { setSent(false); setDescription(""); onClose?.(); }, 1200);
+    setSubmitError("");
+    try {
+      const { error } = await supabase.from("bug_reports").insert({
+        user_id: user?.id || null,
+        user_email: user?.email || null,
+        description: description.trim() || null,
+        screen,
+        logs: getLogs(),
+        user_agent: navigator.userAgent,
+      });
+      if (error) throw error;
+      setSent(true);
+      setTimeout(() => { setSent(false); setDescription(""); onClose?.(); }, 1200);
+    } catch (err) {
+      // Without this, an insert failure (RLS, network, schema mismatch)
+      // would leave the button stuck on "Guardando…" forever.
+      setSubmitError(err?.message || t("bugReport.submitFailed"));
+    } finally {
+      setSending(false);
+    }
   };
 
   if (!open) return null;
@@ -64,6 +74,9 @@ export function BugReportSheet({ open, onClose, user, screen }) {
               onChange={e => setDescription(e.target.value)}
               style={{ resize: "vertical", fontFamily: "var(--font)", fontSize: 13 }}
             />
+            {submitError && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "var(--red)", lineHeight: 1.4 }}>{submitError}</div>
+            )}
             <button className="btn btn-primary-teal" type="submit" disabled={sending}
               style={{ width: "100%", marginTop: 12 }}>
               {sending ? t("saving") : t("bugReport.submit")}

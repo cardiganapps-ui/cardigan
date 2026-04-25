@@ -946,6 +946,7 @@ export default {
     placeholder: "Describe el problema (opcional)",
     submit: "Enviar",
     sent: "Reporte enviado",
+    submitFailed: "No se pudo enviar el reporte. Intenta de nuevo.",
   },
 
   // ── Date names ──

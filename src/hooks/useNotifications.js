@@ -17,6 +17,21 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 /**
+ * Wait for `navigator.serviceWorker.ready` but cap the wait so an
+ * environment where no SW will ever activate (browsers without SW
+ * support, sandboxed iframes, dev tools quirks) doesn't hang the
+ * caller forever. Returns null on timeout so callers can degrade
+ * gracefully.
+ */
+async function readyWithTimeout(timeoutMs = 5000) {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ]);
+}
+
+/**
  * Detect whether we're on iOS but NOT installed as a standalone PWA.
  */
 function isIOSNotStandalone() {
@@ -61,7 +76,8 @@ async function postSubscription(subscription) {
  * preferences say `enabled: true`.
  */
 async function subscribeAndPersist() {
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await readyWithTimeout();
+  if (!reg) return { ok: false, subscription: null };
   const subscription = await reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -123,7 +139,9 @@ export function useNotifications(user) {
       // they'd stopped receiving reminders.
       if (prefEnabled) {
         try {
-          const reg = await navigator.serviceWorker.ready;
+          const reg = await readyWithTimeout();
+          if (cancelled) return;
+          if (!reg) { setEnabled(false); return; }
           const existing = await reg.pushManager.getSubscription();
           if (cancelled) return;
           if (existing) {
@@ -220,7 +238,8 @@ export function useNotifications(user) {
 
     let subscription;
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await readyWithTimeout();
+      if (!reg) { setEnabled(false); return { ok: false, code: "subscribe-failed" }; }
       subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -267,8 +286,8 @@ export function useNotifications(user) {
     setEnabled(false);
 
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const subscription = await reg.pushManager.getSubscription();
+      const reg = await readyWithTimeout();
+      const subscription = reg ? await reg.pushManager.getSubscription() : null;
 
       if (subscription) {
         const token = (await supabase.auth.getSession()).data?.session?.access_token;
@@ -314,7 +333,8 @@ export function useNotifications(user) {
     //    effort — if any step fails we still let the server decide,
     //    it just might return no-subscription with a cleaner message.
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await readyWithTimeout();
+      if (!reg) return { ok: false, code: "unsupported" };
       let subscription = await reg.pushManager.getSubscription();
       if (!subscription && Notification.permission === "granted") {
         subscription = await reg.pushManager.subscribe({
