@@ -419,22 +419,27 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   <input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
                 </div>
               </div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
-                    {t("patients.whatsappReminders")}
+              {/* WhatsApp opt-in — gated until Meta setup is live. Flip
+                  VITE_WHATSAPP_UI_ENABLED=true in Vercel + redeploy
+                  once the template is approved and env vars are set. */}
+              {import.meta.env.VITE_WHATSAPP_UI_ENABLED === "true" && (
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                      {t("patients.whatsappReminders")}
+                    </div>
+                    <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                      {phoneDigits(phone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                    </div>
                   </div>
-                  <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
-                    {phoneDigits(phone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
-                  </div>
+                  <Toggle
+                    on={whatsappEnabled && !!phoneDigits(phone)}
+                    disabled={!phoneDigits(phone)}
+                    ariaLabel={t("patients.whatsappReminders")}
+                    onToggle={() => setWhatsappEnabled(v => !v)}
+                  />
                 </div>
-                <Toggle
-                  on={whatsappEnabled && !!phoneDigits(phone)}
-                  disabled={!phoneDigits(phone)}
-                  ariaLabel={t("patients.whatsappReminders")}
-                  onToggle={() => setWhatsappEnabled(v => !v)}
-                />
-              </div>
+              )}
               <div className="input-group">
                 <label className="input-label">{t("patients.birthdate")}</label>
                 <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)}

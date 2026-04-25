@@ -169,6 +169,8 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 - **Env vars (Vercel Production + Preview):** `WHATSAPP_ACCESS_TOKEN` (system-user permanent), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Updates take effect on next deploy; redeploy after rotating any of them.
 - **Kill switch:** `whatsapp_paused` Edge Config flag. When true, the WhatsApp branch no-ops; push still fires. Use during a Meta outage or while debugging.
 - **Privacy:** `src/data/privacy.js` enumerates Meta Platforms Ireland as a transferee and lists the fields shared per send. Bumped `POLICY_VERSION` so existing users re-accept via `ConsentBanner`.
+- **UI is gated** behind `VITE_WHATSAPP_UI_ENABLED` (build-time Vite env var). Default = unset → patient toggles in `NewPatientSheet` and `Patients.jsx` are not rendered. The DB columns, server endpoints, and cron branch are all live but inert because no patient can opt in via UI. Flip `VITE_WHATSAPP_UI_ENABLED=true` in Vercel Production + Preview and redeploy when the Meta template + env vars are ready.
+- **Privacy** copy: while gated, `src/data/privacy.js` does NOT mention Meta or WhatsApp — adding the paragraph back will require bumping `POLICY_VERSION` to force re-acceptance, so do that in the same commit that flips the UI gate on.
 - **Out of scope (v1):** inbound replies (CONFIRMAR / CANCELAR), per-session override, multiple templates, therapist-side WhatsApp (push remains), backoff after N failures.
 
 ### Calendar sync (iCalendar feed)

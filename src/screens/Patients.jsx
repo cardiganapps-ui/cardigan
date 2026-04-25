@@ -574,30 +574,34 @@ export function Patients() {
                         <input className="input" type="email" inputMode="email" autoComplete="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
                       </div>
                     </div>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
-                          {t("patients.whatsappReminders")}
+                    {/* WhatsApp opt-in — gated until Meta setup is live.
+                        See NewPatientSheet for the same gate + comment. */}
+                    {import.meta.env.VITE_WHATSAPP_UI_ENABLED === "true" && (
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                            {t("patients.whatsappReminders")}
+                          </div>
+                          <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                            {phoneDigits(editPhone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                          </div>
                         </div>
-                        <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
-                          {phoneDigits(editPhone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
-                        </div>
+                        <Toggle
+                          on={editWhatsappEnabled && !!phoneDigits(editPhone)}
+                          disabled={!phoneDigits(editPhone)}
+                          ariaLabel={t("patients.whatsappReminders")}
+                          onToggle={() => {
+                            const next = !editWhatsappEnabled;
+                            setEditWhatsappEnabled(next);
+                            if (next && !editWhatsappConsentAt) {
+                              setEditWhatsappConsentAt(new Date().toISOString());
+                            } else if (!next) {
+                              setEditWhatsappConsentAt(null);
+                            }
+                          }}
+                        />
                       </div>
-                      <Toggle
-                        on={editWhatsappEnabled && !!phoneDigits(editPhone)}
-                        disabled={!phoneDigits(editPhone)}
-                        ariaLabel={t("patients.whatsappReminders")}
-                        onToggle={() => {
-                          const next = !editWhatsappEnabled;
-                          setEditWhatsappEnabled(next);
-                          if (next && !editWhatsappConsentAt) {
-                            setEditWhatsappConsentAt(new Date().toISOString());
-                          } else if (!next) {
-                            setEditWhatsappConsentAt(null);
-                          }
-                        }}
-                      />
-                    </div>
+                    )}
                   </EditSection>
 
                   {/* ── Fechas y estado (collapsible; force-open while finalizing) ── */}
