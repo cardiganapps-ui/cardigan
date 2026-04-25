@@ -263,14 +263,6 @@ export function Settings({ user, signOut, refreshUser }) {
     showToast(t("settings.calendarEnabled"), "success");
   };
 
-  const disableCalendar = async () => {
-    const j = await callCalendarToken("DELETE");
-    if (!j) return;
-    setCalendarToken(null);
-    setCalendarUrl("");
-    showToast(t("settings.calendarDisabled"), "info");
-  };
-
   const copyCalendarUrl = async () => {
     if (!calendarUrl) return;
     try {
@@ -718,11 +710,24 @@ export function Settings({ user, signOut, refreshUser }) {
                   </a>
                 </div>
 
-                <details style={{ marginBottom:12 }}>
-                  <summary style={{ cursor:"pointer", fontSize:13, fontWeight:600, color:"var(--teal-dark)", padding:"6px 0", listStyle:"none", WebkitTapHighlightColor:"transparent" }}>
-                    {t("settings.calendarMoreOptions")}
+                {/* "Otras apps" matches the Apple/Google buttons — same
+                    btn-teal-soft pill, monochrome icon. Native <details>
+                    keeps the disclosure dependency-free; the summary is
+                    styled to be visually identical to the buttons above
+                    so the three options read as a coherent set. */}
+                <details style={{ marginBottom:0 }}>
+                  <summary
+                    className="btn btn-teal-soft"
+                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, listStyle:"none", WebkitTapHighlightColor:"transparent", marginTop:8 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="5" cy="12" r="1.6" fill="currentColor" />
+                      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                      <circle cx="19" cy="12" r="1.6" fill="currentColor" />
+                    </svg>
+                    <span>{t("settings.calendarMoreOptions")}</span>
                   </summary>
-                  <div style={{ marginTop:10 }}>
+                  <div style={{ marginTop:12 }}>
                     <div style={{ fontSize:12, color:"var(--charcoal-md)", marginBottom:8, lineHeight:1.5 }}>
                       {t("settings.calendarManualHint")}
                     </div>
@@ -747,12 +752,6 @@ export function Settings({ user, signOut, refreshUser }) {
                     </button>
                   </div>
                 </details>
-
-                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  <button className="btn btn-ghost" type="button" onClick={disableCalendar} disabled={calendarBusy} style={{ color:"var(--red)" }}>
-                    {t("settings.calendarDisable")}
-                  </button>
-                </div>
               </>
               );
             })()}
