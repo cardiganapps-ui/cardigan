@@ -71,7 +71,12 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
     const ok = await onReschedule(session.id, isoToShortDate(newDate), newTime, Number(newDuration) || 60);
     if (ok) {
       haptic.success();
+      // Mirror the cancel flow: reschedule is a terminal action on
+      // this session view, so dismiss the sheet so the user lands
+      // back on the screen that opened it instead of staring at a
+      // now-stale session mid-sheet.
       setRescheduling(false);
+      onClose();
     }
   };
 
