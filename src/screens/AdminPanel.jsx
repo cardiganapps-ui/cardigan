@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, fetchAdminAnalytics } from "../hooks/useCardiganData";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, fetchAdminAnalytics } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
+import { PROFESSIONS } from "../data/constants";
 
 function relativeTime(dateStr) {
   if (!dateStr) return "";
@@ -28,6 +29,8 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [professionBusy, setProfessionBusy] = useState(false);
+  const [professionErr, setProfessionErr] = useState("");
 
   const isSelf = account.userId === currentAdminId;
   const emailLabel = account.email || `ID: ${account.userId.slice(0, 8)}…`;
@@ -51,6 +54,19 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
     finally { setBusy(false); }
   };
 
+  const doChangeProfession = async (next) => {
+    if (!next || next === account.profession) return;
+    setProfessionBusy(true); setProfessionErr("");
+    try {
+      await adminUpdateProfession(account.userId, next);
+      onAction();
+    } catch (e) {
+      setProfessionErr(e.message || t("adminProfession.saveFailed"));
+    } finally {
+      setProfessionBusy(false);
+    }
+  };
+
   return (
     <div style={{ borderBottom:"1px solid var(--border-lt)" }}>
       {/* Summary row */}
@@ -64,33 +80,65 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             {account.fullName || t("admin.noName")}
             {account.blocked && <span className="badge badge-red">{t("admin.accountStatusBlocked")}</span>}
           </div>
-          <div className="row-sub">{emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}</div>
+          <div className="row-sub">
+            {emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}
+            {account.profession && (
+              <> · <span style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
+                {t(`onboarding.professions.${account.profession}.label`)}
+              </span></>
+            )}
+          </div>
         </div>
         <span className="row-chevron" style={{ transform: mode !== "collapsed" ? "rotate(90deg)" : undefined, transition:"transform 0.4s" }}>›</span>
       </div>
 
       {/* Actions strip */}
       {mode === "actions" && (
-        <div style={{ padding:"0 16px 12px", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-          <button className="btn" style={{ height:36, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }}
-            onClick={(e) => { e.stopPropagation(); onViewAs(account.userId); }}>
-            {t("admin.view")}
-          </button>
-          <button className="btn"
-            style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none",
-              background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)",
-              color: account.blocked ? "var(--green)" : "var(--amber)",
-              opacity: isSelf ? 0.5 : 1 }}
-            disabled={isSelf}
-            onClick={(e) => { e.stopPropagation(); setErr(""); setMode("confirmBlock"); }}>
-            {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
-          </button>
-          <button className="btn"
-            style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none", background:"var(--red-bg)", color:"var(--red)", opacity: isSelf ? 0.5 : 1 }}
-            disabled={isSelf}
-            onClick={(e) => { e.stopPropagation(); setErr(""); setDeleteConfirmText(""); setMode("confirmDelete"); }}>
-            {t("admin.accountDelete")}
-          </button>
+        <div style={{ padding:"0 16px 12px", display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            <button className="btn" style={{ height:36, fontSize:"var(--text-sm)", background:"var(--teal-pale)", color:"var(--teal-dark)", boxShadow:"none" }}
+              onClick={(e) => { e.stopPropagation(); onViewAs(account.userId); }}>
+              {t("admin.view")}
+            </button>
+            <button className="btn"
+              style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none",
+                background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)",
+                color: account.blocked ? "var(--green)" : "var(--amber)",
+                opacity: isSelf ? 0.5 : 1 }}
+              disabled={isSelf}
+              onClick={(e) => { e.stopPropagation(); setErr(""); setMode("confirmBlock"); }}>
+              {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
+            </button>
+            <button className="btn"
+              style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none", background:"var(--red-bg)", color:"var(--red)", opacity: isSelf ? 0.5 : 1 }}
+              disabled={isSelf}
+              onClick={(e) => { e.stopPropagation(); setErr(""); setDeleteConfirmText(""); setMode("confirmDelete"); }}>
+              {t("admin.accountDelete")}
+            </button>
+          </div>
+          {/* Inline profession picker — admin-only path to change a
+              user's profession after sign-up. Auto-saves on change. */}
+          <div onClick={(e) => e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700 }}>
+              {t("adminProfession.label")}:
+            </span>
+            <select
+              className="input"
+              value={account.profession || "psychologist"}
+              disabled={professionBusy}
+              onChange={(e) => doChangeProfession(e.target.value)}
+              style={{ flex:1, height:32, fontSize:"var(--text-sm)", padding:"0 8px" }}>
+              {PROFESSIONS.map((p) => (
+                <option key={p} value={p}>{t(`onboarding.professions.${p}.label`)}</option>
+              ))}
+            </select>
+            {professionBusy && (
+              <span style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)" }}>
+                {t("adminProfession.saving")}
+              </span>
+            )}
+          </div>
+          {professionErr && <div className="form-error" style={{ marginTop:0 }}>{professionErr}</div>}
         </div>
       )}
 

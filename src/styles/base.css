@@ -8,6 +8,14 @@
   --teal-light:  #7AB5C7;
   --teal-pale:   #EAF4F7;
   --teal-mist:   #F2F9FB;
+  /* Profession accent — defaults to teal (psychologist). Phase 2+ will
+     override these per-profession at the document root. Components
+     still reference --teal directly for now; --accent is reserved infra
+     for the migration so a single document.documentElement override
+     can repaint the entire app. */
+  --accent:      var(--teal);
+  --accent-dark: var(--teal-dark);
+  --accent-pale: var(--teal-pale);
   --cream:       #F5F0EB;
   --cream-dark:  #EDE7DF;
   --cream-deeper:#E3DBD1;

@@ -946,6 +946,45 @@ export default {
     ],
   },
 
+  // ── Profession onboarding (shown once after sign-up) ──
+  onboarding: {
+    title: "¿Cuál es tu profesión?",
+    subtitle: "Personalizamos Cardigan según tu trabajo. Esta selección se queda fija — si te equivocas, escríbenos a privacy@cardigan.mx.",
+    cta: "Continuar",
+    saving: "Guardando…",
+    error: "No se pudo guardar tu profesión. Intenta de nuevo.",
+    professions: {
+      psychologist: {
+        label: "Psicólogo/a",
+        description: "Pacientes, sesiones, expedientes y notas clínicas.",
+      },
+      nutritionist: {
+        label: "Nutriólogo/a",
+        description: "Pacientes, consultas, planes alimenticios y seguimiento.",
+      },
+      tutor: {
+        label: "Profesor/a particular",
+        description: "Alumnos, clases de regularización y bitácora de progreso.",
+      },
+      music_teacher: {
+        label: "Maestro/a de música",
+        description: "Alumnos, clases (a domicilio, presencial o virtual) y repertorio.",
+      },
+      trainer: {
+        label: "Entrenador/a personal",
+        description: "Clientes, entrenamientos, medidas y rutinas.",
+      },
+    },
+  },
+
+  // ── Admin profession ──
+  adminProfession: {
+    label: "Profesión",
+    change: "Cambiar profesión",
+    saving: "Guardando…",
+    saveFailed: "No se pudo cambiar la profesión.",
+  },
+
   // ── Bug reports ──
   bugReport: {
     title: "Reportar problema",

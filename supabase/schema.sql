@@ -127,6 +127,18 @@ create table if not exists sent_reminders (
   unique(session_id, user_id)
 );
 
+-- User profession (multi-profession expansion). Locked at sign-up,
+-- admin-changeable. The check constraint mirrors PROFESSION in
+-- src/data/constants.js.
+create table if not exists user_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  profession text not null check (profession in (
+    'psychologist', 'nutritionist', 'tutor', 'music_teacher', 'trainer'
+  )),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- ============================================================
 -- Indexes
 -- ============================================================
@@ -150,6 +162,7 @@ create index if not exists idx_push_subscriptions_user_id on push_subscriptions(
 create index if not exists idx_notification_preferences_user_id on notification_preferences(user_id);
 create index if not exists idx_sent_reminders_user_id on sent_reminders(user_id);
 create index if not exists idx_sent_reminders_session_id on sent_reminders(session_id);
+create index if not exists idx_user_profiles_profession on user_profiles(profession);
 
 -- ============================================================
 -- Row Level Security (each user only sees their own data)
@@ -163,6 +176,7 @@ alter table bug_reports enable row level security;
 alter table push_subscriptions enable row level security;
 alter table notification_preferences enable row level security;
 alter table sent_reminders enable row level security;
+alter table user_profiles enable row level security;
 
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
@@ -172,6 +186,9 @@ create policy "Users manage own documents" on documents for all using (auth.uid(
 create policy "Users manage own push subscriptions" on push_subscriptions for all using (auth.uid() = user_id);
 create policy "Users manage own notification preferences" on notification_preferences for all using (auth.uid() = user_id);
 create policy "Users read own sent reminders" on sent_reminders for select using (auth.uid() = user_id);
+create policy "Users read own profile"   on user_profiles for select using (auth.uid() = user_id);
+create policy "Users insert own profile" on user_profiles for insert with check (auth.uid() = user_id);
+create policy "Users update own profile" on user_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Bug reports: any authenticated user can insert; only admin can read/manage
 create policy "Users insert own bug reports" on bug_reports for insert with check (auth.uid() is not null);
@@ -192,6 +209,8 @@ create policy "Admin reads all documents" on documents for select using (is_admi
 create policy "Admin manages all bug reports" on bug_reports for all using (is_admin());
 create policy "Admin reads all push subscriptions" on push_subscriptions for select using (is_admin());
 create policy "Admin reads all notification preferences" on notification_preferences for select using (is_admin());
+create policy "Admin reads all profiles" on user_profiles for select using (is_admin());
+create policy "Admin updates all profiles" on user_profiles for update using (is_admin()) with check (is_admin());
 
 -- Admin helper: archive bug reports (bypasses RLS via security definer)
 create or replace function archive_bug_reports(report_ids uuid[])
@@ -230,7 +249,14 @@ grant execute on function admin_set_user_blocked(uuid, boolean) to service_role;
 -- auth.users. banned_until powers the "Bloqueado" badge in the admin
 -- panel; blocking is performed server-side via /api/admin-block-user.
 create or replace function get_user_profiles()
-returns table(id uuid, email text, full_name text, banned_until timestamptz, created_at timestamptz)
+returns table(
+  id uuid,
+  email text,
+  full_name text,
+  banned_until timestamptz,
+  created_at timestamptz,
+  profession text
+)
 as $$
 begin
   if not is_admin() then
@@ -242,7 +268,9 @@ begin
       au.email::text,
       coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name,
       au.banned_until,
-      au.created_at
-    from auth.users au;
+      au.created_at,
+      coalesce(up.profession, 'psychologist')::text as profession
+    from auth.users au
+    left join user_profiles up on up.user_id = au.id;
 end;
 $$ language plpgsql security definer;

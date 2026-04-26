@@ -38,6 +38,9 @@ import { Settings } from "./screens/Settings";
 import { PrivacyPolicy } from "./screens/PrivacyPolicy";
 import { AuthScreen } from "./screens/AuthScreen";
 import { AdminPanel } from "./screens/AdminPanel";
+import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
+import { useUserProfile } from "./hooks/useUserProfile";
+import { DEFAULT_PROFESSION } from "./data/constants";
 import ConsentBanner from "./components/ConsentBanner";
 import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
@@ -232,7 +235,7 @@ function LoadingSkeleton({ screen = "home" }) {
 }
 
 function AppShell({ user, signOut, refreshUser, demo, theme }) {
-  const { t } = useT();
+  const { t, setProfession: setI18nProfession } = useT();
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -260,6 +263,19 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // Skip in demo mode (no real account) and in admin "view as user"
   // mode (writes are blocked there anyway).
   const noteCrypto = useNoteCrypto({ user: (demo || viewAsUserId) ? null : user });
+  // Multi-profession: fetch the active user's profession row. In demo
+  // mode this short-circuits to null. In admin "view as user" mode the
+  // target user's profession is fetched (RLS allows it via the admin
+  // policy) so the labels match what that user actually sees.
+  const profileUserId = demo ? null : (viewAsUserId || user?.id || null);
+  const userProfile = useUserProfile(profileUserId);
+  const profession = userProfile.profession || DEFAULT_PROFESSION;
+  // Push the active profession into the I18nProvider so future
+  // {client.s}/{session.p}/etc. placeholders in t() resolve to this
+  // profession's vocabulary. Demo and view-as flows both update too.
+  useEffect(() => {
+    setI18nProfession(profession);
+  }, [profession, setI18nProfession]);
   const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
   const demoData = useDemoData();
   const data = demo ? demoData : liveData;
@@ -554,6 +570,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
     noteCrypto,
+    profession,
     userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
@@ -577,7 +594,30 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, profession, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+
+  // First-time user gate: show ProfessionOnboarding before mounting the
+  // main shell when the user has no user_profiles row yet. Demo mode
+  // and admin "view as user" mode bypass this — the former never has a
+  // user, the latter is read-only and the target user already has a
+  // profile. The brief loading window falls through to the main shell
+  // (with DEFAULT_PROFESSION); existing users have a backfilled row so
+  // they see no flash. New users see splash → maybe one frame of empty
+  // shell → onboarding.
+  if (
+    !demo
+    && !viewAsUserId
+    && user
+    && !userProfile.loading
+    && userProfile.profession === null
+  ) {
+    return (
+      <ProfessionOnboarding
+        onSelect={(p) => userProfile.createProfile(p)}
+        onSignOut={signOut}
+      />
+    );
+  }
 
   const screenMap = {
     home: <Home setScreen={setScreen} userName={userName} />,

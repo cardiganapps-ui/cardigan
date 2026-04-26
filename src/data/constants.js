@@ -35,6 +35,29 @@ export const PAYMENT_METHODS = [
 // Admin email — kept in sync with supabase/schema.sql is_admin().
 export const ADMIN_EMAIL = "gaxioladiego@gmail.com";
 
+// User profession (multi-profession expansion). Locked at sign-up and
+// admin-changeable. Values must match the user_profiles.profession check
+// constraint in supabase/schema.sql / migrations/021_user_profiles.sql,
+// AND the keys in src/i18n/vocabulary.js.
+export const PROFESSION = Object.freeze({
+  PSYCHOLOGIST:  "psychologist",
+  NUTRITIONIST:  "nutritionist",
+  TUTOR:         "tutor",
+  MUSIC_TEACHER: "music_teacher",
+  TRAINER:       "trainer",
+});
+export const PROFESSIONS = [
+  PROFESSION.PSYCHOLOGIST,
+  PROFESSION.NUTRITIONIST,
+  PROFESSION.TUTOR,
+  PROFESSION.MUSIC_TEACHER,
+  PROFESSION.TRAINER,
+];
+// Phase-1 default for any code path that runs before the profile loads
+// (or for users whose row hasn't been backfilled). Existing users are
+// all psychologists per migration 021.
+export const DEFAULT_PROFESSION = PROFESSION.PSYCHOLOGIST;
+
 // Auto-extend recurring sessions: if a patient's last scheduled session is
 // within RECURRENCE_EXTEND_THRESHOLD_DAYS of today, append another
 // RECURRENCE_WINDOW_WEEKS weeks of sessions. The same window is also used as
