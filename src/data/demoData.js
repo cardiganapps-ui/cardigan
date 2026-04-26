@@ -1,5 +1,17 @@
-import { SHORT_MONTHS, formatShortDate, getInitials } from "../utils/dates";
-import { DAY_ORDER } from "./seedData";
+import { formatShortDate, getInitials } from "../utils/dates";
+import { DEFAULT_PROFESSION } from "./constants";
+
+/* ── Demo data generator ──
+   Generates 9 months of past + 4 weeks of future activity for the demo
+   landing — patients, sessions, payments, and notes. The shape matches
+   the live Supabase rows exactly so every screen renders unmodified.
+
+   Profession-aware: pass a profession key to `generateDemoData()` and
+   get patient names + note topics flavored for that profession. The
+   scheduling/billing engine below is intentionally profession-agnostic
+   — only the seed data and a few text fields differ. Falls back to
+   psychologist's seed for any profession that hasn't shipped its own
+   defs yet (Phase 3+: tutor, music_teacher, trainer). */
 
 function uuid() {
   return "demo-" + Math.random().toString(36).slice(2, 11);
@@ -36,7 +48,7 @@ const PAYMENT_NOTES = [
 // `overdue` means the patient has missed their last 2-3 months of payments,
 // producing a visible saldo on the Home and Finances screens. `paidAhead`
 // means they pay like clockwork, producing a zero or near-zero balance.
-const PATIENT_DEFS = [
+const PSYCHOLOGIST_PATIENT_DEFS = [
   { name: "Sofía Ramírez",      day: "Lunes",     time: "09:00", rate: 800, status: "active", phone: "+52 55 1234 5678", email: "sofia.ramirez@example.com", paidAhead: true },
   { name: "Diego Hernández",    day: "Lunes",     time: "11:00", rate: 700, status: "active", modality: "virtual", phone: "+52 55 2345 6789", email: "diego.hernandez@example.com", overdue: true },
   { name: "Valentina Torres",   day: "Lunes",     time: "16:00", rate: 800, status: "active", phone: "+52 55 3456 7890" },
@@ -59,6 +71,61 @@ const PATIENT_DEFS = [
   { name: "Alejandro Romero",   day: "Viernes",   time: "13:00", rate: 750, status: "active", phone: "+52 55 7788 9900" },
 ];
 
+// Nutritionist demo: 20 mostly-adult clients (occasional teen with a
+// parent). Schedules are weekly consultations, modalities mix presencial
+// and virtual. Rates are a touch higher to reflect the typical
+// Mexican-market pricing for nutrition consults.
+const NUTRITIONIST_PATIENT_DEFS = [
+  { name: "Natalia Bravo",      day: "Lunes",     time: "09:00", rate: 900, status: "active", phone: "+52 55 1010 2020", email: "natalia.bravo@example.com", paidAhead: true },
+  { name: "Roberto Aguilar",    day: "Lunes",     time: "11:00", rate: 850, status: "active", modality: "virtual", phone: "+52 55 2020 3030", overdue: true },
+  { name: "Mariana Velasco",    day: "Lunes",     time: "16:00", rate: 900, status: "active", phone: "+52 55 3030 4040" },
+  { name: "Pablo Estrada",      day: "Martes",    time: "10:00", rate: 850, status: "active", phone: "+52 55 4040 5050", email: "pablo.estrada@example.com" },
+  { name: "Carolina Mora",      day: "Martes",    time: "14:00", rate: 950, status: "active", phone: "+52 55 5050 6060", email: "carolina.mora@example.com", paidAhead: true },
+  { name: "Tomás Quintero",     day: "Martes",    time: "17:00", rate: 850, status: "active", modality: "virtual" },
+  { name: "Ximena Beltrán",     day: "Miércoles", time: "09:00", rate: 900, status: "active", phone: "+52 55 6060 7070" },
+  { name: "Iván Domínguez",     day: "Miércoles", time: "12:00", rate: 850, status: "active", phone: "+52 55 7070 8080", email: "ivan.dominguez@example.com", overdue: true },
+  { name: "Lucía Cárdenas",     day: "Miércoles", time: "16:00", rate: 950, status: "active", phone: "+52 55 8080 9090" },
+  { name: "Ana Sofía Trejo",    day: "Jueves",    time: "10:00", rate: 850, status: "active", parent: "Berta Trejo", tutor_frequency: 6, birthdate: "2010-04-12", phone: "+52 55 9090 0101" },
+  { name: "Jorge Escobedo",     day: "Jueves",    time: "13:00", rate: 900, status: "active", email: "jorge.escobedo@example.com", paidAhead: true },
+  { name: "Valeria Acosta",     day: "Jueves",    time: "16:00", rate: 850, status: "active", modality: "virtual", phone: "+52 55 1212 3434" },
+  { name: "Felipe Alarcón",     day: "Viernes",   time: "09:00", rate: 900, status: "active", phone: "+52 55 2323 4545", email: "felipe.alarcon@example.com" },
+  { name: "Rocío Bermúdez",     day: "Viernes",   time: "11:00", rate: 850, status: "active", phone: "+52 55 3434 5656" },
+  { name: "Bruno Cisneros",     day: "Viernes",   time: "15:00", rate: 900, status: "active", phone: "+52 55 4545 6767", overdue: true },
+  { name: "Adriana Lozano",     day: "Lunes",     time: "14:00", rate: 850, status: "active", phone: "+52 55 5656 7878" },
+  { name: "Eduardo Murillo",    day: "Miércoles", time: "10:00", rate: 950, status: "ended",  phone: "+52 55 6767 8989" },
+  { name: "Gabriela Núñez",     day: "Jueves",    time: "11:00", rate: 850, status: "ended" },
+  { name: "Héctor Pérez",       day: "Martes",    time: "09:00", rate: 900, status: "active", phone: "+52 55 7878 9090", email: "hector.perez@example.com" },
+  { name: "Inés Rangel",        day: "Viernes",   time: "13:00", rate: 850, status: "active", phone: "+52 55 8989 0101" },
+];
+
+const PSYCHOLOGIST_NOTE_TOPICS = [
+  { title: "Progreso general", content: "El paciente muestra mejoría notable en las últimas semanas. Se observa mayor apertura emocional y mejor manejo de ansiedad en situaciones sociales." },
+  { title: "Sesión inicial", content: "Primera sesión de evaluación. Se identificaron los principales motivos de consulta: dificultades para dormir, estrés laboral y conflictos familiares. Se acordó un plan de trabajo de 12 sesiones." },
+  { title: "Ejercicios de mindfulness", content: "Se introdujeron técnicas de respiración y mindfulness. El paciente respondió positivamente y se comprometió a practicar 10 minutos diarios." },
+  { title: "Revisión de objetivos", content: "Se revisaron los objetivos terapéuticos establecidos al inicio. Se ajustó el enfoque para trabajar más en autoestima y límites personales." },
+  { title: "Nota de seguimiento", content: "Paciente reporta mejor calidad de sueño después de implementar rutina nocturna. Continúa con dificultades en el ámbito laboral." },
+  { title: "Avance significativo", content: "Sesión muy productiva. El paciente logró identificar patrones de pensamiento negativos recurrentes y practicó reestructuración cognitiva exitosamente." },
+];
+
+const NUTRITIONIST_NOTE_TOPICS = [
+  { title: "Consulta inicial", content: "Primer encuentro. Peso 78 kg, estatura 1.68 m. Objetivo: bajar 6 kg en 4 meses con plan equilibrado, sin dietas restrictivas. Se acordó seguimiento quincenal." },
+  { title: "Plan alimenticio entregado", content: "Se entregó plan de 1700 kcal/día con macros 30P / 30G / 40C. El paciente prefiere desayuno frío y comidas con tortilla 1-2 veces por semana." },
+  { title: "Seguimiento semana 4", content: "Pérdida de 1.8 kg desde la primera consulta. Cintura -2 cm. Adherencia ~85%. Reporta más energía y mejor digestión. Mantenemos plan, ajustamos colaciones." },
+  { title: "Apego al plan", content: "Reporta dificultad con la cena entre semana por horarios laborales. Propuse alternativas listas en 10 min. Acordamos preparar 2 días por adelantado el domingo." },
+  { title: "Revisión de objetivos", content: "A 8 semanas, el paciente bajó 4.2 kg. Ajustamos el objetivo a -3 kg adicionales antes del verano y agregamos 2 sesiones de actividad física semanales." },
+  { title: "Cierre de etapa", content: "Logró el peso meta. Se entregó plan de mantenimiento con 200 kcal adicionales. Próxima consulta en 1 mes para revisar adherencia post-meta." },
+];
+
+const PATIENT_DEFS_BY_PROFESSION = {
+  psychologist:  PSYCHOLOGIST_PATIENT_DEFS,
+  nutritionist:  NUTRITIONIST_PATIENT_DEFS,
+};
+
+const NOTE_TOPICS_BY_PROFESSION = {
+  psychologist:  PSYCHOLOGIST_NOTE_TOPICS,
+  nutritionist:  NUTRITIONIST_NOTE_TOPICS,
+};
+
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
 
 function getNextDay(dayName, fromDate) {
@@ -70,7 +137,12 @@ function getNextDay(dayName, fromDate) {
   return d;
 }
 
-export function generateDemoData() {
+export function generateDemoData(profession = DEFAULT_PROFESSION) {
+  const patientDefs = PATIENT_DEFS_BY_PROFESSION[profession]
+    ?? PATIENT_DEFS_BY_PROFESSION[DEFAULT_PROFESSION];
+  const noteTopics = NOTE_TOPICS_BY_PROFESSION[profession]
+    ?? NOTE_TOPICS_BY_PROFESSION[DEFAULT_PROFESSION];
+
   const now = new Date();
   const startDate = new Date(now);
   startDate.setMonth(startDate.getMonth() - 9);
@@ -82,7 +154,7 @@ export function generateDemoData() {
   const payments = [];
   const notes = [];
 
-  PATIENT_DEFS.forEach((def, idx) => {
+  patientDefs.forEach((def, idx) => {
     const patientId = uuid();
     const initials = getInitials(def.name);
     const colorIdx = idx % COLORS;
@@ -256,16 +328,6 @@ export function generateDemoData() {
       tutor_frequency: def.tutor_frequency || null,
       created_at: startDate.toISOString(),
     });
-
-    // Add notes for some patients
-    const noteTopics = [
-      { title: "Progreso general", content: "El paciente muestra mejoría notable en las últimas semanas. Se observa mayor apertura emocional y mejor manejo de ansiedad en situaciones sociales." },
-      { title: "Sesión inicial", content: "Primera sesión de evaluación. Se identificaron los principales motivos de consulta: dificultades para dormir, estrés laboral y conflictos familiares. Se acordó un plan de trabajo de 12 sesiones." },
-      { title: "Ejercicios de mindfulness", content: "Se introdujeron técnicas de respiración y mindfulness. El paciente respondió positivamente y se comprometió a practicar 10 minutos diarios." },
-      { title: "Revisión de objetivos", content: "Se revisaron los objetivos terapéuticos establecidos al inicio. Se ajustó el enfoque para trabajar más en autoestima y límites personales." },
-      { title: "Nota de seguimiento", content: "Paciente reporta mejor calidad de sueño después de implementar rutina nocturna. Continúa con dificultades en el ámbito laboral." },
-      { title: "Avance significativo", content: "Sesión muy productiva. El paciente logró identificar patrones de pensamiento negativos recurrentes y practicó reestructuración cognitiva exitosamente." },
-    ];
 
     // 2-4 notes per patient
     const noteCount = 2 + Math.floor(Math.random() * 3);

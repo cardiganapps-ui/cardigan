@@ -41,6 +41,7 @@ import { AdminPanel } from "./screens/AdminPanel";
 import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { DEFAULT_PROFESSION } from "./data/constants";
+import { applyProfessionTheme } from "./theme/professionTheme";
 import ConsentBanner from "./components/ConsentBanner";
 import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
@@ -269,15 +270,27 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // policy) so the labels match what that user actually sees.
   const profileUserId = demo ? null : (viewAsUserId || user?.id || null);
   const userProfile = useUserProfile(profileUserId);
-  const profession = userProfile.profession || DEFAULT_PROFESSION;
+  // Demo mode lets the visitor preview each profession's flavor — the
+  // picker lives in the demo banner. Live mode (real user) ignores this
+  // and uses the loaded user_profiles row instead.
+  const [demoProfession, setDemoProfession] = useState(DEFAULT_PROFESSION);
+  const profession = demo
+    ? demoProfession
+    : (userProfile.profession || DEFAULT_PROFESSION);
   // Push the active profession into the I18nProvider so future
   // {client.s}/{session.p}/etc. placeholders in t() resolve to this
   // profession's vocabulary. Demo and view-as flows both update too.
   useEffect(() => {
     setI18nProfession(profession);
   }, [profession, setI18nProfession]);
+  // Repaint the brand palette (`--teal*`, `--accent*`) at the document
+  // root so every component that already references those CSS vars
+  // shifts to the new profession's accent without per-component code.
+  useEffect(() => {
+    applyProfessionTheme(profession);
+  }, [profession]);
   const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
-  const demoData = useDemoData();
+  const demoData = useDemoData(demoProfession);
   const data = demo ? demoData : liveData;
   /* Only pull out what App.jsx uses directly — everything else flows
      into context via `...data` spread in ctxValue below. */
@@ -654,6 +667,34 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {demo && (
           <div className="app-banner app-banner--demo">
             <span className="app-banner-text">{t("demo.banner")}</span>
+            {/* Profession picker — only psychologist + nutritionist have
+                their own demo seeds today. Tutor / music / trainer fall
+                back to psychologist's data, so we hide them until they
+                ship in Phase 3+. */}
+            <select
+              value={demoProfession}
+              onChange={(e) => setDemoProfession(e.target.value)}
+              aria-label={t("onboarding.title")}
+              style={{
+                marginLeft: "auto",
+                marginRight: 8,
+                background: "rgba(255,255,255,0.18)",
+                color: "var(--white)",
+                border: "1px solid rgba(255,255,255,0.4)",
+                borderRadius: "var(--radius-pill)",
+                padding: "3px 8px",
+                fontSize: "var(--text-xs)",
+                fontFamily: "var(--font)",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}>
+              <option value="psychologist" style={{ color: "var(--charcoal)" }}>
+                {t("onboarding.professions.psychologist.label")}
+              </option>
+              <option value="nutritionist" style={{ color: "var(--charcoal)" }}>
+                {t("onboarding.professions.nutritionist.label")}
+              </option>
+            </select>
             <button onClick={signOut} className="app-banner-action">
               {t("demo.createAccount")}
             </button>

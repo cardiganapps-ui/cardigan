@@ -24,16 +24,34 @@ export function I18nProvider({ children }) {
     }
     if (typeof val !== "string") return Array.isArray(val) ? val : key;
     // Placeholder forms:
-    //   {plural}     — backward-compatible English-style "+s" pluraliser
-    //   {name}       — variable substitution from vars
-    //   {noun.form}  — profession-aware vocab lookup, e.g. {client.s},
-    //                  {session.p}, {client.art}, {client.artP}.
+    //   {plural}     — backward-compatible English-style "+s" pluraliser.
+    //                  Don't use this with vocab nouns — Spanish plurals
+    //                  aren't always "+s" (e.g. sesión → sesiones).
+    //   {name}       — variable substitution from vars.
+    //   {noun.form}  — profession-aware vocab lookup (form ∈ s/p/art/artP).
+    //   {noun.S}/{noun.P} — uppercase forms (capitalised first letter).
+    //                  Use for sentence starts, button labels, nav titles
+    //                  where the noun must read "Paciente" not "paciente".
+    //   {noun}       — count-aware shortcut: returns vocab[k].p when
+    //                  vars.count !== 1, otherwise vocab[k].s. Pair with
+    //                  `{count} {client}` so "1 paciente" / "3 pacientes"
+    //                  both come out grammatically correct without the
+    //                  fragile {plural} suffix.
+    const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
     return val.replace(/\{(\w+)(?:\.(\w+))?\}/g, (_, k, sub) => {
       if (k === "plural") {
         const count = vars?.count ?? 0;
         return count !== 1 ? "s" : "";
       }
-      if (sub && vocab[k]) return vocab[k][sub] ?? "";
+      if (vocab[k]) {
+        if (!sub) {
+          const isSingular = vars?.count === 1;
+          return isSingular ? vocab[k].s : vocab[k].p;
+        }
+        if (sub === "S") return cap(vocab[k].s);
+        if (sub === "P") return cap(vocab[k].p);
+        return vocab[k][sub] ?? "";
+      }
       if (!vars) return "";
       return vars[k] ?? "";
     });

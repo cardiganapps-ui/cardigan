@@ -9,13 +9,14 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
-import { NOTE_TEMPLATES } from "../data/noteTemplates";
+import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { groupNotesByRecency } from "../utils/noteGrouping";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
 export function Notes() {
   const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente } = useCardigan();
+  const noteTemplates = useNoteTemplates();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   const [search, setSearch] = useState("");
@@ -153,7 +154,7 @@ export function Notes() {
           </button>
           {showTemplates && (
             <div className="card" style={{ marginTop:8, padding:0 }}>
-              {NOTE_TEMPLATES.map(tmpl => (
+              {noteTemplates.map(tmpl => (
                 <div key={tmpl.id} className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
                   onClick={async () => {
                     setShowTemplates(false);
