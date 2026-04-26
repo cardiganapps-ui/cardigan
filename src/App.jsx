@@ -700,6 +700,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
               <option value="music_teacher" style={{ color: "var(--charcoal)" }}>
                 {t("onboarding.professions.music_teacher.label")}
               </option>
+              <option value="trainer" style={{ color: "var(--charcoal)" }}>
+                {t("onboarding.professions.trainer.label")}
+              </option>
             </select>
             <button onClick={signOut} className="app-banner-action">
               {t("demo.createAccount")}

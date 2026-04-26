@@ -133,6 +133,39 @@ const TUTOR_PATIENT_DEFS = [
   { name: "María José Ureña",     day: "Jueves",    time: "15:00", rate: 350, status: "active", parent: "Carolina Ureña",   tutor_frequency: 6, birthdate: "2013-03-19", phone: "+52 55 1010 0009" },
 ];
 
+// Personal trainer demo: 18 adult clients with a mix of strength,
+// hypertrofia, and weight-loss goals. Schedules mix presencial,
+// a-domicilio, and virtual. Per-session rate.
+const TRAINER_PATIENT_DEFS = [
+  { name: "Andrea Pelayo",        day: "Lunes",     time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0001", email: "andrea.pelayo@example.com", paidAhead: true },
+  { name: "Bruno Salinas",        day: "Lunes",     time: "08:00", rate: 600, status: "active", modality: "a-domicilio",         phone: "+52 55 3030 0002" },
+  { name: "Claudia Mejía",        day: "Lunes",     time: "18:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0003", email: "claudia.mejia@example.com", overdue: true },
+  { name: "David Rangel",         day: "Martes",    time: "06:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0004" },
+  { name: "Elena Mier",           day: "Martes",    time: "07:30", rate: 650, status: "active",                                 phone: "+52 55 3030 0005", email: "elena.mier@example.com" },
+  { name: "Federico Avalos",      day: "Martes",    time: "19:00", rate: 700, status: "active", modality: "a-domicilio", paidAhead: true },
+  { name: "Greta Saavedra",       day: "Miércoles", time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0006" },
+  { name: "Hugo Velázquez",       day: "Miércoles", time: "08:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0007", email: "hugo.velazquez@example.com" },
+  { name: "Inés Calvillo",        day: "Miércoles", time: "18:00", rate: 700, status: "active", modality: "a-domicilio", overdue: true },
+  { name: "Joaquín Tovar",        day: "Jueves",    time: "06:30", rate: 650, status: "active",                                 phone: "+52 55 3030 0008" },
+  { name: "Karla Berlanga",       day: "Jueves",    time: "08:00", rate: 600, status: "active", modality: "a-domicilio",         email: "karla.berlanga@example.com" },
+  { name: "Luis Olivares",        day: "Jueves",    time: "19:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0009", paidAhead: true },
+  { name: "Mónica Bañales",       day: "Viernes",   time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0010" },
+  { name: "Néstor Pacheco",       day: "Viernes",   time: "08:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0011" },
+  { name: "Olga Rentería",        day: "Viernes",   time: "18:00", rate: 700, status: "active", modality: "a-domicilio",         phone: "+52 55 3030 0012", email: "olga.renteria@example.com" },
+  { name: "Patricio Moncada",     day: "Sábado",    time: "09:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0013" },
+  { name: "Raúl Quintanilla",     day: "Sábado",    time: "10:00", rate: 650, status: "ended" },
+  { name: "Silvia Treviño",       day: "Sábado",    time: "11:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0014", email: "silvia.trevino@example.com" },
+];
+
+const TRAINER_NOTE_TOPICS = [
+  { title: "Evaluación inicial", content: "Cliente de 34 años, 78 kg / 1.72 m. Sin lesiones previas. Objetivo: bajar 5 kg de grasa y ganar masa muscular en piernas. Plan: 3 sesiones/semana, 12 semanas, evaluación cada 4." },
+  { title: "Rutina de hoy — pierna", content: "Calentamiento 8 min cardio + movilidad. Sentadilla 4x8 @ 60 kg. Peso muerto rumano 4x10 @ 50 kg. Press de pierna 3x12 @ 100 kg. Curl femoral 3x12. Pantorrillas 4x15. Cardio LISS 10 min." },
+  { title: "Mediciones — semana 4", content: "Peso 76.2 kg (-1.8). Cintura 84 cm (-3 cm). Sentadilla subió de 60 kg a 70 kg @ 8 reps. Buena adherencia, 11 de 12 sesiones cumplidas." },
+  { title: "Reporte de progreso (1er bloque)", content: "Cierre del primer bloque de 12 semanas. Objetivos cumplidos: -5 kg, sentadilla 80 kg @ 5RM. Continuamos con bloque de hipertrofia próximas 8 semanas." },
+  { title: "Ajuste de plan", content: "El cliente reporta dolor lumbar leve después de peso muerto convencional. Cambiamos a peso muerto rumano + extensión lumbar. Reducir carga 20% por 2 semanas y reevaluar." },
+  { title: "Comunicación con cliente", content: "Mensaje breve: confirmar sesión del miércoles 7 am, recordatorio de comer 60 min antes y traer agua. Acordar día de medición la próxima semana." },
+];
+
 // Music teacher demo: 18 students across instruments (piano, guitar,
 // violin, voice, drums). Mostly minors with a parent contact. Schedules
 // strongly favour 'a-domicilio' (home visits are the music-teacher
@@ -190,6 +223,7 @@ const PATIENT_DEFS_BY_PROFESSION = {
   nutritionist:  NUTRITIONIST_PATIENT_DEFS,
   tutor:         TUTOR_PATIENT_DEFS,
   music_teacher: MUSIC_TEACHER_PATIENT_DEFS,
+  trainer:       TRAINER_PATIENT_DEFS,
 };
 
 const NOTE_TOPICS_BY_PROFESSION = {
@@ -197,6 +231,7 @@ const NOTE_TOPICS_BY_PROFESSION = {
   nutritionist:  NUTRITIONIST_NOTE_TOPICS,
   tutor:         TUTOR_NOTE_TOPICS,
   music_teacher: MUSIC_TEACHER_NOTE_TOPICS,
+  trainer:       TRAINER_NOTE_TOPICS,
 };
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };

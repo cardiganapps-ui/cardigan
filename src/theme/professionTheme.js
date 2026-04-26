@@ -51,6 +51,16 @@ export const PROFESSION_THEME = {
     tealPale:  "#F4E8EC",
     tealMist:  "#F9F1F4",
   },
+  trainer: {
+    // Steel slate. Reads as athletic / focused, distinct from teal
+    // (psych) despite both being blue-leaning — the lower saturation
+    // and cooler hue keep them clearly separable.
+    teal:      "#5A7388",
+    tealDark:  "#456073",
+    tealLight: "#7A8FA3",
+    tealPale:  "#E8EEF2",
+    tealMist:  "#F1F4F7",
+  },
 };
 
 export function applyProfessionTheme(profession) {

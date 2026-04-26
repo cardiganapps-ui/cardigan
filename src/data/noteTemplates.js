@@ -19,6 +19,7 @@ import { PSYCHOLOGIST_TEMPLATES } from "./noteTemplates/psychologist";
 import { NUTRITIONIST_TEMPLATES } from "./noteTemplates/nutritionist";
 import { TUTOR_TEMPLATES } from "./noteTemplates/tutor";
 import { MUSIC_TEACHER_TEMPLATES } from "./noteTemplates/music_teacher";
+import { TRAINER_TEMPLATES } from "./noteTemplates/trainer";
 import { DEFAULT_PROFESSION } from "./constants";
 
 const TEMPLATES_BY_PROFESSION = {
@@ -26,8 +27,7 @@ const TEMPLATES_BY_PROFESSION = {
   nutritionist:  NUTRITIONIST_TEMPLATES,
   tutor:         TUTOR_TEMPLATES,
   music_teacher: MUSIC_TEACHER_TEMPLATES,
-  // Phase 5: trainer gets its own template set. Until then it falls
-  // back to psychologist via getNoteTemplates().
+  trainer:       TRAINER_TEMPLATES,
 };
 
 export function getNoteTemplates(profession) {
