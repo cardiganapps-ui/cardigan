@@ -10,10 +10,12 @@ import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
+import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../data/constants";
 
 export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
   const { t } = useT();
-  const { openExpediente } = useCardigan();
+  const { openExpediente, profession } = useCardigan();
+  const modalities = getModalitiesForProfession(profession);
   useEscape(session ? onClose : null);
   const panelRef = useFocusTrap(!!session);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
@@ -149,17 +151,29 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
               )}
             </div>
             {(() => {
-              const mod = session.modality === "virtual" || session.modality === "telefonica" ? session.modality : "presencial";
-              const next = mod === "presencial" ? "virtual" : mod === "virtual" ? "telefonica" : "presencial";
-              const bg = mod === "virtual" ? "var(--blue-bg)" : mod === "telefonica" ? "var(--green-bg)" : "var(--cream)";
-              const fg = mod === "virtual" ? "var(--blue)" : mod === "telefonica" ? "var(--green)" : "var(--charcoal)";
+              // Cycle through the active profession's allowed modalities.
+              // Defensive: if the session's modality isn't in the current
+              // set (e.g. an old row from a profession-switched account),
+              // fall back to the first modality so the toggle still works.
+              const mod = modalities.includes(session.modality) ? session.modality : modalities[0];
+              const next = modalities[(modalities.indexOf(mod) + 1) % modalities.length];
+              // Per-modality colour tints. a-domicilio reuses --amber to
+              // suggest "going somewhere" without colliding with the
+              // purple used for tutor-of-minor sessions.
+              const TINT = {
+                presencial:    { bg: "var(--cream)",      fg: "var(--charcoal)" },
+                virtual:       { bg: "var(--blue-bg)",    fg: "var(--blue)" },
+                telefonica:    { bg: "var(--green-bg)",   fg: "var(--green)" },
+                "a-domicilio": { bg: "var(--amber-bg)",   fg: "var(--amber)" },
+              };
+              const tint = TINT[mod] ?? TINT.presencial;
               return (
                 <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, next)}
                   className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
-                  style={{ background: bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+                  style={{ background: tint.bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
                   <div className="stat-tile-label">{t("sessions.modality")}</div>
-                  <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: fg, transition:"color 0.5s ease" }}>
-                    {t(`sessions.${mod}`)}
+                  <div className="stat-tile-val" style={{ fontSize:"var(--text-md)", color: tint.fg, transition:"color 0.5s ease" }}>
+                    {t(`sessions.${MODALITY_I18N_KEY[mod]}`)}
                   </div>
                 </div>
               );

@@ -1,14 +1,18 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { generateDemoData } from "../data/demoData";
 import { parseShortDate } from "../utils/dates";
 import { getTutorReminders } from "../utils/sessions";
 import { enrichPatientsWithBalance } from "../utils/accounting";
+import { DEFAULT_PROFESSION } from "../data/constants";
 
 const noop = async () => false;
 const noopNote = async () => null;
 
-export function useDemoData() {
-  const [data] = useState(() => generateDemoData());
+export function useDemoData(profession = DEFAULT_PROFESSION) {
+  // Regenerating on every profession change is fine — generateDemoData
+  // is pure and runs in <50ms even for 20-patient seed sets, well under
+  // a frame. useMemo avoids regen across unrelated re-renders.
+  const data = useMemo(() => generateDemoData(profession), [profession]);
 
   // Enrich sessions (auto-complete past ones)
   const enrichedSessions = useMemo(() => {

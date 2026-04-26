@@ -70,6 +70,7 @@ export async function fetchAllAccounts() {
       firstSeen: prof.created_at || null,
       blocked: bannedUntilMs > now,
       bannedUntil: prof.banned_until || null,
+      profession: prof.profession || "psychologist",
     });
   });
   pData.forEach(p => {
@@ -84,6 +85,7 @@ export async function fetchAllAccounts() {
         firstSeen: p.created_at,
         blocked: false,
         bannedUntil: null,
+        profession: "psychologist",
       });
     }
     accounts.get(p.user_id).patientCount++;
@@ -123,6 +125,21 @@ export async function adminDeleteUser(userId) {
   });
   if (!res.ok) {
     let msg = "Delete failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export async function adminUpdateProfession(userId, profession) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-update-profession", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ userId, profession }),
+  });
+  if (!res.ok) {
+    let msg = "Update failed";
     try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
     throw new Error(msg);
   }

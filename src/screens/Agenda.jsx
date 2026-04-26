@@ -146,9 +146,10 @@ function SessionRow({ s, onClick, compact }) {
   const tutor = isTutorSession(s);
   const isVirtual = s.modality === "virtual";
   const isTelefonica = s.modality === "telefonica";
-  const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : getClientColor(s.colorIdx);
-  const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : "var(--teal-dark)";
-  const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : "sessions.presencial";
+  const isADomicilio = s.modality === "a-domicilio";
+  const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
+  const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
+  const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
   return (
     <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => onClick(s)}>
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>

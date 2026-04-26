@@ -3,12 +3,16 @@ import { todayISO, isoToShortDate } from "../../utils/dates";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
 
 export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime, initialPatientName, initialSessionType }) {
   const { t } = useT();
+  const { profession } = useCardigan();
+  const modalities = getModalitiesForProfession(profession);
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
@@ -142,9 +146,9 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
             <div className="input-group">
               <label className="input-label">{t("sessions.modality")}</label>
               <select className="input" value={modality} onChange={e => setModality(e.target.value)}>
-                <option value="presencial">{t("sessions.presencial")}</option>
-                <option value="virtual">{t("sessions.virtual")}</option>
-                <option value="telefonica">{t("sessions.telefonica")}</option>
+                {modalities.map(m => (
+                  <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                ))}
               </select>
             </div>
           </div>

@@ -5,7 +5,7 @@ const IconSearchMenu = () => <IconSearch size={15} />;
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
-import { NOTE_TEMPLATES } from "../data/noteTemplates";
+import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
 import { FormatToolbar } from "./notes/FormatToolbar";
 import { NoteContextChip } from "./notes/NoteContextChip";
@@ -39,11 +39,11 @@ function relativeTime(dateStr, t) {
    - Both title and body are whitespace-only, OR
    - Content matches a pristine template.
    On close we silently delete those instead of persisting clutter. */
-function isEffectivelyEmpty(title, content) {
+function isEffectivelyEmpty(title, content, templates) {
   const t = (title || "").trim();
   const c = (content || "").trim();
   if (!t && !c) return true;
-  for (const tpl of NOTE_TEMPLATES) {
+  for (const tpl of templates) {
     if (tpl.id === "blank") continue;
     if (t === (tpl.title || "").trim() && c === (tpl.content || "").trim()) return true;
   }
@@ -59,6 +59,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const inlineMode = layout === "inline";
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast } = useCardigan();
+  const noteTemplates = useNoteTemplates();
   const { isDesktop } = useViewport();
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
@@ -87,19 +88,19 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   // Always close through this ref so "empty on close" → delete fires
   // regardless of what triggered the close (back button, ESC, etc.).
   // Synced via effect (not during render) to satisfy the React rules.
-  const closeRef = useRef({ title, content, onSave, onDelete, onClose, note, readOnly });
+  const closeRef = useRef({ title, content, onSave, onDelete, onClose, note, readOnly, templates: noteTemplates });
   useEffect(() => {
-    closeRef.current = { title, content, onSave, onDelete, onClose, note, readOnly };
+    closeRef.current = { title, content, onSave, onDelete, onClose, note, readOnly, templates: noteTemplates };
   });
 
   const doClose = useCallback(async () => {
-    const { title: ti, content: co, onSave: s, onDelete: d, onClose: cl, note: n, readOnly: ro } = closeRef.current;
+    const { title: ti, content: co, onSave: s, onDelete: d, onClose: cl, note: n, readOnly: ro, templates: tpls } = closeRef.current;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     // doClose explicitly persists below, so unmount-flush would double-write.
     pendingSaveArgs.current = null;
     if (ro) { cl(); return; }
     try {
-      if (isEffectivelyEmpty(ti, co)) {
+      if (isEffectivelyEmpty(ti, co, tpls)) {
         if (n?.id && d) await d();
       } else {
         await s({ title: ti, content: co });
@@ -459,7 +460,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           <div className="mde-templates">
             <div className="mde-templates-label">{t("notes.templates")}</div>
             <div className="mde-template-pills">
-              {NOTE_TEMPLATES.filter(tp => tp.id !== "blank").map(tpl => {
+              {noteTemplates.filter(tp => tp.id !== "blank").map(tpl => {
                 const Ic = TEMPLATE_ICONS[tpl.icon];
                 return (
                   <button key={tpl.id} type="button" className="mde-template-pill" onClick={() => pickTemplate(tpl)}>

@@ -16,6 +16,7 @@ import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../data/constants";
 
 /* ── Collapsible section for the edit form ──
    Hides secondary info by default so the sheet doesn't overwhelm. The
@@ -45,7 +46,8 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate, profession } = useCardigan();
+  const modalities = getModalitiesForProfession(profession);
   const { isTabletSplit } = useViewport();
   const ctxMenu = useContextMenu();
   const { t } = useT();
@@ -516,9 +518,9 @@ export function Patients() {
                             <div className="input-group" style={{ marginBottom:0 }}>
                               <label className="input-label">{t("sessions.modality")}</label>
                               <select className="input" value={s.modality || "presencial"} onChange={e => updateEditSched(i, "modality", e.target.value)}>
-                                <option value="presencial">{t("sessions.presencial")}</option>
-                                <option value="virtual">{t("sessions.virtual")}</option>
-                                <option value="telefonica">{t("sessions.telefonica")}</option>
+                                {modalities.map(m => (
+                                  <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                                ))}
                               </select>
                             </div>
                           </div>

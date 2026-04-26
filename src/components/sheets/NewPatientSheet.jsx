@@ -10,6 +10,8 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION } from "../../data/constants";
 
 // Weekdays + hours to search through when picking a sensible default
 // for the first recurring slot. Weekday-major, then by hour — the
@@ -45,6 +47,8 @@ function findEmptySlot(sessions, extraTaken) {
 
 export function NewPatientSheet({ onClose, onSubmit, mutating, patients, sessions }) {
   const { t } = useT();
+  const { profession } = useCardigan();
+  const modalities = getModalitiesForProfession(profession);
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
@@ -62,7 +66,11 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
 
   // Essentials
   const [name, setName] = useState("");
-  const [isMinor, setIsMinor] = useState(false);
+  // Tutor + music_teacher default the "is minor" toggle on — most of
+  // their clientele are minors, and the parent contact card is the
+  // primary phone number anyway.
+  const minorDefault = profession === PROFESSION.TUTOR || profession === PROFESSION.MUSIC_TEACHER;
+  const [isMinor, setIsMinor] = useState(minorDefault);
   const [parent, setParent] = useState("");
   const [rate, setRate] = useState("");
   const [tutorFrequency, setTutorFrequency] = useState("");
@@ -334,9 +342,9 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                     <div className="input-group" style={{ marginBottom:0 }}>
                       {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
                       <select className="input" value={s.modality || "presencial"} onChange={e => updateSched(i, "modality", e.target.value)}>
-                        <option value="presencial">{t("sessions.presencial")}</option>
-                        <option value="virtual">{t("sessions.virtual")}</option>
-                        <option value="telefonica">{t("sessions.telefonica")}</option>
+                        {modalities.map(m => (
+                          <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                        ))}
                       </select>
                     </div>
                     {schedules.length > 1 && (
