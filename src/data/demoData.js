@@ -133,6 +133,40 @@ const TUTOR_PATIENT_DEFS = [
   { name: "María José Ureña",     day: "Jueves",    time: "15:00", rate: 350, status: "active", parent: "Carolina Ureña",   tutor_frequency: 6, birthdate: "2013-03-19", phone: "+52 55 1010 0009" },
 ];
 
+// Music teacher demo: 18 students across instruments (piano, guitar,
+// violin, voice, drums). Mostly minors with a parent contact. Schedules
+// strongly favour 'a-domicilio' (home visits are the music-teacher
+// flagship) but mix with presencial and virtual. Per-class rate.
+const MUSIC_TEACHER_PATIENT_DEFS = [
+  { name: "Mateo Solórzano",      day: "Lunes",     time: "16:00", rate: 450, status: "active", parent: "Laura Solórzano",  tutor_frequency: 6, birthdate: "2013-04-09", phone: "+52 55 2020 0001", email: "laura.solorzano@example.com", modality: "a-domicilio", paidAhead: true },
+  { name: "Camila Iturralde",     day: "Lunes",     time: "17:30", rate: 450, status: "active", parent: "Roberto Iturralde", tutor_frequency: 6, birthdate: "2014-08-22", phone: "+52 55 2020 0002", modality: "a-domicilio" },
+  { name: "Sofía Marqués",        day: "Lunes",     time: "19:00", rate: 500, status: "active",                                                                                                            phone: "+52 55 2020 0003", email: "sofia.marques@example.com" },
+  { name: "Diego Fonseca",        day: "Martes",    time: "16:00", rate: 450, status: "active", parent: "Patricia Fonseca", tutor_frequency: 6, birthdate: "2011-06-14", modality: "a-domicilio", overdue: true },
+  { name: "Andrés Quiroga",       day: "Martes",    time: "17:30", rate: 450, status: "active", parent: "Marisol Quiroga",  tutor_frequency: 6, birthdate: "2012-11-30", modality: "a-domicilio", phone: "+52 55 2020 0004" },
+  { name: "Valentina Robles",     day: "Martes",    time: "19:00", rate: 500, status: "active", parent: "Federico Robles",  tutor_frequency: 6, birthdate: "2010-05-18", modality: "virtual", paidAhead: true },
+  { name: "Emiliano Ponce",       day: "Miércoles", time: "16:00", rate: 450, status: "active", parent: "Adriana Ponce",    tutor_frequency: 6, birthdate: "2014-01-25", phone: "+52 55 2020 0005" },
+  { name: "Renata Cuevas",        day: "Miércoles", time: "17:30", rate: 450, status: "active", parent: "Gabriela Cuevas",  tutor_frequency: 6, birthdate: "2013-07-12", modality: "a-domicilio" },
+  { name: "Sebastián Ledesma",    day: "Miércoles", time: "19:00", rate: 500, status: "active", parent: "Héctor Ledesma",   tutor_frequency: 6, birthdate: "2011-09-04", phone: "+52 55 2020 0006", overdue: true },
+  { name: "Isabella Carrillo",    day: "Jueves",    time: "16:00", rate: 450, status: "active", parent: "Mariana Carrillo", tutor_frequency: 6, birthdate: "2015-12-19", modality: "a-domicilio", paidAhead: true },
+  { name: "Leonardo Tapia",       day: "Jueves",    time: "17:30", rate: 450, status: "active", parent: "Sergio Tapia",     tutor_frequency: 6, birthdate: "2012-03-27", modality: "a-domicilio" },
+  { name: "Regina Esquivel",      day: "Jueves",    time: "19:00", rate: 500, status: "active",                                                                                                            phone: "+52 55 2020 0007", email: "regina.esquivel@example.com" },
+  { name: "Nicolás Galván",       day: "Viernes",   time: "16:00", rate: 450, status: "active", parent: "Patricio Galván",  tutor_frequency: 6, birthdate: "2014-04-15", modality: "a-domicilio" },
+  { name: "Daniela Becerra",      day: "Viernes",   time: "17:30", rate: 450, status: "active", parent: "Verónica Becerra", tutor_frequency: 6, birthdate: "2013-08-29", modality: "virtual", overdue: true },
+  { name: "Pablo Aldana",         day: "Viernes",   time: "19:00", rate: 500, status: "active",                                                                                                            phone: "+52 55 2020 0008" },
+  { name: "Ximena Bañuelos",      day: "Sábado",    time: "10:00", rate: 450, status: "active", parent: "Estela Bañuelos",  tutor_frequency: 6, birthdate: "2015-06-21", modality: "a-domicilio" },
+  { name: "Tomás Carbajal",       day: "Sábado",    time: "11:30", rate: 500, status: "ended",  parent: "Bruno Carbajal",                          birthdate: "2012-09-02" },
+  { name: "Lucía Pizarro",        day: "Sábado",    time: "13:00", rate: 450, status: "active", parent: "Olivia Pizarro",   tutor_frequency: 6, birthdate: "2014-05-17", modality: "a-domicilio", phone: "+52 55 2020 0009" },
+];
+
+const MUSIC_TEACHER_NOTE_TOPICS = [
+  { title: "Diagnóstico inicial", content: "Primera clase de piano. Edad 9, sin estudios previos. Buena disposición y oído musical natural. Plan: 12 clases para cubrir lectura básica, postura y primera pieza simple. Material: método Bastien." },
+  { title: "Repertorio en curso", content: "Trabajando 'Para Elisa' (primeras dos secciones). Memorización de la primera frase lograda. Pendiente: dinámica del crescendo en compases 9-12 y mantener tempo estable en la sección B." },
+  { title: "Sesión de técnica", content: "Escalas mayores hasta 2 sostenidos a metrónomo 80. Arpegios de Do, Sol y Re. El alumno necesita reforzar la independencia de manos en velocidades superiores a 100 BPM." },
+  { title: "Comunicación con padres", content: "Mensaje breve a la mamá: el alumno necesita una banca con altura ajustable y silencio durante los 20 min de práctica diaria. Se acordó práctica supervisada los fines de semana." },
+  { title: "Preparación de recital", content: "Recital de fin de bloque el 15 de junio. Pieza: Sonatina en Do mayor de Clementi (1er movimiento). Plan de 6 sesiones: 2 de memorización, 2 de tempo, 1 de ensayo con público y 1 de pulido final." },
+  { title: "Cierre de bloque", content: "Concluyó el método del nivel 1 con 98% de los ejercicios completos. Tocó su recital sin errores. Próximo bloque: introducción a improvisación y primer pieza barroca (Bach, BWV Anh. 114)." },
+];
+
 const TUTOR_NOTE_TOPICS = [
   { title: "Diagnóstico inicial", content: "Primera sesión de matemáticas (5° de primaria). Buen manejo de operaciones básicas, dificultad con fracciones y problemas de palabras. Plan de 12 clases enfocado en comprensión." },
   { title: "Reporte de progreso", content: "Avance notable en fracciones equivalentes. Resolvió 8/10 ejercicios sin ayuda. Falta reforzar suma de fracciones con distinto denominador. Tarea: 5 ejercicios de la página 42." },
@@ -155,12 +189,14 @@ const PATIENT_DEFS_BY_PROFESSION = {
   psychologist:  PSYCHOLOGIST_PATIENT_DEFS,
   nutritionist:  NUTRITIONIST_PATIENT_DEFS,
   tutor:         TUTOR_PATIENT_DEFS,
+  music_teacher: MUSIC_TEACHER_PATIENT_DEFS,
 };
 
 const NOTE_TOPICS_BY_PROFESSION = {
   psychologist:  PSYCHOLOGIST_NOTE_TOPICS,
   nutritionist:  NUTRITIONIST_NOTE_TOPICS,
   tutor:         TUTOR_NOTE_TOPICS,
+  music_teacher: MUSIC_TEACHER_NOTE_TOPICS,
 };
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };

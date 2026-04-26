@@ -41,6 +41,16 @@ export const PROFESSION_THEME = {
     tealPale:  "#F6EFE0",
     tealMist:  "#FAF6EC",
   },
+  music_teacher: {
+    // Dusty burgundy / rosé. Reads as classical / refined without
+    // colliding with --purple (reserved for tutor-of-minor sessions)
+    // or --red (alerts).
+    teal:      "#A86B7E",
+    tealDark:  "#8C5466",
+    tealLight: "#BD8595",
+    tealPale:  "#F4E8EC",
+    tealMist:  "#F9F1F4",
+  },
 };
 
 export function applyProfessionTheme(profession) {
