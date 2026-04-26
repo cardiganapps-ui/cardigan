@@ -107,6 +107,41 @@ const PSYCHOLOGIST_NOTE_TOPICS = [
   { title: "Avance significativo", content: "Sesión muy productiva. El paciente logró identificar patrones de pensamiento negativos recurrentes y practicó reestructuración cognitiva exitosamente." },
 ];
 
+// Tutor (profesor particular) demo: 20 students, mostly minors with a
+// parent contact. Schedules mix `presencial`, `a-domicilio`, and
+// `virtual`. Rates are per-class, lower than therapy/nutrition.
+const TUTOR_PATIENT_DEFS = [
+  { name: "Mateo Solís",          day: "Lunes",     time: "16:00", rate: 350, status: "active", parent: "Laura Solís",     tutor_frequency: 6, birthdate: "2012-04-09", phone: "+52 55 1010 0001", email: "laura.solis@example.com", paidAhead: true },
+  { name: "Camila Iturbide",      day: "Lunes",     time: "17:30", rate: 350, status: "active", parent: "Roberto Iturbide", tutor_frequency: 6, birthdate: "2013-08-22", phone: "+52 55 1010 0002", modality: "a-domicilio" },
+  { name: "Diego Fonseca",        day: "Lunes",     time: "19:00", rate: 400, status: "active", parent: "Patricia Fonseca", tutor_frequency: 6, birthdate: "2010-06-14", overdue: true },
+  { name: "Sofía Marín",          day: "Martes",    time: "16:00", rate: 350, status: "active", parent: "Carolina Marín",   tutor_frequency: 6, birthdate: "2014-02-03", phone: "+52 55 1010 0003" },
+  { name: "Andrés Quiroga",       day: "Martes",    time: "17:30", rate: 350, status: "active", parent: "Marisol Quiroga",  tutor_frequency: 6, birthdate: "2011-11-30", modality: "a-domicilio", phone: "+52 55 1010 0004", email: "marisol.quiroga@example.com" },
+  { name: "Valentina Robles",     day: "Martes",    time: "19:00", rate: 400, status: "active", parent: "Federico Robles",  tutor_frequency: 6, birthdate: "2009-05-18", paidAhead: true },
+  { name: "Emiliano Ponce",       day: "Miércoles", time: "16:00", rate: 350, status: "active", parent: "Adriana Ponce",    tutor_frequency: 6, birthdate: "2013-01-25", phone: "+52 55 1010 0005" },
+  { name: "Renata Cuevas",        day: "Miércoles", time: "17:30", rate: 350, status: "active", parent: "Gabriela Cuevas",  tutor_frequency: 6, birthdate: "2012-07-12", overdue: true },
+  { name: "Sebastián Ledesma",    day: "Miércoles", time: "19:00", rate: 400, status: "active", parent: "Héctor Ledesma",   tutor_frequency: 6, birthdate: "2010-09-04", modality: "virtual", phone: "+52 55 1010 0006" },
+  { name: "Isabella Carrillo",    day: "Jueves",    time: "16:00", rate: 350, status: "active", parent: "Mariana Carrillo", tutor_frequency: 6, birthdate: "2014-12-19", paidAhead: true },
+  { name: "Leonardo Tapia",       day: "Jueves",    time: "17:30", rate: 350, status: "active", parent: "Sergio Tapia",     tutor_frequency: 6, birthdate: "2011-03-27", modality: "a-domicilio" },
+  { name: "Regina Esquivel",      day: "Jueves",    time: "19:00", rate: 400, status: "active", parent: "Lucía Esquivel",   tutor_frequency: 6, birthdate: "2009-10-08", phone: "+52 55 1010 0007", email: "lucia.esquivel@example.com" },
+  { name: "Nicolás Galván",       day: "Viernes",   time: "16:00", rate: 350, status: "active", parent: "Patricio Galván",  tutor_frequency: 6, birthdate: "2013-04-15" },
+  { name: "Daniela Becerra",      day: "Viernes",   time: "17:30", rate: 350, status: "active", parent: "Verónica Becerra", tutor_frequency: 6, birthdate: "2012-08-29", modality: "virtual", overdue: true },
+  { name: "Pablo Aldana",         day: "Viernes",   time: "19:00", rate: 400, status: "active", parent: "Ramón Aldana",     tutor_frequency: 6, birthdate: "2010-01-11", phone: "+52 55 1010 0008" },
+  { name: "Ximena Bañuelos",      day: "Sábado",    time: "10:00", rate: 350, status: "active", parent: "Estela Bañuelos",  tutor_frequency: 6, birthdate: "2014-06-21" },
+  { name: "Tomás Carbajal",       day: "Sábado",    time: "11:30", rate: 400, status: "active", parent: "Bruno Carbajal",   tutor_frequency: 6, birthdate: "2011-09-02", modality: "a-domicilio" },
+  { name: "Lucía Pizarro",        day: "Lunes",     time: "15:00", rate: 350, status: "ended",  parent: "Olivia Pizarro",   birthdate: "2013-05-17" },
+  { name: "Adrián Rendón",        day: "Miércoles", time: "15:00", rate: 350, status: "ended",  parent: "Fernando Rendón",  birthdate: "2012-12-08" },
+  { name: "María José Ureña",     day: "Jueves",    time: "15:00", rate: 350, status: "active", parent: "Carolina Ureña",   tutor_frequency: 6, birthdate: "2013-03-19", phone: "+52 55 1010 0009" },
+];
+
+const TUTOR_NOTE_TOPICS = [
+  { title: "Diagnóstico inicial", content: "Primera sesión de matemáticas (5° de primaria). Buen manejo de operaciones básicas, dificultad con fracciones y problemas de palabras. Plan de 12 clases enfocado en comprensión." },
+  { title: "Reporte de progreso", content: "Avance notable en fracciones equivalentes. Resolvió 8/10 ejercicios sin ayuda. Falta reforzar suma de fracciones con distinto denominador. Tarea: 5 ejercicios de la página 42." },
+  { title: "Tarea asignada", content: "Resumir capítulo 4 del libro de español, contestar preguntas 1-6 al final del capítulo. Entrega el viernes para revisar antes de la próxima clase." },
+  { title: "Preparación de examen", content: "Examen de unidad el próximo lunes. Repasamos: fracciones, decimales, perímetro y área. Plan: 2 sesiones de repaso esta semana, exámenes practicar tipo MARV." },
+  { title: "Comunicación con padres", content: "Reunión breve con la mamá. Pidió enfocarnos también en redacción para el examen de español. Acordamos dedicar 15 min al final de cada sesión a ortografía y composición." },
+  { title: "Cierre de bloque", content: "Calificación del periodo: 9.2 en matemáticas (subió desde 7.4). Continuar con el plan en el siguiente bimestre, agregando geometría a partir de la próxima clase." },
+];
+
 const NUTRITIONIST_NOTE_TOPICS = [
   { title: "Consulta inicial", content: "Primer encuentro. Peso 78 kg, estatura 1.68 m. Objetivo: bajar 6 kg en 4 meses con plan equilibrado, sin dietas restrictivas. Se acordó seguimiento quincenal." },
   { title: "Plan alimenticio entregado", content: "Se entregó plan de 1700 kcal/día con macros 30P / 30G / 40C. El paciente prefiere desayuno frío y comidas con tortilla 1-2 veces por semana." },
@@ -119,11 +154,13 @@ const NUTRITIONIST_NOTE_TOPICS = [
 const PATIENT_DEFS_BY_PROFESSION = {
   psychologist:  PSYCHOLOGIST_PATIENT_DEFS,
   nutritionist:  NUTRITIONIST_PATIENT_DEFS,
+  tutor:         TUTOR_PATIENT_DEFS,
 };
 
 const NOTE_TOPICS_BY_PROFESSION = {
   psychologist:  PSYCHOLOGIST_NOTE_TOPICS,
   nutritionist:  NUTRITIONIST_NOTE_TOPICS,
+  tutor:         TUTOR_NOTE_TOPICS,
 };
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };

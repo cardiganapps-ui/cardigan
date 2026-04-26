@@ -38,7 +38,7 @@ create table if not exists sessions (
   duration integer default 60,
   rate integer default null,
   cancel_reason text default null,
-  modality text default 'presencial' check (modality in ('presencial', 'virtual', 'telefonica')),
+  modality text default 'presencial' check (modality in ('presencial', 'virtual', 'telefonica', 'a-domicilio')),
   color_idx integer default 0,
   created_at timestamptz default now()
 );

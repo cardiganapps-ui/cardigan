@@ -31,6 +31,16 @@ export const PROFESSION_THEME = {
     tealPale:  "#ECF4ED",
     tealMist:  "#F2F8F3",
   },
+  tutor: {
+    // Warm amber/gold. Echoes notebooks, pencils, classroom evening
+    // light without competing with the existing --amber (used for
+    // alerts and the new a-domicilio modality).
+    teal:      "#C99A4A",
+    tealDark:  "#A57E37",
+    tealLight: "#D8B26A",
+    tealPale:  "#F6EFE0",
+    tealMist:  "#FAF6EC",
+  },
 };
 
 export function applyProfessionTheme(profession) {

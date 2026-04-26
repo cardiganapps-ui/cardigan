@@ -58,6 +58,42 @@ export const PROFESSIONS = [
 // all psychologists per migration 021.
 export const DEFAULT_PROFESSION = PROFESSION.PSYCHOLOGIST;
 
+// Session modality. Values must match the sessions.modality check
+// constraint in supabase/schema.sql / migrations/020 + 022. Per-profession
+// subsets live in MODALITIES_BY_PROFESSION below — the dropdowns and the
+// "cycle" tap-toggle on existing sessions render only the active profession's
+// allowed modalities. Existing DB rows that fall outside the profession's
+// subset are preserved (the tap-toggle defensively recognises any value).
+export const MODALITY = Object.freeze({
+  PRESENCIAL:   "presencial",
+  VIRTUAL:      "virtual",
+  TELEFONICA:   "telefonica",
+  A_DOMICILIO:  "a-domicilio",
+});
+
+export const MODALITIES_BY_PROFESSION = Object.freeze({
+  psychologist:  ["presencial", "virtual", "telefonica"],
+  nutritionist:  ["presencial", "virtual"],
+  tutor:         ["presencial", "a-domicilio", "virtual"],
+  music_teacher: ["presencial", "a-domicilio", "virtual"],
+  trainer:       ["presencial", "a-domicilio", "virtual"],
+});
+
+// Maps a raw modality value to the i18n key suffix used by t().
+// Hyphenated values can't be used as object literal keys without quoting,
+// so 'a-domicilio' resolves to 'aDomicilio' in es.js.
+export const MODALITY_I18N_KEY = Object.freeze({
+  presencial:    "presencial",
+  virtual:       "virtual",
+  telefonica:    "telefonica",
+  "a-domicilio": "aDomicilio",
+});
+
+export function getModalitiesForProfession(profession) {
+  return MODALITIES_BY_PROFESSION[profession]
+    ?? MODALITIES_BY_PROFESSION[DEFAULT_PROFESSION];
+}
+
 // Auto-extend recurring sessions: if a patient's last scheduled session is
 // within RECURRENCE_EXTEND_THRESHOLD_DAYS of today, append another
 // RECURRENCE_WINDOW_WEEKS weeks of sessions. The same window is also used as
