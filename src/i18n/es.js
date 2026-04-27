@@ -95,6 +95,16 @@ export default {
     menu: "Men\u00fa",
   },
 
+  mfa: {
+    challengeTitle: "Verifica tu identidad",
+    challengeBody: "Ingresa el c\u00f3digo de 6 d\u00edgitos de tu app autenticadora (Google Authenticator, 1Password, Authy\u2026).",
+    verify: "Verificar",
+    codeFormat: "El c\u00f3digo debe tener 6 d\u00edgitos.",
+    codeWrong: "C\u00f3digo incorrecto. Intenta de nuevo.",
+    challengeError: "No se pudo iniciar la verificaci\u00f3n. Intenta de nuevo.",
+    loadError: "Error al cargar la verificaci\u00f3n. Cierra sesi\u00f3n e intenta de nuevo.",
+  },
+
   // Landing page copy lives directly in src/components/landing/LandingPage.jsx
   // (hardcoded Spanish strings, no i18n keys needed since the app is Spanish-only).
 
@@ -634,6 +644,21 @@ export default {
     dangerZone: "Zona peligrosa",
     privacyPolicy: "Aviso de privacidad",
     privacyPolicySub: "Cómo usamos tus datos",
+    mfaTitle: "Verificación en dos pasos",
+    mfaActive: "Activada",
+    mfaInactive: "No activada",
+    mfaEnrollTitle: "Activar verificación en dos pasos",
+    mfaEnrollExplain: "Escanea el código con Google Authenticator, 1Password, Authy u otra app TOTP. Después ingresa el código de 6 dígitos para confirmar.",
+    mfaSecretLabel: "O introduce esta clave manualmente:",
+    mfaCodeLabel: "Código de 6 dígitos",
+    mfaCodeWrong: "Código incorrecto. Intenta de nuevo.",
+    mfaVerify: "Verificar y activar",
+    mfaEnrolled: "Verificación en dos pasos activada",
+    mfaManageActive: "Tu cuenta está protegida con verificación en dos pasos. Cada inicio de sesión pedirá un código de tu app autenticadora.",
+    mfaUnenrollWarn: "Si desactivas esta opción, cualquier persona con tu contraseña podrá entrar a tu cuenta. Solo desactívala si vas a configurarla en una nueva app.",
+    mfaUnenroll: "Desactivar verificación en dos pasos",
+    mfaUnenrolled: "Verificación en dos pasos desactivada",
+    mfaUnenrollError: "No se pudo desactivar. Cierra sesión, vuelve a entrar con tu app autenticadora y reintenta.",
     privacyExport: "Descargar mis datos",
     privacyExportSub: "Un archivo JSON con todo tu contenido",
     privacyExportDone: "Descarga lista",

@@ -7,6 +7,7 @@ import { Toggle } from "../components/Toggle";
 import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
+import { useMfa } from "../hooks/useMfa";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Expando } from "../components/Expando";
 import { PushInstallCard } from "../components/PushInstallCard";
@@ -35,6 +36,11 @@ export function Settings({ user, signOut, refreshUser }) {
   const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession } = useCardigan();
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
+  const mfa = useMfa();
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaUiError, setMfaUiError] = useState("");
+  const [mfaUnenrollId, setMfaUnenrollId] = useState(null);
 
   // Toggle in-flight — prevents double-taps and shows the spinner knob
   // during the server round-trip for enable/disable.
@@ -639,6 +645,32 @@ export function Settings({ user, signOut, refreshUser }) {
 
       <div className="settings-label">{t("settings.privacyLabel")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
+        {/* Two-factor (TOTP) — security row sits at the top of the
+            privacy section since it's the strongest single account-
+            level protection. */}
+        {!readOnly && (
+          <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
+            onClick={() => {
+              if (mfa.loading) return;
+              setMfaUiError(""); setMfaCode("");
+              if (mfa.factors.length === 0) {
+                setActiveSheet("mfaEnroll");
+                if (!mfa.enrollment) mfa.enroll();
+              } else {
+                setMfaUnenrollId(mfa.factors[0].id);
+                setActiveSheet("mfaManage");
+              }
+            }}>
+            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.mfaTitle")}</div>
+              <div className="settings-row-sub">
+                {mfa.loading ? "…" : mfa.factors.length > 0 ? t("settings.mfaActive") : t("settings.mfaInactive")}
+              </div>
+            </div>
+            <IconChevron />
+          </div>
+        )}
         {/* Note encryption — primary affordance. The disabled / locked /
             unlocked states each render their own row(s). */}
         {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
@@ -1075,6 +1107,136 @@ export function Settings({ user, signOut, refreshUser }) {
                   {deleting ? t("loading") : t("settings.privacyDeleteCta")}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={deleting}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MFA: ENROLL SHEET ──
+         Three-step flow: enroll() runs on sheet open and stashes a
+         QR + secret on the hook; user scans + enters code; verify()
+         flips the factor to verified. Sheet closes on success. */}
+      {activeSheet === "mfaEnroll" && (
+        <div className="sheet-overlay" onClick={() => { if (!mfaBusy) { mfa.cancelEnroll(); setActiveSheet(null); } }}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.mfaEnrollTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => { if (!mfaBusy) { mfa.cancelEnroll(); setActiveSheet(null); } }} disabled={mfaBusy}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                {t("settings.mfaEnrollExplain")}
+              </div>
+              {!mfa.enrollment && (
+                <div style={{ fontSize: 13, color: "var(--charcoal-xl)", marginBottom: 12 }}>{t("loading")}</div>
+              )}
+              {mfa.enrollment && (
+                <>
+                  {mfa.enrollment.qr && (
+                    <div style={{ display:"flex", justifyContent:"center", marginBottom: 14 }}>
+                      <img src={mfa.enrollment.qr} alt="MFA QR" width={180} height={180} style={{ background:"var(--white)", padding:8, borderRadius:"var(--radius)" }} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: 12, color: "var(--charcoal-md)", marginBottom: 6 }}>{t("settings.mfaSecretLabel")}</div>
+                  <div style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", fontFamily:"var(--font-mono, monospace)", fontSize:12, padding:"10px 12px", borderRadius:"var(--radius)", wordBreak:"break-all", marginBottom: 14, userSelect:"all" }}>
+                    {mfa.enrollment.secret}
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 12 }}>
+                    <label className="input-label">{t("settings.mfaCodeLabel")}</label>
+                    <input
+                      className="input"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={mfaCode}
+                      onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="123456"
+                      style={{ letterSpacing:"0.4em", textAlign:"center", fontSize:18, fontFamily:"var(--font-mono, monospace)" }}
+                      disabled={mfaBusy}
+                    />
+                  </div>
+                </>
+              )}
+              {(mfaUiError || mfa.error) && (
+                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={mfaBusy || !mfa.enrollment || mfaCode.length !== 6}
+                  onClick={async () => {
+                    setMfaBusy(true); setMfaUiError("");
+                    const ok = await mfa.verifyEnroll(mfaCode);
+                    setMfaBusy(false);
+                    if (ok) {
+                      setMfaCode("");
+                      setActiveSheet(null);
+                      showToast(t("settings.mfaEnrolled"), "success");
+                    } else {
+                      setMfaUiError(t("settings.mfaCodeWrong"));
+                    }
+                  }}
+                >
+                  {mfaBusy ? t("loading") : t("settings.mfaVerify")}
+                </button>
+                <button type="button" className="btn btn-ghost" disabled={mfaBusy}
+                  onClick={() => { mfa.cancelEnroll(); setActiveSheet(null); }}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MFA: MANAGE SHEET (already enrolled) ── */}
+      {activeSheet === "mfaManage" && (
+        <div className="sheet-overlay" onClick={() => !mfaBusy && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.mfaTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !mfaBusy && setActiveSheet(null)} disabled={mfaBusy}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                {t("settings.mfaManageActive")}
+              </div>
+              <div style={{ background:"var(--red-bg, #fdecea)", color:"var(--red-dark, #922)", padding:"10px 12px", borderRadius:"var(--radius)", fontSize:13, lineHeight:1.5, marginBottom: 16 }}>
+                {t("settings.mfaUnenrollWarn")}
+              </div>
+              {(mfaUiError || mfa.error) && (
+                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ background:"var(--red)", color:"var(--white)" }}
+                  disabled={mfaBusy || !mfaUnenrollId}
+                  onClick={async () => {
+                    if (!mfaUnenrollId) return;
+                    setMfaBusy(true); setMfaUiError("");
+                    const ok = await mfa.unenroll(mfaUnenrollId);
+                    setMfaBusy(false);
+                    if (ok) {
+                      setActiveSheet(null);
+                      showToast(t("settings.mfaUnenrolled"), "info");
+                    } else {
+                      setMfaUiError(t("settings.mfaUnenrollError"));
+                    }
+                  }}
+                >
+                  {mfaBusy ? t("loading") : t("settings.mfaUnenroll")}
+                </button>
+                <button type="button" className="btn btn-ghost" disabled={mfaBusy} onClick={() => setActiveSheet(null)}>
                   {t("cancel")}
                 </button>
               </div>
