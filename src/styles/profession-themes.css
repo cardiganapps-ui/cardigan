@@ -1,0 +1,108 @@
+/* ── Per-profession theme overrides ──
+   Cardigan defaults to the psychologist palette (teal family, defined
+   in base.css with dark-mode overrides in dark.css). For other
+   professions we override the same `--teal*` and `--accent*` tokens
+   via attribute selectors so consumers don't need to be profession-
+   aware — they keep referencing `var(--teal)` and the swatch swaps
+   automatically.
+
+   IMPORTANT: each profession has BOTH a light and a dark variant.
+   Earlier the override lived in JS (document.documentElement.style.
+   setProperty) which set inline styles on <html>; inline styles beat
+   stylesheet rules, including dark.css. The result was that every
+   user with a non-default profession (or any user where the JS had
+   ever run) saw the LIGHT-mode teal palette in dark mode — most
+   visible as a bright cream `.week-event:hover` tile. Moving the
+   override to CSS attribute selectors lets dark mode and profession
+   theming compose correctly via the cascade.
+
+   Psychologist isn't listed — it's the default and inherits from
+   base.css / dark.css directly. */
+
+/* ── Nutritionist: sage green ── */
+html[data-profession="nutritionist"] {
+  --teal:        #6FAA82;
+  --teal-dark:   #588F6B;
+  --teal-light:  #88BB99;
+  --teal-pale:   #ECF4ED;
+  --teal-mist:   #F2F8F3;
+  --accent:      #6FAA82;
+  --accent-dark: #588F6B;
+  --accent-pale: #ECF4ED;
+}
+html[data-profession="nutritionist"][data-theme="dark"] {
+  --teal:        #6FAA82;
+  --teal-dark:   #88BB99;            /* lifted for contrast on dark */
+  --teal-light:  #A0C9AE;
+  --teal-pale:   rgba(111,170,130,0.15);
+  --teal-mist:   rgba(111,170,130,0.08);
+  --accent:      #6FAA82;
+  --accent-dark: #88BB99;
+  --accent-pale: rgba(111,170,130,0.15);
+}
+
+/* ── Tutor: warm amber/gold ── */
+html[data-profession="tutor"] {
+  --teal:        #C99A4A;
+  --teal-dark:   #A57E37;
+  --teal-light:  #D8B26A;
+  --teal-pale:   #F6EFE0;
+  --teal-mist:   #FAF6EC;
+  --accent:      #C99A4A;
+  --accent-dark: #A57E37;
+  --accent-pale: #F6EFE0;
+}
+html[data-profession="tutor"][data-theme="dark"] {
+  --teal:        #C99A4A;
+  --teal-dark:   #D8B26A;
+  --teal-light:  #E1C386;
+  --teal-pale:   rgba(201,154,74,0.15);
+  --teal-mist:   rgba(201,154,74,0.08);
+  --accent:      #C99A4A;
+  --accent-dark: #D8B26A;
+  --accent-pale: rgba(201,154,74,0.15);
+}
+
+/* ── Music teacher: dusty burgundy ── */
+html[data-profession="music_teacher"] {
+  --teal:        #A86B7E;
+  --teal-dark:   #8C5466;
+  --teal-light:  #BD8595;
+  --teal-pale:   #F4E8EC;
+  --teal-mist:   #F9F1F4;
+  --accent:      #A86B7E;
+  --accent-dark: #8C5466;
+  --accent-pale: #F4E8EC;
+}
+html[data-profession="music_teacher"][data-theme="dark"] {
+  --teal:        #A86B7E;
+  --teal-dark:   #BD8595;
+  --teal-light:  #CC9CAA;
+  --teal-pale:   rgba(168,107,126,0.15);
+  --teal-mist:   rgba(168,107,126,0.08);
+  --accent:      #A86B7E;
+  --accent-dark: #BD8595;
+  --accent-pale: rgba(168,107,126,0.15);
+}
+
+/* ── Trainer: steel slate ── */
+html[data-profession="trainer"] {
+  --teal:        #5A7388;
+  --teal-dark:   #456073;
+  --teal-light:  #7A8FA3;
+  --teal-pale:   #E8EEF2;
+  --teal-mist:   #F1F4F7;
+  --accent:      #5A7388;
+  --accent-dark: #456073;
+  --accent-pale: #E8EEF2;
+}
+html[data-profession="trainer"][data-theme="dark"] {
+  --teal:        #5A7388;
+  --teal-dark:   #7A8FA3;
+  --teal-light:  #93A6B7;
+  --teal-pale:   rgba(90,115,136,0.18);
+  --teal-mist:   rgba(90,115,136,0.10);
+  --accent:      #5A7388;
+  --accent-dark: #7A8FA3;
+  --accent-pale: rgba(90,115,136,0.18);
+}
