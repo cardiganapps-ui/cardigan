@@ -5,7 +5,7 @@ import { recalcPatientCounters } from "../utils/patients";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, allergies, medicalConditions }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un paciente con ese nombre.");
@@ -48,6 +48,13 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       start_date: recurring && startDate ? startDate : null,
       birthdate: birthdate || null,
       tutor_frequency: tutorFrequency || null,
+      // Anthropometric / health-history fields. Set for nutritionist
+      // + trainer; null/empty for everyone else (the form doesn't
+      // surface them, so the caller passes null/"").
+      height_cm: heightCm || null,
+      goal_weight_kg: goalWeightKg || null,
+      allergies: allergies || "",
+      medical_conditions: medicalConditions || "",
       sessions: seedCount,
       billed: seedBilled,
       whatsapp_enabled: !!whatsappEnabled,

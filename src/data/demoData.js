@@ -76,11 +76,24 @@ const PSYCHOLOGIST_PATIENT_DEFS = [
 // and virtual. Rates are a touch higher to reflect the typical
 // Mexican-market pricing for nutrition consults.
 const NUTRITIONIST_PATIENT_DEFS = [
-  { name: "Natalia Bravo",      day: "Lunes",     time: "09:00", rate: 900, status: "active", phone: "+52 55 1010 2020", email: "natalia.bravo@example.com", paidAhead: true },
-  { name: "Roberto Aguilar",    day: "Lunes",     time: "11:00", rate: 850, status: "active", modality: "virtual", phone: "+52 55 2020 3030", overdue: true },
-  { name: "Mariana Velasco",    day: "Lunes",     time: "16:00", rate: 900, status: "active", phone: "+52 55 3030 4040" },
-  { name: "Pablo Estrada",      day: "Martes",    time: "10:00", rate: 850, status: "active", phone: "+52 55 4040 5050", email: "pablo.estrada@example.com" },
-  { name: "Carolina Mora",      day: "Martes",    time: "14:00", rate: 950, status: "active", phone: "+52 55 5050 6060", email: "carolina.mora@example.com", paidAhead: true },
+  // First 5 entries carry rich anthropometric data so the Mediciones tab
+  // and Salud block render well in demo. The rest leave the fields blank
+  // (still valid — most clients won't have full data on day one).
+  { name: "Natalia Bravo",      day: "Lunes",     time: "09:00", rate: 900, status: "active", phone: "+52 55 1010 2020", email: "natalia.bravo@example.com", paidAhead: true,
+    height_cm: 168, goal_weight_kg: 65, allergies: "Lácteos", medical_conditions: "Hipotiroidismo controlado",
+    start_weight_kg: 78, start_waist_cm: 92, start_body_fat_pct: 32 },
+  { name: "Roberto Aguilar",    day: "Lunes",     time: "11:00", rate: 850, status: "active", modality: "virtual", phone: "+52 55 2020 3030", overdue: true,
+    height_cm: 178, goal_weight_kg: 80, allergies: "", medical_conditions: "Diabetes tipo 2",
+    start_weight_kg: 96, start_waist_cm: 105, start_body_fat_pct: 28 },
+  { name: "Mariana Velasco",    day: "Lunes",     time: "16:00", rate: 900, status: "active", phone: "+52 55 3030 4040",
+    height_cm: 162, goal_weight_kg: 58, allergies: "Mariscos", medical_conditions: "",
+    start_weight_kg: 70, start_waist_cm: 84, start_body_fat_pct: 30 },
+  { name: "Pablo Estrada",      day: "Martes",    time: "10:00", rate: 850, status: "active", phone: "+52 55 4040 5050", email: "pablo.estrada@example.com",
+    height_cm: 175, goal_weight_kg: 75, allergies: "Frutos secos",
+    start_weight_kg: 88, start_waist_cm: 100 },
+  { name: "Carolina Mora",      day: "Martes",    time: "14:00", rate: 950, status: "active", phone: "+52 55 5050 6060", email: "carolina.mora@example.com", paidAhead: true,
+    height_cm: 170, goal_weight_kg: 62, medical_conditions: "Hipertensión leve",
+    start_weight_kg: 73, start_waist_cm: 86, start_body_fat_pct: 27 },
   { name: "Tomás Quintero",     day: "Martes",    time: "17:00", rate: 850, status: "active", modality: "virtual" },
   { name: "Ximena Beltrán",     day: "Miércoles", time: "09:00", rate: 900, status: "active", phone: "+52 55 6060 7070" },
   { name: "Iván Domínguez",     day: "Miércoles", time: "12:00", rate: 850, status: "active", phone: "+52 55 7070 8080", email: "ivan.dominguez@example.com", overdue: true },
@@ -137,11 +150,24 @@ const TUTOR_PATIENT_DEFS = [
 // hypertrofia, and weight-loss goals. Schedules mix presencial,
 // a-domicilio, and virtual. Per-session rate.
 const TRAINER_PATIENT_DEFS = [
-  { name: "Andrea Pelayo",        day: "Lunes",     time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0001", email: "andrea.pelayo@example.com", paidAhead: true },
-  { name: "Bruno Salinas",        day: "Lunes",     time: "08:00", rate: 600, status: "active", modality: "a-domicilio",         phone: "+52 55 3030 0002" },
-  { name: "Claudia Mejía",        day: "Lunes",     time: "18:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0003", email: "claudia.mejia@example.com", overdue: true },
-  { name: "David Rangel",         day: "Martes",    time: "06:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0004" },
-  { name: "Elena Mier",           day: "Martes",    time: "07:30", rate: 650, status: "active",                                 phone: "+52 55 3030 0005", email: "elena.mier@example.com" },
+  // First 5 entries carry rich anthropometric data so the Mediciones tab
+  // and Salud block render well in demo. Trainer goals tend to be net
+  // weight loss + body-fat reduction.
+  { name: "Andrea Pelayo",        day: "Lunes",     time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0001", email: "andrea.pelayo@example.com", paidAhead: true,
+    height_cm: 165, goal_weight_kg: 60, medical_conditions: "",
+    start_weight_kg: 72, start_waist_cm: 86, start_body_fat_pct: 30 },
+  { name: "Bruno Salinas",        day: "Lunes",     time: "08:00", rate: 600, status: "active", modality: "a-domicilio",         phone: "+52 55 3030 0002",
+    height_cm: 180, goal_weight_kg: 78, medical_conditions: "Lesión de rodilla derecha (2024)",
+    start_weight_kg: 92, start_waist_cm: 102, start_body_fat_pct: 26 },
+  { name: "Claudia Mejía",        day: "Lunes",     time: "18:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0003", email: "claudia.mejia@example.com", overdue: true,
+    height_cm: 158, goal_weight_kg: 55,
+    start_weight_kg: 68, start_waist_cm: 84 },
+  { name: "David Rangel",         day: "Martes",    time: "06:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0004",
+    height_cm: 175, goal_weight_kg: 80, allergies: "Polen",
+    start_weight_kg: 90 },
+  { name: "Elena Mier",           day: "Martes",    time: "07:30", rate: 650, status: "active",                                 phone: "+52 55 3030 0005", email: "elena.mier@example.com",
+    height_cm: 168, goal_weight_kg: 62,
+    start_weight_kg: 71, start_waist_cm: 80, start_body_fat_pct: 25 },
   { name: "Federico Avalos",      day: "Martes",    time: "19:00", rate: 700, status: "active", modality: "a-domicilio", paidAhead: true },
   { name: "Greta Saavedra",       day: "Miércoles", time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0006" },
   { name: "Hugo Velázquez",       day: "Miércoles", time: "08:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0007", email: "hugo.velazquez@example.com" },
@@ -261,6 +287,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   const sessions = [];
   const payments = [];
   const notes = [];
+  const measurements = [];
 
   patientDefs.forEach((def, idx) => {
     const patientId = uuid();
@@ -438,8 +465,52 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       color_idx: colorIdx,
       colorIdx: colorIdx,
       tutor_frequency: def.tutor_frequency || null,
+      // Anthropometric / health-history fields. Only meaningful for the
+      // nutri + trainer demo seeds; the others leave them null/empty.
+      height_cm: def.height_cm ?? null,
+      goal_weight_kg: def.goal_weight_kg ?? null,
+      allergies: def.allergies || "",
+      medical_conditions: def.medical_conditions || "",
       created_at: startDate.toISOString(),
     });
+
+    // Anthropometric measurements timeline. Only generated when the
+    // patient def declares a `start_weight_kg`. We back-fill biweekly
+    // entries trending towards `goal_weight_kg` (capped at the goal).
+    if (def.start_weight_kg && def.goal_weight_kg) {
+      const start = Number(def.start_weight_kg);
+      const goal = Number(def.goal_weight_kg);
+      // 12 biweekly readings (~6 months of demo data). Weight moves
+      // linearly from start to goal across that span.
+      const N = 12;
+      const startMs = startDate.getTime();
+      const totalLossKg = start - goal;
+      for (let i = 0; i < N; i++) {
+        const dayOffset = i * 14;
+        const measureDate = new Date(startMs + dayOffset * 86400000);
+        if (measureDate > now) break;
+        const t = i / (N - 1);
+        const weightKg = +(start - totalLossKg * t).toFixed(1);
+        // Waist tracks weight ~loosely (1cm per 0.7kg).
+        const waistCm = def.start_waist_cm
+          ? +(def.start_waist_cm - (start - weightKg) / 0.7).toFixed(1)
+          : null;
+        measurements.push({
+          id: uuid(),
+          user_id: demoUserId,
+          patient_id: patientId,
+          taken_at: measureDate.toISOString().slice(0, 10),
+          weight_kg: weightKg,
+          waist_cm: waistCm,
+          hip_cm: null,
+          body_fat_pct: def.start_body_fat_pct
+            ? +(def.start_body_fat_pct - (start - weightKg) * 0.4).toFixed(1)
+            : null,
+          notes: "",
+          created_at: measureDate.toISOString(),
+        });
+      }
+    }
 
     // 2-4 notes per patient
     const noteCount = 2 + Math.floor(Math.random() * 3);
@@ -469,5 +540,5 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   // Sort notes newest first
   notes.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
-  return { patients, sessions, payments, notes };
+  return { patients, sessions, payments, notes, measurements };
 }

@@ -21,6 +21,13 @@ create table if not exists patients (
   phone text default '',
   email text default '',
   tutor_frequency integer default null,
+  -- Nutritionist + trainer fields. Static traits of the person rather
+  -- than per-visit measurements. Surfaced via usesAnthropometrics()
+  -- in src/data/constants.js — other professions never see them.
+  height_cm integer,
+  goal_weight_kg numeric(5,2),
+  allergies text default '',
+  medical_conditions text default '',
   created_at timestamptz default now()
 );
 
@@ -132,6 +139,21 @@ create table if not exists sent_reminders (
   unique(session_id, user_id)
 );
 
+-- Anthropometric measurements (nutritionist + trainer). One row per
+-- visit/check-in. Schema mirrors migration 024_measurements.sql.
+create table if not exists measurements (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null,
+  patient_id uuid not null references patients(id) on delete cascade,
+  taken_at date not null,
+  weight_kg     numeric(5,2),
+  waist_cm      numeric(5,2),
+  hip_cm        numeric(5,2),
+  body_fat_pct  numeric(4,2),
+  notes         text default '',
+  created_at    timestamptz default now()
+);
+
 -- User profession (multi-profession expansion). Locked at sign-up,
 -- admin-changeable. The check constraint mirrors PROFESSION in
 -- src/data/constants.js.
@@ -169,6 +191,8 @@ create index if not exists idx_notification_preferences_user_id on notification_
 create index if not exists idx_sent_reminders_user_id on sent_reminders(user_id);
 create index if not exists idx_sent_reminders_session_id on sent_reminders(session_id);
 create index if not exists idx_user_profiles_profession on user_profiles(profession);
+create index if not exists idx_measurements_patient on measurements(patient_id, taken_at desc);
+create index if not exists idx_measurements_user_id on measurements(user_id);
 
 -- ============================================================
 -- Row Level Security (each user only sees their own data)
@@ -183,6 +207,7 @@ alter table push_subscriptions enable row level security;
 alter table notification_preferences enable row level security;
 alter table sent_reminders enable row level security;
 alter table user_profiles enable row level security;
+alter table measurements enable row level security;
 
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
@@ -195,6 +220,7 @@ create policy "Users read own sent reminders" on sent_reminders for select using
 create policy "Users read own profile"   on user_profiles for select using (auth.uid() = user_id);
 create policy "Users insert own profile" on user_profiles for insert with check (auth.uid() = user_id);
 create policy "Users update own profile" on user_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users manage own measurements" on measurements for all using (auth.uid() = user_id);
 
 -- Bug reports: any authenticated user can insert; only admin can read/manage
 create policy "Users insert own bug reports" on bug_reports for insert with check (auth.uid() is not null);
@@ -217,6 +243,7 @@ create policy "Admin reads all push subscriptions" on push_subscriptions for sel
 create policy "Admin reads all notification preferences" on notification_preferences for select using (is_admin());
 create policy "Admin reads all profiles" on user_profiles for select using (is_admin());
 create policy "Admin updates all profiles" on user_profiles for update using (is_admin()) with check (is_admin());
+create policy "Admin reads all measurements" on measurements for select using (is_admin());
 
 -- Admin helper: archive bug reports (bypasses RLS via security definer)
 create or replace function archive_bug_reports(report_ids uuid[])

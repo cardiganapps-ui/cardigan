@@ -12,6 +12,7 @@ import { createSessionActions, getRecurringDates } from "./useSessions";
 import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
 import { createDocumentActions } from "./useDocuments";
+import { createMeasurementActions } from "./useMeasurements";
 import { recalcPatientCounters } from "../utils/patients";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows } from "../utils/recurrence";
@@ -195,6 +196,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const [payments, setPayments] = useState([]);
   const [notes, setNotes] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [mutating, setMutating] = useState(false);
@@ -225,14 +227,17 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // completed sessions would vanish from the "consumed" side and old
     // future-scheduled sessions would vanish from the "to-subtract" side,
     // both of which have been reported in the wild as inflated balances.
-    let pRes, sRes, pmRes, nRes, dRes;
+    let pRes, sRes, pmRes, nRes, dRes, mRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
         q("notes", 500).order("updated_at", { ascending: false }),
         q("documents", 500).order("created_at", { ascending: false }),
+        // Measurements are tiny (one row per nutri/trainer visit) so we
+        // pull a generous window. Most accounts won't have any.
+        q("measurements", 2000).order("taken_at", { ascending: false }),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -241,7 +246,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     }
 
     // Surface individual table errors
-    const tableErr = [pRes, sRes, pmRes, nRes, dRes].find(r => r.error);
+    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes].find(r => r.error);
     if (tableErr) setFetchError(tableErr.error.message);
 
     let pData = mapRows(pRes.data);
@@ -326,6 +331,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     }
     setNotes(notesData);
     setDocuments(dRes.data || []);
+    setMeasurements(mRes.data || []);
     setLoading(false);
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
@@ -349,6 +355,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
+  const { createMeasurement, updateMeasurement, deleteMeasurement } =
+    createMeasurementActions(userId, measurements, setMeasurements, setMutating, setMutationError);
 
   /* ── ENRICHMENT ── */
   // Auto-complete is display-only — shows past scheduled sessions as "completed"
@@ -399,7 +407,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   };
 
   return {
-    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents,
+    patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
@@ -415,6 +423,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     uploadDocument: guard(uploadDocument), renameDocument: guard(renameDocument),
     tagDocumentSession: guard(tagDocumentSession), deleteDocument: guard(deleteDocument),
     getDocumentUrl,
+    createMeasurement: guard(createMeasurement),
+    updateMeasurement: guard(updateMeasurement),
+    deleteMeasurement: guard(deleteMeasurement),
     refresh,
   };
 }
