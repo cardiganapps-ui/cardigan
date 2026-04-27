@@ -473,7 +473,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
 
     const onTouchStart = (e) => {
       if (drawerOpenRef.current) return;
-      if (screenSlidingRef.current) return;
       // DRAWER_EDGE_BAND is shared with useSwipe's IN_SCREEN_SWIPE_DEAD_ZONE
       // so the two gesture owners never race at start.
       if (e.touches[0].clientX < DRAWER_EDGE_BAND) {
@@ -482,6 +481,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           startY: e.touches[0].clientY,
           time: Date.now(),
           active: false,
+          // When the screen is mid-slide we DON'T open the drawer (the
+          // double animation reads as glitchy), but we MUST still
+          // claim and prevent-default the gesture — otherwise iOS
+          // Safari's native edge-swipe-back peek runs unimpeded and
+          // paints the previous page next to our sliding content.
+          // That was the "two screens side by side with a half-open
+          // drawer" glitch reported by a user. We track-but-suppress.
+          blockedByAnim: screenSlidingRef.current,
         };
       } else {
         edgeRef.current = null;
@@ -510,9 +517,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       if (edgeRef.current.active) {
         // Suppress iOS Safari's native back-peek while the user is dragging
         // the drawer in. This is the key to resolving the drawer-vs-back
-        // conflict on non-standalone mobile browsers.
+        // conflict on non-standalone mobile browsers — and it must run
+        // even when the screen-slide lockout is active, so Safari can't
+        // paint the previous page underneath our animation.
         if (e.cancelable) e.preventDefault();
-        setSwipeProgress(Math.max(0, dx));
+        if (!edgeRef.current.blockedByAnim) {
+          setSwipeProgress(Math.max(0, dx));
+        }
       }
     };
 
@@ -526,8 +537,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       const dx = e.changedTouches[0].clientX - edgeRef.current.startX;
       const elapsed = Date.now() - edgeRef.current.time;
       const velocity = dx / elapsed;
+      const blocked = edgeRef.current.blockedByAnim;
       edgeRef.current = null;
-      if (dx > 100 || velocity > 0.3) {
+      if (!blocked && (dx > 100 || velocity > 0.3)) {
         setDrawerOpen(true);
       }
       setSwipeProgress(0);

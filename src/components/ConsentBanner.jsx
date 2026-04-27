@@ -10,6 +10,15 @@ const LS_KEY = "cardigan.consent.v";
    stored both locally (snappy UX on re-visits) and server-side via
    /api/record-consent (durable audit trail in user_consents).
 
+   On mount we check localStorage first (synchronous, no flash). If
+   localStorage doesn't have the current version we then query
+   `user_consents` server-side before deciding whether to show the
+   banner — that way Safari's ITP cache eviction (~7 days for non-PWA
+   sites), a new device / browser, or a wiped local profile don't
+   re-prompt a user who has already consented to this version on the
+   server. The server is the source of truth; localStorage is just a
+   first-paint optimization.
+
    Only renders when `session` is truthy — we don't need consent before
    sign-in. Returns null once dismissed for the active version. */
 export default function ConsentBanner({ user, onAccepted }) {
@@ -19,13 +28,48 @@ export default function ConsentBanner({ user, onAccepted }) {
 
   useEffect(() => {
     if (!user) { setVisible(false); return; }
+    let cancelled = false;
     // Safari Private Mode and iOS Lockdown Mode can throw on storage
     // access. Treat any failure as "not yet accepted" so the banner
     // still surfaces (consent capture is mandatory) — server-side
     // user_consents row is the durable record either way.
     let stored = null;
     try { stored = localStorage.getItem(LS_KEY); } catch { /* storage blocked */ }
-    setVisible(stored !== POLICY_VERSION);
+    if (stored === POLICY_VERSION) {
+      // Local cache says we're current — render nothing immediately.
+      setVisible(false);
+      return;
+    }
+    // Local cache miss. Don't pop the banner yet — first ask the
+    // server whether this user already accepted. This prevents a
+    // re-prompt loop on every device change / cookie wipe.
+    (async () => {
+      try {
+        const { data, error: qErr } = await supabase
+          .from("user_consents")
+          .select("policy_version")
+          .eq("user_id", user.id)
+          .eq("policy_version", POLICY_VERSION)
+          .maybeSingle();
+        if (cancelled) return;
+        if (!qErr && data?.policy_version === POLICY_VERSION) {
+          // Server has the consent. Hydrate localStorage for the next
+          // mount and don't surface the banner.
+          try { localStorage.setItem(LS_KEY, POLICY_VERSION); } catch { /* ignore */ }
+          setVisible(false);
+        } else {
+          // Either no row, or query failed. In the failure case we
+          // err on the side of showing the banner — consent capture
+          // is mandatory and a transient network blip shouldn't let
+          // a user slip through unconsented. The /api/record-consent
+          // upsert is idempotent so a re-accept costs nothing.
+          setVisible(true);
+        }
+      } catch {
+        if (!cancelled) setVisible(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   if (!visible) return null;
