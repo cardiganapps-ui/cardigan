@@ -267,21 +267,47 @@ export function Settings({ user, signOut, refreshUser }) {
 
   // ── Privacy / ARCO actions ─────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
+  const [exportPassword, setExportPassword] = useState("");
+  const [exportError, setExportError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  /* Map server-side reauth codes → user-facing Spanish messages so
+     the prompt knows what to say beyond a generic "wrong password". */
+  const reauthMessageFor = (code) => {
+    if (code === "wrong_password") return t("settings.privacyReauthWrong");
+    if (code === "password_required") return t("settings.privacyReauthRequired");
+    if (code === "oauth_only") return t("settings.privacyReauthOauthOnly");
+    return t("settings.privacyReauthError");
+  };
+
   const exportMyData = async () => {
     if (exporting) return;
+    if (!exportPassword) { setExportError(t("settings.privacyReauthRequired")); return; }
     setExporting(true);
+    setExportError("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) { showToast(t("settings.privacyExportError"), "error"); return; }
+      if (!token) { setExportError(t("settings.privacyExportError")); return; }
       const res = await fetch("/api/export-user-data", {
-        headers: { "Authorization": `Bearer ${token}` },
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: exportPassword }),
       });
       if (!res.ok) {
+        // 401 with a code field → reauth issue; surface in the sheet so
+        // the user can re-enter without losing the modal context.
+        if (res.status === 401) {
+          let code = ""; try { const j = await res.json(); code = j.code || ""; } catch { /* ignore */ }
+          setExportError(reauthMessageFor(code));
+          return;
+        }
         let msg = t("settings.privacyExportError");
         try { const j = await res.json(); if (j.hint) msg = j.hint; else if (j.error) msg = j.error; } catch { /* keep default */ }
         showToast(msg, res.status === 429 ? "warning" : "error");
@@ -298,6 +324,8 @@ export function Settings({ user, signOut, refreshUser }) {
       a.remove();
       URL.revokeObjectURL(url);
       showToast(t("settings.privacyExportDone"), "success");
+      setExportPassword("");
+      setActiveSheet(null);
     } finally {
       setExporting(false);
     }
@@ -305,6 +333,7 @@ export function Settings({ user, signOut, refreshUser }) {
 
   const confirmDeleteAccount = async () => {
     if (deleting) return;
+    if (!deletePassword) { setDeleteError(t("settings.privacyReauthRequired")); return; }
     setDeleting(true);
     setDeleteError("");
     try {
@@ -317,9 +346,15 @@ export function Settings({ user, signOut, refreshUser }) {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ confirmation: deleteConfirm }),
+        body: JSON.stringify({ confirmation: deleteConfirm, password: deletePassword }),
       });
       if (!res.ok) {
+        // 401 → reauth issue; keep the sheet open so the user can fix.
+        if (res.status === 401) {
+          let code = ""; try { const j = await res.json(); code = j.code || ""; } catch { /* ignore */ }
+          setDeleteError(reauthMessageFor(code));
+          return;
+        }
         let msg = t("settings.privacyDeleteError");
         try { const j = await res.json(); if (j.error) msg = j.error; } catch { /* keep default */ }
         setDeleteError(msg);
@@ -659,7 +694,8 @@ export function Settings({ user, signOut, refreshUser }) {
           </>
         )}
         {!readOnly && (
-          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }} onClick={exportMyData}>
+          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }}
+            onClick={() => { if (!exporting) { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); } }}>
             <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
             <div style={{ flex:1 }}>
               <div className="settings-row-title">{t("settings.privacyExport")}</div>
@@ -1015,6 +1051,16 @@ export function Settings({ user, signOut, refreshUser }) {
                   disabled={deleting}
                 />
               </div>
+              <div className="input-group" style={{ marginBottom: 14 }}>
+                <label className="input-label">{t("settings.privacyReauthLabel")}</label>
+                <PasswordInput
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder={t("settings.privacyReauthPlaceholder")}
+                  autoComplete="current-password"
+                  disabled={deleting}
+                />
+              </div>
               {deleteError && (
                 <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{deleteError}</div>
               )}
@@ -1023,12 +1069,59 @@ export function Settings({ user, signOut, refreshUser }) {
                   type="button"
                   className="btn btn-primary"
                   onClick={confirmDeleteAccount}
-                  disabled={deleting || deleteConfirm !== "ELIMINAR"}
+                  disabled={deleting || deleteConfirm !== "ELIMINAR" || !deletePassword}
                   style={{ background: "var(--red)", color: "var(--white)" }}
                 >
                   {deleting ? t("loading") : t("settings.privacyDeleteCta")}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={deleting}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EXPORT DATA SHEET ──
+         Step-up password gate before issuing the export. The session
+         JWT alone isn't enough: a stolen token shouldn't be able to
+         one-shot the entire data export. */}
+      {activeSheet === "exportData" && (
+        <div className="sheet-overlay" onClick={() => !exporting && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.privacyExport")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !exporting && setActiveSheet(null)} disabled={exporting}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                {t("settings.privacyExportExplain")}
+              </div>
+              <div className="input-group" style={{ marginBottom: 14 }}>
+                <label className="input-label">{t("settings.privacyReauthLabel")}</label>
+                <PasswordInput
+                  value={exportPassword}
+                  onChange={(e) => setExportPassword(e.target.value)}
+                  placeholder={t("settings.privacyReauthPlaceholder")}
+                  autoComplete="current-password"
+                  disabled={exporting}
+                />
+              </div>
+              {exportError && (
+                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{exportError}</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={exportMyData}
+                  disabled={exporting || !exportPassword}
+                >
+                  {exporting ? t("loading") : t("settings.privacyExportCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={exporting}>
                   {t("cancel")}
                 </button>
               </div>
