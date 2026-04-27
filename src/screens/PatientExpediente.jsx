@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { phoneHref, emailHref } from "../utils/contact";
-import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail } from "../components/Icons";
+import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp } from "../components/Icons";
 import { NoteEditor } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
 import { isTutorSession } from "../utils/sessions";
@@ -21,6 +21,8 @@ import { ResumenTab } from "./expediente/ResumenTab";
 import { SesionesTab } from "./expediente/SesionesTab";
 import { FinanzasTab } from "./expediente/FinanzasTab";
 import { ArchivoTab } from "./expediente/ArchivoTab";
+import { MedicionesTab } from "./expediente/MedicionesTab";
+import { usesAnthropometrics } from "../data/constants";
 
 export function PatientExpediente({
   patient, upcomingSessions, notes, payments, documents,
@@ -31,7 +33,8 @@ export function PatientExpediente({
 }) {
   const inline = layout === "inline";
   const { t } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession } = useCardigan();
+  const showMedicionesTab = usesAnthropometrics(profession);
 
   // ── Enter/close animation state ──
   // `entering` is true for the first paint so the panel mounts at
@@ -317,9 +320,14 @@ export function PatientExpediente({
   const goToArchivo = useCallback(() => setTab("archivo"), []);
 
   // ── Tabs config ──
+  // Mediciones is inserted between Sesiones and Finanzas — it's
+  // higher-frequency than Finanzas for an active nutritionist /
+  // trainer and reads naturally next to the Sesiones tab where the
+  // visit happens.
   const tabs = [
     { k: "resumen", l: t("expediente.resumen"), Icon: IconUser },
     { k: "sesiones", l: t("expediente.sesiones"), Icon: IconCalendar },
+    ...(showMedicionesTab ? [{ k: "mediciones", l: t("measurements.tabLabel"), Icon: IconTrendingUp }] : []),
     { k: "finanzas", l: t("finances.payments"), Icon: IconDollar },
     { k: "archivo", l: t("expediente.archivo"), Icon: IconClipboard },
   ];
@@ -610,6 +618,10 @@ export function PatientExpediente({
             readOnly={readOnly}
             mutating={mutating}
           />
+        )}
+
+        {tab === "mediciones" && showMedicionesTab && (
+          <MedicionesTab patient={patient} />
         )}
 
         {tab === "finanzas" && (

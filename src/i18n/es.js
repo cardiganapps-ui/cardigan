@@ -947,6 +947,52 @@ export default {
     ],
   },
 
+  // ── Mediciones (nutritionist + trainer) ──
+  measurements: {
+    tabLabel: "Mediciones",
+    sectionTitle: "Mediciones",
+    addCta: "Agregar medición",
+    edit: "Editar medición",
+    empty: "Sin mediciones registradas. Agrega la primera para empezar a ver progreso.",
+    countSummary: "{count} {kind}",
+    kindSingular: "medición",
+    kindPlural: "mediciones",
+    deleteConfirm: "¿Eliminar esta medición?",
+    deleteCta: "Eliminar",
+    sheetTitleNew: "Nueva medición",
+    sheetTitleEdit: "Editar medición",
+    fields: {
+      takenAt: "Fecha",
+      weight: "Peso (kg)",
+      waist: "Cintura (cm)",
+      hip: "Cadera (cm)",
+      bodyFat: "% Grasa",
+      notes: "Notas (opcional)",
+    },
+    delta: {
+      sinceLast: "Δ desde la última",
+      sinceFirst: "Δ desde el inicio",
+      none: "—",
+      kg: "{value} kg",
+      pct: "{value}%",
+      cm: "{value} cm",
+    },
+    weightTrend: "Peso (últimas mediciones)",
+    goalProgress: "Avance hacia el objetivo",
+    goalRemaining: "Faltan {value} kg",
+    goalReached: "¡Objetivo alcanzado!",
+  },
+  patientFields: {
+    height: "Estatura (cm)",
+    goalWeight: "Peso objetivo (kg)",
+    allergies: "Alergias e intolerancias",
+    allergiesPlaceholder: "Lácteos, mariscos, frutos secos…",
+    medicalConditions: "Condiciones médicas",
+    medicalConditionsPlaceholder: "Diabetes, hipertensión, lesiones previas…",
+    sectionTitle: "Salud",
+    none: "No registrado",
+  },
+
   // ── Profession onboarding (shown once after sign-up) ──
   onboarding: {
     title: "¿Cuál es tu profesión?",

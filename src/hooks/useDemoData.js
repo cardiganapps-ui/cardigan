@@ -65,6 +65,8 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     createPayment: noop, deletePayment: noop, updatePayment: noop,
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,
+    measurements: data.measurements || [],
+    createMeasurement: noopNote, updateMeasurement: noop, deleteMeasurement: noop,
     refresh: async () => {},
   };
 }

@@ -4,6 +4,8 @@ import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
+import { usesAnthropometrics } from "../../data/constants";
 
 // ── Date helpers ──
 // Display format used across the Resumen card. Spanish locale renders
@@ -67,6 +69,20 @@ export function ResumenTab({
   onRecordPayment, onGoToSesiones, onGoToArchivo, mutating,
 }) {
   const { t } = useT();
+  const { profession, measurements } = useCardigan();
+  const showHealthBlock = usesAnthropometrics(profession);
+  // Latest weight is sourced from the measurements log so the Resumen
+  // shows the current state without requiring the user to open the
+  // Mediciones tab. Returns null when the patient has no entries yet.
+  const latestWeight = useMemo(() => {
+    if (!showHealthBlock) return null;
+    const mine = (measurements || []).filter(m => m.patient_id === patient.id && m.weight_kg != null);
+    if (!mine.length) return null;
+    // measurements arrive newest-first, but be defensive.
+    let best = mine[0];
+    for (const m of mine) if ((m.taken_at || "") > (best.taken_at || "")) best = m;
+    return best;
+  }, [measurements, patient.id, showHealthBlock]);
 
   const { fTotal, fCompleted, fCancelledTotal } = useMemo(() => {
     let completed = 0, cancelled = 0, charged = 0;
@@ -148,6 +164,59 @@ export function ResumenTab({
           );
         })()}
       </div>
+
+      {/* Salud / Anthropometric block — nutritionist + trainer only.
+          Shows the static patient-level traits (height, goal weight,
+          allergies, medical conditions) plus the most recent measured
+          weight from the measurements log. Hidden completely when the
+          profession doesn't use it. */}
+      {showHealthBlock && (() => {
+        const rows = [];
+        if (latestWeight && latestWeight.weight_kg != null) {
+          rows.push({
+            label: t("measurements.fields.weight"),
+            value: `${Number(latestWeight.weight_kg).toFixed(1).replace(/\.0$/, "")} kg`,
+          });
+        }
+        if (patient.height_cm) {
+          rows.push({ label: t("patientFields.height"), value: `${patient.height_cm} cm` });
+        }
+        if (patient.goal_weight_kg) {
+          rows.push({
+            label: t("patientFields.goalWeight"),
+            value: `${Number(patient.goal_weight_kg).toFixed(1).replace(/\.0$/, "")} kg`,
+          });
+        }
+        if (patient.allergies) {
+          rows.push({ label: t("patientFields.allergies"), value: patient.allergies, multiline: true });
+        }
+        if (patient.medical_conditions) {
+          rows.push({ label: t("patientFields.medicalConditions"), value: patient.medical_conditions, multiline: true });
+        }
+        if (rows.length === 0) return null;
+        return (
+          <>
+            <div style={{ fontSize: "var(--text-eyebrow)", color: "var(--charcoal-xl)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, padding: "0 4px 6px" }}>
+              {t("patientFields.sectionTitle")}
+            </div>
+            <div className="card" style={{ padding: 0, marginBottom: 10 }}>
+              {rows.map((r, i) => (
+                <div key={i} style={{
+                  display: "flex", alignItems: r.multiline ? "flex-start" : "center",
+                  justifyContent: "space-between", padding: "10px 12px",
+                  borderTop: i === 0 ? "none" : "1px solid var(--border-lt)", gap: 12,
+                }}>
+                  <div style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", flexShrink: 0 }}>{r.label}</div>
+                  <div style={{
+                    fontSize: "var(--text-sm)", color: "var(--charcoal)", fontWeight: 600,
+                    textAlign: "right", whiteSpace: r.multiline ? "pre-wrap" : "nowrap",
+                  }}>{r.value}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Tutor reminder card — only for minors with tutor_frequency */}
       {!!patient.parent && !!patient.tutor_frequency && (() => {

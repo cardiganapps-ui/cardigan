@@ -11,7 +11,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION } from "../../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, usesAnthropometrics } from "../../data/constants";
 
 // Weekdays + hours to search through when picking a sensible default
 // for the first recurring slot. Weekday-major, then by hour — the
@@ -82,6 +82,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   // doesn't lock us into saving today's date as birthdate.
   const [birthdate, setBirthdate] = useState(todayISO());
   const birthdateUntouched = birthdate === todayISO();
+  // Anthropometric / health-history fields. Only collected for
+  // nutritionist + trainer; ignored at insert time for everyone else.
+  const showHealthFields = usesAnthropometrics(profession);
+  const [heightCm, setHeightCm] = useState("");
+  const [goalWeightKg, setGoalWeightKg] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [medicalConditions, setMedicalConditions] = useState("");
 
   // Schedule defaults are computed once on mount from the calendar —
   // we don't want them to bounce around if `sessions` updates while
@@ -193,6 +200,13 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         phone: phoneDigits(phone), email: email.trim(),
         whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
         birthdate: (birthdate && !birthdateUntouched) ? birthdate : null,
+        // Health fields. Server-side they're always present as columns;
+        // we just don't surface the form section unless the profession
+        // actually uses them.
+        heightCm: showHealthFields && heightCm ? Number(heightCm) : null,
+        goalWeightKg: showHealthFields && goalWeightKg ? Number(goalWeightKg) : null,
+        allergies: showHealthFields ? allergies.trim() : "",
+        medicalConditions: showHealthFields ? medicalConditions.trim() : "",
         schedules, recurring: true,
         startDate,
         endDate: hasEndDate ? endDate : null,
@@ -402,6 +416,44 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:14, lineHeight:1.5 }}>
                 {t("patients.detailsHint")}
               </div>
+
+              {/* Anthropometric / health-history block — nutritionist
+                  + trainer only. Sits above the tutor-frequency block
+                  because most of these clients are adults; minors are
+                  the exception in fitness/nutrition contexts. */}
+              {showHealthFields && (
+                <>
+                  <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8, marginTop:4 }}>
+                    {t("patientFields.sectionTitle")}
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <div className="input-group">
+                      <label className="input-label">{t("patientFields.height")}</label>
+                      <input className="input" type="number" inputMode="numeric"
+                        value={heightCm} onChange={e => setHeightCm(e.target.value)}
+                        min="50" max="250" step="1" />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("patientFields.goalWeight")}</label>
+                      <input className="input" type="number" inputMode="decimal"
+                        value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)}
+                        min="20" max="300" step="0.1" />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">{t("patientFields.allergies")}</label>
+                    <input className="input" type="text"
+                      value={allergies} onChange={e => setAllergies(e.target.value)}
+                      placeholder={t("patientFields.allergiesPlaceholder")} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">{t("patientFields.medicalConditions")}</label>
+                    <input className="input" type="text"
+                      value={medicalConditions} onChange={e => setMedicalConditions(e.target.value)}
+                      placeholder={t("patientFields.medicalConditionsPlaceholder")} />
+                  </div>
+                </>
+              )}
 
               {/* Tutor frequency — only if minor, so we can surface it
                   without cluttering step 1 with another required-

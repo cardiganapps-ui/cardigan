@@ -72,6 +72,19 @@ export function isClinicalProfession(profession) {
   return CLINICAL_PROFESSIONS.has(profession);
 }
 
+// Professions whose workflow includes tracking client weight, body
+// measurements, and other anthropometric data over time. Gates the
+// "Mediciones" tab in the expediente, the nutrition/fitness fields on
+// the patient form, and the related demo seed.
+export const ANTHROPOMETRIC_PROFESSIONS = new Set([
+  PROFESSION.NUTRITIONIST,
+  PROFESSION.TRAINER,
+]);
+
+export function usesAnthropometrics(profession) {
+  return ANTHROPOMETRIC_PROFESSIONS.has(profession);
+}
+
 // Session modality. Values must match the sessions.modality check
 // constraint in supabase/schema.sql / migrations/020 + 022. Per-profession
 // subsets live in MODALITIES_BY_PROFESSION below — the dropdowns and the
@@ -87,7 +100,7 @@ export const MODALITY = Object.freeze({
 
 export const MODALITIES_BY_PROFESSION = Object.freeze({
   psychologist:  ["presencial", "virtual", "telefonica"],
-  nutritionist:  ["presencial", "virtual"],
+  nutritionist:  ["presencial", "a-domicilio", "virtual"],
   tutor:         ["presencial", "a-domicilio", "virtual"],
   music_teacher: ["presencial", "a-domicilio", "virtual"],
   trainer:       ["presencial", "a-domicilio", "virtual"],
