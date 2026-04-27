@@ -145,6 +145,7 @@ export default {
     verifyResendError: "No pudimos reenviar el correo. Intenta de nuevo en un momento.",
     verifyResendCooldown: "Espera {seconds}s para volver a enviar",
     notConfirmedError: "Debes verificar tu correo antes de iniciar sesión.",
+    captchaPending: "Espera a que se complete la verificación de seguridad.",
   },
 
   // ── Patients ──

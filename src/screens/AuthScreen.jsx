@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
 import { IconX, IconGoogle, IconApple } from "../components/Icons";
 import { PasswordInput } from "../components/PasswordInput";
+import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -98,6 +99,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   const [submitting, setSubmitting] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
   const [message, setMessage] = useState("");
+  // Captcha token (Cloudflare Turnstile). null until the widget
+  // resolves; required for submit when TURNSTILE_ENABLED. Reset to
+  // null after each attempt — Turnstile tokens are single-use, so a
+  // failed attempt needs a fresh challenge before retry.
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRequired = TURNSTILE_ENABLED;
   // When non-null, render the VerifyPendingPanel instead of the form.
   // Set by signUp (fresh signup waiting for verification) or by signIn
   // (tried to log in with an unverified account).
@@ -121,11 +128,22 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
     e.preventDefault();
     setError("");
     setMessage("");
+    if (captchaRequired && !captchaToken) {
+      setError(t("auth.captchaPending"));
+      return;
+    }
     setSubmitting(true);
+    // Capture + clear the token immediately — Turnstile tokens are
+    // single-use, so a failed submit needs a fresh challenge before
+    // retry. The widget reissues a new token automatically.
+    const usedCaptchaToken = captchaToken;
+    setCaptchaToken(null);
 
     if (mode === "reset") {
       if (!email.trim()) { setError(t("auth.enterEmail")); setSubmitting(false); return; }
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim());
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        captchaToken: usedCaptchaToken,
+      });
       setSubmitting(false);
       if (err) { setError(err.message); return; }
       setMessage(t("settings.linkSent"));
@@ -135,14 +153,14 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
     if (mode === "signup") {
       if (!name.trim()) { setError(t("auth.enterName")); setSubmitting(false); return; }
       if (!consentChecked) { setError(t("auth.consentRequired")); setSubmitting(false); return; }
-      const result = await onSignUp({ email, password, name: name.trim() });
+      const result = await onSignUp({ email, password, name: name.trim(), captchaToken: usedCaptchaToken });
       setSubmitting(false);
       if (result.error) { setError(result.error); return; }
       if (result.pendingVerification) { setPendingEmail(result.email || email); return; }
       return;
     }
 
-    const result = await onSignIn({ email, password });
+    const result = await onSignIn({ email, password, captchaToken: usedCaptchaToken });
     setSubmitting(false);
     if (result.pendingVerification) { setPendingEmail(result.email || email); return; }
     if (result.error) { setError(result.error); return; }
@@ -269,7 +287,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
             <button type="button" className="btn btn-ghost" style={{ height: 36, fontSize: 13, color: "var(--teal-dark)" }} onClick={() => switchMode("reset")}>{t("auth.resetPassword")}</button>
           </div>
         )}
-        <button className="btn btn-primary" type="submit" disabled={submitting}>
+        {captchaRequired && (
+          <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
+            <TurnstileWidget onToken={setCaptchaToken} />
+          </div>
+        )}
+        <button className="btn btn-primary" type="submit" disabled={submitting || (captchaRequired && !captchaToken)}>
           {submitting ? t("loading") : mode === "login" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
         </button>
       </form>
