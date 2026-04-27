@@ -46,6 +46,14 @@
           media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/splash/ipad-pro-13-landscape.png"
           media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" />
+    <!-- CSP NOTE: this inline script is whitelisted by SHA-256 in
+         vercel.json's `script-src`. If you edit even a single byte
+         (including whitespace), the browser will block it and you'll
+         see a dark-mode FOUC on first paint. Recompute the hash with:
+           python3 -c "import hashlib,base64; \
+             print('sha256-'+base64.b64encode(hashlib.sha256(open('/dev/stdin','rb').read()).digest()).decode())" \
+             < <inline contents>
+         and update vercel.json's `Content-Security-Policy` header. -->
     <script>
       (function(){try{var p=localStorage.getItem('cardigan-theme')||'system';
       var d=p==='dark'||(p==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
