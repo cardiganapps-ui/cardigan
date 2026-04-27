@@ -20,9 +20,17 @@
    from the param so both `/api/calendar/<tok>` and
    `/api/calendar/<tok>.ics` resolve to the same row. */
 
+import crypto from "node:crypto";
 import { getServiceClient } from "../_admin.js";
 import { withSentry } from "../_sentry.js";
 import { generateICS } from "../_calendar.js";
+
+function hashToken(token) {
+  // SHA-256 hex — matches `encode(digest(token, 'sha256'), 'hex')`
+  // in supabase/migrations/026 and the create-side hash in
+  // api/calendar-token.js. Same input → same hex byte-for-byte.
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -42,11 +50,14 @@ async function handler(req, res) {
   }
 
   const svc = getServiceClient();
+  // Look up by SHA-256 hash — the plaintext token isn't stored in
+  // the DB (migration 026). Hash is unique per row.
+  const tokenHash = hashToken(token);
 
   const { data: row, error } = await svc
     .from("user_calendar_tokens")
     .select("user_id")
-    .eq("token", token)
+    .eq("token_hash", tokenHash)
     .maybeSingle();
 
   if (error) return res.status(500).json({ error: "Lookup failed" });
@@ -89,7 +100,7 @@ async function handler(req, res) {
   svc
     .from("user_calendar_tokens")
     .update({ last_accessed_at: new Date().toISOString() })
-    .eq("token", token)
+    .eq("token_hash", tokenHash)
     .then(() => {}, () => {});
 
   res.setHeader("Content-Type", "text/calendar; charset=utf-8");
