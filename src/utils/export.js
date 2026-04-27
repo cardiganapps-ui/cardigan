@@ -22,7 +22,7 @@ export function exportSessions(sessions, filename = "sesiones.csv") {
     s.duration || 60,
     s.day,
     s.status === "completed" ? "Completada" : s.status === "scheduled" ? "Agendada" : s.status === "charged" ? "Cancelada (cobrada)" : "Cancelada",
-    s.initials?.startsWith("T·") ? "Tutor" : "Paciente",
+    (s.session_type === "tutor" || s.initials?.startsWith("T·")) ? "Tutor" : "Paciente",
   ]);
   exportCSV(filename, headers, rows);
 }

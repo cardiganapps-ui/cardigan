@@ -39,6 +39,11 @@ create table if not exists sessions (
   rate integer default null,
   cancel_reason text default null,
   modality text default 'presencial' check (modality in ('presencial', 'virtual', 'telefonica', 'a-domicilio')),
+  -- 'regular' = appointment with the patient/client/student themselves;
+  -- 'tutor'   = appointment with the parent/legal guardian of a minor.
+  -- Replaces the historical "T·" initials prefix as the source of truth
+  -- (see migration 023). Read paths keep the prefix fallback.
+  session_type text not null default 'regular' check (session_type in ('regular', 'tutor')),
   color_idx integer default 0,
   created_at timestamptz default now()
 );
@@ -145,6 +150,7 @@ create table if not exists user_profiles (
 create index if not exists idx_patients_user_id on patients(user_id);
 create index if not exists idx_sessions_user_id on sessions(user_id);
 create index if not exists idx_sessions_patient_id on sessions(patient_id);
+create index if not exists idx_sessions_session_type on sessions(session_type);
 -- One session per (patient, date, time). DB-level guard against dupes;
 -- client-side dedup alone has proven unreliable (stale state across tabs,
 -- date-only comparisons, regen paths re-inserting cancelled slots).

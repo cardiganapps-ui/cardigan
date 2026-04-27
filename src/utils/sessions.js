@@ -3,12 +3,23 @@
 import { SESSION_STATUS, PATIENT_STATUS } from "../data/constants";
 import { shortDateToISO, todayISO } from "./dates";
 
+/* `session_type === "tutor"` is the source of truth post-migration 023.
+   The startsWith("T·") fallback covers the brief deploy window before
+   the migration runs, plus any legacy rows that somehow lingered with
+   the old prefix. Once we're confident every row in production is
+   migrated, the fallback can be retired. */
 export function isTutorSession(s) {
-  return s.initials?.startsWith("T·");
+  if (!s) return false;
+  if (s.session_type === "tutor") return true;
+  return s.initials?.startsWith("T·") || false;
 }
 
+/* Returns the initials to render in a session avatar. Post-migration
+   023 the `T·` prefix is gone, so this is just `s.initials` for both
+   regular and tutor sessions — but we keep the strip so any legacy
+   row (or unmigrated test fixture) renders cleanly. */
 export function tutorDisplayInitials(s) {
-  return s.initials?.replace("T·", "") || "T";
+  return s.initials?.replace(/^T·/, "") || "T";
 }
 
 export function isCancelledStatus(status) {
