@@ -1,0 +1,189 @@
+/* ── Mediciones tab ──
+   Anthropometric history view inside the expediente. Companion to
+   src/screens/expediente/MedicionesTab.jsx. The visual rhythm mirrors
+   FinanzasTab + SesionesTab — rows live inside a `.card`, the section
+   eyebrow uses the global type scale, and SwipeableRow handles the
+   left-swipe-to-delete idiom uniformly with the rest of the app. */
+
+.mediciones-tab {
+  padding: 16px;
+}
+
+/* Headline card: latest weight, deltas, sparkline, goal. Visible only
+   when there's at least one measurement. */
+.mediciones-headline {
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.mediciones-headline-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.mediciones-headline-weight {
+  font-family: var(--font-d);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--charcoal);
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+}
+
+.mediciones-headline-unit {
+  font-size: var(--text-sm);
+  color: var(--charcoal-xl);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.mediciones-headline-date {
+  font-size: var(--text-xs);
+  color: var(--charcoal-xl);
+  font-weight: 600;
+}
+
+/* Δ since last / Δ since first row. Two columns; on narrow phones
+   they stack via the responsive override below if the labels wrap. */
+.mediciones-deltas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--charcoal-md);
+  margin-bottom: 12px;
+}
+
+.mediciones-delta-label {
+  color: var(--charcoal-xl);
+}
+
+.mediciones-deltas strong {
+  color: var(--charcoal);
+}
+
+/* Sparkline container — the SVG itself sets its viewBox; this just
+   gives it a known box and hides any 1px overflow. */
+.mediciones-sparkline {
+  display: block;
+  width: 100%;
+}
+
+.mediciones-trend-label {
+  font-size: var(--text-eyebrow);
+  color: var(--charcoal-xl);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* Goal-progress pill. Uses --teal-pale + --teal-dark so the
+   per-profession theme override (e.g. nutritionist sage green)
+   propagates automatically. */
+.mediciones-goal {
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: var(--teal-pale);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--teal-dark);
+  font-weight: 600;
+}
+
+/* ── List header ──
+   Sits above the list of measurements. Eyebrow on the left, "Add"
+   button on the right. */
+.mediciones-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.mediciones-section-eyebrow {
+  font-size: var(--text-eyebrow);
+  color: var(--charcoal-xl);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.mediciones-add-cta {
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--text-sm);
+  width: auto;
+  min-height: 0;
+}
+
+/* ── List rows ──
+   Each row sits inside a SwipeableRow wrapper. Tap to edit; left-swipe
+   reveals the delete action slot. */
+.mediciones-list {
+  padding: 0;
+}
+
+.mediciones-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 14px;
+  cursor: pointer;
+  background: var(--white);
+  border-bottom: 1px solid var(--border-lt);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease;
+}
+
+.mediciones-row:last-child {
+  border-bottom: none;
+}
+
+.mediciones-row:active {
+  background: var(--cream);
+}
+
+.mediciones-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.mediciones-row-date {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--charcoal);
+  margin-bottom: 2px;
+}
+
+.mediciones-row-fields {
+  font-size: var(--text-sm);
+  color: var(--charcoal-md);
+  line-height: 1.4;
+}
+
+.mediciones-row-notes {
+  font-size: var(--text-xs);
+  color: var(--charcoal-xl);
+  margin-top: 4px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.mediciones-row .row-chevron {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--charcoal-xl);
+  font-size: 18px;
+  align-self: center;
+}
+
+/* On narrow phones (<360px) the deltas can't fit two columns
+   gracefully — stack them. */
+@media (max-width: 360px) {
+  .mediciones-deltas {
+    grid-template-columns: 1fr;
+  }
+}

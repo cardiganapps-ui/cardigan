@@ -1,0 +1,111 @@
+/* ── ConfirmDialog ──
+   Centered confirmation modal. Replaces the inline-styled "are you
+   sure?" boxes that drifted across the app. Companion to
+   src/components/ConfirmDialog.jsx — see that file for the API.
+
+   Visual contract:
+   - Card scales in from 0.92 → 1 over 0.3s on the canonical curve.
+   - Backdrop scrim uses the unified --scrim-bg + per-layer blur.
+   - Destructive variant: red icon circle + red CTA.
+   - Standard variant: charcoal CTA, no icon.
+   - Mobile: card shrinks to viewport width with 24px gutter; never
+     touches the screen edges. */
+
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  /* Unified scrim — same as sheet/drawer/fab. Blur depth is one notch
+     between drawer (light) and sheet (heavy) so the dialog feels
+     prominent but not heavier than a sheet. */
+  background: var(--scrim-bg);
+  -webkit-backdrop-filter: var(--blur-dialog);
+  backdrop-filter: var(--blur-dialog);
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.22s ease;
+}
+
+.confirm-dialog {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 380px;
+  padding: 22px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: confirmDialogIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes confirmDialogIn {
+  0%   { opacity: 0; transform: scale(0.92); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Icon circle for destructive variant. The icon itself sits inside a
+   pale-red badge so the red CTA below feels like a continuation of
+   the same warning thread, not a fresh alert. */
+.confirm-dialog-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--red-bg);
+  color: var(--red);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin-bottom: 4px;
+}
+
+.confirm-dialog-title {
+  font-family: var(--font-d);
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--charcoal);
+  text-align: center;
+  letter-spacing: -0.2px;
+  line-height: 1.3;
+}
+
+.confirm-dialog-body {
+  font-size: var(--text-sm);
+  color: var(--charcoal-md);
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Optional extra block (e.g. AdminPanel "what will be lost" list).
+   Sits inside a subtle red-bg container to read as a warning detail
+   without competing with the title. */
+.confirm-dialog-extra {
+  margin-top: 4px;
+}
+
+/* Type-to-confirm wrapper — same .input-group rhythm as the rest of
+   the app's forms, with a slight margin so it sits between the body
+   and the action row. */
+.confirm-dialog-type-to-confirm {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.confirm-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Compact-button override inside the dialog — primary/secondary keep
+   their canonical heights elsewhere, but a 48px btn looks heavy in a
+   confined dialog. 40px reads as resolved and tappable on mobile. */
+.confirm-dialog-actions .btn {
+  height: 40px;
+  font-size: var(--text-sm);
+}

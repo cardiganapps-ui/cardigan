@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IconEdit, IconTag, IconTrash } from "./Icons";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { getFileIcon, formatFileSize } from "../utils/files";
 import { useT } from "../i18n/index";
 
@@ -53,7 +54,6 @@ export function DocumentList({
         const p = showPatientName ? (patients || []).find(pt => pt.id === doc.patient_id) : null;
         const linkedSession = doc.session_id ? (sessions || []).find(s => s.id === doc.session_id) : null;
         const isRenaming = renamingDoc === doc.id;
-        const isConfirmingDelete = confirmDeleteDoc === doc.id;
         const isTagging = taggingDoc === doc.id;
         const docSessions = isTagging
           ? (sessions || []).filter(s => s.patient_id === doc.patient_id).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
@@ -82,7 +82,7 @@ export function DocumentList({
                     <input className="input" value={renameValue} onChange={e => setRenameValue(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") { setRenamingDoc(null); setRenameValue(""); } }}
                       autoFocus style={{ fontSize:12, padding:"4px 6px", flex:1 }} />
-                    <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:"var(--text-xs)", fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"#FFFFFF", cursor:"pointer" }}>{t("ok")}</button>
+                    <button onClick={handleRename} style={{ padding:"4px 8px", fontSize:"var(--text-xs)", fontWeight:600, borderRadius:"var(--radius)", border:"none", background:"var(--teal)", color:"var(--white)", cursor:"pointer" }}>{t("ok")}</button>
                   </div>
                 ) : (
                   <>
@@ -109,19 +109,10 @@ export function DocumentList({
                     style={{ padding:10, background:"none", border:"none", cursor:"pointer", color: doc.session_id ? "var(--teal-dark)" : "var(--charcoal-xl)", display:"flex", alignItems:"center", justifyContent:"center" }} title={t("docs.linkSession")} aria-label={t("docs.linkSession")}>
                     <IconTag size={14} />
                   </button>
-                  {isConfirmingDelete ? (
-                    <div style={{ display:"flex", gap:4 }}>
-                      <button onClick={() => handleDelete(doc.id)}
-                        style={{ padding:"8px 12px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"none", background:"var(--red)", color:"var(--white)", cursor:"pointer" }}>{t("yes")}</button>
-                      <button onClick={() => setConfirmDeleteDoc(null)}
-                        style={{ padding:"8px 12px", fontSize:"var(--text-eyebrow)", fontWeight:700, borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>{t("no")}</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setConfirmDeleteDoc(doc.id)}
-                      style={{ padding:10, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)", display:"flex", alignItems:"center", justifyContent:"center" }} title={t("delete")} aria-label={t("delete")}>
-                      <IconTrash size={14} />
-                    </button>
-                  )}
+                  <button onClick={() => setConfirmDeleteDoc(doc.id)}
+                    style={{ padding:10, background:"none", border:"none", cursor:"pointer", color:"var(--charcoal-xl)", display:"flex", alignItems:"center", justifyContent:"center" }} title={t("delete")} aria-label={t("delete")}>
+                    <IconTrash size={14} />
+                  </button>
                 </div>
               )}
             </div>
@@ -140,6 +131,18 @@ export function DocumentList({
           </div>
         );
       })}
+      <ConfirmDialog
+        open={!!confirmDeleteDoc}
+        title={t("docs.deleteConfirmTitle") || t("delete")}
+        body={(() => {
+          const d = documents.find(x => x.id === confirmDeleteDoc);
+          return d ? (t("docs.deleteConfirmBody", { name: d.name }) || d.name) : "";
+        })()}
+        confirmLabel={t("delete")}
+        destructive
+        onConfirm={() => handleDelete(confirmDeleteDoc)}
+        onCancel={() => setConfirmDeleteDoc(null)}
+      />
     </div>
   );
 }

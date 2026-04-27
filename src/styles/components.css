@@ -75,6 +75,10 @@
 
 /* ── Push notifications UI ── */
 @keyframes togglePendingSpin { to { transform: rotate(360deg); } }
+/* bellRing — physical-bell oscillation. Skips the canonical curve
+   because the easing IS the wave (alternating positive/negative
+   keyframes), not a velocity-shaped tween. Don't replace with the
+   brand's overshoot curve — the wave gets eaten by the easing. */
 @keyframes bellRing {
   0%   { transform: rotate(0deg); }
   15%  { transform: rotate(-12deg); }
@@ -115,7 +119,7 @@
   margin: 10px 14px 0;
   background: var(--amber-bg);
   border: 1px solid rgba(224, 138, 30, 0.28);
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 
 /* ── BOTTOM TAB BAR (mobile) ──
@@ -207,8 +211,10 @@
 
 .fab-overlay {
   position: fixed; inset: 0;
-  background: rgba(20,35,40,0.45);
-  z-index: var(--z-fab-overlay); backdrop-filter: blur(3px);
+  background: var(--scrim-bg);
+  z-index: var(--z-fab-overlay);
+  -webkit-backdrop-filter: var(--blur-fab);
+  backdrop-filter: var(--blur-fab);
   animation: fadeIn 0.4s ease;
 }
 
@@ -553,8 +559,29 @@ button.kpi-card:active {
   opacity: 0.55;
   cursor: not-allowed;
   filter: saturate(0.6);
+  /* Kill hover lift + focus ring on disabled buttons so a keyboard
+     user tabbing through a form doesn't see a focus glow on a button
+     they can't activate. */
+  box-shadow: none !important;
+  pointer-events: none;
 }
 .btn[disabled]:active, .btn:disabled:active { transform: none; }
+.btn[disabled]:focus-visible, .btn:disabled:focus-visible {
+  outline: none;
+}
+
+/* ── .btn-tap utility ──
+   For inline-styled buttons that don't pick up the .btn family but
+   still need tactile press feedback. Apply to any decorative / icon
+   button (Drawer items, DocumentList action icons, etc.) so taps
+   register visually on touch devices. */
+.btn-tap {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-tap:active:not(:disabled) {
+  transform: scale(0.94);
+}
 /* APP BANNERS — demo / read-only strips pinned below the status bar. */
 .app-banner {
   padding: 8px 16px; display: flex; align-items: center; justify-content: space-between;
@@ -576,6 +603,77 @@ button.kpi-card:active {
 }
 .app-banner-action--readonly {
   background: none; color: #7AB5C7; padding: 2px 8px;
+}
+
+/* ── Demo profession picker ──
+   Pill-shaped chip in the demo banner that wraps a native <select>.
+   We keep the native control for accessibility + mobile keyboards but
+   absolutely-position it on top of a styled label so the visible chip
+   is fully ours. The <select> stays clickable thanks to opacity:0 +
+   pointer-events:auto. */
+.app-banner-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 4px 10px 4px 12px;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--radius-pill);
+  font-family: var(--font);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--white);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.app-banner-picker:hover { background: rgba(255,255,255,0.28); }
+.app-banner-picker:focus-within {
+  background: rgba(255,255,255,0.32);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.45);
+}
+
+.app-banner-picker-value {
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Chevron rendered as a CSS-mask SVG so it inherits currentColor and
+   reads as a thin downward arrow on the right edge of the chip. */
+.app-banner-picker::after {
+  content: "";
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'><path d='M1 2 L4 6 L7 2' stroke='%23000' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat center / contain;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'><path d='M1 2 L4 6 L7 2' stroke='%23000' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat center / contain;
+  margin-left: 2px;
+  opacity: 0.85;
+}
+
+/* The native select — invisible but covers the entire chip so taps
+   land on it and the OS picker opens. Outline is suppressed because
+   the chip itself shows the focus state via :focus-within. */
+.app-banner-picker-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px; /* iOS won't zoom on focus when font-size >= 16px */
+  border: none;
+  background: transparent;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.app-banner-picker-select option {
+  color: var(--charcoal);
+  background: var(--white);
 }
 
 /* ── Install prompt (iOS Safari only) ── */

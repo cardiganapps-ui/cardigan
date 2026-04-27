@@ -415,7 +415,7 @@ export function Settings({ user, signOut, refreshUser }) {
               <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
                 <div style={{
                   flexShrink:0, width:36, height:36, borderRadius:"50%",
-                  background:"var(--amber)", color:"#FFFFFF",
+                  background:"var(--amber)", color:"var(--white)",
                   display:"flex", alignItems:"center", justifyContent:"center",
                 }}>
                   <IconBell size={18} />
@@ -453,7 +453,7 @@ export function Settings({ user, signOut, refreshUser }) {
                   }}>
                     <span style={{
                       flexShrink:0, width:20, height:20, borderRadius:"50%",
-                      background:"var(--amber)", color:"#FFFFFF",
+                      background:"var(--amber)", color:"var(--white)",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       fontSize:11, fontWeight:800,
                     }}>{i + 1}</span>
@@ -473,7 +473,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 <div className="push-inline-banner">
                   <div style={{
                     flexShrink:0, width:22, height:22, borderRadius:"50%",
-                    background:"var(--amber)", color:"#FFFFFF",
+                    background:"var(--amber)", color:"var(--white)",
                     display:"flex", alignItems:"center", justifyContent:"center",
                     marginTop:2,
                   }}>
@@ -496,7 +496,7 @@ export function Settings({ user, signOut, refreshUser }) {
                       style={{
                         marginTop:8, height:28, padding:"0 12px",
                         fontSize:12, fontWeight:700,
-                        background:"var(--amber)", color:"#FFFFFF",
+                        background:"var(--amber)", color:"var(--white)",
                         border:"none", borderRadius:6, cursor: togglePending ? "default" : "pointer",
                         opacity: togglePending ? 0.7 : 1,
                       }}
@@ -927,7 +927,7 @@ export function Settings({ user, signOut, refreshUser }) {
                   className="btn btn-primary"
                   onClick={submitEncryptionDisable}
                   disabled={encBusy || encConfirmDisable !== "DESCIFRAR"}
-                  style={{ background: "var(--red)", color: "#fff" }}
+                  style={{ background: "var(--red)", color: "var(--white)" }}
                 >
                   {encBusy ? t("loading") : t("settings.encDisableCta")}
                 </button>
@@ -978,7 +978,7 @@ export function Settings({ user, signOut, refreshUser }) {
                   className="btn btn-primary"
                   onClick={confirmDeleteAccount}
                   disabled={deleting || deleteConfirm !== "ELIMINAR"}
-                  style={{ background: "var(--red)", color: "#fff" }}
+                  style={{ background: "var(--red)", color: "var(--white)" }}
                 >
                   {deleting ? t("loading") : t("settings.privacyDeleteCta")}
                 </button>

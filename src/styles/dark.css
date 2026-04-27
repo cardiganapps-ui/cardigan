@@ -130,6 +130,31 @@ html[data-theme="dark"] input:-webkit-autofill,
 html[data-theme="dark"] input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px #2A2A2A inset;
   -webkit-text-fill-color: #EAEAEA;
+  /* Without these, Chrome's autofill state paints the original light
+     border on top of our dark surface — looks like a stray pale ring
+     around the field. Forcing the border + caret to follow the dark
+     palette keeps autofilled inputs visually integrated. */
+  border-color: var(--border) !important;
+  caret-color: var(--charcoal);
+}
+
+/* ── Modality + scrim tokens for dark mode ──
+   Light-mode hexes were tuned for cream/white surfaces; on a
+   near-black background the same saturation reads harsh. Slight
+   lightness lift preserves identity (presencial-blue, virtual-blue,
+   telefonica-green, a-domicilio-purple) without bleeding contrast. */
+html[data-theme="dark"] {
+  --modality-presencial:  #62B5C9;
+  --modality-virtual:     #6E89DA;
+  --modality-telefonica:  #6CC79A;
+  --modality-a-domicilio: #C77AE0;
+  /* Scrim stays heavier on dark surfaces because the underlying
+     content is already low-contrast — a light scrim wouldn't produce
+     a clear "behind" / "in front" hierarchy. */
+  --scrim-bg: rgba(0, 0, 0, 0.55);
+  --doc-viewer-image-bg: #0E0E0E;
+  /* Translucent whites keep the same alphas — they're computed against
+     whatever surface they overlay, so re-tuning isn't needed. */
 }
 
 /* ── Landing page dark overrides ──

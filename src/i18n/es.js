@@ -531,6 +531,8 @@ export default {
     noResults: "Sin resultados para este filtro",
     patientDocsEmpty: "Los documentos del paciente aparecer\u00e1n aqu\u00ed",
     rename: "Renombrar",
+    deleteConfirmTitle: "¿Eliminar este documento?",
+    deleteConfirmBody: "“{name}” se eliminará permanentemente.",
     linkSession: "Vincular a sesi\u00f3n",
     unlink: "Sin vincular",
     linkSessionLabel: "Vincular a sesi\u00f3n:",

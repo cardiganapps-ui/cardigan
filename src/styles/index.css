@@ -1,5 +1,8 @@
 @import './base.css';
 @import './components.css';
+@import './confirm-dialog.css';
+@import './mediciones-tab.css';
+@import './profession-onboarding.css';
 @import './notes-editor.css';
 @import './avatar-picker.css';
 @import './screens.css';

@@ -673,43 +673,37 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {demo && (
           <div className="app-banner app-banner--demo">
             <span className="app-banner-text">{t("demo.banner")}</span>
-            {/* Profession picker — only psychologist + nutritionist have
-                their own demo seeds today. Tutor / music / trainer fall
-                back to psychologist's data, so we hide them until they
-                ship in Phase 3+. */}
-            <select
-              value={demoProfession}
-              onChange={(e) => setDemoProfession(e.target.value)}
-              aria-label={t("onboarding.title")}
-              style={{
-                marginLeft: "auto",
-                marginRight: 8,
-                background: "rgba(255,255,255,0.18)",
-                color: "var(--white)",
-                border: "1px solid rgba(255,255,255,0.4)",
-                borderRadius: "var(--radius-pill)",
-                padding: "3px 8px",
-                fontSize: "var(--text-xs)",
-                fontFamily: "var(--font)",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}>
-              <option value="psychologist" style={{ color: "var(--charcoal)" }}>
-                {t("onboarding.professions.psychologist.label")}
-              </option>
-              <option value="nutritionist" style={{ color: "var(--charcoal)" }}>
-                {t("onboarding.professions.nutritionist.label")}
-              </option>
-              <option value="tutor" style={{ color: "var(--charcoal)" }}>
-                {t("onboarding.professions.tutor.label")}
-              </option>
-              <option value="music_teacher" style={{ color: "var(--charcoal)" }}>
-                {t("onboarding.professions.music_teacher.label")}
-              </option>
-              <option value="trainer" style={{ color: "var(--charcoal)" }}>
-                {t("onboarding.professions.trainer.label")}
-              </option>
-            </select>
+            {/* Profession picker — styled pill that wraps a native
+                <select> so it inherits accessibility + mobile keyboard
+                handling for free, but reads as a Cardigan chip rather
+                than an OS dropdown. The chevron is rendered via CSS
+                `background-image` on the pill so it stays in-frame on
+                iOS where -webkit-appearance:none is partial. */}
+            <label className="app-banner-picker" aria-label={t("onboarding.title")}>
+              <span className="app-banner-picker-value">
+                {t(`onboarding.professions.${demoProfession}.label`)}
+              </span>
+              <select
+                className="app-banner-picker-select"
+                value={demoProfession}
+                onChange={(e) => setDemoProfession(e.target.value)}>
+                <option value="psychologist">
+                  {t("onboarding.professions.psychologist.label")}
+                </option>
+                <option value="nutritionist">
+                  {t("onboarding.professions.nutritionist.label")}
+                </option>
+                <option value="tutor">
+                  {t("onboarding.professions.tutor.label")}
+                </option>
+                <option value="music_teacher">
+                  {t("onboarding.professions.music_teacher.label")}
+                </option>
+                <option value="trainer">
+                  {t("onboarding.professions.trainer.label")}
+                </option>
+              </select>
+            </label>
             <button onClick={signOut} className="app-banner-action">
               {t("demo.createAccount")}
             </button>

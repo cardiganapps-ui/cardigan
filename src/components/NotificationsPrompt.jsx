@@ -97,7 +97,7 @@ export function NotificationsPrompt() {
         width: 36, height: 36,
         borderRadius: "50%",
         background: "var(--teal)",
-        color: "#FFFFFF",
+        color: "var(--white)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         <IconBell size={18} />
@@ -128,7 +128,7 @@ export function NotificationsPrompt() {
                 style={{
                   width: 12, height: 12, borderRadius: "50%",
                   border: "2px solid rgba(255,255,255,0.45)",
-                  borderTopColor: "#FFFFFF",
+                  borderTopColor: "var(--white)",
                   animation: "togglePendingSpin 0.7s linear infinite",
                   boxSizing: "border-box",
                 }}
