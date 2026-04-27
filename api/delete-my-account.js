@@ -1,17 +1,21 @@
 /* ── POST /api/delete-my-account ──
    LFPDPPP ARCO "Cancelación". Irreversible full-account delete
-   triggered by the user themselves — not admin. Requires a typed
-   confirmation ("ELIMINAR") in the body to guard against accidental
-   clicks from muscle memory. Cascades through R2 documents, every app
-   table, and finally auth.users via the shared deleteUserCascade
-   helper that admin-delete-user.js also uses.
+   triggered by the user themselves — not admin. Requires:
+     - Typed confirmation ("ELIMINAR") to guard against muscle-memory
+       clicks.
+     - Step-up password verification so a stolen session token can't
+       single-handedly destroy the account.
+   Cascades through R2 documents, every app table, and finally
+   auth.users via the shared deleteUserCascade helper that
+   admin-delete-user.js also uses.
 
-   Body: { confirmation: "ELIMINAR" }
-   Auth: standard JWT (user is deleting their own account). */
+   Body: { confirmation: "ELIMINAR", password: "..." }
+   Auth: standard JWT + password re-prove. */
 
 import { r2, BUCKET, getAuthUser } from "./_r2.js";
 import { getServiceClient, deleteUserCascade } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { verifyPasswordReauth } from "./_reauth.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -19,9 +23,17 @@ async function handler(req, res) {
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  const { confirmation } = req.body || {};
+  const { confirmation, password } = req.body || {};
   if (confirmation !== "ELIMINAR") {
     return res.status(400).json({ error: "Invalid confirmation", code: "bad_confirmation" });
+  }
+
+  const reauth = await verifyPasswordReauth({ user, password });
+  if (!reauth.ok) {
+    return res.status(401).json({
+      error: "Re-authentication required",
+      code: reauth.code,
+    });
   }
 
   const svc = getServiceClient();

@@ -1,8 +1,12 @@
-/* ── GET /api/export-user-data ──
+/* ── POST /api/export-user-data ──
    LFPDPPP "Acceso" — returns a JSON snapshot of everything the
    authenticated user has in Cardigan. Meant for the Settings →
    "Descargar mis datos" button; the client writes the response body
    to a file locally.
+
+   Step-up auth: caller must include `password` in the request body.
+   The session JWT alone isn't enough — a stolen token shouldn't be
+   able to one-shot the entire data export.
 
    Rate-limited to one successful export per user per hour via the
    export_audit table (migration 014). The export is cheap to generate
@@ -10,21 +14,36 @@
    by a stolen token in a tight loop.
 
    Document blobs are NOT included — only their metadata with a 1-hour
-   presigned URL per file. */
+   presigned URL per file.
+
+   Notice email: every successful export also fires a transactional
+   email to the user via Resend, so an attacker can't quietly exfil
+   without the legitimate owner finding out within minutes. */
 
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2, BUCKET, getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { verifyPasswordReauth } from "./_reauth.js";
+import { sendTransactionalEmail } from "./_email.js";
 
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 
 async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const { password } = req.body || {};
+  const reauth = await verifyPasswordReauth({ user, password });
+  if (!reauth.ok) {
+    return res.status(401).json({
+      error: "Re-authentication required",
+      code: reauth.code,
+    });
+  }
 
   const svc = getServiceClient();
 
@@ -81,11 +100,27 @@ async function handler(req, res) {
   };
   const body = JSON.stringify(payload, null, 2);
 
-  // Audit row — best-effort; the user still gets their data if this fails.
+  // Audit row + notice email — both best-effort. The user still gets
+  // their data if either fails; the audit row is the durable record.
   await svc
     .from("export_audit")
     .insert({ user_id: user.id, bytes: body.length })
     .then(() => {}, () => {});
+
+  if (user.email) {
+    sendTransactionalEmail({
+      to: user.email,
+      subject: "Descargaste una copia de tus datos en Cardigan",
+      html: `
+        <p>Hola,</p>
+        <p>Acabas de descargar una copia de tus datos desde Cardigan.</p>
+        <p>Si fuiste tú, no necesitas hacer nada más. Si no reconoces esta actividad,
+        cambia tu contraseña inmediatamente desde Ajustes y contáctanos en
+        <a href="mailto:privacy@cardigan.mx">privacy@cardigan.mx</a>.</p>
+        <p>— Cardigan</p>
+      `,
+    }).catch(() => {});
+  }
 
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader("Content-Type", "application/json; charset=utf-8");

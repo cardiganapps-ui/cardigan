@@ -633,6 +633,8 @@ export default {
     privacyExportSub: "Un archivo JSON con todo tu contenido",
     privacyExportDone: "Descarga lista",
     privacyExportError: "No se pudo descargar. Intenta más tarde.",
+    privacyExportExplain: "Por seguridad, confirma tu contraseña antes de descargar. Te enviaremos también un correo cuando se complete.",
+    privacyExportCta: "Descargar mis datos",
     privacyDelete: "Eliminar mi cuenta",
     privacyDeleteSub: "Borra permanentemente todos tus datos",
     privacyDeleteExplain: "Al confirmar, eliminaremos tu cuenta y todos los datos asociados: pacientes, sesiones, pagos, notas y documentos. Esta acción es irreversible.",
@@ -640,6 +642,12 @@ export default {
     privacyDeleteConfirmLabel: "Escribe ELIMINAR para confirmar",
     privacyDeleteCta: "Eliminar cuenta",
     privacyDeleteError: "No se pudo eliminar la cuenta. Intenta más tarde.",
+    privacyReauthLabel: "Confirma tu contraseña",
+    privacyReauthPlaceholder: "Tu contraseña actual",
+    privacyReauthRequired: "Ingresa tu contraseña para continuar.",
+    privacyReauthWrong: "Contraseña incorrecta.",
+    privacyReauthOauthOnly: "Tu cuenta usa Google o Apple para iniciar sesión. Establece una contraseña primero desde Restablecer contraseña.",
+    privacyReauthError: "No se pudo verificar tu contraseña. Intenta de nuevo.",
   },
 
   // ── Notifications ──
