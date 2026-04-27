@@ -32,7 +32,7 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, notifications, showToast, readOnly, noteCrypto, profession } = useCardigan();
+  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession } = useCardigan();
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
 
@@ -382,6 +382,16 @@ export function Settings({ user, signOut, refreshUser }) {
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.appearance")}</div>
             <div className="settings-row-sub">{theme?.preference === "light" ? t("settings.themeLight") : theme?.preference === "dark" ? t("settings.themeDark") : t("settings.themeSystem")}</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("accent")}>
+          <div className="settings-row-icon" aria-hidden="true">
+            <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:"var(--teal)", border:"1px solid var(--border-lt)" }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.accentColor")}</div>
+            <div className="settings-row-sub">{t(`settings.accent.${accentTheme?.accent || "default"}`)}</div>
           </div>
           <IconChevron />
         </div>
@@ -798,6 +808,42 @@ export function Settings({ user, signOut, refreshUser }) {
                     <div className="settings-row-title">{opt.label}</div>
                   </div>
                   {theme?.preference === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ACCENT COLOR SHEET ──
+         Per-user preference, persisted in localStorage. The swatch
+         next to each option is a literal preview of that accent so
+         the user sees what they'll get before tapping. */}
+      {activeSheet === "accent" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.accentColor")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {[
+                { key: "default",  swatch: "#1F7A8C" },
+                { key: "sage",     swatch: "#6FAA82" },
+                { key: "amber",    swatch: "#C99A4A" },
+                { key: "burgundy", swatch: "#A86B7E" },
+                { key: "steel",    swatch: "#5A7388" },
+              ].map(opt => (
+                <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
+                  onClick={() => { accentTheme?.setAccent(opt.key); setActiveSheet(null); }}>
+                  <div className="settings-row-icon" aria-hidden="true">
+                    <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:opt.swatch, border:"1px solid var(--border-lt)" }} />
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div className="settings-row-title">{t(`settings.accent.${opt.key}`)}</div>
+                  </div>
+                  {accentTheme?.accent === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
                 </div>
               ))}
             </div>

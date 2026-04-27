@@ -1,26 +1,23 @@
-/* ── Per-profession theme overrides ──
-   Cardigan defaults to the psychologist palette (teal family, defined
-   in base.css with dark-mode overrides in dark.css). For other
-   professions we override the same `--teal*` and `--accent*` tokens
-   via attribute selectors so consumers don't need to be profession-
-   aware — they keep referencing `var(--teal)` and the swatch swaps
-   automatically.
+/* ── Per-user accent overrides ──
+   Cardigan defaults to the teal palette (defined in base.css with
+   dark-mode overrides in dark.css). Users can opt into one of four
+   alternate accents from Settings → Apariencia; the choice is stored
+   in localStorage and applied via a `data-accent` attribute on <html>.
 
-   IMPORTANT: each profession has BOTH a light and a dark variant.
-   Earlier the override lived in JS (document.documentElement.style.
+   IMPORTANT: each accent has BOTH a light and a dark variant. Earlier
+   the override lived in JS (document.documentElement.style.
    setProperty) which set inline styles on <html>; inline styles beat
-   stylesheet rules, including dark.css. The result was that every
-   user with a non-default profession (or any user where the JS had
-   ever run) saw the LIGHT-mode teal palette in dark mode — most
-   visible as a bright cream `.week-event:hover` tile. Moving the
-   override to CSS attribute selectors lets dark mode and profession
-   theming compose correctly via the cascade.
+   stylesheet rules, including dark.css. Result: dark mode for
+   non-default accents was permanently broken (most visible as a
+   bright cream `.week-event:hover` tile that took the light-mode
+   --teal-pale value). The override stays in CSS attribute selectors
+   so dark mode and accent theming compose correctly via the cascade.
 
-   Psychologist isn't listed — it's the default and inherits from
+   "default" isn't listed — it's the default and inherits from
    base.css / dark.css directly. */
 
-/* ── Nutritionist: sage green ── */
-html[data-profession="nutritionist"] {
+/* ── Sage green ── */
+html[data-accent="sage"] {
   --teal:        #6FAA82;
   --teal-dark:   #588F6B;
   --teal-light:  #88BB99;
@@ -30,7 +27,7 @@ html[data-profession="nutritionist"] {
   --accent-dark: #588F6B;
   --accent-pale: #ECF4ED;
 }
-html[data-profession="nutritionist"][data-theme="dark"] {
+html[data-accent="sage"][data-theme="dark"] {
   --teal:        #6FAA82;
   --teal-dark:   #88BB99;            /* lifted for contrast on dark */
   --teal-light:  #A0C9AE;
@@ -41,8 +38,8 @@ html[data-profession="nutritionist"][data-theme="dark"] {
   --accent-pale: rgba(111,170,130,0.15);
 }
 
-/* ── Tutor: warm amber/gold ── */
-html[data-profession="tutor"] {
+/* ── Warm amber ── */
+html[data-accent="amber"] {
   --teal:        #C99A4A;
   --teal-dark:   #A57E37;
   --teal-light:  #D8B26A;
@@ -52,7 +49,7 @@ html[data-profession="tutor"] {
   --accent-dark: #A57E37;
   --accent-pale: #F6EFE0;
 }
-html[data-profession="tutor"][data-theme="dark"] {
+html[data-accent="amber"][data-theme="dark"] {
   --teal:        #C99A4A;
   --teal-dark:   #D8B26A;
   --teal-light:  #E1C386;
@@ -63,8 +60,8 @@ html[data-profession="tutor"][data-theme="dark"] {
   --accent-pale: rgba(201,154,74,0.15);
 }
 
-/* ── Music teacher: dusty burgundy ── */
-html[data-profession="music_teacher"] {
+/* ── Dusty burgundy ── */
+html[data-accent="burgundy"] {
   --teal:        #A86B7E;
   --teal-dark:   #8C5466;
   --teal-light:  #BD8595;
@@ -74,7 +71,7 @@ html[data-profession="music_teacher"] {
   --accent-dark: #8C5466;
   --accent-pale: #F4E8EC;
 }
-html[data-profession="music_teacher"][data-theme="dark"] {
+html[data-accent="burgundy"][data-theme="dark"] {
   --teal:        #A86B7E;
   --teal-dark:   #BD8595;
   --teal-light:  #CC9CAA;
@@ -85,8 +82,8 @@ html[data-profession="music_teacher"][data-theme="dark"] {
   --accent-pale: rgba(168,107,126,0.15);
 }
 
-/* ── Trainer: steel slate ── */
-html[data-profession="trainer"] {
+/* ── Steel slate ── */
+html[data-accent="steel"] {
   --teal:        #5A7388;
   --teal-dark:   #456073;
   --teal-light:  #7A8FA3;
@@ -96,7 +93,7 @@ html[data-profession="trainer"] {
   --accent-dark: #456073;
   --accent-pale: #E8EEF2;
 }
-html[data-profession="trainer"][data-theme="dark"] {
+html[data-accent="steel"][data-theme="dark"] {
   --teal:        #5A7388;
   --teal-dark:   #7A8FA3;
   --teal-light:  #93A6B7;
