@@ -84,8 +84,31 @@ export function useAuth() {
     return { data };
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
+  /* Sign out and wipe SW caches.
+
+     scope: "local"  (default) — invalidates only this device's session.
+     scope: "global"            — revokes EVERY refresh token tied to this
+                                   user, kicking them out of every browser
+                                   they're signed in on. Use from Settings'
+                                   "Cerrar sesión en todos los dispositivos"
+                                   for the lost-device recovery flow.
+
+     Cache wipe: SW responses to /api/* are intentionally not cached, but
+     the precache holds app shell + assets that may have been customised
+     for the prior user (e.g. avatar URLs baked into rendered HTML on a
+     stale tab). Easiest, safest path: delete every Cache Storage bucket
+     on sign-out. The next page load repopulates from the network. */
+  async function signOut(scope = "local") {
+    try { await supabase.auth.signOut({ scope }); }
+    finally { await wipeBrowserCaches(); }
+  }
+
+  async function wipeBrowserCaches() {
+    if (typeof caches === "undefined") return;
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch { /* private mode / Lockdown — no-op */ }
   }
 
   // OAuth providers (Google, Apple) use a full-page redirect to the provider

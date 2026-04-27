@@ -681,6 +681,10 @@ export default {
     privacyReauthWrong: "Contraseña incorrecta.",
     privacyReauthOauthOnly: "Tu cuenta usa Google o Apple para iniciar sesión. Establece una contraseña primero desde Restablecer contraseña.",
     privacyReauthError: "No se pudo verificar tu contraseña. Intenta de nuevo.",
+    signOutEverywhere: "Cerrar sesión en todos los dispositivos",
+    signOutEverywhereSub: "Útil si perdiste un dispositivo",
+    signOutEverywhereExplain: "Esto cerrará tu sesión aquí y revocará el acceso en todos los demás dispositivos donde hayas iniciado sesión. Tendrás que volver a entrar en cada uno.",
+    signOutEverywhereCta: "Cerrar sesión en todos lados",
   },
 
   // ── Notifications ──

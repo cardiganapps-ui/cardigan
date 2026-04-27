@@ -783,6 +783,16 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
+        {!readOnly && (
+          <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => setActiveSheet("signOutEverywhere")}>
+            <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
+              <div className="settings-row-sub">{t("settings.signOutEverywhereSub")}</div>
+            </div>
+            <IconChevron />
+          </div>
+        )}
       </div>
 
       {/* Account deletion lives in its own bottom-of-page section so it
@@ -1252,6 +1262,40 @@ export function Settings({ user, signOut, refreshUser }) {
                   {mfaBusy ? t("loading") : t("settings.mfaUnenroll")}
                 </button>
                 <button type="button" className="btn btn-ghost" disabled={mfaBusy} onClick={() => setActiveSheet(null)}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SIGN OUT EVERYWHERE SHEET ──
+         Calls signOut("global") which revokes every refresh token tied
+         to this user — kicks them out of every device. Lost-phone
+         recovery action. */}
+      {activeSheet === "signOutEverywhere" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.signOutEverywhere")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 16 }}>
+                {t("settings.signOutEverywhereExplain")}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ background:"var(--red)", color:"var(--white)" }}
+                  onClick={async () => { await signOut("global"); }}
+                >
+                  {t("settings.signOutEverywhereCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)}>
                   {t("cancel")}
                 </button>
               </div>
