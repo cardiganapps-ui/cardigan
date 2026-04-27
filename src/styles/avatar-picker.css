@@ -111,8 +111,8 @@
      reduced width doesn't leave the grid flush-left. */
   grid-template-columns: repeat(3, minmax(0, 76px));
   justify-content: center;
-  gap: 14px;
-  max-height: 260px;
+  gap: 22px 28px;
+  max-height: 280px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   /* Padding must accommodate .av-picker-tile.is-selected::after which
@@ -121,7 +121,7 @@
   padding: 8px 10px 10px;
 }
 @media (min-width: 560px) {
-  .av-picker-grid { grid-template-columns: repeat(6, minmax(0, 80px)); max-height: 200px; }
+  .av-picker-grid { grid-template-columns: repeat(6, minmax(0, 80px)); max-height: 220px; gap: 22px 28px; }
 }
 
 .av-picker-tile {
