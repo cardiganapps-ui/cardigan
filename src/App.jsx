@@ -50,6 +50,7 @@ import { useAccentTheme } from "./hooks/useAccentTheme";
 import { DEFAULT_PROFESSION } from "./data/constants";
 import { setSentryProfession } from "./lib/sentry";
 import ConsentBanner from "./components/ConsentBanner";
+import MfaChallengeGate from "./components/MfaChallengeGate";
 import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
@@ -64,7 +65,17 @@ function CardiganApp() {
   // demo banner's "Crear cuenta" button so the user doesn't bounce through
   // the landing page.
   const [authIntent, setAuthIntent] = useState(null);
+  // MFA gate state — `mfaResolved` flips true once MfaChallengeGate
+  // determines no challenge is needed OR a challenge succeeds. Reset
+  // whenever the user changes (sign-out / sign-in) so we re-check.
+  const [mfaResolved, setMfaResolved] = useState(false);
   const theme = useTheme();
+  // Reset the gate when the user identity changes (sign-out → sign-in,
+  // or a different account). Synchronous setState in this effect is
+  // intentional — we MUST gate the next render before any of AppShell's
+  // data fetches kick off. Same pattern as useUserProfile's userId reset.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setMfaResolved(false); }, [user?.id]);
 
   if (authLoading && !demoMode) {
     return (
@@ -81,6 +92,12 @@ function CardiganApp() {
 
   if (!user) {
     return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
+  }
+
+  // Block the main shell behind the MFA gate. Self-resolves to no-op
+  // when the user has no MFA factor enrolled — see MfaChallengeGate.
+  if (!mfaResolved) {
+    return <MfaChallengeGate onResolved={() => setMfaResolved(true)} onSignOut={signOut} />;
   }
 
   return <AppShell user={user} signOut={signOut} refreshUser={refreshUser} theme={theme} />;
