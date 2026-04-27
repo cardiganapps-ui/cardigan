@@ -88,16 +88,48 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   const scheduledRegular = allPSess.filter(s => {
     if (s.status !== SESSION_STATUS.SCHEDULED) return false;
     if (isTutorSession(s)) return false;
-    return shortDateToISO(s.date) >= todayISOStr;
+    if (shortDateToISO(s.date) < todayISOStr) return false;
+    // is_recurring is the explicit "this row was created as part of
+    // a recurring schedule" flag. Manual one-offs from
+    // NewSessionSheet set it to false. Historical rows (pre-
+    // migration 025) have it true via the migration's backfill.
+    // Reading `=== false` rather than `!== true` is intentional:
+    // any row that genuinely has the flag set to false is treated
+    // as a one-off; any other value (including older rows that
+    // somehow lack the column) is allowed through.
+    if (s.is_recurring === false) return false;
+    return true;
   });
   if (scheduledRegular.length === 0) return [];
 
+  // A (day, time) slot is part of the recurring schedule only if it
+  // has MULTIPLE future scheduled sessions on it. The patient-creation
+  // flow + applyScheduleChange both insert a full recurrence window
+  // (~15 weeks) of sessions in one batch, so an active recurring slot
+  // always has many in flight. A one-off session sits alone on its
+  // slot — and historically has been mis-classified as a recurring
+  // anchor when the user forgot to toggle the "tutor" type picker
+  // before saving (e.g. a one-off Saturday with the parent saved as
+  // `session_type='regular'`). Requiring ≥2 future sessions on the
+  // slot lets one-offs remain one-offs and prevents a single mistaken
+  // row from minting a weekly schedule.
+  const slotCounts = new Map();
+  scheduledRegular.forEach(s => {
+    const k = `${s.day}|${s.time}`;
+    slotCounts.set(k, (slotCounts.get(k) || 0) + 1);
+  });
   const schedMap = new Map();
-  scheduledRegular.forEach(s => schedMap.set(`${s.day}|${s.time}`, {
-    day: s.day, time: s.time,
-    duration: s.duration || 60,
-    modality: s.modality || "presencial",
-  }));
+  scheduledRegular.forEach(s => {
+    const k = `${s.day}|${s.time}`;
+    if (slotCounts.get(k) < 2) return;
+    if (schedMap.has(k)) return;
+    schedMap.set(k, {
+      day: s.day, time: s.time,
+      duration: s.duration || 60,
+      modality: s.modality || "presencial",
+    });
+  });
+  if (schedMap.size === 0) return [];
 
   // Dedup key is (date, time) — not date alone. A patient can have two
   // sessions on the same day at different times, and a cancelled slot at
@@ -142,6 +174,8 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
         date: ds, duration: sched.duration,
         rate: patient.rate,
         modality: sched.modality,
+        // Auto-extend rows ARE recurring by definition.
+        is_recurring: true,
         color_idx: patient.color_idx || 0,
       });
       existingSlots.add(slot);

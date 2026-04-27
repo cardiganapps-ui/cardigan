@@ -97,11 +97,23 @@ describe("computeAutoExtendRows — accounting safety", () => {
     // The OLD code would back-fill weekly Monday sessions from that
     // point forward, including 8+ Mondays in the past. Those would
     // auto-complete in display and inflate amountDue by 8 × rate.
+    //
+    // Today the date filter on `scheduledRegular` makes this scenario
+    // return [] regardless (past rows don't seed the schedMap), but
+    // we keep the test alongside a future-anchored fixture to lock
+    // the past-date safety check in place independently.
     const ctx = buildContext(new Date("2026-04-20T12:00:00"));
     const rows = computeAutoExtendRows({
       ...ctx,
       patient: activePatient(),
-      allPSess: [scheduledMon10(-60, ctx.today)],
+      // Two future sessions on Lunes 10:00 (active recurring slot)
+      // plus one historical row 60 days ago. The historical row must
+      // not pull the start window into the past.
+      allPSess: [
+        scheduledMon10(7, ctx.today),
+        scheduledMon10(14, ctx.today),
+        scheduledMon10(-60, ctx.today),
+      ],
     });
     const todayISO = toISODate(ctx.today);
     for (const r of rows) {
@@ -219,6 +231,119 @@ describe("computeAutoExtendRows — accounting safety", () => {
     }
   });
 
+  it("BUG REGRESSION: manual one-offs (is_recurring=false) NEVER seed extension, even at scale", () => {
+    // Per user direction: sessions added manually are always
+    // one-offs and must never be picked up by auto-extend, even if
+    // multiple of them happen to land on the same (day, time) slot.
+    // The is_recurring flag is the explicit signal — manual sessions
+    // get is_recurring=false in createSession, while seed inserts
+    // and applyScheduleChange use is_recurring=true.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const recurringMons = [7, 14, 21, 28].map(d => ({
+      ...scheduledMon10(d, ctx.today),
+      is_recurring: true,
+    }));
+    // Three manually-added Saturday sessions — count alone (3) would
+    // ordinarily satisfy the ≥2-future-sessions filter, but
+    // is_recurring=false vetoes them outright.
+    const manualSats = [4, 11, 18].map((d, i) => {
+      const dt = new Date(ctx.today.getTime() + d * DAY_MS);
+      return {
+        id: `man-${i}`,
+        patient_id: "p1",
+        status: SESSION_STATUS.SCHEDULED,
+        session_type: "regular",
+        is_recurring: false, // manual one-off
+        initials: "AN",
+        day: "Sábado", time: "09:00",
+        duration: 60, rate: 700,
+        modality: "presencial",
+        date: formatShortDate(dt),
+      };
+    });
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...recurringMons, ...manualSats],
+    });
+    for (const r of rows) {
+      expect(r.day).toBe("Lunes");
+      expect(r.time).toBe("10:00");
+    }
+  });
+
+  it("BUG REGRESSION: a single one-off non-tutor session doesn't seed weekly extension", () => {
+    // Production bug: user creates a one-off appointment with a
+    // patient on a slot outside their normal schedule (e.g. a
+    // Saturday session with the parent) and forgets to toggle the
+    // "tutor" type picker — so the row is saved as
+    // session_type='regular'. With the schedMap derived purely from
+    // scheduled rows, that single one-off seeded a weekly extension
+    // and minted phantom Saturdays for the next 15 weeks.
+    //
+    // Real recurring slots always have many future sessions (the
+    // creation flow + applyScheduleChange both insert a 15-week
+    // window in one batch). A one-off sits alone. Requiring ≥2
+    // future sessions on a slot is enough to filter out the
+    // one-off-mistake case without disturbing legitimate recurrence.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const recurringMons = [7, 14, 21, 28].map(d => scheduledMon10(d, ctx.today));
+    const oneOffSat = (() => {
+      const dt = new Date(ctx.today.getTime() + 11 * DAY_MS); // a Saturday in the same window
+      return {
+        id: "one-off-sat",
+        patient_id: "p1",
+        status: SESSION_STATUS.SCHEDULED,
+        session_type: "regular", // user FORGOT to toggle to "tutor"
+        initials: "AN",
+        day: "Sábado", time: "09:00",
+        duration: 60, rate: 700,
+        modality: "presencial",
+        date: formatShortDate(dt),
+      };
+    })();
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...recurringMons, oneOffSat],
+    });
+    // Only legitimate Lunes 10:00 slots should be extended; no Sábado.
+    for (const r of rows) {
+      expect(r.day).toBe("Lunes");
+      expect(r.time).toBe("10:00");
+    }
+  });
+
+  it("multi-schedule patient: both active slots extend correctly", () => {
+    // Verify the ≥2-future-sessions filter doesn't break legitimate
+    // multi-schedule cases. A patient with two recurring weekly slots
+    // (e.g. Lunes 10:00 + Jueves 16:00) should see BOTH extended.
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const lunes = [7, 14, 21, 28].map(d => scheduledMon10(d, ctx.today));
+    const jueves = [10, 17, 24, 31].map((d, i) => {
+      const dt = new Date(ctx.today.getTime() + d * DAY_MS);
+      return {
+        id: `j-${i}`,
+        patient_id: "p1",
+        status: SESSION_STATUS.SCHEDULED,
+        session_type: "regular",
+        initials: "AN",
+        day: "Jueves", time: "16:00",
+        duration: 60, rate: 700,
+        modality: "presencial",
+        date: formatShortDate(dt),
+      };
+    });
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...lunes, ...jueves],
+    });
+    const days = new Set(rows.map(r => `${r.day}|${r.time}`));
+    expect(days.has("Lunes|10:00")).toBe(true);
+    expect(days.has("Jueves|16:00")).toBe(true);
+  });
+
   it("does not re-emit dates that already exist (including cancelled)", () => {
     const ctx = buildContext(new Date("2026-04-20T12:00:00"));
     // Three future Mondays scheduled. We also have one of the dates
@@ -239,10 +364,17 @@ describe("computeAutoExtendRows — accounting safety", () => {
 
   it("emits rows stamped with the correct user_id, patient fields, and rate", () => {
     const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    // ≥2 future sessions on the slot — this is what an active
+    // recurring schedule looks like in production. A single future
+    // session is the one-off-mistake signature and intentionally
+    // doesn't seed an extension; see the dedicated regression test.
     const rows = computeAutoExtendRows({
       ...ctx,
       patient: activePatient({ rate: 850, color_idx: 3 }),
-      allPSess: [scheduledMon10(7, ctx.today)],
+      allPSess: [
+        scheduledMon10(7, ctx.today),
+        scheduledMon10(14, ctx.today),
+      ],
     });
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
