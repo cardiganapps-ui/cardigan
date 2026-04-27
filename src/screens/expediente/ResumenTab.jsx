@@ -91,17 +91,33 @@ export function ResumenTab({
     return best;
   }, [measurements, patient.id, showHealthBlock]);
 
-  const { fTotal, fCompleted, fCancelledTotal } = useMemo(() => {
-    let completed = 0, cancelled = 0, charged = 0;
+  /* Counters split by status × tutor flag.
+     - fTotal counts every session in the period (including tutor) so
+       the headline "Programadas" still reflects the full schedule.
+     - fCompleted excludes tutor sessions: tutor sessions are with the
+       parent, not the patient — counting them as patient attendance
+       was misleading. The Tutor tile below surfaces the parent count
+       separately.
+     - fCancelled / fCharged split the old fCancelledTotal so users
+       can tell the difference between "money lost" (cancelled with no
+       charge) and "money kept" (charged cancellation). */
+  const { fTotal, fCompleted, fCancelled, fCharged, fTutor, attendancePct } = useMemo(() => {
+    let completed = 0, cancelled = 0, charged = 0, tutor = 0;
     for (const s of filteredSessions) {
-      if (s.status === "completed") completed++;
-      else if (s.status === "cancelled") cancelled++;
-      else if (s.status === "charged") charged++;
+      const isTutor = isTutorSession(s);
+      if (isTutor) tutor++;
+      if (s.status === "completed" && !isTutor) completed++;
+      else if (s.status === "cancelled" && !isTutor) cancelled++;
+      else if (s.status === "charged" && !isTutor) charged++;
     }
+    const total = filteredSessions.length;
     return {
-      fTotal: filteredSessions.length,
+      fTotal: total,
       fCompleted: completed,
-      fCancelledTotal: cancelled + charged,
+      fCancelled: cancelled,
+      fCharged: charged,
+      fTutor: tutor,
+      attendancePct: total > 0 ? Math.round((completed / total) * 100) : null,
     };
   }, [filteredSessions]);
 
@@ -340,13 +356,18 @@ export function ResumenTab({
           );
         })()}
         {(() => {
-          const fTutor = filteredSessions.filter(s => isTutorSession(s)).length;
           const showTutor = !!patient.parent && fTutor > 0;
           const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center", border:"none", fontFamily:"inherit", width:"100%", minHeight:0 };
+          const tileStyleSmall = { ...tileStyle, padding:"6px 6px" };
           const valStyle = { fontFamily:"var(--font-d)", fontSize:"var(--text-xl)", fontWeight:800 };
+          const valStyleSmall = { ...valStyle, fontSize:"var(--text-lg)" };
           const labelStyle = { fontSize:"var(--text-eyebrow)", color:"var(--charcoal-xl)", marginTop:1 };
           return (
-          <div style={{ display:"grid", gridTemplateColumns: showTutor ? "1fr 1fr" : "1fr 1fr 1fr", gap:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {/* Headline row — Programadas + Asistió, full size. The %
+                below Asistió is the patient-attendance rate
+                (fCompleted / fTotal). Tutor sessions are excluded
+                from the numerator since they're with the parent. */}
             <button type="button" onClick={() => onGoToSesiones("all")}
               style={{ ...tileStyle, background:"var(--cream)" }}>
               <div style={{ ...valStyle, color:"var(--charcoal)" }}>{fTotal}</div>
@@ -356,16 +377,30 @@ export function ResumenTab({
               style={{ ...tileStyle, background:"var(--green-bg)" }}>
               <div style={{ ...valStyle, color:"var(--green)" }}>{fCompleted}</div>
               <div style={labelStyle}>{t("expediente.attended")}</div>
+              {attendancePct != null && (
+                <div style={{ fontSize:"var(--text-eyebrow)", color:"var(--green)", fontWeight:700, marginTop:2 }}>
+                  {attendancePct}%
+                </div>
+              )}
+            </button>
+            {/* Cancelled split — two smaller tiles. "Cobradas" =
+                charge-on-cancel (the slot was billed); "No cobradas"
+                = cancellation with no charge. Both route to the
+                cancelled list; the user can scan from there. */}
+            <button type="button" onClick={() => onGoToSesiones("cancelled_any")}
+              style={{ ...tileStyleSmall, background:"var(--red-bg)" }}>
+              <div style={{ ...valStyleSmall, color:"var(--red)" }}>{fCancelled}</div>
+              <div style={labelStyle}>{t("expediente.cancelledUncharged")}</div>
             </button>
             <button type="button" onClick={() => onGoToSesiones("cancelled_any")}
-              style={{ ...tileStyle, background:"var(--red-bg)" }}>
-              <div style={{ ...valStyle, color:"var(--red)" }}>{fCancelledTotal}</div>
-              <div style={labelStyle}>{t("expediente.cancelled")}</div>
+              style={{ ...tileStyleSmall, background:"var(--amber-bg)" }}>
+              <div style={{ ...valStyleSmall, color:"var(--amber)" }}>{fCharged}</div>
+              <div style={labelStyle}>{t("expediente.cancelledCharged")}</div>
             </button>
             {showTutor && (
               <button type="button" onClick={() => onGoToSesiones("all", { tutorOnly: true })}
-                style={{ ...tileStyle, background:"var(--purple-bg)" }}>
-                <div style={{ ...valStyle, color:"var(--purple)" }}>{fTutor}</div>
+                style={{ ...tileStyleSmall, background:"var(--purple-bg)", gridColumn:"1 / -1" }}>
+                <div style={{ ...valStyleSmall, color:"var(--purple)" }}>{fTutor}</div>
                 <div style={labelStyle}>{t("sessions.tutor")}</div>
               </button>
             )}

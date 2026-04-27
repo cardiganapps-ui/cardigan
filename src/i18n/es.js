@@ -766,6 +766,8 @@ export default {
     attended: "Asisti\u00f3",
     missed: "No asisti\u00f3",
     cancelled: "Canceladas",
+    cancelledCharged: "Cobradas",
+    cancelledUncharged: "No cobradas",
     dateRangeApplied: "Periodo: {from} — {to}",
     clearDateRange: "Limpiar",
     tutorFilterActive: "Solo {session.p} con {minorContact.s}",
