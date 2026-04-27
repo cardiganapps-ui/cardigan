@@ -1,0 +1,46 @@
+# Dependabot — security + version updates
+#
+# Cardigan's threat model treats every npm install at build time as
+# privileged: Vercel runs it with .env.local-equivalent secrets in the
+# build env. A compromised dep can exfiltrate the service-role key,
+# the recovery private key, and the WhatsApp app secret in a single
+# `postinstall`. Keeping deps current closes the window where a known-
+# vulnerable transitive package sits unpatched.
+#
+# Schedule: weekly Monday checks. Security updates ship immediately
+# regardless of schedule (Dependabot's default behavior).
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    # Group non-security updates so reviews don't fragment into
+    # one PR per minor bump. Security updates remain ungrouped — each
+    # gets its own PR for clear audit trail.
+    groups:
+      vite-and-react:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "react*"
+          - "@types/react*"
+      sentry:
+        patterns:
+          - "@sentry/*"
+      aws-sdk:
+        patterns:
+          - "@aws-sdk/*"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "ci"

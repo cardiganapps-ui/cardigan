@@ -23,6 +23,12 @@ import { withSentry } from "./_sentry.js";
 
 export const config = { api: { bodyParser: false } };
 
+// Drop signed payloads whose newest status is older than this. Generous
+// window: Meta retries failed deliveries for ~24h, and we don't want to
+// reject genuine retries. This is a backstop against the captured-and-
+// replayed-much-later case, not a per-event freshness check.
+const MAX_EVENT_AGE_SEC = 24 * 60 * 60;
+
 async function readRawBody(req) {
   const chunks = [];
   for await (const chunk of req) {
@@ -92,6 +98,22 @@ async function handleEvent(req, res) {
       const v = change?.value || {};
       for (const s of (v.statuses || [])) statuses.push(s);
     }
+  }
+
+  // Replay-window guard. Meta puts a unix-seconds timestamp on every
+  // status; if EVERY status in this batch is more than MAX_EVENT_AGE_SEC
+  // old, treat the whole request as a replay attempt and drop it.
+  // (Dedup via meta_message_id catches the same payload arriving twice
+  // with the same hash; this catches the meaningful case — an attacker
+  // who captured one signed payload and is replaying it days later.)
+  const nowSec = Math.floor(Date.now() / 1000);
+  const tooOld = (s) => {
+    const t = parseInt(s?.timestamp, 10);
+    return Number.isFinite(t) && (nowSec - t) > MAX_EVENT_AGE_SEC;
+  };
+  if (statuses.length > 0 && statuses.every(tooOld)) {
+    console.warn("whatsapp-webhook: dropping batch — all events older than replay window");
+    return res.status(401).json({ error: "Event too old" });
   }
 
   if (statuses.length === 0) {
