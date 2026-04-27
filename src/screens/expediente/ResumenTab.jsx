@@ -30,6 +30,12 @@ function formatISODateLong(iso) {
 // Monday→Sunday, time ascending, deduped. Prefers future sessions; falls
 // back to all sessions for ended patients so the historical schedule
 // still shows on the expediente.
+//
+// Manual one-offs (`is_recurring=false`) are excluded — the Horarios
+// row in the Resumen is meant to reflect ONLY the patient's configured
+// recurring schedule, not any extra appointments scheduled via the
+// FAB. Same `=== false` form as computeAutoExtendRows so legacy rows
+// without the column still appear.
 function derivePatientSchedules(sessions, patientId, includePast) {
   const today = todayISO();
   const seen = new Set();
@@ -37,6 +43,7 @@ function derivePatientSchedules(sessions, patientId, includePast) {
   for (const s of sessions) {
     if (s.patient_id !== patientId) continue;
     if (s.status === "cancelled" || s.status === "charged") continue;
+    if (s.is_recurring === false) continue;
     if (!includePast) {
       const iso = shortDateToISO(s.date);
       if (iso < today) continue;
