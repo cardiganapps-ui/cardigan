@@ -1,8 +1,12 @@
 /* ── Per-user accent overrides ──
    Cardigan defaults to the teal palette (defined in base.css with
    dark-mode overrides in dark.css). Users can opt into one of four
-   alternate accents from Settings → Apariencia; the choice is stored
-   in localStorage and applied via a `data-accent` attribute on <html>.
+   alternate accents from Settings → Tema; the choice is stored in
+   localStorage and applied via a `data-accent` attribute on <html>.
+
+   The non-default accents are tuned a notch lighter than the brand
+   teal — they should feel airy and casual ("Bosque" / "Miel" / "Vino"
+   / "Lluvia") rather than saturated.
 
    IMPORTANT: each accent has BOTH a light and a dark variant. Earlier
    the override lived in JS (document.documentElement.style.
@@ -16,90 +20,90 @@
    "default" isn't listed — it's the default and inherits from
    base.css / dark.css directly. */
 
-/* ── Sage green ── */
+/* ── Bosque (sage green, lightened) ── */
 html[data-accent="sage"] {
-  --teal:        #6FAA82;
-  --teal-dark:   #588F6B;
-  --teal-light:  #88BB99;
+  --teal:        #88BB99;
+  --teal-dark:   #6FAA82;
+  --teal-light:  #A0C9AE;
   --teal-pale:   #ECF4ED;
   --teal-mist:   #F2F8F3;
-  --accent:      #6FAA82;
-  --accent-dark: #588F6B;
+  --accent:      #88BB99;
+  --accent-dark: #6FAA82;
   --accent-pale: #ECF4ED;
 }
 html[data-accent="sage"][data-theme="dark"] {
-  --teal:        #6FAA82;
-  --teal-dark:   #88BB99;            /* lifted for contrast on dark */
-  --teal-light:  #A0C9AE;
-  --teal-pale:   rgba(111,170,130,0.15);
-  --teal-mist:   rgba(111,170,130,0.08);
-  --accent:      #6FAA82;
-  --accent-dark: #88BB99;
-  --accent-pale: rgba(111,170,130,0.15);
+  --teal:        #88BB99;
+  --teal-dark:   #A0C9AE;            /* lifted for contrast on dark */
+  --teal-light:  #B7D6BF;
+  --teal-pale:   rgba(136,187,153,0.15);
+  --teal-mist:   rgba(136,187,153,0.08);
+  --accent:      #88BB99;
+  --accent-dark: #A0C9AE;
+  --accent-pale: rgba(136,187,153,0.15);
 }
 
-/* ── Warm amber ── */
+/* ── Miel (warm honey, lightened) ── */
 html[data-accent="amber"] {
-  --teal:        #C99A4A;
-  --teal-dark:   #A57E37;
-  --teal-light:  #D8B26A;
+  --teal:        #D8B26A;
+  --teal-dark:   #C99A4A;
+  --teal-light:  #E1C386;
   --teal-pale:   #F6EFE0;
   --teal-mist:   #FAF6EC;
-  --accent:      #C99A4A;
-  --accent-dark: #A57E37;
+  --accent:      #D8B26A;
+  --accent-dark: #C99A4A;
   --accent-pale: #F6EFE0;
 }
 html[data-accent="amber"][data-theme="dark"] {
-  --teal:        #C99A4A;
-  --teal-dark:   #D8B26A;
-  --teal-light:  #E1C386;
-  --teal-pale:   rgba(201,154,74,0.15);
-  --teal-mist:   rgba(201,154,74,0.08);
-  --accent:      #C99A4A;
-  --accent-dark: #D8B26A;
-  --accent-pale: rgba(201,154,74,0.15);
+  --teal:        #D8B26A;
+  --teal-dark:   #E1C386;
+  --teal-light:  #EAD3A2;
+  --teal-pale:   rgba(216,178,106,0.15);
+  --teal-mist:   rgba(216,178,106,0.08);
+  --accent:      #D8B26A;
+  --accent-dark: #E1C386;
+  --accent-pale: rgba(216,178,106,0.15);
 }
 
-/* ── Dusty burgundy ── */
+/* ── Vino (dusty rose, lightened) ── */
 html[data-accent="burgundy"] {
-  --teal:        #A86B7E;
-  --teal-dark:   #8C5466;
-  --teal-light:  #BD8595;
+  --teal:        #BD8595;
+  --teal-dark:   #A86B7E;
+  --teal-light:  #CC9CAA;
   --teal-pale:   #F4E8EC;
   --teal-mist:   #F9F1F4;
-  --accent:      #A86B7E;
-  --accent-dark: #8C5466;
+  --accent:      #BD8595;
+  --accent-dark: #A86B7E;
   --accent-pale: #F4E8EC;
 }
 html[data-accent="burgundy"][data-theme="dark"] {
-  --teal:        #A86B7E;
-  --teal-dark:   #BD8595;
-  --teal-light:  #CC9CAA;
-  --teal-pale:   rgba(168,107,126,0.15);
-  --teal-mist:   rgba(168,107,126,0.08);
-  --accent:      #A86B7E;
-  --accent-dark: #BD8595;
-  --accent-pale: rgba(168,107,126,0.15);
+  --teal:        #BD8595;
+  --teal-dark:   #CC9CAA;
+  --teal-light:  #DBB3BE;
+  --teal-pale:   rgba(189,133,149,0.15);
+  --teal-mist:   rgba(189,133,149,0.08);
+  --accent:      #BD8595;
+  --accent-dark: #CC9CAA;
+  --accent-pale: rgba(189,133,149,0.15);
 }
 
-/* ── Steel slate ── */
+/* ── Lluvia (slate blue, lightened) ── */
 html[data-accent="steel"] {
-  --teal:        #5A7388;
-  --teal-dark:   #456073;
-  --teal-light:  #7A8FA3;
+  --teal:        #7A8FA3;
+  --teal-dark:   #5A7388;
+  --teal-light:  #93A6B7;
   --teal-pale:   #E8EEF2;
   --teal-mist:   #F1F4F7;
-  --accent:      #5A7388;
-  --accent-dark: #456073;
+  --accent:      #7A8FA3;
+  --accent-dark: #5A7388;
   --accent-pale: #E8EEF2;
 }
 html[data-accent="steel"][data-theme="dark"] {
-  --teal:        #5A7388;
-  --teal-dark:   #7A8FA3;
-  --teal-light:  #93A6B7;
-  --teal-pale:   rgba(90,115,136,0.18);
-  --teal-mist:   rgba(90,115,136,0.10);
-  --accent:      #5A7388;
-  --accent-dark: #7A8FA3;
-  --accent-pale: rgba(90,115,136,0.18);
+  --teal:        #7A8FA3;
+  --teal-dark:   #93A6B7;
+  --teal-light:  #ADBCC9;
+  --teal-pale:   rgba(122,143,163,0.18);
+  --teal-mist:   rgba(122,143,163,0.10);
+  --accent:      #7A8FA3;
+  --accent-dark: #93A6B7;
+  --accent-pale: rgba(122,143,163,0.18);
 }
