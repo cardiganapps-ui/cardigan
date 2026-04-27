@@ -46,8 +46,8 @@ import { AuthScreen } from "./screens/AuthScreen";
 const AdminPanel = lazy(() => import("./screens/AdminPanel").then(m => ({ default: m.AdminPanel })));
 import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
 import { useUserProfile } from "./hooks/useUserProfile";
+import { useAccentTheme } from "./hooks/useAccentTheme";
 import { DEFAULT_PROFESSION } from "./data/constants";
-import { applyProfessionTheme } from "./theme/professionTheme";
 import { setSentryProfession } from "./lib/sentry";
 import ConsentBanner from "./components/ConsentBanner";
 import { BugReportSheet } from "./components/BugReportFab";
@@ -290,12 +290,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   useEffect(() => {
     setI18nProfession(profession);
   }, [profession, setI18nProfession]);
-  // Repaint the brand palette (`--teal*`, `--accent*`) at the document
-  // root so every component that already references those CSS vars
-  // shifts to the new profession's accent without per-component code.
-  useEffect(() => {
-    applyProfessionTheme(profession);
-  }, [profession]);
+  // Accent palette is a per-user preference (Settings → Apariencia),
+  // independent of profession — every user defaults to the base teal
+  // and can opt into one of the alternate accents from the picker.
+  // useAccentTheme hydrates the `data-accent` attribute on <html>;
+  // accent-themes.css remaps `--teal*` / `--accent*` via the cascade.
+  const accentTheme = useAccentTheme();
   // Tag Sentry events with the active profession + demo flag so
   // profession-specific bugs are easy to triage in the Sentry UI.
   useEffect(() => {
@@ -608,6 +608,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
     noteCrypto,
     profession,
+    accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
     userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
@@ -632,7 +633,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, profession, userProfile.setProfessionLocal, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: show ProfessionOnboarding before mounting the
   // main shell when the user has no user_profiles row yet. Demo mode
