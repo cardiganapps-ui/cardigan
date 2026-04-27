@@ -41,6 +41,17 @@ export function Settings({ user, signOut, refreshUser }) {
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaUiError, setMfaUiError] = useState("");
   const [mfaUnenrollId, setMfaUnenrollId] = useState(null);
+  const [mfaSecretCopied, setMfaSecretCopied] = useState(false);
+  const copyMfaSecret = async () => {
+    if (!mfa.enrollment?.secret) return;
+    try {
+      await navigator.clipboard.writeText(mfa.enrollment.secret);
+      setMfaSecretCopied(true);
+      setTimeout(() => setMfaSecretCopied(false), 1800);
+    } catch {
+      showToast(t("settings.calendarCopyError"), "error");
+    }
+  };
 
   // Toggle in-flight — prevents double-taps and shows the spinner knob
   // during the server round-trip for enable/disable.
@@ -1142,9 +1153,13 @@ export function Settings({ user, signOut, refreshUser }) {
                     </div>
                   )}
                   <div style={{ fontSize: 12, color: "var(--charcoal-md)", marginBottom: 6 }}>{t("settings.mfaSecretLabel")}</div>
-                  <div style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", fontFamily:"var(--font-mono, monospace)", fontSize:12, padding:"10px 12px", borderRadius:"var(--radius)", wordBreak:"break-all", marginBottom: 14, userSelect:"all" }}>
+                  <div style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", fontFamily:"var(--font-mono, monospace)", fontSize:12, padding:"10px 12px", borderRadius:"var(--radius)", wordBreak:"break-all", marginBottom: 8, userSelect:"all" }}>
                     {mfa.enrollment.secret}
                   </div>
+                  <button type="button" className="btn btn-ghost" onClick={copyMfaSecret} disabled={mfaBusy}
+                    style={{ width:"100%", marginBottom: 14 }}>
+                    {mfaSecretCopied ? t("settings.mfaSecretCopied") : t("settings.mfaSecretCopy")}
+                  </button>
                   <div className="input-group" style={{ marginBottom: 12 }}>
                     <label className="input-label">{t("settings.mfaCodeLabel")}</label>
                     <input

@@ -650,6 +650,8 @@ export default {
     mfaEnrollTitle: "Activar verificación en dos pasos",
     mfaEnrollExplain: "Escanea el código con Google Authenticator, 1Password, Authy u otra app TOTP. Después ingresa el código de 6 dígitos para confirmar.",
     mfaSecretLabel: "O introduce esta clave manualmente:",
+    mfaSecretCopy: "Copiar clave",
+    mfaSecretCopied: "Clave copiada",
     mfaCodeLabel: "Código de 6 dígitos",
     mfaCodeWrong: "Código incorrecto. Intenta de nuevo.",
     mfaVerify: "Verificar y activar",
