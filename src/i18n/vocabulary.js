@@ -18,16 +18,34 @@
    without per-profession defensiveness. Articles are Spanish-gendered
    (el/la, los/las) and need to match the noun's grammatical gender.
 
-   Forms:
-     s   = singular noun         ("paciente", "consulta")
-     p   = plural noun           ("pacientes", "consultas")
-     art = singular article      ("el", "la")
-     artP= plural article        ("los", "las")
+   Forms (s/p/art/artP are authored, the rest are derived):
+     s    = singular noun                      ("paciente", "consulta")
+     p    = plural noun                        ("pacientes", "consultas")
+     art  = singular article                   ("el", "la")
+     artP = plural article                     ("los", "las")
+     del  = "de + el = del" contraction        ("del paciente", "de la consulta")
+     al   = "a + el = al" contraction          ("al paciente", "a la consulta")
+     delP = plural form of `del`               ("de los pacientes", "de las consultas")
+     alP  = plural form of `al`                ("a los pacientes", "a las consultas")
+
+   The contracted forms include the noun on purpose — Spanish writers
+   never split "del" from the noun mentally, so callers should write
+   "...{client.del}..." rather than "...{client.delArt} {client.s}...".
+   Keeps grammar correct even if a future profession picks a feminine
+   client noun (where "del cliente" → "de la cliente").
 */
 
 import { DEFAULT_PROFESSION } from "../data/constants";
 
-const noun = (s, p, art, artP) => ({ s, p, art, artP });
+function noun(s, p, art, artP) {
+  // de + el → del; a + el → al. Other articles don't contract.
+  const del  = art  === "el"  ? `del ${s}`  : `de ${art} ${s}`;
+  const al   = art  === "el"  ? `al ${s}`   : `a ${art} ${s}`;
+  // Plural articles never contract with de/a.
+  const delP = `de ${artP} ${p}`;
+  const alP  = `a ${artP} ${p}`;
+  return { s, p, art, artP, del, al, delP, alP };
+}
 
 export const VOCAB = {
   psychologist: {

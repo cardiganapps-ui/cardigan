@@ -11,18 +11,28 @@
    data-privacy lawyer before claiming compliance externally — the
    text below is comprehensive but generated, not formally reviewed.
 
+   v4 (April 2026): broadened to cover the four non-psychologist
+   professions added in the multi-profession expansion (nutritionist,
+   tutor, music teacher, personal trainer). The "Encargado / dual-role"
+   structure stays the same; the noun and the examples just widened.
+   TODO before serious marketing: have a Mexican data-privacy lawyer
+   re-review specifically for nutrition (food intake / weight measures)
+   and trainer (body measurements / health metrics) sensitive-data
+   handling under LFPDPPP.
+
    Section bodies may contain `\n\n` to render as multiple paragraphs
    in PrivacyPolicy.jsx. */
 
-export const POLICY_VERSION = "2026-04-v3";
-export const POLICY_PUBLISHED = "25 de abril de 2026";
+export const POLICY_VERSION = "2026-04-v4";
+export const POLICY_PUBLISHED = "26 de abril de 2026";
 
 export const POLICY_SECTIONS = [
   {
     title: "1. Identidad y domicilio del Responsable",
     body:
-      "Cardigan (en adelante, “Cardigan” o “nosotros”) es el servicio de gestión de práctica clínica accesible " +
-      "en https://cardigan.mx. El Responsable del tratamiento de los datos personales que se recaban a través de " +
+      "Cardigan (en adelante, “Cardigan” o “nosotros”) es el servicio de gestión de práctica profesional " +
+      "(psicología, nutrición, tutoría académica, enseñanza musical y entrenamiento personal) accesible en " +
+      "https://cardigan.mx. El Responsable del tratamiento de los datos personales que se recaban a través de " +
       "este servicio es el titular de Cardigan, con domicilio en los Estados Unidos Mexicanos.\n\n" +
       "Para ejercer cualquier derecho relacionado con tus datos personales, o para resolver dudas sobre el " +
       "presente Aviso de Privacidad, puedes contactarnos en cualquier momento al correo electrónico " +
@@ -38,9 +48,12 @@ export const POLICY_SECTIONS = [
       "(b) Datos de uso de la aplicación: dirección IP del dispositivo, tipo de navegador, marca de tiempo " +
       "de acceso y eventos de error técnico. Estos datos se generan automáticamente y se utilizan únicamente " +
       "para diagnosticar fallos y mantener la disponibilidad del servicio.\n\n" +
-      "(c) Datos de pacientes que tú introduces voluntariamente al expediente: nombre, iniciales, datos de " +
-      "contacto del paciente o de su tutor (cuando es menor de edad), tarifa por sesión, fechas y estatus de " +
-      "sesiones, montos y métodos de pago, notas clínicas y documentos que subas (PDF, imágenes, etc.).\n\n" +
+      "(c) Datos de las personas que atiendes (pacientes, clientes o alumnos, según tu profesión) que tú " +
+      "introduces voluntariamente: nombre, iniciales, datos de contacto de la persona o de su padre/madre/tutor " +
+      "(cuando es menor de edad), tarifa por sesión o clase, fechas y estatus de sesiones, clases o " +
+      "entrenamientos, montos y métodos de pago, notas profesionales (clínicas para psicología y nutrición; " +
+      "de progreso académico para tutoría; de repertorio y técnica para enseñanza musical; de rutinas y " +
+      "mediciones para entrenamiento personal) y documentos que subas (PDF, imágenes, etc.).\n\n" +
       "(d) Preferencias de la cuenta: zona horaria, idioma, configuración de notificaciones, modo claro/oscuro " +
       "y tokens de suscripción a notificaciones push del navegador.\n\n" +
       "No recabamos datos de geolocalización precisa, datos biométricos, ni cookies de publicidad o " +
@@ -49,13 +62,21 @@ export const POLICY_SECTIONS = [
   {
     title: "3. Datos personales sensibles",
     body:
-      "Las notas clínicas y la información de salud de los pacientes que tú registras se consideran " +
-      "datos personales sensibles bajo la LFPDPPP. Estos datos requieren tu consentimiento expreso para ser " +
-      "tratados, el cual se entiende otorgado al momento de capturarlos voluntariamente en la aplicación.\n\n" +
-      "Para reforzar la protección de estos datos, Cardigan ofrece —de forma opcional— el cifrado de notas " +
-      "clínicas en reposo, mediante una contraseña adicional que tú estableces y que jamás abandona tu " +
-      "navegador en texto claro. Cuando el cifrado está activo, las notas almacenadas en nuestra base de " +
-      "datos quedan protegidas incluso ante un acceso no autorizado a la infraestructura subyacente.",
+      "Algunas profesiones soportadas por Cardigan implican el tratamiento de datos personales sensibles " +
+      "bajo la LFPDPPP:\n\n" +
+      "• Psicología: notas clínicas, motivo de consulta, antecedentes y diagnósticos.\n" +
+      "• Nutrición: peso, mediciones corporales, antecedentes médicos, alergias e información dietaria.\n" +
+      "• Entrenamiento personal: mediciones corporales, % de grasa, antecedentes médicos y de lesiones.\n" +
+      "• Tutoría y enseñanza musical: rendimiento académico de menores de edad (datos sensibles cuando se " +
+      "trata de menores).\n\n" +
+      "Estos datos requieren tu consentimiento expreso para ser tratados, el cual se entiende otorgado al " +
+      "momento de capturarlos voluntariamente en la aplicación.\n\n" +
+      "Para reforzar la protección de notas clínicas (psicología y nutrición), Cardigan ofrece —de forma " +
+      "opcional— el cifrado en reposo mediante una contraseña adicional que tú estableces y que jamás " +
+      "abandona tu navegador en texto claro. Cuando el cifrado está activo, las notas almacenadas en nuestra " +
+      "base de datos quedan protegidas incluso ante un acceso no autorizado a la infraestructura subyacente. " +
+      "Esta función está disponible para todas las profesiones y se surface por defecto en las profesiones " +
+      "clínicas; las demás profesiones pueden activarla manualmente desde Ajustes → Privacidad.",
   },
   {
     title: "4. Finalidades del tratamiento",
@@ -81,15 +102,17 @@ export const POLICY_SECTIONS = [
     body:
       "Respecto de los datos de tu cuenta de usuario (nombre, correo, contraseña, preferencias), Cardigan " +
       "actúa como Responsable conforme a este Aviso.\n\n" +
-      "Respecto de los datos de tus pacientes que tú registras en la aplicación, tú eres el Responsable y " +
-      "Cardigan actúa como Encargado del tratamiento. Esto significa que:\n\n" +
-      "• Tú eres responsable de obtener el consentimiento de tus pacientes (o de sus tutores legales en el " +
-      "caso de menores) para registrar y tratar sus datos personales y datos sensibles de salud.\n" +
-      "• Tú eres responsable de poner a disposición de tus pacientes tu propio Aviso de Privacidad, conforme " +
-      "a la LFPDPPP y demás regulaciones aplicables a tu profesión.\n" +
-      "• Cardigan únicamente trata los datos de tus pacientes siguiendo tus instrucciones (lectura, " +
-      "escritura, eliminación), no los utiliza para finalidades propias y no los transfiere a terceros " +
-      "más allá de los proveedores de infraestructura necesarios para operar el servicio (sección 6).",
+      "Respecto de los datos de las personas que atiendes (pacientes, clientes o alumnos, según tu " +
+      "profesión) que tú registras en la aplicación, tú eres el Responsable y Cardigan actúa como Encargado " +
+      "del tratamiento. Esto significa que:\n\n" +
+      "• Tú eres responsable de obtener el consentimiento de las personas que atiendes (o de su padre, " +
+      "madre o tutor legal en el caso de menores) para registrar y tratar sus datos personales —incluidos " +
+      "datos sensibles cuando aplique a tu profesión.\n" +
+      "• Tú eres responsable de poner a su disposición tu propio Aviso de Privacidad, conforme a la LFPDPPP " +
+      "y demás regulaciones aplicables a tu profesión.\n" +
+      "• Cardigan únicamente trata sus datos siguiendo tus instrucciones (lectura, escritura, eliminación), " +
+      "no los utiliza para finalidades propias y no los transfiere a terceros más allá de los proveedores " +
+      "de infraestructura necesarios para operar el servicio (sección 6).",
   },
   {
     title: "6. Transferencias y proveedores de servicio",
@@ -199,12 +222,14 @@ export const POLICY_SECTIONS = [
   {
     title: "13. Datos de menores de edad",
     body:
-      "Cardigan no está dirigido a menores de edad. La aplicación es utilizada por profesionales de la " +
-      "salud mayores de edad para la gestión de su práctica.\n\n" +
-      "Cuando un paciente registrado por el profesional sea menor de edad, los datos del menor son " +
-      "ingresados por el profesional bajo su responsabilidad. El profesional debe obtener el consentimiento " +
-      "previo del padre, madre o tutor legal del menor antes de registrar cualquier dato. Cardigan, como " +
-      "Encargado, no recaba esta información directamente del menor.",
+      "Cardigan no está dirigido a menores de edad. La aplicación es utilizada por profesionales mayores " +
+      "de edad (psicólogos, nutriólogos, profesores particulares, maestros de música y entrenadores " +
+      "personales) para la gestión de su práctica.\n\n" +
+      "Cuando una persona registrada por el profesional sea menor de edad —escenario común en tutoría " +
+      "académica y enseñanza musical— los datos del menor son ingresados por el profesional bajo su " +
+      "responsabilidad. El profesional debe obtener el consentimiento previo del padre, madre o tutor legal " +
+      "del menor antes de registrar cualquier dato. Cardigan, como Encargado, no recaba esta información " +
+      "directamente del menor.",
   },
   {
     title: "14. Cambios al Aviso de Privacidad",

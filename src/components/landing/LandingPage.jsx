@@ -138,10 +138,10 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
         <div className="lp-container lp-hero-grid">
           <div className="lp-hero-copy">
             <h1 id="lp-hero-title" className="lp-hero-title">
-              Tu consultorio, <span className="lp-accent">en orden.</span>
+              Tu práctica, <span className="lp-accent">en orden.</span>
             </h1>
             <p className="lp-hero-sub">
-              Citas, pacientes y cobros en un solo lugar.
+              Agenda, clientes y cobros en un solo lugar.
             </p>
             <div className="lp-hero-ctas">
               <CTAButton variant="primary" onClick={onPrimary}>
@@ -150,6 +150,17 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
               <CTAButton variant="secondary" onClick={onSecondary}>
                 Probar demo
               </CTAButton>
+            </div>
+            {/* Profession chips — communicate "we support these" without
+                forcing a profession-picker upfront. The demo banner lets
+                visitors actually see each variant. */}
+            <div className="lp-hero-professions" aria-label="Profesiones soportadas">
+              <span className="lp-hero-professions-label">Para</span>
+              <span className="lp-prof-chip">Psicólogos</span>
+              <span className="lp-prof-chip">Nutriólogos</span>
+              <span className="lp-prof-chip">Profesores particulares</span>
+              <span className="lp-prof-chip">Maestros de música</span>
+              <span className="lp-prof-chip">Entrenadores</span>
             </div>
           </div>
 
@@ -169,7 +180,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             </article>
             <article className="lp-feature-v2" data-reveal style={{ "--i": 1 }}>
               <MiniPatients />
-              <div className="lp-feature-label">Cada paciente, una vista.</div>
+              <div className="lp-feature-label">Cada cliente, una vista.</div>
             </article>
             <article className="lp-feature-v2" data-reveal style={{ "--i": 2 }}>
               <MiniFinances />
@@ -189,11 +200,11 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             </li>
             <li className="lp-step" data-reveal style={{ "--i": 1 }}>
               <span className="lp-step-num">2</span>
-              <span className="lp-step-label">Agrega un paciente</span>
+              <span className="lp-step-label">Agrega tu primer cliente</span>
             </li>
             <li className="lp-step" data-reveal style={{ "--i": 2 }}>
               <span className="lp-step-num">3</span>
-              <span className="lp-step-label">Agenda una sesión</span>
+              <span className="lp-step-label">Agenda tu primera cita</span>
             </li>
           </ol>
         </div>

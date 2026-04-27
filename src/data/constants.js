@@ -58,6 +58,20 @@ export const PROFESSIONS = [
 // all psychologists per migration 021.
 export const DEFAULT_PROFESSION = PROFESSION.PSYCHOLOGIST;
 
+// Clinical professions handle sensitive health data and the at-rest
+// note encryption affordance is surfaced for them by default. Tutor /
+// music / trainer don't write clinical notes, so the encryption setup
+// prompt is hidden for those — they can still see existing encrypted
+// notes if they previously set it up under a different profession.
+export const CLINICAL_PROFESSIONS = new Set([
+  PROFESSION.PSYCHOLOGIST,
+  PROFESSION.NUTRITIONIST,
+]);
+
+export function isClinicalProfession(profession) {
+  return CLINICAL_PROFESSIONS.has(profession);
+}
+
 // Session modality. Values must match the sessions.modality check
 // constraint in supabase/schema.sql / migrations/020 + 022. Per-profession
 // subsets live in MODALITIES_BY_PROFESSION below — the dropdowns and the

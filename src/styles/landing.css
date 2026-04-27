@@ -149,6 +149,37 @@
   animation: lpRise 0.7s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/* ── Profession chips ──
+   Tiny pill row under the hero CTAs. Communicates multi-profession
+   support without taking design real-estate from the headline.
+   The chips are decorative: no click, no hover. */
+.lp-hero-professions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  animation: lpRise 0.6s 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.lp-hero-professions-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--charcoal-xl);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+.lp-prof-chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--charcoal-md);
+  background: var(--cream);
+  border: 1px solid var(--cream-deeper);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
 /* ── FEATURE STRIP ── */
 .lp-features {
   display: grid;

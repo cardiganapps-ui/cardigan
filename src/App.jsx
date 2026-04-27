@@ -42,6 +42,7 @@ import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { DEFAULT_PROFESSION } from "./data/constants";
 import { applyProfessionTheme } from "./theme/professionTheme";
+import { setSentryProfession } from "./lib/sentry";
 import ConsentBanner from "./components/ConsentBanner";
 import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
@@ -289,6 +290,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   useEffect(() => {
     applyProfessionTheme(profession);
   }, [profession]);
+  // Tag Sentry events with the active profession + demo flag so
+  // profession-specific bugs are easy to triage in the Sentry UI.
+  useEffect(() => {
+    setSentryProfession(profession, { demo: !!demo });
+  }, [profession, demo]);
   const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
   const demoData = useDemoData(demoProfession);
   const data = demo ? demoData : liveData;
