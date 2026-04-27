@@ -72,5 +72,18 @@ export function useUserProfile(userId) {
     return true;
   }, [userId]);
 
-  return { profession, loading, error, createProfile, defaultProfession: DEFAULT_PROFESSION };
+  /* Optimistic setter for the locally-cached profession. Called by
+     AdminPanel after the admin changes their OWN profession via
+     /api/admin-update-profession — without this, the admin's open
+     Cardigan session keeps rendering the old vocab + theme until they
+     manually refresh, because useUserProfile only re-fetches when
+     userId changes. The server-side row is already updated by the
+     time this runs; we're just hydrating the React state to match. */
+  const setProfessionLocal = useCallback((prof) => {
+    if (!PROFESSIONS.includes(prof)) return;
+    setProfession(prof);
+    setError("");
+  }, []);
+
+  return { profession, loading, error, createProfile, setProfessionLocal, defaultProfession: DEFAULT_PROFESSION };
 }
