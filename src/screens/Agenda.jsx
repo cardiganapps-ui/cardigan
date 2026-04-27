@@ -618,7 +618,7 @@ export function Agenda() {
   // too — flashing it in for one frame before hiding it again would
   // be more disruptive than waiting a beat.
   const calendarFeed = useCalendarToken();
-  const showCalendarCTA = !readOnly && calendarFeed.loaded && !calendarFeed.token;
+  const showCalendarCTA = !readOnly && calendarFeed.loaded && !calendarFeed.hasToken;
 
   // "Ahora" tick — re-render every minute so the now-line stays current
   const [now, setNow] = useState(() => new Date());

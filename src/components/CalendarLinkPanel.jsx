@@ -8,11 +8,39 @@ import { useCalendarToken, setCalendarToken } from "../hooks/useCalendarToken";
 /* Calendar feed link UI — used inline in Settings and inside the
    CalendarLinkSheet that's opened from the Agenda screen. Reads token
    state from the shared `useCalendarToken` hook so the Agenda CTA can
-   hide itself once the user has linked their calendar. */
+   hide itself once the user has linked their calendar.
+
+   Three states:
+     1. !hasToken             → "Activar calendario" CTA.
+     2. hasToken && !url      → returning visit. Show prefix + creation
+                                 date + a "Regenerar enlace" button. The
+                                 plaintext URL isn't recoverable from the
+                                 server (DB only stores the SHA-256 hash
+                                 — see migration 026), so to copy it
+                                 again the user must rotate (which breaks
+                                 existing subscribers).
+     3. hasToken &&  url      → just rotated. Show the URL + platform
+                                 subscribe pills + copy. This is the
+                                 ONLY chance to grab the URL until the
+                                 next rotation.
+
+   Rotation reminder: if the active token is older than 90 days, surface
+   a small note suggesting rotation (cheap defense in depth — a leaked
+   URL keeps working forever otherwise). */
+
+const ROTATION_REMINDER_DAYS = 90;
+
+function ageInDays(iso) {
+  if (!iso) return 0;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return 0;
+  return Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000));
+}
+
 export function CalendarLinkPanel({ readOnly = false }) {
   const { t } = useT();
   const { showToast } = useCardigan();
-  const { token, url } = useCalendarToken();
+  const { hasToken, tokenPrefix, createdAt, url } = useCalendarToken();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -41,8 +69,18 @@ export function CalendarLinkPanel({ readOnly = false }) {
   const enable = async () => {
     const j = await callCalendarToken("POST");
     if (!j) return;
-    setCalendarToken(j.token || null, j.url || "");
+    setCalendarToken(j);
+    setManualOpen(true);          // surface the URL block immediately
     showToast(t("settings.calendarEnabled"), "success");
+  };
+
+  const rotate = async () => {
+    if (!confirm(t("settings.calendarRotateConfirm"))) return;
+    const j = await callCalendarToken("POST");
+    if (!j) return;
+    setCalendarToken(j);
+    setManualOpen(true);
+    showToast(t("settings.calendarRotated"), "success");
   };
 
   const copyUrl = async () => {
@@ -56,7 +94,8 @@ export function CalendarLinkPanel({ readOnly = false }) {
     }
   };
 
-  if (!token) {
+  // ── State 1: not enabled ──
+  if (!hasToken) {
     return (
       <>
         <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
@@ -73,6 +112,41 @@ export function CalendarLinkPanel({ readOnly = false }) {
     );
   }
 
+  const age = ageInDays(createdAt);
+  const showRotationReminder = age >= ROTATION_REMINDER_DAYS;
+
+  // ── State 2: enabled, but plaintext URL not in memory (returning visit) ──
+  if (!url) {
+    return (
+      <>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:14 }}>
+          <div style={{ color:"var(--teal-dark)", marginTop:2 }}><IconCalendar size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.calendarTitle")}</div>
+            <div className="settings-row-sub" style={{ lineHeight:1.5 }}>
+              {t("settings.calendarActive")}
+              {tokenPrefix && (
+                <> · <code style={{ fontSize:12 }}>{tokenPrefix}…</code></>
+              )}
+            </div>
+          </div>
+        </div>
+        {showRotationReminder && (
+          <div style={{ background:"var(--amber-bg, #FCF1D9)", color:"var(--amber-dark, #7A5A14)", padding:"10px 12px", borderRadius:"var(--radius)", fontSize:12, lineHeight:1.5, marginBottom:12 }}>
+            {t("settings.calendarRotationReminder")}
+          </div>
+        )}
+        <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:12 }}>
+          {t("settings.calendarUrlNotShown")}
+        </div>
+        <button className="btn btn-ghost" type="button" onClick={rotate} disabled={busy || readOnly} style={{ width:"100%" }}>
+          {busy ? t("loading") : t("settings.calendarRotate")}
+        </button>
+      </>
+    );
+  }
+
+  // ── State 3: just enabled / rotated — display the URL ──
   // Build platform-specific subscribe URLs from the canonical https feed.
   // webcal:// is the universal "subscribe" scheme both Apple Calendar
   // (iOS + macOS) and most desktop clients accept; tapping the link
@@ -101,6 +175,10 @@ export function CalendarLinkPanel({ readOnly = false }) {
           <div className="settings-row-title">{t("settings.calendarTitle")}</div>
           <div className="settings-row-sub" style={{ lineHeight:1.5 }}>{t("settings.calendarHint")}</div>
         </div>
+      </div>
+
+      <div style={{ background:"var(--teal-pale)", color:"var(--teal-dark)", padding:"10px 12px", borderRadius:"var(--radius)", fontSize:12, lineHeight:1.5, marginBottom:12 }}>
+        {t("settings.calendarUrlDisplayOnce")}
       </div>
 
       {/* Three subscribe options on a single row — equal-flex
