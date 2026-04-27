@@ -48,11 +48,18 @@ export function useAuth() {
     }
   }
 
-  async function signUp({ email, password, name }) {
+  // captchaToken is supplied by the AuthScreen Turnstile widget when
+  // VITE_TURNSTILE_SITE_KEY is set. Supabase Auth verifies it server-
+  // side against `security_captcha_secret`. When the env isn't wired
+  // (local dev, or before the operator finishes setup), captchaToken
+  // is undefined and the call goes through unchallenged — matching the
+  // current behaviour. Once Supabase's captcha enforcement is on, an
+  // unchallenged call returns a 400 and the UI must surface the widget.
+  async function signUp({ email, password, name, captchaToken }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name }, captchaToken },
     });
     if (error) return { error: error.message };
     // With email verification on (mailer_autoconfirm=false), signUp returns
@@ -63,8 +70,11 @@ export function useAuth() {
     return { data };
   }
 
-  async function signIn({ email, password }) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  async function signIn({ email, password, captchaToken }) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email, password,
+      options: { captchaToken },
+    });
     if (error) {
       if (EMAIL_NOT_CONFIRMED.test(error.message)) {
         return { pendingVerification: true, email };
