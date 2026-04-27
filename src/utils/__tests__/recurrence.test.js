@@ -115,12 +115,53 @@ describe("computeAutoExtendRows — accounting safety", () => {
     }
   });
 
-  it("BUG REGRESSION: only the current schedule slot is extended after a schedule change", () => {
-    // Patient used to be on Lunes 10:00, then switched to Miércoles 15:00.
-    // History keeps Lunes COMPLETED rows; future has Miércoles SCHEDULED.
-    // The OLD code built schedMap from EVERY past row, so it kept
-    // generating Lunes 10:00 sessions alongside the current Miércoles
-    // ones. That doubled up the calendar AND doubled amountDue.
+  it("BUG REGRESSION: phantom past 'scheduled' rows from an abandoned slot don't drive future generation", () => {
+    // Production bug reported by a nutritionist user: she moved a
+    // patient from Lunes to Miércoles weeks ago; phantom Lunes
+    // sessions kept appearing in the future (and silently inflating
+    // amountDue once they aged past today).
+    //
+    // The realistic state is: past Lunes rows still have
+    // status='scheduled' because auto-complete is display-only —
+    // CLAUDE.md is explicit. Without a date filter on the
+    // schedule-derivation set, those abandoned past rows feed the
+    // schedMap and the auto-extend regenerates phantom Lunes
+    // sessions on top of the current Miércoles ones.
+    //
+    // Mirror the realistic state here: past abandoned slots use
+    // status=SCHEDULED, not COMPLETED. (The earlier version of this
+    // test used COMPLETED, so the bug shipped despite green tests.)
+    const ctx = buildContext(new Date("2026-04-20T12:00:00"));
+    const oldSchedule = [-30, -23, -16, -9].map(d => scheduledMon10(d, ctx.today));
+    const newSchedule = [7, 14, 21].map(d => {
+      const dt = new Date(ctx.today.getTime() + d * DAY_MS);
+      return {
+        id: `w-${d}`,
+        patient_id: "p1",
+        status: SESSION_STATUS.SCHEDULED,
+        initials: "AN",
+        day: "Miércoles", time: "15:00",
+        duration: 60, rate: 700,
+        modality: "presencial",
+        date: formatShortDate(dt),
+      };
+    });
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...oldSchedule, ...newSchedule],
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.day).toBe("Miércoles");
+      expect(r.time).toBe("15:00");
+    }
+  });
+
+  it("BUG REGRESSION: schedule change is honoured even when past rows match the OLD slot only", () => {
+    // Same Lunes→Miércoles change but the original test variant —
+    // past sessions explicitly marked COMPLETED. This catches the
+    // earlier symptom where status=COMPLETED rows leaked too.
     const ctx = buildContext(new Date("2026-04-20T12:00:00"));
     const oldSchedule = [-30, -23, -16, -9].map(d => ({
       ...scheduledMon10(d, ctx.today),

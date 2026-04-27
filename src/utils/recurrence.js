@@ -10,7 +10,7 @@
 
 import { PATIENT_STATUS, SESSION_STATUS } from "../data/constants";
 import { isTutorSession } from "./sessions";
-import { formatShortDate, parseLocalDate, parseShortDate, toISODate } from "./dates";
+import { formatShortDate, parseLocalDate, parseShortDate, shortDateToISO, toISODate } from "./dates";
 import { RECURRENCE_WINDOW_WEEKS } from "../data/constants";
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
@@ -66,9 +66,30 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   if (!patient || patient.status !== PATIENT_STATUS.ACTIVE) return [];
   if (!Array.isArray(allPSess) || allPSess.length === 0) return [];
 
-  const scheduledRegular = allPSess.filter(
-    s => s.status === SESSION_STATUS.SCHEDULED && !isTutorSession(s)
-  );
+  // CRITICAL — see CLAUDE.md prime directive on financial integrity.
+  //
+  // The patient's "current recurring schedule" is the set of (day,
+  // time) tuples found in FUTURE-DATED scheduled sessions only.
+  //
+  // Why the date filter matters:
+  //   - Auto-complete is display-only (CLAUDE.md). Past sessions
+  //     whose `date < today` keep `status='scheduled'` in the DB
+  //     even though the UI renders them as completed.
+  //   - When a user moves a patient from Lunes to Miércoles,
+  //     applyScheduleChange deletes FUTURE Mondays but PAST Mondays
+  //     remain in the DB as status='scheduled' (auto-display
+  //     completed). Without this date filter they'd leak into
+  //     `schedMap` and auto-extend would regenerate phantom future
+  //     Mondays — and those phantoms eventually become past, count
+  //     toward `consumed`, and silently inflate amountDue.
+  //   - Tutor sessions are also excluded so a one-off appointment
+  //     with a parent doesn't mint weekly recurrences on that day.
+  const todayISOStr = toISODate(today);
+  const scheduledRegular = allPSess.filter(s => {
+    if (s.status !== SESSION_STATUS.SCHEDULED) return false;
+    if (isTutorSession(s)) return false;
+    return shortDateToISO(s.date) >= todayISOStr;
+  });
   if (scheduledRegular.length === 0) return [];
 
   const schedMap = new Map();
