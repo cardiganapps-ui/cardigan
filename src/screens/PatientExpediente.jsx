@@ -96,6 +96,14 @@ export function PatientExpediente({
 
   useLayer(inline ? null : "expediente", inline ? null : startClose);
   const [tab, setTab] = useState("resumen");
+  // Track the previously-rendered tab so we can pick the right
+  // slide-in animation for the new content. Direction is derived
+  // from the index delta in the `tabs` array — moving right
+  // (Resumen → Sesiones) animates `screenSlideLeft` (content
+  // settles in from the right), and vice versa. Updated in a
+  // useEffect after the new tab paints so the animation only fires
+  // on transitions, not the initial mount.
+  const prevTabRef = useRef("resumen");
   const [editingNote, setEditingNote] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
   const [pendingDocSessionId, setPendingDocSessionId] = useState(null);
@@ -399,6 +407,9 @@ export function PatientExpediente({
   // leaves the viewport clamped at the bottom of the new content.
   useEffect(() => {
     if (contentRef.current) contentRef.current.scrollTop = 0;
+    // Snapshot the latest rendered tab so the next transition can
+    // compute its direction relative to where we just were.
+    prevTabRef.current = tab;
   }, [tab]);
 
   const onDragStart = (e) => {
@@ -592,7 +603,28 @@ export function PatientExpediente({
         onDrop={onDropArchivo}
         style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0, position:"relative" }}>
 
-        <div key={tab} className="expediente-tab-content">
+        {(() => {
+          // Pick a slide-in keyframe based on the index delta from the
+          // previously-rendered tab. Initial mount: no animation.
+          // Same canonical 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) curve
+          // as the bottom-nav screen transitions in App.jsx so the
+          // gesture language stays consistent across the app.
+          //
+          // Reading prevTabRef.current during render is intentional —
+          // the ref is updated post-paint in a useEffect above, so by
+          // the time we render here it holds the *previous* tab value.
+          // The lint rule guards against effects driven by ref reads
+          // during render; we're using it as a one-shot snapshot.
+          // eslint-disable-next-line react-hooks/refs
+          const oldIdx = tabs.findIndex(tt => tt.k === prevTabRef.current);
+          const newIdx = tabs.findIndex(tt => tt.k === tab);
+          const animation = oldIdx === -1 || newIdx === -1 || oldIdx === newIdx
+            ? undefined
+            : newIdx > oldIdx
+              ? "screenSlideLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
+              : "screenSlideRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          return (
+        <div key={tab} className="expediente-tab-content" style={{ animation }}>
         {tab === "resumen" && (
           <ResumenTab
             patient={patient} upcomingSessions={upcomingSessions}
@@ -641,6 +673,8 @@ export function PatientExpediente({
           />
         )}
         </div>
+          );
+        })()}
         {dragOverFiles && tab === "archivo" && (
           <div className="expediente-drop-overlay" aria-hidden>
             <div className="expediente-drop-overlay-card">

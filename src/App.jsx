@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
@@ -25,7 +25,10 @@ import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
 import Tooltip from "./components/Tooltip";
 import { InstallPrompt } from "./components/InstallPrompt";
-import { Tutorial } from "./components/Tutorial/Tutorial";
+// Tutorial only runs on first sign-in (and on user-triggered replay
+// from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
+// the main bundle for users who already finished it.
+const Tutorial = lazy(() => import("./components/Tutorial/Tutorial").then(m => ({ default: m.Tutorial })));
 import { STEP_IDS_REQUIRING_FAB } from "./components/Tutorial/tutorialSteps";
 import { useTutorial } from "./hooks/useTutorial";
 import { ToastStack } from "./components/Toast";
@@ -37,7 +40,10 @@ import { Archivo } from "./screens/Archivo";
 import { Settings } from "./screens/Settings";
 import { PrivacyPolicy } from "./screens/PrivacyPolicy";
 import { AuthScreen } from "./screens/AuthScreen";
-import { AdminPanel } from "./screens/AdminPanel";
+// AdminPanel is only mounted when the admin opens it from the
+// topbar (one user across the whole platform). Lazy so the ~40 KB
+// admin chunk doesn't ship to every regular user.
+const AdminPanel = lazy(() => import("./screens/AdminPanel").then(m => ({ default: m.AdminPanel })));
 import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { DEFAULT_PROFESSION } from "./data/constants";
@@ -787,16 +793,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
         {showAdmin && (
-          <AdminPanel
-            onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
-            onClose={() => setShowAdmin(false)}
-            currentAdminId={user?.id}
-          />
+          <Suspense fallback={null}>
+            <AdminPanel
+              onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
+              onClose={() => setShowAdmin(false)}
+              currentAdminId={user?.id}
+            />
+          </Suspense>
         )}
         {user && !demo && !readOnly && (
           <BugReportSheet open={bugReportOpen} onClose={() => setBugReportOpen(false)} user={user} screen={screen} />
         )}
-        {!demo && !readOnly && <Tutorial />}
+        {!demo && !readOnly && (
+          <Suspense fallback={null}>
+            <Tutorial />
+          </Suspense>
+        )}
       </div>
     </div>
     </CardiganProvider>

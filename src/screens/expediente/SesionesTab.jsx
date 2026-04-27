@@ -192,7 +192,12 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
         {visible.map(s => {
           const tutor = isTutorSession(s);
           const hasNote = pNotes.some(n => n.session_id === s.id);
-          const hasSecondLine = tutor || hasNote;
+          // Manual one-off (added via FAB) — `is_recurring=false` is
+          // the explicit signal. Tutor sessions are also one-offs by
+          // definition but already get their own purple eyebrow, so
+          // we don't double-badge them.
+          const oneOff = !tutor && s.is_recurring === false;
+          const hasSecondLine = tutor || oneOff || hasNote;
           return (
             <div className="row-item" key={s.id} onClick={() => onSelect(s)}>
               <div className="row-content">
@@ -212,6 +217,11 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                     {tutor && (
                       <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
                         {t("sessions.tutor")}
+                      </span>
+                    )}
+                    {oneOff && (
+                      <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--charcoal-xl)", textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                        {t("sessions.oneOffBadge")}
                       </span>
                     )}
                     {hasNote && (
