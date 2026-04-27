@@ -608,6 +608,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
     noteCrypto,
     profession,
+    setProfessionLocal: userProfile.setProfessionLocal,
     userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
@@ -631,7 +632,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, profession, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, profession, userProfile.setProfessionLocal, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: show ProfessionOnboarding before mounting the
   // main shell when the user has no user_profiles row yet. Demo mode

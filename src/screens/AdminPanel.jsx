@@ -5,6 +5,7 @@ import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { PROFESSIONS } from "../data/constants";
+import { useCardigan } from "../context/CardiganContext";
 
 function relativeTime(dateStr) {
   if (!dateStr) return "";
@@ -26,6 +27,7 @@ function relativeTime(dateStr) {
    each have their own strong confirmation screens below the row. */
 function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
   const { t } = useT();
+  const { setProfessionLocal } = useCardigan();
   const [mode, setMode] = useState("collapsed"); // collapsed | actions | confirmBlock | confirmDelete
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -64,6 +66,12 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
     setProfessionBusy(true); setProfessionErr("");
     try {
       await adminUpdateProfession(account.userId, next);
+      // If the admin is changing their OWN profession, optimistically
+      // update the local React state so the open Cardigan session
+      // immediately reflects the new vocab + theme. Without this, the
+      // useUserProfile hook only re-fetches when its userId changes,
+      // so the admin would have to refresh to see the switch.
+      if (isSelf && setProfessionLocal) setProfessionLocal(next);
       haptic.tap();
       setPendingProfession(null);
       onAction();
