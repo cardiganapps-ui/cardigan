@@ -830,10 +830,10 @@ export function Settings({ user, signOut, refreshUser }) {
             <div style={{ padding:"0 20px 22px" }}>
               {[
                 { key: "default",  swatch: "#1F7A8C" },
-                { key: "sage",     swatch: "#6FAA82" },
-                { key: "amber",    swatch: "#C99A4A" },
-                { key: "burgundy", swatch: "#A86B7E" },
-                { key: "steel",    swatch: "#5A7388" },
+                { key: "sage",     swatch: "#88BB99" },
+                { key: "amber",    swatch: "#D8B26A" },
+                { key: "burgundy", swatch: "#BD8595" },
+                { key: "steel",    swatch: "#7A8FA3" },
               ].map(opt => (
                 <div key={opt.key} className="settings-row" style={{ cursor:"pointer" }}
                   onClick={() => { accentTheme?.setAccent(opt.key); setActiveSheet(null); }}>
@@ -841,7 +841,7 @@ export function Settings({ user, signOut, refreshUser }) {
                     <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:opt.swatch, border:"1px solid var(--border-lt)" }} />
                   </div>
                   <div style={{ flex:1 }}>
-                    <div className="settings-row-title">{t(`settings.accent.${opt.key}`)}</div>
+                    <div className="settings-row-title" style={{ fontWeight:500 }}>{t(`settings.accent.${opt.key}`)}</div>
                   </div>
                   {accentTheme?.accent === opt.key && <IconCheck size={18} style={{ color:"var(--teal)" }} />}
                 </div>
