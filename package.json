@@ -14,7 +14,8 @@
     "test:hooks": "vitest run src/hooks/__tests__",
     "bugs": "node --env-file=.env.local scripts/bugs.js",
     "audit:api": "node scripts/audit-api-auth.mjs",
-    "audit:deps": "npm audit --omit=dev --audit-level=critical"
+    "audit:deps": "npm audit --omit=dev --audit-level=critical",
+    "audit:db": "node --env-file=.env.local scripts/audit-db-health.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1028.0",
