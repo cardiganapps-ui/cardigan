@@ -25,6 +25,31 @@ import { withSentry } from "./_sentry.js";
 
 const MAX_DIRECT_BYTES = 512 * 1024; // post-base64-decode ceiling
 
+/* ── Mode-A MIME allowlist ──
+   Mode A (presigned PUT) accepts user-supplied Content-Type, which
+   gets baked into the signed URL and becomes the type R2 stores AND
+   serves. Without an allowlist, a user could upload `text/html` or
+   `image/svg+xml` and then share the presigned GET URL — the victim's
+   browser would render those as code. Even though R2's origin is
+   isolated from cardigan.mx (so cookies/JWT don't leak), the page
+   could still phish the user, mine, or trigger downloads.
+   Keep this list narrow and aligned with the document types Cardigan's
+   UI actually surfaces. .svg and .html are intentionally excluded. */
+const ALLOWED_UPLOAD_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "text/csv",
+]);
+
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed", code: "method_not_allowed" });
 
@@ -58,6 +83,9 @@ async function handler(req, res) {
 
     // ── Mode A: presigned URL for direct browser PUT ──
     const ct = typeof contentType === "string" ? contentType : "application/octet-stream";
+    if (!ALLOWED_UPLOAD_TYPES.has(ct)) {
+      return res.status(415).json({ error: "Unsupported content type", code: "unsupported_type" });
+    }
 
     const url = await getSignedUrl(r2, new PutObjectCommand({
       Bucket: BUCKET,
