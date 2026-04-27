@@ -73,6 +73,10 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         initials: getInitials(name), time: s.time, day: s.day,
         date: s.date, duration: s.duration, rate: patientRate,
         modality: s.modality, color_idx: colorIdx,
+        // Patient-creation seed batch — these rows ARE the recurring
+        // schedule. Auto-extend is allowed to derive future weeks
+        // from them.
+        is_recurring: true,
       }));
       const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
       if (!sessErr && sessData) {

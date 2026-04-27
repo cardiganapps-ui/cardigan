@@ -47,6 +47,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       duration: sessionDuration, rate: sessionRate,
       modality: modality || "presencial",
       session_type: isTutor ? "tutor" : "regular",
+      // Manual one-off session — must NEVER seed an auto-extend
+      // recurrence. Per user direction: any session added via this
+      // path (NewSessionSheet's "agendar sesión") is a one-off,
+      // even if its (day, time) happens to match the patient's
+      // recurring slot. The DB column default would also produce
+      // false, but we set it explicitly so future code reading this
+      // call site immediately sees the intent.
+      is_recurring: false,
       color_idx: patient.colorIdx || 0,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -317,6 +325,10 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
             initials: updated.initials, time: s.time, day: s.day,
             date: ds, duration: dur, rate: newRate,
             modality: s.modality || "presencial",
+            // Schedule edit replays the recurring window — these rows
+            // are the new canonical recurring schedule for the
+            // patient.
+            is_recurring: true,
             color_idx: updated.color_idx || 0 });
           existingSlots.add(slot);
         }

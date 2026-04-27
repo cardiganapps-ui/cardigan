@@ -51,6 +51,14 @@ create table if not exists sessions (
   -- Replaces the historical "T·" initials prefix as the source of truth
   -- (see migration 023). Read paths keep the prefix fallback.
   session_type text not null default 'regular' check (session_type in ('regular', 'tutor')),
+  -- True when the row was created as part of a recurring weekly
+  -- schedule (NewPatientSheet's seed insert, applyScheduleChange,
+  -- or auto-extend). False for manual one-off sessions added via
+  -- NewSessionSheet. computeAutoExtendRows requires is_recurring=true
+  -- when deriving the patient's current schedule, so a mistaken
+  -- manual session can never seed a phantom recurrence. See
+  -- supabase/migrations/025_sessions_is_recurring.sql.
+  is_recurring boolean not null default false,
   color_idx integer default 0,
   created_at timestamptz default now()
 );
