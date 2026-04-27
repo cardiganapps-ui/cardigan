@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/audit-api-auth.mjs",
+    "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:hooks": "vitest run src/hooks/__tests__",
     "bugs": "node --env-file=.env.local scripts/bugs.js",
-    "audit:api": "node scripts/audit-api-auth.mjs"
+    "audit:api": "node scripts/audit-api-auth.mjs",
+    "audit:deps": "npm audit --omit=dev --audit-level=critical"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1028.0",
