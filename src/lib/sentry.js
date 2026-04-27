@@ -47,4 +47,17 @@ export function initSentry() {
   });
 }
 
+// Tags every subsequent Sentry event with the active profession + demo
+// flag. Call from AppShell after the profile resolves so issues that
+// only affect (say) nutritionist users are filterable in the Sentry UI.
+// Profession is non-PII — it's the same enum we'd put in a feature flag.
+export function setSentryProfession(profession, { demo = false } = {}) {
+  try {
+    Sentry.setTag("profession", profession || "unknown");
+    Sentry.setTag("demo", demo ? "1" : "0");
+  } catch {
+    // Sentry not initialised (no DSN, dev mode) — no-op.
+  }
+}
+
 export { Sentry };

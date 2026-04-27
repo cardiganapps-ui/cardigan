@@ -14,6 +14,7 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
+import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
@@ -31,7 +32,8 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, notifications, showToast, readOnly, noteCrypto } = useCardigan();
+  const { tutorial, navigate, theme, notifications, showToast, readOnly, noteCrypto, profession } = useCardigan();
+  const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
 
   // Toggle in-flight — prevents double-taps and shows the spinner knob
@@ -596,7 +598,7 @@ export function Settings({ user, signOut, refreshUser }) {
             unlocked states each render their own row(s). */}
         {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
           <>
-            {noteCrypto.status === "disabled" && (
+            {noteCrypto.status === "disabled" && showEncryptionSetup && (
               <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncSetupPass1(""); setEncSetupPass2(""); setActiveSheet("encSetup"); }}>
                 <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
                 <div style={{ flex:1 }}>

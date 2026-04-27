@@ -31,6 +31,7 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [professionBusy, setProfessionBusy] = useState(false);
   const [professionErr, setProfessionErr] = useState("");
+  const [pendingProfession, setPendingProfession] = useState(null);
 
   const isSelf = account.userId === currentAdminId;
   const emailLabel = account.email || `ID: ${account.userId.slice(0, 8)}…`;
@@ -55,10 +56,14 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
   };
 
   const doChangeProfession = async (next) => {
-    if (!next || next === account.profession) return;
+    if (!next || next === account.profession) {
+      setPendingProfession(null);
+      return;
+    }
     setProfessionBusy(true); setProfessionErr("");
     try {
       await adminUpdateProfession(account.userId, next);
+      setPendingProfession(null);
       onAction();
     } catch (e) {
       setProfessionErr(e.message || t("adminProfession.saveFailed"));
@@ -117,27 +122,46 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             </button>
           </div>
           {/* Inline profession picker — admin-only path to change a
-              user's profession after sign-up. Auto-saves on change. */}
+              user's profession after sign-up. Two-step: pick a value
+              from the dropdown, then confirm to save. Prevents an
+              accidental drag-tap from rewriting the user's vocabulary
+              + theme + templates without a chance to back out. */}
           <div onClick={(e) => e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700 }}>
               {t("adminProfession.label")}:
             </span>
             <select
               className="input"
-              value={account.profession || "psychologist"}
+              value={pendingProfession ?? account.profession ?? "psychologist"}
               disabled={professionBusy}
-              onChange={(e) => doChangeProfession(e.target.value)}
+              onChange={(e) => {
+                setProfessionErr("");
+                setPendingProfession(e.target.value === account.profession ? null : e.target.value);
+              }}
               style={{ flex:1, height:32, fontSize:"var(--text-sm)", padding:"0 8px" }}>
               {PROFESSIONS.map((p) => (
                 <option key={p} value={p}>{t(`onboarding.professions.${p}.label`)}</option>
               ))}
             </select>
-            {professionBusy && (
-              <span style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)" }}>
-                {t("adminProfession.saving")}
-              </span>
-            )}
           </div>
+          {pendingProfession && (
+            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+              <button
+                className="btn"
+                style={{ flex:1, height:32, fontSize:"var(--text-sm)", background:"var(--teal)", color:"var(--white)", boxShadow:"none" }}
+                disabled={professionBusy}
+                onClick={(e) => { e.stopPropagation(); doChangeProfession(pendingProfession); }}>
+                {professionBusy ? t("adminProfession.saving") : t("adminProfession.confirm")}
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ height:32, fontSize:"var(--text-sm)", padding:"0 12px" }}
+                disabled={professionBusy}
+                onClick={(e) => { e.stopPropagation(); setPendingProfession(null); setProfessionErr(""); }}>
+                {t("cancel")}
+              </button>
+            </div>
+          )}
           {professionErr && <div className="form-error" style={{ marginTop:0 }}>{professionErr}</div>}
         </div>
       )}
