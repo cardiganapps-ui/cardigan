@@ -42,10 +42,10 @@ export function NotificationPreview({ upcoming, reminderMinutes }) {
         flexShrink: 0,
         width: 34, height: 34, borderRadius: 8,
         background: "var(--teal)",
-        color: "#FFFFFF",
+        color: "var(--white)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <LogoIcon size={20} color="#FFFFFF" />
+        <LogoIcon size={20} color="var(--white)" />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{

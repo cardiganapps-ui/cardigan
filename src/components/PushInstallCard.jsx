@@ -61,7 +61,7 @@ export function PushInstallCard() {
         <div style={{
           flexShrink: 0,
           width: 36, height: 36, borderRadius: "50%",
-          background: "var(--teal)", color: "#FFFFFF",
+          background: "var(--teal)", color: "var(--white)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <IconBell size={18} />
@@ -102,7 +102,7 @@ export function PushInstallCard() {
             <span style={{
               flexShrink: 0,
               width: 22, height: 22, borderRadius: "50%",
-              background: "var(--teal)", color: "#FFFFFF",
+              background: "var(--teal)", color: "var(--white)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12, fontWeight: 800,
             }}>{i + 1}</span>

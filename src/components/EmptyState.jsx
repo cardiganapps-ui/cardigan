@@ -104,6 +104,55 @@ function EmptyIllustration({ kind, size = 160 }) {
     );
   }
 
+  if (kind === "mediciones") {
+    // Outlined ruler-and-scale silhouette with a teal trend arc rising
+    // through it. Reads as "we're here to track progress" without
+    // resorting to a literal weight scale (too clinical) or a
+    // generic chart icon (too anonymous). Same line-art treatment as
+    // the receipt + notepad above so the family stays consistent.
+    return (
+      <svg width={size} height={size * 0.7} viewBox="0 0 200 140" aria-hidden="true">
+        {/* Soft spotlight + ground shadow */}
+        <circle cx="100" cy="72" r="58" fill={tint} opacity="0.4" />
+        <ellipse cx="100" cy="122" rx="56" ry="6" fill={tint} opacity="0.55" />
+
+        {/* Card backdrop — a "measurement card" silhouette */}
+        <rect x="44" y="32" width="112" height="80" rx="10"
+          fill="var(--white)" stroke={stroke} strokeWidth="2.2" />
+
+        {/* Horizontal axis baseline */}
+        <line x1="56" y1="92" x2="144" y2="92"
+          stroke={stroke} strokeWidth="1.5" strokeLinecap="round" opacity="0.35" />
+
+        {/* Trend curve — gentle upward arc, drawn left to right */}
+        <path
+          d="M 58 86 Q 78 80 92 72 T 124 56 T 142 46"
+          fill="none"
+          stroke={fill}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Datapoint dots along the curve */}
+        <g fill={fill}>
+          <circle cx="58"  cy="86" r="3" opacity="0.55" />
+          <circle cx="92"  cy="72" r="3" opacity="0.75" />
+          <circle cx="124" cy="56" r="3" />
+          <circle cx="142" cy="46" r="3.6" />
+        </g>
+
+        {/* Tick marks on the X axis — quietly suggest "over time" */}
+        <g stroke={stroke} strokeWidth="1.4" strokeLinecap="round" opacity="0.32">
+          <line x1="64"  y1="92" x2="64"  y2="98" />
+          <line x1="92"  y1="92" x2="92"  y2="98" />
+          <line x1="120" y1="92" x2="120" y2="98" />
+          <line x1="142" y1="92" x2="142" y2="98" />
+        </g>
+      </svg>
+    );
+  }
+
   if (kind === "finances") {
     // Outlined receipt with a teal $-emblem. Line-art (no opaque
     // fills) so the shape reads on both light and dark backgrounds

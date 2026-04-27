@@ -1,0 +1,157 @@
+/* ── ProfessionOnboarding ──
+   Full-screen post-sign-up tile picker. Companion to
+   src/screens/ProfessionOnboarding.jsx.
+
+   Visual language matches AuthScreen: cream background, centered
+   column on desktop, generous vertical rhythm. The first-paint
+   animation uses a `--rise-i` index per child to stagger entry
+   (logo → headline → 5 tiles → action row, ~80ms apart). */
+
+.profession-onboarding {
+  background: var(--cream);
+  overflow-y: auto;
+}
+
+.profession-onboarding-inner {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(var(--sat, 0px) + 28px) 20px calc(var(--sab, 0px) + 28px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+}
+
+/* Stagger entry — each child sets its own --rise-i (0, 1, 2…) so the
+   sequence cascades. cubic-bezier matches the canonical curve. */
+.profession-onboarding-inner > *,
+.profession-onboarding-tile {
+  animation: onboardingRise 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--rise-i, 0) * 70ms);
+}
+
+@keyframes onboardingRise {
+  0%   { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.profession-onboarding-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.profession-onboarding-brand-text {
+  font-family: var(--font-d);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.3px;
+}
+
+.profession-onboarding-title {
+  font-family: var(--font-d);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--charcoal);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+
+.profession-onboarding-subtitle {
+  font-size: 15px;
+  color: var(--charcoal-md);
+  line-height: 1.6;
+}
+
+.profession-onboarding-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Tiles are buttons. The active state lifts the card with a small
+   scale + shadow + teal border, and reveals a checkmark badge in the
+   top-right corner. */
+.profession-onboarding-tile {
+  position: relative;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--white);
+  border: 2px solid var(--border-lt);
+  cursor: pointer;
+  font-family: var(--font);
+  transition:
+    border-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: none;
+}
+
+.profession-onboarding-tile:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.profession-onboarding-tile--active {
+  background: var(--teal-pale);
+  border-color: var(--teal);
+  box-shadow: var(--shadow-sm);
+  transform: scale(1.015);
+}
+
+.profession-onboarding-tile:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.profession-onboarding-tile-content {
+  padding-right: 30px;
+}
+
+.profession-onboarding-tile-label {
+  font-family: var(--font-d);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin-bottom: 2px;
+}
+
+.profession-onboarding-tile-description {
+  font-size: 13px;
+  color: var(--charcoal-md);
+  line-height: 1.5;
+}
+
+/* Checkmark badge that fades + scales in when the tile is active. */
+.profession-onboarding-tile-check {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity 0.22s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.profession-onboarding-error {
+  margin-top: 4px;
+}
+
+.profession-onboarding-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}

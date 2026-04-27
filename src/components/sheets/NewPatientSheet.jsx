@@ -421,39 +421,47 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   + trainer only. Sits above the tutor-frequency block
                   because most of these clients are adults; minors are
                   the exception in fitness/nutrition contexts. */}
-              {showHealthFields && (
-                <>
-                  <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8, marginTop:4 }}>
-                    {t("patientFields.sectionTitle")}
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    <div className="input-group">
-                      <label className="input-label">{t("patientFields.height")}</label>
-                      <input className="input" type="number" inputMode="numeric"
-                        value={heightCm} onChange={e => setHeightCm(e.target.value)}
-                        min="50" max="250" step="1" />
+              {showHealthFields && (() => {
+                // Inline validation: out-of-range numeric inputs flag
+                // a soft error state. We don't block submission — the
+                // caller still coerces — but flagging the field gives
+                // the user a chance to fix typos before submitting.
+                const heightInvalid = heightCm !== "" && (isNaN(Number(heightCm)) || Number(heightCm) < 50 || Number(heightCm) > 250);
+                const goalInvalid = goalWeightKg !== "" && (isNaN(Number(goalWeightKg)) || Number(goalWeightKg) < 20 || Number(goalWeightKg) > 300);
+                return (
+                  <>
+                    <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8, marginTop:4 }}>
+                      {t("patientFields.sectionTitle")}
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.height")}</label>
+                        <input className={`input ${heightInvalid ? "input-error" : ""}`} type="number" inputMode="numeric"
+                          value={heightCm} onChange={e => setHeightCm(e.target.value)}
+                          min="50" max="250" step="1" />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.goalWeight")}</label>
+                        <input className={`input ${goalInvalid ? "input-error" : ""}`} type="number" inputMode="decimal"
+                          value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)}
+                          min="20" max="300" step="0.1" />
+                      </div>
                     </div>
                     <div className="input-group">
-                      <label className="input-label">{t("patientFields.goalWeight")}</label>
-                      <input className="input" type="number" inputMode="decimal"
-                        value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)}
-                        min="20" max="300" step="0.1" />
+                      <label className="input-label">{t("patientFields.allergies")}</label>
+                      <input className="input" type="text"
+                        value={allergies} onChange={e => setAllergies(e.target.value)}
+                        placeholder={t("patientFields.allergiesPlaceholder")} />
                     </div>
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">{t("patientFields.allergies")}</label>
-                    <input className="input" type="text"
-                      value={allergies} onChange={e => setAllergies(e.target.value)}
-                      placeholder={t("patientFields.allergiesPlaceholder")} />
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">{t("patientFields.medicalConditions")}</label>
-                    <input className="input" type="text"
-                      value={medicalConditions} onChange={e => setMedicalConditions(e.target.value)}
-                      placeholder={t("patientFields.medicalConditionsPlaceholder")} />
-                  </div>
-                </>
-              )}
+                    <div className="input-group">
+                      <label className="input-label">{t("patientFields.medicalConditions")}</label>
+                      <input className="input" type="text"
+                        value={medicalConditions} onChange={e => setMedicalConditions(e.target.value)}
+                        placeholder={t("patientFields.medicalConditionsPlaceholder")} />
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Tutor frequency — only if minor, so we can surface it
                   without cluttering step 1 with another required-

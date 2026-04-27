@@ -37,6 +37,33 @@
   --blue:        #5B8FD4;
   --blue-bg:     #EBF1FA;
   --nav-bg:      #2C4A52;
+  /* Modality dots (Agenda month view + future surfaces). Tokenized
+     so dark mode + per-profession theme overrides flow uniformly
+     instead of hand-tuning each consumer. Values match the original
+     hex literals that were inline in Agenda.jsx prior to the polish
+     pass — preserving the visual identity nutritionists / tutors
+     have already learned. */
+  --modality-presencial:   #1F7A8C;
+  --modality-virtual:      #2550C7;
+  --modality-telefonica:   #3DAB74;
+  --modality-a-domicilio:  #A347C9;
+  /* Translucent whites for chips on dark surfaces (demo banner,
+     read-only banner). Three steps so callers can pick the right
+     contrast without typing rgba() from scratch. */
+  --white-translucent-soft:   rgba(255, 255, 255, 0.18);
+  --white-translucent-medium: rgba(255, 255, 255, 0.28);
+  --white-translucent-strong: rgba(255, 255, 255, 0.45);
+  /* Unified backdrop scrim. Sheet / drawer / fab overlays converged
+     on slightly different alphas before — we now share one scrim
+     color and vary the blur per depth layer. */
+  --scrim-bg:     rgba(46, 46, 46, 0.42);
+  --blur-sheet:   blur(10px) saturate(1.4);
+  --blur-drawer:  blur(4px);
+  --blur-fab:     blur(3px);
+  --blur-dialog:  blur(8px) saturate(1.3);
+  /* Document viewer backdrop for image content. Near-black so the
+     image edges contrast cleanly; PDFs / docs render on --white. */
+  --doc-viewer-image-bg: #1A1A1A;
   --radius-sm:   8px;
   --radius:      12px;
   --radius-lg:   16px;
@@ -248,10 +275,15 @@ button.avatar-sm::before {
   font-weight: 800;
 }
 
-/* DRAWER OVERLAY */
+/* DRAWER OVERLAY — shares --scrim-bg with sheets/fab; differentiates
+   via --blur-drawer (lighter blur because the drawer slides aside
+   rather than fully covering content, so over-blurring would feel
+   heavy). */
 .drawer-overlay {
-  position: fixed; inset: 0; background: rgba(20,35,40,0.5);
-  z-index: var(--z-drawer-overlay); backdrop-filter: blur(2px);
+  position: fixed; inset: 0; background: var(--scrim-bg);
+  z-index: var(--z-drawer-overlay);
+  -webkit-backdrop-filter: var(--blur-drawer);
+  backdrop-filter: var(--blur-drawer);
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }

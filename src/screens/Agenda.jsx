@@ -502,10 +502,10 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
                     purple pull each hue into its own corner of the wheel.
                     Telefónica reuses brand green so it reads distinct from
                     presencial's teal at this size. */}
-                {hasPresencial && <span className="month-dot-color" style={{ background: "#1F7A8C" }} />}
-                {hasVirtual && <span className="month-dot-color" style={{ background: "#2550C7" }} />}
-                {hasTelefonica && <span className="month-dot-color" style={{ background: "#3DAB74" }} />}
-                {hasTutor && <span className="month-dot-color" style={{ background: "#A347C9" }} />}
+                {hasPresencial && <span className="month-dot-color" style={{ background: "var(--modality-presencial)" }} />}
+                {hasVirtual && <span className="month-dot-color" style={{ background: "var(--modality-virtual)" }} />}
+                {hasTelefonica && <span className="month-dot-color" style={{ background: "var(--modality-telefonica)" }} />}
+                {hasTutor && <span className="month-dot-color" style={{ background: "var(--modality-a-domicilio)" }} />}
               </div>
             )}
           </div>

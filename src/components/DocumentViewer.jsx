@@ -43,7 +43,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
             </a>
           </div>
         </div>
-        <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "#1a1a1a" : "var(--white)" }}>
+        <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "var(--doc-viewer-image-bg)" : "var(--white)" }}>
           {isImage && !imgFailed && <img src={url} alt={doc.name} onError={() => setImgFailed(true)} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
           {isImage && imgFailed && (
             <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>

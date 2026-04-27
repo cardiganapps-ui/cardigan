@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { useT } from "../i18n/index";
 import { LogoIcon } from "../components/LogoMark";
+import { IconCheck } from "../components/Icons";
 import { PROFESSIONS } from "../data/constants";
+import { haptic } from "../utils/haptics";
 
 /* ── ProfessionOnboarding ──
    One-time gate shown after sign-up when the user has no row in
    public.user_profiles. Locks the app on the picker until they choose.
    Existing users were backfilled by migration 021 and never see this.
+
+   Polish details:
+   - Logo + headline + tiles + footer all rise into place via stagger
+     animation (`onboarding-rise`, ~80ms each) on first paint.
+   - Active tile scales 1 → 1.02 with a checkmark badge in the top-right.
+   - Tile selection fires haptic.tap() so the tile picker feels chosen,
+     not just hovered.
 
    `onSelect(profession)` is expected to return a boolean indicating
    whether the row was created. On false we leave the spinner state up
@@ -30,66 +39,58 @@ export function ProfessionOnboarding({ onSelect, onSignOut }) {
   };
 
   return (
-    <div className="shell" style={{ background: "var(--cream)", overflow: "auto" }}>
-      <div style={{
-        maxWidth: 560,
-        margin: "0 auto",
-        padding: "calc(var(--sat, 0px) + 28px) 20px calc(var(--sab, 0px) + 28px)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        minHeight: "100%",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+    <div className="shell profession-onboarding">
+      <div className="profession-onboarding-inner">
+        <div className="profession-onboarding-brand" style={{ "--rise-i": 0 }}>
           <LogoIcon size={22} color="var(--teal)" />
-          <span style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, color: "var(--charcoal)", letterSpacing: "-0.3px" }}>cardigan</span>
+          <span className="profession-onboarding-brand-text">cardigan</span>
         </div>
 
-        <div>
-          <div style={{ fontFamily: "var(--font-d)", fontSize: 26, fontWeight: 900, color: "var(--charcoal)", letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 8 }}>
+        <div style={{ "--rise-i": 1 }} className="profession-onboarding-headline">
+          <div className="profession-onboarding-title">
             {t("onboarding.title")}
           </div>
-          <div style={{ fontSize: 15, color: "var(--charcoal-md)", lineHeight: 1.6 }}>
+          <div className="profession-onboarding-subtitle">
             {t("onboarding.subtitle")}
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
-          {PROFESSIONS.map((p) => {
+        <div className="profession-onboarding-tiles">
+          {PROFESSIONS.map((p, i) => {
             const active = selected === p;
             return (
               <button
                 key={p}
                 type="button"
-                onClick={() => { setSelected(p); setErr(""); }}
+                className={`profession-onboarding-tile ${active ? "profession-onboarding-tile--active" : ""}`}
+                style={{ "--rise-i": 2 + i }}
+                onClick={() => { setSelected(p); setErr(""); haptic.tap(); }}
                 disabled={saving}
-                style={{
-                  textAlign: "left",
-                  padding: "14px 16px",
-                  borderRadius: "var(--radius)",
-                  background: active ? "var(--teal-pale)" : "var(--white)",
-                  border: `2px solid ${active ? "var(--teal)" : "var(--border-lt)"}`,
-                  cursor: saving ? "default" : "pointer",
-                  fontFamily: "var(--font)",
-                  transition: "border-color 0.2s, background 0.2s",
-                  boxShadow: active ? "var(--shadow-sm)" : "none",
-                }}>
-                <div style={{ fontFamily: "var(--font-d)", fontSize: 16, fontWeight: 800, color: "var(--charcoal)", marginBottom: 2 }}>
-                  {t(`onboarding.professions.${p}.label`)}
+                aria-pressed={active}>
+                <div className="profession-onboarding-tile-content">
+                  <div className="profession-onboarding-tile-label">
+                    {t(`onboarding.professions.${p}.label`)}
+                  </div>
+                  <div className="profession-onboarding-tile-description">
+                    {t(`onboarding.professions.${p}.description`)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, color: "var(--charcoal-md)", lineHeight: 1.5 }}>
-                  {t(`onboarding.professions.${p}.description`)}
-                </div>
+                <span
+                  className="profession-onboarding-tile-check"
+                  aria-hidden
+                  style={{ opacity: active ? 1 : 0, transform: active ? "scale(1)" : "scale(0.6)" }}>
+                  <IconCheck size={14} />
+                </span>
               </button>
             );
           })}
         </div>
 
         {err && (
-          <div className="form-error" style={{ marginTop: 4 }}>{err}</div>
+          <div className="form-error profession-onboarding-error">{err}</div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        <div className="profession-onboarding-actions" style={{ "--rise-i": 2 + PROFESSIONS.length }}>
           <button
             className="btn btn-primary"
             type="button"

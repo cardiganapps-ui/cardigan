@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { haptic } from "../utils/haptics";
 import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, fetchAdminAnalytics } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
@@ -63,6 +64,7 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
     setProfessionBusy(true); setProfessionErr("");
     try {
       await adminUpdateProfession(account.userId, next);
+      haptic.tap();
       setPendingProfession(null);
       onAction();
     } catch (e) {
@@ -111,13 +113,13 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
                 color: account.blocked ? "var(--green)" : "var(--amber)",
                 opacity: isSelf ? 0.5 : 1 }}
               disabled={isSelf}
-              onClick={(e) => { e.stopPropagation(); setErr(""); setMode("confirmBlock"); }}>
+              onClick={(e) => { e.stopPropagation(); setErr(""); haptic.warn(); setMode("confirmBlock"); }}>
               {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
             </button>
             <button className="btn"
               style={{ height:36, fontSize:"var(--text-sm)", boxShadow:"none", background:"var(--red-bg)", color:"var(--red)", opacity: isSelf ? 0.5 : 1 }}
               disabled={isSelf}
-              onClick={(e) => { e.stopPropagation(); setErr(""); setDeleteConfirmText(""); setMode("confirmDelete"); }}>
+              onClick={(e) => { e.stopPropagation(); setErr(""); setDeleteConfirmText(""); haptic.warn(); setMode("confirmDelete"); }}>
               {t("admin.accountDelete")}
             </button>
           </div>
@@ -717,7 +719,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
                 borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer",
                 fontFamily:"var(--font)", minHeight:32,
                 background: tab===tb.k ? "white" : "transparent",
-                color: tab===tb.k ? "#1a1a2e" : "rgba(255,255,255,0.65)",
+                color: tab===tb.k ? "var(--charcoal)" : "var(--white-translucent-strong)",
                 transition:"all 0.4s",
               }}>
               {tb.l}
