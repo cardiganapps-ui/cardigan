@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
-import { isCancelledStatus, statusClass } from "../utils/sessions";
+import { isCancelledStatus, isTutorSession, tutorDisplayInitials, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconTrash } from "./Icons";
 import { Avatar } from "./Avatar";
@@ -49,8 +49,8 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const rateDisplay = `$${sessionRate.toLocaleString()}`;
   const isCancelled = isCancelledStatus(session.status);
   const statusLbl = t(`sessions.${session.status}`);
-  const isTutor = session.initials?.startsWith("T·");
-  const displayInitials = isTutor ? session.initials.replace("T·", "") : session.initials;
+  const isTutor = isTutorSession(session);
+  const displayInitials = isTutor ? tutorDisplayInitials(session) : session.initials;
 
   const dur = session.duration || 60;
   const [h, m] = (session.time || "0:0").split(":");

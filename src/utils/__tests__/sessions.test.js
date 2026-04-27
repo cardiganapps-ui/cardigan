@@ -5,15 +5,36 @@ import {
 } from "../sessions";
 
 describe("isTutorSession", () => {
-  it("detects tutor sessions by T· prefix", () => {
+  it("recognises session_type === 'tutor' (post-migration 023)", () => {
+    expect(isTutorSession({ session_type: "tutor", initials: "AB" })).toBe(true);
+    expect(isTutorSession({ session_type: "regular", initials: "AB" })).toBe(false);
+  });
+
+  it("falls back to the legacy T· initials prefix for unmigrated rows", () => {
     expect(isTutorSession({ initials: "T·AB" })).toBe(true);
     expect(isTutorSession({ initials: "AB" })).toBe(false);
+  });
+
+  it("treats either signal as authoritative when both are present", () => {
+    // Defensive: a row with column='tutor' but missing prefix still wins.
+    expect(isTutorSession({ session_type: "tutor", initials: "AB" })).toBe(true);
+    // Legacy prefix without column still works.
+    expect(isTutorSession({ session_type: "regular", initials: "T·AB" })).toBe(true);
+  });
+
+  it("is falsy for null / missing inputs", () => {
     expect(isTutorSession({ initials: null })).toBeFalsy();
+    expect(isTutorSession({})).toBeFalsy();
+    expect(isTutorSession(null)).toBeFalsy();
   });
 });
 
 describe("tutorDisplayInitials", () => {
-  it("strips T· prefix", () => {
+  it("returns post-migration initials unchanged (no prefix to strip)", () => {
+    expect(tutorDisplayInitials({ session_type: "tutor", initials: "AB" })).toBe("AB");
+  });
+
+  it("strips a legacy T· prefix when present", () => {
     expect(tutorDisplayInitials({ initials: "T·AB" })).toBe("AB");
   });
 

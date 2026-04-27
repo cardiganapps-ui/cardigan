@@ -230,7 +230,12 @@ async function handler(req, res) {
       }
 
       await Promise.allSettled(targets.map(async ({ session, patient }) => {
-        const isTutor = typeof session.initials === "string" && session.initials.startsWith("T·");
+        // Post-migration 023 session_type is the source of truth.
+        // Keep the legacy startsWith("T·") fallback so an unmigrated
+        // row (shouldn't exist in prod, but safer) still routes
+        // correctly through the tutor branch.
+        const isTutor = session.session_type === "tutor"
+          || (typeof session.initials === "string" && session.initials.startsWith("T·"));
         // For minor patients the phone already belongs to the tutor
         // (per CLAUDE.md / user direction). For tutor-meet sessions we
         // greet by the tutor's name; for normal sessions of an adult

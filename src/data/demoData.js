@@ -308,6 +308,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           ? CANCEL_REASONS[Math.floor(Math.random() * CANCEL_REASONS.length)]
           : null,
         modality: def.modality || "presencial",
+        session_type: "regular",
         color_idx: colorIdx,
         colorIdx: colorIdx,
         created_at: current.toISOString(),
@@ -325,7 +326,9 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           user_id: demoUserId,
           patient_id: patientId,
           patient: def.name,
-          initials: "T·" + getInitials(def.parent),
+          // Post-migration 023 the parent's initials live unprefixed in
+          // `initials`; `session_type === "tutor"` carries the marker.
+          initials: getInitials(def.parent),
           time: "18:00",
           day: def.day,
           date: dateStr(tutorDate),
@@ -334,6 +337,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           status: "completed",
           cancel_reason: null,
           modality: "presencial",
+          session_type: "tutor",
           color_idx: colorIdx,
           colorIdx: colorIdx,
           created_at: tutorDate.toISOString(),

@@ -21,8 +21,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const dateObj = parseShortDate(date);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
 
+    // Tutor sessions render with the parent's initials; the
+    // `session_type` column (DB) and the avatar color (UI) carry the
+    // tutor-vs-regular distinction. We no longer prefix initials with
+    // "T·" — that legacy marker was promoted to a real column in
+    // migration 023.
     const sessionInitials = isTutor
-      ? "T·" + getInitials(tutorName || patient.parent || "Tutor")
+      ? getInitials(tutorName || patient.parent || "Tutor")
       : patient.initials;
     // Accept any finite customRate >= 0 (pro-bono / sliding-scale sessions
     // legitimately use 0). Only fall back to patient.rate when the caller
@@ -41,6 +46,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       time: time.trim(), day: dayName, date: date.trim(),
       duration: sessionDuration, rate: sessionRate,
       modality: modality || "presencial",
+      session_type: isTutor ? "tutor" : "regular",
       color_idx: patient.colorIdx || 0,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
