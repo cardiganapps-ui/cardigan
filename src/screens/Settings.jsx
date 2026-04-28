@@ -8,6 +8,7 @@ import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useMfa } from "../hooks/useMfa";
+import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Expando } from "../components/Expando";
 import { PushInstallCard } from "../components/PushInstallCard";
@@ -37,6 +38,11 @@ export function Settings({ user, signOut, refreshUser }) {
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
   const mfa = useMfa();
+  // Captcha state for the password-reset flow. Supabase enforces a
+  // captcha token on resetPasswordForEmail, so the in-app "Cambiar
+  // contraseña" affordance has to render its own Turnstile widget.
+  const [passwordCaptchaToken, setPasswordCaptchaToken] = useState(null);
+  const [passwordResetError, setPasswordResetError] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaUiError, setMfaUiError] = useState("");
@@ -207,14 +213,22 @@ export function Settings({ user, signOut, refreshUser }) {
   const resetPassword = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
-      if (error) { setMessage(t("settings.emailError")); return; }
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+        captchaToken: passwordCaptchaToken || undefined,
+      });
+      if (error) {
+        setPasswordResetError(error.message || t("settings.emailError"));
+        return;
+      }
       setMessage(t("settings.linkSent"));
+      setActiveSheet(null);
       setTimeout(() => setMessage(""), 3000);
     } catch {
-      setMessage(t("settings.emailError"));
+      setPasswordResetError(t("settings.emailError"));
     } finally {
       setSaving(false);
+      // Token is single-use; widget reissues a fresh one for the next attempt.
+      setPasswordCaptchaToken(null);
     }
   };
 
@@ -760,11 +774,14 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={resetPassword}>
+        <div className="settings-row" style={{ cursor:"pointer" }}
+          onClick={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.changePassword")}</div>
-            {message && activeSheet === null && <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>}
+            {message && activeSheet === null && (
+              <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>
+            )}
           </div>
           <IconChevron />
         </div>
@@ -1296,6 +1313,56 @@ export function Settings({ user, signOut, refreshUser }) {
                   {t("settings.signOutEverywhereCta")}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)}>
+                  {t("cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CHANGE PASSWORD SHEET ──
+         Captcha-gated reset email. The Turnstile widget is invisible
+         on trusted browsers (non-interactive mode + appearance:"interaction-
+         only" — see TurnstileWidget.jsx); on the few cases it surfaces,
+         the user gets a brief challenge before the email goes out. */}
+      {activeSheet === "changePassword" && (
+        <div className="sheet-overlay" onClick={() => !saving && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.changePassword")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !saving && setActiveSheet(null)} disabled={saving}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                {t("settings.changePasswordExplain", { email: userEmail })}
+              </div>
+              {TURNSTILE_ENABLED && (
+                <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
+                  <TurnstileWidget onToken={setPasswordCaptchaToken} />
+                </div>
+              )}
+              {passwordResetError && (
+                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{passwordResetError}</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={saving}
+                  onClick={() => {
+                    if (TURNSTILE_ENABLED && !passwordCaptchaToken) {
+                      setPasswordResetError(t("auth.captchaPending"));
+                      return;
+                    }
+                    setPasswordResetError("");
+                    resetPassword();
+                  }}
+                >
+                  {saving ? t("loading") : t("settings.changePasswordCta")}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={saving}>
                   {t("cancel")}
                 </button>
               </div>

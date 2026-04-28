@@ -566,6 +566,8 @@ export default {
     planActive: "Plan activo",
     planValue: "Cardigan Pro",
     changePassword: "Cambiar contrase\u00f1a",
+    changePasswordExplain: "Te enviaremos un enlace a {email} para que elijas una nueva contrase\u00f1a. El enlace expira en una hora.",
+    changePasswordCta: "Enviar enlace",
     checkUpdate: "Buscar actualizaci\u00f3n",
     updateChecking: "Buscando\u2026",
     updateInstalling: "Descargando nueva versi\u00f3n\u2026",
