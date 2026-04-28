@@ -38,39 +38,29 @@ function formatISODateLong(iso) {
 // without the column still appear.
 /* Derive the recurring schedule from session rows.
 
-   Why count-based: migration 025 had to backfill `is_recurring=true`
-   on every existing row because legacy rows had no flag and no clean
-   way to retroactively guess. So `is_recurring=true` alone doesn't
-   prove a slot is recurring — a one-off session created before the
-   column existed will look identical to a real recurring slot.
-
-   The reliable signal is "≥2 active sessions on the same (day, time)"
-   — a true one-off can't satisfy that, while real recurring slots
-   always do (auto-extend keeps ~15 weeks scheduled). Same safeguard
-   computeAutoExtendRows uses to decide whether to extend.
-
-   Also requires `is_recurring !== false` as a belt-and-suspenders
-   defence: if a future user happens to create two manual one-offs
-   on the same slot, the explicit one-off flag still blocks them. */
+   Source of truth: `is_recurring=true`. Sessions get this flag set
+   ONLY when created from the patient profile flow — initial
+   createPatient, applyScheduleChange, or auto-extend off an
+   already-recurring slot. The "+ session" FAB writes
+   is_recurring=false. Legacy one-offs were corrected by migration
+   028 (uses slot-count signal: any ≤3-session slot on a patient
+   with a real ≥10-session slot elsewhere is a one-off). */
 function derivePatientSchedules(sessions, patientId, includePast) {
   const today = todayISO();
-  const slots = new Map(); // key → { day, time, count }
+  const seen = new Set();
+  const result = [];
   for (const s of sessions) {
     if (s.patient_id !== patientId) continue;
     if (s.status === "cancelled" || s.status === "charged") continue;
-    if (s.is_recurring === false) continue;
+    if (s.is_recurring !== true) continue;
     if (!includePast) {
       const iso = shortDateToISO(s.date);
       if (iso < today) continue;
     }
     const key = `${s.day}|${s.time}`;
-    const cur = slots.get(key) || { day: s.day, time: s.time, count: 0 };
-    cur.count++;
-    slots.set(key, cur);
-  }
-  const result = [];
-  for (const slot of slots.values()) {
-    if (slot.count >= 2) result.push({ day: slot.day, time: slot.time });
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ day: s.day, time: s.time });
   }
   result.sort((a, b) => {
     const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
