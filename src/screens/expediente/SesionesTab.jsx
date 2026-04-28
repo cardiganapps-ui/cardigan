@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { IconClipboard } from "../../components/Icons";
 import { isTutorSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -56,24 +56,6 @@ export function SesionesTab({
 }) {
   const { t } = useT();
 
-  /* Recurring-slot detection — same heuristic the Resumen Horarios
-     section uses: a (day, time) slot is "recurring" iff there are
-     ≥2 active (non-cancelled, non-charged) sessions on it. We can't
-     trust `is_recurring=true` alone because migration 025 backfilled
-     every legacy row to true. The badge below uses this set to spot
-     legacy one-offs that the explicit flag would otherwise miss. */
-  const recurringSlots = useMemo(() => {
-    const counts = new Map();
-    for (const s of pSessions) {
-      if (s.status === "cancelled" || s.status === "charged") continue;
-      if (s.is_recurring === false) continue;
-      const key = `${s.day}|${s.time}`;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
-    const out = new Set();
-    for (const [k, c] of counts) if (c >= 2) out.add(k);
-    return out;
-  }, [pSessions]);
 
   if (pSessions.length === 0) {
     return (
@@ -149,7 +131,6 @@ export function SesionesTab({
               onSelect={onSelectSession}
               onOpenNote={onOpenNote}
               moreLabelKey="expediente.showMoreSessions"
-              recurringSlots={recurringSlots}
               t={t}
             />
           )}
@@ -163,8 +144,7 @@ export function SesionesTab({
                 onSelect={onSelectSession}
                 onOpenNote={onOpenNote}
                 moreLabelKey="expediente.showMorePastSessions"
-                recurringSlots={recurringSlots}
-                t={t}
+                  t={t}
               />
             </div>
           )}
@@ -183,7 +163,7 @@ const SECTION_LABEL_STYLE = {
   marginBottom: 6,
 };
 
-function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, recurringSlots, t }) {
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, t }) {
   const [visibleCount, setVisibleCount] = useState(SESSIONS_COLLAPSED_COUNT);
   // Reset to the initial window whenever the filtered list changes so
   // switching filters doesn't leave a stale expanded view visible.
@@ -213,16 +193,12 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
         {visible.map(s => {
           const tutor = isTutorSession(s);
           const hasNote = pNotes.some(n => n.session_id === s.id);
-          // Manual one-off detection. `is_recurring=false` is the
-          // explicit signal for sessions created after migration 025.
-          // For older rows (which were all backfilled to is_recurring=true)
-          // we fall back to the slot-occupancy check: if this (day, time)
-          // doesn't appear in the patient's set of recurring slots
-          // (≥2 active sessions on the slot), it's effectively a one-off.
-          // Tutor sessions are excluded — they already get their own
-          // purple eyebrow.
-          const slotKey = `${s.day}|${s.time}`;
-          const oneOff = !tutor && (s.is_recurring === false || !recurringSlots?.has(slotKey));
+          // Manual one-off — `is_recurring=false` is the explicit
+          // signal. Migrations 027 + 028 cleaned up legacy rows so
+          // this flag is now reliable across the entire dataset.
+          // Tutor sessions are excluded — they get their own purple
+          // eyebrow regardless.
+          const oneOff = !tutor && s.is_recurring === false;
           const hasSecondLine = tutor || oneOff || hasNote;
           return (
             <div className="row-item" key={s.id} onClick={() => onSelect(s)}>
