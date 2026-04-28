@@ -41,8 +41,15 @@ export function Settings({ user, signOut, refreshUser }) {
   // Captcha state for the password-reset flow. Supabase enforces a
   // captcha token on resetPasswordForEmail, so the in-app "Cambiar
   // contraseña" affordance has to render its own Turnstile widget.
+  // pendingPasswordSubmit defers the click while the invisible
+  // Turnstile widget is still resolving — set true on click; a
+  // useEffect fires the actual request the moment the token arrives.
+  // Without this the user sees "Espera a que se complete la
+  // verificación" if they tap before the widget settles (typical on
+  // a cold sheet open).
   const [passwordCaptchaToken, setPasswordCaptchaToken] = useState(null);
   const [passwordResetError, setPasswordResetError] = useState("");
+  const [pendingPasswordSubmit, setPendingPasswordSubmit] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaUiError, setMfaUiError] = useState("");
@@ -210,11 +217,11 @@ export function Settings({ user, signOut, refreshUser }) {
     }
   };
 
-  const resetPassword = async () => {
+  const resetPassword = useCallback(async (token) => {
     setSaving(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        captchaToken: passwordCaptchaToken || undefined,
+        captchaToken: token || undefined,
       });
       if (error) {
         setPasswordResetError(error.message || t("settings.emailError"));
@@ -229,8 +236,19 @@ export function Settings({ user, signOut, refreshUser }) {
       setSaving(false);
       // Token is single-use; widget reissues a fresh one for the next attempt.
       setPasswordCaptchaToken(null);
+      setPendingPasswordSubmit(false);
     }
-  };
+  }, [userEmail, t]);
+
+  // Auto-fire submit once the captcha token arrives if the user clicked
+  // while the widget was still resolving. Eliminates the visible
+  // "Espera a que se complete la verificación" error during cold opens.
+  useEffect(() => {
+    if (!pendingPasswordSubmit) return;
+    if (!passwordCaptchaToken) return;
+    if (saving) return;
+    resetPassword(passwordCaptchaToken);
+  }, [pendingPasswordSubmit, passwordCaptchaToken, saving, resetPassword]);
 
   const openSheet = (key) => {
     setMessage("");
@@ -1350,17 +1368,21 @@ export function Settings({ user, signOut, refreshUser }) {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={saving}
+                  disabled={saving || pendingPasswordSubmit}
                   onClick={() => {
+                    if (saving || pendingPasswordSubmit) return;
+                    setPasswordResetError("");
                     if (TURNSTILE_ENABLED && !passwordCaptchaToken) {
-                      setPasswordResetError(t("auth.captchaPending"));
+                      // Captcha hasn't resolved yet — defer; the
+                      // useEffect above will fire resetPassword the
+                      // moment the token arrives.
+                      setPendingPasswordSubmit(true);
                       return;
                     }
-                    setPasswordResetError("");
-                    resetPassword();
+                    resetPassword(passwordCaptchaToken);
                   }}
                 >
-                  {saving ? t("loading") : t("settings.changePasswordCta")}
+                  {saving || pendingPasswordSubmit ? t("loading") : t("settings.changePasswordCta")}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={saving}>
                   {t("cancel")}
