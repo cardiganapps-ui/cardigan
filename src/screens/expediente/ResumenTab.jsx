@@ -92,26 +92,27 @@ export function ResumenTab({
   }, [measurements, patient.id, showHealthBlock]);
 
   /* Counters split by status × tutor flag.
-     - fTotal counts only non-tutor sessions in the period — tutor
-       sessions are with the parent, not the patient, so including
-       them in the headline "Programadas" was misleading. The Tutor
-       tile below surfaces the parent count separately.
-     - fCompleted likewise excludes tutor sessions; attendancePct is
-       fCompleted / fTotal (both clean of tutor, so the % is the
-       patient's actual attendance rate).
-     - fCancelled / fCharged split the old fCancelledTotal so users
-       can tell the difference between "money lost" (cancelled with
-       no charge) and "money kept" (charged cancellation). */
+     - "Settled" sessions only — completed | cancelled | charged. Past
+       rows that are still status='scheduled' (the prime directive
+       says these render as completed but the DB row stays scheduled)
+       AND any future row are excluded. fTotal is the sum of the
+       three settled buckets so the breakdown always reconciles
+       visually with the headline.
+     - Tutor sessions split out into fTutor — they're with the
+       parent, not the patient, so they don't belong in the patient-
+       attendance ratio. attendancePct = fCompleted / fTotal, both
+       clean of tutor.
+     - fCancelled / fCharged split the old fCancelledTotal so the UI
+       can show "money lost" vs "money kept" separately. */
   const { fTotal, fCompleted, fCancelled, fCharged, fTutor, attendancePct } = useMemo(() => {
-    let total = 0, completed = 0, cancelled = 0, charged = 0, tutor = 0;
+    let completed = 0, cancelled = 0, charged = 0, tutor = 0;
     for (const s of filteredSessions) {
-      const isTutor = isTutorSession(s);
-      if (isTutor) { tutor++; continue; }
-      total++;
+      if (isTutorSession(s)) { tutor++; continue; }
       if (s.status === "completed") completed++;
       else if (s.status === "cancelled") cancelled++;
       else if (s.status === "charged") charged++;
     }
+    const total = completed + cancelled + charged;
     return {
       fTotal: total,
       fCompleted: completed,
