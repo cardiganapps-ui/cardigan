@@ -9,6 +9,12 @@ const EMAIL_NOT_CONFIRMED = /email not confirmed/i;
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Set true while the user is on the password-recovery flow (clicked
+  // a link from a "restablecer contraseña" email). Supabase auto-signs
+  // them in with a short-lived token at that point, so the app would
+  // otherwise drop them into AppShell. The flag lets App.jsx render a
+  // dedicated "set new password" screen instead.
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     // If getSession() rejects (network meltdown, supabase outage at boot),
@@ -25,7 +31,13 @@ export function useAuth() {
         setLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // PASSWORD_RECOVERY fires once when the user lands on the app
+      // via a recovery email link. Latch it until the new-password
+      // form clears the flag — onAuthStateChange may emit further
+      // SIGNED_IN events (token refresh) before we navigate away,
+      // and those shouldn't drop the gate.
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
       setUser(session?.user ?? null);
     });
 
@@ -123,5 +135,18 @@ export function useAuth() {
     return {};
   }
 
-  return { user, loading, signUp, signIn, signOut, signInWithProvider, refreshUser };
+  /* Set a new password during the recovery flow.
+     Supabase auto-signed the user in with the recovery token so this
+     call succeeds without re-auth. After it lands we deliberately
+     sign out so they re-login with the freshly-set credential —
+     leaves no ambient "signed via reset link" session behind. */
+  async function setNewPassword(password) {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+    setRecoveryMode(false);
+    await signOut();
+    return { ok: true };
+  }
+
+  return { user, loading, recoveryMode, signUp, signIn, signOut, signInWithProvider, refreshUser, setNewPassword };
 }
