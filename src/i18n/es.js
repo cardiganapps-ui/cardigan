@@ -95,6 +95,16 @@ export default {
     menu: "Men\u00fa",
   },
 
+  recovery: {
+    title: "Elige una contraseña nueva",
+    body: "Tu enlace de recuperación es válido por una hora. Crea tu contraseña nueva para continuar.",
+    newPassword: "Contraseña nueva",
+    confirmPassword: "Confirma tu contraseña",
+    cta: "Guardar y continuar",
+    errorTooShort: "La contraseña debe tener al menos 8 caracteres.",
+    errorMismatch: "Las contraseñas no coinciden.",
+  },
+
   mfa: {
     challengeTitle: "Verifica tu identidad",
     challengeBody: "Ingresa el c\u00f3digo de 6 d\u00edgitos de tu app autenticadora (Google Authenticator, 1Password, Authy\u2026).",

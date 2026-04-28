@@ -51,6 +51,7 @@ import { DEFAULT_PROFESSION } from "./data/constants";
 import { setSentryProfession } from "./lib/sentry";
 import ConsentBanner from "./components/ConsentBanner";
 import MfaChallengeGate from "./components/MfaChallengeGate";
+import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
 import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
@@ -59,7 +60,7 @@ import "./utils/logBuffer";
 import "./styles/index.css";
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signOut, refreshUser } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, setNewPassword } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button so the user doesn't bounce through
@@ -88,6 +89,15 @@ function CardiganApp() {
 
   if (demoMode) {
     return <AppShell user={null} signOut={() => { setAuthIntent("signup"); setDemoMode(false); }} demo theme={theme} />;
+  }
+
+  // Password recovery takes priority over every other gate. Supabase
+  // auto-signs the user in via the recovery token, so `user` is set —
+  // but they need to set a new password before doing anything else.
+  // setNewPassword signs them out on success, dropping them into
+  // AuthScreen with the freshly-set credential.
+  if (recoveryMode) {
+    return <PasswordRecoveryScreen onSubmit={setNewPassword} />;
   }
 
   if (!user) {
