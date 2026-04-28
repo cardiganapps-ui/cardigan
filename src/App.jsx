@@ -97,7 +97,7 @@ function CardiganApp() {
   // setNewPassword signs them out on success, dropping them into
   // AuthScreen with the freshly-set credential.
   if (recoveryMode) {
-    return <PasswordRecoveryScreen onSubmit={setNewPassword} />;
+    return <PasswordRecoveryScreen onSubmit={setNewPassword} onSignOut={signOut} />;
   }
 
   if (!user) {
