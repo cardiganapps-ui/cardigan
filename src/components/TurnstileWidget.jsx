@@ -53,6 +53,13 @@ export function TurnstileWidget({ onToken, theme = "auto" }) {
       widgetIdRef.current = turnstile.render(containerRef.current, {
         sitekey: SITE_KEY,
         theme,
+        // appearance:"interaction-only" hides the widget when no
+        // user interaction is required — the typical case for trusted
+        // browsers in managed mode. Avoids the "I never touched it but
+        // it's already verified" confusion users were reporting and
+        // removes the iframe from the layout (so iOS Safari's keyboard
+        // doesn't have to reflow around it on every focus change).
+        appearance: "interaction-only",
         callback: (token) => onTokenRef.current?.(token),
         "error-callback": () => onTokenRef.current?.(null),
         "expired-callback": () => onTokenRef.current?.(null),
@@ -76,7 +83,7 @@ export function TurnstileWidget({ onToken, theme = "auto" }) {
   }, [theme]);
 
   if (!SITE_KEY) return null;
-  return <div ref={containerRef} id={`ts-${containerId}`} style={{ marginTop: 8 }} />;
+  return <div ref={containerRef} id={`ts-${containerId}`} />;
 }
 
 /** Whether Turnstile is configured (parent forms can branch UI on this). */
