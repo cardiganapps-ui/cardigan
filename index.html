@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Preconnect + preload Turnstile so the captcha verification on
+         signin/signup feels instant. Without these, the script load
+         + TLS handshake to challenges.cloudflare.com only starts when
+         the user hits AuthScreen — adds ~300ms to the auth flow on
+         mobile networks. Now both run in parallel with the React boot. -->
+    <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin />
+    <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
+    <link rel="preload" as="script" href="https://challenges.cloudflare.com/turnstile/v0/api.js" crossorigin />
     <!-- iOS 18+ dark-mode home screen + iOS 18/26 tinted / Liquid Glass
          appearance. iOS picks the variant that matches the user's home-
          screen appearance; the monochrome SVG is used as a tint mask. -->
