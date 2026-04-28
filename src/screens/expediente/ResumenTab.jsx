@@ -92,25 +92,26 @@ export function ResumenTab({
   }, [measurements, patient.id, showHealthBlock]);
 
   /* Counters split by status × tutor flag.
-     - fTotal counts every session in the period (including tutor) so
-       the headline "Programadas" still reflects the full schedule.
-     - fCompleted excludes tutor sessions: tutor sessions are with the
-       parent, not the patient — counting them as patient attendance
-       was misleading. The Tutor tile below surfaces the parent count
-       separately.
+     - fTotal counts only non-tutor sessions in the period — tutor
+       sessions are with the parent, not the patient, so including
+       them in the headline "Programadas" was misleading. The Tutor
+       tile below surfaces the parent count separately.
+     - fCompleted likewise excludes tutor sessions; attendancePct is
+       fCompleted / fTotal (both clean of tutor, so the % is the
+       patient's actual attendance rate).
      - fCancelled / fCharged split the old fCancelledTotal so users
-       can tell the difference between "money lost" (cancelled with no
-       charge) and "money kept" (charged cancellation). */
+       can tell the difference between "money lost" (cancelled with
+       no charge) and "money kept" (charged cancellation). */
   const { fTotal, fCompleted, fCancelled, fCharged, fTutor, attendancePct } = useMemo(() => {
-    let completed = 0, cancelled = 0, charged = 0, tutor = 0;
+    let total = 0, completed = 0, cancelled = 0, charged = 0, tutor = 0;
     for (const s of filteredSessions) {
       const isTutor = isTutorSession(s);
-      if (isTutor) tutor++;
-      if (s.status === "completed" && !isTutor) completed++;
-      else if (s.status === "cancelled" && !isTutor) cancelled++;
-      else if (s.status === "charged" && !isTutor) charged++;
+      if (isTutor) { tutor++; continue; }
+      total++;
+      if (s.status === "completed") completed++;
+      else if (s.status === "cancelled") cancelled++;
+      else if (s.status === "charged") charged++;
     }
-    const total = filteredSessions.length;
     return {
       fTotal: total,
       fCompleted: completed,
@@ -376,12 +377,12 @@ export function ResumenTab({
             <button type="button" onClick={() => onGoToSesiones("completed")}
               style={{ ...tileStyle, background:"var(--green-bg)" }}>
               <div style={{ ...valStyle, color:"var(--green)" }}>{fCompleted}</div>
-              <div style={labelStyle}>{t("expediente.attended")}</div>
               {attendancePct != null && (
-                <div style={{ fontSize:"var(--text-eyebrow)", color:"var(--green)", fontWeight:700, marginTop:2 }}>
+                <div style={{ fontSize:"var(--text-eyebrow)", color:"var(--green)", fontWeight:700 }}>
                   {attendancePct}%
                 </div>
               )}
+              <div style={labelStyle}>{t("expediente.attended")}</div>
             </button>
             {/* Cancelled split — two smaller tiles. "Cobradas" =
                 charge-on-cancel (the slot was billed); "No cobradas"
