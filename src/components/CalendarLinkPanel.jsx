@@ -24,23 +24,14 @@ import { useCalendarToken, setCalendarToken } from "../hooks/useCalendarToken";
                                  ONLY chance to grab the URL until the
                                  next rotation.
 
-   Rotation reminder: if the active token is older than 90 days, surface
-   a small note suggesting rotation (cheap defense in depth — a leaked
-   URL keeps working forever otherwise). */
-
-const ROTATION_REMINDER_DAYS = 90;
-
-function ageInDays(iso) {
-  if (!iso) return 0;
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return 0;
-  return Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000));
-}
+   The user can renew at any time from the "Renovar enlace" button in
+   state 2 — that flow rotates the token (breaks existing subscribers
+   by design) and surfaces the new URL once. */
 
 export function CalendarLinkPanel({ readOnly = false }) {
   const { t } = useT();
   const { showToast } = useCardigan();
-  const { hasToken, tokenPrefix, createdAt, url } = useCalendarToken();
+  const { hasToken, url } = useCalendarToken();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -112,10 +103,12 @@ export function CalendarLinkPanel({ readOnly = false }) {
     );
   }
 
-  const age = ageInDays(createdAt);
-  const showRotationReminder = age >= ROTATION_REMINDER_DAYS;
-
   // ── State 2: enabled, but plaintext URL not in memory (returning visit) ──
+  // Minimal card: title + "Sincronizado" sub + one ghost button to
+  // renew. The DB only holds the SHA-256 hash so we literally can't
+  // re-display the URL — but the user doesn't need to know that.
+  // "Renovar enlace" is enough; the rotate-confirm dialog explains
+  // that existing subscribers will stop receiving updates.
   if (!url) {
     return (
       <>
@@ -125,22 +118,11 @@ export function CalendarLinkPanel({ readOnly = false }) {
             <div className="settings-row-title">{t("settings.calendarTitle")}</div>
             <div className="settings-row-sub" style={{ lineHeight:1.5 }}>
               {t("settings.calendarActive")}
-              {tokenPrefix && (
-                <> · <code style={{ fontSize:12 }}>{tokenPrefix}…</code></>
-              )}
             </div>
           </div>
         </div>
-        {showRotationReminder && (
-          <div style={{ background:"var(--amber-bg, #FCF1D9)", color:"var(--amber-dark, #7A5A14)", padding:"10px 12px", borderRadius:"var(--radius)", fontSize:12, lineHeight:1.5, marginBottom:12 }}>
-            {t("settings.calendarRotationReminder")}
-          </div>
-        )}
-        <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:12 }}>
-          {t("settings.calendarUrlNotShown")}
-        </div>
         <button className="btn btn-ghost" type="button" onClick={rotate} disabled={busy || readOnly} style={{ width:"100%" }}>
-          {busy ? t("loading") : t("settings.calendarRotate")}
+          {busy ? t("loading") : t("settings.calendarRenew")}
         </button>
       </>
     );
