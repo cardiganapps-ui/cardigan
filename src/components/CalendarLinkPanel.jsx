@@ -111,20 +111,30 @@ export function CalendarLinkPanel({ readOnly = false }) {
   // that existing subscribers will stop receiving updates.
   if (!url) {
     return (
-      <>
-        <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:14 }}>
-          <div style={{ color:"var(--teal-dark)", marginTop:2 }}><IconCalendar size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.calendarTitle")}</div>
-            <div className="settings-row-sub" style={{ lineHeight:1.5 }}>
-              {t("settings.calendarActive")}
-            </div>
-          </div>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div className="settings-row-title">{t("settings.calendarTitle")}</div>
+          <div className="settings-row-sub">{t("settings.calendarActive")}</div>
         </div>
-        <button className="btn btn-ghost" type="button" onClick={rotate} disabled={busy || readOnly} style={{ width:"100%" }}>
+        <button
+          type="button"
+          onClick={rotate}
+          disabled={busy || readOnly}
+          style={{
+            background:"none",
+            border:"none",
+            padding:"6px 4px",
+            color:"var(--teal-dark)",
+            fontSize:13,
+            fontWeight:600,
+            cursor: busy || readOnly ? "default" : "pointer",
+            whiteSpace:"nowrap",
+          }}
+        >
           {busy ? t("loading") : t("settings.calendarRenew")}
         </button>
-      </>
+      </div>
     );
   }
 
