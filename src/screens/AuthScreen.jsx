@@ -129,41 +129,52 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
     setError("");
     setMessage("");
     if (captchaRequired && !captchaToken) {
+      // Token hasn't arrived yet — typical when the user fills the
+      // form faster than the Turnstile script loads on a slow network.
+      // Show the inline notice but don't disable the button (avoids
+      // the iOS Safari focus-loss-on-disable-flicker issue).
       setError(t("auth.captchaPending"));
       return;
     }
     setSubmitting(true);
-    // Capture + clear the token immediately — Turnstile tokens are
-    // single-use, so a failed submit needs a fresh challenge before
-    // retry. The widget reissues a new token automatically.
+    // Capture the token now but DON'T clear it yet — clearing here
+    // toggles the captchaRequired check above to error during the
+    // ~1-2s submit roundtrip if the user happens to refocus an input,
+    // and on iOS Safari the disabled-state flip mid-keystroke kills
+    // the keyboard. We clear AFTER the server responds (success or
+    // failure), and the Turnstile widget re-issues a fresh token
+    // automatically for the next attempt.
     const usedCaptchaToken = captchaToken;
-    setCaptchaToken(null);
+
+    let result, requestErr;
+    try {
+      if (mode === "reset") {
+        if (!email.trim()) { setError(t("auth.enterEmail")); setSubmitting(false); return; }
+        const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          captchaToken: usedCaptchaToken,
+        });
+        requestErr = err;
+      } else if (mode === "signup") {
+        if (!name.trim()) { setError(t("auth.enterName")); setSubmitting(false); return; }
+        if (!consentChecked) { setError(t("auth.consentRequired")); setSubmitting(false); return; }
+        result = await onSignUp({ email, password, name: name.trim(), captchaToken: usedCaptchaToken });
+      } else {
+        result = await onSignIn({ email, password, captchaToken: usedCaptchaToken });
+      }
+    } finally {
+      setSubmitting(false);
+      // Token is single-use — clear so the next attempt picks up the
+      // fresh one the widget has issued in the meantime.
+      setCaptchaToken(null);
+    }
 
     if (mode === "reset") {
-      if (!email.trim()) { setError(t("auth.enterEmail")); setSubmitting(false); return; }
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        captchaToken: usedCaptchaToken,
-      });
-      setSubmitting(false);
-      if (err) { setError(err.message); return; }
+      if (requestErr) { setError(requestErr.message); return; }
       setMessage(t("settings.linkSent"));
       return;
     }
-
-    if (mode === "signup") {
-      if (!name.trim()) { setError(t("auth.enterName")); setSubmitting(false); return; }
-      if (!consentChecked) { setError(t("auth.consentRequired")); setSubmitting(false); return; }
-      const result = await onSignUp({ email, password, name: name.trim(), captchaToken: usedCaptchaToken });
-      setSubmitting(false);
-      if (result.error) { setError(result.error); return; }
-      if (result.pendingVerification) { setPendingEmail(result.email || email); return; }
-      return;
-    }
-
-    const result = await onSignIn({ email, password, captchaToken: usedCaptchaToken });
-    setSubmitting(false);
-    if (result.pendingVerification) { setPendingEmail(result.email || email); return; }
-    if (result.error) { setError(result.error); return; }
+    if (result?.pendingVerification) { setPendingEmail(result.email || email); return; }
+    if (result?.error) { setError(result.error); return; }
   };
 
   if (pendingEmail) {
@@ -288,11 +299,16 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
           </div>
         )}
         {captchaRequired && (
-          <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
+          // The widget is invisible in managed mode for trusted browsers
+          // (appearance:"interaction-only"). Wrapper stays mounted so
+          // the iframe lives across re-renders. Container has no margin
+          // when invisible — only adds space when the widget actually
+          // surfaces a challenge.
+          <div style={{ display:"flex", justifyContent:"center" }}>
             <TurnstileWidget onToken={setCaptchaToken} />
           </div>
         )}
-        <button className="btn btn-primary" type="submit" disabled={submitting || (captchaRequired && !captchaToken)}>
+        <button className="btn btn-primary" type="submit" disabled={submitting}>
           {submitting ? t("loading") : mode === "login" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
         </button>
       </form>
