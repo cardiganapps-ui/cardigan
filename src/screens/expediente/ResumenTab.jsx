@@ -36,10 +36,25 @@ function formatISODateLong(iso) {
 // recurring schedule, not any extra appointments scheduled via the
 // FAB. Same `=== false` form as computeAutoExtendRows so legacy rows
 // without the column still appear.
+/* Derive the recurring schedule from session rows.
+
+   Why count-based: migration 025 had to backfill `is_recurring=true`
+   on every existing row because legacy rows had no flag and no clean
+   way to retroactively guess. So `is_recurring=true` alone doesn't
+   prove a slot is recurring — a one-off session created before the
+   column existed will look identical to a real recurring slot.
+
+   The reliable signal is "≥2 active sessions on the same (day, time)"
+   — a true one-off can't satisfy that, while real recurring slots
+   always do (auto-extend keeps ~15 weeks scheduled). Same safeguard
+   computeAutoExtendRows uses to decide whether to extend.
+
+   Also requires `is_recurring !== false` as a belt-and-suspenders
+   defence: if a future user happens to create two manual one-offs
+   on the same slot, the explicit one-off flag still blocks them. */
 function derivePatientSchedules(sessions, patientId, includePast) {
   const today = todayISO();
-  const seen = new Set();
-  const result = [];
+  const slots = new Map(); // key → { day, time, count }
   for (const s of sessions) {
     if (s.patient_id !== patientId) continue;
     if (s.status === "cancelled" || s.status === "charged") continue;
@@ -49,9 +64,13 @@ function derivePatientSchedules(sessions, patientId, includePast) {
       if (iso < today) continue;
     }
     const key = `${s.day}|${s.time}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push({ day: s.day, time: s.time });
+    const cur = slots.get(key) || { day: s.day, time: s.time, count: 0 };
+    cur.count++;
+    slots.set(key, cur);
+  }
+  const result = [];
+  for (const slot of slots.values()) {
+    if (slot.count >= 2) result.push({ day: slot.day, time: slot.time });
   }
   result.sort((a, b) => {
     const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
