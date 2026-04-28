@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PasswordInput } from "./PasswordInput";
 import { useT } from "../i18n/index";
 import { LogoIcon } from "./LogoMark";
+import MfaChallengeGate from "./MfaChallengeGate";
 
 /* ── Password recovery screen ──
    Shown when the user lands on the app via a "restablecer contraseña"
@@ -10,6 +11,14 @@ import { LogoIcon } from "./LogoMark";
    ahead of AppShell so the user goes straight to setting a new
    password instead of the regular shell.
 
+   MFA gating: Supabase requires an AAL2 session to call updateUser
+   with a new password when the account has any verified MFA factor.
+   The recovery token alone only sets the session to AAL1, so we
+   chain the existing MfaChallengeGate first — it auto-resolves
+   instantly for accounts without MFA, or prompts for the 6-digit
+   code first. Only after the gate resolves do we let the user enter
+   a new password.
+
    On submit we call setNewPassword (useAuth) which runs
    supabase.auth.updateUser({ password }) and then signs the user out
    so they re-login with the new credential.
@@ -17,9 +26,16 @@ import { LogoIcon } from "./LogoMark";
    The Turnstile widget is intentionally NOT mounted here. updateUser
    isn't on Supabase's captcha-required endpoint list — the user is
    already authenticated via the recovery token, so the bot-protection
-   rationale doesn't apply. If a future Supabase release adds it, we
-   can mount the widget the same way the changePassword sheet does. */
-export function PasswordRecoveryScreen({ onSubmit }) {
+   rationale doesn't apply. */
+export function PasswordRecoveryScreen({ onSubmit, onSignOut }) {
+  const [aalResolved, setAalResolved] = useState(false);
+  if (!aalResolved) {
+    return <MfaChallengeGate onResolved={() => setAalResolved(true)} onSignOut={onSignOut} />;
+  }
+  return <PasswordForm onSubmit={onSubmit} />;
+}
+
+function PasswordForm({ onSubmit }) {
   const { t } = useT();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
