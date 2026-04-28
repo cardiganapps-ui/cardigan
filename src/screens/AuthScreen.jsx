@@ -24,6 +24,11 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
   const [resending, setResending] = useState(false);
   const [resentAt, setResentAt] = useState(0);
   const [resendError, setResendError] = useState("");
+  // Captcha for resend(). Mirrors AuthForm's pattern — Supabase
+  // requires a token on resend now that captcha is enforced for
+  // signup. The widget is invisible on trusted browsers (managed →
+  // non-interactive mode + appearance:"interaction-only").
+  const [captchaToken, setCaptchaToken] = useState(null);
   // `now` ticks once per second while a cooldown is active so the
   // countdown rerenders. Using a state value (instead of reading
   // Date.now() inline) keeps the render pure — impure reads during
@@ -39,10 +44,20 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
   const resend = async () => {
     if (resending) return;
     if (resentAt && Date.now() - resentAt < RESEND_COOLDOWN_MS) return;
+    if (TURNSTILE_ENABLED && !captchaToken) {
+      setResendError(t("auth.captchaPending"));
+      return;
+    }
     setResendError("");
     setResending(true);
-    const { error } = await supabase.auth.resend({ type: "signup", email });
+    const usedCaptchaToken = captchaToken;
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { captchaToken: usedCaptchaToken },
+    });
     setResending(false);
+    setCaptchaToken(null); // single-use; widget reissues a fresh one
     if (error) { setResendError(t("auth.verifyResendError")); return; }
     const when = Date.now();
     setResentAt(when);
@@ -69,6 +84,11 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
         {t("auth.verifyTip")}
       </div>
       {resendError && <div style={{ fontSize: 13, color: "var(--red)", marginTop: 12 }}>{resendError}</div>}
+      {TURNSTILE_ENABLED && (
+        <div style={{ display:"flex", justifyContent:"center", marginTop: 12 }}>
+          <TurnstileWidget onToken={setCaptchaToken} />
+        </div>
+      )}
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8 }}>
         <button className="btn btn-primary" type="button" onClick={onGoToLogin}>
           {t("auth.verifyGoToLogin")}
