@@ -50,6 +50,11 @@ export function Settings({ user, signOut, refreshUser }) {
   const [passwordCaptchaToken, setPasswordCaptchaToken] = useState(null);
   const [passwordResetError, setPasswordResetError] = useState("");
   const [pendingPasswordSubmit, setPendingPasswordSubmit] = useState(false);
+  // Imperative handle on the Turnstile widget so we can force a fresh
+  // challenge after each consumed token. Without an explicit reset the
+  // widget holds the issued token until natural expiry (~5 min) and
+  // subsequent submits look stuck verifying.
+  const turnstileRef = useRef(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaUiError, setMfaUiError] = useState("");
@@ -234,9 +239,12 @@ export function Settings({ user, signOut, refreshUser }) {
       setPasswordResetError(t("settings.emailError"));
     } finally {
       setSaving(false);
-      // Token is single-use; widget reissues a fresh one for the next attempt.
+      // Token is single-use; force the widget to issue a fresh one
+      // immediately so the next attempt isn't stuck waiting for natural
+      // expiry (~5 min in managed mode).
       setPasswordCaptchaToken(null);
       setPendingPasswordSubmit(false);
+      turnstileRef.current?.reset();
     }
   }, [userEmail, t]);
 
@@ -1358,7 +1366,7 @@ export function Settings({ user, signOut, refreshUser }) {
               </div>
               {TURNSTILE_ENABLED && (
                 <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
-                  <TurnstileWidget onToken={setPasswordCaptchaToken} />
+                  <TurnstileWidget ref={turnstileRef} onToken={setPasswordCaptchaToken} />
                 </div>
               )}
               {passwordResetError && (

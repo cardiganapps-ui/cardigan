@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
 
 /* ── Cloudflare Turnstile widget ──
    Renders a Turnstile challenge that produces a single-use token,
@@ -36,7 +36,7 @@ function loadScript() {
   return scriptPromise;
 }
 
-export function TurnstileWidget({ onToken, theme = "auto" }) {
+export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, theme = "auto" }, ref) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const onTokenRef = useRef(onToken);
@@ -44,6 +44,20 @@ export function TurnstileWidget({ onToken, theme = "auto" }) {
   // Keep the latest onToken in a ref so the script-load effect doesn't
   // need to re-run when the parent passes a new closure each render.
   useEffect(() => { onTokenRef.current = onToken; }, [onToken]);
+
+  /* Imperative handle: parents call ref.current?.reset() after a token
+     has been consumed by a submit. Without this the widget holds the
+     issued token until natural expiry (~5 min for managed mode), so
+     subsequent submits look "stuck verifying" while the React state is
+     null and the widget doesn't realise it should reissue. */
+  useImperativeHandle(ref, () => ({
+    reset() {
+      const wid = widgetIdRef.current;
+      if (wid != null && window.turnstile?.reset) {
+        try { window.turnstile.reset(wid); } catch { /* widget already gone */ }
+      }
+    },
+  }), []);
 
   useEffect(() => {
     if (!SITE_KEY) return; // env not wired — render nothing
@@ -84,7 +98,7 @@ export function TurnstileWidget({ onToken, theme = "auto" }) {
 
   if (!SITE_KEY) return null;
   return <div ref={containerRef} id={`ts-${containerId}`} />;
-}
+});
 
 /** Whether Turnstile is configured (parent forms can branch UI on this). */
 export const TURNSTILE_ENABLED = !!SITE_KEY;

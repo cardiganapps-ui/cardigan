@@ -6,6 +6,27 @@ import { supabase } from "../supabaseClient";
 // a "check your inbox / resend" panel instead of a raw error string.
 const EMAIL_NOT_CONFIRMED = /email not confirmed/i;
 
+/* Detect a password-recovery landing synchronously at module load time.
+
+   Why module-level: supabase-js processes the URL hash on its first
+   internal call (which can happen before our useEffect runs) and CLEANS
+   the URL afterwards. By the time `useEffect` reads window.location.hash,
+   the recovery indicator is often already gone, so the PASSWORD_RECOVERY
+   onAuthStateChange event is the ONLY signal — and a stray timing race
+   (event fires before our listener registers) drops it. Reading the URL
+   here, before any other module touches it, is the reliable detection.
+
+   We accept either flow shape:
+     - implicit:  https://cardigan.mx#access_token=…&type=recovery&…
+     - PKCE (less common for recovery): https://cardigan.mx?code=…&type=recovery
+   The Supabase Auth verify endpoint always sets `type=recovery` on the
+   redirect, so a single substring check is enough. */
+const INITIAL_RECOVERY = (() => {
+  if (typeof window === "undefined") return false;
+  const { hash, search } = window.location;
+  return hash.includes("type=recovery") || search.includes("type=recovery");
+})();
+
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +35,11 @@ export function useAuth() {
   // them in with a short-lived token at that point, so the app would
   // otherwise drop them into AppShell. The flag lets App.jsx render a
   // dedicated "set new password" screen instead.
-  const [recoveryMode, setRecoveryMode] = useState(false);
+  // Initialised from INITIAL_RECOVERY so we catch the case where the
+  // URL hash has been cleaned by supabase-js before our listener mounts;
+  // the onAuthStateChange handler below latches the same flag for any
+  // case where the URL was missed but the event fires anyway.
+  const [recoveryMode, setRecoveryMode] = useState(INITIAL_RECOVERY);
 
   useEffect(() => {
     // If getSession() rejects (network meltdown, supabase outage at boot),
