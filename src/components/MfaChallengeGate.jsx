@@ -94,7 +94,7 @@ export default function MfaChallengeGate({ onResolved, onSignOut }) {
 
   return (
     <div className="shell" style={{ justifyContent:"center", alignItems:"center", padding:20 }}>
-      <div style={{ maxWidth:380, width:"100%", background:"var(--bg-card, #fff)", borderRadius:"var(--radius-lg, 16px)", padding:24, boxShadow:"var(--shadow-sm)" }}>
+      <div style={{ maxWidth:380, width:"100%", background:"var(--white)", borderRadius:"var(--radius-lg, 16px)", padding:24, boxShadow:"var(--shadow-sm)" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize:20, fontWeight:800, color:"var(--charcoal)", marginBottom:8 }}>
           {t("mfa.challengeTitle")}
         </div>

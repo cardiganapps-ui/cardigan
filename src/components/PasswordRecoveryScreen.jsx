@@ -180,7 +180,7 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut }) {
 function Shell({ title, body, children }) {
   return (
     <div className="shell" style={{ justifyContent:"center", alignItems:"center", padding:20 }}>
-      <div style={{ maxWidth:380, width:"100%", background:"var(--bg-card, #fff)", borderRadius:"var(--radius-lg, 16px)", padding:24, boxShadow:"var(--shadow-sm)" }}>
+      <div style={{ maxWidth:380, width:"100%", background:"var(--white)", borderRadius:"var(--radius-lg, 16px)", padding:24, boxShadow:"var(--shadow-sm)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
           <LogoIcon size={28} color="var(--teal)" />
           <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)" }}>

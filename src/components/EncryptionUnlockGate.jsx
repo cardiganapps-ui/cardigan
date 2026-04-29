@@ -46,7 +46,7 @@ export default function EncryptionUnlockGate({ noteCrypto, onSkip }) {
       <form
         onSubmit={submit}
         style={{
-          background: "var(--bg-card, #fff)",
+          background: "var(--white)",
           borderRadius: "var(--radius-lg, 16px)",
           padding: 22,
           maxWidth: 420,

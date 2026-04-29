@@ -145,7 +145,7 @@ export default function ConsentBanner({ user, onAccepted }) {
     >
       <div
         style={{
-          background: "var(--bg-card, #fff)",
+          background: "var(--white)",
           borderRadius: "var(--radius-lg, 16px)",
           padding: 20,
           maxWidth: 460,
