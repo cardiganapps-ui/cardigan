@@ -28,7 +28,7 @@ import { LogoIcon } from "./LogoMark";
    Captcha is intentionally NOT mounted here. updateUser isn't on
    Supabase's captcha-required endpoint list — the recovery token
    already proves authenticity. */
-export function PasswordRecoveryScreen({ onSubmit, onSignOut }) {
+export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" }) {
   const { t } = useT();
   const [phase, setPhase] = useState("checking");
   const [factorId, setFactorId] = useState("");
@@ -145,8 +145,13 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut }) {
   }
 
   // phase === "password"
+  // Invite flow reuses this screen but shows a welcoming title + body
+  // instead of the recovery copy. CTA + form fields are identical.
+  const titleKey = mode === "invite" ? "invite.title" : "recovery.title";
+  const bodyKey  = mode === "invite" ? "invite.body"  : "recovery.body";
+  const ctaKey   = mode === "invite" ? "invite.cta"   : "recovery.cta";
   return (
-    <Shell title={t("recovery.title")} body={t("recovery.body")}>
+    <Shell title={t(titleKey)} body={t(bodyKey)}>
       <form onSubmit={submitPassword}>
         <div className="input-group" style={{ marginBottom:12 }}>
           <label className="input-label">{t("recovery.newPassword")}</label>
@@ -170,7 +175,7 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut }) {
         </div>
         {error && <div style={{ fontSize:13, color:"var(--red)", marginBottom:12 }}>{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={busy} style={{ width:"100%" }}>
-          {busy ? t("loading") : t("recovery.cta")}
+          {busy ? t("loading") : t(ctaKey)}
         </button>
       </form>
     </Shell>

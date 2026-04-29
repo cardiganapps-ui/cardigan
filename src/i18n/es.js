@@ -105,6 +105,12 @@ export default {
     errorMismatch: "Las contraseñas no coinciden.",
   },
 
+  invite: {
+    title: "Te damos la bienvenida",
+    body: "Te invitaron a unirte a Cardigan. Crea tu contraseña para empezar — la usarás para entrar a tu cuenta.",
+    cta: "Crear contraseña y entrar",
+  },
+
   mfa: {
     challengeTitle: "Verifica tu identidad",
     challengeBody: "Ingresa el c\u00f3digo de 6 d\u00edgitos de tu app autenticadora (Google Authenticator, 1Password, Authy\u2026).",

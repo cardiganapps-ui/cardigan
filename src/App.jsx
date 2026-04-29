@@ -60,7 +60,7 @@ import "./utils/logBuffer";
 import "./styles/index.css";
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, setNewPassword } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button so the user doesn't bounce through
@@ -96,8 +96,15 @@ function CardiganApp() {
   // but they need to set a new password before doing anything else.
   // setNewPassword signs them out on success, dropping them into
   // AuthScreen with the freshly-set credential.
-  if (recoveryMode) {
-    return <PasswordRecoveryScreen onSubmit={setNewPassword} onSignOut={signOut} />;
+  // Recovery + invite both gate the user behind a "set your password"
+  // screen before letting them into AppShell. Same component, mode
+  // switches the title/body copy.
+  if (recoveryMode || inviteMode) {
+    return <PasswordRecoveryScreen
+      onSubmit={setNewPassword}
+      onSignOut={signOut}
+      mode={inviteMode ? "invite" : "recovery"}
+    />;
   }
 
   if (!user) {
