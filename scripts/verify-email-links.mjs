@@ -27,7 +27,19 @@ const TARGETS = [
     label: "Invite" },
 ];
 
+/* SAFETY: ONLY delete throwaway test users. A previous version of
+   this helper accepted any email and was called indiscriminately
+   inside the test loop — including for recovery + magic-link targets
+   that use the admin's real email. Result: the admin user got wiped
+   and 99 rows of patient/session/payment data were orphaned. Now we
+   hard-fail anything that doesn't carry a +probe/+test alias. */
+function isTestAliasEmail(email) {
+  return /\+(?:[a-z0-9-]*-)?(?:probe|test)[a-z0-9-]*@/i.test(email);
+}
 async function deleteUserByEmail(email) {
+  if (!isTestAliasEmail(email)) {
+    throw new Error(`refusing to delete non-test-alias email "${email}" — only +probe/+test aliases are permitted`);
+  }
   const { data, error } = await svc.auth.admin.listUsers({ page: 1, perPage: 200 });
   if (error) return false;
   const u = data.users.find(x => (x.email || "").toLowerCase() === email.toLowerCase());
@@ -40,7 +52,11 @@ console.log("──────── Email-link redirect trace ─────�
 
 for (const t of TARGETS) {
   console.log(`\n[${t.label}]`);
-  await deleteUserByEmail(t.email); // wipe any stale user from prior runs
+  // Only test aliases get the pre-wipe — recovery + magiclink target
+  // a real production email and must never be deleted.
+  if (isTestAliasEmail(t.email)) {
+    await deleteUserByEmail(t.email);
+  }
 
   // Build args. signup needs an existing user (created with password) to
   // generate the verify link for; invite creates the user; recovery /
