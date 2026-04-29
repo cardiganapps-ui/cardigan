@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
 import { IconX, IconGoogle, IconApple } from "../components/Icons";
@@ -125,6 +125,18 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   // failed attempt needs a fresh challenge before retry.
   const [captchaToken, setCaptchaToken] = useState(null);
   const captchaRequired = TURNSTILE_ENABLED;
+  // pendingSubmit defers the submit while the invisible Turnstile
+  // widget is still resolving — fast users beat the ~1s background
+  // check on cold page load. Without this they'd see the cryptic
+  // "Espera a que se complete la verificación de seguridad". A
+  // useEffect below auto-fires the submit the moment the token
+  // arrives.
+  const [pendingSubmit, setPendingSubmit] = useState(false);
+  // Imperative handle on the Turnstile widget so we can force a
+  // fresh challenge after each consumed token; without explicit
+  // reset(), the widget holds its current token until natural
+  // expiry (~5 min) and the next submit attempt has nothing fresh.
+  const turnstileRef = useRef(null);
   // When non-null, render the VerifyPendingPanel instead of the form.
   // Set by signUp (fresh signup waiting for verification) or by signIn
   // (tried to log in with an unverified account).
@@ -145,15 +157,15 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setError("");
     setMessage("");
     if (captchaRequired && !captchaToken) {
-      // Token hasn't arrived yet — typical when the user fills the
-      // form faster than the Turnstile script loads on a slow network.
-      // Show the inline notice but don't disable the button (avoids
-      // the iOS Safari focus-loss-on-disable-flicker issue).
-      setError(t("auth.captchaPending"));
+      // Token hasn't arrived yet — defer; the useEffect below fires
+      // the actual submit the moment Turnstile resolves. Button
+      // shows "Cargando…" while we wait. Eliminates the cryptic
+      // captchaPending error on cold-load fast clicks.
+      setPendingSubmit(true);
       return;
     }
     setSubmitting(true);
@@ -183,9 +195,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
       }
     } finally {
       setSubmitting(false);
-      // Token is single-use — clear so the next attempt picks up the
-      // fresh one the widget has issued in the meantime.
+      setPendingSubmit(false);
+      // Token is single-use — force the widget to issue a fresh one
+      // immediately (instead of waiting for natural expiry ~5 min)
+      // so the next attempt has a ready token.
       setCaptchaToken(null);
+      turnstileRef.current?.reset();
     }
 
     if (mode === "reset") {
@@ -196,6 +211,22 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
     if (result?.pendingVerification) { setPendingEmail(result.email || email); return; }
     if (result?.error) { setError(result.error); return; }
   };
+
+  // Auto-fire submit when captcha resolves if user already clicked.
+  // Eliminates the visible "Espera a que se complete la verificación
+  // de seguridad" on cold-load fast clicks. handleSubmit is captured
+  // by closure here; the effect re-binds whenever its captured state
+  // changes (which is fine — it only fires once per pending click).
+  useEffect(() => {
+    if (!pendingSubmit) return;
+    if (!captchaToken) return;
+    if (submitting) return;
+    handleSubmit();
+    // handleSubmit is intentionally not in deps — including it would
+    // re-run the effect every render, since the function is recreated
+    // on each render. State guards above prevent double-firing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSubmit, captchaToken, submitting]);
 
   if (pendingEmail) {
     return (
@@ -325,11 +356,11 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
           // when invisible — only adds space when the widget actually
           // surfaces a challenge.
           <div style={{ display:"flex", justifyContent:"center" }}>
-            <TurnstileWidget onToken={setCaptchaToken} />
+            <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
           </div>
         )}
-        <button className="btn btn-primary" type="submit" disabled={submitting}>
-          {submitting ? t("loading") : mode === "login" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
+        <button className="btn btn-primary" type="submit" disabled={submitting || pendingSubmit}>
+          {(submitting || pendingSubmit) ? t("loading") : mode === "login" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
         </button>
       </form>
       {mode === "reset" && (
