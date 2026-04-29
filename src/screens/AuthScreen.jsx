@@ -29,6 +29,12 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
   // signup. The widget is invisible on trusted browsers (managed →
   // non-interactive mode + appearance:"interaction-only").
   const [captchaToken, setCaptchaToken] = useState(null);
+  // pendingResend defers a click while the invisible Turnstile
+  // widget is still resolving on a cold render. Without it the
+  // user gets the cryptic "Espera a que se complete la verificación
+  // de seguridad" if they tap Reenviar before the token lands.
+  const [pendingResend, setPendingResend] = useState(false);
+  const turnstileRef = useRef(null);
   // `now` ticks once per second while a cooldown is active so the
   // countdown rerenders. Using a state value (instead of reading
   // Date.now() inline) keeps the render pure — impure reads during
@@ -45,24 +51,45 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
     if (resending) return;
     if (resentAt && Date.now() - resentAt < RESEND_COOLDOWN_MS) return;
     if (TURNSTILE_ENABLED && !captchaToken) {
-      setResendError(t("auth.captchaPending"));
+      // Defer; the useEffect below auto-fires resend the moment the
+      // captcha token lands. Button shows Cargando… while we wait.
+      setResendError("");
+      setPendingResend(true);
       return;
     }
     setResendError("");
     setResending(true);
     const usedCaptchaToken = captchaToken;
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: { captchaToken: usedCaptchaToken },
-    });
-    setResending(false);
-    setCaptchaToken(null); // single-use; widget reissues a fresh one
-    if (error) { setResendError(t("auth.verifyResendError")); return; }
+    let err;
+    try {
+      const r = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { captchaToken: usedCaptchaToken },
+      });
+      err = r.error;
+    } finally {
+      setResending(false);
+      setPendingResend(false);
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
+    }
+    if (err) { setResendError(t("auth.verifyResendError")); return; }
     const when = Date.now();
     setResentAt(when);
     setNow(when);
   };
+
+  // Auto-fire resend when captcha resolves if the user already clicked.
+  useEffect(() => {
+    if (!pendingResend) return;
+    if (!captchaToken) return;
+    if (resending) return;
+    resend();
+    // resend captured by closure, intentionally not in deps to avoid
+    // re-firing every render. State guards above prevent double-firing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingResend, captchaToken, resending]);
 
   const elapsed = resentAt ? now - resentAt : Infinity;
   const remaining = Math.max(0, Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000));
@@ -86,15 +113,15 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
       {resendError && <div style={{ fontSize: 13, color: "var(--red)", marginTop: 12 }}>{resendError}</div>}
       {TURNSTILE_ENABLED && (
         <div style={{ display:"flex", justifyContent:"center", marginTop: 12 }}>
-          <TurnstileWidget onToken={setCaptchaToken} />
+          <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
         </div>
       )}
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8 }}>
         <button className="btn btn-primary" type="button" onClick={onGoToLogin}>
           {t("auth.verifyGoToLogin")}
         </button>
-        <button className="btn btn-ghost" type="button" onClick={resend} disabled={resending || cooling}>
-          {resending
+        <button className="btn btn-ghost" type="button" onClick={resend} disabled={resending || pendingResend || cooling}>
+          {resending || pendingResend
             ? t("auth.verifyResending")
             : justSent
               ? t("auth.verifyResendSent")

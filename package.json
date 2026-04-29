@@ -16,7 +16,8 @@
     "audit:api": "node scripts/audit-api-auth.mjs",
     "audit:deps": "npm audit --omit=dev --audit-level=critical",
     "audit:db": "node --env-file=.env.local scripts/audit-db-health.mjs",
-    "audit:orphans": "node --env-file=.env.local scripts/audit-orphan-rows.mjs"
+    "audit:orphans": "node --env-file=.env.local scripts/audit-orphan-rows.mjs",
+    "audit:signup": "node --env-file=.env.local scripts/verify-signup-flow.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1028.0",
