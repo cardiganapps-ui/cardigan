@@ -64,10 +64,15 @@ async function handler(req, res) {
   if (!row) return res.status(404).json({ error: "Not found" });
 
   // Pull the user's sessions + their preferred timezone in parallel.
-  // Sessions: we include cancelled rows so subscribers see strikethroughs;
-  // we exclude rows older than 1 year so the feed doesn't grow unbounded
-  // on long-lived accounts (calendar clients only render the visible
-  // window anyway).
+  // Cancelled / charged rows are EXCLUDED — when a session is cancelled
+  // the therapist wants it gone from their phone calendar entirely, not
+  // shown with a strikethrough. Calendar clients (Apple Calendar, Google,
+  // Outlook) diff each refresh against the previous fetch and remove
+  // events that disappeared from the feed, so once a session moves to
+  // 'cancelled' it'll drop out of the user's calendar on the next sync
+  // (typically within an hour).
+  // We also exclude rows older than 1 year so the feed doesn't grow
+  // unbounded — calendar clients only render the visible window anyway.
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
@@ -76,6 +81,7 @@ async function handler(req, res) {
       .from("sessions")
       .select("id, date, time, duration, status, patient, initials, modality, cancel_reason")
       .eq("user_id", row.user_id)
+      .in("status", ["scheduled", "completed"])
       .gte("created_at", oneYearAgo.toISOString())
       .limit(5000),
     svc
