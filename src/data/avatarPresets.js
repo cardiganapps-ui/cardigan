@@ -14,6 +14,8 @@ export const AVATAR_PRESETS = [
   { id: "aguacate", labelKey: "avatar.preset.aguacate" },
   { id: "cafecito", labelKey: "avatar.preset.cafecito" },
   { id: "nube",     labelKey: "avatar.preset.nube" },
+  { id: "osito",    labelKey: "avatar.preset.osito" },
+  { id: "carly",    labelKey: "avatar.preset.carly" },
 ];
 
 const PRESET_IDS = new Set(AVATAR_PRESETS.map(p => p.id));
