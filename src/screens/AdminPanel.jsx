@@ -711,7 +711,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-expediente)", display:"flex", flexDirection:"column" }}>
-      <div style={{ background:"var(--nav-bg)", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
+      <div style={{ background:"var(--nav-bg)", padding:"calc(max(env(safe-area-inset-top, 0px), 44px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
           <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--white)" }}>{t("admin.title")}</div>
           <button onClick={onClose} aria-label={t("close")}
