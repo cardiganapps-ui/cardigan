@@ -31,6 +31,7 @@ export default {
   offlineHint: "Los cambios no se guardar\u00e1n hasta que vuelva la conexi\u00f3n.",
   updateAvailable: "Actualizaci\u00f3n disponible",
   updateNow: "Actualizar",
+  updating: "Actualizando\u2026",
   deleted: "Eliminado",
   saved: "Guardado",
   // Relative time (past)
