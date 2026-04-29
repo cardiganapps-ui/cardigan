@@ -711,9 +711,12 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"var(--white)", zIndex:"var(--z-expediente)", display:"flex", flexDirection:"column" }}>
-      <div style={{ background:"var(--nav-bg)", padding:"calc(max(env(safe-area-inset-top, 0px), 44px) + 14px) 16px 16px", flexShrink:0 }}>
+      <div style={{ background:"var(--nav-bg)", padding:"calc(var(--sat, 0px) + 14px) 16px 16px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--white)" }}>{t("admin.title")}</div>
+          {/* Literal #FFFFFF: token --white inverts to #1A1A1A in dark
+              mode and would render the title as black on the dark
+              nav-bg. The header is always dark-on-light → always white. */}
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"#FFFFFF" }}>{t("admin.title")}</div>
           <button onClick={onClose} aria-label={t("close")}
             style={{ background:"none", border:"none", color:"rgba(255,255,255,0.6)", cursor:"pointer" }}>
             <IconX size={18} />
@@ -726,8 +729,12 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
                 flex:1, padding:"6px 10px", fontSize:12, fontWeight:700,
                 borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer",
                 fontFamily:"var(--font)", minHeight:32,
-                background: tab===tb.k ? "white" : "transparent",
-                color: tab===tb.k ? "var(--charcoal)" : "var(--white-translucent-strong)",
+                background: tab===tb.k ? "#FFFFFF" : "transparent",
+                /* Literal dark color: token --charcoal inverts to a light
+                   grey in dark mode → invisible on the white active pill.
+                   The pill is always white so the active text must always
+                   stay dark, regardless of theme. */
+                color: tab===tb.k ? "#1F2937" : "var(--white-translucent-strong)",
                 transition:"all 0.4s",
               }}>
               {tb.l}
