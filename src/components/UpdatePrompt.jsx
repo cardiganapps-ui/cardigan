@@ -26,6 +26,13 @@ export function UpdatePrompt() {
     setApplying(true);
     try { waitingSW.postMessage({ type: "SKIP_WAITING" }); }
     catch { /* SW went away — the next focus will re-check anyway. */ }
+    // Failsafe: main.jsx reloads on controllerchange, but if the SW
+    // activation hangs (rare; observed once in production with the
+    // toast stuck in "Actualizando…"), fall back to a hard reload
+    // after 4s. Reload picks up the new assets either way.
+    setTimeout(() => {
+      try { window.location.reload(); } catch { /* page already gone */ }
+    }, 4000);
   };
 
   return (
@@ -46,7 +53,7 @@ export function UpdatePrompt() {
           className="update-prompt-action"
           onClick={apply}
           disabled={applying}>
-          {applying ? t("saving") : t("updateNow")}
+          {applying ? t("updating") : t("updateNow")}
         </button>
       </div>
     </div>
