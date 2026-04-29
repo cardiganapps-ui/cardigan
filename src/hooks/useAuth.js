@@ -6,7 +6,8 @@ import { supabase } from "../supabaseClient";
 // a "check your inbox / resend" panel instead of a raw error string.
 const EMAIL_NOT_CONFIRMED = /email not confirmed/i;
 
-/* Detect a password-recovery landing synchronously at module load time.
+/* Detect a password-recovery / invite landing synchronously at module
+   load time.
 
    Why module-level: supabase-js processes the URL hash on its first
    internal call (which can happen before our useEffect runs) and CLEANS
@@ -16,15 +17,22 @@ const EMAIL_NOT_CONFIRMED = /email not confirmed/i;
    (event fires before our listener registers) drops it. Reading the URL
    here, before any other module touches it, is the reliable detection.
 
-   We accept either flow shape:
-     - implicit:  https://cardigan.mx#access_token=…&type=recovery&…
-     - PKCE (less common for recovery): https://cardigan.mx?code=…&type=recovery
-   The Supabase Auth verify endpoint always sets `type=recovery` on the
-   redirect, so a single substring check is enough. */
+   The Supabase Auth verify endpoint sets `type=recovery` on password
+   recovery redirects and `type=invite` on user-invitation redirects;
+   both shapes use the URL fragment so a single substring check is
+   enough. Invites need the same "set a password before doing anything
+   else" gate as recovery — invited users land in an authenticated AAL1
+   session with NO password set, so without the gate they could use the
+   app once but never sign back in. */
 const INITIAL_RECOVERY = (() => {
   if (typeof window === "undefined") return false;
   const { hash, search } = window.location;
   return hash.includes("type=recovery") || search.includes("type=recovery");
+})();
+const INITIAL_INVITE = (() => {
+  if (typeof window === "undefined") return false;
+  const { hash, search } = window.location;
+  return hash.includes("type=invite") || search.includes("type=invite");
 })();
 
 export function useAuth() {
@@ -40,6 +48,11 @@ export function useAuth() {
   // the onAuthStateChange handler below latches the same flag for any
   // case where the URL was missed but the event fires anyway.
   const [recoveryMode, setRecoveryMode] = useState(INITIAL_RECOVERY);
+  // Same idea for invite landings — Supabase fires SIGNED_IN (not a
+  // dedicated INVITE event), so we rely entirely on the URL signal we
+  // captured at module load. Latched so subsequent token refreshes
+  // don't drop the gate.
+  const [inviteMode, setInviteMode] = useState(INITIAL_INVITE);
 
   useEffect(() => {
     // If getSession() rejects (network meltdown, supabase outage at boot),
@@ -160,18 +173,20 @@ export function useAuth() {
     return {};
   }
 
-  /* Set a new password during the recovery flow.
-     Supabase auto-signed the user in with the recovery token so this
-     call succeeds without re-auth. After it lands we deliberately
-     sign out so they re-login with the freshly-set credential —
-     leaves no ambient "signed via reset link" session behind. */
+  /* Set a password during recovery / invite — same code path, different
+     entry point. Supabase auto-signed the user in with the recovery /
+     invite token so this call succeeds without re-auth. After it lands
+     we deliberately sign out so they re-login with the freshly-set
+     credential — leaves no ambient "signed via emailed link" session
+     behind. */
   async function setNewPassword(password) {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { error: error.message };
     setRecoveryMode(false);
+    setInviteMode(false);
     await signOut();
     return { ok: true };
   }
 
-  return { user, loading, recoveryMode, signUp, signIn, signOut, signInWithProvider, refreshUser, setNewPassword };
+  return { user, loading, recoveryMode, inviteMode, signUp, signIn, signOut, signInWithProvider, refreshUser, setNewPassword };
 }
