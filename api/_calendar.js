@@ -154,6 +154,16 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
     `NAME:${escapeText(calendarName)}`,
     `X-WR-CALNAME:${escapeText(calendarName)}`,
     `X-WR-TIMEZONE:${timezone}`,
+    // Refresh hints — both required because clients respect different ones:
+    //   REFRESH-INTERVAL is RFC 7986; honoured by modern Apple Calendar,
+    //   Outlook 365 web/desktop, and Thunderbird.
+    //   X-PUBLISHED-TTL is the older de-facto property; honoured by older
+    //   Apple Calendar versions and most "Subscribe to calendar" apps.
+    // Both ask the client to refresh every 15 minutes — the practical
+    // floor for polled subscriptions. Cancellations show up within ~15 min
+    // instead of Apple's default ~1 h. Google Calendar ignores both.
+    "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+    "X-PUBLISHED-TTL:PT15M",
     ...vtimezoneBlock(timezone),
   ];
 

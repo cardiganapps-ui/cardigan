@@ -110,8 +110,12 @@ async function handler(req, res) {
     .then(() => {}, () => {});
 
   res.setHeader("Content-Type", "text/calendar; charset=utf-8");
-  // Calendar clients refetch periodically; let them respect short caches.
-  res.setHeader("Cache-Control", "private, max-age=300");
+  // Don't let intermediate caches hold a stale snapshot — when the
+  // user cancels a session we want the next client poll to see fresh
+  // data, not whatever a CDN has cached from 5 minutes ago. Pair this
+  // with REFRESH-INTERVAL inside the body which controls how often
+  // the client itself polls.
+  res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
   res.setHeader("Content-Disposition", "inline; filename=cardigan.ics");
   res.status(200).send(body);
 }
