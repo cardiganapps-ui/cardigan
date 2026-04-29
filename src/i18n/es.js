@@ -515,6 +515,8 @@ export default {
       aguacate: "Aguacate",
       cafecito: "Cafecito",
       nube: "Nube",
+      osito: "Osito",
+      carly: "Carly",
     },
     err: {
       tooLarge: "La imagen debe pesar menos de 10 MB.",
