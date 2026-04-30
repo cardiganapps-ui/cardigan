@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } fro
 import { useAuth } from "./hooks/useAuth";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
+import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
@@ -298,6 +299,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // encrypted notes still render as "[cifrado]" since noteCrypto.canEncrypt
   // stays false.
   const [cryptoGateDismissed, setCryptoGateDismissed] = useState(false);
+  // Track whether we've already evaluated the welcome-to-Pro prompt
+  // for this session. Local-storage handles the persistent "show
+  // once" rule; this state controls whether the modal is currently
+  // visible. The modal hands itself either dismissal path
+  // (continueTrial / startCheckout) and we record the local flag
+  // synchronously inside both handlers.
+  const [welcomeProOpen, setWelcomeProOpen] = useState(false);
   const admin = !demo && isAdmin(user);
 
   // Note encryption — opt-in, per-user. The hook self-fetches status
@@ -485,6 +493,54 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
   const hideFab = localHideFab || tutorialHidesFab;
   const notifications = useNotifications(demo ? null : user);
+
+  // Welcome-to-Pro prompt: fires once, after the user has finished or
+  // skipped the tutorial, IFF they're a real user on the natural trial
+  // (not subscribed, not comp, not admin). Persistent dismissal lives
+  // in localStorage so a refresh doesn't replay the modal. The eligible
+  // window is narrow on purpose — we never want to nag a paying user
+  // or someone who's already declined.
+  useEffect(() => {
+    if (demo || viewAsUserId) return;
+    if (!user?.id) return;
+    if (subscription.accessState !== "trial") return;
+    if (tutorial?.state !== "done") return;
+    let stored = null;
+    try { stored = localStorage.getItem(`cardigan.welcomePro.shown.v1.${user.id}`); }
+    catch { /* private mode — fall through and show; worst case it shows twice */ }
+    if (stored) return;
+    // Small grace window so the modal doesn't pop the same frame the
+    // tutorial confetti dismisses on. 600ms feels like a deliberate
+    // hand-off without making the user wait.
+    const id = setTimeout(() => setWelcomeProOpen(true), 600);
+    return () => clearTimeout(id);
+  }, [demo, viewAsUserId, user?.id, subscription.accessState, tutorial?.state]);
+
+  const persistWelcomeProSeen = useCallback(() => {
+    if (!user?.id) return;
+    try { localStorage.setItem(`cardigan.welcomePro.shown.v1.${user.id}`, "1"); }
+    catch { /* private mode — best effort */ }
+  }, [user?.id]);
+
+  const closeWelcomePro = useCallback(() => {
+    persistWelcomeProSeen();
+    setWelcomeProOpen(false);
+  }, [persistWelcomeProSeen]);
+
+  const subscribeFromWelcomePro = useCallback(async () => {
+    persistWelcomeProSeen();
+    const res = await subscription.startCheckout?.();
+    if (res?.ok && res.url) {
+      window.location.href = res.url;
+      return;
+    }
+    // Failure path — close the modal and surface the error via toast.
+    setWelcomeProOpen(false);
+    if (res?.error) showToast(res.error, "error");
+  // showToast / persistWelcomeProSeen are stable; subscription is the
+  // dynamic dep that matters.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscription, persistWelcomeProSeen]);
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
@@ -756,6 +812,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       {!demo && !readOnly && user && <ConsentBanner user={user} />}
       {!demo && !readOnly && user && !cryptoGateDismissed && (
         <EncryptionUnlockGate noteCrypto={noteCrypto} onSkip={() => setCryptoGateDismissed(true)} />
+      )}
+      {welcomeProOpen && (
+        <SubscriptionWelcome
+          daysLeftInTrial={subscription.daysLeftInTrial}
+          onContinue={closeWelcomePro}
+          onSubscribe={subscribeFromWelcomePro}
+        />
       )}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}

@@ -394,10 +394,14 @@ export function Settings({ user, signOut, refreshUser }) {
   const [exporting, setExporting] = useState(false);
   const [exportPassword, setExportPassword] = useState("");
   const [exportError, setExportError] = useState("");
+  const [exportCaptchaToken, setExportCaptchaToken] = useState(null);
+  const exportTurnstileRef = useRef(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [deleteCaptchaToken, setDeleteCaptchaToken] = useState(null);
+  const deleteTurnstileRef = useRef(null);
 
   /* Map server-side reauth codes → user-facing Spanish messages so
      the prompt knows what to say beyond a generic "wrong password". */
@@ -405,6 +409,7 @@ export function Settings({ user, signOut, refreshUser }) {
     if (code === "wrong_password") return t("settings.privacyReauthWrong");
     if (code === "password_required") return t("settings.privacyReauthRequired");
     if (code === "oauth_only") return t("settings.privacyReauthOauthOnly");
+    if (code === "captcha_failed") return t("settings.privacyReauthCaptcha");
     return t("settings.privacyReauthError");
   };
 
@@ -423,7 +428,10 @@ export function Settings({ user, signOut, refreshUser }) {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password: exportPassword }),
+        body: JSON.stringify({
+          password: exportPassword,
+          captchaToken: exportCaptchaToken || undefined,
+        }),
       });
       if (!res.ok) {
         // 401 with a code field → reauth issue; surface in the sheet so
@@ -431,6 +439,8 @@ export function Settings({ user, signOut, refreshUser }) {
         if (res.status === 401) {
           let code = ""; try { const j = await res.json(); code = j.code || ""; } catch { /* ignore */ }
           setExportError(reauthMessageFor(code));
+          setExportCaptchaToken(null);
+          exportTurnstileRef.current?.reset();
           return;
         }
         let msg = t("settings.privacyExportError");
@@ -465,19 +475,32 @@ export function Settings({ user, signOut, refreshUser }) {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { setDeleteError(t("settings.privacyDeleteError")); return; }
+      // Normalize the confirmation phrase: iOS predictive keyboards
+      // can insert trailing spaces or lowercase characters even with
+      // autoCapitalize="characters". The server still requires exact
+      // "ELIMINAR" so we send the normalized value.
+      const normalizedConfirmation = deleteConfirm.trim().toUpperCase();
       const res = await fetch("/api/delete-my-account", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ confirmation: deleteConfirm, password: deletePassword }),
+        body: JSON.stringify({
+          confirmation: normalizedConfirmation,
+          password: deletePassword,
+          captchaToken: deleteCaptchaToken || undefined,
+        }),
       });
       if (!res.ok) {
         // 401 → reauth issue; keep the sheet open so the user can fix.
         if (res.status === 401) {
           let code = ""; try { const j = await res.json(); code = j.code || ""; } catch { /* ignore */ }
           setDeleteError(reauthMessageFor(code));
+          // Captcha tokens are single-use; force a fresh challenge so a
+          // retry isn't immediately blocked by the same stale token.
+          setDeleteCaptchaToken(null);
+          deleteTurnstileRef.current?.reset();
           return;
         }
         let msg = t("settings.privacyDeleteError");
@@ -487,6 +510,10 @@ export function Settings({ user, signOut, refreshUser }) {
       }
       // Cascade completed — sign out to clear the (now-orphan) session.
       await signOut();
+    } catch (err) {
+      // Surface network / unexpected errors so the user knows something
+      // happened (a silent failure looks like the button is broken).
+      setDeleteError(err?.message || t("settings.privacyDeleteError"));
     } finally {
       setDeleting(false);
     }
@@ -762,7 +789,11 @@ export function Settings({ user, signOut, refreshUser }) {
       {/* ── SESIÓN ── */}
       <div className="settings-label">{t("settings.sectionSession")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" onClick={signOut}>
+        {/* `() => signOut()` not `signOut` directly — onClick passes the
+            SyntheticEvent as the first arg, which signOut would forward
+            into supabase.auth.signOut({ scope: <event> }) and silently
+            fail on the API side. */}
+        <div className="settings-row" onClick={() => signOut()}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("nav.signOut")}</div>
@@ -1519,6 +1550,12 @@ export function Settings({ user, signOut, refreshUser }) {
                   disabled={deleting}
                 />
               </div>
+              {/* Captcha verification — see export sheet above for context. */}
+              {TURNSTILE_ENABLED && (
+                <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
+                  <TurnstileWidget ref={deleteTurnstileRef} onToken={setDeleteCaptchaToken} />
+                </div>
+              )}
               {deleteError && (
                 <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{deleteError}</div>
               )}
@@ -1527,7 +1564,10 @@ export function Settings({ user, signOut, refreshUser }) {
                   type="button"
                   className="btn btn-primary"
                   onClick={confirmDeleteAccount}
-                  disabled={deleting || deleteConfirm !== "ELIMINAR" || !deletePassword}
+                  disabled={deleting
+                    || deleteConfirm.trim().toUpperCase() !== "ELIMINAR"
+                    || !deletePassword
+                    || (TURNSTILE_ENABLED && !deleteCaptchaToken)}
                   style={{ background: "var(--red)", color: "var(--white)" }}
                 >
                   {deleting ? t("loading") : t("settings.privacyDeleteCta")}
@@ -1789,6 +1829,16 @@ export function Settings({ user, signOut, refreshUser }) {
                   disabled={exporting}
                 />
               </div>
+              {/* Captcha verification — Supabase Auth has security_captcha_enabled
+                  on, so signInWithPassword (used by the server-side reauth)
+                  rejects without a fresh Turnstile token. The widget is
+                  invisible/managed and resolves on its own; we just hold the
+                  token and forward it on submit. */}
+              {TURNSTILE_ENABLED && (
+                <div style={{ display:"flex", justifyContent:"center", marginBottom: 12 }}>
+                  <TurnstileWidget ref={exportTurnstileRef} onToken={setExportCaptchaToken} />
+                </div>
+              )}
               {exportError && (
                 <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{exportError}</div>
               )}
@@ -1797,7 +1847,7 @@ export function Settings({ user, signOut, refreshUser }) {
                   type="button"
                   className="btn btn-primary"
                   onClick={exportMyData}
-                  disabled={exporting || !exportPassword}
+                  disabled={exporting || !exportPassword || (TURNSTILE_ENABLED && !exportCaptchaToken)}
                 >
                   {exporting ? t("loading") : t("settings.privacyExportCta")}
                 </button>

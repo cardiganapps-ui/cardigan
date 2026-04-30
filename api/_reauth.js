@@ -18,7 +18,7 @@ import { createClient } from "@supabase/supabase-js";
      to verify. Return code: "oauth_only" so the UI can route them
      to "set a password first" before retrying. */
 
-export async function verifyPasswordReauth({ user, password }) {
+export async function verifyPasswordReauth({ user, password, captchaToken }) {
   if (!user?.email) return { ok: false, code: "no_email" };
   if (typeof password !== "string" || !password) {
     return { ok: false, code: "password_required" };
@@ -33,11 +33,29 @@ export async function verifyPasswordReauth({ user, password }) {
   const anon = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { error } = await anon.auth.signInWithPassword({ email: user.email, password });
+  // Pass the captcha token through when supplied. Supabase Auth has
+  // captcha enforcement on signInWithPassword (security_captcha_enabled
+  // = true via Turnstile) — without a token the call fails as
+  // "captcha verification process failed", which the caller would then
+  // surface as "wrong password" and the user gets stuck on the
+  // confirmation step. The client must render <TurnstileWidget> in the
+  // reauth sheet and forward the resulting token here.
+  const { error } = await anon.auth.signInWithPassword({
+    email: user.email,
+    password,
+    options: captchaToken ? { captchaToken } : undefined,
+  });
   // Best-effort sign-out of the transient session. Failure is fine —
   // the local client never persisted it.
   anon.auth.signOut().catch(() => {});
 
-  if (error) return { ok: false, code: "wrong_password" };
+  if (error) {
+    // Distinguish captcha failures from password failures so the UI
+    // can prompt for a fresh challenge instead of telling the user
+    // their (correct) password is wrong.
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("captcha")) return { ok: false, code: "captcha_failed" };
+    return { ok: false, code: "wrong_password" };
+  }
   return { ok: true };
 }

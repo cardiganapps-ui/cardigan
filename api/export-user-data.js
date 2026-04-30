@@ -36,8 +36,8 @@ async function handler(req, res) {
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  const { password } = req.body || {};
-  const reauth = await verifyPasswordReauth({ user, password });
+  const { password, captchaToken } = req.body || {};
+  const reauth = await verifyPasswordReauth({ user, password, captchaToken });
   if (!reauth.ok) {
     return res.status(401).json({
       error: "Re-authentication required",

@@ -23,12 +23,12 @@ async function handler(req, res) {
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  const { confirmation, password } = req.body || {};
+  const { confirmation, password, captchaToken } = req.body || {};
   if (confirmation !== "ELIMINAR") {
     return res.status(400).json({ error: "Invalid confirmation", code: "bad_confirmation" });
   }
 
-  const reauth = await verifyPasswordReauth({ user, password });
+  const reauth = await verifyPasswordReauth({ user, password, captchaToken });
   if (!reauth.ok) {
     return res.status(401).json({
       error: "Re-authentication required",
