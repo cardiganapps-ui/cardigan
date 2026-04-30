@@ -73,6 +73,18 @@ export const IconKey = (p) => (
   <I {...p}><circle cx="8" cy="15" r="5"/><path d="M12.6 11.4L17 7M15 9l2-2M21 3l-4 4"/></I>
 );
 
+export const IconShield = (p) => (
+  <I {...p}><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></I>
+);
+
+export const IconLock = (p) => (
+  <I {...p}><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></I>
+);
+
+export const IconSparkle = (p) => (
+  <I {...p}><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3z"/><path d="M19 14l.7 1.8L21.5 16.5l-1.8.7L19 19l-.7-1.8L16.5 16.5l1.8-.7L19 14z"/></I>
+);
+
 export const IconLogOut = (p) => (
   <I {...p}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></I>
 );
