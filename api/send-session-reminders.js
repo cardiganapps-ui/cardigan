@@ -9,6 +9,18 @@ import {
 import { withSentry } from "./_sentry.js";
 import { getFlag } from "./_flags.js";
 import { sendTemplate, toE164MX } from "./_whatsapp.js";
+import { sendLifecycleEmail } from "./_lifecycle.js";
+
+// Lifecycle email cohorts. Each is "exactly N days after sign-up,
+// with a one-day grace window so a cron tick that misses the window
+// still catches the user the next day." The cron writes a dedupe
+// row per (user, kind), so a user whose tick lands on day 4 still
+// only gets the day-3 email once.
+const LIFECYCLE_COHORTS = [
+  { kind: "trial_day_3",          daysSinceSignup: 3,  windowDays: 2 },
+  { kind: "trial_day_25",         daysSinceSignup: 25, windowDays: 2 },
+  { kind: "trial_winback_day_37", daysSinceSignup: 37, windowDays: 2 },
+];
 
 const WHATSAPP_TEMPLATE = "cardigan_session_reminder";
 const WHATSAPP_LANGUAGE = "es_MX";
@@ -327,6 +339,11 @@ async function handler(req, res) {
     } catch (err) {
       console.warn("send-session-reminders: daily purge skipped:", err.message);
     }
+    try {
+      await maybeRunLifecycleEmails(supabase);
+    } catch (err) {
+      console.warn("send-session-reminders: lifecycle emails skipped:", err.message);
+    }
 
     logRun({
       usersScanned: prefs.length,
@@ -374,6 +391,111 @@ async function maybeRunDailyPurges(supabase) {
     ts: new Date().toISOString(),
     purged: count ?? 0,
     cutoff,
+  }));
+}
+
+/* Send lifecycle emails to users who hit a cohort window today.
+   Same once-per-day claim pattern as the purge above — only one cron
+   tick per UTC day actually runs the work. We page through users
+   created in each cohort's window and dispatch via sendLifecycleEmail,
+   which handles the per-user dedupe via lifecycle_emails(user_id, kind).
+
+   Skips comp + admin users (the comp guard is implicit — they never
+   need the trial nudges) and users who already have an active sub
+   (they passed the trial gate; we don't winback them). */
+async function maybeRunLifecycleEmails(supabase) {
+  // Seed the cron_state row on first run so the conditional UPDATE
+  // below finds something to claim. Idempotent — does nothing on a
+  // re-run since the primary key already exists.
+  await supabase.from("cron_state")
+    .insert({ job: "lifecycle_emails", last_run_at: null })
+    .select("job")
+    .maybeSingle()
+    .then(() => null, () => null);
+
+  // Same once-per-day claim pattern as the purge above. Conditional
+  // update returns a row ONLY for the cron tick that wins the race
+  // for today; everyone else exits silently.
+  const gateCutoff = new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString();
+  const { data: gate } = await supabase
+    .from("cron_state")
+    .update({ last_run_at: new Date().toISOString() })
+    .eq("job", "lifecycle_emails")
+    .or("last_run_at.is.null,last_run_at.lt." + gateCutoff)
+    .select("job")
+    .maybeSingle();
+  if (!gate) return;
+
+  // For each cohort, find users whose created_at falls in the window
+  // [now - (daysSinceSignup + windowDays)d, now - daysSinceSignup·d]
+  // who don't yet have a lifecycle_emails row for this kind.
+  let totalSent = 0;
+  for (const cohort of LIFECYCLE_COHORTS) {
+    const upper = new Date(Date.now() - cohort.daysSinceSignup * 86_400_000).toISOString();
+    const lower = new Date(Date.now() - (cohort.daysSinceSignup + cohort.windowDays) * 86_400_000).toISOString();
+
+    // Pull eligible users in batches. supabase.auth.admin.listUsers
+    // returns the auth.users page; we filter by created_at after the
+    // fact since list params don't accept a range. 100/page, max two
+    // pages — past 200 we've drifted from the cohort and the cron is
+    // worth optimizing.
+    let page = 1;
+    const eligible = [];
+    while (page <= 2) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
+      if (error) { console.warn("listUsers:", error.message); break; }
+      for (const u of (data?.users || [])) {
+        if (!u.created_at) continue;
+        if (u.created_at >= upper) continue;
+        if (u.created_at < lower) continue;
+        eligible.push(u);
+      }
+      if (!data?.users?.length || data.users.length < 100) break;
+      page += 1;
+    }
+    if (eligible.length === 0) continue;
+
+    // Drop users with active subs OR comp. They've already converted
+    // (or been gifted access) and don't need the trial-stage email.
+    // The winback cohort wants the OPPOSITE: users WITHOUT an active
+    // sub get the email; everyone else is skipped.
+    const userIds = eligible.map((u) => u.id);
+    const { data: subs } = await supabase
+      .from("user_subscriptions")
+      .select("user_id, status, comp_granted, default_payment_method")
+      .in("user_id", userIds);
+    const subByUser = new Map((subs || []).map((s) => [s.user_id, s]));
+
+    for (const u of eligible) {
+      const s = subByUser.get(u.id);
+      const hasActive = s && (
+        s.comp_granted
+        || s.status === "active"
+        || s.status === "past_due"
+        || (s.status === "trialing" && !!s.default_payment_method)
+      );
+      // Trial nudges (day-3, day-25): skip already-active users.
+      // Winback (day-37): also skip already-active — winback is for
+      // people who LET the trial lapse without converting. (A user
+      // who subscribed late still gets the day-25 if their timer
+      // matches but is in the active set; we skip them here.)
+      if (hasActive) continue;
+
+      const firstName = (u.user_metadata?.full_name || u.email?.split("@")[0] || "Hola").split(" ")[0];
+      const result = await sendLifecycleEmail(supabase, {
+        userId: u.id,
+        email: u.email,
+        firstName,
+        kind: cohort.kind,
+      });
+      if (result.ok && result.sent) totalSent += 1;
+    }
+  }
+
+  console.log(JSON.stringify({
+    evt: "cron.lifecycle_emails",
+    ts: new Date().toISOString(),
+    sent: totalSent,
   }));
 }
 

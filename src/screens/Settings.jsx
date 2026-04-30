@@ -5,6 +5,26 @@ import { supabase } from "../supabaseClient";
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
 import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
 import { ProValueWidget } from "../components/ProValueWidget";
+
+// Spanish "hace X" relative time for the referral leaderboard. Days
+// rounded down so "hace 1 día" doesn't slip to "hace 0 días" on the
+// 23rd hour. Anything older than 30 days falls back to a calendar
+// date so the leaderboard doesn't read as a stale-feeling "hace 200
+// días" list.
+function relativeTime(iso) {
+  if (!iso) return "";
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "";
+  const diffMs = Date.now() - then.getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return "ahora";
+  if (mins < 60) return `hace ${mins} ${mins === 1 ? "min" : "mins"}`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs} ${hrs === 1 ? "hora" : "horas"}`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `hace ${days} ${days === 1 ? "día" : "días"}`;
+  return then.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+}
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
 import { PasswordInput } from "../components/PasswordInput";
@@ -210,6 +230,17 @@ export function Settings({ user, signOut, refreshUser }) {
     return () => window.removeEventListener("cardigan-open-settings-sheet", handleOpenSheet);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Lazy-load the referral leaderboard when the user opens the
+  // referral sheet. RLS scopes the read to the caller's
+  // inviter_user_id; the join-by-user_id (decoded server-side) is
+  // cheap because the page size is capped at 20.
+  useEffect(() => {
+    if (activeSheet !== "referral") return;
+    if (subscription?.referralLeaderboard != null) return;
+    subscription?.fetchReferralLeaderboard?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSheet]);
 
   // Lazy-load the invoice history when the user opens the plan sheet
   // AND has an active sub. The list comes from `stripe_invoices`
@@ -1477,6 +1508,21 @@ export function Settings({ user, signOut, refreshUser }) {
                         <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:8, lineHeight:1.4 }}>
                           {t("subscription.portalFooter")}
                         </div>
+                        {/* Pause-subscription link — soft secondary affordance.
+                            Routes to the same Stripe portal as "Administrar"
+                            but the copy hints at the option for users who
+                            were going to cancel for a vacation and would
+                            otherwise just churn. The actual pause UI lives
+                            in the Stripe portal (configured to allow pause
+                            with default 1-month cap). */}
+                        <button type="button" className="btn btn-ghost"
+                          onClick={handleOpenPortal} disabled={subBusy}
+                          style={{ width:"100%", marginTop:10, fontSize:13 }}>
+                          {t("subscription.pauseCta")}
+                        </button>
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:4, lineHeight:1.4 }}>
+                          {t("subscription.pauseHint")}
+                        </div>
                       </div>
                     )}
 
@@ -1620,6 +1666,39 @@ export function Settings({ user, signOut, refreshUser }) {
                               credit: `$${(info.pendingCreditCents / 100).toLocaleString("es-MX")}`,
                             })
                           : t("subscription.referralRewardsApplied", { n: info.rewardsCount })}
+                      </div>
+                    )}
+
+                    {/* Leaderboard — invitees who actually converted, with
+                        a relative timestamp. The names are intentionally
+                        absent (we don't share emails between users); the
+                        list anchors the rewards count in something the
+                        user can see and feel. */}
+                    {Array.isArray(subscription?.referralLeaderboard) && subscription.referralLeaderboard.length > 0 && (
+                      <div style={{ marginTop:18 }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8 }}>
+                          {t("subscription.referralLeaderboardTitle")}
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                          {subscription.referralLeaderboard.map((row, idx) => (
+                            <div key={row.id} style={{
+                              display:"flex", alignItems:"center", justifyContent:"space-between",
+                              padding:"10px 12px",
+                              background:"var(--white)",
+                              border:"1px solid var(--border)",
+                              borderRadius:"var(--radius)",
+                              fontSize:13,
+                              color:"var(--charcoal)",
+                            }}>
+                              <span>
+                                {t("subscription.referralLeaderboardRow", { n: idx + 1 })}
+                              </span>
+                              <span style={{ color:"var(--charcoal-md)", fontSize:12 }}>
+                                {relativeTime(row.credited_at)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </>

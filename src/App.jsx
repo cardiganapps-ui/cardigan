@@ -60,6 +60,7 @@ import { useUserProfile } from "./hooks/useUserProfile";
 import { useAccentTheme } from "./hooks/useAccentTheme";
 import { DEFAULT_PROFESSION } from "./data/constants";
 import { setSentryProfession } from "./lib/sentry";
+import { identify as analyticsIdentify, track as analyticsTrack, reset as analyticsReset } from "./lib/analytics";
 import ConsentBanner from "./components/ConsentBanner";
 import MfaChallengeGate from "./components/MfaChallengeGate";
 import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
@@ -367,6 +368,21 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   useEffect(() => {
     setSentryProfession(profession, { demo: !!demo });
   }, [profession, demo]);
+
+  // PostHog identify / reset. Demo and admin-view-as both bypass —
+  // demo isn't a real user, and view-as is the admin masquerading
+  // (we'd pollute the target user's funnel).
+  useEffect(() => {
+    if (demo || viewAsUserId) return;
+    if (!user?.id) {
+      analyticsReset();
+      return;
+    }
+    analyticsIdentify(user.id, {
+      profession,
+      created_at: user.created_at,
+    });
+  }, [demo, viewAsUserId, user?.id, user?.created_at, profession]);
   const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
   const demoData = useDemoData(demoProfession);
   const data = demo ? demoData : liveData;
@@ -505,6 +521,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     window.dispatchEvent(new CustomEvent("cardigan-billing-return", { detail: { billing } }));
     if (billing === "success") {
       showSuccess(t("subscription.toastSubscribed"));
+      analyticsTrack("subscribe_success", { source: "stripe_return" });
+    } else if (billing === "cancel") {
+      analyticsTrack("checkout_cancelled");
     }
   // showSuccess / t are stable by useCallback / context — only run on
   // first mount when the URL still has the billing param.

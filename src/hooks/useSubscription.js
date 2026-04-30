@@ -44,11 +44,12 @@ const TRIAL_DAYS = 30;
 // statuses imply a payment method was already attached at checkout.
 const PAID_STATUSES = new Set(["active", "past_due"]);
 
-function trialEndDate(user) {
+function trialEndDate(user, extensionDays = 0) {
   if (!user?.created_at) return null;
   const created = new Date(user.created_at);
   if (Number.isNaN(created.getTime())) return null;
-  return new Date(created.getTime() + TRIAL_DAYS * 86_400_000);
+  const totalDays = TRIAL_DAYS + (Number.isFinite(extensionDays) ? extensionDays : 0);
+  return new Date(created.getTime() + totalDays * 86_400_000);
 }
 
 function daysBetween(now, then) {
@@ -79,7 +80,7 @@ export function useSubscription(user) {
     setLoading(true);
     const { data, error } = await supabase
       .from("user_subscriptions")
-      .select("stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, updated_at")
+      .select("stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, trial_extension_days, updated_at")
       .eq("user_id", userId)
       .maybeSingle();
     if (reqId !== reqIdRef.current) return;
@@ -117,7 +118,15 @@ export function useSubscription(user) {
     return () => window.removeEventListener("cardigan-billing-return", onReturn);
   }, [refresh]);
 
-  const trialEnd = useMemo(() => trialEndDate(user), [user]);
+  // Trial extension days come from user_subscriptions and bump the
+  // effective trial-end date forward. Falls through to 0 for users
+  // who never earned an extension; doesn't disturb anyone's existing
+  // 30-day window.
+  const trialExtensionDays = subscription?.trial_extension_days || 0;
+  const trialEnd = useMemo(
+    () => trialEndDate(user, trialExtensionDays),
+    [user, trialExtensionDays]
+  );
   const daysLeftInTrial = useMemo(() => daysBetween(now, trialEnd), [now, trialEnd]);
   const trialActive = useMemo(
     () => trialEnd ? now < trialEnd : false,
@@ -216,6 +225,34 @@ export function useSubscription(user) {
     }
   }, []);
 
+  // Lazy referral-leaderboard — credits this user has earned, joined
+  // with the invitee's display name (first name + last initial,
+  // privacy-conscious). Read from `referral_credits`; nothing here
+  // is sensitive vs. just the count we already showed.
+  const [referralLeaderboard, setReferralLeaderboard] = useState(null);
+  const [referralLeaderboardLoading, setReferralLeaderboardLoading] = useState(false);
+  const fetchReferralLeaderboard = useCallback(async () => {
+    if (!userId) return [];
+    setReferralLeaderboardLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("referral_credits")
+        .select("id, invitee_user_id, amount_cents, credited_at")
+        .eq("inviter_user_id", userId)
+        .order("credited_at", { ascending: false })
+        .limit(20);
+      if (error) {
+        console.warn("useSubscription leaderboard:", error.message);
+        setReferralLeaderboard([]);
+        return [];
+      }
+      setReferralLeaderboard(data || []);
+      return data || [];
+    } finally {
+      setReferralLeaderboardLoading(false);
+    }
+  }, [userId]);
+
   // Lazy invoice history — read from `stripe_invoices` (RLS scoped to
   // the caller's user_id). The webhook appends to this table on each
   // `invoice.paid`, so it's the right read model for the Settings →
@@ -243,6 +280,27 @@ export function useSubscription(user) {
       setInvoicesLoading(false);
     }
   }, [userId]);
+
+  // Idempotent on the server (unique on (user_id, reason)) so a
+  // refresh + re-tap won't stack the bonus. Resolves with the
+  // updated total so the caller can show the right count without a
+  // refetch — though we also call refresh() below to keep
+  // accessState consistent for any in-flight banners.
+  const grantTrialExtension = useCallback(async (reason) => {
+    if (!reason) return { ok: false, error: "missing reason" };
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return { ok: false, error: "Not signed in" };
+    const res = await fetch("/api/grant-trial-extension", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: json.error || "Trial extension failed" };
+    refresh();
+    return { ok: true, granted: !!json.granted, totalDays: json.totalDays || 0 };
+  }, [refresh]);
 
   const openPortal = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -274,8 +332,12 @@ export function useSubscription(user) {
     invoices,
     invoicesLoading,
     fetchInvoices,
+    referralLeaderboard,
+    referralLeaderboardLoading,
+    fetchReferralLeaderboard,
     refresh,
     startCheckout,
     openPortal,
+    grantTrialExtension,
   };
 }

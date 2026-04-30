@@ -341,6 +341,7 @@ export default {
   finances: {
     balances: "Saldos",
     payments: "Pagos",
+    downloadMonthlyPdf: "Descargar resumen del mes (PDF)",
     totalCollected: "Total cobrado",
     pending: "Pendiente",
     billed: "Facturado",
@@ -930,6 +931,10 @@ export default {
     referralRewardsPending: "Llevas {n} invitaciones exitosas. Cr\u00e9dito acumulado: {credit} MXN \u2014 se aplicar\u00e1 a tu primer recibo.",
     referralShareWhatsApp: "Compartir por WhatsApp",
     referralShareText: "Llevo mi consultorio con Cardigan y me ha funcionado mucho. Si te animas a probarlo, usa mi c\u00f3digo {code} y obtienes un mes gratis cuando te suscribas: https://cardigan.mx/?ref={code}",
+    referralLeaderboardTitle: "Qui\u00e9n has invitado",
+    referralLeaderboardRow: "Invitaci\u00f3n #{n} confirmada",
+    pauseCta: "Necesito tomar un descanso",
+    pauseHint: "Cancela ahora y reactiva cuando quieras \u2014 tus pacientes y notas se quedan intactos.",
     trialDayBadge: "D\u00eda {n} de 30",
     errorGeneric: "No se pudo iniciar el cobro. Intenta de nuevo.",
     toastSubscribed: "\u00a1Suscripci\u00f3n activa! Bienvenido a Cardigan Pro.",
@@ -1000,6 +1005,7 @@ export default {
     stepPayment: "Registra tu primer pago recibido",
     stepNote: "Escribe tu primera nota",
     completed: "Listo",
+    bonusToast: "¡Configuración lista! Te regalamos 5 días extra de prueba.",
   },
   milestone: {
     firstPatient: "¡Tu primer paciente! Aquí llevas su seguimiento — agenda, notas y pagos en un solo lugar.",

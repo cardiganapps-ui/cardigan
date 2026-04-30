@@ -39,7 +39,10 @@ export async function sendTransactionalEmail({ to, subject, html, text }) {
       const detail = await res.text().catch(() => "");
       return { ok: false, error: `Resend ${res.status}: ${detail.slice(0, 200)}` };
     }
-    return { ok: true };
+    // Resend returns `{ id: "<uuid>" }` on success — surface it so
+    // callers can stamp it into their audit row for support follow-up.
+    const body = await res.json().catch(() => ({}));
+    return { ok: true, id: body?.id || null };
   } catch (err) {
     return { ok: false, error: err?.message || "fetch failed" };
   }

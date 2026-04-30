@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { getClientColor } from "../data/seedData";
 import { IconCheck, IconTrendingUp, IconUsers, IconPlus, IconDollar } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
@@ -446,13 +446,33 @@ function ProyeccionTab({ sessions, patients }) {
 export function Finances() {
   // `deletePayment` is already wrapped at the context level to surface
   // a success toast, so we use it directly here.
-  const { patients, payments, upcomingSessions, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente, requestFabAction, readOnly } = useCardigan();
+  const { patients, payments, upcomingSessions, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente, requestFabAction, readOnly, userName, subscription, requirePro } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
   const [balanceFilter, setBalanceFilter] = useState(null); // null | "owing" | "paid"
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
   const owingPatients = patients.filter(p => p.amountDue>0);
   const noPatients    = patients.length === 0;
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const handleDownloadMonthlyPdf = useCallback(async () => {
+    if (pdfBusy) return;
+    // Pro-gated — the export is a clear "Pro feature" sell. Trial
+    // and expired users get the upgrade sheet; admins/comp/active
+    // pass through to the actual download.
+    if (!subscription?.isPro) { requirePro?.("documents"); return; }
+    setPdfBusy(true);
+    try {
+      const { downloadMonthlySummaryPdf } = await import("../lib/monthlySummaryPdf");
+      const { track } = await import("../lib/analytics");
+      downloadMonthlySummaryPdf({
+        payments, sessions: upcomingSessions, patients,
+        therapistName: userName,
+      });
+      track("pdf_summary_downloaded");
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [pdfBusy, subscription?.isPro, requirePro, payments, upcomingSessions, patients, userName]);
 
   return (
     <div className="page" data-tour="finances-section">
@@ -467,6 +487,15 @@ export function Finances() {
             { k: "proyeccion", l: t("finances.forecast") },
           ]}
         />
+        {!noPatients && (
+          <button type="button"
+            onClick={handleDownloadMonthlyPdf}
+            disabled={pdfBusy}
+            className="btn btn-ghost"
+            style={{ width:"auto", display:"inline-flex", alignItems:"center", gap:6, marginTop:10, padding:"6px 12px", fontSize:"var(--text-sm)" }}>
+            {pdfBusy ? t("loading") : t("finances.downloadMonthlyPdf")}
+          </button>
+        )}
       </div>
 
       {tab==="balances" && (

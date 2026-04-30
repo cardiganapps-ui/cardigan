@@ -48,12 +48,25 @@ import {
   getSubscription,
   creditCustomerBalance,
 } from "./_stripe.js";
+import { sendLifecycleEmail } from "./_lifecycle.js";
 
 // One free month of Cardigan Pro, in MXN cents. Mirrors the Stripe
 // price (`STRIPE_PRICE_ID`). If we ever change the plan price we'll
 // want this to come from the price object directly — for now it's
 // simpler to keep a single source of truth in env.
 const REFERRAL_REWARD_CENTS = 29900;
+
+// Anti-abuse caps on referral rewards. Hit either ceiling and we
+// stop crediting the inviter (silently — the invitee still gets the
+// product, the inviter just stops accruing freebies).
+//   - Lifetime cap: ceiling on total free months one user can earn
+//     via referrals. 12 = a whole free year, which is generous.
+//   - Burst cap: > N credits within BURST_WINDOW_MS triggers a
+//     Sentry alert (we don't block — false positives would be worse
+//     than a slow leak — but we get visibility immediately).
+const REFERRAL_LIFETIME_CAP = 12;
+const REFERRAL_BURST_CAP = 3;
+const REFERRAL_BURST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Vercel JSON-parses the body by default; Stripe needs the raw bytes
 // for HMAC verification. Same pattern as api/resend-webhook.js +
@@ -171,6 +184,32 @@ async function maybeCreditReferralReward(svc, invoice, customerId) {
     return { ok: true, note: "self-referral; skipped" };
   }
 
+  // Lifetime cap — past this we stop crediting. Done as a count read
+  // off the ledger rather than the denormalized counter so it's
+  // resistant to drift. The check is read-then-act (no row lock), but
+  // the (inviter, invitee) unique on referral_credits below provides
+  // the atomic guarantee: even if two webhooks race past this check,
+  // only one ledger insert succeeds.
+  const { count: priorCount } = await svc
+    .from("referral_credits")
+    .select("id", { count: "exact", head: true })
+    .eq("inviter_user_id", inviter.user_id);
+  if ((priorCount || 0) >= REFERRAL_LIFETIME_CAP) {
+    try {
+      Sentry.captureMessage("stripe-webhook: referral lifetime cap hit", {
+        level: "info",
+        extra: { inviterUserId: inviter.user_id, invitee: invitee.user_id, count: priorCount },
+      });
+    } catch { /* Sentry best-effort */ }
+    // Still stamp the invitee so we don't re-evaluate on every renewal.
+    const nowIso0 = new Date().toISOString();
+    await svc.from("user_subscriptions")
+      .update({ referral_reward_credited_at: nowIso0, updated_at: nowIso0 })
+      .eq("user_id", invitee.user_id)
+      .is("referral_reward_credited_at", null);
+    return { ok: true, note: `inviter ${inviter.user_id} hit lifetime cap` };
+  }
+
   const inviterHasRealCustomer = typeof inviter.stripe_customer_id === "string"
     && inviter.stripe_customer_id.startsWith("cus_");
 
@@ -185,6 +224,45 @@ async function maybeCreditReferralReward(svc, invoice, customerId) {
     .eq("user_id", invitee.user_id)
     .is("referral_reward_credited_at", null);
   if (stampError) throw new Error(`stamp invitee: ${stampError.message}`);
+
+  // Append to the per-conversion ledger (powers the Quién has invitado
+  // leaderboard). Unique on (inviter, invitee) so a re-fire is a no-op
+  // even if every higher-level guard slips.
+  const { error: ledgerError } = await svc
+    .from("referral_credits")
+    .insert({
+      inviter_user_id: inviter.user_id,
+      invitee_user_id: invitee.user_id,
+      amount_cents: REFERRAL_REWARD_CENTS,
+      invoice_id: invoice.id || null,
+    });
+  if (ledgerError && ledgerError.code !== "23505") {
+    // Genuine error — don't bail the whole reward, but log it.
+    console.warn("stripe-webhook: referral_credits insert failed:", ledgerError.message);
+  }
+
+  // Burst-detection: if this inviter has earned > BURST_CAP credits
+  // in the last BURST_WINDOW_MS, alert Sentry. We don't block (a
+  // popular therapist legitimately referring 4+ colleagues in a day
+  // is plausible), but we want eyes on the pattern.
+  const since = new Date(Date.now() - REFERRAL_BURST_WINDOW_MS).toISOString();
+  const { count: recentCount } = await svc
+    .from("referral_credits")
+    .select("id", { count: "exact", head: true })
+    .eq("inviter_user_id", inviter.user_id)
+    .gte("credited_at", since);
+  if ((recentCount || 0) > REFERRAL_BURST_CAP) {
+    try {
+      Sentry.captureMessage("stripe-webhook: referral burst", {
+        level: "warning",
+        extra: {
+          inviterUserId: inviter.user_id,
+          recentCount,
+          windowHours: REFERRAL_BURST_WINDOW_MS / 3_600_000,
+        },
+      });
+    } catch { /* Sentry best-effort */ }
+  }
 
   if (inviterHasRealCustomer) {
     await creditCustomerBalance({
@@ -299,6 +377,26 @@ async function handleEvent(svc, event) {
           console.warn("stripe-webhook: invoice ledger write failed:", err.message);
         }
 
+        // Clear any prior payment_failed dedupe row for this user —
+        // this paid invoice means the failure cycle is resolved, and
+        // a future failed renewal should re-trigger the recovery
+        // email. Best-effort.
+        try {
+          const { data: ownerRow } = await svc
+            .from("user_subscriptions")
+            .select("user_id")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          if (ownerRow?.user_id) {
+            await svc.from("lifecycle_emails")
+              .delete()
+              .eq("user_id", ownerRow.user_id)
+              .eq("kind", "payment_failed");
+          }
+        } catch (err) {
+          console.warn("stripe-webhook: payment_failed dedupe clear skipped:", err.message);
+        }
+
         // Referral reward — only fires on the FIRST paid invoice for
         // an invitee subscription (idempotency via
         // referral_reward_credited_at). On payment_failed we do nothing.
@@ -308,6 +406,38 @@ async function handleEvent(svc, event) {
           // A reward-flow hiccup must not fail the webhook ack — the
           // primary state was already persisted above. Log and move on.
           console.warn("stripe-webhook: referral credit failed:", err.message);
+        }
+      } else if (event.type === "invoice.payment_failed") {
+        // Failed-renewal recovery email. Idempotent via
+        // lifecycle_emails(user_id, "payment_failed") — the user gets
+        // exactly one heads-up per failure cycle, and Stripe's
+        // automatic retry schedule covers the rest. If renewal
+        // succeeds later, the next payment_failed is a fresh cycle
+        // that we'd want to alert on again — so we clean up the
+        // dedupe row on invoice.paid above. (Light touch: opt-out
+        // is "contesta este correo" via the email body.)
+        try {
+          const { data: ownerRow } = await svc
+            .from("user_subscriptions")
+            .select("user_id")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          if (ownerRow?.user_id) {
+            const { data: u } = await svc.auth.admin.getUserById(ownerRow.user_id);
+            const email = u?.user?.email;
+            if (email) {
+              const firstName = (u.user.user_metadata?.full_name || email.split("@")[0]).split(" ")[0];
+              await sendLifecycleEmail(svc, {
+                userId: ownerRow.user_id,
+                email,
+                firstName,
+                kind: "payment_failed",
+                invoiceUrl: invoice.hosted_invoice_url || null,
+              });
+            }
+          }
+        } catch (err) {
+          console.warn("stripe-webhook: payment_failed email skipped:", err.message);
         }
       }
 

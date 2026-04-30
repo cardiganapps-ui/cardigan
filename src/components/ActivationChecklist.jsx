@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { haptic } from "../utils/haptics";
+import { track as analyticsTrack } from "../lib/analytics";
 import { IconCheck } from "./Icons";
 
 /* ── ActivationChecklist ──────────────────────────────────────────────
@@ -19,7 +21,8 @@ import { IconCheck } from "./Icons";
 
 export function ActivationChecklist({ userId, accessState, onNavigate }) {
   const { t } = useT();
-  const { patients, sessions, payments, notes } = useCardigan() || {};
+  const ctx = useCardigan() || {};
+  const { patients, sessions, payments, notes, subscription, showSuccess } = ctx;
 
   const dismissed = useMemo(() => {
     if (!userId) return false;
@@ -43,6 +46,50 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
     try { localStorage.setItem(`cardigan.activation.dismissed.${userId}`, "1"); }
     catch { /* private mode — fine */ }
   }
+
+  // Reward the user with +5 trial days the moment all 4 steps cross
+  // 0→done. Server-side idempotent (unique on (user_id,reason)), so
+  // a refresh + re-render here can't stack the bonus. Fired at most
+  // once per browser via a localStorage flag too — belt and braces.
+  const grantedRef = useRef(false);
+  useEffect(() => {
+    if (!userId) return;
+    if (accessState !== "trial") return;
+    if (!allDone) return;
+    if (grantedRef.current) return;
+    let claimed = false;
+    try { claimed = localStorage.getItem(`cardigan.activation.bonusGranted.${userId}`) === "1"; }
+    catch { /* fall through */ }
+    if (claimed) return;
+    grantedRef.current = true;
+    (async () => {
+      const res = await subscription?.grantTrialExtension?.("activation_complete");
+      try { localStorage.setItem(`cardigan.activation.bonusGranted.${userId}`, "1"); }
+      catch { /* private mode — fine */ }
+      if (res?.ok && res.granted) {
+        haptic.success();
+        showSuccess?.(t("activation.bonusToast"));
+        analyticsTrack("activation_complete", { bonus_days: res.totalDays });
+      }
+    })();
+  }, [userId, accessState, allDone, subscription, showSuccess, t]);
+
+  // Per-step transitions — track once per (user, step) via
+  // localStorage so a re-render doesn't re-fire. Events feed the
+  // funnel-analysis dashboards in PostHog.
+  useEffect(() => {
+    if (!userId) return;
+    if (accessState !== "trial") return;
+    for (const [step, done] of Object.entries(stepStates)) {
+      if (!done) continue;
+      const key = `cardigan.activation.tracked.${step}.${userId}`;
+      try {
+        if (localStorage.getItem(key) === "1") continue;
+        analyticsTrack("activation_step_completed", { step });
+        localStorage.setItem(key, "1");
+      } catch { /* private mode — fine */ }
+    }
+  }, [userId, accessState, stepStates]);
 
   // Hide for non-trial users (paid + comp + admin already pass), users
   // who already finished + had it dismissed, and users with no id.
