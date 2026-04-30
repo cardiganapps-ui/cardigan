@@ -8,6 +8,7 @@ import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
 import { PasswordInput } from "../components/PasswordInput";
 import { Toggle } from "../components/Toggle";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
@@ -439,6 +440,8 @@ export function Settings({ user, signOut, refreshUser }) {
   const [deleteError, setDeleteError] = useState("");
   const [deleteCaptchaToken, setDeleteCaptchaToken] = useState(null);
   const deleteTurnstileRef = useRef(null);
+  // Sign-out confirmation, mirroring the Drawer pattern.
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   /* Map server-side reauth codes → user-facing Spanish messages so
      the prompt knows what to say beyond a generic "wrong password". */
@@ -846,11 +849,10 @@ export function Settings({ user, signOut, refreshUser }) {
       {/* ── SESIÓN ── */}
       <div className="settings-label">{t("settings.sectionSession")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
-        {/* `() => signOut()` not `signOut` directly — onClick passes the
-            SyntheticEvent as the first arg, which signOut would forward
-            into supabase.auth.signOut({ scope: <event> }) and silently
-            fail on the API side. */}
-        <div className="settings-row" onClick={() => signOut()}>
+        {/* Confirm before signing out — same ConfirmDialog the Drawer
+            uses, so the affordance is consistent across both entry
+            points (drawer chip + this row). */}
+        <div className="settings-row" onClick={() => setConfirmSignOut(true)}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("nav.signOut")}</div>
@@ -1995,6 +1997,16 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title={t("nav.signOut")}
+        body={t("nav.signOutConfirm")}
+        confirmLabel={t("nav.signOut")}
+        destructive
+        onConfirm={() => { setConfirmSignOut(false); signOut(); }}
+        onCancel={() => setConfirmSignOut(false)}
+      />
     </div>
   );
 }
