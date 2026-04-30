@@ -489,7 +489,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     } else {
       // Functional updater returns `prev` unchanged when there's
       // nothing to remove, so React bails out — no cascading render.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // (set-state-in-effect lint rule no longer flags this pattern;
+      // the previous eslint-disable directive was reported as unused.)
       setToasts(prev => prev.some(t => t.key === "mutation-error")
         ? prev.filter(t => t.key !== "mutation-error")
         : prev);
