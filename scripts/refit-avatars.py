@@ -33,7 +33,21 @@ bg_path_re = re.compile(
 layer_open_re = re.compile(r'(<g[^>]*id="Layer-1"[^>]*>)')
 layer_close_re = re.compile(r'</g>(\s*</svg>)')
 
-SCALE = 0.86
+DEFAULT_SCALE = 0.86
+DEFAULT_TY    = 512   # vertical centre after the inner translate
+
+# Per-file overrides — animals wear sweaters whose bottom corners
+# extend close to the artwork's bounding-box corners. Those corners
+# fall outside the inscribed circle at scale 0.86, so the sweater gets
+# clipped where it should be most visible. We shrink the animal art
+# slightly and shift it down a touch so the whole sweater sits inside
+# the visible circle.
+PER_FILE = {
+    "perrito.svg": {"scale": 0.80, "ty": 542},
+    "carly.svg":   {"scale": 0.80, "ty": 542},
+    "gatito.svg":  {"scale": 0.80, "ty": 542},
+    "osito.svg":   {"scale": 0.80, "ty": 542},
+}
 
 n_done = 0
 for svg_path in sorted(ROOT.glob("*.svg")):
@@ -41,6 +55,10 @@ for svg_path in sorted(ROOT.glob("*.svg")):
     if MARK in raw:
         print(f"  · {svg_path.name} already refit, skipping")
         continue
+
+    cfg = PER_FILE.get(svg_path.name, {})
+    scale = cfg.get("scale", DEFAULT_SCALE)
+    ty    = cfg.get("ty",    DEFAULT_TY)
 
     # 1. swap bg rect for a circle of the same colour
     m = bg_path_re.search(raw)
@@ -65,7 +83,7 @@ for svg_path in sorted(ROOT.glob("*.svg")):
         continue
 
     transform_open = (
-        f'<g transform="translate(512 512) scale({SCALE}) translate(-512 -512)">'
+        f'<g transform="translate(512 {ty}) scale({scale}) translate(-512 -512)">'
     )
     out = (
         out[: circle_end]
