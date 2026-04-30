@@ -27,6 +27,7 @@ import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
+const TRIAL_DAYS = 30;
 
 function getSecret() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -34,10 +35,37 @@ function getSecret() {
   return key.trim();
 }
 
-export function getPriceId() {
-  const id = process.env.STRIPE_PRICE_ID;
-  if (!id) throw new Error("STRIPE_PRICE_ID not configured");
+// Pick the right Stripe Price for a given plan. Annual lives in
+// STRIPE_PRICE_ID_ANNUAL ($2,990 MXN/yr ≈ 17% off); monthly remains the
+// default at STRIPE_PRICE_ID. Both env vars flip atomically between
+// test and live mode (Preview/Development = test, Production = live).
+export function getPriceId(plan = "monthly") {
+  const envKey = plan === "annual" ? "STRIPE_PRICE_ID_ANNUAL" : "STRIPE_PRICE_ID";
+  const id = process.env[envKey];
+  if (!id) throw new Error(`${envKey} not configured`);
   return id.trim();
+}
+
+// Whitelist for the `plan` request param. Anything else collapses to
+// monthly so a tampered client can't push us at an arbitrary price id.
+export function resolvePlan(input) {
+  const v = typeof input === "string" ? input.trim().toLowerCase() : "";
+  return v === "annual" ? "annual" : "monthly";
+}
+
+// Cardigan-side trial: 30 days from auth.users.created_at. Returns the
+// unix-second timestamp suitable for Stripe's `trial_end`, or null if
+// the trial has already lapsed (Stripe rejects past `trial_end`).
+// Centralized here so both checkout endpoints share one definition.
+export function trialEndUnixFromUser(user, days = TRIAL_DAYS) {
+  if (!user?.created_at) return null;
+  const created = new Date(user.created_at);
+  if (Number.isNaN(created.getTime())) return null;
+  const trialEnd = new Date(created.getTime() + days * 86_400_000);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const trialEndSec = Math.floor(trialEnd.getTime() / 1000);
+  if (trialEndSec <= nowSec + 60) return null;
+  return trialEndSec;
 }
 
 export function getWebhookSecret() {
@@ -142,12 +170,54 @@ export function getSubscription(subscriptionId) {
   return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "GET" });
 }
 
+export function cancelSubscription(subscriptionId) {
+  return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "DELETE" });
+}
+
+/* Create a Stripe subscription server-side in default_incomplete payment
+   mode. The browser confirms the first invoice via Stripe Elements using
+   the returned client_secret. Idempotency-keyed by user_id + minute-
+   bucket so a double-click on Confirm can't create two subs against the
+   same customer. */
+export function createSubscription({ customerId, priceId, trialEnd, metadata, userId }) {
+  const body = {
+    customer: customerId,
+    "items[0][price]": priceId,
+    "items[0][quantity]": 1,
+    payment_behavior: "default_incomplete",
+    "payment_settings[save_default_payment_method]": "on_subscription",
+    "expand[0]": "latest_invoice.payment_intent",
+    "expand[1]": "pending_setup_intent",
+  };
+  if (trialEnd) body.trial_end = trialEnd;
+  for (const [k, v] of Object.entries(metadata || {})) {
+    if (v == null) continue;
+    body[`metadata[${k}]`] = String(v);
+  }
+  // Bucket the idempotency key to one minute. A genuine retry after a
+  // network blip lands in the same bucket → Stripe returns the same sub.
+  // A user who wanted a second sub a minute later (rare; not really a
+  // path we support) gets a fresh one.
+  const idempotencyKey = userId
+    ? `cardigan-sub-${userId}-${Math.floor(Date.now() / 60000)}`
+    : undefined;
+  return stripeFetch("/subscriptions", { body, idempotencyKey });
+}
+
 /* Apply a Stripe customer-balance credit. `amountCents` should be
    positive — we negate internally because Stripe uses NEGATIVE values
    for credits and POSITIVE for debits. The credit is auto-applied to
    the customer's next invoice. Used by the referral reward flow when
-   an invitee converts to a paid sub. */
-export function creditCustomerBalance({ customerId, amountCents, currency = "mxn", description, metadata }) {
+   an invitee converts to a paid sub.
+
+   Idempotency key is required-by-convention: the webhook passes the
+   originating Stripe event id (`cardigan-credit-<event_id>`), so a
+   re-delivered invoice.paid can't double-post the credit. Non-webhook
+   callers (drain pending at checkout) pass a one-shot UUID since the
+   call is naturally guarded by a `pending_credit_amount_cents > 0`
+   precondition cleared after a successful post. */
+export function creditCustomerBalance({ customerId, amountCents, currency = "mxn", description, metadata, idempotencyKey }) {
+  const key = idempotencyKey || `cardigan-credit-${crypto.randomUUID()}`;
   return stripeFetch(`/customers/${customerId}/balance_transactions`, {
     body: {
       amount: -Math.abs(amountCents),
@@ -155,6 +225,7 @@ export function creditCustomerBalance({ customerId, amountCents, currency = "mxn
       description: description || "Cardigan referral reward",
       metadata: metadata || {},
     },
+    idempotencyKey: key,
   });
 }
 

@@ -79,7 +79,7 @@ export function useSubscription(user) {
     setLoading(true);
     const { data, error } = await supabase
       .from("user_subscriptions")
-      .select("stripe_customer_id, stripe_subscription_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, updated_at")
+      .select("stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, updated_at")
       .eq("user_id", userId)
       .maybeSingle();
     if (reqId !== reqIdRef.current) return;
@@ -165,14 +165,17 @@ export function useSubscription(user) {
   const accessExpired = accessState === "expired";
   const accessLoading = accessState === "loading";
 
-  const startCheckout = useCallback(async ({ referralCode } = {}) => {
+  const startCheckout = useCallback(async ({ referralCode, plan } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) return { ok: false, error: "Not signed in" };
+    const payload = {};
+    if (referralCode) payload.referral_code = referralCode;
+    if (plan === "annual") payload.plan = "annual";
     const res = await fetch("/api/stripe-checkout", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(referralCode ? { referral_code: referralCode } : {}),
+      body: JSON.stringify(payload),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -213,6 +216,34 @@ export function useSubscription(user) {
     }
   }, []);
 
+  // Lazy invoice history — read from `stripe_invoices` (RLS scoped to
+  // the caller's user_id). The webhook appends to this table on each
+  // `invoice.paid`, so it's the right read model for the Settings →
+  // plan history widget. Cached on hook state; fetched on first request.
+  const [invoices, setInvoices] = useState(null);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const fetchInvoices = useCallback(async () => {
+    if (!userId) return [];
+    setInvoicesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("stripe_invoices")
+        .select("id, amount_cents, currency, paid_at, hosted_invoice_url, pdf_url")
+        .eq("user_id", userId)
+        .order("paid_at", { ascending: false })
+        .limit(6);
+      if (error) {
+        console.warn("useSubscription invoices:", error.message);
+        setInvoices([]);
+        return [];
+      }
+      setInvoices(data || []);
+      return data || [];
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }, [userId]);
+
   const openPortal = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -240,6 +271,9 @@ export function useSubscription(user) {
     referralInfo,
     referralLoading,
     fetchReferralInfo,
+    invoices,
+    invoicesLoading,
+    fetchInvoices,
     refresh,
     startCheckout,
     openPortal,

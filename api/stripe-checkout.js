@@ -23,7 +23,7 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
-import { createCustomer, createCheckoutSession, getPriceId, creditCustomerBalance } from "./_stripe.js";
+import { createCustomer, createCheckoutSession, getPriceId, creditCustomerBalance, resolvePlan } from "./_stripe.js";
 
 const MXN = "mxn";
 
@@ -64,6 +64,7 @@ async function handler(req, res) {
   try { body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {}); }
   catch { /* malformed body, ignore — proceed without referral */ }
   const referralCode = parseReferralCode(body);
+  const plan = resolvePlan(body.plan);
 
   const svc = getServiceClient();
 
@@ -192,6 +193,12 @@ async function handler(req, res) {
         currency: MXN,
         description: "Crédito acumulado por invitaciones",
         metadata: { user_id: user.id, kind: "drain_pending" },
+        // Stable per-user-per-amount key so a retried checkout call
+        // can't double-post the same drain. The amount is captured here
+        // because we ALSO clear pending_credit_amount_cents below; a
+        // retry on the same pending balance lands in the same idempotency
+        // bucket and Stripe returns the original credit unchanged.
+        idempotencyKey: `cardigan-credit-drain-${user.id}-${pending}`,
       });
       await svc.from("user_subscriptions")
         .update({ pending_credit_amount_cents: 0, updated_at: new Date().toISOString() })
@@ -205,7 +212,7 @@ async function handler(req, res) {
   // 4. Build the Checkout Session.
   const origin = appOrigin(req);
   let priceId;
-  try { priceId = getPriceId(); }
+  try { priceId = getPriceId(plan); }
   catch (err) { return res.status(500).json({ error: err.message }); }
 
   // Stamp the referred_by code into Stripe subscription metadata so

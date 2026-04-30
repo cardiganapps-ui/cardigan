@@ -3,11 +3,16 @@ import { useAuth } from "./hooks/useAuth";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
 import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
+import { MilestoneCelebration } from "./components/MilestoneCelebration.jsx";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
 const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet.jsx").then(m => ({ default: m.ProUpgradeSheet })));
 const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt.jsx"));
+// Lazy because it pulls a small confetti renderer + a celebration
+// modal that 99% of users see once or never. No reason to bundle it
+// in the main chunk.
+const SubscriptionSuccess = lazy(() => import("./components/SubscriptionSuccess.jsx").then(m => ({ default: m.SubscriptionSuccess })));
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
@@ -68,8 +73,16 @@ import "./styles/index.css";
 
 // Days-remaining thresholds at which we surface the trial reminder
 // modal. Module-level so the dependency array of the gating effect
-// stays stable across renders.
-const TRIAL_REMINDER_THRESHOLDS = [15, 10, 5, 3, 2, 1];
+// stays stable across renders. Cadence is intentionally light — three
+// nudges across the 30-day window respects the user's attention much
+// more than a daily-during-the-final-week barrage. Each modal is also
+// suppressed if the user opened the plan sheet within the last 3 days
+// (see PLAN_SHEET_GRACE_MS below).
+const TRIAL_REMINDER_THRESHOLDS = [15, 7, 1];
+// If the user opened Settings → plan within this window, skip the
+// reminder modal — they're clearly aware of the trial and we don't
+// need to interrupt them again.
+const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
@@ -498,6 +511,31 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Referral-code URL handler (?ref=<CODE>) ──
+  // Lands on every cardigan.mx page from a referral share link. We
+  // stash the code in sessionStorage so it survives the email-verify
+  // round-trip on signup; Settings → plan sheet prefills the invite
+  // code input from this entry on mount. Stripped from the URL after
+  // capture so a refresh-after-signin doesn't keep the parameter
+  // visible. Cleared by the checkout success handler in Settings
+  // (see cardigan.referralFromUrl reads).
+  useEffect(() => {
+    if (demo) return;
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (!ref) return;
+    const sanitized = ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+    if (sanitized) {
+      try { sessionStorage.setItem("cardigan.referralFromUrl", sanitized); }
+      catch { /* private mode — fine, the URL is gone after this anyway */ }
+    }
+    params.delete("ref");
+    const newUrl = window.location.pathname
+      + (params.toString() ? `?${params.toString()}` : "")
+      + window.location.hash;
+    window.history.replaceState({}, "", newUrl);
+  }, [demo]);
+
   const tutorial = useTutorial({ user, demo, readOnly });
   const tutorialHidesFab = tutorial?.isActive
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
@@ -581,6 +619,16 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     if (typeof days !== "number") return;
     if (!TRIAL_REMINDER_THRESHOLDS.includes(days)) return;
 
+    // Skip if the user opened the plan sheet recently — they've already
+    // reviewed pricing this week, no need to nudge them again. The
+    // Settings sheet stamps `cardigan.planSheetSeen.<userId>` on open;
+    // see Settings.jsx::useEffect that watches activeSheet === "plan".
+    try {
+      const seen = localStorage.getItem(`cardigan.planSheetSeen.${user.id}`);
+      const seenAt = seen ? Number(seen) : 0;
+      if (seenAt && Date.now() - seenAt < PLAN_SHEET_GRACE_MS) return;
+    } catch { /* private mode — fall through */ }
+
     const today = new Date();
     const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const lsKey = `cardigan.trialReminder.lastShown.${user.id}`;
@@ -604,6 +652,35 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     setTrialReminderOpen(false);
     setTrialReminderPaymentOpen(true);
   }, []);
+
+  // ── "Welcome to Pro" celebration ──
+  // Fires once per user on the first transition from non-active →
+  // active (paid sub or comp). Persisted via localStorage so a refresh
+  // won't replay it. Comp-granted accounts get the same celebration —
+  // the moment is "you have Pro now" regardless of whether money
+  // changed hands.
+  const [subscriptionSuccessOpen, setSubscriptionSuccessOpen] = useState(false);
+  const prevSubActiveRef = useRef(false);
+  useEffect(() => {
+    if (demo || viewAsUserId) return;
+    if (!user?.id) return;
+    const isActiveNow = !!(subscription.subscribedActive || subscription.compGranted);
+    const wasActive = prevSubActiveRef.current;
+    prevSubActiveRef.current = isActiveNow;
+    if (!isActiveNow || wasActive) return;
+    let shown = null;
+    try { shown = localStorage.getItem(`cardigan.welcomedPro.${user.id}`); }
+    catch { /* private mode — fall through and show; one extra modal isn't a big deal */ }
+    if (shown) return;
+    setSubscriptionSuccessOpen(true);
+  }, [demo, viewAsUserId, user?.id, subscription.subscribedActive, subscription.compGranted]);
+  const closeSubscriptionSuccess = useCallback(() => {
+    if (user?.id) {
+      try { localStorage.setItem(`cardigan.welcomedPro.${user.id}`, "1"); }
+      catch { /* private mode — fine */ }
+    }
+    setSubscriptionSuccessOpen(false);
+  }, [user?.id]);
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
@@ -816,7 +893,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     profession,
     accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
-    userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
+    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
     pendingFabAction,
@@ -839,7 +916,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: show ProfessionOnboarding before mounting the
   // main shell when the user has no user_profiles row yet. Demo mode
@@ -939,7 +1016,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             }}
           />
         )}
+        {subscriptionSuccessOpen && (
+          <SubscriptionSuccess
+            open={subscriptionSuccessOpen}
+            onClose={closeSubscriptionSuccess}
+          />
+        )}
       </Suspense>
+      {/* 0→1 first-patient / first-session / first-payment celebration.
+          No UI of its own — fires success toasts via context.
+          Skipped in demo + admin-view-as flows by passing accessState. */}
+      {!demo && !viewAsUserId && user && (
+        <MilestoneCelebration
+          userId={user.id}
+          accessState={subscription.accessState}
+        />
+      )}
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
         onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setBugReportOpen(true); } : null} />
@@ -1035,17 +1127,32 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {/* Trial-soon-to-expire banner — only when in the last 7 days
             of trial AND no active sub yet. Non-blocking; the user can
             keep using the app. The 7-day threshold matches typical
-            SaaS "renewal nudge" cadence. */}
+            SaaS "renewal nudge" cadence. The "Día N de 30" pill makes
+            the urgency tangible without being shouty — users register
+            "I'm on day 25" much more viscerally than "5 days left". */}
         {!demo && !viewAsUserId
           && subscription.accessState === "trial"
           && subscription.daysLeftInTrial != null
           && subscription.daysLeftInTrial <= 7
           && (
           <div className="app-banner app-banner--trial">
-            <span className="app-banner-text">
-              {subscription.daysLeftInTrial <= 1
-                ? t("subscription.trialEndsTodayBanner")
-                : t("subscription.trialDaysLeftBanner", { n: subscription.daysLeftInTrial })}
+            <span className="app-banner-text" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{
+                display: "inline-block",
+                padding: "2px 8px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.18)",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+              }}>
+                {t("subscription.trialDayBadge", { n: Math.max(1, 30 - subscription.daysLeftInTrial + 1) })}
+              </span>
+              <span>
+                {subscription.daysLeftInTrial <= 1
+                  ? t("subscription.trialEndsTodayBanner")
+                  : t("subscription.trialDaysLeftBanner", { n: subscription.daysLeftInTrial })}
+              </span>
             </span>
             <button onClick={() => navigate("settings")} className="app-banner-action">
               {t("subscription.subscribeShort")}

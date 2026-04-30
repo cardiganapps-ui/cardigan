@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
 import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
+import { ProValueWidget } from "../components/ProValueWidget";
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
 import { PasswordInput } from "../components/PasswordInput";
@@ -209,6 +210,26 @@ export function Settings({ user, signOut, refreshUser }) {
     return () => window.removeEventListener("cardigan-open-settings-sheet", handleOpenSheet);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Lazy-load the invoice history when the user opens the plan sheet
+  // AND has an active sub. The list comes from `stripe_invoices`
+  // (RLS-scoped); empty for any account predating this feature, since
+  // we deliberately don't backfill — the Stripe portal still has the
+  // pre-table receipts.
+  useEffect(() => {
+    if (activeSheet !== "plan") return;
+    // Stamp a "user just looked at pricing" timestamp so the trial
+    // reminder modal can suppress itself for the next few days. Cheap
+    // and gives users credit for actually engaging with the panel.
+    if (user?.id) {
+      try { localStorage.setItem(`cardigan.planSheetSeen.${user.id}`, String(Date.now())); }
+      catch { /* private mode — fine */ }
+    }
+    if (!subscription?.subscribedActive) return;
+    if (subscription.invoices != null) return;
+    subscription.fetchInvoices?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSheet, subscription?.subscribedActive]);
   const { scrollRef: sheetScrollRef, setPanelEl: setSheetPanelEl, panelHandlers: sheetPanelHandlers } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
   const setSheetPanel = (el) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
   const [editName, setEditName] = useState(userName);
@@ -336,7 +357,16 @@ export function Settings({ user, signOut, refreshUser }) {
   // ── Subscription sheet local state ──
   const [subBusy, setSubBusy] = useState(false);
   const [subError, setSubError] = useState("");
-  const [inviteCodeInput, setInviteCodeInput] = useState("");
+  const [inviteCodeInput, setInviteCodeInput] = useState(() => {
+    // Prefill from the ?ref=<code> URL param captured at app boot
+    // (App.jsx stashes it in sessionStorage). Lets a friend's WhatsApp
+    // link survive the email-verify roundtrip and still apply at
+    // checkout. Falls through to "" when nothing's stashed.
+    try {
+      const stashed = sessionStorage.getItem("cardigan.referralFromUrl");
+      return stashed ? stashed.toUpperCase() : "";
+    } catch { return ""; }
+  });
   const [referralCopied, setReferralCopied] = useState(false);
   // Native payment sheet — replaces the previous redirect-to-Stripe
   // flow. We pass the resolved invite code at open-time so it's stable
@@ -344,10 +374,16 @@ export function Settings({ user, signOut, refreshUser }) {
   // Suscripción sheet underneath.
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
   const [paymentSheetReferralCode, setPaymentSheetReferralCode] = useState(null);
+  const [paymentSheetPlan, setPaymentSheetPlan] = useState("monthly");
+  // Selected billing cycle in the Suscripción sheet — controls the
+  // segmented toggle and the price displayed in the hero. Defaults to
+  // monthly; "annual" routes the checkout at STRIPE_PRICE_ID_ANNUAL.
+  const [selectedPlan, setSelectedPlan] = useState("monthly");
   const handleStartCheckout = () => {
     if (subBusy) return;
     setSubError("");
     setPaymentSheetReferralCode(inviteCodeInput.trim() || null);
+    setPaymentSheetPlan(selectedPlan);
     setPaymentSheetOpen(true);
   };
   const handleOpenPortal = async () => {
@@ -1208,12 +1244,19 @@ export function Settings({ user, signOut, refreshUser }) {
         {paymentSheetOpen && (
           <StripePaymentSheet
             open={paymentSheetOpen}
+            plan={paymentSheetPlan}
             referralCode={paymentSheetReferralCode}
             daysLeftInTrial={subscription?.daysLeftInTrial}
             onClose={() => setPaymentSheetOpen(false)}
             onSuccess={() => {
               setPaymentSheetOpen(false);
               showToast(t("subscription.toastSubscribed"), "success");
+              // Sessionstorage stash is single-use — clear so a future
+              // sign-up flow on the same device doesn't apply a stale
+              // code. The DB already has it persisted on the user's
+              // user_subscriptions row at checkout time.
+              try { sessionStorage.removeItem("cardigan.referralFromUrl"); }
+              catch { /* private mode — no-op */ }
               // Close the parent Suscripción sheet too — the user has
               // just succeeded, no reason to leave them staring at the
               // pre-checkout state.
@@ -1311,23 +1354,81 @@ export function Settings({ user, signOut, refreshUser }) {
                       )}
 
                       {/* Price line — only when there's a sale to make. Lives inside the
-                          hero so the user perceives value + cost together. */}
+                          hero so the user perceives value + cost together. The
+                          numbers reflect the currently selected billing cycle. */}
                       {!isComp && !isActive && (
                         <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.06)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
-                              $299
+                              ${selectedPlan === "annual" ? "2,990" : "299"}
                             </span>
                             <span style={{ fontSize:13, color:"var(--charcoal-md)", fontWeight:600 }}>
-                              {t("subscription.priceUnit")}
+                              {selectedPlan === "annual"
+                                ? t("subscription.priceUnitAnnual")
+                                : t("subscription.priceUnit")}
                             </span>
                           </div>
                           <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:6 }}>
-                            {t("subscription.priceExplain")}
+                            {selectedPlan === "annual"
+                              ? t("subscription.priceExplainAnnual")
+                              : t("subscription.priceExplain")}
                           </div>
                         </div>
                       )}
                     </div>
+
+                    {/* Billing-cycle toggle — only when there's a sale to make.
+                        Annual carries a small "ahorra 17%" badge underneath so
+                        the discount registers without visual clutter on the
+                        toggle itself. */}
+                    {!isComp && !isActive && (
+                      <div style={{ marginBottom:14 }}>
+                        <SegmentedControl
+                          items={[
+                            { k: "monthly", l: t("subscription.pricingToggleMonthly") },
+                            { k: "annual", l: t("subscription.pricingToggleAnnual") },
+                          ]}
+                          value={selectedPlan}
+                          onChange={setSelectedPlan}
+                          ariaLabel={t("subscription.pricingToggleAriaLabel")}
+                        />
+                        {selectedPlan === "annual" && (
+                          <div style={{ fontSize:12, color:"var(--green)", textAlign:"center", marginTop:8, fontWeight:700 }}>
+                            {t("subscription.annualSavingsBadge")}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Active-plan transparency: next charge or cancel-at-period-end +
+                        a one-tap link to the most recent receipt. Reads entirely from
+                        already-stored fields on user_subscriptions; doesn't require a
+                        Stripe round-trip. */}
+                    {isActive && periodEndStr && !isPastDue && (
+                      <div style={{
+                        padding:"12px 14px",
+                        borderRadius:"var(--radius)",
+                        background:"var(--white)",
+                        border:"1px solid var(--border)",
+                        marginBottom:14,
+                        fontSize:13,
+                        color:"var(--charcoal-md)",
+                        lineHeight:1.55,
+                      }}>
+                        <div style={{ fontWeight:700, color:"var(--charcoal)" }}>
+                          {s.subscription?.cancel_at_period_end
+                            ? t("subscription.cancelAt", { date: periodEndStr })
+                            : t("subscription.nextChargeOn", { date: periodEndStr })}
+                        </div>
+                        {s.subscription?.hosted_invoice_url && (
+                          <a href={s.subscription.hosted_invoice_url}
+                            target="_blank" rel="noopener noreferrer"
+                            style={{ color:"var(--teal-dark)", fontWeight:600, fontSize:13, textDecoration:"none", display:"inline-block", marginTop:4 }}>
+                            {t("subscription.viewLatestReceipt")} →
+                          </a>
+                        )}
+                      </div>
+                    )}
 
                     {/* Invite-code input — only when not yet subscribed. Uppercase + monospace
                         feel via letter-spacing so the entered code looks intentional. */}
@@ -1375,6 +1476,56 @@ export function Settings({ user, signOut, refreshUser }) {
                         </button>
                         <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:8, lineHeight:1.4 }}>
                           {t("subscription.portalFooter")}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Value-realization widget — only for active subs that have
+                        enough historic data. The helper short-circuits to null
+                        below the threshold, so the widget self-hides for
+                        brand-new accounts without ceremony. */}
+                    {isActive && !isComp && <ProValueWidget />}
+
+                    {/* Invoice history — last 6 paid invoices, populated by the
+                        webhook on each invoice.paid. Empty for accounts that
+                        predate the stripe_invoices table; the Stripe portal
+                        link in the next-charge widget covers historical
+                        receipts for those users. */}
+                    {isActive && !isComp && Array.isArray(s.invoices) && s.invoices.length > 0 && (
+                      <div style={{ marginBottom:14 }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:"var(--charcoal-md)", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8 }}>
+                          {t("subscription.invoiceHistoryTitle")}
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                          {s.invoices.map((inv) => {
+                            const date = new Date(inv.paid_at)
+                              .toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+                            const amount = `$${(inv.amount_cents / 100).toLocaleString("es-MX")}`;
+                            const link = inv.hosted_invoice_url || inv.pdf_url;
+                            return (
+                              <a key={inv.id}
+                                href={link || "#"}
+                                target={link ? "_blank" : undefined}
+                                rel={link ? "noopener noreferrer" : undefined}
+                                onClick={(e) => { if (!link) e.preventDefault(); }}
+                                style={{
+                                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                                  padding:"10px 12px",
+                                  background:"var(--white)",
+                                  border:"1px solid var(--border)",
+                                  borderRadius:"var(--radius)",
+                                  textDecoration:"none",
+                                  color:"var(--charcoal)",
+                                  fontSize:13,
+                                }}>
+                                <span>{date}</span>
+                                <span style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                  <span style={{ fontWeight:700 }}>{amount}</span>
+                                  {link && <span style={{ color:"var(--teal-dark)", fontSize:12 }}>{t("subscription.invoiceView")} →</span>}
+                                </span>
+                              </a>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1436,6 +1587,31 @@ export function Settings({ user, signOut, refreshUser }) {
                         {referralCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
                       </button>
                     </div>
+
+                    {/* WhatsApp share — Mexico is WhatsApp-first, so a
+                        prefilled message is the highest-leverage way to
+                        turn an open referral sheet into an actual
+                        invite sent. wa.me works on iOS, Android, and
+                        desktop without needing the WhatsApp app
+                        installed (falls through to web.whatsapp.com). */}
+                    {info?.code && (
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(t("subscription.referralShareText", { code: info.code }))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-primary"
+                        style={{
+                          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                          marginBottom:10, textDecoration:"none",
+                          background:"#25D366", color:"#fff",
+                        }}
+                        onClick={() => haptic.tap()}>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                          <path d="M20.5 3.5A11 11 0 0 0 3.6 17.6L2 22l4.5-1.5A11 11 0 1 0 20.5 3.5Zm-8.5 18a9.4 9.4 0 0 1-4.8-1.3l-.3-.2-2.7.9.9-2.7-.2-.3a9.5 9.5 0 1 1 7.1 3.6Zm5.4-7.1c-.3-.1-1.7-.8-2-.9s-.5-.1-.7.1c-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-1-.5-1.7-.9-2.5-2-.2-.3.2-.3.5-.9.1-.1.1-.3 0-.4 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4s-1 1-1 2.5 1 2.9 1.2 3.1 2 3.1 5 4.4c.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3Z"/>
+                        </svg>
+                        <span>{t("subscription.referralShareWhatsApp")}</span>
+                      </a>
+                    )}
                     {info && info.rewardsCount > 0 && (
                       <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, padding:"4px 4px 0" }}>
                         {info.pendingCreditCents > 0

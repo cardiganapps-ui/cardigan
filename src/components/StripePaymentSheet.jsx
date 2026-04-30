@@ -71,12 +71,19 @@ const elementsAppearance = {
   },
 };
 
+// Pricing constants kept in sync with the Stripe Prices behind
+// STRIPE_PRICE_ID and STRIPE_PRICE_ID_ANNUAL. If we ever change the
+// public price, update these alongside the Stripe dashboard.
+const PRICE_MONTHLY_MXN = 299;
+const PRICE_ANNUAL_MXN = 2990;
+
 export default function StripePaymentSheet({
   open,
   onClose,
   onSuccess,
   referralCode,
   daysLeftInTrial,
+  plan = "monthly",
 }) {
   const { t } = useT();
   // Stage state machine — each transitions to the next on success and
@@ -118,7 +125,7 @@ export default function StripePaymentSheet({
       try {
         const [stripe, subResp] = await Promise.all([
           getStripe(),
-          fetchCreateSubscription(referralCode),
+          fetchCreateSubscription(referralCode, plan),
         ]);
         if (!mountedRef.current || openIdRef.current !== myOpenId) return;
 
@@ -171,7 +178,7 @@ export default function StripePaymentSheet({
       catch { /* tolerate races */ }
       elementsRef.current = null;
     };
-  }, [open, referralCode, t]);
+  }, [open, referralCode, plan, t]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
@@ -283,27 +290,46 @@ export default function StripePaymentSheet({
             </div>
             <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
               <div style={{ fontFamily: "var(--font-d)", fontSize: 22, fontWeight: 800, color: "var(--charcoal)", lineHeight: 1 }}>
-                $299
+                ${(plan === "annual" ? PRICE_ANNUAL_MXN : PRICE_MONTHLY_MXN).toLocaleString()}
               </div>
-              <div style={{ fontSize: 11, color: "var(--charcoal-md)", marginTop: 2 }}>MXN/mes</div>
+              <div style={{ fontSize: 11, color: "var(--charcoal-md)", marginTop: 2 }}>
+                {plan === "annual" ? t("payment.priceUnitAnnual") : t("payment.priceUnitMonthly")}
+              </div>
             </div>
           </div>
 
-          {/* Loading skeleton so the sheet doesn't feel empty during
-              the create-subscription roundtrip + Stripe.js fetch. */}
+          {/* Loading skeleton — three placeholder bars roughly matching
+              the PaymentElement's card / details / button heights so the
+              sheet feels structured during the Stripe.js + create-sub
+              roundtrip rather than blank. */}
           {stage === "loading" && (
-            <div style={{ padding: "30px 0", textAlign: "center" }}>
-              <div style={{
-                display: "inline-block", width: 28, height: 28,
-                border: "3px solid var(--cream-deeper)",
-                borderTopColor: "var(--teal)",
-                borderRadius: "50%",
-                animation: "cardigan-spin 0.85s linear infinite",
-              }} />
-              <div style={{ fontSize: 13, color: "var(--charcoal-md)", marginTop: 12 }}>
+            <div style={{ padding: "8px 0 18px" }} aria-label={t("payment.preparing")}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="cardigan-skel" style={{ height: 44 }} />
+                <div style={{ display: "flex", gap: 12 }}>
+                  <div className="cardigan-skel" style={{ height: 44, flex: 2 }} />
+                  <div className="cardigan-skel" style={{ height: 44, flex: 1 }} />
+                </div>
+                <div className="cardigan-skel" style={{ height: 44 }} />
+              </div>
+              <div style={{ fontSize: 12, color: "var(--charcoal-md)", marginTop: 14, textAlign: "center" }}>
                 {t("payment.preparing")}
               </div>
-              <style>{`@keyframes cardigan-spin { to { transform: rotate(360deg); } }`}</style>
+              <style>{`
+                .cardigan-skel {
+                  border-radius: 12px;
+                  background: linear-gradient(90deg, var(--cream-deeper, #EFE7DA) 0%, var(--cream, #F8F1E5) 50%, var(--cream-deeper, #EFE7DA) 100%);
+                  background-size: 200% 100%;
+                  animation: cardigan-shimmer 1.4s ease-in-out infinite;
+                }
+                @keyframes cardigan-shimmer {
+                  0% { background-position: 100% 0; }
+                  100% { background-position: -100% 0; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  .cardigan-skel { animation: none; }
+                }
+              `}</style>
             </div>
           )}
 
@@ -399,7 +425,7 @@ export default function StripePaymentSheet({
   );
 }
 
-async function fetchCreateSubscription(referralCode) {
+async function fetchCreateSubscription(referralCode, plan) {
   // Pull the JWT from the Supabase session at call time — keeps this
   // helper decoupled from the broader supabase singleton import path.
   const { supabase } = await import("../supabaseClient");
@@ -407,13 +433,16 @@ async function fetchCreateSubscription(referralCode) {
   const token = session?.access_token;
   if (!token) return { ok: false, error: "Not signed in" };
 
+  const payload = {};
+  if (referralCode) payload.referral_code = referralCode;
+  if (plan === "annual") payload.plan = "annual";
   const res = await fetch("/api/stripe-create-subscription", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(referralCode ? { referral_code: referralCode } : {}),
+    body: JSON.stringify(payload),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, error: json.error || `HTTP ${res.status}` };

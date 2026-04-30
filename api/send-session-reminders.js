@@ -317,6 +317,17 @@ async function handler(req, res) {
       }));
     }
 
+    // Piggy-back daily maintenance onto the every-5-min cron. The
+    // claim-the-day update returns a row only when we won the race;
+    // every other tick within the same 23h window returns nothing and
+    // skips the work. Best-effort — a failure here must NOT 500 the
+    // reminder run.
+    try {
+      await maybeRunDailyPurges(supabase);
+    } catch (err) {
+      console.warn("send-session-reminders: daily purge skipped:", err.message);
+    }
+
     logRun({
       usersScanned: prefs.length,
       sessionsMatched: totalSessionsMatched,
@@ -329,6 +340,41 @@ async function handler(req, res) {
     console.error("send-session-reminders error:", err);
     res.status(500).json({ error: "Internal error" });
   }
+}
+
+/* Run once-per-day maintenance jobs, gated by a row in `cron_state`.
+   The claim is atomic — the conditional UPDATE … RETURNING returns a
+   row only for the cron tick that wins the race for today. Everyone
+   else exits immediately. */
+async function maybeRunDailyPurges(supabase) {
+  // 1. Stripe webhook events — keep ~30 days of history for forensic
+  // replay; older rows are dead weight. The dedupe primary key is the
+  // event id itself, not the timestamp, so trimming is purely a
+  // storage-hygiene concern.
+  const { data: claimed } = await supabase
+    .from("cron_state")
+    .update({ last_run_at: new Date().toISOString() })
+    .eq("job", "purge_stripe_webhook_events")
+    .or("last_run_at.is.null,last_run_at.lt." + new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString())
+    .select("job")
+    .maybeSingle();
+  if (!claimed) return;
+
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { error: purgeError, count } = await supabase
+    .from("stripe_webhook_events")
+    .delete({ count: "exact" })
+    .lt("received_at", cutoff);
+  if (purgeError) {
+    console.warn("purge_stripe_webhook_events failed:", purgeError.message);
+    return;
+  }
+  console.log(JSON.stringify({
+    evt: "cron.purge_stripe_webhook_events",
+    ts: new Date().toISOString(),
+    purged: count ?? 0,
+    cutoff,
+  }));
 }
 
 /**

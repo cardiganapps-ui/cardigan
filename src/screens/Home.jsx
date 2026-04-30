@@ -3,6 +3,7 @@ import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
 import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
+import { ActivationChecklist } from "../components/ActivationChecklist";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
@@ -47,7 +48,7 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription } = useCardigan();
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -257,6 +258,19 @@ export function Home({ setScreen, userName }) {
       )}
 
       <NotificationsPrompt />
+
+      {/* Activation checklist — only visible during the trial, hides
+          itself once all four steps complete. Self-derives state from
+          context arrays. */}
+      {!readOnly && user?.id && (
+        <div style={{ padding: "8px 16px 0" }}>
+          <ActivationChecklist
+            userId={user.id}
+            accessState={subscription?.accessState}
+            onNavigate={setScreen}
+          />
+        </div>
+      )}
 
       <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>

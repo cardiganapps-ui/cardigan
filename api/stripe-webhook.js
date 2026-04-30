@@ -38,6 +38,7 @@
    unknown types — Stripe will retry indefinitely if we do, and the
    dashboard will fill with red. Just 200 + log. */
 
+import * as Sentry from "@sentry/node";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import {
@@ -85,7 +86,19 @@ async function applySubscriptionSnapshot(svc, sub) {
     .select("user_id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
-  if (!row) return { ok: false, error: `no user_subscriptions row for customer ${customerId}` };
+  if (!row) {
+    // Orphan: a Stripe customer with no Cardigan-side row. Could be
+    // someone whose account was deleted (FK cascade), or a sub created
+    // directly in the Stripe dashboard. Surface to Sentry so we notice
+    // — silent return + 200 was hiding real reconciliation problems.
+    try {
+      Sentry.captureMessage("stripe-webhook: orphan customer", {
+        level: "warning",
+        extra: { customerId, subscriptionId: sub.id },
+      });
+    } catch { /* Sentry is best-effort */ }
+    return { ok: false, error: `no user_subscriptions row for customer ${customerId}` };
+  }
 
   const priceId = sub.items?.data?.[0]?.price?.id || null;
   // Stripe expands `default_payment_method` to a string id on most
@@ -184,6 +197,11 @@ async function maybeCreditReferralReward(svc, invoice, customerId) {
         invitee_user_id: invitee.user_id,
         invoice_id: invoice.id || "",
       },
+      // Tie the credit to the invitee's user_id (ONE reward per
+      // referrer-invitee pair, regardless of how many times Stripe
+      // re-delivers invoice.paid). We already gate above on
+      // referral_reward_credited_at — this is a defense-in-depth.
+      idempotencyKey: `cardigan-credit-ref-${invitee.user_id}`,
     });
     await svc.from("user_subscriptions")
       .update({
@@ -249,10 +267,41 @@ async function handleEvent(svc, event) {
         .eq("stripe_customer_id", customerId);
       if (error) return { ok: false, error: error.message };
 
-      // Referral reward — only fires on the FIRST paid invoice for
-      // an invitee subscription (idempotency via
-      // referral_reward_credited_at). On payment_failed we do nothing.
       if (event.type === "invoice.paid") {
+        // Append to the per-user invoice ledger so Settings can render
+        // a billing history without bouncing through Stripe's portal.
+        // Best-effort: a duplicate id (re-delivered event) is silently
+        // ignored via primary-key conflict.
+        try {
+          const { data: ownerRow } = await svc
+            .from("user_subscriptions")
+            .select("user_id")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          if (ownerRow?.user_id && invoice.id) {
+            const paidUnix = invoice.status_transitions?.paid_at
+              || invoice.created
+              || Math.floor(Date.now() / 1000);
+            await svc.from("stripe_invoices").upsert({
+              id: invoice.id,
+              user_id: ownerRow.user_id,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: typeof invoice.subscription === "string"
+                ? invoice.subscription : (invoice.subscription?.id || null),
+              amount_cents: invoice.amount_paid ?? invoice.amount_due ?? 0,
+              currency: (invoice.currency || "mxn").toLowerCase(),
+              paid_at: new Date(paidUnix * 1000).toISOString(),
+              hosted_invoice_url: invoice.hosted_invoice_url || null,
+              pdf_url: invoice.invoice_pdf || null,
+            }, { onConflict: "id" });
+          }
+        } catch (err) {
+          console.warn("stripe-webhook: invoice ledger write failed:", err.message);
+        }
+
+        // Referral reward — only fires on the FIRST paid invoice for
+        // an invitee subscription (idempotency via
+        // referral_reward_credited_at). On payment_failed we do nothing.
         try {
           await maybeCreditReferralReward(svc, invoice, customerId);
         } catch (err) {

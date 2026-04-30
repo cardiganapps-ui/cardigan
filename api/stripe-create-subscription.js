@@ -34,55 +34,17 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
-import { createCustomer, getPriceId, creditCustomerBalance } from "./_stripe.js";
+import {
+  createCustomer,
+  createSubscription,
+  cancelSubscription,
+  getPriceId,
+  creditCustomerBalance,
+  resolvePlan,
+  trialEndUnixFromUser,
+} from "./_stripe.js";
 
-const STRIPE_API_BASE = "https://api.stripe.com/v1";
-const TRIAL_DAYS = 30;
 const MXN = "mxn";
-
-function getSecretKey() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  return key.trim();
-}
-
-function encodeBody(obj) {
-  // Mirror of api/_stripe.js — duplicated locally to avoid widening
-  // that helper's surface for one extra fetch path. Stripe expects
-  // `application/x-www-form-urlencoded` with bracketed keys for nested
-  // objects and arrays.
-  const params = new URLSearchParams();
-  const append = (key, value) => {
-    if (value === undefined || value === null) return;
-    if (Array.isArray(value)) {
-      value.forEach((v, i) => append(`${key}[${i}]`, v));
-    } else if (typeof value === "object") {
-      for (const [k, v] of Object.entries(value)) append(`${key}[${k}]`, v);
-    } else {
-      params.append(key, String(value));
-    }
-  };
-  for (const [k, v] of Object.entries(obj)) append(k, v);
-  return params.toString();
-}
-
-async function stripeFetch(path, body) {
-  const res = await fetch(`${STRIPE_API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${getSecretKey()}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: body ? encodeBody(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(json?.error?.message || `Stripe ${path} failed (${res.status})`);
-    err.statusCode = res.status;
-    throw err;
-  }
-  return json;
-}
 
 function parseReferralCode(body) {
   if (!body || typeof body !== "object") return null;
@@ -91,19 +53,6 @@ function parseReferralCode(body) {
   const code = raw.trim().toUpperCase();
   if (!code || code.length > 16 || !/^[A-Z0-9]+$/.test(code)) return null;
   return code;
-}
-
-function trialEndUnixFromUser(user) {
-  if (!user?.created_at) return null;
-  const created = new Date(user.created_at);
-  if (Number.isNaN(created.getTime())) return null;
-  const trialEnd = new Date(created.getTime() + TRIAL_DAYS * 86_400_000);
-  // If the trial already lapsed, return null so we don't pass an
-  // in-the-past trial_end (Stripe rejects that).
-  const nowSec = Math.floor(Date.now() / 1000);
-  const trialEndSec = Math.floor(trialEnd.getTime() / 1000);
-  if (trialEndSec <= nowSec + 60) return null; // <60s = "no real trial left"
-  return trialEndSec;
 }
 
 async function handler(req, res) {
@@ -118,6 +67,7 @@ async function handler(req, res) {
   try { body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {}); }
   catch { /* malformed body — proceed with empty */ }
   const referralCode = parseReferralCode(body);
+  const plan = resolvePlan(body.plan);
 
   const svc = getServiceClient();
 
@@ -150,10 +100,7 @@ async function handler(req, res) {
   // sitting around until its trial ages out.
   if (existing?.stripe_subscription_id && !existingHasPaidSub) {
     try {
-      await fetch(`https://api.stripe.com/v1/subscriptions/${existing.stripe_subscription_id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${getSecretKey()}` },
-      });
+      await cancelSubscription(existing.stripe_subscription_id);
     } catch (err) {
       console.warn("stripe-create-subscription: cancel orphan failed:", err.message);
     }
@@ -228,6 +175,7 @@ async function handler(req, res) {
         currency: MXN,
         description: "Crédito acumulado por invitaciones",
         metadata: { user_id: user.id, kind: "drain_pending" },
+        idempotencyKey: `cardigan-credit-drain-${user.id}-${pending}`,
       });
       await svc.from("user_subscriptions")
         .update({ pending_credit_amount_cents: 0, updated_at: new Date().toISOString() })
@@ -241,27 +189,22 @@ async function handler(req, res) {
   const finalReferredBy = resolvedReferredBy
     || (existing?.referred_by && !resolvedReferredBy ? existing.referred_by : null);
 
-  // Build the subscription. payment_behavior=default_incomplete tells
-  // Stripe to create the sub but NOT actually charge until we confirm
-  // the PaymentIntent / SetupIntent client-side. save_default_payment_method
-  // attaches the collected card to the customer for future renewals.
-  const subBody = {
-    customer: customerId,
-    "items[0][price]": getPriceId(),
-    "items[0][quantity]": 1,
-    payment_behavior: "default_incomplete",
-    "payment_settings[save_default_payment_method]": "on_subscription",
-    // Expand both potential client_secret carriers in one round-trip.
-    "expand[0]": "latest_invoice.payment_intent",
-    "expand[1]": "pending_setup_intent",
-    "metadata[user_id]": user.id,
-  };
-  if (trialEndSec) subBody.trial_end = trialEndSec;
-  if (finalReferredBy) subBody["metadata[referred_by]"] = finalReferredBy;
+  let priceId;
+  try { priceId = getPriceId(plan); }
+  catch (err) { return res.status(500).json({ error: err.message }); }
 
   let subscription;
   try {
-    subscription = await stripeFetch("/subscriptions", subBody);
+    subscription = await createSubscription({
+      customerId,
+      priceId,
+      trialEnd: trialEndSec || undefined,
+      userId: user.id,
+      metadata: {
+        user_id: user.id,
+        ...(finalReferredBy ? { referred_by: finalReferredBy } : {}),
+      },
+    });
   } catch (err) {
     return res.status(502).json({ error: err.message || "Stripe subscription create failed" });
   }
