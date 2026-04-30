@@ -6,6 +6,7 @@ import { AvatarContent } from "./Avatar";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useT } from "../i18n/index";
+import { useCardigan } from "../context/CardiganContext";
 
 const NAV_ICONS = {
   home: IconHome,
@@ -24,9 +25,24 @@ const VELOCITY_THRESHOLD = 0.3;
 
 export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeProgress, onReportBug }) {
   const { t } = useT();
+  const { subscription } = useCardigan();
   const principal = navItems.filter(n => n.section === "principal");
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
+  // Tapping the plan card jumps to Settings → Suscripción sheet. The
+  // sheet is owned by Settings.jsx, so we navigate to the screen and
+  // dispatch a window event the screen listens for. Same pattern would
+  // work for any future "open this Settings sheet from anywhere" need.
+  const handlePlanTap = () => {
+    setScreen("settings");
+    onClose();
+    // Defer one frame so Settings is mounted before the listener fires.
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent("cardigan-open-settings-sheet", {
+        detail: { sheet: "plan" },
+      }));
+    });
+  };
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // Reset the inline confirm whenever the drawer transitions closed
   // (adjust-during-render — same pattern as prevOpen below).
@@ -207,13 +223,52 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
             />
           </nav>
           <div className="drawer-footer">
-            <div className="drawer-plan">
-              <div className="drawer-plan-icon"><IconStar size={16} /></div>
-              <div>
-                <div className="drawer-plan-label">{t("settings.planActive")}</div>
-                <div className="drawer-plan-value">{t("settings.planValue")}</div>
-              </div>
-            </div>
+            {(() => {
+              // Plan card variants: comp / active / trial / expired /
+              // loading. Copy + accent shift accordingly so the chip
+              // doubles as a status indicator before being tapped.
+              const s = subscription || {};
+              const compGranted = s.compGranted;
+              const subscribedActive = s.subscribedActive;
+              const trial = s.accessState === "trial";
+              const expired = s.accessState === "expired";
+              const days = s.daysLeftInTrial;
+              const label = compGranted
+                ? t("subscription.statusCompTitle")
+                : subscribedActive
+                  ? t("settings.planActive")
+                  : trial && typeof days === "number"
+                    ? t("subscription.statusTrialTitle")
+                    : expired
+                      ? t("subscription.statusExpiredTitle")
+                      : t("settings.planActive");
+              const value = compGranted
+                ? t("subscription.statusComp")
+                : subscribedActive
+                  ? t("settings.planValue")
+                  : trial && typeof days === "number"
+                    ? (days <= 1
+                        ? t("subscription.statusTrialEndsToday")
+                        : t("subscription.statusTrialDaysLeft", { n: days }))
+                    : expired
+                      ? t("subscription.subscribeShort")
+                      : t("settings.planValue");
+              return (
+                <button
+                  type="button"
+                  className="drawer-plan"
+                  onClick={handlePlanTap}
+                  data-state={expired ? "expired" : trial ? "trial" : "active"}
+                  aria-label={`${label}: ${value}`}
+                >
+                  <div className="drawer-plan-icon"><IconStar size={16} /></div>
+                  <div style={{ flex: 1, textAlign: "left" }}>
+                    <div className="drawer-plan-label">{label}</div>
+                    <div className="drawer-plan-value">{value}</div>
+                  </div>
+                </button>
+              );
+            })()}
           </div>
         </div>
       </div>

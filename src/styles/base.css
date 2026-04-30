@@ -531,7 +531,19 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   display: flex; align-items: center; gap: 10px;
   background: rgba(255,255,255,0.06); border-radius: var(--radius);
   padding: 12px 14px;
+  /* Now a real <button> — strip the UA defaults so it inherits the
+     same chip aesthetic as before, but adds an interactive hover/
+     active feedback so users discover the affordance. */
+  width: 100%; border: none; cursor: pointer;
+  font-family: inherit; color: inherit; text-align: left;
+  transition: background 0.18s ease, transform 0.16s ease;
 }
+.drawer-plan:hover { background: rgba(255,255,255,0.10); }
+.drawer-plan:active { transform: scale(0.985); background: rgba(255,255,255,0.13); }
+/* Trial / expired variants nudge the icon color so the chip doubles
+   as a status indicator at a glance. */
+.drawer-plan[data-state="trial"] .drawer-plan-icon { color: var(--amber); }
+.drawer-plan[data-state="expired"] .drawer-plan-icon { color: var(--red); }
 .drawer-plan-icon { font-size: 18px; }
 .drawer-plan-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); }
 .drawer-plan-value { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); margin-top: 1px; }

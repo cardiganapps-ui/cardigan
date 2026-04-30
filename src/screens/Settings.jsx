@@ -186,6 +186,28 @@ export function Settings({ user, signOut, refreshUser }) {
   // Intentionally only fires once on mount — the hook caches the result.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Cross-screen sheet opener — used by the Drawer's plan card so a
+  // tap from anywhere can land directly inside the Suscripción sheet
+  // without forcing the user to scroll-and-tap-row. Listens at the
+  // window level since the dispatcher (Drawer) doesn't share React
+  // ref space with this screen.
+  useEffect(() => {
+    const handleOpenSheet = (e) => {
+      const sheet = e?.detail?.sheet;
+      if (typeof sheet === "string") {
+        if (sheet === "plan" || sheet === "referral") {
+          // Both the Suscripción and Invita sheets prefetch the
+          // referral code on first open — mirror that behaviour here
+          // so the open-from-Drawer path looks identical.
+          if (!subscription?.referralInfo) subscription?.fetchReferralInfo?.();
+        }
+        setActiveSheet(sheet);
+      }
+    };
+    window.addEventListener("cardigan-open-settings-sheet", handleOpenSheet);
+    return () => window.removeEventListener("cardigan-open-settings-sheet", handleOpenSheet);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { scrollRef: sheetScrollRef, setPanelEl: setSheetPanelEl, panelHandlers: sheetPanelHandlers } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
   const setSheetPanel = (el) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
   const [editName, setEditName] = useState(userName);
