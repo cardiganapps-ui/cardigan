@@ -7,8 +7,14 @@ import App from './App.jsx'
 import { initSentry } from './lib/sentry'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './lib/skewProtection'
+import { installBodyScrollLock } from './lib/bodyScrollLock'
 
 initSentry()
+// Watch the DOM for sheet / confirm-dialog / drawer overlays and
+// lock body scroll while one is mounted. Single global observer —
+// no per-sheet wiring, and any future sheet that follows the
+// existing class conventions inherits the lock automatically.
+installBodyScrollLock()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
