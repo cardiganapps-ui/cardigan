@@ -123,7 +123,7 @@ async function handler(req, res) {
 
   const { data: existing, error: lookupError } = await svc
     .from("user_subscriptions")
-    .select("stripe_customer_id, stripe_subscription_id, status, comp_granted, referred_by, pending_credit_amount_cents")
+    .select("stripe_customer_id, stripe_subscription_id, status, comp_granted, referred_by, pending_credit_amount_cents, default_payment_method")
     .eq("user_id", user.id)
     .maybeSingle();
   if (lookupError) return res.status(500).json({ error: "Lookup failed" });
@@ -131,9 +131,42 @@ async function handler(req, res) {
   if (existing?.comp_granted) {
     return res.status(409).json({ error: "Account has complimentary access", action: "comp_granted" });
   }
-  if (existing?.stripe_subscription_id
-    && ["active", "trialing", "past_due"].includes(existing.status)) {
+  // "Genuinely paid" = card on file. A `trialing` sub with no
+  // default_payment_method is an abandoned payment-sheet orphan;
+  // refusing here would soft-lock the user out of retrying. Instead
+  // we let the flow continue and cancel the orphan further down so
+  // Stripe doesn't fire failed-invoice noise when its trial expires.
+  const existingHasPaidSub = existing?.stripe_subscription_id
+    && (
+      ["active", "past_due"].includes(existing.status)
+      || (existing.status === "trialing" && !!existing.default_payment_method)
+    );
+  if (existingHasPaidSub) {
     return res.status(409).json({ error: "Subscription already active", action: "use_portal" });
+  }
+  // Orphan from an abandoned earlier attempt — cancel at Stripe so
+  // the user can retry cleanly. Best-effort: a Stripe-side failure
+  // here shouldn't block a retry; the worst case is one stale sub
+  // sitting around until its trial ages out.
+  if (existing?.stripe_subscription_id && !existingHasPaidSub) {
+    try {
+      await fetch(`https://api.stripe.com/v1/subscriptions/${existing.stripe_subscription_id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${getSecretKey()}` },
+      });
+    } catch (err) {
+      console.warn("stripe-create-subscription: cancel orphan failed:", err.message);
+    }
+    await svc.from("user_subscriptions")
+      .update({
+        stripe_subscription_id: null,
+        status: null,
+        current_period_end: null,
+        trial_end: null,
+        default_payment_method: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
   }
 
   // Resolve referral. Self-referral and unknown codes are silently

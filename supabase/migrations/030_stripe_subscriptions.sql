@@ -37,6 +37,14 @@ create table if not exists user_subscriptions (
   -- a pending or recent payment to chase.
   latest_invoice_id text,
   hosted_invoice_url text,
+  -- Stripe payment_method id attached as the subscription's default.
+  -- NULL for any incomplete sub where the user opened the payment
+  -- sheet but never confirmed the card — those orphans get a
+  -- `trialing` status from Stripe (because of `trial_end`) but
+  -- aren't real customers. The `isPro` gate explicitly requires
+  -- this field to be populated when status is `trialing`, otherwise
+  -- non-paying users would get Pro features.
+  default_payment_method text,
   -- Admin-granted complimentary access. When true, the access gate
   -- treats this user as "active" regardless of Stripe state, and
   -- /api/stripe-checkout refuses to start a paid subscription. Used

@@ -70,7 +70,7 @@ async function handler(req, res) {
   // 1. Look up existing customer/subscription row.
   const { data: existing, error: lookupError } = await svc
     .from("user_subscriptions")
-    .select("stripe_customer_id, stripe_subscription_id, status, comp_granted, referred_by, referral_code, pending_credit_amount_cents")
+    .select("stripe_customer_id, stripe_subscription_id, status, comp_granted, referred_by, referral_code, pending_credit_amount_cents, default_payment_method")
     .eq("user_id", user.id)
     .maybeSingle();
   if (lookupError) {
@@ -105,12 +105,18 @@ async function handler(req, res) {
     });
   }
 
-  // If they already have an active or trialing sub, don't start a new
-  // checkout — bounce them to the billing portal instead. The portal
-  // is the right place to update payment methods or change plans;
-  // creating a second subscription would charge them twice.
-  if (existing?.stripe_subscription_id
-    && ["active", "trialing", "past_due"].includes(existing.status)) {
+  // Refuse only when the existing sub is genuinely paid — a `trialing`
+  // sub without a `default_payment_method` is an abandoned payment-
+  // sheet orphan, and refusing here would soft-lock the user out of
+  // retrying. The hosted-Checkout flow always attaches a payment
+  // method up front (different from the native PaymentSheet), so this
+  // check is mostly defensive.
+  const existingHasPaidSub = existing?.stripe_subscription_id
+    && (
+      ["active", "past_due"].includes(existing.status)
+      || (existing.status === "trialing" && !!existing.default_payment_method)
+    );
+  if (existingHasPaidSub) {
     return res.status(409).json({
       error: "Subscription already active",
       action: "use_portal",

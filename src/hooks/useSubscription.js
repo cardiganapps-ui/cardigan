@@ -34,7 +34,15 @@ import { isAdmin } from "./useCardiganData";
    client). The hook only ever does SELECT. */
 
 const TRIAL_DAYS = 30;
-const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
+// Statuses that can grant Pro access — but `trialing` is conditional:
+// a sub becomes `trialing` the moment we create it server-side via
+// `payment_behavior: default_incomplete + trial_end`, BEFORE the user
+// has confirmed a payment method. An abandoned payment sheet leaves
+// behind a `trialing` sub with no `default_payment_method`, which we
+// must NOT treat as Pro. The check below requires
+// default_payment_method when status is trialing; the other two
+// statuses imply a payment method was already attached at checkout.
+const PAID_STATUSES = new Set(["active", "past_due"]);
 
 function trialEndDate(user) {
   if (!user?.created_at) return null;
@@ -71,7 +79,7 @@ export function useSubscription(user) {
     setLoading(true);
     const { data, error } = await supabase
       .from("user_subscriptions")
-      .select("stripe_customer_id, stripe_subscription_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, updated_at")
+      .select("stripe_customer_id, stripe_subscription_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, updated_at")
       .eq("user_id", userId)
       .maybeSingle();
     if (reqId !== reqIdRef.current) return;
@@ -116,7 +124,17 @@ export function useSubscription(user) {
     [now, trialEnd]
   );
 
-  const subscribedActive = !!subscription?.status && ACTIVE_STATUSES.has(subscription.status);
+  const subscribedActive = (() => {
+    const status = subscription?.status;
+    if (!status) return false;
+    if (PAID_STATUSES.has(status)) return true;
+    // `trialing` only counts when a payment method is actually
+    // attached. Abandoned payment sheets leave a card-less trialing
+    // sub that the webhook records as status=trialing — without this
+    // guard, those users would falsely show as Pro.
+    if (status === "trialing" && !!subscription.default_payment_method) return true;
+    return false;
+  })();
   // Admin-granted complimentary access — set via the AdminPanel.
   // Treated identically to an active paid sub for gating purposes.
   const compGranted = !!subscription?.comp_granted;

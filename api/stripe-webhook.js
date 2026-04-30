@@ -88,6 +88,15 @@ async function applySubscriptionSnapshot(svc, sub) {
   if (!row) return { ok: false, error: `no user_subscriptions row for customer ${customerId}` };
 
   const priceId = sub.items?.data?.[0]?.price?.id || null;
+  // Stripe expands `default_payment_method` to a string id on most
+  // events, but to a full object on a few of them — handle both.
+  // NULL means the subscription has no card attached yet (an orphan
+  // from an abandoned payment sheet); the isPro gate uses this to
+  // distinguish real trialing customers from incomplete ones.
+  const dpm = sub.default_payment_method;
+  const defaultPaymentMethod = typeof dpm === "string"
+    ? dpm
+    : (dpm?.id || null);
   const update = {
     stripe_subscription_id: sub.id,
     stripe_price_id: priceId,
@@ -95,6 +104,7 @@ async function applySubscriptionSnapshot(svc, sub) {
     current_period_end: isoOrNull(sub.current_period_end),
     cancel_at_period_end: !!sub.cancel_at_period_end,
     trial_end: isoOrNull(sub.trial_end),
+    default_payment_method: defaultPaymentMethod,
     updated_at: new Date().toISOString(),
   };
 
