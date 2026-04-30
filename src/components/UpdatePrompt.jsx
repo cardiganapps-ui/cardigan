@@ -201,29 +201,25 @@ export function UpdatePrompt() {
       role="status"
       aria-live="polite"
       style={{
+        // Top-center placement so the toast reads as a discreet
+        // notification rather than a corner-stuck alert. safe-area
+        // inset clears the iOS dynamic-island / notch gracefully.
         position: "fixed",
-        right: "calc(env(safe-area-inset-right, 0px) + 12px)",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+        top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+        left: "50%",
+        transform: "translateX(-50%)",
         zIndex: "var(--z-install)",
-        maxWidth: 380,
-        animation: "toastIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        maxWidth: "calc(100vw - 24px)",
+        animation: "updatePromptIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}>
       <div className="update-prompt-toast">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {phase === "stuck" ? (
-            <>
-              <div style={{ fontWeight: 700, marginBottom: 2 }}>{t("update.stuckTitle")}</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>{t("update.stuckBody")}</div>
-            </>
-          ) : phase === "applying" ? (
-            <span>{t("update.applying")}</span>
-          ) : (
-            <span>{t("updateAvailable")}</span>
-          )}
-        </div>
-
         {phase === "stuck" ? (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          // Stuck has slightly more text — keep one pill but allow the
+          // body to wrap if needed. Ghost "Seguir igual" sits inline
+          // with the primary "Reintentar" so the pill stays one row
+          // visually on phones.
+          <>
+            <span style={{ flex: 1, minWidth: 0 }}>{t("update.stuckTitle")}</span>
             <button
               type="button"
               className="update-prompt-action update-prompt-action--ghost"
@@ -236,17 +232,15 @@ export function UpdatePrompt() {
               onClick={handleRetry}>
               {t("update.retry")}
             </button>
-          </div>
+          </>
         ) : phase === "applying" ? (
-          <button
-            type="button"
-            className="update-prompt-action is-applying"
-            disabled>
-            <span className="update-prompt-spinner" aria-hidden="true" />
-            <span>{t("updateNow")}</span>
-          </button>
+          <>
+            <span className="update-prompt-spinner update-prompt-spinner--inline" aria-hidden="true" />
+            <span style={{ flex: 1 }}>{t("update.applying")}</span>
+          </>
         ) : (
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <>
+            <span style={{ flex: 1 }}>{t("updateAvailable")}</span>
             <button
               type="button"
               className="update-prompt-action update-prompt-action--ghost"
@@ -259,9 +253,15 @@ export function UpdatePrompt() {
               onClick={handleApply}>
               {t("updateNow")}
             </button>
-          </div>
+          </>
         )}
       </div>
+      <style>{`
+        @keyframes updatePromptIn {
+          from { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
+          to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

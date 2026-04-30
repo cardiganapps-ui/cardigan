@@ -1169,42 +1169,49 @@ button.kpi-card:active {
    pill on a dark page in dark mode (the two tokens swap). We hand-pick
    both colors instead so the pill stays visually "dark" in both themes
    and keeps the same contrast relationship with the page. */
+/* ── Update prompt ──
+   Minimalist top-center pill that matches the rest of Cardigan's
+   surfaces (cream + charcoal + teal accent) instead of the
+   previous heavy dark bar. Tight padding, full-pill radius, soft
+   shadow — reads as a notification, not a system warning. */
 .update-prompt-toast {
-  background: #1F1F1F;
-  color: #F6F6F6;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  font-size: var(--text-md);
+  background: var(--white);
+  color: var(--charcoal);
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
   font-weight: 600;
   font-family: var(--font);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 28px rgba(46, 46, 46, 0.18), 0 1px 2px rgba(46, 46, 46, 0.08);
+  border: 1px solid var(--cream-deeper, #EFE7DA);
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 100%;
+  /* Vertical-stack layout in stuck state needs a bit more breathing
+     room. The toast's content controls its own padding when needed. */
 }
 html[data-theme="dark"] .update-prompt-toast {
-  /* Slightly lighter than the page (#1A1A1A) so it still reads as an
-     elevated surface rather than blending into the background. */
+  /* In dark mode, lift to a slightly elevated surface — the page is
+     near-black, so a charcoal-tinted pill with a teal-tinted border
+     keeps the same "I'm above the page" reading as in light mode. */
   background: #2B2B2B;
-  border-color: #3A3A3A;
+  color: #F6F6F6;
+  border-color: rgba(91, 155, 175, 0.32);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.30);
 }
 .update-prompt-action {
   background: var(--teal);
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-pill);
-  padding: 6px 14px;
-  font-size: var(--text-sm);
+  padding: 7px 14px;
+  font-size: 13px;
   font-weight: 700;
   font-family: var(--font);
   cursor: pointer;
   flex-shrink: 0;
   min-height: 0;
-  /* Press + hover feedback. The transform + background transition
-     gives the click a tactile beat instead of a flat opacity change.
-     Tap-highlight off so iOS Safari's grey overlay doesn't compete
-     with our active state. */
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1216,24 +1223,34 @@ html[data-theme="dark"] .update-prompt-toast {
 .update-prompt-action:active { transform: scale(0.96); background: var(--teal-dark); }
 .update-prompt-action:disabled { cursor: default; }
 .update-prompt-action.is-applying {
-  /* Don't fade the whole button — keep the label legible and let
-     the spinner communicate state. */
   background: var(--teal-dark);
   cursor: progress;
 }
-/* Ghost variant for "Más tarde" / "Seguir igual" — no fill so the
-   primary "Actualizar" / "Reintentar" button retains visual priority. */
+/* Ghost variant for "Más tarde" / "Seguir igual" — text-only, low
+   visual weight, lets the primary "Actualizar" CTA win. */
 .update-prompt-action--ghost {
   background: transparent;
-  color: rgba(255,255,255,0.78);
-  padding: 6px 10px;
+  color: var(--charcoal-md);
+  padding: 7px 10px;
+  font-weight: 600;
 }
 .update-prompt-action--ghost:hover {
-  background: rgba(255,255,255,0.10);
-  color: #FFFFFF;
+  background: var(--cream);
+  color: var(--charcoal);
 }
 .update-prompt-action--ghost:active {
-  background: rgba(255,255,255,0.16);
+  background: var(--cream-deeper, #EFE7DA);
+  color: var(--charcoal);
+}
+html[data-theme="dark"] .update-prompt-action--ghost {
+  color: rgba(255, 255, 255, 0.70);
+}
+html[data-theme="dark"] .update-prompt-action--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}
+html[data-theme="dark"] .update-prompt-action--ghost:active {
+  background: rgba(255, 255, 255, 0.14);
   color: #FFFFFF;
 }
 
@@ -1277,5 +1294,17 @@ html[data-theme="dark"] .update-prompt-toast {
   border-radius: 50%;
   animation: update-prompt-spin 0.7s linear infinite;
   flex-shrink: 0;
+}
+/* Inline variant — when the spinner sits in the toast body (next to
+   text on a light background) instead of inside the teal button. */
+.update-prompt-spinner--inline {
+  border-color: rgba(91, 155, 175, 0.30);
+  border-top-color: var(--teal);
+  width: 14px;
+  height: 14px;
+}
+html[data-theme="dark"] .update-prompt-spinner--inline {
+  border-color: rgba(255, 255, 255, 0.25);
+  border-top-color: #FFFFFF;
 }
 @keyframes update-prompt-spin { to { transform: rotate(360deg); } }

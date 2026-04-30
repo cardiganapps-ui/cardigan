@@ -55,30 +55,49 @@ function countOverlays() {
 function lockBody() {
   if (isLocked) return;
   isLocked = true;
-  lockedScrollY = window.scrollY || window.pageYOffset || 0;
-  // Capture-and-pin is the only reliable cross-browser pattern. iOS
-  // Safari ignores `overflow: hidden` on body for touch scrolling;
-  // position:fixed actually blocks it. The downside is the page
-  // jumps to top when locked — we counter that by translating with
-  // `top: -<scrollY>` so the visual position stays put.
+  // Snapshot scroll from BOTH window AND documentElement — iOS PWA
+  // standalone mode reports scroll via documentElement.scrollTop
+  // while the same browser in a regular tab uses window.scrollY.
+  // Pick whichever is non-zero so we restore correctly on unlock.
+  lockedScrollY = window.scrollY
+    || window.pageYOffset
+    || document.documentElement.scrollTop
+    || 0;
+  // Pin both <html> and <body>. Body alone isn't enough on iOS:
+  // touch scrolls in some PWA / Safari configurations target the
+  // documentElement instead, which leaks under a body-only lock.
+  // Setting overflow:hidden on both plus position:fixed on body
+  // (so the visual position is preserved by the negative top
+  // offset) is the canonical iOS-safe pattern that the
+  // body-scroll-lock library uses.
+  const html = document.documentElement;
   const body = document.body;
+  html.style.overflow = "hidden";
   body.style.position = "fixed";
   body.style.top = `-${lockedScrollY}px`;
   body.style.left = "0";
   body.style.right = "0";
   body.style.width = "100%";
+  body.style.overflow = "hidden";
+  // overscroll-behavior: none kills the rubber-band that some iOS
+  // builds still allow even with position:fixed. Belt + braces.
+  body.style.overscrollBehavior = "none";
   body.classList.add("is-scroll-locked");
 }
 
 function unlockBody() {
   if (!isLocked) return;
   isLocked = false;
+  const html = document.documentElement;
   const body = document.body;
+  html.style.overflow = "";
   body.style.position = "";
   body.style.top = "";
   body.style.left = "";
   body.style.right = "";
   body.style.width = "";
+  body.style.overflow = "";
+  body.style.overscrollBehavior = "";
   body.classList.remove("is-scroll-locked");
   // Restore the user's read position. The scrollTo runs before any
   // queued work, so it lands the same frame the lock unwinds.
