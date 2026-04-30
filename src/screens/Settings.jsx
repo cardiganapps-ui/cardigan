@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
-import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
+import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument, IconMail } from "../components/Icons";
 import { ProValueWidget } from "../components/ProValueWidget";
 
 // Spanish "hace X" relative time for the referral leaderboard. Days
