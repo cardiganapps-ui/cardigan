@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useT } from "../i18n/index";
+import { haptic } from "../utils/haptics";
 
 /* ── Update prompt ──
    main.jsx watches for a waiting service worker and dispatches
@@ -23,6 +24,7 @@ export function UpdatePrompt() {
   if (!waitingSW) return null;
 
   const apply = () => {
+    haptic.tap();
     setApplying(true);
     try { waitingSW.postMessage({ type: "SKIP_WAITING" }); }
     catch { /* SW went away — the next focus will re-check anyway. */ }
@@ -48,12 +50,20 @@ export function UpdatePrompt() {
       }}>
       <div className="update-prompt-toast">
         <span style={{ flex: 1 }}>{t("updateAvailable")}</span>
+        {/* Keep the label fixed across press states — switching the
+            text from "Actualizar" to "Actualizando…" mid-tap was
+            jumping the button width and reading as a layout glitch.
+            We render a small spinner alongside the label while the
+            SW activation happens (typically ~300-1500ms), and the
+            failsafe reload covers the rare hang. */}
         <button
           type="button"
-          className="update-prompt-action"
+          className={`update-prompt-action${applying ? " is-applying" : ""}`}
           onClick={apply}
-          disabled={applying}>
-          {applying ? t("updating") : t("updateNow")}
+          disabled={applying}
+        >
+          {applying && <span className="update-prompt-spinner" aria-hidden="true" />}
+          <span>{t("updateNow")}</span>
         </button>
       </div>
     </div>

@@ -1188,5 +1188,34 @@ html[data-theme="dark"] .update-prompt-toast {
   cursor: pointer;
   flex-shrink: 0;
   min-height: 0;
+  /* Press + hover feedback. The transform + background transition
+     gives the click a tactile beat instead of a flat opacity change.
+     Tap-highlight off so iOS Safari's grey overlay doesn't compete
+     with our active state. */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
 }
-.update-prompt-action:disabled { opacity: 0.6; cursor: default; }
+.update-prompt-action:hover { background: var(--teal-dark); }
+.update-prompt-action:active { transform: scale(0.96); background: var(--teal-dark); }
+.update-prompt-action:disabled { cursor: default; }
+.update-prompt-action.is-applying {
+  /* Don't fade the whole button — keep the label legible and let
+     the spinner communicate state. */
+  background: var(--teal-dark);
+  cursor: progress;
+}
+
+.update-prompt-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: update-prompt-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes update-prompt-spin { to { transform: rotate(360deg); } }
