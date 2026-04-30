@@ -369,9 +369,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     setSentryProfession(profession, { demo: !!demo });
   }, [profession, demo]);
 
-  // PostHog identify / reset. Demo and admin-view-as both bypass —
-  // demo isn't a real user, and view-as is the admin masquerading
-  // (we'd pollute the target user's funnel).
+  // Analytics identify / reset (Vercel Analytics — see src/lib/analytics.js).
+  // Demo and admin-view-as both bypass — demo isn't a real user, and
+  // view-as is the admin masquerading (we'd pollute the target
+  // user's funnel).
   useEffect(() => {
     if (demo || viewAsUserId) return;
     if (!user?.id) {

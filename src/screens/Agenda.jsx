@@ -66,6 +66,22 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
   const [pressing, setPressing] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  /* Live refs for the values the gesture handlers close over. Without
+     these, the useEffect that attaches the native touch listeners
+     would re-run on every parent render (because `session` is a fresh
+     object reference each time WeekDaysPanel rebuilds the events
+     array), and the cleanup path would abort any in-flight drag —
+     silently killing the user's gesture every minute when Agenda's
+     `now` clock ticks. Pinning the deps to `touchLongPressable` only
+     keeps the listeners stable across re-renders; the handlers read
+     the latest session/onSelectSession/onDropSession via these refs. */
+  const sessionRef = useRef(session);
+  const onSelectSessionRef = useRef(onSelectSession);
+  const onDropSessionRef = useRef(onDropSession);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { onSelectSessionRef.current = onSelectSession; }, [onSelectSession]);
+  useEffect(() => { onDropSessionRef.current = onDropSession; }, [onDropSession]);
+
   /* Drop-target classes are added/removed via direct DOM manipulation
      because the cells are owned by WeekDaysPanel and we don't want a
      state prop ping-ponging through the render tree on every
@@ -79,105 +95,102 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
     lastTargetRef.current = null;
   }, []);
 
-  const updateTarget = useCallback((clientX, clientY) => {
-    const ghost = ghostRef.current;
-    if (!ghost) return;
-    // Hide the ghost so elementFromPoint sees what's underneath.
-    ghost.style.visibility = "hidden";
-    const el = document.elementFromPoint(clientX, clientY);
-    ghost.style.visibility = "";
-    const cell = el?.closest?.("[data-cell-day]");
-    if (cell === lastTargetRef.current) return;
-    clearTargetHighlight();
-    if (cell) {
-      cell.classList.add("week-cell--drop-target");
-      const hour = cell.dataset.cellHour;
-      if (hour != null) {
-        const pill = document.createElement("span");
-        pill.className = "dnd-drop-time-pill";
-        pill.textContent = `${String(hour).padStart(2, "0")}:00`;
-        // Inline styles so we don't need a separate CSS rule. Mirror
-        // the desktop drop-target pill from WeekDaysPanel exactly.
-        pill.style.cssText = "position:absolute;top:4px;left:4px;font-size:11px;font-weight:700;color:#fff;background:var(--teal-dark);padding:2px 6px;border-radius:4px;pointer-events:none;z-index:2;";
-        cell.appendChild(pill);
-      }
-      lastTargetRef.current = cell;
-    }
-  }, [clearTargetHighlight]);
-
-  const exitDrag = useCallback((commit) => {
-    const target = lastTargetRef.current;
-    let outcome = "cancelled"; // "dropped" | "same-slot" | "cancelled"
-    if (commit && target && onDropSession) {
-      const day = target.dataset.cellDay;
-      const hour = parseInt(target.dataset.cellHour, 10);
-      if (day && Number.isFinite(hour)) {
-        // Same-slot release (long-press → lift on source) is a strong
-        // signal the user wanted the reschedule sheet, not a drag.
-        // Surface the sheet so the gesture isn't a dead-end. A real
-        // drop on a different slot fires the onDropSession write.
-        const sameSlot = day === toISODate(parseShortDateLocal(session.date))
-          && hour === parseInt((session.time || "0:0").split(":")[0], 10);
-        if (sameSlot) {
-          outcome = "same-slot";
-        } else {
-          onDropSession(session.id, new Date(day + "T00:00:00"), hour);
-          haptic.success();
-          outcome = "dropped";
-        }
-      }
-    }
-    clearTargetHighlight();
-    if (ghostRef.current) {
-      ghostRef.current.remove();
-      ghostRef.current = null;
-    }
-    draggingRef.current = false;
-    setDragging(false);
-    releaseSwipe("week-event-dnd");
-    return outcome;
-  }, [clearTargetHighlight, onDropSession, session.date, session.time, session.id]);
-
-  const enterDrag = useCallback((touch) => {
-    // Try to claim the swipe-arbiter so day-nav doesn't fire on the
-    // same finger. If another owner already holds it (rare during a
-    // long-press), back off.
-    if (!trySwipeClaim("week-event-dnd")) return false;
-    draggingRef.current = true;
-    setDragging(true);
-    haptic.warn();
-    // Build the floating ghost. Stays attached to <body> so its
-    // position is independent of the scrolling agenda grid.
-    const ghost = document.createElement("div");
-    ghost.textContent = `${session.time} · ${shortName(session.patient)}`;
-    ghost.style.cssText = `
-      position: fixed;
-      left: 0; top: 0;
-      transform: translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%);
-      padding: 8px 14px;
-      background: var(--teal-dark, #2C6E80);
-      color: #fff;
-      border-radius: 10px;
-      font-family: var(--font-d, system-ui, sans-serif);
-      font-weight: 700;
-      font-size: 13px;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.28);
-      pointer-events: none;
-      z-index: 9999;
-      will-change: transform;
-    `;
-    document.body.appendChild(ghost);
-    ghostRef.current = ghost;
-    updateTarget(touch.clientX, touch.clientY);
-    return true;
-  }, [session.time, session.patient, updateTarget]);
-
-  /* Native touch handlers — attached via useEffect so passive: false
-     is honoured (React's synthetic onTouchMove is always passive and
-     can't preventDefault to stop page scroll during drag). */
+  /* Gesture handlers are inlined inside the touch-listener effect so
+     the effect can pin its deps to `touchLongPressable` only. Earlier
+     this file split enterDrag / exitDrag / updateTarget into their
+     own useCallbacks — but those callbacks transitively depended on
+     `session`, which is a new object reference on every parent
+     render, which made the effect re-run and cleanup the in-flight
+     drag every minute when Agenda's `now` clock ticked. Reading
+     session via `sessionRef.current` keeps the closure live without
+     destabilising the deps. */
   useEffect(() => {
     const el = elRef.current;
     if (!el || !touchLongPressable) return;
+
+    const updateTarget = (clientX, clientY) => {
+      const ghost = ghostRef.current;
+      if (!ghost) return;
+      // Hide the ghost so elementFromPoint sees what's underneath.
+      ghost.style.visibility = "hidden";
+      const hit = document.elementFromPoint(clientX, clientY);
+      ghost.style.visibility = "";
+      const cell = hit?.closest?.("[data-cell-day]");
+      if (cell === lastTargetRef.current) return;
+      clearTargetHighlight();
+      if (cell) {
+        cell.classList.add("week-cell--drop-target");
+        const hour = cell.dataset.cellHour;
+        if (hour != null) {
+          const pill = document.createElement("span");
+          pill.className = "dnd-drop-time-pill";
+          pill.textContent = `${String(hour).padStart(2, "0")}:00`;
+          pill.style.cssText = "position:absolute;top:4px;left:4px;font-size:11px;font-weight:700;color:#fff;background:var(--teal-dark);padding:2px 6px;border-radius:4px;pointer-events:none;z-index:2;";
+          cell.appendChild(pill);
+        }
+        lastTargetRef.current = cell;
+      }
+    };
+
+    const enterDrag = (touch) => {
+      if (!trySwipeClaim("week-event-dnd")) return false;
+      const sess = sessionRef.current;
+      draggingRef.current = true;
+      setDragging(true);
+      haptic.warn();
+      const ghost = document.createElement("div");
+      ghost.textContent = `${sess.time} · ${shortName(sess.patient)}`;
+      ghost.style.cssText = `
+        position: fixed;
+        left: 0; top: 0;
+        transform: translate(${touch.clientX}px, ${touch.clientY}px) translate(-50%, -50%);
+        padding: 8px 14px;
+        background: var(--teal-dark, #2C6E80);
+        color: #fff;
+        border-radius: 10px;
+        font-family: var(--font-d, system-ui, sans-serif);
+        font-weight: 700;
+        font-size: 13px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+        pointer-events: none;
+        z-index: 9999;
+        will-change: transform;
+      `;
+      document.body.appendChild(ghost);
+      ghostRef.current = ghost;
+      updateTarget(touch.clientX, touch.clientY);
+      return true;
+    };
+
+    const exitDrag = (commit) => {
+      const sess = sessionRef.current;
+      const target = lastTargetRef.current;
+      let outcome = "cancelled";
+      if (commit && target && onDropSessionRef.current) {
+        const day = target.dataset.cellDay;
+        const hour = parseInt(target.dataset.cellHour, 10);
+        if (day && Number.isFinite(hour)) {
+          const sameSlot = day === toISODate(parseShortDateLocal(sess.date))
+            && hour === parseInt((sess.time || "0:0").split(":")[0], 10);
+          if (sameSlot) {
+            outcome = "same-slot";
+          } else {
+            onDropSessionRef.current(sess.id, new Date(day + "T00:00:00"), hour);
+            haptic.success();
+            outcome = "dropped";
+          }
+        }
+      }
+      clearTargetHighlight();
+      if (ghostRef.current) {
+        ghostRef.current.remove();
+        ghostRef.current = null;
+      }
+      draggingRef.current = false;
+      setDragging(false);
+      releaseSwipe("week-event-dnd");
+      return outcome;
+    };
 
     const clearTimer = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -199,7 +212,7 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
           // Coordinator refused — fall back to opening the reschedule
           // sheet so the user still gets a working long-press.
           consumedRef.current = true;
-          onSelectSession(session, "reschedule");
+          onSelectSessionRef.current?.(sessionRef.current, "reschedule");
         }
       }, 500);
     };
@@ -208,7 +221,6 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
       const t = e.touches[0];
       if (!t) return;
       if (draggingRef.current) {
-        // Drag mode: follow finger + suppress scroll.
         if (e.cancelable) e.preventDefault();
         const ghost = ghostRef.current;
         if (ghost) ghost.style.transform = `translate(${t.clientX}px, ${t.clientY}px) translate(-50%, -50%)`;
@@ -229,20 +241,10 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
       if (draggingRef.current) {
         const outcome = exitDrag(true);
         consumedRef.current = true;
-        // Suppress the ghost-tap iOS fires after a touchend with
-        // preventDefault — without this, the underlying cell's
-        // onClick re-opens the new-session sheet.
         if (e.cancelable) e.preventDefault();
-        // Same-slot release: open the reschedule sheet so the gesture
-        // isn't a dead-end for users who long-pressed expecting the
-        // old "→ sheet" behaviour.
         if (outcome === "same-slot") {
-          onSelectSession(session, "reschedule");
+          onSelectSessionRef.current?.(sessionRef.current, "reschedule");
         }
-      } else if (!movedRef.current && !consumedRef.current) {
-        // The user lifted before the long-press fired AND didn't move
-        // — that's a tap. The React onClick above will fire and open
-        // the session sheet. Nothing to do here.
       }
       startPosRef.current = null;
     };
@@ -267,7 +269,9 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchCancel);
     };
-  }, [touchLongPressable, enterDrag, exitDrag, updateTarget, onSelectSession, session]);
+    // touchLongPressable is the only stable input that should drive
+    // re-attachment. Everything else flows through the refs above.
+  }, [touchLongPressable, clearTargetHighlight]);
 
   return (
     <div

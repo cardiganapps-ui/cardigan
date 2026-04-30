@@ -346,23 +346,34 @@ async function handleEvent(svc, event) {
       if (error) return { ok: false, error: error.message };
 
       if (event.type === "invoice.paid") {
-        // Append to the per-user invoice ledger so Settings can render
-        // a billing history without bouncing through Stripe's portal.
-        // Best-effort: a duplicate id (re-delivered event) is silently
-        // ignored via primary-key conflict.
+        // Single owner-row lookup feeds both the invoice-ledger write
+        // and the payment_failed dedupe-row clear below. Two
+        // back-to-back .maybeSingle()'s on the same key would have
+        // run sequentially — wasted round-trip on the hot path.
+        let ownerUserId = null;
         try {
           const { data: ownerRow } = await svc
             .from("user_subscriptions")
             .select("user_id")
             .eq("stripe_customer_id", customerId)
             .maybeSingle();
-          if (ownerRow?.user_id && invoice.id) {
+          ownerUserId = ownerRow?.user_id || null;
+        } catch (err) {
+          console.warn("stripe-webhook: ownerRow lookup failed:", err.message);
+        }
+
+        // Append to the per-user invoice ledger so Settings can render
+        // a billing history without bouncing through Stripe's portal.
+        // Best-effort: a duplicate id (re-delivered event) is silently
+        // ignored via primary-key conflict.
+        if (ownerUserId && invoice.id) {
+          try {
             const paidUnix = invoice.status_transitions?.paid_at
               || invoice.created
               || Math.floor(Date.now() / 1000);
             await svc.from("stripe_invoices").upsert({
               id: invoice.id,
-              user_id: ownerRow.user_id,
+              user_id: ownerUserId,
               stripe_customer_id: customerId,
               stripe_subscription_id: typeof invoice.subscription === "string"
                 ? invoice.subscription : (invoice.subscription?.id || null),
@@ -372,29 +383,24 @@ async function handleEvent(svc, event) {
               hosted_invoice_url: invoice.hosted_invoice_url || null,
               pdf_url: invoice.invoice_pdf || null,
             }, { onConflict: "id" });
+          } catch (err) {
+            console.warn("stripe-webhook: invoice ledger write failed:", err.message);
           }
-        } catch (err) {
-          console.warn("stripe-webhook: invoice ledger write failed:", err.message);
         }
 
         // Clear any prior payment_failed dedupe row for this user —
         // this paid invoice means the failure cycle is resolved, and
         // a future failed renewal should re-trigger the recovery
         // email. Best-effort.
-        try {
-          const { data: ownerRow } = await svc
-            .from("user_subscriptions")
-            .select("user_id")
-            .eq("stripe_customer_id", customerId)
-            .maybeSingle();
-          if (ownerRow?.user_id) {
+        if (ownerUserId) {
+          try {
             await svc.from("lifecycle_emails")
               .delete()
-              .eq("user_id", ownerRow.user_id)
+              .eq("user_id", ownerUserId)
               .eq("kind", "payment_failed");
+          } catch (err) {
+            console.warn("stripe-webhook: payment_failed dedupe clear skipped:", err.message);
           }
-        } catch (err) {
-          console.warn("stripe-webhook: payment_failed dedupe clear skipped:", err.message);
         }
 
         // Referral reward — only fires on the FIRST paid invoice for
@@ -513,6 +519,19 @@ async function handler(req, res) {
     }
   } catch (err) {
     console.error("stripe-webhook handler crash:", err);
+    // Roll back the dedupe row so Stripe's retry actually re-processes
+    // this event. Without the rollback, the next retry hits the unique
+    // constraint at line ~487 and short-circuits to a duplicate-200 —
+    // which means a transient handler crash silently and permanently
+    // skips the event. Best-effort delete: if it fails, the worst case
+    // is we 500 AND can't retry, which is the pre-fix behaviour.
+    try {
+      await svc.from("stripe_webhook_events")
+        .delete()
+        .eq("event_id", event.id);
+    } catch (rollbackErr) {
+      console.error("stripe-webhook rollback failed:", rollbackErr?.message);
+    }
     // Surface 500 so Stripe retries — a thrown error is not the same
     // as a "skipped because no matching row" branch above.
     return res.status(500).json({ error: "Handler crashed" });

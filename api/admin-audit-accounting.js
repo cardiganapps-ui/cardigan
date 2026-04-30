@@ -61,12 +61,18 @@ async function handler(req, res) {
   const svc = getServiceClient();
   const now = new Date();
 
+  // Supabase JS defaults to a 1000-row max per .select() — we lift it
+  // explicitly so the audit doesn't silently miss rows on busy users.
+  // 50K is a soft ceiling we revisit when a single user genuinely
+  // crosses it; beyond that the audit needs proper pagination.
+  const ROW_LIMIT = 50000;
+
   // Pull the relevant tables in parallel. We only need the columns that
   // feed the balance formula + duplicate detection.
   const [pRes, sRes, payRes, uRes] = await Promise.all([
-    svc.from("patients").select("id, user_id, billed, paid, rate"),
-    svc.from("sessions").select("id, user_id, patient_id, date, time, status, rate"),
-    svc.from("payments").select("user_id, patient_id, amount"),
+    svc.from("patients").select("id, user_id, billed, paid, rate").limit(ROW_LIMIT),
+    svc.from("sessions").select("id, user_id, patient_id, date, time, status, rate").limit(ROW_LIMIT),
+    svc.from("payments").select("user_id, patient_id, amount").limit(ROW_LIMIT),
     svc.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ]);
 
@@ -79,6 +85,15 @@ async function handler(req, res) {
   const payments = payRes.data || [];
   const users = uRes?.data?.users || [];
   const userById = new Map(users.map((u) => [u.id, u]));
+
+  // Loud warning when we brushed against the row cap — the audit is
+  // useless if it's looking at a partial dataset. Returned in the
+  // payload so the dashboard can surface it.
+  const truncated = [];
+  if (patients.length >= ROW_LIMIT) truncated.push("patients");
+  if (sessions.length >= ROW_LIMIT) truncated.push("sessions");
+  if (payments.length >= ROW_LIMIT) truncated.push("payments");
+  if (users.length >= 1000) truncated.push("users");
 
   // Index sessions by patient for the consumed-vs-paid scan.
   const sessByPatient = new Map();
@@ -150,6 +165,9 @@ async function handler(req, res) {
     flaggedUserCount: totalsByUser.length,
     totalsByUser,
     totals: grandTotals,
+    // Empty array = full scan; non-empty = the audit was missing rows
+    // for the listed table(s) and the numbers above are partial.
+    truncated,
   });
 }
 

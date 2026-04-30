@@ -778,6 +778,12 @@ function AuditTab() {
         </div>
       )}
 
+      {data && Array.isArray(data.truncated) && data.truncated.length > 0 && (
+        <div style={{ padding:"10px 12px", borderRadius:"var(--radius-sm)", background:"var(--amber-bg)", color:"var(--amber)", fontSize:13, marginBottom:12, fontWeight:600 }}>
+          ⚠ Resultados parciales — el escaneo alcanzó el tope de filas para: {data.truncated.join(", ")}. Los totales pueden estar subestimados.
+        </div>
+      )}
+
       {data && (
         <>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
