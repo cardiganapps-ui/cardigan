@@ -34,6 +34,7 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 import {
   createCustomer,
   createSubscription,
@@ -62,6 +63,17 @@ async function handler(req, res) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const rl = await rateLimit({
+    endpoint: "stripe-create-subscription",
+    bucket: user.id,
+    max: 5,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   let body = {};
   try { body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {}); }

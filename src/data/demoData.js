@@ -153,13 +153,13 @@ const TRAINER_PATIENT_DEFS = [
   // First 5 entries carry rich anthropometric data so the Mediciones tab
   // and Salud block render well in demo. Trainer goals tend to be net
   // weight loss + body-fat reduction.
-  { name: "Andrea Pelayo",        day: "Lunes",     time: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0001", email: "andrea.pelayo@example.com", paidAhead: true,
+  { name: "Andrea Pelayo",        day: "Lunes",     time: "07:00", extraDay: "Miércoles", extraTime: "07:00", rate: 600, status: "active",                                 phone: "+52 55 3030 0001", email: "andrea.pelayo@example.com", paidAhead: true,
     height_cm: 165, goal_weight_kg: 60, medical_conditions: "",
     start_weight_kg: 72, start_waist_cm: 86, start_body_fat_pct: 30 },
-  { name: "Bruno Salinas",        day: "Lunes",     time: "08:00", rate: 600, status: "active", modality: "a-domicilio",         phone: "+52 55 3030 0002",
+  { name: "Bruno Salinas",        day: "Lunes",     time: "08:00", extraDay: "Jueves",    extraTime: "08:00", rate: 600, status: "active", modality: "a-domicilio",         phone: "+52 55 3030 0002",
     height_cm: 180, goal_weight_kg: 78, medical_conditions: "Lesión de rodilla derecha (2024)",
     start_weight_kg: 92, start_waist_cm: 102, start_body_fat_pct: 26 },
-  { name: "Claudia Mejía",        day: "Lunes",     time: "18:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0003", email: "claudia.mejia@example.com", overdue: true,
+  { name: "Claudia Mejía",        day: "Lunes",     time: "18:00", extraDay: "Miércoles", extraTime: "18:00", rate: 700, status: "active",                                 phone: "+52 55 3030 0003", email: "claudia.mejia@example.com", overdue: true,
     height_cm: 158, goal_weight_kg: 55,
     start_weight_kg: 68, start_waist_cm: 84 },
   { name: "David Rangel",         day: "Martes",    time: "06:00", rate: 600, status: "active", modality: "virtual",             phone: "+52 55 3030 0004",
@@ -300,6 +300,15 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     const patientSessions = [];
     let current = new Date(firstSession);
 
+    // Some professions/clients meet more than once per week. The flag
+    // `extraDay` declares the second weekday and time (e.g. trainer
+    // clients training Mon+Wed). Stays opt-in per def so the existing
+    // weekly-only seeds are unaffected.
+    const extraStart = def.extraDay
+      ? getNextDay(def.extraDay, startDate)
+      : null;
+    let extraCurrent = extraStart ? new Date(extraStart) : null;
+
     // Ended patients stop 2-3 months ago
     const endDate = def.status === "ended"
       ? new Date(now.getFullYear(), now.getMonth() - 2, 15)
@@ -342,6 +351,43 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       });
 
       current = addWeeks(current, 1);
+    }
+
+    // Second weekly slot — same generator, different weekday/time.
+    // Mirrors the primary loop so the schedule density looks right
+    // for clients who train / study twice a week.
+    while (extraCurrent && extraCurrent <= endDate) {
+      const sessId = uuid();
+      const isPast = extraCurrent < now;
+      let status = "scheduled";
+      if (isPast) {
+        const rand = Math.random();
+        if (rand < 0.82) status = "completed";
+        else if (rand < 0.90) status = "charged";
+        else status = "cancelled";
+      }
+      patientSessions.push({
+        id: sessId,
+        user_id: demoUserId,
+        patient_id: patientId,
+        patient: def.name,
+        initials,
+        time: def.extraTime || def.time,
+        day: def.extraDay,
+        date: dateStr(extraCurrent),
+        duration: 60,
+        rate: def.rate,
+        status,
+        cancel_reason: status === "cancelled" || status === "charged"
+          ? CANCEL_REASONS[Math.floor(Math.random() * CANCEL_REASONS.length)]
+          : null,
+        modality: def.modality || "presencial",
+        session_type: "regular",
+        color_idx: colorIdx,
+        colorIdx: colorIdx,
+        created_at: extraCurrent.toISOString(),
+      });
+      extraCurrent = addWeeks(extraCurrent, 1);
     }
 
     // Add tutor sessions for minors (roughly monthly)

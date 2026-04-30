@@ -7,6 +7,7 @@ import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { CalendarLinkSheet } from "../components/sheets/CalendarLinkSheet";
 import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconChevron } from "../components/Icons";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
+import { BulkActionsBar } from "../components/BulkActionsBar";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
 import { Avatar } from "../components/Avatar";
@@ -140,8 +141,13 @@ function buildMonthGrid(year, month) {
 
 /* ── SESSION ROW (shared) ──
    Rail color comes from .session-row + rail-* classes (see styles.css).
-   Avatar sizing is unified via the shared <Avatar /> component. */
-function SessionRow({ s, onClick, compact }) {
+   Avatar sizing is unified via the shared <Avatar /> component.
+
+   Selection mode: when `selectionMode` is true, taps toggle membership
+   in the parent's selected set instead of opening the session detail.
+   The row gets a subtle selected highlight + a check pill replaces the
+   chevron so the affordance is unambiguous. */
+function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSelect }) {
   const { t } = useT();
   const tutor = isTutorSession(s);
   const isVirtual = s.modality === "virtual";
@@ -150,8 +156,17 @@ function SessionRow({ s, onClick, compact }) {
   const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
   const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
   const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
+  const handleClick = () => {
+    if (selectionMode) onToggleSelect?.(s);
+    else onClick?.(s);
+  };
   return (
-    <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => onClick(s)}>
+    <div
+      className={`row-item session-row ${railClass(s.status)}`}
+      key={s.id}
+      onClick={handleClick}
+      style={selectionMode && selected ? { background: "var(--teal-pale)" } : undefined}
+    >
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? "var(--text-sm)" : "var(--text-md)", fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
       </div>
@@ -181,13 +196,23 @@ function SessionRow({ s, onClick, compact }) {
         </div>
       </div>
       <span className={`session-status ${statusClass(s.status)}`}>{t(`sessions.${s.status}`)}</span>
-      {!compact && <span className="row-chevron">›</span>}
+      {selectionMode ? (
+        <span style={{
+          width: 22, height: 22, borderRadius: "50%", marginLeft: 8,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          background: selected ? "var(--teal)" : "transparent",
+          border: selected ? "none" : "1.5px solid var(--charcoal-xl)",
+          color: "var(--white)", flexShrink: 0,
+        }}>
+          {selected && <IconCheck size={12} />}
+        </span>
+      ) : !compact ? <span className="row-chevron">›</span> : null}
     </div>
   );
 }
 
 /* ── DAY PANEL (just one day's session list, no week strip) ── */
-function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName }) {
+function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const dateStr = formatShortDate(panelDate);
@@ -212,7 +237,12 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientN
                 <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
               </div>
           : <div className="card">
-              {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} />)}
+              {daySessions.map(s => (
+                <SessionRow key={s.id} s={s} onClick={onSelectSession}
+                  selectionMode={selectionMode}
+                  selected={selectedSet?.has(s.id)}
+                  onToggleSelect={onToggleSelect} />
+              ))}
             </div>
         }
       </div>
@@ -236,7 +266,7 @@ function HeaderLabel({ children, isCurrent, onJumpToday, t }) {
 }
 
 /* ── DAY VIEW ── */
-function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName }) {
+function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
@@ -252,7 +282,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
   const prevDay = addDays(selectedDate, -1);
   const nextDay = addDays(selectedDate, 1);
-  const shared = { onSelectSession, upcomingSessions, filterPatientName };
+  const shared = { onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect };
 
   const weekDays = getWeekDays(selectedDate);
   const prevWeekDays = getWeekDays(addDays(selectedDate, -7));
@@ -369,7 +399,25 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                       setDropTarget(null);
                       if (id && onDropSession) onDropSession(id, d, hour);
                     } : undefined}
-                  />
+                  >
+                    {/* Drop-time indicator — only visible when this cell
+                        is the active drop target. Surfaces the exact
+                        new time so the user doesn't have to mentally
+                        map the row to "Soltar aquí para HH:00". */}
+                    {isDropTarget && (
+                      <span style={{
+                        position: "absolute", top: 4, left: 4,
+                        fontSize: 11, fontWeight: 700,
+                        color: "var(--white)",
+                        background: "var(--teal-dark)",
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        pointerEvents: "none",
+                      }}>
+                        {`${String(hour).padStart(2, "0")}:00`}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
               {/* Session events positioned absolutely */}
@@ -594,7 +642,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast } = useCardigan();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -605,6 +653,63 @@ export function Agenda() {
   const [view, setView] = useState(() => consumeAgendaView?.() || (isTabletSplit ? "week" : "day"));
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
+  // Bulk selection mode — only the day view participates today (the
+  // place a therapist actually goes to "cancel everything next week").
+  // Week + Month would require richer hit-testing on the event chips
+  // and are an obvious follow-up.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedSet, setSelectedSet] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const onToggleSelect = useCallback((s) => {
+    haptic.tap();
+    setSelectedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(s.id)) next.delete(s.id); else next.add(s.id);
+      return next;
+    });
+  }, []);
+  const exitSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedSet(new Set());
+  }, []);
+
+  // Apply a bulk action (cancel without charge / cancel with charge /
+  // delete) to every session in the current selection. Each action is
+  // routed through the existing per-session handlers so accounting
+  // semantics stay identical to the single-session flow — we don't
+  // bypass the predicate that decides whether `cancelled` counts. The
+  // batch is Promise.allSettled so one failure doesn't block the rest;
+  // the toast summarises ok / failed counts.
+  const bulkApply = useCallback(async (kind) => {
+    if (bulkBusy) return;
+    if (selectedSet.size === 0) return;
+    const ids = Array.from(selectedSet);
+    const list = upcomingSessions.filter((s) => selectedSet.has(s.id));
+    setBulkBusy(true);
+    try {
+      const tasks = list.map((s) => {
+        if (kind === "delete") return deleteSession(s.id);
+        if (kind === "cancel-charge") return onCancelSession(s, true, t("agenda.bulkChargeReason"));
+        return onCancelSession(s, false, null);
+      });
+      const results = await Promise.allSettled(tasks);
+      const ok = results.filter((r) => r.status === "fulfilled" && r.value !== false).length;
+      const failed = ids.length - ok;
+      if (failed === 0) {
+        showSuccess?.(t("agenda.bulkSuccess", { n: ok }));
+      } else {
+        showToast?.(t("agenda.bulkPartial", { n: ok, failed }), "info");
+      }
+      exitSelection();
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [bulkBusy, selectedSet, upcomingSessions, deleteSession, onCancelSession, t, showSuccess, showToast, exitSelection]);
+  // When the user leaves the day view OR enters readOnly, abort
+  // selection so the bar doesn't outlive its context.
+  useEffect(() => {
+    if (selectionMode && (view !== "day" || readOnly)) exitSelection();
+  }, [view, readOnly, selectionMode, exitSelection]);
   // "reschedule" when the sheet was opened via a long-press on a week
   // event (mobile drag-reschedule replacement); cleared on close. Null
   // for all other entry points.
@@ -726,6 +831,19 @@ export function Agenda() {
             ]}
           />
         </div>
+        {/* Selection mode toggle — visible only on day view, hidden in
+            readOnly mode (admin "view as user" + expired trial). The
+            button stays subtle until the user enters selection mode,
+            at which point it disappears (the bulk bar takes over). */}
+        {view === "day" && !readOnly && !selectionMode && (
+          <div style={{ padding:"0 16px 10px", textAlign:"right" }}>
+            <button type="button" className="btn btn-ghost"
+              onClick={() => { haptic.tap(); setSelectionMode(true); }}
+              style={{ display:"inline-flex", alignItems:"center", gap:6, width:"auto", height:"auto", padding:"4px 10px", fontSize:12 }}>
+              {t("agenda.bulkSelectCta")}
+            </button>
+          </div>
+        )}
         {patients.length > 0 && (
           <div style={{ padding:"0 16px 10px" }}>
             <select
@@ -741,7 +859,7 @@ export function Agenda() {
           </div>
         )}
       </div>
-      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} />}
       {upcomingSessions.length === 0 && (
@@ -807,6 +925,16 @@ export function Agenda() {
         mutating={mutating}
       />
       <ContextMenu {...ctxMenu.state} onClose={ctxMenu.close} />
+      {selectionMode && view === "day" && !readOnly && (
+        <BulkActionsBar
+          count={selectedSet.size}
+          busy={bulkBusy}
+          onExit={exitSelection}
+          onCancelNoCharge={() => bulkApply("cancel")}
+          onCancelCharge={() => bulkApply("cancel-charge")}
+          onDelete={() => bulkApply("delete")}
+        />
+      )}
     </div>
     </>
   );

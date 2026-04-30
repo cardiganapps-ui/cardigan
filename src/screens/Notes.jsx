@@ -11,6 +11,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useViewport } from "../hooks/useViewport";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { groupNotesByRecency } from "../utils/noteGrouping";
+import { tokenize, matches } from "../utils/noteSearch";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
@@ -40,15 +41,19 @@ export function Notes() {
     return (patients || []).filter(p => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [notes, patients]);
 
+  // Pre-index patients by id so the matches() lookup below is O(1) per
+  // note instead of scanning the patients array each time. Notes lists
+  // routinely run 100+ on power users, so the linear scan was visible
+  // on lower-end Android.
+  const patientsById = useMemo(() => {
+    const m = new Map();
+    for (const p of patients || []) m.set(p.id, p);
+    return m;
+  }, [patients]);
+
   const filteredNotes = useMemo(() => {
-    let list = [...(notes || [])];
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(n => {
-        const p = patients.find(pt => pt.id === n.patient_id);
-        return n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q) || p?.name?.toLowerCase().includes(q);
-      });
-    }
+    const terms = tokenize(search);
+    let list = (notes || []).filter(n => matches(n, patientsById.get(n.patient_id), terms));
     if (favoritesOnly) list = list.filter(n => n.pinned);
     if (filterPatient === "general") list = list.filter(n => !n.patient_id);
     else if (filterPatient !== "all") list = list.filter(n => n.patient_id === filterPatient);
@@ -57,7 +62,7 @@ export function Notes() {
       if (!a.pinned && b.pinned) return 1;
       return (b.updated_at || "").localeCompare(a.updated_at || "");
     });
-  }, [notes, search, filterPatient, favoritesOnly, patients]);
+  }, [notes, search, filterPatient, favoritesOnly, patientsById]);
 
   const groupedNotes = useMemo(() => groupNotesByRecency(filteredNotes, t), [filteredNotes, t]);
 

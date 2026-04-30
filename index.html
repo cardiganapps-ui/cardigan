@@ -1,10 +1,70 @@
 <!doctype html>
-<html lang="en">
+<html lang="es-MX">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- ── SEO + social ──────────────────────────────────────────────
+         Search engines and OG-link previews use these. The lang on
+         <html> is es-MX (canonical product audience) so a search
+         that surfaces cardigan.mx returns the right localised
+         snippet. -->
+    <meta name="description" content="Cardigan es la app para psicólogos, nutriólogos, entrenadores y profesores particulares en México. Lleva el control de tus pacientes, sesiones, pagos y notas — todo en un solo lugar." />
+    <meta name="keywords" content="agenda psicólogos, software consultorio, control de pacientes, agenda nutriólogos, app entrenador personal, expediente clínico mexico" />
+    <meta name="author" content="Cardigan" />
+    <link rel="canonical" href="https://cardigan.mx/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:site_name" content="Cardigan" />
+    <meta property="og:title" content="Cardigan — Tu consultorio, en un solo lugar" />
+    <meta property="og:description" content="Pacientes, sesiones, pagos y notas — todo en una app diseñada para terapeutas en México." />
+    <meta property="og:url" content="https://cardigan.mx/" />
+    <meta property="og:image" content="https://cardigan.mx/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cardigan — Tu consultorio, en un solo lugar" />
+    <meta name="twitter:description" content="Pacientes, sesiones, pagos y notas — todo en una app diseñada para terapeutas en México." />
+    <meta name="twitter:image" content="https://cardigan.mx/og-image.png" />
+
+    <!-- Schema.org structured data — surfaces in Google's rich results
+         and lets the marketing page show up as a SoftwareApplication
+         with a price. Update Offer.price when the plan changes. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Cardigan",
+      "operatingSystem": "Web",
+      "applicationCategory": "BusinessApplication",
+      "url": "https://cardigan.mx/",
+      "offers": {
+        "@type": "Offer",
+        "price": "299",
+        "priceCurrency": "MXN",
+        "category": "Subscription",
+        "availability": "https://schema.org/InStock"
+      },
+      "description": "App para terapeutas, nutriólogos, entrenadores y profesores particulares en México. Lleva el control de pacientes, agenda, pagos y notas.",
+      "inLanguage": "es-MX"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Cardigan",
+      "url": "https://cardigan.mx/",
+      "logo": "https://cardigan.mx/icon-192.png",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "privacy@cardigan.mx",
+        "contactType": "Customer service",
+        "areaServed": "MX",
+        "availableLanguage": "Spanish"
+      }
+    }
+    </script>
     <!-- Preconnect + preload Turnstile so the captcha verification on
          signin/signup feels instant. Without these, the script load
          + TLS handshake to challenges.cloudflare.com only starts when
@@ -28,7 +88,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cardigan" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>cardigan</title>
+    <title>Cardigan — Agenda y expediente para terapeutas, nutriólogos y entrenadores</title>
 
     <!-- iPad splash screens (apple-touch-startup-image). Apple matches by
          exact device-width / device-height / pixel-ratio / orientation.

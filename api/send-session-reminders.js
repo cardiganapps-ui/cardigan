@@ -392,6 +392,32 @@ async function maybeRunDailyPurges(supabase) {
     purged: count ?? 0,
     cutoff,
   }));
+
+  // 2. Rate-limit hits — only need ~24h of history to power any
+  // window we currently use (longest window is 60s; 24h is over-
+  // provisioned but harmless). Same claim-the-day pattern.
+  const { data: rlGate } = await supabase
+    .from("cron_state")
+    .update({ last_run_at: new Date().toISOString() })
+    .eq("job", "purge_rate_limits")
+    .or("last_run_at.is.null,last_run_at.lt." + new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString())
+    .select("job")
+    .maybeSingle();
+  if (!rlGate) return;
+  const rlCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { error: rlError, count: rlCount } = await supabase
+    .from("rate_limits")
+    .delete({ count: "exact" })
+    .lt("hit_at", rlCutoff);
+  if (rlError) {
+    console.warn("purge_rate_limits failed:", rlError.message);
+    return;
+  }
+  console.log(JSON.stringify({
+    evt: "cron.purge_rate_limits",
+    ts: new Date().toISOString(),
+    purged: rlCount ?? 0,
+  }));
 }
 
 /* Send lifecycle emails to users who hit a cohort window today.

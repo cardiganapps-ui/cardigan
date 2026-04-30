@@ -23,6 +23,7 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 import { createCustomer, createCheckoutSession, getPriceId, creditCustomerBalance, resolvePlan } from "./_stripe.js";
 
 const MXN = "mxn";
@@ -56,6 +57,21 @@ async function handler(req, res) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-user limiter — checkout creation hits Stripe (paid API) and
+  // potentially writes new customer rows. 5 attempts in 60s is plenty
+  // for a user retrying after a card decline; way under what an
+  // automated abuser would need to be a problem.
+  const rl = await rateLimit({
+    endpoint: "stripe-checkout",
+    bucket: user.id,
+    max: 5,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   // Parse + validate referral code (optional). The code is stored on
   // the user_subscriptions row and replicated to Stripe sub metadata

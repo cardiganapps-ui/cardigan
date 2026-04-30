@@ -17,6 +17,7 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 const ALLOWED_REASONS = {
   // 5 days for completing all 4 ActivationChecklist steps.
@@ -29,6 +30,20 @@ async function handler(req, res) {
   }
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // The endpoint is server-side idempotent on (user_id, reason), but
+  // a tight loop could still pummel the DB. 10/min is fine for the
+  // legitimate single-trigger flow.
+  const rl = await rateLimit({
+    endpoint: "grant-trial-extension",
+    bucket: user.id,
+    max: 10,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
+  }
 
   let body = {};
   try { body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {}); }

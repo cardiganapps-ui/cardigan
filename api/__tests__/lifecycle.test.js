@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock _email so we don't try to hit Resend in tests.
 vi.mock("../_email.js", () => ({

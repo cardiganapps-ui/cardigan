@@ -1,0 +1,10 @@
+# Cardigan — public marketing pages are indexable; everything that
+# lives behind auth (?billing= return URLs, /api/*) is irrelevant to
+# search since the SPA root serves the landing page anyway and the
+# auth flow lives at the same URL but only renders for signed-in
+# users.
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://cardigan.mx/sitemap.xml
