@@ -242,6 +242,14 @@ export default function StripePaymentSheet({
   return (
     <div
       className="sheet-overlay"
+      // The Stripe payment sheet must render ABOVE any sheet that
+      // launched it (Settings → Suscripción → Suscribirme being the
+      // canonical case). All sheets share `--z-sheet`, so without an
+      // explicit bump DOM order decides — and the launcher is
+      // typically rendered later in the JSX, painting on top. A small
+      // +1 keeps us above peer sheets without colliding with the
+      // higher-tier overlays (note editor, expediente).
+      style={{ zIndex: "calc(var(--z-sheet) + 1)" }}
       onClick={() => stage !== "submitting" && onClose?.()}
     >
       <div
