@@ -529,60 +529,72 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       </div>
 
-      {/* ── NOTIFICACIONES ──
-         Single row that opens a sub-sheet absorbing all of the
+      {/* ── NOTIFICACIONES Y CALENDARIO ──
+         Notifications row opens a sub-sheet absorbing all of the
          notification UI states (install gate, blocked, toggle +
-         reminder time). Used to be three different inline layouts. */}
-      {notifications?.supported && (
+         reminder time). Calendar row opens a sheet wrapping the
+         CalendarLinkPanel — both surfaces are about how the user gets
+         told about their schedule, so they belong together. */}
+      {(notifications?.supported || !readOnly) && (
         <>
-          <div className="settings-label">{t("settings.notificationsSection")}</div>
+          <div className="settings-label">{t("settings.sectionNotifCal")}</div>
           <div className="card" style={{ margin:"0 16px" }}>
-            <div className="settings-row" onClick={() => setActiveSheet("notifications")}>
-              <div
-                className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
-                style={{ color:"var(--teal-dark)" }}
-              >
-                <IconBell size={18} />
+            {notifications?.supported && (
+              <div className="settings-row" onClick={() => setActiveSheet("notifications")}>
+                <div
+                  className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
+                  style={{ color:"var(--teal-dark)" }}
+                >
+                  <IconBell size={18} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("settings.notificationsRowTitle")}</div>
+                  <div className="settings-row-sub">{notifSummary}</div>
+                </div>
+                <IconChevron />
               </div>
-              <div style={{ flex:1 }}>
-                <div className="settings-row-title">{t("settings.notificationsRowTitle")}</div>
-                <div className="settings-row-sub">{notifSummary}</div>
+            )}
+            {!readOnly && (
+              <div className="settings-row" onClick={() => setActiveSheet("calendar")}>
+                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("settings.calendarLabel")}</div>
+                  <div className="settings-row-sub">{calendarSummary}</div>
+                </div>
+                <IconChevron />
               </div>
-              <IconChevron />
-            </div>
+            )}
           </div>
         </>
       )}
 
       {/* ── SEGURIDAD ── */}
-      {(!readOnly || (noteCrypto && noteCrypto.status !== "loading" && noteCrypto.status !== "disabled")) && (
+      {!readOnly && (
         <>
           <div className="settings-label">{t("settings.sectionSecurity")}</div>
           <div className="card" style={{ margin:"0 16px" }}>
-            {!readOnly && (
-              <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
-                onClick={() => {
-                  if (mfa.loading) return;
-                  setMfaUiError(""); setMfaCode("");
-                  if (mfa.factors.length === 0) {
-                    setActiveSheet("mfaEnroll");
-                    if (!mfa.enrollment) mfa.enroll();
-                  } else {
-                    setMfaUnenrollId(mfa.factors[0].id);
-                    setActiveSheet("mfaManage");
-                  }
-                }}>
-                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconShield size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("settings.mfaTitle")}</div>
-                  <div className="settings-row-sub">
-                    {mfa.loading ? "…" : mfa.factors.length > 0 ? t("settings.mfaActive") : t("settings.mfaInactive")}
-                  </div>
+            <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
+              onClick={() => {
+                if (mfa.loading) return;
+                setMfaUiError(""); setMfaCode("");
+                if (mfa.factors.length === 0) {
+                  setActiveSheet("mfaEnroll");
+                  if (!mfa.enrollment) mfa.enroll();
+                } else {
+                  setMfaUnenrollId(mfa.factors[0].id);
+                  setActiveSheet("mfaManage");
+                }
+              }}>
+              <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconShield size={18} /></div>
+              <div style={{ flex:1 }}>
+                <div className="settings-row-title">{t("settings.mfaTitle")}</div>
+                <div className="settings-row-sub">
+                  {mfa.loading ? "…" : mfa.factors.length > 0 ? t("settings.mfaActive") : t("settings.mfaInactive")}
                 </div>
-                <IconChevron />
               </div>
-            )}
-            {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
+              <IconChevron />
+            </div>
+            {noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
               <div className="settings-row" onClick={() => {
                 setEncUiError("");
                 if (noteCrypto.status === "disabled") { setEncSetupPass1(""); setEncSetupPass2(""); }
@@ -598,16 +610,6 @@ export function Settings({ user, signOut, refreshUser }) {
                 <IconChevron />
               </div>
             )}
-            {!readOnly && (
-              <div className="settings-row" onClick={() => setActiveSheet("signOutEverywhere")}>
-                <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
-                  <div className="settings-row-sub">{t("settings.signOutEverywhereSub")}</div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
           </div>
         </>
       )}
@@ -615,16 +617,6 @@ export function Settings({ user, signOut, refreshUser }) {
       {/* ── DATOS Y PRIVACIDAD ── */}
       <div className="settings-label">{t("settings.sectionPrivacyData")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
-        {!readOnly && (
-          <div className="settings-row" onClick={() => setActiveSheet("calendar")}>
-            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">{t("settings.calendarLabel")}</div>
-              <div className="settings-row-sub">{calendarSummary}</div>
-            </div>
-            <IconChevron />
-          </div>
-        )}
         {!readOnly && (
           <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }}
             onClick={() => { if (!exporting) { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); } }}>
@@ -677,6 +669,16 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
+        {!readOnly && (
+          <div className="settings-row" onClick={() => setActiveSheet("signOutEverywhere")}>
+            <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
+              <div className="settings-row-sub">{t("settings.signOutEverywhereSub")}</div>
+            </div>
+            <IconChevron />
+          </div>
+        )}
       </div>
 
       {/* ── ZONA PELIGROSA ──
