@@ -848,7 +848,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             <span className="app-banner-text">
               {subscription.daysLeftInTrial <= 1
                 ? t("subscription.trialEndsTodayBanner")
-                : t("subscription.trialDaysLeftBanner").replace("{n}", String(subscription.daysLeftInTrial))}
+                : t("subscription.trialDaysLeftBanner", { n: subscription.daysLeftInTrial })}
             </span>
             <button onClick={() => navigate("settings")} className="app-banner-action">
               {t("subscription.subscribeShort")}

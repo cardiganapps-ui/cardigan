@@ -552,7 +552,7 @@ export function Settings({ user, signOut, refreshUser }) {
               if (s.accessState === "trial" && s.daysLeftInTrial != null) {
                 return s.daysLeftInTrial <= 1
                   ? t("subscription.statusTrialEndsToday")
-                  : t("subscription.statusTrialDaysLeft").replace("{n}", String(s.daysLeftInTrial));
+                  : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial });
               }
               if (s.accessState === "expired") return t("subscription.statusExpired");
               return t("subscription.statusLoading");
@@ -1113,12 +1113,12 @@ export function Settings({ user, signOut, refreshUser }) {
                 const heroSub = isComp ? t("subscription.compExplain")
                   : isActive && periodEndStr
                     ? (s.subscription?.cancel_at_period_end
-                        ? t("subscription.cancelAt").replace("{date}", periodEndStr)
-                        : t("subscription.renewsOn").replace("{date}", periodEndStr))
+                        ? t("subscription.cancelAt", { date: periodEndStr })
+                        : t("subscription.renewsOn", { date: periodEndStr }))
                   : state === "trial" && s.daysLeftInTrial != null
                     ? (s.daysLeftInTrial <= 1
                         ? t("subscription.statusTrialEndsToday")
-                        : t("subscription.statusTrialDaysLeft").replace("{n}", String(s.daysLeftInTrial)))
+                        : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial }))
                   : state === "expired" ? t("subscription.expiredExplain")
                   : "";
                 return (
@@ -1247,11 +1247,13 @@ export function Settings({ user, signOut, refreshUser }) {
                       {s.referralInfo && s.referralInfo.rewardsCount > 0 && (
                         <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
                           {s.referralInfo.pendingCreditCents > 0
-                            ? t("subscription.referralRewardsPending")
-                                .replace("{n}", String(s.referralInfo.rewardsCount))
-                                .replace("{credit}", `$${(s.referralInfo.pendingCreditCents / 100).toLocaleString("es-MX")}`)
-                            : t("subscription.referralRewardsApplied")
-                                .replace("{n}", String(s.referralInfo.rewardsCount))}
+                            ? t("subscription.referralRewardsPending", {
+                                n: s.referralInfo.rewardsCount,
+                                credit: `$${(s.referralInfo.pendingCreditCents / 100).toLocaleString("es-MX")}`,
+                              })
+                            : t("subscription.referralRewardsApplied", {
+                                n: s.referralInfo.rewardsCount,
+                              })}
                         </div>
                       )}
                     </div>
