@@ -1,36 +1,89 @@
 import { LogoIcon } from "../LogoMark";
+import { formatTimeRange, formatMxn, getClientColor } from "./landingMock";
 
-/* Landing "product preview" — phone-framed snapshot of the real Home screen.
-   Mirrors production: white topbar with hamburger-left + centered cardigan
-   brand + refresh-right, 2x2 KPI tiles with the exact labels used in the app
-   (Sesiones hoy / Pacientes / Cobrado (Mes) / No Cobrado), session rows with
-   a 3px left border-rail in status color, PRESENCIAL/VIRTUAL eyebrow under
-   the time, status badge on the right, and a 54px charcoal FAB. Zero
-   invented UI. */
+/* Landing "product preview" — phone-framed snapshot of the real Home
+   screen, driven by the shared `mock` from landingMock.js. Mirrors
+   production: white topbar with hamburger-left + centered cardigan
+   brand + refresh-right, 2x2 KPI tiles with the exact labels used in
+   the app (Sesiones hoy / Pacientes / Cobrado (Mes) / No Cobrado),
+   session rows with a 3px left border-rail in status colour, an
+   uppercase modality eyebrow, and a 54px charcoal FAB. Zero invented
+   data — every number on the phone is rolled up from the same demo
+   seed the mini cards below the hero use. */
 
-const PREVIEW_SESSIONS = [
-  { time: "09:00 - 09:50", name: "Andrea Morales", initial: "A", status: "completed", badge: "Completada", modality: "presencial", avatarColor: "var(--teal)"   },
-  { time: "10:30 - 11:20", name: "Carlos Ruiz",    initial: "C", status: "scheduled", badge: "Agendada",   modality: "virtual",    avatarColor: "var(--blue)"   },
-  { time: "12:00 - 12:50", name: "Sofía López",    initial: "S", status: "scheduled", badge: "Agendada",   modality: "presencial", avatarColor: "var(--purple)" },
-];
+function avatarBg(s) {
+  if (s.session_type === "tutor" || (typeof s.initials === "string" && s.initials.startsWith("T·"))) {
+    return "var(--purple)";
+  }
+  if (s.modality === "virtual") return "var(--blue)";
+  if (s.modality === "telefonica") return "var(--green)";
+  if (s.modality === "a-domicilio") return "var(--amber)";
+  return getClientColor(s.colorIdx ?? s.color_idx ?? 0);
+}
 
-const KPIS = [
-  { label: "Sesiones hoy",  value: "6",       meta: "Mar 18 Abr" },
-  { label: "Pacientes",     value: "24",      meta: "21 activos" },
-  { label: "Cobrado (Mes)", value: "$18,240", meta: "Abril" },
-  { label: "No Cobrado",    value: "$2,450",  meta: "3 con saldo", negative: true },
-];
+function modalityLabel(modality) {
+  if (modality === "virtual") return "VIRTUAL";
+  if (modality === "telefonica") return "TELEFÓNICA";
+  if (modality === "a-domicilio") return "A DOMICILIO";
+  return "PRESENCIAL";
+}
 
-export function ProductPreview({ floatingKpi = true }) {
+function modalityKey(modality) {
+  if (modality === "virtual") return "virtual";
+  if (modality === "telefonica") return "telefonica";
+  if (modality === "a-domicilio") return "adomicilio";
+  return "presencial";
+}
+
+function statusKey(status) {
+  if (status === "completed") return "completed";
+  if (status === "charged") return "cancelled";
+  if (status === "cancelled") return "cancelled";
+  return "scheduled";
+}
+
+function statusBadge(status) {
+  if (status === "completed") return "Completada";
+  if (status === "charged") return "Cancelada";
+  if (status === "cancelled") return "Cancelada";
+  return "Agendada";
+}
+
+export function ProductPreview({ mock, floatingKpi = true }) {
+  const sessions = (mock?.todaySessions || []).slice(0, 3);
+  const todaySessionCount = sessions.length;
+  const activeCount = mock?.activeCount ?? 0;
+  const totalCount = mock?.totalCount ?? activeCount;
+  const monthlyCollected = mock?.monthlyCollected ?? 0;
+  const outstanding = mock?.outstanding ?? 0;
+  const owingCount = mock?.owingCount ?? 0;
+  const monthLabel = mock?.monthLabel || "";
+  const todayShort = mock?.todayShort || "";
+
+  // Floating card: pull a "next upcoming" session if there's one
+  // beyond the visible 3 to add visual depth + showcase the calendar
+  // density. Falls back to the first visible session for sparse
+  // demos.
+  const float = (mock?.todaySessions || [])[3] || (mock?.todaySessions || [])[0];
+
+  const KPIS = [
+    { label: "Sesiones hoy",  value: String(todaySessionCount), meta: todayShort },
+    { label: "Pacientes",     value: String(totalCount),        meta: `${activeCount} activos` },
+    { label: "Cobrado (Mes)", value: formatMxn(monthlyCollected), meta: monthLabel },
+    { label: "No Cobrado",    value: formatMxn(outstanding),    meta: `${owingCount} con saldo`, negative: true },
+  ];
+
   return (
     <div className="lp-preview" aria-hidden="true">
-      {floatingKpi && (
+      {floatingKpi && float && (
         <div className="lp-float-card">
           <div className="lp-float-row">
-            <span className="lp-float-av" style={{ background: "var(--purple-bg)", color: "var(--purple)" }}>D</span>
+            <span className="lp-float-av" style={{ background: avatarBg(float), color: "#fff" }}>
+              {(float.initials || "?").charAt(0)}
+            </span>
             <div className="lp-float-main">
-              <div className="lp-float-name">David Kim</div>
-              <div className="lp-float-sub">Jue 10:30 · Próxima</div>
+              <div className="lp-float-name">{float.patient}</div>
+              <div className="lp-float-sub">{float.day} {float.time} · Próxima</div>
             </div>
             <span className="lp-float-badge">Al día</span>
           </div>
@@ -81,19 +134,23 @@ export function ProductPreview({ floatingKpi = true }) {
 
             <div className="lp-phone-section-title">Hoy</div>
             <div className="lp-phone-list">
-              {PREVIEW_SESSIONS.map((r, i) => (
-                <div key={i} className={`lp-phone-row lp-phone-row--${r.status}`}>
-                  <div className="lp-phone-av" style={{ background: r.avatarColor }}>{r.initial}</div>
+              {sessions.map((s) => (
+                <div key={s.id} className={`lp-phone-row lp-phone-row--${statusKey(s.status)}`}>
+                  <div className="lp-phone-av" style={{ background: avatarBg(s) }}>
+                    {(s.initials || "?").charAt(0)}
+                  </div>
                   <div className="lp-phone-row-main">
-                    <div className="lp-phone-row-title">{r.name}</div>
+                    <div className="lp-phone-row-title">{s.patient}</div>
                     <div className="lp-phone-row-sub">
-                      <span>{r.time}</span>
-                      <span className={`lp-phone-eyebrow lp-phone-eyebrow--${r.modality}`}>
-                        {r.modality.toUpperCase()}
+                      <span>{formatTimeRange(s.time, s.duration)}</span>
+                      <span className={`lp-phone-eyebrow lp-phone-eyebrow--${modalityKey(s.modality)}`}>
+                        {modalityLabel(s.modality)}
                       </span>
                     </div>
                   </div>
-                  <span className={`lp-phone-badge lp-phone-badge--${r.status}`}>{r.badge}</span>
+                  <span className={`lp-phone-badge lp-phone-badge--${statusKey(s.status)}`}>
+                    {statusBadge(s.status)}
+                  </span>
                 </div>
               ))}
             </div>

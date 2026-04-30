@@ -848,6 +848,401 @@
   .lp-phone-screen { border-radius: 34px; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   ── EXTENSION: profession tabs, sections, pricing, FAQ, footer ──
+   Everything below is the v2 landing rebuild — accurate mockups +
+   more depth. Kept in a single trailing block (rather than threaded
+   through the file above) so a future revert is `git diff` clean.
+   Class names follow the existing .lp- convention. */
+
+/* Profession chips become real tabs that drive the mock data. */
+.lp-prof-chip {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.lp-prof-chip:hover { color: var(--charcoal); border-color: var(--teal-light); }
+.lp-prof-chip:active { transform: scale(0.96); }
+.lp-prof-chip--active {
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--white);
+}
+.lp-prof-chip--active:hover { color: var(--white); border-color: var(--charcoal); }
+
+/* Sticky-nav scrolled state — JS toggles .lp-nav--scrolled on the
+   <nav> when the hero scrolls past. The @supports block above
+   handles modern Chromium via animation-timeline; this fallback
+   covers Safari + Firefox. */
+.lp-nav--scrolled {
+  padding-top: calc(var(--sat) + 8px);
+  padding-bottom: 8px;
+  border-bottom-color: var(--border-lt);
+  background: color-mix(in srgb, var(--white) 94%, transparent);
+}
+
+/* Inline anchor link variant in the nav (for "Precios" / "FAQ") —
+   matches lp-nav-link visually but is an <a> not a <button>. */
+.lp-nav-link--anchor {
+  text-decoration: none;
+}
+
+/* Section headers shared by features / FAQ / pricing — used by the
+   new sections only. The hero keeps its own .lp-hero-title. */
+.lp-section-title {
+  font-family: var(--font-d);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--charcoal);
+  text-align: center;
+  margin: 0 0 8px;
+}
+.lp-section-sub {
+  font-size: 16px;
+  color: var(--charcoal-md);
+  text-align: center;
+  max-width: 540px;
+  margin: 0 auto 36px;
+  line-height: 1.5;
+}
+
+/* ── Trust strip ──
+   Three pills between hero and features. Cream background so it
+   reads as an inline trust signal, not another section heading. */
+.lp-trust { padding: 28px 0 0; }
+.lp-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.lp-trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--cream);
+  border: 1px solid var(--cream-deeper);
+  border-radius: var(--radius-pill);
+  color: var(--charcoal-md);
+  font-size: 13px;
+  font-weight: 600;
+  /* Same reveal pattern as feature cards — fade + 16px lift,
+     staggered via --i. */
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+.lp-trust-pill.is-in { opacity: 1; transform: translateY(0); }
+.lp-trust-pill svg { color: var(--teal-dark); flex-shrink: 0; }
+
+/* ── Feature deck ──
+   3x2 grid (desktop) / 1x6 (mobile). Each card is a tiny pitch:
+   icon + title + body. Hover lift mirrors the mockup-strip cards
+   so the page feels visually consistent. */
+.lp-feature-deck {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.lp-feature-card {
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s ease,
+              transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.4s ease,
+              box-shadow 0.4s ease;
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.lp-feature-card.is-in { opacity: 1; transform: translateY(0); }
+.lp-feature-card:hover {
+  border-color: var(--teal-light);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+}
+.lp-feature-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.lp-feature-title {
+  font-family: var(--font-d);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+.lp-feature-body {
+  font-size: 14px;
+  color: var(--charcoal-md);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Pricing teaser ── */
+.lp-pricing { padding: 56px 0 88px; }
+.lp-pricing-card {
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--cream);
+  border: 1px solid var(--cream-deeper);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  text-align: center;
+  position: relative;
+  /* Reveal-on-scroll: same pattern as feature cards. */
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+.lp-pricing-card.is-in { opacity: 1; transform: translateY(0); }
+.lp-pricing-eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--teal-dark);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.lp-pricing-title {
+  font-family: var(--font-d);
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--charcoal);
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.lp-pricing-amount { font-size: 48px; line-height: 1; }
+.lp-pricing-period {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--charcoal-md);
+}
+.lp-pricing-sub {
+  font-size: 14px;
+  color: var(--charcoal-md);
+  margin: 0 0 24px;
+}
+.lp-pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.lp-pricing-features li {
+  font-size: 14px;
+  color: var(--charcoal-md);
+  padding-left: 22px;
+  position: relative;
+  line-height: 1.45;
+}
+.lp-pricing-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 800;
+  color: var(--teal-dark);
+}
+.lp-pricing-ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.lp-pricing-ctas .lp-btn { width: 100%; max-width: 320px; }
+
+/* ── FAQ ──
+   Native <details>/<summary> for keyboard + screen-reader support.
+   Custom chevron rotates 180° on [open]. */
+.lp-faq { padding: 56px 0 88px; }
+.lp-faq-list {
+  max-width: 720px;
+  margin: 32px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lp-faq-item {
+  background: var(--white);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease,
+              opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Reveal-on-scroll. */
+  opacity: 0;
+  transform: translateY(12px);
+  transition-delay: calc(var(--i, 0) * 50ms);
+}
+.lp-faq-item.is-in { opacity: 1; transform: translateY(0); }
+.lp-faq-item[open] {
+  border-color: var(--teal-light);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+.lp-faq-q {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 18px;
+  font-family: var(--font-d);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--charcoal);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-faq-q::-webkit-details-marker { display: none; } /* Safari */
+.lp-faq-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--charcoal-md);
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+.lp-faq-item[open] .lp-faq-chevron { transform: rotate(180deg); color: var(--teal-dark); }
+.lp-faq-a {
+  padding: 0 18px 18px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--charcoal-md);
+}
+
+/* ── Footer (richer) ──
+   Replaces the old logo-only footer. Three columns on desktop;
+   stacks on mobile. */
+.lp-footer { padding: 40px 0 32px; }
+.lp-footer-inner {
+  display: grid;
+  grid-template-columns: minmax(160px, auto) 1fr auto;
+  align-items: start;
+  gap: 32px;
+}
+.lp-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--charcoal-md);
+}
+.lp-footer-copy {
+  font-weight: 500;
+  color: var(--charcoal-xl);
+  margin-left: 4px;
+}
+.lp-footer-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+.lp-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lp-footer-col-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.lp-footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--charcoal-md);
+  text-decoration: none;
+  text-align: left;
+  transition: color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-footer-link:hover { color: var(--teal-dark); }
+.lp-footer-link--btn { font: inherit; }
+.lp-footer-meta {
+  font-size: 12px;
+  color: var(--charcoal-xl);
+  align-self: end;
+  white-space: nowrap;
+}
+
+/* ── Mini-tile additions ──
+   Modality eyebrow variants + cancelled status + the muted-down
+   look that wasn't in the v1 mocks. */
+.lp-mini-eyebrow--telefonica {
+  color: var(--green);
+  background: var(--green-bg, rgba(122, 173, 138, 0.14));
+}
+.lp-mini-eyebrow--adomicilio {
+  color: var(--amber);
+  background: var(--amber-bg, rgba(232, 184, 108, 0.16));
+}
+.lp-mini-row--cancelled .lp-mini-row-title { color: var(--charcoal-xl); text-decoration: line-through; }
+.lp-mini-badge--cancelled {
+  background: var(--charcoal-xl, #B8B8B8);
+  color: var(--white);
+}
+
+/* ── Responsive overrides for the new sections ── */
+@media (max-width: 880px) {
+  .lp-section-title { font-size: 26px; }
+  .lp-section-sub { font-size: 15px; margin-bottom: 28px; }
+  .lp-feature-deck { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .lp-feature-card { padding: 18px; }
+  .lp-pricing-amount { font-size: 40px; }
+  .lp-footer-inner {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .lp-footer-meta { align-self: start; }
+}
+@media (max-width: 640px) {
+  .lp-feature-deck { grid-template-columns: 1fr; }
+  .lp-trust-row { flex-direction: column; align-items: stretch; }
+  .lp-trust-pill { justify-content: center; }
+  .lp-pricing-card { padding: 28px 22px; }
+  .lp-footer-cols {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+}
+
 /* ── REDUCED MOTION GUARD ──
    Disables all animations, transitions, and transforms for users who prefer
    reduced motion. Kept last so it wins the cascade. */
