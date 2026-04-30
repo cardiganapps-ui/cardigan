@@ -8,7 +8,8 @@ import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 
 export function Documents() {
-  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast } = useCardigan();
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast, subscription, requirePro } = useCardigan();
+  const isPro = !!subscription?.isPro;
   const { t } = useT();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest"); // newest | name
@@ -133,14 +134,24 @@ export function Documents() {
         <input placeholder={t("docs.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* Upload button */}
+      {/* Upload button — Pro-gated. Non-Pro users see a "PRO" badge
+          on the button and tapping pops the upgrade sheet instead of
+          opening the file picker. */}
       <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         style={{ display:"none" }} onChange={handleFileSelect} />
-      <button className="btn btn-primary" style={{ width:"100%", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:12 }}
-        onClick={() => fileInputRef.current?.click()}
+      <button className="btn btn-primary" style={{ width:"100%", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:12 }}
+        onClick={() => isPro ? fileInputRef.current?.click() : requirePro?.("documents")}
         disabled={uploading}>
         <IconUpload size={14} />
         {uploading ? "..." : t("docs.uploadBtn")}
+        {!isPro && (
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
+            padding: "2px 6px", borderRadius: 999,
+            background: "rgba(255,255,255,0.18)", color: "var(--white)",
+            lineHeight: 1.2,
+          }}>PRO</span>
+        )}
       </button>
 
       {/* Patient picker after file selection */}

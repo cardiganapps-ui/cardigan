@@ -130,6 +130,18 @@ export function useSubscription(user) {
     return "expired";
   }, [user, loading, compGranted, subscribedActive, trialActive]);
 
+  // `isPro` is the gate for premium-only features (document uploads,
+  // note encryption, calendar sync). Stricter than `accessState`:
+  // trial users have full app access for their 30-day window but DO
+  // NOT get premium features unless they've subscribed or been comp'd.
+  // Admins always pass.
+  const isPro = useMemo(() => {
+    if (isAdmin(user)) return true;
+    if (compGranted) return true;
+    if (subscribedActive) return true;
+    return false;
+  }, [user, compGranted, subscribedActive]);
+
   // Convenience flags for callers — derived once here so consumers
   // don't recompute equality strings inline.
   const accessExpired = accessState === "expired";
@@ -206,6 +218,7 @@ export function useSubscription(user) {
     daysLeftInTrial,
     subscribedActive,
     compGranted,
+    isPro,
     referralInfo,
     referralLoading,
     fetchReferralInfo,

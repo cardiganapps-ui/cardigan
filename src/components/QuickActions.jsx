@@ -22,13 +22,21 @@ const ACTIONS = QUICK_ACTIONS;
 
 export function QuickActions() {
   const { t } = useT();
-  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction } = useCardigan();
+  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
+  const isPro = !!subscription?.isPro;
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
   const [quickNote, setQuickNote] = useState(null);
 
   const handleAction = async (key) => {
     setMenuOpen(false);
+    // Document upload is Pro-gated. Intercept here so non-Pro users
+    // tapping the FAB option get the upgrade prompt instead of the
+    // upload sheet — same gate the Documents screen enforces.
+    if (key === "document" && !isPro) {
+      requirePro?.("documents");
+      return;
+    }
     if (key === "payment") openRecordPaymentModal(null);
     else if (key === "note") {
       // Quick-capture: skip the sheet, go straight to editor

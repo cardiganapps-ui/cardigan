@@ -6,6 +6,8 @@ import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
+const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet.jsx").then(m => ({ default: m.ProUpgradeSheet })));
+const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt.jsx"));
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
@@ -63,6 +65,11 @@ import { useNotifications } from "./hooks/useNotifications";
 import { useSubscription } from "./hooks/useSubscription";
 import "./utils/logBuffer";
 import "./styles/index.css";
+
+// Days-remaining thresholds at which we surface the trial reminder
+// modal. Module-level so the dependency array of the gating effect
+// stays stable across renders.
+const TRIAL_REMINDER_THRESHOLDS = [15, 10, 5, 3, 2, 1];
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
@@ -542,6 +549,62 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     setWelcomePaymentOpen(true);
   }, [persistWelcomeProSeen]);
 
+  // ── Pro feature gating ──
+  // Centralized "open the upgrade sheet" so any screen can call
+  // requirePro("documents" | "encryption" | "calendar") without
+  // mounting its own copy of the sheet. The sheet renders once at App
+  // level, far enough below the StripePaymentSheet that subscribing
+  // from inside it can stack cleanly.
+  const [proSheetOpen, setProSheetOpen] = useState(false);
+  const [proSheetFeature, setProSheetFeature] = useState(null);
+  const requirePro = useCallback((feature) => {
+    // Trial users + expired users land here. Pro users (active sub,
+    // comp, admin) should never see this sheet — callers must short-
+    // circuit on `subscription.isPro` before invoking.
+    setProSheetFeature(feature || "default");
+    setProSheetOpen(true);
+  }, []);
+
+  // ── Trial reminder prompt (15 / 10 / 5 / 3 / 2 / 1 days left) ──
+  // Fires at most once per (user, day) combination so the user isn't
+  // pestered if they reload mid-day, and doesn't fire at all once
+  // they've subscribed or been comp'd. Dedupe key encodes the YYYY-MM-DD
+  // local date — a fresh login the next morning re-evaluates.
+  const [trialReminderOpen, setTrialReminderOpen] = useState(false);
+  const [trialReminderDays, setTrialReminderDays] = useState(null);
+  const [trialReminderPaymentOpen, setTrialReminderPaymentOpen] = useState(false);
+  useEffect(() => {
+    if (demo || viewAsUserId) return;
+    if (!user?.id) return;
+    if (subscription.accessState !== "trial") return;
+    const days = subscription.daysLeftInTrial;
+    if (typeof days !== "number") return;
+    if (!TRIAL_REMINDER_THRESHOLDS.includes(days)) return;
+
+    const today = new Date();
+    const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const lsKey = `cardigan.trialReminder.lastShown.${user.id}`;
+    let last = null;
+    try { last = localStorage.getItem(lsKey); }
+    catch { /* private mode — show anyway */ }
+    if (last === dateKey) return;
+
+    // Defer slightly so the modal doesn't compete with the welcome-to-
+    // Pro modal on a brand-new user's first session — and so it lands
+    // a beat after auth/loading settles. Anything earlier feels jumpy.
+    const timer = setTimeout(() => {
+      setTrialReminderDays(days);
+      setTrialReminderOpen(true);
+      try { localStorage.setItem(lsKey, dateKey); }
+      catch { /* fall through */ }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [demo, viewAsUserId, user?.id, subscription.accessState, subscription.daysLeftInTrial]);
+  const subscribeFromTrialReminder = useCallback(() => {
+    setTrialReminderOpen(false);
+    setTrialReminderPaymentOpen(true);
+  }, []);
+
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(demo ? null : user?.user_metadata?.avatar);
@@ -738,6 +801,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     // `...data` so it wins.
     readOnly,
     subscription,
+    requirePro,
+    // Pro-gated mutation: any caller that bypasses the UI badges (e.g.
+    // a direct path inside PatientExpediente) still gets short-circuited
+    // here \u2014 we open the upgrade sheet and resolve the call as a no-op
+    // so the caller's `await` doesn't throw.
+    uploadDocument: subscription?.isPro
+      ? data.uploadDocument
+      : async () => { requirePro("documents"); return null; },
     deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
     deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
@@ -768,7 +839,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, userName, userInitial, readOnly, subscription, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: show ProfessionOnboarding before mounting the
   // main shell when the user has no user_profiles row yet. Demo mode
@@ -828,6 +899,42 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             onClose={() => setWelcomePaymentOpen(false)}
             onSuccess={() => {
               setWelcomePaymentOpen(false);
+              showSuccess(t("subscription.toastSubscribed"));
+            }}
+          />
+        )}
+      </Suspense>
+      {/* Pro feature upgrade prompt — opens whenever a non-Pro user
+          tries to use a gated feature. Centralized here so any screen
+          can trigger via `requirePro(featureKey)` from context. */}
+      <Suspense fallback={null}>
+        {proSheetOpen && (
+          <ProUpgradeSheet
+            open={proSheetOpen}
+            feature={proSheetFeature}
+            onClose={() => setProSheetOpen(false)}
+          />
+        )}
+      </Suspense>
+      {/* Trial reminder — fires once per day at 15/10/5/3/2/1 days left.
+          The dedicated payment sheet next to it stays mounted so the
+          subscribe path keeps working even after the reminder closes. */}
+      <Suspense fallback={null}>
+        {trialReminderOpen && (
+          <TrialReminderPrompt
+            open={trialReminderOpen}
+            daysLeft={trialReminderDays}
+            onSubscribe={subscribeFromTrialReminder}
+            onDismiss={() => setTrialReminderOpen(false)}
+          />
+        )}
+        {trialReminderPaymentOpen && (
+          <StripePaymentSheet
+            open={trialReminderPaymentOpen}
+            daysLeftInTrial={subscription.daysLeftInTrial}
+            onClose={() => setTrialReminderPaymentOpen(false)}
+            onSuccess={() => {
+              setTrialReminderPaymentOpen(false);
               showSuccess(t("subscription.toastSubscribed"));
             }}
           />

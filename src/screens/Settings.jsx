@@ -36,9 +36,25 @@ function notifErrorKey(code) {
   }
 }
 
+// Small "PRO" pill rendered next to gated row titles. Visual cue that
+// the row needs an active subscription before it'll do anything.
+// Charcoal-on-cream so it reads clearly without screaming for
+// attention — Cardigan's badges throughout the app share this tone.
+function ProBadge() {
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
+      padding: "2px 6px", borderRadius: 999,
+      background: "var(--charcoal)", color: "var(--white)",
+      lineHeight: 1.2,
+    }}>PRO</span>
+  );
+}
+
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription } = useCardigan();
+  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro } = useCardigan();
+  const isPro = !!subscription?.isPro;
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
   const mfa = useMfa();
@@ -681,11 +697,17 @@ export function Settings({ user, signOut, refreshUser }) {
               </div>
             )}
             {!readOnly && (
-              <div className="settings-row" onClick={() => setActiveSheet("calendar")}>
-                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
+              <div
+                className="settings-row"
+                onClick={() => isPro ? setActiveSheet("calendar") : requirePro?.("calendar")}
+              >
+                <div className="settings-row-icon" style={{ color: isPro ? "var(--teal-dark)" : "var(--charcoal-xl)" }}><IconCalendar size={18} /></div>
                 <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("settings.calendarLabel")}</div>
-                  <div className="settings-row-sub">{calendarSummary}</div>
+                  <div className="settings-row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    {t("settings.calendarLabel")}
+                    {!isPro && <ProBadge />}
+                  </div>
+                  <div className="settings-row-sub">{isPro ? calendarSummary : t("settings.proRowLockedSub")}</div>
                 </div>
                 <IconChevron />
               </div>
@@ -722,16 +744,30 @@ export function Settings({ user, signOut, refreshUser }) {
             </div>
             {noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
               <div className="settings-row" onClick={() => {
+                // Existing-encryption users (status !== "disabled") can
+                // always manage / unlock / change their setup, even if
+                // they later drop off Pro — we never strand someone
+                // outside their already-encrypted notes. Only the
+                // brand-new "set up encryption" flow is Pro-gated.
+                if (!isPro && noteCrypto.status === "disabled") {
+                  requirePro?.("encryption");
+                  return;
+                }
                 setEncUiError("");
                 if (noteCrypto.status === "disabled") { setEncSetupPass1(""); setEncSetupPass2(""); }
                 setActiveSheet("encryption");
               }}>
-                <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : noteCrypto.status === "locked" ? "var(--charcoal-md)" : "var(--teal-dark)" }}>
+                <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : noteCrypto.status === "locked" ? "var(--charcoal-md)" : (!isPro && noteCrypto.status === "disabled" ? "var(--charcoal-xl)" : "var(--teal-dark)") }}>
                   <IconLock size={18} />
                 </div>
                 <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("settings.encryptionTitle")}</div>
-                  <div className="settings-row-sub">{encSummary}</div>
+                  <div className="settings-row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    {t("settings.encryptionTitle")}
+                    {!isPro && noteCrypto.status === "disabled" && <ProBadge />}
+                  </div>
+                  <div className="settings-row-sub">
+                    {!isPro && noteCrypto.status === "disabled" ? t("settings.proRowLockedSub") : encSummary}
+                  </div>
                 </div>
                 <IconChevron />
               </div>
