@@ -623,9 +623,12 @@ export function Settings({ user, signOut, refreshUser }) {
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconSparkle size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.subscriptionTitle")}</div>
-            <div className="settings-row-sub">{(() => {
+            <div className="settings-row-sub" style={subscription?.subscription?.status === "past_due" ? { color: "var(--amber)" } : undefined}>{(() => {
               const s = subscription || {};
               if (s.compGranted) return t("subscription.statusComp");
+              // Past-due jumps the line so the row reflects the
+              // payment problem before the generic "active" label.
+              if (s.subscription?.status === "past_due") return t("subscription.statusPastDue");
               if (s.subscribedActive) return t("subscription.statusActive");
               if (s.accessState === "trial" && s.daysLeftInTrial != null) {
                 return s.daysLeftInTrial <= 1
@@ -1235,28 +1238,40 @@ export function Settings({ user, signOut, refreshUser }) {
                 const state = s.accessState || "loading";
                 const isComp = s.compGranted;
                 const isActive = s.subscribedActive;
+                // past_due means a renewal payment failed; Stripe is
+                // retrying behind the scenes. We keep the user on Pro
+                // for the grace window (it'd be hostile to lock a
+                // therapist out mid-week over a single card glitch),
+                // but we DO surface a clear amber warning + a one-tap
+                // "fix payment" route into the Stripe portal.
+                const isPastDue = s.subscription?.status === "past_due";
                 const periodEnd = s.subscription?.current_period_end;
                 const periodEndStr = periodEnd
                   ? new Date(periodEnd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
                   : null;
                 const accentColor = isComp ? "var(--green)"
+                  : isPastDue ? "var(--amber)"
                   : isActive ? "var(--teal-dark)"
                   : state === "expired" ? "var(--red)"
                   : "var(--teal-dark)";
                 const accentBg = isComp ? "var(--green-bg)"
+                  : isPastDue ? "var(--amber-bg)"
                   : isActive ? "var(--teal-pale)"
                   : state === "expired" ? "var(--red-bg)"
                   : "var(--cream)";
                 const HeroIcon = isComp ? IconCheck
+                  : isPastDue ? IconStar
                   : isActive ? IconSparkle
                   : state === "expired" ? IconLock
                   : IconStar;
                 const heroTitle = isComp ? t("subscription.statusCompTitle")
+                  : isPastDue ? t("subscription.statusPastDueTitle")
                   : isActive ? t("subscription.statusActiveTitle")
                   : state === "trial" ? t("subscription.statusTrialTitle")
                   : state === "expired" ? t("subscription.statusExpiredTitle")
                   : t("subscription.statusLoading");
                 const heroSub = isComp ? t("subscription.compExplain")
+                  : isPastDue ? t("subscription.statusPastDueBody")
                   : isActive && periodEndStr
                     ? (s.subscription?.cancel_at_period_end
                         ? t("subscription.cancelAt", { date: periodEndStr })

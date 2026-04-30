@@ -1018,6 +1018,20 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           </div>
         )}
 
+        {/* Past-due banner — sub is in Stripe's grace window after a
+            failed renewal. We keep Pro access (Stripe is retrying the
+            card behind the scenes) but warn the user so they fix it
+            before the grace window expires and access drops. */}
+        {!demo && !viewAsUserId
+          && subscription.subscription?.status === "past_due" && (
+          <div className="app-banner app-banner--trial">
+            <span className="app-banner-text">{t("subscription.pastDueBanner")}</span>
+            <button onClick={() => navigate("settings")} className="app-banner-action">
+              {t("subscription.fixPaymentShort")}
+            </button>
+          </div>
+        )}
+
         {/* Trial-soon-to-expire banner — only when in the last 7 days
             of trial AND no active sub yet. Non-blocking; the user can
             keep using the app. The 7-day threshold matches typical
