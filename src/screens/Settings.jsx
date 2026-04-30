@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash } from "../components/Icons";
+import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
+import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
 import { PasswordInput } from "../components/PasswordInput";
 import { Toggle } from "../components/Toggle";
@@ -424,6 +425,28 @@ export function Settings({ user, signOut, refreshUser }) {
     }
   };
 
+  // ── Derived row subtitles for the consolidated rows ─────────────
+  // Notifications collapses 3 inline visual layouts into one row whose
+  // subtitle reflects the underlying state machine.
+  const notifSummary = (() => {
+    if (!notifications?.supported) return t("settings.notifSummaryUnsupported");
+    if (notifications.needsInstall) return t("settings.notifSummaryNeedsInstall");
+    if (notifications.permission === "denied") return t("settings.notifSummaryBlocked");
+    if (!notifications.enabled) return t("settings.notifSummaryDisabled");
+    const m = notifications.reminderMinutes;
+    if (m === 60) return t("settings.notifSummaryEnabledHour");
+    return t("settings.notifSummaryEnabled", { minutes: m });
+  })();
+  const encSummary = noteCrypto?.status === "unlocked"
+    ? t("settings.encSummaryActive")
+    : noteCrypto?.status === "locked"
+      ? t("settings.encSummaryLocked")
+      : t("settings.encSummaryDisabled");
+  const { hasToken: hasCalendarToken } = useCalendarToken();
+  const calendarSummary = hasCalendarToken
+    ? t("settings.calendarSummarySynced")
+    : t("settings.calendarSummaryNotLinked");
+
   return (
     <div className="page">
       <div className="section" style={{ paddingTop:16 }}>
@@ -459,348 +482,18 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       </div>
 
-      <div className="settings-label">{t("nav.principal")}</div>
+      {/* ── CUENTA ── */}
+      <div className="settings-label">{t("settings.sectionAccount")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("profile")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUser size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.profile")}</div>
-            <div className="settings-row-sub">{userName}</div>
-          </div>
-          <IconChevron />
-        </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("theme")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{theme?.resolvedTheme === "dark" ? <IconMoon size={18} /> : <IconSun size={18} />}</div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.appearance")}</div>
-            <div className="settings-row-sub">{theme?.preference === "light" ? t("settings.themeLight") : theme?.preference === "dark" ? t("settings.themeDark") : t("settings.themeSystem")}</div>
-          </div>
-          <IconChevron />
-        </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("accent")}>
-          <div className="settings-row-icon" aria-hidden="true">
-            <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:"var(--teal)", border:"1px solid var(--border-lt)" }} />
-          </div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.accentColor")}</div>
-            <div className="settings-row-sub">{t(`settings.accent.${accentTheme?.accent || "default"}`)}</div>
-          </div>
-          <IconChevron />
-        </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={restartTutorial}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
-            <div className="settings-row-sub">{t("tutorial.settingsRowSub")}</div>
-          </div>
-          <IconChevron />
-        </div>
-      </div>
-
-      {notifications?.supported && (
-        <>
-          <div className="settings-label">{t("settings.notificationsSection")}</div>
-
-          {/* ── PWA install gate (iOS Safari) ──
-             When the user is on an iOS Safari tab rather than the
-             installed PWA, the whole toggle flow is a dead end — push
-             just doesn't work in Safari tabs. Surface the install
-             guidance as a first-class card instead of a disabled row. */}
-          {notifications.needsInstall ? (
-            <PushInstallCard />
-          ) : notifications.permission === "denied" ? (
-            /* ── Permission blocked card ──
-               Replaces the toggle entirely when the OS-level permission
-               is denied. iOS gives us no programmatic path to the
-               settings app, so the job is purely instructional. */
-            <div className="push-amber-card" role="alert">
-              <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-                <div style={{
-                  flexShrink:0, width:36, height:36, borderRadius:"50%",
-                  background:"var(--amber)", color:"var(--white)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                }}>
-                  <IconBell size={18} />
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{
-                    fontFamily:"var(--font-d)", fontWeight:800,
-                    fontSize:"var(--text-md)", color:"var(--charcoal)",
-                  }}>
-                    {t("notifications.blockedTitle")}
-                  </div>
-                  <div style={{
-                    fontSize:"var(--text-sm)", color:"var(--charcoal-md)",
-                    marginTop:4, lineHeight:1.4,
-                  }}>
-                    {t("notifications.blockedBody")}
-                  </div>
-                </div>
-              </div>
-              <ol style={{
-                listStyle:"none", margin:0, padding:0,
-                display:"flex", flexDirection:"column", gap:6,
-              }}>
-                {[
-                  t("notifications.blockedStep1"),
-                  t("notifications.blockedStep2"),
-                  t("notifications.blockedStep3"),
-                ].map((step, i) => (
-                  <li key={i} style={{
-                    display:"flex", gap:10, alignItems:"center",
-                    fontSize:"var(--text-sm)", color:"var(--charcoal)",
-                    padding:"6px 8px",
-                    background:"rgba(255,255,255,0.55)",
-                    borderRadius:8,
-                  }}>
-                    <span style={{
-                      flexShrink:0, width:20, height:20, borderRadius:"50%",
-                      background:"var(--amber)", color:"var(--white)",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      fontSize:11, fontWeight:800,
-                    }}>{i + 1}</span>
-                    <span style={{ lineHeight:1.3 }}>{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ) : (
-            <div className="card" style={{ margin:"0 16px", overflow:"hidden" }}>
-              {/* ── Reconciliation inline banner ──
-                 Replaces the previous toast-only surface: an expired
-                 subscription is slightly more serious than a 3-second
-                 toast conveys, and having a "Reactivar" button inline
-                 means the remediation is one tap away. */}
-              {notifications.reconciledOff && (
-                <div className="push-inline-banner">
-                  <div style={{
-                    flexShrink:0, width:22, height:22, borderRadius:"50%",
-                    background:"var(--amber)", color:"var(--white)",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    marginTop:2,
-                  }}>
-                    <IconBell size={12} />
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{
-                      fontFamily:"var(--font-d)", fontWeight:700,
-                      fontSize:"var(--text-sm)", color:"var(--charcoal)",
-                    }}>
-                      {t("notifications.reconciledBannerTitle")}
-                    </div>
-                    <div style={{ fontSize:12, color:"var(--charcoal-md)", marginTop:2, lineHeight:1.35 }}>
-                      {t("notifications.reconciledBannerBody")}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleReconcileReactivate}
-                      disabled={togglePending}
-                      style={{
-                        marginTop:8, height:28, padding:"0 12px",
-                        fontSize:12, fontWeight:700,
-                        background:"var(--amber)", color:"var(--white)",
-                        border:"none", borderRadius:6, cursor: togglePending ? "default" : "pointer",
-                        opacity: togglePending ? 0.7 : 1,
-                      }}
-                    >
-                      {t("notifications.reconciledBannerAction")}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label={t("close")}
-                    onClick={() => notifications.clearReconciliationMessage?.()}
-                    style={{
-                      flexShrink:0, width:24, height:24, border:"none",
-                      background:"transparent", cursor:"pointer",
-                      color:"var(--charcoal-xl)",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                    }}
-                  >
-                    <IconX size={12} />
-                  </button>
-                </div>
-              )}
-
-              <div className="settings-row">
-                <div
-                  className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
-                  style={{ color:"var(--teal-dark)" }}
-                >
-                  <IconBell size={18} />
-                </div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("notifications.sessionReminders")}</div>
-                  <div className="settings-row-sub">
-                    {notifications.enabled
-                      ? t("notifications.enabled")
-                      : t("notifications.sessionRemindersDesc")}
-                  </div>
-                </div>
-                <Toggle
-                  on={notifications.enabled}
-                  onToggle={handleToggleNotifications}
-                  disabled={togglePending}
-                  ariaLabel={t("notifications.sessionReminders")}
-                />
-              </div>
-
-              <Expando open={!!notifications.enabled}>
-                {/* ── Reminder lead time (inline segmented control) ──
-                   Replaces the former full-screen sheet. Three options
-                   don't earn a sheet, and the inline pill stays in
-                   context with the toggle and preview. */}
-                <div style={{ padding:"4px 14px 12px" }}>
-                  <div style={{
-                    fontSize:12, fontWeight:700,
-                    color:"var(--charcoal-md)", letterSpacing:0.2,
-                    textTransform:"uppercase",
-                    margin:"6px 2px 8px",
-                  }}>
-                    {t("notifications.reminderTime")}
-                  </div>
-                  <SegmentedControl
-                    role="group"
-                    ariaLabel={t("notifications.reminderTime")}
-                    items={[
-                      { k: 15, l: "15 min" },
-                      { k: 30, l: "30 min" },
-                      { k: 60, l: "1 hr" },
-                    ]}
-                    value={notifications.reminderMinutes}
-                    onChange={async (v) => {
-                      if (v === notifications.reminderMinutes) return;
-                      haptic.tap();
-                      const res = await notifications.setReminderMinutes(v);
-                      if (res && !res.ok) {
-                        showToast(t(notifErrorKey(res.code)), "error");
-                      }
-                    }}
-                  />
-                </div>
-
-              </Expando>
-            </div>
-          )}
-        </>
-      )}
-
-      {!readOnly && (
-        <>
-          <div className="settings-label">{t("settings.calendarLabel")}</div>
-          <div className="card" style={{ margin:"0 16px", padding:"14px 16px" }}>
-            <CalendarLinkPanel readOnly={readOnly} />
-          </div>
-        </>
-      )}
-
-      <div className="settings-label">{t("settings.privacyLabel")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        {/* Two-factor (TOTP) — security row sits at the top of the
-            privacy section since it's the strongest single account-
-            level protection. */}
-        {!readOnly && (
-          <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
-            onClick={() => {
-              if (mfa.loading) return;
-              setMfaUiError(""); setMfaCode("");
-              if (mfa.factors.length === 0) {
-                setActiveSheet("mfaEnroll");
-                if (!mfa.enrollment) mfa.enroll();
-              } else {
-                setMfaUnenrollId(mfa.factors[0].id);
-                setActiveSheet("mfaManage");
-              }
-            }}>
-            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">{t("settings.mfaTitle")}</div>
-              <div className="settings-row-sub">
-                {mfa.loading ? "…" : mfa.factors.length > 0 ? t("settings.mfaActive") : t("settings.mfaInactive")}
-              </div>
-            </div>
-            <IconChevron />
-          </div>
-        )}
-        {/* Note encryption — primary affordance. The disabled / locked /
-            unlocked states each render their own row(s). */}
-        {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (
-          <>
-            {noteCrypto.status === "disabled" && showEncryptionSetup && (
-              <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncSetupPass1(""); setEncSetupPass2(""); setActiveSheet("encSetup"); }}>
-                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("settings.encEnable")}</div>
-                  <div className="settings-row-sub">{t("settings.encEnableSub")}</div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
-            {(noteCrypto.status === "locked" || noteCrypto.status === "unlocked") && (
-              <>
-                <div className="settings-row">
-                  <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : "var(--charcoal-md)" }}><IconKey size={18} /></div>
-                  <div style={{ flex:1 }}>
-                    <div className="settings-row-title">{t("settings.encStatus")}</div>
-                    <div className="settings-row-sub">{noteCrypto.status === "unlocked" ? t("settings.encStatusUnlocked") : t("settings.encStatusLocked")}</div>
-                  </div>
-                </div>
-                {noteCrypto.status === "unlocked" && (
-                  <>
-                    <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncChangeNew1(""); setEncChangeNew2(""); setActiveSheet("encChange"); }}>
-                      <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconEdit size={18} /></div>
-                      <div style={{ flex:1 }}>
-                        <div className="settings-row-title">{t("settings.encChange")}</div>
-                        <div className="settings-row-sub">{t("settings.encChangeSub")}</div>
-                      </div>
-                      <IconChevron />
-                    </div>
-                    <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setEncUiError(""); setEncConfirmDisable(""); setActiveSheet("encDisable"); }}>
-                      <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
-                      <div style={{ flex:1 }}>
-                        <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.encDisable")}</div>
-                        <div className="settings-row-sub">{t("settings.encDisableSub")}</div>
-                      </div>
-                      <IconChevron />
-                    </div>
-                  </>
-                )}
-                {noteCrypto.status === "locked" && (
-                  <div className="settings-row" style={{ paddingTop:6, paddingBottom:14 }}>
-                    <div style={{ flex:1, fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-                      {t("settings.encLockedHint")}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-        {!readOnly && (
-          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }}
-            onClick={() => { if (!exporting) { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); } }}>
-            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">{t("settings.privacyExport")}</div>
-            </div>
-            {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
-          </div>
-        )}
-      </div>
-
-      <div className="settings-label">{t("nav.account")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        {/* Plan moved here from its own section — it's an account-scoped
-            attribute, not a top-level concern. */}
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => openSheet("plan")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
+        <div className="settings-row" onClick={() => openSheet("plan")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconSparkle size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.planActive")}</div>
             <div className="settings-row-sub">{t("settings.planValue")}</div>
           </div>
           <IconChevron />
         </div>
-        <div className="settings-row" style={{ cursor:"pointer" }}
+        <div className="settings-row"
           onClick={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
           <div style={{ flex:1 }}>
@@ -811,40 +504,189 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
+      </div>
+
+      {/* ── APARIENCIA ── */}
+      <div className="settings-label">{t("settings.sectionAppearance")}</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" onClick={() => openSheet("theme")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{theme?.resolvedTheme === "dark" ? <IconMoon size={18} /> : <IconSun size={18} />}</div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.appearance")}</div>
+            <div className="settings-row-sub">{theme?.preference === "light" ? t("settings.themeLight") : theme?.preference === "dark" ? t("settings.themeDark") : t("settings.themeSystem")}</div>
+          </div>
+          <IconChevron />
+        </div>
+        <div className="settings-row" onClick={() => openSheet("accent")}>
+          <div className="settings-row-icon" aria-hidden="true">
+            <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:"var(--teal)", border:"1px solid var(--border-lt)" }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.accentColor")}</div>
+            <div className="settings-row-sub">{t(`settings.accent.${accentTheme?.accent || "default"}`)}</div>
+          </div>
+          <IconChevron />
+        </div>
+      </div>
+
+      {/* ── NOTIFICACIONES ──
+         Single row that opens a sub-sheet absorbing all of the
+         notification UI states (install gate, blocked, toggle +
+         reminder time). Used to be three different inline layouts. */}
+      {notifications?.supported && (
+        <>
+          <div className="settings-label">{t("settings.notificationsSection")}</div>
+          <div className="card" style={{ margin:"0 16px" }}>
+            <div className="settings-row" onClick={() => setActiveSheet("notifications")}>
+              <div
+                className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
+                style={{ color:"var(--teal-dark)" }}
+              >
+                <IconBell size={18} />
+              </div>
+              <div style={{ flex:1 }}>
+                <div className="settings-row-title">{t("settings.notificationsRowTitle")}</div>
+                <div className="settings-row-sub">{notifSummary}</div>
+              </div>
+              <IconChevron />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── SEGURIDAD ── */}
+      {(!readOnly || (noteCrypto && noteCrypto.status !== "loading" && noteCrypto.status !== "disabled")) && (
+        <>
+          <div className="settings-label">{t("settings.sectionSecurity")}</div>
+          <div className="card" style={{ margin:"0 16px" }}>
+            {!readOnly && (
+              <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
+                onClick={() => {
+                  if (mfa.loading) return;
+                  setMfaUiError(""); setMfaCode("");
+                  if (mfa.factors.length === 0) {
+                    setActiveSheet("mfaEnroll");
+                    if (!mfa.enrollment) mfa.enroll();
+                  } else {
+                    setMfaUnenrollId(mfa.factors[0].id);
+                    setActiveSheet("mfaManage");
+                  }
+                }}>
+                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconShield size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("settings.mfaTitle")}</div>
+                  <div className="settings-row-sub">
+                    {mfa.loading ? "…" : mfa.factors.length > 0 ? t("settings.mfaActive") : t("settings.mfaInactive")}
+                  </div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
+            {!readOnly && noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
+              <div className="settings-row" onClick={() => {
+                setEncUiError("");
+                if (noteCrypto.status === "disabled") { setEncSetupPass1(""); setEncSetupPass2(""); }
+                setActiveSheet("encryption");
+              }}>
+                <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : noteCrypto.status === "locked" ? "var(--charcoal-md)" : "var(--teal-dark)" }}>
+                  <IconLock size={18} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("settings.encryptionTitle")}</div>
+                  <div className="settings-row-sub">{encSummary}</div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
+            {!readOnly && (
+              <div className="settings-row" onClick={() => setActiveSheet("signOutEverywhere")}>
+                <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
+                  <div className="settings-row-sub">{t("settings.signOutEverywhereSub")}</div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── DATOS Y PRIVACIDAD ── */}
+      <div className="settings-label">{t("settings.sectionPrivacyData")}</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        {!readOnly && (
+          <div className="settings-row" onClick={() => setActiveSheet("calendar")}>
+            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.calendarLabel")}</div>
+              <div className="settings-row-sub">{calendarSummary}</div>
+            </div>
+            <IconChevron />
+          </div>
+        )}
+        {!readOnly && (
+          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }}
+            onClick={() => { if (!exporting) { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); } }}>
+            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.privacyExport")}</div>
+              <div className="settings-row-sub">{t("settings.privacyExportSub")}</div>
+            </div>
+            {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
+          </div>
+        )}
+        <div className="settings-row" onClick={() => navigate("privacy")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDocument size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.privacyPolicy")}</div>
+            <div className="settings-row-sub">{t("settings.privacyPolicySub")}</div>
+          </div>
+          <IconChevron />
+        </div>
+      </div>
+
+      {/* ── AYUDA ── */}
+      <div className="settings-label">{t("settings.sectionHelp")}</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" onClick={restartTutorial}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
+            <div className="settings-row-sub">{t("tutorial.settingsRowSub")}</div>
+          </div>
+          <IconChevron />
+        </div>
         <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} onClick={checkForUpdate}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconRefresh size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title">{t("settings.checkUpdate") || "Buscar actualización"}</div>
-            {updateStatus && <div className="settings-row-sub" style={{ color: updateStatus.tone === "err" ? "var(--red)" : updateStatus.tone === "ok" ? "var(--green)" : "var(--charcoal-xl)" }}>{updateStatus.msg}</div>}
+            {updateStatus && <div className="settings-row-sub" style={{ color: updateStatus.tone === "err" ? "var(--red)" : updateStatus.tone === "ok" ? "var(--green)" : "var(--charcoal-md)" }}>{updateStatus.msg}</div>}
           </div>
           {updateChecking ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
         </div>
-        <div className="settings-row" style={{ cursor:"pointer" }} onClick={signOut}>
+      </div>
+
+      {/* ── SESIÓN ── */}
+      <div className="settings-label">{t("settings.sectionSession")}</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" onClick={signOut}>
           <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("nav.signOut")}</div>
           </div>
           <IconChevron />
         </div>
-        {!readOnly && (
-          <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => setActiveSheet("signOutEverywhere")}>
-            <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
-              <div className="settings-row-sub">{t("settings.signOutEverywhereSub")}</div>
-            </div>
-            <IconChevron />
-          </div>
-        )}
       </div>
 
-      {/* Account deletion lives in its own bottom-of-page section so it
-          can't be tapped by accident while scanning Settings. */}
+      {/* ── ZONA PELIGROSA ──
+         Account deletion lives in its own bottom-of-page section so it
+         can't be tapped by accident while scanning Settings. */}
       {!readOnly && (
         <>
           <div className="settings-label">{t("settings.dangerZone")}</div>
           <div className="card" style={{ margin:"0 16px" }}>
-            <div className="settings-row" style={{ cursor:"pointer" }} onClick={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}>
+            <div className="settings-row" onClick={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}>
               <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
               <div style={{ flex:1 }}>
                 <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.privacyDelete")}</div>
@@ -856,27 +698,207 @@ export function Settings({ user, signOut, refreshUser }) {
         </>
       )}
 
-      {/* Footnote-style legal link — the policy is rarely consulted but
-          must remain reachable from every account screen for LFPDPPP
-          compliance. Centred, low-contrast, no chrome. */}
-      <div style={{ textAlign:"center", padding:"24px 16px 28px" }}>
-        <button
-          type="button"
-          onClick={() => navigate("privacy")}
-          style={{
-            background:"transparent",
-            border:"none",
-            padding:"4px 8px",
-            fontSize:11,
-            color:"var(--charcoal-xl)",
-            textDecoration:"underline",
-            cursor:"pointer",
-            WebkitTapHighlightColor:"transparent",
-          }}
-        >
-          {t("settings.privacyPolicy")}
-        </button>
-      </div>
+      <div style={{ paddingBottom:24 }} />
+
+
+      {/* ── NOTIFICATIONS SHEET ──
+         Single destination for the row in the Notificaciones section.
+         Branches on the same state machine the inline UI used to
+         render directly on the Settings page (install gate / blocked /
+         active toggle + reminder time). */}
+      {activeSheet === "notifications" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.notificationsRowTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {notifications?.needsInstall ? (
+                <PushInstallCard />
+              ) : notifications?.permission === "denied" ? (
+                <div className="push-amber-card" role="alert" style={{ margin:0 }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <div style={{
+                      flexShrink:0, width:36, height:36, borderRadius:"50%",
+                      background:"var(--amber)", color:"var(--white)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                    }}>
+                      <IconBell size={18} />
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{
+                        fontFamily:"var(--font-d)", fontWeight:800,
+                        fontSize:"var(--text-md)", color:"var(--charcoal)",
+                      }}>
+                        {t("notifications.blockedTitle")}
+                      </div>
+                      <div style={{
+                        fontSize:"var(--text-sm)", color:"var(--charcoal-md)",
+                        marginTop:4, lineHeight:1.4,
+                      }}>
+                        {t("notifications.blockedBody")}
+                      </div>
+                    </div>
+                  </div>
+                  <ol style={{
+                    listStyle:"none", margin:0, padding:0,
+                    display:"flex", flexDirection:"column", gap:6,
+                  }}>
+                    {[
+                      t("notifications.blockedStep1"),
+                      t("notifications.blockedStep2"),
+                      t("notifications.blockedStep3"),
+                    ].map((step, i) => (
+                      <li key={i} style={{
+                        display:"flex", gap:10, alignItems:"center",
+                        fontSize:"var(--text-sm)", color:"var(--charcoal)",
+                        padding:"6px 8px",
+                        background:"rgba(255,255,255,0.55)",
+                        borderRadius:8,
+                      }}>
+                        <span style={{
+                          flexShrink:0, width:20, height:20, borderRadius:"50%",
+                          background:"var(--amber)", color:"var(--white)",
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          fontSize:11, fontWeight:800,
+                        }}>{i + 1}</span>
+                        <span style={{ lineHeight:1.3 }}>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <>
+                  {notifications?.reconciledOff && (
+                    <div className="push-inline-banner" style={{ marginBottom:12 }}>
+                      <div style={{
+                        flexShrink:0, width:22, height:22, borderRadius:"50%",
+                        background:"var(--amber)", color:"var(--white)",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        marginTop:2,
+                      }}>
+                        <IconBell size={12} />
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{
+                          fontFamily:"var(--font-d)", fontWeight:700,
+                          fontSize:"var(--text-sm)", color:"var(--charcoal)",
+                        }}>
+                          {t("notifications.reconciledBannerTitle")}
+                        </div>
+                        <div style={{ fontSize:12, color:"var(--charcoal-md)", marginTop:2, lineHeight:1.35 }}>
+                          {t("notifications.reconciledBannerBody")}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleReconcileReactivate}
+                          disabled={togglePending}
+                          style={{
+                            marginTop:8, height:28, padding:"0 12px",
+                            fontSize:12, fontWeight:700,
+                            background:"var(--amber)", color:"var(--white)",
+                            border:"none", borderRadius:6, cursor: togglePending ? "default" : "pointer",
+                            opacity: togglePending ? 0.7 : 1,
+                          }}
+                        >
+                          {t("notifications.reconciledBannerAction")}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={t("close")}
+                        onClick={() => notifications.clearReconciliationMessage?.()}
+                        style={{
+                          flexShrink:0, width:24, height:24, border:"none",
+                          background:"transparent", cursor:"pointer",
+                          color:"var(--charcoal-xl)",
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                        }}
+                      >
+                        <IconX size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
+                    <div
+                      className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
+                      style={{ color:"var(--teal-dark)" }}
+                    >
+                      <IconBell size={18} />
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div className="settings-row-title">{t("notifications.sessionReminders")}</div>
+                      <div className="settings-row-sub">
+                        {notifications?.enabled
+                          ? t("notifications.enabled")
+                          : t("notifications.sessionRemindersDesc")}
+                      </div>
+                    </div>
+                    <Toggle
+                      on={!!notifications?.enabled}
+                      onToggle={handleToggleNotifications}
+                      disabled={togglePending}
+                      ariaLabel={t("notifications.sessionReminders")}
+                    />
+                  </div>
+
+                  <Expando open={!!notifications?.enabled}>
+                    <div style={{ padding:"14px 0 4px" }}>
+                      <div style={{
+                        fontSize:12, fontWeight:700,
+                        color:"var(--charcoal-md)", letterSpacing:0.2,
+                        textTransform:"uppercase",
+                        margin:"0 2px 8px",
+                      }}>
+                        {t("notifications.reminderTime")}
+                      </div>
+                      <SegmentedControl
+                        role="group"
+                        ariaLabel={t("notifications.reminderTime")}
+                        items={[
+                          { k: 15, l: "15 min" },
+                          { k: 30, l: "30 min" },
+                          { k: 60, l: "1 hr" },
+                        ]}
+                        value={notifications?.reminderMinutes}
+                        onChange={async (v) => {
+                          if (v === notifications?.reminderMinutes) return;
+                          haptic.tap();
+                          const res = await notifications?.setReminderMinutes(v);
+                          if (res && !res.ok) {
+                            showToast(t(notifErrorKey(res.code)), "error");
+                          }
+                        }}
+                      />
+                    </div>
+                  </Expando>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CALENDAR SHEET ──
+         Wraps the existing CalendarLinkPanel (multi-state component)
+         so the Settings page only shows a single uniform row. */}
+      {activeSheet === "calendar" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.calendarLabel")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <CalendarLinkPanel readOnly={readOnly} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PROFILE SHEET ── */}
       {activeSheet === "profile" && (
@@ -1005,36 +1027,77 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       )}
 
-      {/* ── ENCRYPTION SETUP SHEET ── */}
-      {activeSheet === "encSetup" && (
+      {/* ── ENCRYPTION SHEET (state-aware wrapper) ──
+         Single sheet that adapts to noteCrypto.status. Replaces the
+         old encSetup / encStatus / encChange-row / encDisable-row
+         pile that used to render up to four conditional rows on the
+         main Settings page. */}
+      {activeSheet === "encryption" && (
         <div className="sheet-overlay" onClick={() => !encBusy && setActiveSheet(null)}>
           <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">{t("settings.encEnable")}</span>
+              <span className="sheet-title">{t("settings.encryptionTitle")}</span>
               <button className="sheet-close" aria-label={t("close")} onClick={() => !encBusy && setActiveSheet(null)} disabled={encBusy}><IconX size={14} /></button>
             </div>
             <div style={{ padding:"0 20px 22px" }}>
-              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
-                {t("settings.encSetupExplain")}
-              </div>
-              <div className="input-group" style={{ marginBottom: 12 }}>
-                <label className="input-label">{t("settings.encNewPassphrase")}</label>
-                <PasswordInput autoComplete="new-password" value={encSetupPass1} onChange={(e) => setEncSetupPass1(e.target.value)} disabled={encBusy} />
-              </div>
-              <div className="input-group" style={{ marginBottom: 14 }}>
-                <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
-                <PasswordInput autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
-              </div>
-              {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button type="button" className="btn btn-primary" onClick={submitEncryptionSetup} disabled={encBusy || encSetupPass1.length < 8}>
-                  {encBusy ? t("loading") : t("settings.encEnableCta")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
-                  {t("cancel")}
-                </button>
-              </div>
+              {noteCrypto?.status === "disabled" && (
+                <>
+                  <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 14 }}>
+                    {t("settings.encSetupExplain")}
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 12 }}>
+                    <label className="input-label">{t("settings.encNewPassphrase")}</label>
+                    <PasswordInput autoComplete="new-password" value={encSetupPass1} onChange={(e) => setEncSetupPass1(e.target.value)} disabled={encBusy} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 14 }}>
+                    <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
+                    <PasswordInput autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
+                  </div>
+                  {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button type="button" className="btn btn-primary" onClick={submitEncryptionSetup} disabled={encBusy || encSetupPass1.length < 8}>
+                      {encBusy ? t("loading") : t("settings.encEnableCta")}
+                    </button>
+                    <button type="button" className="btn btn-ghost" onClick={() => setActiveSheet(null)} disabled={encBusy}>
+                      {t("cancel")}
+                    </button>
+                  </div>
+                </>
+              )}
+              {noteCrypto?.status === "locked" && (
+                <>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--cream)", borderRadius:"var(--radius)", marginBottom:14 }}>
+                    <div style={{ color:"var(--charcoal-md)" }}><IconLock size={18} /></div>
+                    <div style={{ fontSize:13, color:"var(--charcoal)", fontWeight:600 }}>{t("settings.encStatusLocked")}</div>
+                  </div>
+                  <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.55 }}>
+                    {t("settings.encLockedHint")}
+                  </div>
+                </>
+              )}
+              {noteCrypto?.status === "unlocked" && (
+                <>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:"var(--green-bg)", borderRadius:"var(--radius)", marginBottom:14 }}>
+                    <div style={{ color:"var(--green)" }}><IconCheck size={18} /></div>
+                    <div style={{ fontSize:13, color:"var(--charcoal)", fontWeight:600 }}>{t("settings.encStatusUnlocked")}</div>
+                  </div>
+                  <div style={{ fontSize:14, color:"var(--charcoal-md)", lineHeight:1.55, marginBottom:14 }}>
+                    {t("settings.encryptionUnlockedExplain")}
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    <button type="button" className="btn btn-ghost"
+                      onClick={() => { setEncUiError(""); setEncChangeNew1(""); setEncChangeNew2(""); setActiveSheet("encChange"); }}>
+                      {t("settings.encChange")}
+                    </button>
+                    <button type="button" className="btn btn-ghost"
+                      style={{ color:"var(--red)", borderColor:"var(--red)" }}
+                      onClick={() => { setEncUiError(""); setEncConfirmDisable(""); setActiveSheet("encDisable"); }}>
+                      {t("settings.encDisable")}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
