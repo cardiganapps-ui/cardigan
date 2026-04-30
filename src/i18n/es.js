@@ -706,6 +706,7 @@ export default {
     signOutEverywhereCta: "Cerrar sesión en todos lados",
     sectionAccount: "Cuenta",
     sectionAppearance: "Apariencia",
+    sectionNotifCal: "Notificaciones y calendario",
     sectionSecurity: "Seguridad",
     sectionPrivacyData: "Datos y privacidad",
     sectionHelp: "Ayuda",
