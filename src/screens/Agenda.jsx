@@ -120,11 +120,14 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
       clearTargetHighlight();
       if (cell) {
         cell.classList.add("week-cell--drop-target");
+        // data-cell-hour stores the i18n "HH:MM" string verbatim (the
+        // hours array is ["08:00","09:00",...]). Render as-is — an
+        // earlier draft built `${hour}:00` which produced "14:00:00".
         const hour = cell.dataset.cellHour;
-        if (hour != null) {
+        if (hour) {
           const pill = document.createElement("span");
           pill.className = "dnd-drop-time-pill";
-          pill.textContent = `${String(hour).padStart(2, "0")}:00`;
+          pill.textContent = hour;
           pill.style.cssText = "position:absolute;top:4px;left:4px;font-size:11px;font-weight:700;color:#fff;background:var(--teal-dark);padding:2px 6px;border-radius:4px;pointer-events:none;z-index:2;";
           cell.appendChild(pill);
         }
@@ -168,10 +171,16 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
       let outcome = "cancelled";
       if (commit && target && onDropSessionRef.current) {
         const day = target.dataset.cellDay;
-        const hour = parseInt(target.dataset.cellHour, 10);
-        if (day && Number.isFinite(hour)) {
+        // data-cell-hour is "HH:MM" (the i18n hours strings). Pass it
+        // through verbatim — handleDropSession → rescheduleSession
+        // expects a "HH:MM" string, not a numeric hour. Earlier this
+        // parseInt'd to a number, which the rescheduleSession early-
+        // return rejected via `!newTime?.trim()` and the drop
+        // silently snapped back to the source slot.
+        const hour = target.dataset.cellHour;
+        if (day && /^\d{1,2}:\d{2}$/.test(hour || "")) {
           const sameSlot = day === toISODate(parseShortDateLocal(sess.date))
-            && hour === parseInt((sess.time || "0:0").split(":")[0], 10);
+            && hour === sess.time;
           if (sameSlot) {
             outcome = "same-slot";
           } else {
@@ -633,7 +642,8 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                     {/* Desktop drop-time indicator. The mobile drag
                         path inserts an equivalent pill via direct DOM
                         manipulation (see LongPressEvent.updateTarget),
-                        rendered the same way. */}
+                        rendered the same way. `hour` is already an
+                        "HH:MM" string from the i18n hours array. */}
                     {isDropTarget && (
                       <span style={{
                         position: "absolute", top: 4, left: 4,
@@ -644,7 +654,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                         borderRadius: 4,
                         pointerEvents: "none",
                       }}>
-                        {`${String(hour).padStart(2, "0")}:00`}
+                        {hour}
                       </span>
                     )}
                   </div>
