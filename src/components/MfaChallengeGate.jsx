@@ -122,7 +122,7 @@ export default function MfaChallengeGate({ onResolved, onSignOut }) {
             <button type="submit" className="btn btn-primary" disabled={busy || code.length !== 6}>
               {busy ? t("loading") : t("mfa.verify")}
             </button>
-            <button type="button" className="btn btn-ghost" onClick={onSignOut}>
+            <button type="button" className="btn btn-ghost" onClick={() => onSignOut?.()}>
               {t("nav.signOut")}
             </button>
           </div>

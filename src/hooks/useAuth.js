@@ -177,7 +177,21 @@ export function useAuth() {
      stale tab). Easiest, safest path: delete every Cache Storage bucket
      on sign-out. The next page load repopulates from the network. */
   async function signOut(scope = "local") {
-    try { await supabase.auth.signOut({ scope }); }
+    // Defensive: callers occasionally pass `signOut` directly to an
+    // event handler (`onClick={signOut}`) which feeds the synthetic
+    // event into `scope`. Supabase rejects anything that isn't one of
+    // these three strings — if we get a non-string, fall back to the
+    // safe default rather than blowing up the gesture.
+    const safeScope = (scope === "local" || scope === "global" || scope === "others")
+      ? scope : "local";
+    try { await supabase.auth.signOut({ scope: safeScope }); }
+    catch (err) {
+      // Network / Supabase-side error — log but proceed to wipe local
+      // caches and let the auth listener mark the user signed-out
+      // anyway. Better the user sees the auth screen than a stuck
+      // post-MFA page with no escape.
+      console.warn("signOut:", err?.message || err);
+    }
     finally { await wipeBrowserCaches(); }
   }
 
