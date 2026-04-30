@@ -65,7 +65,7 @@ import ConsentBanner from "./components/ConsentBanner";
 import MfaChallengeGate from "./components/MfaChallengeGate";
 import { PasswordRecoveryScreen } from "./components/PasswordRecoveryScreen";
 import { BugReportSheet } from "./components/BugReportFab";
-import { UpdatePrompt } from "./components/UpdatePrompt";
+import { UpdatePrompt, consumePostUpdateToast } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
 import { useNotifications } from "./hooks/useNotifications";
 import { useSubscription } from "./hooks/useSubscription";
@@ -461,6 +461,17 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     if (!msg) return;
     showToast(msg, "success");
   }, [showToast]);
+  // Post-reload "Actualizado correctamente" toast — UpdatePrompt
+  // stamps localStorage right before the SW reload, and we surface
+  // the confirmation once the new build mounts. consumePostUpdateToast
+  // returns null when there's no recent apply or the stamp aged
+  // out, so this effect is a no-op for organic reloads.
+  useEffect(() => {
+    const msg = consumePostUpdateToast();
+    if (msg) showSuccess(msg);
+  // showSuccess is stable. Run once on mount only.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Surface mutationError from the data layer as a persistent,
   // keyed entry in the toast queue. The `mutation-error` key makes
   // showToast de-dup: re-raising replaces the existing entry rather
