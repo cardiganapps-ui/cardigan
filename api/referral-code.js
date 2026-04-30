@@ -23,17 +23,49 @@ import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
-// Skip 0/O/1/I/L for human readability when shared verbally.
-const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-const CODE_LENGTH = 8;
+/* ── Code format: WORD + 3 digits ────────────────────────────────────
+   Codes are designed to be spoken out loud and remembered after a
+   single read — way friendlier than the previous 8-char random
+   string. The wordlist is curated Spanish-flavored vocabulary that's
+   easy to pronounce, has no accents or ñ, and skews positive /
+   Cardigan-y (nature, comfort, knitting). 3-digit suffix keeps the
+   keyspace at ~80,000 codes (80 words × 1000 numbers) — well above
+   our foreseeable user count, and the ensureCode loop handles the
+   rare collision.
+
+   Codes already issued under the previous 8-char format remain valid;
+   we only mint the new shape going forward. The validators in
+   /api/stripe-checkout and /api/stripe-create-subscription accept
+   anything matching /^[A-Z0-9]+$/ up to 16 chars, which covers both. */
+const REFERRAL_WORDS = [
+  // Knitting / cozy
+  "LANA", "TEJER", "NUDO", "HILO", "MANTA", "CAFE", "CHAI", "MIEL",
+  "PAN", "TEAL", "OCRE", "TRIGO",
+  // Nature
+  "MAR", "RIO", "SOL", "LUNA", "NUBE", "FLOR", "ROSA", "ROBLE",
+  "CIELO", "BREZO", "JADE", "PINO", "MIRTO", "OLA", "BAHIA", "RAYO",
+  "LAGO", "PRADO", "TIERRA", "BOSQUE", "VALLE", "MONTE", "ROCIO",
+  "ALBA", "AURORA",
+  // Birds / animals
+  "AVE", "GAVIOTA", "ZORRO", "CIERVO", "LOBO", "FOCA", "OSO", "GATO",
+  "LINCE", "BUHO", "GARZA", "CISNE",
+  // Colors
+  "ORO", "PLATA", "GRANA", "LILA", "AMBAR", "INDIGO", "VERDE", "RUBI",
+  "TOPACIO",
+  // Calm / care vibe
+  "PAUSA", "CALMA", "ABRIGO", "REFUGIO", "NIDO", "FARO", "PUENTE",
+  "VEREDA", "CAMINO", "VIENTO", "BRISA", "ECO", "NORTE", "SUR",
+  "ESTE", "OESTE", "RUTA", "VELA", "LIRA", "SAUCE", "OLIVO",
+  "CANELA", "CEDRO", "TILO", "ENEBRO",
+];
 
 function newCode() {
-  const bytes = crypto.randomBytes(CODE_LENGTH);
-  let out = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    out += ALPHABET[bytes[i] % ALPHABET.length];
-  }
-  return out;
+  // crypto.randomBytes for both halves so we don't mix Math.random
+  // entropy with the rest of the system. Two bytes is more than
+  // enough range to mod into the wordlist + 1000.
+  const wordIdx = crypto.randomBytes(2).readUInt16BE(0) % REFERRAL_WORDS.length;
+  const num = crypto.randomBytes(2).readUInt16BE(0) % 1000;
+  return REFERRAL_WORDS[wordIdx] + String(num).padStart(3, "0");
 }
 
 async function ensureCode(svc, userId) {
