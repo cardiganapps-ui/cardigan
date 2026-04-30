@@ -117,6 +117,20 @@ html[data-theme="dark"] .agenda-calendar-link {
 }
 .month-cell:active { background: var(--teal-pale); }
 .month-cell.active { background: var(--teal); }
+
+/* Whole-day DnD: source cell dims while the floating ghost follows
+   the finger; the cell currently under the ghost gets a teal ring.
+   Mirrors the week-cell--drop-target visual language so the two
+   DnD surfaces feel like the same gesture. */
+.month-cell--dragging-source {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.month-cell--drop-target {
+  background: var(--teal-pale) !important;
+  box-shadow: inset 0 0 0 2px var(--teal);
+  transition: background 0.1s ease, box-shadow 0.1s ease;
+}
 .month-cell.today:not(.active) { background: var(--teal-pale); }
 .month-cell.other-month .month-cell-num { color: var(--cream-deeper); }
 .month-cell-num { font-family: var(--font-d); font-size: 13px; font-weight: 700; color: var(--charcoal); }
@@ -203,6 +217,16 @@ html[data-theme="dark"] .agenda-calendar-link {
   transform: scale(0.96);
   filter: brightness(0.96);
   box-shadow: inset 0 0 0 1px var(--teal);
+}
+
+/* Dragging: the source event tile dims while the floating ghost
+   follows the finger. Inline opacity is also set on the element so
+   the visual works regardless of stylesheet load order; this rule
+   keeps the in-source CSS the source of truth so a future redesign
+   can override it. */
+.week-event--dragging {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 /* FINANCES: tabs use the shared .segmented block (above) */

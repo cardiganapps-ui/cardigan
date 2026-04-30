@@ -282,6 +282,11 @@ export default {
     bulkChargeReason: "Cancelación masiva con cobro",
     bulkSuccess: "{n} {session.p} actualizadas",
     bulkPartial: "{n} actualizadas, {failed} fallaron",
+    moveDayTitle: "Mover {n} {session.p}",
+    moveDayBody: "Vas a mover las {n} {session.p} del {src} al {tgt}. Cada una conserva su hora original.",
+    moveDayConfirm: "Mover",
+    moveDaySuccess: "{n} {session.p} reagendadas",
+    moveDayPartial: "{n} reagendadas, {failed} fallaron",
   },
 
   // ── Sessions ──
