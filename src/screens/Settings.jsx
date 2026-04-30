@@ -156,6 +156,17 @@ export function Settings({ user, signOut, refreshUser }) {
     setHideFab(!!activeSheet);
     return () => setHideFab(false);
   }, [activeSheet, setHideFab]);
+  // Prefetch the referral code so the dedicated Settings row can show
+  // the user's code in its sub-line without waiting for them to open
+  // the sheet. Cheap (one-row read + lazy mint on first call) and only
+  // runs once per Settings mount.
+  useEffect(() => {
+    if (!subscription?.referralInfo && subscription?.fetchReferralInfo) {
+      subscription.fetchReferralInfo();
+    }
+  // Intentionally only fires once on mount — the hook caches the result.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { scrollRef: sheetScrollRef, setPanelEl: setSheetPanelEl, panelHandlers: sheetPanelHandlers } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
   const setSheetPanel = (el) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
   const [editName, setEditName] = useState(userName);
@@ -271,7 +282,7 @@ export function Settings({ user, signOut, refreshUser }) {
   const openSheet = (key) => {
     setMessage("");
     if (key === "profile") setEditName(userName);
-    if (key === "plan") {
+    if (key === "plan" || key === "referral") {
       // Lazy-fetch the user's referral code (and rewards count) on
       // first open. The code is generated server-side; subsequent
       // opens reuse the cached info on the hook.
@@ -556,6 +567,28 @@ export function Settings({ user, signOut, refreshUser }) {
               }
               if (s.accessState === "expired") return t("subscription.statusExpired");
               return t("subscription.statusLoading");
+            })()}</div>
+          </div>
+          <IconChevron />
+        </div>
+        {/* Referral row — surface the user's invite code directly so it's
+            findable without going through the Suscripción sheet first. The
+            sub-line shows the code (or "Genera tu código…" while the lazy
+            fetch is running on first open). Tapping opens a dedicated sheet
+            with the share UI + rewards tally. */}
+        <div className="settings-row" onClick={() => openSheet("referral")}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.referralRowTitle")}</div>
+            <div className="settings-row-sub">{(() => {
+              const info = subscription?.referralInfo;
+              if (info?.code) {
+                return info.rewardsCount > 0
+                  ? t("settings.referralRowSubWithRewards", { code: info.code, n: info.rewardsCount })
+                  : t("settings.referralRowSubCode", { code: info.code });
+              }
+              if (subscription?.referralLoading) return t("settings.referralRowSubLoading");
+              return t("settings.referralRowSubDefault");
             })()}</div>
           </div>
           <IconChevron />
@@ -1218,45 +1251,73 @@ export function Settings({ user, signOut, refreshUser }) {
                       </div>
                     )}
 
-                    {/* ── Referral block ── Cohesive teal-tinted card so it reads
-                          as "your friends earn you free months" without feeling
-                          like a separate concern. */}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── REFERRAL SHEET ── Dedicated sheet for the invite-and-earn
+            program. Lives at the top level of Settings (Cuenta section)
+            so users find it without going through the Suscripción flow.
+            The hero centers the user's code on a teal-tinted surface;
+            the rewards line below gives them a sense of progress. */}
+      {activeSheet === "referral" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.referralRowTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {(() => {
+                const info = subscription?.referralInfo;
+                return (
+                  <>
                     <div style={{
-                      padding:"16px", borderRadius:"var(--radius-lg, 16px)",
-                      background:"var(--teal-pale)", border:"1px solid rgba(0,0,0,0.04)",
+                      padding:"22px 18px",
+                      borderRadius:"var(--radius-lg, 16px)",
+                      background:"var(--teal-pale)",
+                      textAlign:"center",
+                      marginBottom:14,
                     }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                        <div style={{ color:"var(--teal-dark)" }}><IconUsers size={16} /></div>
-                        <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)" }}>
-                          {t("subscription.referralTitle")}
-                        </div>
+                      <div style={{ width:52, height:52, borderRadius:"50%",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        background:"var(--white)", color:"var(--teal-dark)",
+                        margin:"0 auto 10px", boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
+                        <IconUsers size={22} />
                       </div>
-                      <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:12 }}>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>
+                        {t("subscription.referralTitle")}
+                      </div>
+                      <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:6, lineHeight:1.5 }}>
                         {t("subscription.referralExplain")}
                       </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 14px", background:"var(--white)", borderRadius:"var(--radius)", marginBottom:10 }}>
-                        <div style={{ flex:1, fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", letterSpacing:"0.18em" }}>
-                          {s.referralInfo?.code || (s.referralLoading ? "…" : "—")}
-                        </div>
-                        <button type="button" className="btn btn-ghost" onClick={copyReferralCode}
-                          disabled={!s.referralInfo?.code}
-                          style={{ minWidth:92, height:34, fontSize:"var(--text-sm)" }}>
-                          {referralCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
-                        </button>
-                      </div>
-                      {s.referralInfo && s.referralInfo.rewardsCount > 0 && (
-                        <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
-                          {s.referralInfo.pendingCreditCents > 0
-                            ? t("subscription.referralRewardsPending", {
-                                n: s.referralInfo.rewardsCount,
-                                credit: `$${(s.referralInfo.pendingCreditCents / 100).toLocaleString("es-MX")}`,
-                              })
-                            : t("subscription.referralRewardsApplied", {
-                                n: s.referralInfo.rewardsCount,
-                              })}
-                        </div>
-                      )}
                     </div>
+
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 16px", background:"var(--white)", border:"1px solid var(--border)", borderRadius:"var(--radius)", marginBottom:10 }}>
+                      <div style={{ flex:1, fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"0.2em" }}>
+                        {info?.code || (subscription?.referralLoading ? "…" : "—")}
+                      </div>
+                      <button type="button" className="btn btn-ghost" onClick={copyReferralCode}
+                        disabled={!info?.code}
+                        style={{ minWidth:96, height:36, fontSize:"var(--text-sm)" }}>
+                        {referralCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
+                      </button>
+                    </div>
+                    {info && info.rewardsCount > 0 && (
+                      <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, padding:"4px 4px 0" }}>
+                        {info.pendingCreditCents > 0
+                          ? t("subscription.referralRewardsPending", {
+                              n: info.rewardsCount,
+                              credit: `$${(info.pendingCreditCents / 100).toLocaleString("es-MX")}`,
+                            })
+                          : t("subscription.referralRewardsApplied", { n: info.rewardsCount })}
+                      </div>
+                    )}
                   </>
                 );
               })()}
