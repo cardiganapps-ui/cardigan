@@ -111,12 +111,40 @@ export function useAuth() {
       password,
       options: { data: { full_name: name }, captchaToken },
     });
-    if (error) return { error: error.message };
+    if (error) {
+      // Supabase blocks duplicate-email signups itself, but the error
+      // message comes back as raw English ("User already registered" /
+      // "A user with this email address has already been registered").
+      // Surface a typed signal so the UI can render a recovery panel
+      // (Iniciar sesión / Restablecer contraseña) instead of dumping a
+      // generic error string.
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("already") && (msg.includes("registered") || msg.includes("user"))) {
+        return { emailAlreadyRegistered: true, email };
+      }
+      return { error: error.message };
+    }
     // With email verification on (mailer_autoconfirm=false), signUp returns
     // no session. Don't attempt a silent signInWithPassword — it would fail
     // with "Email not confirmed" and mask the real next step. Surface a
     // verification signal so the UI can show the "check your inbox" panel.
-    if (!data.session) return { pendingVerification: true, email };
+    //
+    // Supabase quirk: signUp() with an email that ALREADY exists and is
+    // confirmed returns a fake user object (id + obfuscated identities)
+    // and no session — the same shape as a fresh "check your inbox"
+    // response. Detect this by checking if the returned user has any
+    // identities (real new signups always do; recycled ones don't).
+    // Without this guard, an attacker could re-sign-up someone else's
+    // email and we'd render "check your inbox" while no email was
+    // actually sent. See:
+    //   https://github.com/supabase/auth/issues/1517
+    if (!data.session) {
+      const identities = data.user?.identities;
+      if (Array.isArray(identities) && identities.length === 0) {
+        return { emailAlreadyRegistered: true, email };
+      }
+      return { pendingVerification: true, email };
+    }
     return { data };
   }
 

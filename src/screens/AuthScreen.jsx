@@ -168,8 +168,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   // Set by signUp (fresh signup waiting for verification) or by signIn
   // (tried to log in with an unverified account).
   const [pendingEmail, setPendingEmail] = useState(null);
+  // When non-null, the email the user just tried to sign up with is
+  // already registered. Renders an inline recovery prompt so the user
+  // can switch to login or password reset without retyping.
+  const [duplicateEmail, setDuplicateEmail] = useState(null);
 
-  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); };
+  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); setDuplicateEmail(null); };
 
   const handleProvider = async (provider) => {
     if (!onProvider || providerBusy) return;
@@ -236,6 +240,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
       return;
     }
     if (result?.pendingVerification) { setPendingEmail(result.email || email); return; }
+    if (result?.emailAlreadyRegistered) { setDuplicateEmail(result.email || email); return; }
     if (result?.error) { setError(result.error); return; }
   };
 
@@ -262,6 +267,46 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
         onGoToLogin={() => { setPendingEmail(null); switchMode("login"); }}
         t={t}
       />
+    );
+  }
+
+  if (duplicateEmail) {
+    // Recovery panel for the "email already registered" path. Two
+    // hand-offs: switch to login (most likely intent — they have an
+    // account, just forgot) or switch to password reset (if they
+    // forgot the password too). The email stays in state across the
+    // mode switch so they don't have to retype.
+    return (
+      <div style={{ display:"flex", flexDirection:"column", gap:14, alignItems:"center", textAlign:"center", padding:"20px 8px" }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: "50%",
+          background: "var(--amber-bg)", color: "var(--amber)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 26, fontWeight: 800,
+        }}>!</div>
+        <div style={{ fontFamily:"var(--font-d)", fontSize: 20, fontWeight: 800, color:"var(--charcoal)", letterSpacing:"-0.3px" }}>
+          {t("auth.duplicateTitle")}
+        </div>
+        <div style={{ fontSize: 14, color:"var(--charcoal-md)", lineHeight: 1.5, maxWidth: 320 }}>
+          {t("auth.duplicateBody", { email: duplicateEmail })}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320 }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => { setDuplicateEmail(null); switchMode("login"); }}
+          >
+            {t("auth.duplicateLoginCta")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => { setDuplicateEmail(null); switchMode("reset"); }}
+          >
+            {t("auth.duplicateResetCta")}
+          </button>
+        </div>
+      </div>
     );
   }
 
