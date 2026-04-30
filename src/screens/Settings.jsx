@@ -35,7 +35,7 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession } = useCardigan();
+  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab } = useCardigan();
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
   const mfa = useMfa();
@@ -147,6 +147,15 @@ export function Settings({ user, signOut, refreshUser }) {
   const [activeSheet, setActiveSheet] = useState(null);
   const closeSheet = useCallback(() => setActiveSheet(null), []);
   useEscape(activeSheet ? closeSheet : null);
+  // Bottom sheets cover only part of the screen, so the FAB ends up
+  // floating over the sheet content (covering "Renovar enlace" on the
+  // calendar sheet, for example). Hide it whenever any Settings sheet
+  // is open — same mechanism Patients uses for the expediente drawer.
+  useEffect(() => {
+    if (!setHideFab) return;
+    setHideFab(!!activeSheet);
+    return () => setHideFab(false);
+  }, [activeSheet, setHideFab]);
   const { scrollRef: sheetScrollRef, setPanelEl: setSheetPanelEl, panelHandlers: sheetPanelHandlers } = useSheetDrag(closeSheet, { isOpen: !!activeSheet });
   const setSheetPanel = (el) => { sheetScrollRef.current = el; setSheetPanelEl(el); };
   const [editName, setEditName] = useState(userName);
