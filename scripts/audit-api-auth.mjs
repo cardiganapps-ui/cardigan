@@ -35,6 +35,7 @@ const ALLOWED_NO_AUTH = new Set([
   "push-resubscribe.js",        // browser SW can't carry JWT; (oldEndpoint, resubToken) pair
   "push-test.js",               // dev-only diagnostic; not deployed in prod (verify before shipping)
   "calendar/[token].js",        // token IS the credential; no JWT possible from cal clients
+  "stripe-webhook.js",          // Stripe delivery callback; HMAC verified via STRIPE_WEBHOOK_SECRET
 ]);
 
 const AUTH_PATTERNS = [

@@ -55,6 +55,17 @@ export async function fetchAllAccounts() {
   } catch (e) {
     console.error("fetchAllAccounts: get_user_profiles RPC failed", e);
   }
+  // Subscription/comp/referral state per user. Admin RLS allows
+  // SELECT across all rows. A failure here is non-fatal — the panel
+  // still works without comp badges.
+  let subscriptionData = [];
+  try {
+    const { data } = await supabase.from("user_subscriptions")
+      .select("user_id, status, current_period_end, comp_granted, comp_granted_at, comp_reason, referral_rewards_count");
+    subscriptionData = data || [];
+  } catch (e) {
+    console.error("fetchAllAccounts: user_subscriptions query failed", e);
+  }
 
   // Start from auth.users so accounts with zero patients still appear —
   // otherwise the admin can't block/delete a freshly-created empty
@@ -90,6 +101,16 @@ export async function fetchAllAccounts() {
       });
     }
     accounts.get(p.user_id).patientCount++;
+  });
+  subscriptionData.forEach(sub => {
+    const acct = accounts.get(sub.user_id);
+    if (!acct) return; // sub for an auth user we didn't list — skip
+    acct.subscriptionStatus = sub.status || null;
+    acct.subscriptionPeriodEnd = sub.current_period_end || null;
+    acct.compGranted = !!sub.comp_granted;
+    acct.compReason = sub.comp_reason || null;
+    acct.compGrantedAt = sub.comp_granted_at || null;
+    acct.referralRewardsCount = sub.referral_rewards_count || 0;
   });
   return [...accounts.values()];
 }
@@ -141,6 +162,23 @@ export async function adminUpdateProfession(userId, profession) {
   });
   if (!res.ok) {
     let msg = "Update failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+/* Toggle complimentary (always-free) access on a user's
+   user_subscriptions row. Admin-gated server-side. */
+export async function adminGrantComp(userId, granted, reason) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-grant-comp", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ user_id: userId, granted, reason: reason || null }),
+  });
+  if (!res.ok) {
+    let msg = "Grant failed";
     try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
     throw new Error(msg);
   }

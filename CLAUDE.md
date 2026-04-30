@@ -203,6 +203,26 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 - **ARCO contact** is `privacy@cardigan.mx`. Update both the policy body and any external-facing copy if this changes.
 - **Legal review before marketing**: the policy text shipped is a first draft. Get a Mexican data-privacy lawyer to review before claiming LFPDPPP compliance externally.
 
+### Stripe SaaS subscriptions (Cardigan Pro)
+The therapist-facing billing layer — entirely separate from patient `payments` / `sessions` (those are the therapist's own bookkeeping; this is the therapist paying us).
+
+- **Plan:** "Cardigan Pro" — $299 MXN / month, tax-inclusive, no Stripe-side trial. `STRIPE_PRICE_ID` env points at the right price (test in Preview/Dev, live in Production).
+- **Trial gate:** every new account gets a 30-day in-app trial starting at `auth.users.created_at`. After day 30 the user drops to `accessState: "expired"` (read-only — same `readOnly` flag the admin "view as user" mode uses, composed in `App.jsx`). The data is never deleted; subscribing reinstates writes immediately. Admins (`isAdmin(user)` via `ADMIN_EMAIL`) bypass the gate entirely.
+- **Tables (migration `030_stripe_subscriptions.sql`):**
+  - `user_subscriptions` — one row per user. Created lazily at first checkout (or first referral-code visit). Fields: `stripe_customer_id` (unique), `stripe_subscription_id`, `status`, `current_period_end`, `cancel_at_period_end`, `comp_granted` (admin-granted always-free), `referral_code` (this user's code), `referred_by` (code they came in with), `referral_rewards_count`, `pending_credit_amount_cents`. RLS: user can SELECT their own row; only the service-role (webhook) can write.
+  - `stripe_webhook_events` — idempotency log keyed on `event_id`. Webhook inserts on receipt and skips processing on `23505` (duplicate). Admin-readable.
+- **Endpoints (`api/`):**
+  - `POST /api/stripe-checkout` — JWT-gated. Mints (or reuses) a Stripe customer, accepts an optional `referral_code`, drains any `pending_credit_amount_cents` into the customer's Stripe balance, and returns a Checkout Session URL. Refuses to start a paid checkout when `comp_granted=true` or there's already an active sub (409 with `{ action: "comp_granted" | "use_portal" }`).
+  - `POST /api/stripe-portal` — JWT-gated. Returns a Stripe Billing Portal URL for self-service plan management. 404 if no `user_subscriptions` row.
+  - `POST /api/stripe-webhook` — HMAC-verified via `STRIPE_WEBHOOK_SECRET` (Stripe-Signature header, manual `crypto.timingSafeEqual` like `resend-webhook.js`). Body parser disabled — verification needs the raw bytes. Source of truth for `status` / `current_period_end` / `cancel_at_period_end`. Idempotency-deduped via `stripe_webhook_events`. On the FIRST `invoice.paid` for an invitee, credits the inviter (Stripe customer balance if real customer; `pending_credit_amount_cents` accrual otherwise) and increments their `referral_rewards_count`.
+  - `GET /api/referral-code` — JWT-gated. Lazy-mints the user's 8-char A-Z2-9 (skips 0/O/1/I/L) referral code, returns `{ code, rewardsCount, pendingCreditCents }`.
+  - `POST /api/admin-grant-comp` — admin-only. Toggles `comp_granted`. Used for the admin's own account, early-access friends, and pilot users. Refuses to start paid checkout when set.
+- **Hook + UI:** `src/hooks/useSubscription.js` exposes `accessState` (`loading | trial | active | expired`), `daysLeftInTrial`, and helpers `startCheckout({ referralCode })` / `openPortal()` / `fetchReferralInfo()`. Trial-expired and trial-ending banners live in `App.jsx`; the full panel is `Settings → Suscripción` (`activeSheet === "plan"`).
+- **Env vars (Vercel):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` per environment. Production uses live keys, Preview/Development use test keys. Updates take effect on next deploy.
+- **Stripe-side resources to keep aligned:** Product, Price, Webhook endpoint, and Billing Portal configuration exist separately in test mode and live mode. When changing plan price, update **both** test and live prices and rotate `STRIPE_PRICE_ID` in Vercel.
+- **Webhook URL:** `https://cardigan.mx/api/stripe-webhook` (registered in both test and live mode with the same event subset).
+- **Out of scope (v1):** annual plans, multiple seats per account, taxes beyond tax-inclusive MXN, automated dunning UX (we surface `latest_invoice` URL but don't drive renewal flows from the app — Stripe's email + portal cover it).
+
 ### Observability (Sentry + health check)
 - **Client errors** are captured via `src/lib/sentry.js` (init in `main.jsx`) + `src/components/ErrorBoundary.jsx`. Init no-ops when `VITE_SENTRY_DSN` is unset or in dev — no noise in local work. `beforeSend` scrubs fields listed in the `PII_FIELDS` set (`patient`, `note`, `content`, `initials`, `email`, `phone`, etc.) before events leave the browser.
 - **Serverless errors** route through `api/_sentry.js::withSentry(handler, { name })`. Every mutating route wraps its default export with this. The wrapper reports unhandled exceptions and any 5xx response; 4xx responses in `EXPECTED_STATUSES` (401/403/404/405/409/413/429) are treated as noise and not reported. Secrets/PII are scrubbed the same way as the client.

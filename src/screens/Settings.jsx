@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { IconUser, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
+import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
 import { PasswordInput } from "../components/PasswordInput";
@@ -35,7 +35,7 @@ function notifErrorKey(code) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab } = useCardigan();
+  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription } = useCardigan();
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
   const mfa = useMfa();
@@ -271,7 +271,54 @@ export function Settings({ user, signOut, refreshUser }) {
   const openSheet = (key) => {
     setMessage("");
     if (key === "profile") setEditName(userName);
+    if (key === "plan") {
+      // Lazy-fetch the user's referral code (and rewards count) on
+      // first open. The code is generated server-side; subsequent
+      // opens reuse the cached info on the hook.
+      if (!subscription?.referralInfo) subscription?.fetchReferralInfo?.();
+    }
     setActiveSheet(key);
+  };
+
+  // ── Subscription sheet local state ──
+  const [subBusy, setSubBusy] = useState(false);
+  const [subError, setSubError] = useState("");
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
+  const [referralCopied, setReferralCopied] = useState(false);
+  const handleStartCheckout = async () => {
+    if (subBusy || !subscription?.startCheckout) return;
+    setSubBusy(true); setSubError("");
+    const res = await subscription.startCheckout({
+      referralCode: inviteCodeInput.trim() || undefined,
+    });
+    setSubBusy(false);
+    if (!res.ok) {
+      // If the server reports an existing active sub, drop straight
+      // to the portal so the user can manage it.
+      if (res.action === "use_portal") return handleOpenPortal();
+      setSubError(res.error || t("subscription.errorGeneric"));
+      return;
+    }
+    if (res.url) window.location.href = res.url;
+  };
+  const handleOpenPortal = async () => {
+    if (subBusy || !subscription?.openPortal) return;
+    setSubBusy(true); setSubError("");
+    const res = await subscription.openPortal();
+    setSubBusy(false);
+    if (!res.ok) { setSubError(res.error || t("subscription.errorGeneric")); return; }
+    if (res.url) window.location.href = res.url;
+  };
+  const copyReferralCode = async () => {
+    const code = subscription?.referralInfo?.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 1800);
+    } catch {
+      showToast(t("settings.calendarCopyError"), "error");
+    }
   };
 
   const restartTutorial = () => {
@@ -497,8 +544,19 @@ export function Settings({ user, signOut, refreshUser }) {
         <div className="settings-row" onClick={() => openSheet("plan")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconSparkle size={18} /></div>
           <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.planActive")}</div>
-            <div className="settings-row-sub">{t("settings.planValue")}</div>
+            <div className="settings-row-title">{t("settings.subscriptionTitle")}</div>
+            <div className="settings-row-sub">{(() => {
+              const s = subscription || {};
+              if (s.compGranted) return t("subscription.statusComp");
+              if (s.subscribedActive) return t("subscription.statusActive");
+              if (s.accessState === "trial" && s.daysLeftInTrial != null) {
+                return s.daysLeftInTrial <= 1
+                  ? t("subscription.statusTrialEndsToday")
+                  : t("subscription.statusTrialDaysLeft").replace("{n}", String(s.daysLeftInTrial));
+              }
+              if (s.accessState === "expired") return t("subscription.statusExpired");
+              return t("subscription.statusLoading");
+            })()}</div>
           </div>
           <IconChevron />
         </div>
@@ -1016,23 +1074,190 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       )}
 
-      {/* ── PLAN SHEET ── */}
+      {/* ── SUSCRIPCIÓN SHEET ── */}
       {activeSheet === "plan" && (
-        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+        <div className="sheet-overlay" onClick={() => !subBusy && setActiveSheet(null)}>
           <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">{t("settings.plan")}</span>
-              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+              <span className="sheet-title">{t("settings.subscriptionTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !subBusy && setActiveSheet(null)} disabled={subBusy}><IconX size={14} /></button>
             </div>
-            <div style={{ padding:"0 20px 22px", textAlign:"center" }}>
-              <div style={{ width:48, height:48, background:"var(--amber-bg)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", color:"var(--amber)" }}>
-                <IconStar size={22} />
-              </div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", marginBottom:4 }}>{t("settings.planValue")}</div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5 }}>
-                {t("settings.planDescription")}
-              </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {(() => {
+                const s = subscription || {};
+                const state = s.accessState || "loading";
+                const isComp = s.compGranted;
+                const isActive = s.subscribedActive;
+                const periodEnd = s.subscription?.current_period_end;
+                const periodEndStr = periodEnd
+                  ? new Date(periodEnd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+                  : null;
+                const accentColor = isComp ? "var(--green)"
+                  : isActive ? "var(--teal-dark)"
+                  : state === "expired" ? "var(--red)"
+                  : "var(--teal-dark)";
+                const accentBg = isComp ? "var(--green-bg)"
+                  : isActive ? "var(--teal-pale)"
+                  : state === "expired" ? "var(--red-bg)"
+                  : "var(--cream)";
+                const HeroIcon = isComp ? IconCheck
+                  : isActive ? IconSparkle
+                  : state === "expired" ? IconLock
+                  : IconStar;
+                const heroTitle = isComp ? t("subscription.statusCompTitle")
+                  : isActive ? t("subscription.statusActiveTitle")
+                  : state === "trial" ? t("subscription.statusTrialTitle")
+                  : state === "expired" ? t("subscription.statusExpiredTitle")
+                  : t("subscription.statusLoading");
+                const heroSub = isComp ? t("subscription.compExplain")
+                  : isActive && periodEndStr
+                    ? (s.subscription?.cancel_at_period_end
+                        ? t("subscription.cancelAt").replace("{date}", periodEndStr)
+                        : t("subscription.renewsOn").replace("{date}", periodEndStr))
+                  : state === "trial" && s.daysLeftInTrial != null
+                    ? (s.daysLeftInTrial <= 1
+                        ? t("subscription.statusTrialEndsToday")
+                        : t("subscription.statusTrialDaysLeft").replace("{n}", String(s.daysLeftInTrial)))
+                  : state === "expired" ? t("subscription.expiredExplain")
+                  : "";
+                return (
+                  <>
+                    {/* ── Hero card — combines status + (when applicable) price into a single
+                          well-framed unit. Background is a soft accent tint and the icon
+                          sits in a clean white circle so the card reads as a premium
+                          surface rather than a noisy alert. */}
+                    <div style={{
+                      padding: !isComp && !isActive ? "20px 18px 22px" : "18px",
+                      borderRadius: "var(--radius-lg, 16px)",
+                      marginBottom: 16,
+                      background: accentBg,
+                      textAlign: "center",
+                    }}>
+                      <div style={{ width:52, height:52, borderRadius:"50%",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        background:"var(--white)", color: accentColor, margin:"0 auto 10px",
+                        boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
+                        <HeroIcon size={22} />
+                      </div>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>
+                        {heroTitle}
+                      </div>
+                      {heroSub && (
+                        <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:4, lineHeight:1.5 }}>
+                          {heroSub}
+                        </div>
+                      )}
+
+                      {/* Price line — only when there's a sale to make. Lives inside the
+                          hero so the user perceives value + cost together. */}
+                      {!isComp && !isActive && (
+                        <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.06)" }}>
+                          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
+                            <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
+                              $299
+                            </span>
+                            <span style={{ fontSize:13, color:"var(--charcoal-md)", fontWeight:600 }}>
+                              {t("subscription.priceUnit")}
+                            </span>
+                          </div>
+                          <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:6 }}>
+                            {t("subscription.priceExplain")}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Invite-code input — only when not yet subscribed. Uppercase + monospace
+                        feel via letter-spacing so the entered code looks intentional. */}
+                    {!isComp && !isActive && (
+                      <div className="input-group" style={{ marginBottom:14 }}>
+                        <label className="input-label">{t("subscription.inviteCodeLabel")}</label>
+                        <input
+                          type="text"
+                          className="input"
+                          autoCapitalize="characters"
+                          autoComplete="off"
+                          maxLength={16}
+                          placeholder={t("subscription.inviteCodePlaceholder")}
+                          value={inviteCodeInput}
+                          onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                          disabled={subBusy}
+                          style={{ letterSpacing:"0.08em", fontWeight:600 }}
+                        />
+                        <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginTop:6, lineHeight:1.4 }}>
+                          {t("subscription.inviteCodeHint")}
+                        </div>
+                      </div>
+                    )}
+
+                    {subError && <div style={{ fontSize:13, color:"var(--red)", marginBottom:10 }}>{subError}</div>}
+
+                    {/* Primary action — full-width charcoal button on its own row.
+                        Active subs swap to "Administrar" pointing at the Stripe portal. */}
+                    {(!isComp && !isActive) && (
+                      <div style={{ marginBottom:22 }}>
+                        <button type="button" className="btn btn-primary"
+                          onClick={handleStartCheckout} disabled={subBusy}>
+                          {subBusy ? t("loading") : t("subscription.subscribeCta")}
+                        </button>
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:8, lineHeight:1.4 }}>
+                          {t("subscription.checkoutFooter")}
+                        </div>
+                      </div>
+                    )}
+                    {isActive && !isComp && (
+                      <div style={{ marginBottom:22 }}>
+                        <button type="button" className="btn btn-primary"
+                          onClick={handleOpenPortal} disabled={subBusy}>
+                          {subBusy ? t("loading") : t("subscription.managePortalCta")}
+                        </button>
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:8, lineHeight:1.4 }}>
+                          {t("subscription.portalFooter")}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Referral block ── Cohesive teal-tinted card so it reads
+                          as "your friends earn you free months" without feeling
+                          like a separate concern. */}
+                    <div style={{
+                      padding:"16px", borderRadius:"var(--radius-lg, 16px)",
+                      background:"var(--teal-pale)", border:"1px solid rgba(0,0,0,0.04)",
+                    }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                        <div style={{ color:"var(--teal-dark)" }}><IconUsers size={16} /></div>
+                        <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:800, color:"var(--charcoal)" }}>
+                          {t("subscription.referralTitle")}
+                        </div>
+                      </div>
+                      <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:12 }}>
+                        {t("subscription.referralExplain")}
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 14px", background:"var(--white)", borderRadius:"var(--radius)", marginBottom:10 }}>
+                        <div style={{ flex:1, fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", letterSpacing:"0.18em" }}>
+                          {s.referralInfo?.code || (s.referralLoading ? "…" : "—")}
+                        </div>
+                        <button type="button" className="btn btn-ghost" onClick={copyReferralCode}
+                          disabled={!s.referralInfo?.code}
+                          style={{ minWidth:92, height:34, fontSize:"var(--text-sm)" }}>
+                          {referralCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
+                        </button>
+                      </div>
+                      {s.referralInfo && s.referralInfo.rewardsCount > 0 && (
+                        <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.5 }}>
+                          {s.referralInfo.pendingCreditCents > 0
+                            ? t("subscription.referralRewardsPending")
+                                .replace("{n}", String(s.referralInfo.rewardsCount))
+                                .replace("{credit}", `$${(s.referralInfo.pendingCreditCents / 100).toLocaleString("es-MX")}`)
+                            : t("subscription.referralRewardsApplied")
+                                .replace("{n}", String(s.referralInfo.rewardsCount))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

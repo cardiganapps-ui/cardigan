@@ -1,0 +1,214 @@
+/* ── Stripe helper (fetch-based, no SDK) ──────────────────────────────
+   Cardigan uses Stripe for the SaaS-side subscription (therapist pays
+   Cardigan $299 MXN/month for "Cardigan Pro"). We deliberately keep
+   this layer thin and SDK-free for two reasons:
+
+     1. The Stripe Node SDK is ~2 MB cold-start weight. We use about
+        four endpoints — Customers, Checkout Sessions, Billing Portal
+        Sessions, and webhook signature verification — all of which
+        are short HTTP calls or HMAC operations.
+     2. The repo already verifies HMAC webhooks by hand (see
+        api/resend-webhook.js + api/whatsapp-webhook.js), so reaching
+        for the SDK just for `stripe.webhooks.constructEvent` would be
+        a dependency for one function call.
+
+   This file is a server-only helper. It must NEVER be imported from
+   `src/` — that would bundle the Stripe secret key into the browser.
+
+   ── Test vs. live ──────────────────────────────────────────────────
+   We pick the secret key from `STRIPE_SECRET_KEY`. The webhook secret
+   comes from `STRIPE_WEBHOOK_SECRET`. Both are set in Vercel project
+   env (Production = live, Preview/Development = test). One more env —
+   `STRIPE_PRICE_ID` — names the recurring price the Checkout flow
+   should attach. All three change atomically when you flip a project
+   from test to live; never mix and match. */
+
+import crypto from "node:crypto";
+import { Buffer } from "node:buffer";
+
+const STRIPE_API_BASE = "https://api.stripe.com/v1";
+
+function getSecret() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
+  return key.trim();
+}
+
+export function getPriceId() {
+  const id = process.env.STRIPE_PRICE_ID;
+  if (!id) throw new Error("STRIPE_PRICE_ID not configured");
+  return id.trim();
+}
+
+export function getWebhookSecret() {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET not configured");
+  return secret.trim();
+}
+
+/* Stripe expects application/x-www-form-urlencoded with bracketed keys
+   for nested objects. URLSearchParams handles flat key/value pairs;
+   for nested ones we stringify keys ourselves so e.g.
+     { line_items: [{ price: "p_…", quantity: 1 }] }
+   becomes
+     line_items[0][price]=p_…&line_items[0][quantity]=1 */
+function encodeBody(obj) {
+  const params = new URLSearchParams();
+  const append = (key, value) => {
+    if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => append(`${key}[${i}]`, v));
+    } else if (typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) append(`${key}[${k}]`, v);
+    } else {
+      params.append(key, String(value));
+    }
+  };
+  for (const [k, v] of Object.entries(obj)) append(k, v);
+  return params.toString();
+}
+
+async function stripeFetch(path, { method = "POST", body, idempotencyKey } = {}) {
+  const headers = {
+    "Authorization": `Bearer ${getSecret()}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+  const res = await fetch(`${STRIPE_API_BASE}${path}`, {
+    method,
+    headers,
+    body: body ? encodeBody(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.error?.message || `Stripe ${path} failed (${res.status})`;
+    const err = new Error(msg);
+    err.statusCode = res.status;
+    err.stripeCode = json?.error?.code;
+    throw err;
+  }
+  return json;
+}
+
+export function createCustomer({ email, name, metadata }) {
+  // Idempotency-keyed by user_id (supplied via metadata.user_id) so a
+  // double-click on "Suscribirme" can't mint two Stripe customers for
+  // the same Cardigan user.
+  const userId = metadata?.user_id;
+  return stripeFetch("/customers", {
+    body: {
+      email,
+      name,
+      metadata: metadata || {},
+    },
+    idempotencyKey: userId ? `cardigan-customer-${userId}` : undefined,
+  });
+}
+
+export function createCheckoutSession({ customerId, priceId, successUrl, cancelUrl, metadata }) {
+  // Mirror every metadata key onto BOTH the Checkout Session and the
+  // Subscription so downstream webhooks (subscription.* and
+  // invoice.paid → which carries `subscription`) can see them. Using
+  // bracketed keys directly here is fine — encodeBody passes through
+  // anything we already serialized.
+  const body = {
+    mode: "subscription",
+    customer: customerId,
+    "line_items[0][price]": priceId,
+    "line_items[0][quantity]": 1,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    locale: "es",
+    allow_promotion_codes: "true",
+  };
+  for (const [k, v] of Object.entries(metadata || {})) {
+    if (v == null) continue;
+    body[`metadata[${k}]`] = String(v);
+    body[`subscription_data[metadata][${k}]`] = String(v);
+  }
+  return stripeFetch("/checkout/sessions", { body });
+}
+
+export function createBillingPortalSession({ customerId, returnUrl }) {
+  return stripeFetch("/billing_portal/sessions", {
+    body: {
+      customer: customerId,
+      return_url: returnUrl,
+    },
+  });
+}
+
+export function getSubscription(subscriptionId) {
+  return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "GET" });
+}
+
+/* Apply a Stripe customer-balance credit. `amountCents` should be
+   positive — we negate internally because Stripe uses NEGATIVE values
+   for credits and POSITIVE for debits. The credit is auto-applied to
+   the customer's next invoice. Used by the referral reward flow when
+   an invitee converts to a paid sub. */
+export function creditCustomerBalance({ customerId, amountCents, currency = "mxn", description, metadata }) {
+  return stripeFetch(`/customers/${customerId}/balance_transactions`, {
+    body: {
+      amount: -Math.abs(amountCents),
+      currency,
+      description: description || "Cardigan referral reward",
+      metadata: metadata || {},
+    },
+  });
+}
+
+/* ── Webhook signature verification ─────────────────────────────────
+   Stripe's `Stripe-Signature` header is of the shape:
+     t=1492774577,v1=5257a869e7…,v1=…
+   where `t` is the unix-second timestamp the event was signed at and
+   each `v1` is an HMAC-SHA256 of `${t}.${rawBody}` keyed with the
+   endpoint secret (whsec_…). Multiple v1 entries can appear during a
+   secret rotation; any matching signature passes.
+
+   Reject events older than `tolerance` seconds — the default of 5
+   minutes matches the SDK and prevents replay of an old captured
+   event. */
+const DEFAULT_TOLERANCE_SEC = 5 * 60;
+
+export function verifyStripeSignature({ rawBody, header, secret, tolerance = DEFAULT_TOLERANCE_SEC }) {
+  if (!header || typeof header !== "string") return false;
+  const parts = header.split(",").map((p) => p.trim());
+  let timestamp = null;
+  const signatures = [];
+  for (const part of parts) {
+    const [k, v] = part.split("=");
+    if (k === "t") timestamp = v;
+    else if (k === "v1") signatures.push(v);
+  }
+  if (!timestamp || signatures.length === 0) return false;
+
+  const tsNum = Number(timestamp);
+  if (!Number.isFinite(tsNum)) return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (Math.abs(nowSec - tsNum) > tolerance) return false;
+
+  const signedPayload = `${timestamp}.${rawBody}`;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(signedPayload, "utf8")
+    .digest("hex");
+  const expectedBuf = Buffer.from(expected, "hex");
+  return signatures.some((sig) => {
+    try {
+      const sigBuf = Buffer.from(sig, "hex");
+      return sigBuf.length === expectedBuf.length
+        && crypto.timingSafeEqual(sigBuf, expectedBuf);
+    } catch {
+      return false;
+    }
+  });
+}
+
+export async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}

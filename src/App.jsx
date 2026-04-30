@@ -56,6 +56,7 @@ import { BugReportSheet } from "./components/BugReportFab";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useTheme } from "./hooks/useTheme";
 import { useNotifications } from "./hooks/useNotifications";
+import { useSubscription } from "./hooks/useSubscription";
 import "./utils/logBuffer";
 import "./styles/index.css";
 
@@ -338,14 +339,26 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const liveData = useCardiganData(demo ? null : user, viewAsUserId, { noteCrypto });
   const demoData = useDemoData(demoProfession);
   const data = demo ? demoData : liveData;
+  // SaaS subscription / trial gate. Skipped in demo mode (no real user)
+  // and in admin "view as user" mode (the admin's own access state is
+  // irrelevant to whether they can inspect another user's data — and
+  // the target user's own state is read-only by virtue of viewAsUserId
+  // already). When `accessExpired`, every mutation is blocked and the
+  // FAB / write affordances hide; the UI surfaces a banner with a
+  // "Suscribirme" CTA. Admins are exempt (see useSubscription).
+  const subscription = useSubscription(demo || viewAsUserId ? null : user);
   /* Only pull out what App.jsx uses directly — everything else flows
      into context via `...data` spread in ctxValue below. */
   const {
     patients,
-    loading, mutationError, readOnly, clearMutationError,
+    loading, mutationError, clearMutationError,
     updateSessionStatus,
     refresh,
   } = data;
+  // Compose read-only: native data-layer flag (admin "view as user")
+  // OR trial-expired gate. Both block writes and hide the FAB; the UI
+  // distinguishes them via banner copy.
+  const readOnly = data.readOnly || subscription.accessExpired;
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [editingPayment, setEditingPayment] = useState(null);
@@ -439,6 +452,33 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   }, []);
   const pendingAgendaViewRef = useRef(null);
   const pendingExpedienteRef = useRef(null);
+
+  // ── Stripe return-from-Checkout / Portal handler ──
+  // Stripe sends users back to /?billing=success|cancel|return after
+  // the hosted flow. We strip the param immediately (so a refresh
+  // doesn't re-fire), broadcast a window event so useSubscription can
+  // refetch the row, and surface a one-shot toast on success. The
+  // webhook usually beats the redirect, but we delay the refetch
+  // inside useSubscription as a fallback.
+  useEffect(() => {
+    if (demo) return;
+    const params = new URLSearchParams(window.location.search);
+    const billing = params.get("billing");
+    if (!billing) return;
+    params.delete("billing");
+    params.delete("session_id");
+    const newUrl = window.location.pathname
+      + (params.toString() ? `?${params.toString()}` : "")
+      + window.location.hash;
+    window.history.replaceState({}, "", newUrl);
+    window.dispatchEvent(new CustomEvent("cardigan-billing-return", { detail: { billing } }));
+    if (billing === "success") {
+      showSuccess(t("subscription.toastSubscribed"));
+    }
+  // showSuccess / t are stable by useCallback / context — only run on
+  // first mount when the URL still has the billing param.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const tutorial = useTutorial({ user, demo, readOnly });
   const tutorialHidesFab = tutorial?.isActive
@@ -637,6 +677,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   }, [showSuccess]);
   const ctxValue = useMemo(() => ({
     ...data,
+    // Override data.readOnly with the composed value (admin view-as
+    // OR trial-expired). Order matters \u2014 this MUST come after
+    // `...data` so it wins.
+    readOnly,
+    subscription,
     deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
     deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
@@ -667,7 +712,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, userName, userInitial, readOnly, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, userName, userInitial, readOnly, subscription, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: show ProfessionOnboarding before mounting the
   // main shell when the user has no user_profiles row yet. Demo mode
@@ -765,12 +810,48 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         )}
 
         {/* Read-only banner when viewing as another user */}
-        {readOnly && !demo && (
+        {viewAsUserId && !demo && (
           <div className="app-banner app-banner--readonly">
             <span className="app-banner-text app-banner-text--muted">{t("admin.readOnly")}</span>
             <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
               className="app-banner-action app-banner-action--readonly">
               {t("admin.exit")}
+            </button>
+          </div>
+        )}
+
+        {/* Trial-expired banner — only when the trial has lapsed AND
+            the user has no active Stripe subscription. Charcoal so it
+            visually matches the read-only "view as user" banner — the
+            user understands they've lost write access. CTA is the
+            single accent-colored button on the strip, drawing the eye
+            without screaming. */}
+        {!demo && !viewAsUserId && subscription.accessExpired && (
+          <div className="app-banner app-banner--expired">
+            <span className="app-banner-text">{t("subscription.expiredBanner")}</span>
+            <button onClick={() => navigate("settings")} className="app-banner-action">
+              {t("subscription.subscribeShort")}
+            </button>
+          </div>
+        )}
+
+        {/* Trial-soon-to-expire banner — only when in the last 7 days
+            of trial AND no active sub yet. Non-blocking; the user can
+            keep using the app. The 7-day threshold matches typical
+            SaaS "renewal nudge" cadence. */}
+        {!demo && !viewAsUserId
+          && subscription.accessState === "trial"
+          && subscription.daysLeftInTrial != null
+          && subscription.daysLeftInTrial <= 7
+          && (
+          <div className="app-banner app-banner--trial">
+            <span className="app-banner-text">
+              {subscription.daysLeftInTrial <= 1
+                ? t("subscription.trialEndsTodayBanner")
+                : t("subscription.trialDaysLeftBanner").replace("{n}", String(subscription.daysLeftInTrial))}
+            </span>
+            <button onClick={() => navigate("settings")} className="app-banner-action">
+              {t("subscription.subscribeShort")}
             </button>
           </div>
         )}

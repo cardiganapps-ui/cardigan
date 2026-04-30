@@ -605,6 +605,34 @@ button.kpi-card:active {
   background: none; color: #7AB5C7; padding: 2px 8px;
 }
 
+/* ── Subscription banners ──
+   Two surfaces: an amber "trial nearing end" nudge (informational —
+   the user can still write) and a charcoal "trial expired" banner
+   (gating — same visual weight as readonly so the user understands
+   they've lost write access). The trial nudge uses solid charcoal
+   text on amber so it reads even with strong ambient light, mirroring
+   the offline indicator's feel. */
+.app-banner--trial {
+  background: var(--amber-bg);
+  border-bottom: 1px solid var(--cream-deeper);
+}
+.app-banner--trial .app-banner-text { color: var(--charcoal); }
+.app-banner--trial .app-banner-action {
+  background: var(--charcoal);
+  color: var(--white);
+  padding: 4px 14px;
+  font-weight: 800;
+}
+.app-banner--trial .app-banner-action:hover { background: var(--charcoal-md); }
+.app-banner--expired { background: #2E2E2E; }
+.app-banner--expired .app-banner-action {
+  background: var(--teal);
+  color: var(--white);
+  font-weight: 800;
+  padding: 4px 14px;
+}
+.app-banner--expired .app-banner-action:hover { background: var(--teal-dark); }
+
 /* ── Demo profession picker ──
    Pill-shaped chip in the demo banner that wraps a native <select>.
    We keep the native control for accessibility + mobile keyboards but

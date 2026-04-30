@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { haptic } from "../utils/haptics";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, fetchAdminAnalytics } from "../hooks/useCardiganData";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, adminGrantComp, fetchAdminAnalytics } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
@@ -35,6 +35,8 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
   const [professionBusy, setProfessionBusy] = useState(false);
   const [professionErr, setProfessionErr] = useState("");
   const [pendingProfession, setPendingProfession] = useState(null);
+  const [compBusy, setCompBusy] = useState(false);
+  const [compErr, setCompErr] = useState("");
 
   const isSelf = account.userId === currentAdminId;
   const emailLabel = account.email || `ID: ${account.userId.slice(0, 8)}…`;
@@ -94,6 +96,10 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
           <div className="row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
             {account.fullName || t("admin.noName")}
             {account.blocked && <span className="badge badge-red">{t("admin.accountStatusBlocked")}</span>}
+            {account.compGranted && <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>}
+            {account.subscriptionStatus === "active" && !account.compGranted && (
+              <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
+            )}
           </div>
           <div className="row-sub">
             {emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}
@@ -173,6 +179,39 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             </div>
           )}
           {professionErr && <div className="form-error" style={{ marginTop:0 }}>{professionErr}</div>}
+
+          {/* Comp-access toggle — admin can grant or revoke unlimited
+              free access to any user. The label reflects the current
+              state of `account.compGranted` (refreshed after the
+              optimistic update via onAction()). */}
+          <div onClick={(e) => e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"space-between" }}>
+            <span style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700 }}>
+              Acceso gratuito ilimitado:
+            </span>
+            <button
+              className="btn"
+              style={{
+                height:32, fontSize:"var(--text-sm)", padding:"0 12px", boxShadow:"none",
+                background: account.compGranted ? "var(--green-bg)" : "var(--cream)",
+                color: account.compGranted ? "var(--green)" : "var(--charcoal-md)",
+              }}
+              disabled={compBusy}
+              onClick={async () => {
+                setCompBusy(true); setCompErr("");
+                try {
+                  await adminGrantComp(account.userId, !account.compGranted);
+                  haptic.tap();
+                  onAction();
+                } catch (e) {
+                  setCompErr(e.message || "Error");
+                } finally {
+                  setCompBusy(false);
+                }
+              }}>
+              {compBusy ? "…" : account.compGranted ? "Activo (revocar)" : "Otorgar"}
+            </button>
+          </div>
+          {compErr && <div className="form-error" style={{ marginTop:0 }}>{compErr}</div>}
         </div>
       )}
 
