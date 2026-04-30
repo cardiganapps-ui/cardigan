@@ -47,6 +47,147 @@ import { haptic } from "../utils/haptics";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
 // from locale strings.
+/* Official WhatsApp glyph (SimpleIcons, CC0). The previous icon was
+   a hand-rolled approximation that read as a generic chat bubble.
+   Using the brand mark verbatim avoids the "is that the right app?"
+   moment when users see the button on iOS Safari. */
+function WhatsAppGlyph({ size = 22 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
+    </svg>
+  );
+}
+
+/* iOS-style share glyph (the box-with-up-arrow). Signals "system
+   share sheet" on iOS Safari and matches modern share buttons on
+   Android Chrome too. */
+function ShareGlyph({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+      strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v13" />
+      <polyline points="7 8 12 3 17 8" />
+      <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+    </svg>
+  );
+}
+
+/* ── Referral share block ──
+   Three-tier share UI:
+     1. Primary: native OS share (navigator.share) — covers every
+        app the user has installed. Hidden on browsers without the
+        Web Share API (mostly older desktop builds).
+     2. Direct icon row: WhatsApp + Email. The most common channels
+        in Mexico, deep-linked so they work even when navigator.share
+        is unavailable.
+     3. Code box + Copiar enlace (above this block) for the manual
+        case.
+
+   Each tap fires `referral_share` with `channel` so we can see in
+   Vercel Analytics which path actually drives invitations. */
+function ReferralShareBlock({ code, t }) {
+  const url = `https://cardigan.mx/?ref=${code}`;
+  const text = t("subscription.referralShareText", { code });
+  const canNativeShare = typeof navigator !== "undefined"
+    && typeof navigator.share === "function";
+
+  const fireTrack = (channel) => {
+    // Lazy import the analytics layer so this component doesn't
+    // pull it into the bundle until first render.
+    import("../lib/analytics").then(({ track }) => {
+      track("referral_share", { channel });
+    }).catch(() => { /* swallow */ });
+  };
+
+  const handleNativeShare = async () => {
+    haptic.tap();
+    try {
+      await navigator.share({
+        title: "Cardigan",
+        text,
+        url,
+      });
+      fireTrack("native");
+    } catch (err) {
+      // AbortError fires when the user dismisses the share sheet —
+      // expected, no-op. Anything else is unexpected; log and move on.
+      if (err?.name !== "AbortError") {
+        console.warn("share:", err?.message || err);
+      }
+    }
+  };
+
+  const onChannel = (channel) => () => {
+    haptic.tap();
+    fireTrack(channel);
+  };
+
+  return (
+    <>
+      {canNativeShare && (
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleNativeShare}
+          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginBottom:14 }}>
+          <ShareGlyph size={16} />
+          <span>{t("subscription.shareNative")}</span>
+        </button>
+      )}
+
+      {/* Section divider — only renders when there's a primary
+          button above to separate from. On desktop where native
+          share is hidden, the icon row is the primary surface and
+          we drop the eyebrow to keep it tight. */}
+      {canNativeShare && (
+        <div style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: "var(--charcoal-md)",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          marginBottom: 10,
+          textAlign: "center",
+        }}>
+          {t("subscription.shareDirectEyebrow")}
+        </div>
+      )}
+
+      {/* Icon row — equal-width tiles so the buttons read as a
+          coherent set rather than three random pills. */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 10,
+        marginBottom: 4,
+      }}>
+        <a
+          href={`https://wa.me/?text=${encodeURIComponent(text)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onChannel("whatsapp")}
+          className="referral-channel-btn"
+          style={{ background: "#25D366", color: "#fff" }}
+          aria-label="WhatsApp">
+          <WhatsAppGlyph size={20} />
+          <span>WhatsApp</span>
+        </a>
+        <a
+          href={`mailto:?subject=${encodeURIComponent("Te invito a Cardigan")}&body=${encodeURIComponent(text)}`}
+          onClick={onChannel("email")}
+          className="referral-channel-btn"
+          style={{ background: "var(--charcoal)", color: "#fff" }}
+          aria-label={t("subscription.shareEmail")}>
+          <IconMail size={18} />
+          <span>{t("subscription.shareEmail")}</span>
+        </a>
+      </div>
+    </>
+  );
+}
+
 function notifErrorKey(code) {
   switch (code) {
     case "permission-denied": return "notifications.toastPermissionDenied";
@@ -428,9 +569,19 @@ export function Settings({ user, signOut, refreshUser }) {
   const copyReferralCode = async () => {
     const code = subscription?.referralInfo?.code;
     if (!code) return;
+    // Copy the FULL URL not the bare code — that way recipients can
+    // tap the link directly and our ?ref=<code> handler prefills the
+    // invite at signup. (Label has always said "Copiar enlace"; the
+    // implementation drifted to the bare code at some point.)
+    const url = `https://cardigan.mx/?ref=${code}`;
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(url);
       setReferralCopied(true);
+      // Fire-and-forget analytics. Lazy import avoids a hot-path
+      // dependency for users who never tap.
+      import("../lib/analytics").then(({ track }) => {
+        track("referral_share", { channel: "copy_link" });
+      }).catch(() => { /* swallow */ });
       setTimeout(() => setReferralCopied(false), 1800);
     } catch {
       showToast(t("settings.calendarCopyError"), "error");
@@ -1623,41 +1774,27 @@ export function Settings({ user, signOut, refreshUser }) {
                       </div>
                     </div>
 
-                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 16px", background:"var(--white)", border:"1px solid var(--border)", borderRadius:"var(--radius)", marginBottom:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"14px 16px", background:"var(--white)", border:"1px solid var(--border)", borderRadius:"var(--radius)", marginBottom:14 }}>
                       <div style={{ flex:1, fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"0.2em" }}>
                         {info?.code || (subscription?.referralLoading ? "…" : "—")}
                       </div>
                       <button type="button" className="btn btn-ghost" onClick={copyReferralCode}
                         disabled={!info?.code}
                         style={{ minWidth:96, height:36, fontSize:"var(--text-sm)" }}>
-                        {referralCopied ? t("settings.calendarCopied") : t("settings.calendarCopy")}
+                        {referralCopied ? t("subscription.shareCopied") : t("subscription.shareCopyLink")}
                       </button>
                     </div>
 
-                    {/* WhatsApp share — Mexico is WhatsApp-first, so a
-                        prefilled message is the highest-leverage way to
-                        turn an open referral sheet into an actual
-                        invite sent. wa.me works on iOS, Android, and
-                        desktop without needing the WhatsApp app
-                        installed (falls through to web.whatsapp.com). */}
-                    {info?.code && (
-                      <a
-                        href={`https://wa.me/?text=${encodeURIComponent(t("subscription.referralShareText", { code: info.code }))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-primary"
-                        style={{
-                          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                          marginBottom:10, textDecoration:"none",
-                          background:"#25D366", color:"#fff",
-                        }}
-                        onClick={() => haptic.tap()}>
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-                          <path d="M20.5 3.5A11 11 0 0 0 3.6 17.6L2 22l4.5-1.5A11 11 0 1 0 20.5 3.5Zm-8.5 18a9.4 9.4 0 0 1-4.8-1.3l-.3-.2-2.7.9.9-2.7-.2-.3a9.5 9.5 0 1 1 7.1 3.6Zm5.4-7.1c-.3-.1-1.7-.8-2-.9s-.5-.1-.7.1c-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-1-.5-1.7-.9-2.5-2-.2-.3.2-.3.5-.9.1-.1.1-.3 0-.4 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4s-1 1-1 2.5 1 2.9 1.2 3.1 2 3.1 5 4.4c.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3Z"/>
-                        </svg>
-                        <span>{t("subscription.referralShareWhatsApp")}</span>
-                      </a>
-                    )}
+                    {/* Native + per-channel share. The OS share sheet
+                        (navigator.share) covers every app the user has
+                        installed — Messages, Mail, Telegram, IG, Notes,
+                        AirDrop, etc. — and is the primary CTA when
+                        available. The icon row below it is the direct
+                        path for the most common Mexican channels and
+                        the desktop fallback. Each path tracks a
+                        `referral_share` event with the channel name
+                        for funnel analysis. */}
+                    {info?.code && <ReferralShareBlock code={info.code} t={t} />}
                     {info && info.rewardsCount > 0 && (
                       <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, padding:"4px 4px 0" }}>
                         {info.pendingCreditCents > 0

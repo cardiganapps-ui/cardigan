@@ -1237,6 +1237,38 @@ html[data-theme="dark"] .update-prompt-toast {
   color: #FFFFFF;
 }
 
+/* Referral share — direct-channel buttons (WhatsApp / Email).
+   Equal-width tiles with the brand glyph + a label, sized to feel
+   like a coherent set rather than three random pills. The colour
+   per channel is set inline because each brand wants its own hue. */
+.referral-channel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+@media (hover: hover) {
+  .referral-channel-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+}
+.referral-channel-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
 .update-prompt-spinner {
   width: 12px;
   height: 12px;
