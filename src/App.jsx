@@ -3,6 +3,9 @@ import { useAuth } from "./hooks/useAuth";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
 import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
+// Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
+// user actually opens the welcome-modal subscribe flow.
+const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
@@ -527,20 +530,17 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     setWelcomeProOpen(false);
   }, [persistWelcomeProSeen]);
 
-  const subscribeFromWelcomePro = useCallback(async () => {
+  // Welcome-modal "Subscribe now" → close the modal and pop the native
+  // payment sheet inline. We keep a separate paymentSheet state on App
+  // so the sheet survives the modal closing (and so the same component
+  // doesn't end up double-mounted from Settings if the user lands there
+  // while the welcome modal flow is still active).
+  const [welcomePaymentOpen, setWelcomePaymentOpen] = useState(false);
+  const subscribeFromWelcomePro = useCallback(() => {
     persistWelcomeProSeen();
-    const res = await subscription.startCheckout?.();
-    if (res?.ok && res.url) {
-      window.location.href = res.url;
-      return;
-    }
-    // Failure path — close the modal and surface the error via toast.
     setWelcomeProOpen(false);
-    if (res?.error) showToast(res.error, "error");
-  // showToast / persistWelcomeProSeen are stable; subscription is the
-  // dynamic dep that matters.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscription, persistWelcomeProSeen]);
+    setWelcomePaymentOpen(true);
+  }, [persistWelcomeProSeen]);
 
   const userName = demo ? "Demo" : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario");
   const userInitial = userName.charAt(0).toUpperCase();
@@ -820,6 +820,19 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           onSubscribe={subscribeFromWelcomePro}
         />
       )}
+      <Suspense fallback={null}>
+        {welcomePaymentOpen && (
+          <StripePaymentSheet
+            open={welcomePaymentOpen}
+            daysLeftInTrial={subscription.daysLeftInTrial}
+            onClose={() => setWelcomePaymentOpen(false)}
+            onSuccess={() => {
+              setWelcomePaymentOpen(false);
+              showSuccess(t("subscription.toastSubscribed"));
+            }}
+          />
+        )}
+      </Suspense>
       <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
         onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setBugReportOpen(true); } : null} />

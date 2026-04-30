@@ -1,5 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "../supabaseClient";
+// Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
+// into the main chunk for users who never open the payment sheet.
+const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
 import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
@@ -296,21 +299,17 @@ export function Settings({ user, signOut, refreshUser }) {
   const [subError, setSubError] = useState("");
   const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [referralCopied, setReferralCopied] = useState(false);
-  const handleStartCheckout = async () => {
-    if (subBusy || !subscription?.startCheckout) return;
-    setSubBusy(true); setSubError("");
-    const res = await subscription.startCheckout({
-      referralCode: inviteCodeInput.trim() || undefined,
-    });
-    setSubBusy(false);
-    if (!res.ok) {
-      // If the server reports an existing active sub, drop straight
-      // to the portal so the user can manage it.
-      if (res.action === "use_portal") return handleOpenPortal();
-      setSubError(res.error || t("subscription.errorGeneric"));
-      return;
-    }
-    if (res.url) window.location.href = res.url;
+  // Native payment sheet — replaces the previous redirect-to-Stripe
+  // flow. We pass the resolved invite code at open-time so it's stable
+  // through the whole confirm cycle even if the user re-types in the
+  // Suscripción sheet underneath.
+  const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
+  const [paymentSheetReferralCode, setPaymentSheetReferralCode] = useState(null);
+  const handleStartCheckout = () => {
+    if (subBusy) return;
+    setSubError("");
+    setPaymentSheetReferralCode(inviteCodeInput.trim() || null);
+    setPaymentSheetOpen(true);
   };
   const handleOpenPortal = async () => {
     if (subBusy || !subscription?.openPortal) return;
@@ -1138,6 +1137,29 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       )}
 
+      {/* ── NATIVE PAYMENT SHEET ──
+          Mounted lazily on first use. Stripe Elements lives in here;
+          the user never leaves cardigan.mx unless their bank requires
+          a 3DS challenge (handled automatically via return_url). */}
+      <Suspense fallback={null}>
+        {paymentSheetOpen && (
+          <StripePaymentSheet
+            open={paymentSheetOpen}
+            referralCode={paymentSheetReferralCode}
+            daysLeftInTrial={subscription?.daysLeftInTrial}
+            onClose={() => setPaymentSheetOpen(false)}
+            onSuccess={() => {
+              setPaymentSheetOpen(false);
+              showToast(t("subscription.toastSubscribed"), "success");
+              // Close the parent Suscripción sheet too — the user has
+              // just succeeded, no reason to leave them staring at the
+              // pre-checkout state.
+              setActiveSheet(null);
+            }}
+          />
+        )}
+      </Suspense>
+
       {/* ── SUSCRIPCIÓN SHEET ── */}
       {activeSheet === "plan" && (
         <div className="sheet-overlay" onClick={() => !subBusy && setActiveSheet(null)}>
@@ -1527,18 +1549,74 @@ export function Settings({ user, signOut, refreshUser }) {
               <div style={{ background: "var(--red-pale, #fdecea)", color: "var(--red-dark, #922)", padding: "10px 14px", borderRadius: "var(--radius)", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
                 {t("settings.privacyDeleteWarning")}
               </div>
+              {/* iOS Safari autofills the closest text field above any
+                  password input as the "username" side of a sign-in
+                  pair. To stop it from dumping the user's email into
+                  the confirmation field, we plant a hidden username
+                  input here that absorbs the pairing instead. The
+                  attributes also dissuade 1Password / LastPass / iOS
+                  Keychain. */}
+              <input
+                type="text"
+                name="absorb-username-autofill"
+                autoComplete="username"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  width: 1, height: 1,
+                  opacity: 0, pointerEvents: "none",
+                  border: 0, padding: 0, margin: -1,
+                  overflow: "hidden", clip: "rect(0 0 0 0)",
+                }}
+                value=""
+                readOnly
+              />
               <div className="input-group" style={{ marginBottom: 14 }}>
                 <label className="input-label">{t("settings.privacyDeleteConfirmLabel")}</label>
                 <input
                   className="input"
                   type="text"
+                  inputMode="text"
+                  // Distinct, non-standard name so password managers
+                  // don't try to autofill known credentials here.
+                  name="cardigan-eliminar-confirm"
                   autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   autoCapitalize="characters"
+                  data-1p-ignore
+                  data-lpignore="true"
                   value={deleteConfirm}
                   onChange={(e) => setDeleteConfirm(e.target.value)}
                   placeholder="ELIMINAR"
                   disabled={deleting}
                 />
+                {/* Inline hint when the value is non-empty but doesn't
+                    match. The user almost always lands here because of
+                    iOS autofill — a "Borrar" button gives them a
+                    one-tap recovery instead of having to manually
+                    delete their email character by character. */}
+                {deleteConfirm
+                  && deleteConfirm.trim().toUpperCase() !== "ELIMINAR" && (
+                  <div style={{
+                    display:"flex", alignItems:"center", justifyContent:"space-between",
+                    gap:8, marginTop:6, fontSize:12, color:"var(--charcoal-md)",
+                    lineHeight:1.45,
+                  }}>
+                    <span>{t("settings.privacyDeleteHint")}</span>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm("")}
+                      style={{
+                        background:"none", border:"none", color:"var(--teal-dark)",
+                        fontWeight:700, fontSize:12, cursor:"pointer", padding:"2px 6px",
+                      }}
+                    >
+                      {t("settings.privacyDeleteClear")}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="input-group" style={{ marginBottom: 14 }}>
                 <label className="input-label">{t("settings.privacyReauthLabel")}</label>
