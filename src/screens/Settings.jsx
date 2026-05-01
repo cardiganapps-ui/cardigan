@@ -539,6 +539,15 @@ export function Settings({ user, signOut, refreshUser }) {
       return stashed ? stashed.toUpperCase() : "";
     } catch { return ""; }
   });
+  // True when the invite code came from a ?ref=<code> URL (i.e. the
+  // user arrived via someone's referral link). The plan sheet hides
+  // the invite-code input entirely in that case — the user shouldn't
+  // need to know they were referred for the credit to apply. Word-
+  // of-mouth users who type a code manually still see the field.
+  const [inviteCodeFromUrl] = useState(() => {
+    try { return !!sessionStorage.getItem("cardigan.referralFromUrl"); }
+    catch { return false; }
+  });
   const [referralCopied, setReferralCopied] = useState(false);
   // Native payment sheet — replaces the previous redirect-to-Stripe
   // flow. We pass the resolved invite code at open-time so it's stable
@@ -1612,9 +1621,15 @@ export function Settings({ user, signOut, refreshUser }) {
                       </div>
                     )}
 
-                    {/* Invite-code input — only when not yet subscribed. Uppercase + monospace
-                        feel via letter-spacing so the entered code looks intentional. */}
-                    {!isComp && !isActive && (
+                    {/* Invite-code input — only when not yet subscribed
+                        AND the code wasn't auto-captured from a ?ref=<code>
+                        URL. Visitors who arrived via a friend's referral
+                        link don't see this field at all; the code is
+                        already in inviteCodeInput from sessionStorage and
+                        flows through to handleStartCheckout invisibly.
+                        Word-of-mouth users (who never hit a ?ref URL)
+                        still see the field and can type their code in. */}
+                    {!isComp && !isActive && !inviteCodeFromUrl && (
                       <div className="input-group" style={{ marginBottom:14 }}>
                         <label className="input-label">{t("subscription.inviteCodeLabel")}</label>
                         <input

@@ -89,9 +89,36 @@ function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
-  // demo banner's "Crear cuenta" button so the user doesn't bounce through
-  // the landing page.
-  const [authIntent, setAuthIntent] = useState(null);
+  // demo banner's "Crear cuenta" button AND by the ?ref=<code> referral-link
+  // capture below, so a visitor arriving from a friend's invite link skips
+  // the landing page entirely.
+  const [authIntent, setAuthIntent] = useState(() => {
+    // Capture ?ref=<code> at module/component initial render — runs
+    // BEFORE the auth gate so an unauthenticated visitor lands
+    // straight on the signup sheet instead of having to find
+    // "Comenzar gratis" themselves. The code is stashed in
+    // sessionStorage so it survives the email-verify roundtrip and
+    // the eventual checkout pulls it from there. URL is stripped
+    // so a refresh + screenshot doesn't leak the parameter.
+    if (typeof window === "undefined") return null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (!ref) return null;
+      const sanitized = ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+      if (!sanitized) return null;
+      try { sessionStorage.setItem("cardigan.referralFromUrl", sanitized); }
+      catch { /* private mode — fine, the URL is gone after this anyway */ }
+      params.delete("ref");
+      const newUrl = window.location.pathname
+        + (params.toString() ? `?${params.toString()}` : "")
+        + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+      // Auto-jump to signup. Returning "signup" here seeds authIntent
+      // so AuthScreen renders the signup sheet on its first render.
+      return "signup";
+    } catch { return null; }
+  });
   // MFA gate state — `mfaResolved` flips true once MfaChallengeGate
   // determines no challenge is needed OR a challenge succeeds. Reset
   // whenever the user changes (sign-out / sign-in) so we re-check.
@@ -544,29 +571,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   }, []);
 
   // ── Referral-code URL handler (?ref=<CODE>) ──
-  // Lands on every cardigan.mx page from a referral share link. We
-  // stash the code in sessionStorage so it survives the email-verify
-  // round-trip on signup; Settings → plan sheet prefills the invite
-  // code input from this entry on mount. Stripped from the URL after
-  // capture so a refresh-after-signin doesn't keep the parameter
-  // visible. Cleared by the checkout success handler in Settings
-  // (see cardigan.referralFromUrl reads).
-  useEffect(() => {
-    if (demo) return;
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get("ref");
-    if (!ref) return;
-    const sanitized = ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
-    if (sanitized) {
-      try { sessionStorage.setItem("cardigan.referralFromUrl", sanitized); }
-      catch { /* private mode — fine, the URL is gone after this anyway */ }
-    }
-    params.delete("ref");
-    const newUrl = window.location.pathname
-      + (params.toString() ? `?${params.toString()}` : "")
-      + window.location.hash;
-    window.history.replaceState({}, "", newUrl);
-  }, [demo]);
+  // The capture happens earlier in CardiganApp (before the auth
+  // gate) so visitors arriving from a referral link land directly
+  // on the signup sheet. By the time AppShell renders, the URL has
+  // already been stripped and the code is in sessionStorage —
+  // Settings → plan reads from there at checkout time. No further
+  // work needed at this layer.
 
   const tutorial = useTutorial({ user, demo, readOnly });
   const tutorialHidesFab = tutorial?.isActive
