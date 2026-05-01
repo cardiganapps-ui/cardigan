@@ -32,33 +32,33 @@ const PROFESSIONS = [
 const FEATURES = [
   {
     Icon: IconCalendar,
-    title: "Agenda recurrente",
-    body: "Sesiones semanales que se generan solas. Cambia un horario y se reagenda hacia adelante.",
+    title: "Tu agenda, en automático.",
+    body: "Repite cada semana, sola.",
   },
   {
     Icon: IconUsers,
-    title: "Cada cliente, una vista",
-    body: "Notas, archivos, mediciones y pagos — todo a la mano en la ficha de cada paciente.",
+    title: "Cada cliente, un toque.",
+    body: "Notas, pagos, archivos. Ahí mismo.",
   },
   {
     Icon: IconLock,
-    title: "Notas cifradas",
-    body: "Tus notas clínicas viajan cifradas con tu propia contraseña. Solo tú puedes leerlas.",
+    title: "Tus notas, blindadas.",
+    body: "Cifradas. Solo tú las lees.",
   },
   {
     Icon: IconBell,
-    title: "Recordatorios automáticos",
-    body: "Push y WhatsApp a tiempo, sin que tengas que escribir un solo mensaje.",
+    title: "Nadie olvida la cita.",
+    body: "WhatsApp y push, en automático.",
   },
   {
     Icon: IconDownload,
-    title: "Exporta cuando quieras",
-    body: "Reportes mensuales en PDF y exportación completa de tus datos. Sin candados.",
+    title: "Tus datos, tuyos.",
+    body: "Exporta cuando quieras. Sin candados.",
   },
   {
     Icon: IconSmartphone,
-    title: "Funciona como app",
-    body: "Instálala desde tu navegador. Cardigan se siente nativa en iPhone y Android.",
+    title: "App sin App Store.",
+    body: "Instálala desde tu navegador.",
   },
 ];
 
@@ -146,8 +146,6 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
             <span>cardigan</span>
           </a>
           <div className="lp-nav-actions">
-            <a href="#pricing" className="lp-nav-link lp-nav-link--anchor">Precios</a>
-            <a href="#faq" className="lp-nav-link lp-nav-link--anchor">FAQ</a>
             <button type="button" className="lp-nav-link" onClick={onLogin}>
               Iniciar sesión
             </button>
@@ -167,7 +165,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
               Tu práctica, <span className="lp-accent">en orden.</span>
             </h1>
             <p className="lp-hero-sub">
-              Agenda, clientes y cobros en un solo lugar.
+              Una sola app. Para todo.
             </p>
             <div className="lp-hero-ctas">
               <CTAButton variant="primary" onClick={onPrimary}>
@@ -208,15 +206,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
         <div className="lp-container lp-trust-row">
           <div className="lp-trust-pill" data-reveal style={{ "--i": 0 }}>
             <IconLock size={16} />
-            <span>Notas cifradas extremo a extremo</span>
+            <span>Notas blindadas</span>
           </div>
           <div className="lp-trust-pill" data-reveal style={{ "--i": 1 }}>
             <IconDownload size={16} />
-            <span>Exporta tus datos cuando quieras</span>
+            <span>Tus datos, tuyos</span>
           </div>
           <div className="lp-trust-pill" data-reveal style={{ "--i": 2 }}>
             <IconCalendar size={16} />
-            <span>Cancela en un toque, sin contrato</span>
+            <span>Cero contratos</span>
           </div>
         </div>
       </section>
@@ -224,9 +222,9 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 3. Feature deck — 6 cards, icon + title + body. */}
       <section id="features" className="lp-section">
         <div className="lp-container">
-          <h2 className="lp-section-title">Todo lo que necesitas, nada más.</h2>
+          <h2 className="lp-section-title">Lo necesario. Nada más.</h2>
           <p className="lp-section-sub">
-            Construido para terapeutas, nutriólogos, entrenadores y profesores particulares en México.
+            Hecho en México, para ti.
           </p>
           <div className="lp-feature-deck">
             {FEATURES.map((f, i) => (
@@ -250,15 +248,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
           <div className="lp-features">
             <article className="lp-feature-v2" data-reveal style={{ "--i": 0 }}>
               <MiniSessions mock={mock} />
-              <div className="lp-feature-label">Tu día, claro.</div>
+              <div className="lp-feature-label">Tu día. De un vistazo.</div>
             </article>
             <article className="lp-feature-v2" data-reveal style={{ "--i": 1 }}>
               <MiniPatients mock={mock} />
-              <div className="lp-feature-label">Cada cliente, una vista.</div>
+              <div className="lp-feature-label">Cada cliente, un toque.</div>
             </article>
             <article className="lp-feature-v2" data-reveal style={{ "--i": 2 }}>
               <MiniFinances mock={mock} />
-              <div className="lp-feature-label">Ingresos al día.</div>
+              <div className="lp-feature-label">Cobras lo que toca.</div>
             </article>
           </div>
         </div>
@@ -267,7 +265,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 5. Cómo empezar — the path to utilization */}
       <section id="start" className="lp-section lp-start">
         <div className="lp-container">
-          <h2 className="lp-section-title">En tres pasos.</h2>
+          <h2 className="lp-section-title">Listo en 3 pasos.</h2>
           <ol className="lp-steps">
             <li className="lp-step" data-reveal style={{ "--i": 0 }}>
               <span className="lp-step-num">1</span>
@@ -298,15 +296,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
           </p>
           <ul className="lp-pricing-features">
             <li>30 días gratis. Sin tarjeta.</li>
-            <li>Acceso completo a todas las funciones.</li>
-            <li>Cancela cuando quieras desde la app.</li>
+            <li>Todo, desde el día uno.</li>
+            <li>Cancela en un toque.</li>
           </ul>
           <div className="lp-pricing-ctas">
             <CTAButton variant="primary" onClick={onPrimary}>
-              Empezar mi prueba gratis
+              Empezar gratis
             </CTAButton>
             <CTAButton variant="secondary" onClick={onSecondary}>
-              Probar demo primero
+              Probar demo
             </CTAButton>
           </div>
         </div>
