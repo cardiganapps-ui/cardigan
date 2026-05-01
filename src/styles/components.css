@@ -1170,88 +1170,41 @@ button.kpi-card:active {
    both colors instead so the pill stays visually "dark" in both themes
    and keeps the same contrast relationship with the page. */
 /* ── Update prompt ──
-   Minimalist top-center pill that matches the rest of Cardigan's
-   surfaces (cream + charcoal + teal accent) instead of the
-   previous heavy dark bar. Tight padding, full-pill radius, soft
-   shadow — reads as a notification, not a system warning. */
-.update-prompt-toast {
-  background: var(--white);
-  color: var(--charcoal);
-  padding: 8px 8px 8px 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: var(--font);
-  box-shadow: 0 8px 28px rgba(46, 46, 46, 0.18), 0 1px 2px rgba(46, 46, 46, 0.08);
-  border: 1px solid var(--cream-deeper, #EFE7DA);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 100%;
-  /* Vertical-stack layout in stuck state needs a bit more breathing
-     room. The toast's content controls its own padding when needed. */
-}
-html[data-theme="dark"] .update-prompt-toast {
-  /* In dark mode, lift to a slightly elevated surface — the page is
-     near-black, so a charcoal-tinted pill with a teal-tinted border
-     keeps the same "I'm above the page" reading as in light mode. */
-  background: #2B2B2B;
-  color: #F6F6F6;
-  border-color: rgba(91, 155, 175, 0.32);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.30);
-}
-.update-prompt-action {
+   Single one-word teal pill — "Actualizar". The previous design
+   stacked text + ghost defer + primary CTA inside a wider toast;
+   the user asked for the simplest possible UI: tap-to-update or
+   ignore. Defer / dismiss / status-text affordances were removed.
+   The pill sits top-center, clears the iOS dynamic island, and
+   stays inside the existing Cardigan teal ramp. */
+.update-prompt-pill {
   background: var(--teal);
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-pill);
-  padding: 7px 14px;
+  padding: 9px 22px;
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font);
   cursor: pointer;
-  flex-shrink: 0;
-  min-height: 0;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  transition: background 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+  box-shadow: 0 8px 24px rgba(91, 155, 175, 0.32), 0 1px 2px rgba(46, 46, 46, 0.10);
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 }
-.update-prompt-action:hover { background: var(--teal-dark); }
-.update-prompt-action:active { transform: scale(0.96); background: var(--teal-dark); }
-.update-prompt-action:disabled { cursor: default; }
-.update-prompt-action.is-applying {
+.update-prompt-pill:hover {
   background: var(--teal-dark);
+  box-shadow: 0 10px 28px rgba(91, 155, 175, 0.40), 0 1px 2px rgba(46, 46, 46, 0.10);
+}
+.update-prompt-pill:active {
+  transform: scale(0.97);
+  background: var(--teal-dark);
+}
+.update-prompt-pill:disabled {
   cursor: progress;
-}
-/* Ghost variant for "Más tarde" / "Seguir igual" — text-only, low
-   visual weight, lets the primary "Actualizar" CTA win. */
-.update-prompt-action--ghost {
-  background: transparent;
-  color: var(--charcoal-md);
-  padding: 7px 10px;
-  font-weight: 600;
-}
-.update-prompt-action--ghost:hover {
-  background: var(--cream);
-  color: var(--charcoal);
-}
-.update-prompt-action--ghost:active {
-  background: var(--cream-deeper, #EFE7DA);
-  color: var(--charcoal);
-}
-html[data-theme="dark"] .update-prompt-action--ghost {
-  color: rgba(255, 255, 255, 0.70);
-}
-html[data-theme="dark"] .update-prompt-action--ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #FFFFFF;
-}
-html[data-theme="dark"] .update-prompt-action--ghost:active {
-  background: rgba(255, 255, 255, 0.14);
-  color: #FFFFFF;
+  background: var(--teal-dark);
 }
 
 /* Referral share — direct-channel buttons (WhatsApp / Email).

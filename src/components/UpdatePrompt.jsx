@@ -31,10 +31,14 @@ import { useIdle } from "../hooks/useIdle";
      full-width top toast — matches the convention modern apps
      (Slack, Linear, Notion) settled on for "soft" notifications. */
 
-const DEFER_MS = 60 * 60 * 1000;          // 1h
 const STUCK_AFTER_MS = 4_000;              // applying → stuck
 const HARD_RELOAD_AFTER_STUCK_MS = 15_000; // stuck → forced reload (last resort)
 const APPLIED_FLAG_KEY = "cardigan.updateAppliedAt";
+// Legacy key — older builds had a "Más tarde" button that stamped this
+// for a 1h suppression. The button was removed in favour of a single
+// "Actualizar" pill, but we still honour an existing stamp on first
+// render so users mid-defer don't see the prompt re-pop unexpectedly.
+// New defers can no longer be created. The key clears on apply.
 const DEFER_KEY = "cardigan.updateDeferredUntil";
 
 /* Quick scan — true if any input/textarea has user-entered text.
@@ -71,14 +75,6 @@ function getDeferredUntil() {
   } catch { return 0; }
 }
 
-function setDeferredUntil(ts) {
-  try { localStorage.setItem(DEFER_KEY, String(ts)); } catch { /* fall through */ }
-}
-
-function clearDeferredUntil() {
-  try { localStorage.removeItem(DEFER_KEY); } catch { /* fall through */ }
-}
-
 function markUpdateApplied() {
   try { localStorage.setItem(APPLIED_FLAG_KEY, String(Date.now())); } catch { /* fall through */ }
 }
@@ -87,7 +83,11 @@ export function UpdatePrompt() {
   const { t } = useT();
   const [waitingSW, setWaitingSW] = useState(null);
   const [phase, setPhase] = useState("idle"); // idle | available | applying | stuck
-  const [deferredUntil, setDeferredUntilState] = useState(() => getDeferredUntil());
+  // Read once on mount. Legacy stamp from older builds; we no longer
+  // create new ones. The state stays read-only for the component's
+  // lifetime, then expires naturally per the timestamp comparison
+  // in the auto-apply effect.
+  const [deferredUntil] = useState(() => getDeferredUntil());
   const stuckTimerRef = useRef(null);
   const reloadFailsafeRef = useRef(null);
   const isIdle = useIdle(30_000);
@@ -157,14 +157,6 @@ export function UpdatePrompt() {
     applyUpdate();
   };
 
-  const handleDefer = () => {
-    haptic.tap();
-    const until = Date.now() + DEFER_MS;
-    setDeferredUntil(until);
-    setDeferredUntilState(until);
-    setPhase("idle");
-  };
-
   const handleRetry = () => {
     haptic.tap();
     if (reloadFailsafeRef.current) {
@@ -178,84 +170,45 @@ export function UpdatePrompt() {
     applyUpdate();
   };
 
-  const handleContinueAnyway = () => {
-    haptic.tap();
-    if (reloadFailsafeRef.current) {
-      clearTimeout(reloadFailsafeRef.current);
-      reloadFailsafeRef.current = null;
-    }
-    // Drop the apply mark — we're staying on the old version
-    // intentionally and don't want to show a "Actualizado" confirmation
-    // on a future organic reload.
-    try { localStorage.removeItem(APPLIED_FLAG_KEY); } catch { /* fall through */ }
-    clearDeferredUntil();
-    setPhase("idle");
-    setWaitingSW(null);
-  };
-
   if (!waitingSW) return null;
   if (phase === "idle") return null;
+
+  // Single pill — the word "Actualizar" by itself in available
+  // state, a small spinner in applying, and "Reintentar" if the
+  // SW activation hangs. Defer / dismiss / "más tarde" affordances
+  // were removed in favour of the simplest possible UI: tap to
+  // update or ignore. The 15s last-resort hard-reload still runs
+  // from the stuck state so the user never gets permanently stuck.
+  const label = phase === "stuck" ? t("update.retry") : t("updateNow");
+  const onClick = phase === "stuck" ? handleRetry
+    : phase === "applying" ? undefined
+    : handleApply;
+  const disabled = phase === "applying";
 
   return (
     <div
       role="status"
       aria-live="polite"
       style={{
-        // Top-center placement so the toast reads as a discreet
-        // notification rather than a corner-stuck alert. safe-area
-        // inset clears the iOS dynamic-island / notch gracefully.
+        // Top-center placement, clears the iOS dynamic-island / notch.
         position: "fixed",
         top: "calc(env(safe-area-inset-top, 0px) + 12px)",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: "var(--z-install)",
-        maxWidth: "calc(100vw - 24px)",
         animation: "updatePromptIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
       }}>
-      <div className="update-prompt-toast">
-        {phase === "stuck" ? (
-          // Stuck has slightly more text — keep one pill but allow the
-          // body to wrap if needed. Ghost "Seguir igual" sits inline
-          // with the primary "Reintentar" so the pill stays one row
-          // visually on phones.
-          <>
-            <span style={{ flex: 1, minWidth: 0 }}>{t("update.stuckTitle")}</span>
-            <button
-              type="button"
-              className="update-prompt-action update-prompt-action--ghost"
-              onClick={handleContinueAnyway}>
-              {t("update.continueAnyway")}
-            </button>
-            <button
-              type="button"
-              className="update-prompt-action"
-              onClick={handleRetry}>
-              {t("update.retry")}
-            </button>
-          </>
-        ) : phase === "applying" ? (
-          <>
-            <span className="update-prompt-spinner update-prompt-spinner--inline" aria-hidden="true" />
-            <span style={{ flex: 1 }}>{t("update.applying")}</span>
-          </>
-        ) : (
-          <>
-            <span style={{ flex: 1 }}>{t("updateAvailable")}</span>
-            <button
-              type="button"
-              className="update-prompt-action update-prompt-action--ghost"
-              onClick={handleDefer}>
-              {t("update.later")}
-            </button>
-            <button
-              type="button"
-              className="update-prompt-action"
-              onClick={handleApply}>
-              {t("updateNow")}
-            </button>
-          </>
+      <button
+        type="button"
+        className={`update-prompt-pill${disabled ? " is-applying" : ""}`}
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}>
+        {disabled && (
+          <span className="update-prompt-spinner update-prompt-spinner--inline" aria-hidden="true" />
         )}
-      </div>
+        <span>{label}</span>
+      </button>
       <style>{`
         @keyframes updatePromptIn {
           from { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
