@@ -37,7 +37,10 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0 || !patientId) return;
+    // patientId="" is the "Documento general" option — explicitly
+    // valid (uploadDocument coerces empty → null below). The earlier
+    // `!patientId` guard silently dropped general-doc uploads.
+    if (files.length === 0) return;
     const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       showToast?.(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
