@@ -101,19 +101,37 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
                 whether someone is paid, comp'd, in trial, or
                 expired. Pre-fix this row showed "Gratis" for every
                 comp-granted account and silently nothing for trial
-                / expired users; admins couldn't tell at a glance. */}
-            {account.tier === "pro" && (
-              <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
-            )}
-            {/* Cancelling badge — when a Pro user has scheduled their
-                cancellation but still has access. Lets admin see at a
-                glance who's about to drop off; sub-line could surface
-                the date but the badge alone is enough for triage. */}
-            {account.tier === "pro" && (account.subscriptionCancelAt || account.subscriptionCancelAtPeriodEnd) && (
-              <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
-                Cancelando
-              </span>
-            )}
+                / expired users; admins couldn't tell at a glance.
+                For Pro users who scheduled cancellation, a SINGLE
+                amber badge "Pro · termina <date>" replaces the
+                two-badge "Pro" + "Cancelando" stack — that read as
+                two unrelated facts ("they're Pro AND they're
+                cancelling?") instead of "Pro until X". */}
+            {account.tier === "pro" && (() => {
+              const cancelIso = account.subscriptionCancelAt
+                || account.subscriptionPeriodEnd
+                || null;
+              const isCancelling = !!account.subscriptionCancelAt
+                || !!account.subscriptionCancelAtPeriodEnd;
+              if (isCancelling) {
+                let dateStr = null;
+                if (cancelIso) {
+                  try {
+                    dateStr = new Date(cancelIso).toLocaleDateString("es-MX", {
+                      day: "numeric", month: "short",
+                    }).replace(/\.$/, "");
+                  } catch { /* fall through */ }
+                }
+                return (
+                  <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
+                    {dateStr ? `Pro · termina ${dateStr}` : "Pro · cancelada"}
+                  </span>
+                );
+              }
+              return (
+                <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
+              );
+            })()}
             {account.tier === "comp" && (
               <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>
             )}
