@@ -96,6 +96,7 @@ async function handler(req, res) {
         status: null,
         current_period_end: null,
         cancel_at_period_end: false,
+        cancel_at: null,
         trial_end: null,
         default_payment_method: null,
         last_stripe_event_at: syncStartIso,
@@ -117,6 +118,9 @@ async function handler(req, res) {
     status: sub.status,
     current_period_end: isoOrNull(periodEndUnix),
     cancel_at_period_end: !!sub.cancel_at_period_end,
+    // See stripe-webhook.js — Stripe portal cancel can set either
+    // boolean or timestamp variant.
+    cancel_at: isoOrNull(sub.cancel_at),
     trial_end: isoOrNull(sub.trial_end),
     default_payment_method: defaultPaymentMethod,
     // Stamp syncStartIso so the ordering guard in the webhook treats

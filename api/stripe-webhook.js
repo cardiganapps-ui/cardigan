@@ -177,6 +177,11 @@ async function applySubscriptionSnapshot(svc, sub, eventCreatedUnix) {
     status: sub.status,
     current_period_end: isoOrNull(periodEndUnix),
     cancel_at_period_end: !!sub.cancel_at_period_end,
+    // Stripe Portal cancellation can set EITHER cancel_at_period_end
+    // (boolean) OR cancel_at (timestamp), depending on the portal's
+    // cancellation-mode config. We persist both and let the UI OR
+    // them when deciding "is this sub winding down?".
+    cancel_at: isoOrNull(sub.cancel_at),
     trial_end: isoOrNull(sub.trial_end),
     default_payment_method: defaultPaymentMethod,
     updated_at: new Date().toISOString(),

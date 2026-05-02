@@ -1500,9 +1500,22 @@ export function Settings({ user, signOut, refreshUser }) {
                 // but we DO surface a clear amber warning + a one-tap
                 // "fix payment" route into the Stripe portal.
                 const isPastDue = s.subscription?.status === "past_due";
-                const periodEnd = s.subscription?.current_period_end;
-                const periodEndStr = periodEnd
-                  ? new Date(periodEnd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+                // Stripe represents "scheduled cancellation" two ways
+                // (cancel_at_period_end boolean OR cancel_at timestamp);
+                // the user-facing meaning is identical. OR them so the
+                // UI surfaces the cancellation regardless of which
+                // path the Billing Portal took.
+                const cancelAtStr = s.subscription?.cancel_at || null;
+                const isCancelScheduled = !!s.subscription?.cancel_at_period_end || !!cancelAtStr;
+                // Effective end date = whichever signal Stripe gave us.
+                // Prefer cancel_at (explicit timestamp) → falls back to
+                // current_period_end → trial_end (when status=trialing
+                // and the API-version mismatch leaves period_end null).
+                const effectiveEndIso = cancelAtStr
+                  || s.subscription?.current_period_end
+                  || (s.subscription?.status === "trialing" ? s.subscription?.trial_end : null);
+                const periodEndStr = effectiveEndIso
+                  ? new Date(effectiveEndIso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
                   : null;
                 const accentColor = isComp ? "var(--green)"
                   : isPastDue ? "var(--amber)"
@@ -1535,7 +1548,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 const heroSub = isComp ? t("subscription.compExplain")
                   : isPastDue ? t("subscription.statusPastDueBody")
                   : isActive && periodEndStr
-                    ? (s.subscription?.cancel_at_period_end
+                    ? (isCancelScheduled
                         ? t("subscription.cancelAt", { date: periodEndStr })
                         : t("subscription.renewsOn", { date: periodEndStr }))
                   : isAdminAccess ? t("subscription.compExplain")
@@ -1636,7 +1649,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         lineHeight:1.55,
                       }}>
                         <div style={{ fontWeight:700, color:"var(--charcoal)" }}>
-                          {s.subscription?.cancel_at_period_end
+                          {isCancelScheduled
                             ? t("subscription.cancelAt", { date: periodEndStr })
                             : t("subscription.nextChargeOn", { date: periodEndStr })}
                         </div>

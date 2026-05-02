@@ -80,7 +80,7 @@ export function useSubscription(user) {
     setLoading(true);
     const { data, error } = await supabase
       .from("user_subscriptions")
-      .select("stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end, cancel_at_period_end, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, trial_extension_days, updated_at")
+      .select("stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end, cancel_at_period_end, cancel_at, trial_end, hosted_invoice_url, latest_invoice_id, comp_granted, comp_granted_at, comp_reason, default_payment_method, trial_extension_days, updated_at")
       .eq("user_id", userId)
       .maybeSingle();
     if (reqId !== reqIdRef.current) return;
