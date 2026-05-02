@@ -157,7 +157,14 @@ export function UpdatePrompt() {
     applyUpdate();
   };
 
-  const handleRetry = () => {
+  /* Stuck-state retry — the SKIP_WAITING + controllerchange handshake
+     failed (iOS PWA can drop the activate event in standalone mode).
+     Re-running applyUpdate() would just re-attempt the same broken
+     handshake. Instead, do the nuclear-but-reliable recovery:
+     unregister every service worker registration and reload. The
+     fresh page load registers /sw.js from the network, picks up the
+     latest version cleanly, and the user is unstuck. */
+  const handleRetry = useCallback(async () => {
     haptic.tap();
     if (reloadFailsafeRef.current) {
       clearTimeout(reloadFailsafeRef.current);
@@ -167,8 +174,16 @@ export function UpdatePrompt() {
       clearTimeout(stuckTimerRef.current);
       stuckTimerRef.current = null;
     }
-    applyUpdate();
-  };
+    setPhase("applying");
+    markUpdateApplied();
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
+      }
+    } catch { /* even if unregister fails, the reload will re-evaluate */ }
+    try { window.location.reload(); } catch { /* tab gone */ }
+  }, []);
 
   if (!waitingSW) return null;
   if (phase === "idle") return null;
