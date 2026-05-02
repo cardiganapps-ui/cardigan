@@ -179,7 +179,11 @@ function ReferralShareBlock({ code, t }) {
           href={`mailto:?subject=${encodeURIComponent("Te invito a Cardigan")}&body=${encodeURIComponent(text)}`}
           onClick={onChannel("email")}
           className="referral-channel-btn"
-          style={{ background: "var(--charcoal)", color: "#fff" }}
+          // Hardcoded literal so the button stays a dark pill in
+          // both themes — `var(--charcoal)` inverts to a light grey
+          // in dark mode and the white label vanishes against it.
+          // Same approach as the WhatsApp / Apple-OAuth buttons.
+          style={{ background: "#1A1A1A", color: "#fff" }}
           aria-label={t("subscription.shareEmail")}>
           <IconMail size={18} />
           <span>{t("subscription.shareEmail")}</span>
