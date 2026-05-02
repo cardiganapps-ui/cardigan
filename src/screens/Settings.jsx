@@ -863,6 +863,13 @@ export function Settings({ user, signOut, refreshUser }) {
                   : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial });
               }
               if (s.accessState === "expired") return t("subscription.statusExpired");
+              // Admin shortcut — useSubscription returns
+              // accessState="active" for admins regardless of
+              // comp / paid state, so neither subscribedActive nor
+              // compGranted is true. Without this fall-through the
+              // row was permanently stuck on "Cargando…" for the
+              // admin's own account.
+              if (s.accessState === "active") return t("subscription.statusActive");
               return t("subscription.statusLoading");
             })()}</div>
           </div>
@@ -1498,9 +1505,16 @@ export function Settings({ user, signOut, refreshUser }) {
                   : isActive ? IconSparkle
                   : state === "expired" ? IconLock
                   : IconStar;
+                // Admin shortcut: accessState === "active" without
+                // a paid sub or comp grant is the admin's own row.
+                // Treat it as the same "Activa" hero as a real Pro
+                // sub so the panel doesn't read as perpetually
+                // loading for the admin.
+                const isAdminAccess = !isComp && !isActive && state === "active";
                 const heroTitle = isComp ? t("subscription.statusCompTitle")
                   : isPastDue ? t("subscription.statusPastDueTitle")
                   : isActive ? t("subscription.statusActiveTitle")
+                  : isAdminAccess ? t("subscription.statusActiveTitle")
                   : state === "trial" ? t("subscription.statusTrialTitle")
                   : state === "expired" ? t("subscription.statusExpiredTitle")
                   : t("subscription.statusLoading");
@@ -1510,6 +1524,7 @@ export function Settings({ user, signOut, refreshUser }) {
                     ? (s.subscription?.cancel_at_period_end
                         ? t("subscription.cancelAt", { date: periodEndStr })
                         : t("subscription.renewsOn", { date: periodEndStr }))
+                  : isAdminAccess ? t("subscription.compExplain")
                   : state === "trial" && s.daysLeftInTrial != null
                     ? (s.daysLeftInTrial <= 1
                         ? t("subscription.statusTrialEndsToday")
@@ -1523,7 +1538,7 @@ export function Settings({ user, signOut, refreshUser }) {
                           sits in a clean white circle so the card reads as a premium
                           surface rather than a noisy alert. */}
                     <div style={{
-                      padding: !isComp && !isActive ? "20px 18px 22px" : "18px",
+                      padding: !isComp && !isActive && !isAdminAccess ? "20px 18px 22px" : "18px",
                       borderRadius: "var(--radius-lg, 16px)",
                       marginBottom: 16,
                       background: accentBg,
@@ -1547,7 +1562,7 @@ export function Settings({ user, signOut, refreshUser }) {
                       {/* Price line — only when there's a sale to make. Lives inside the
                           hero so the user perceives value + cost together. The
                           numbers reflect the currently selected billing cycle. */}
-                      {!isComp && !isActive && (
+                      {!isComp && !isActive && !isAdminAccess && (
                         <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.06)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
@@ -1572,7 +1587,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         Annual carries a small "ahorra 17%" badge underneath so
                         the discount registers without visual clutter on the
                         toggle itself. */}
-                    {!isComp && !isActive && (
+                    {!isComp && !isActive && !isAdminAccess && (
                       <div style={{ marginBottom:14 }}>
                         <SegmentedControl
                           items={[
@@ -1629,7 +1644,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         flows through to handleStartCheckout invisibly.
                         Word-of-mouth users (who never hit a ?ref URL)
                         still see the field and can type their code in. */}
-                    {!isComp && !isActive && !inviteCodeFromUrl && (
+                    {!isComp && !isActive && !isAdminAccess && !inviteCodeFromUrl && (
                       <div className="input-group" style={{ marginBottom:14 }}>
                         <label className="input-label">{t("subscription.inviteCodeLabel")}</label>
                         <input
@@ -1654,7 +1669,7 @@ export function Settings({ user, signOut, refreshUser }) {
 
                     {/* Primary action — full-width charcoal button on its own row.
                         Active subs swap to "Administrar" pointing at the Stripe portal. */}
-                    {(!isComp && !isActive) && (
+                    {(!isComp && !isActive && !isAdminAccess) && (
                       <div style={{ marginBottom:22 }}>
                         <button type="button" className="btn btn-primary"
                           onClick={handleStartCheckout} disabled={subBusy}>
