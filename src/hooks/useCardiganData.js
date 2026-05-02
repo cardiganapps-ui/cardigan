@@ -252,23 +252,6 @@ export async function fetchAdminAnalytics({ days = 30 } = {}) {
   return { overview: ovRes.data, daily: dailyRes.data || [] };
 }
 
-/* Run the admin-only accounting drift audit. Heavy server-side scan;
-   the API endpoint requireAdmin-gates so a non-admin can never invoke
-   it. Throws on transport errors; otherwise returns the JSON shape
-   defined in api/admin-audit-accounting.js. */
-export async function fetchAdminAccountingAudit() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error("Not signed in");
-  const res = await fetch("/api/admin-audit-accounting", {
-    method: "GET",
-    headers: { "Authorization": `Bearer ${token}` },
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-  return json;
-}
-
 export async function fetchBugReports({ archived = false } = {}) {
   let q = supabase
     .from("bug_reports")

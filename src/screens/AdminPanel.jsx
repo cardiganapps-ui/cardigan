@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { haptic } from "../utils/haptics";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, adminGrantComp, fetchAdminAnalytics, fetchAdminAccountingAudit } from "../hooks/useCardiganData";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, adminGrantComp, fetchAdminAnalytics } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
@@ -754,125 +754,6 @@ function MetricsTab() {
   );
 }
 
-function AuditTab() {
-  const { t } = useT();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const run = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await fetchAdminAccountingAudit();
-      setData(result);
-    } catch (e) {
-      setError(e?.message || "Audit failed");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14, gap:10 }}>
-        <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.4, flex:1 }}>
-          {t("admin.auditDescription")}
-        </div>
-        <button type="button"
-          onClick={run}
-          disabled={loading}
-          className="btn btn-primary"
-          style={{ width:"auto", height:"auto", padding:"8px 16px", fontSize:13, flexShrink:0 }}>
-          {loading ? t("admin.auditRunning") : (data ? t("admin.auditRerun") : t("admin.auditRun"))}
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ padding:"10px 12px", borderRadius:"var(--radius-sm)", background:"var(--red-bg)", color:"var(--red)", fontSize:13, marginBottom:12 }}>
-          {error}
-        </div>
-      )}
-
-      {data && Array.isArray(data.truncated) && data.truncated.length > 0 && (
-        <div style={{ padding:"10px 12px", borderRadius:"var(--radius-sm)", background:"var(--amber-bg)", color:"var(--amber)", fontSize:13, marginBottom:12, fontWeight:600 }}>
-          ⚠ Resultados parciales — el escaneo alcanzó el tope de filas para: {data.truncated.join(", ")}. Los totales pueden estar subestimados.
-        </div>
-      )}
-
-      {data && (
-        <>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-            <StatCard
-              label={t("admin.auditFlaggedUsers")}
-              value={data.flaggedUserCount}
-              sub={t("admin.auditFlaggedUsersSub")}
-            />
-            <StatCard
-              label={t("admin.auditDriftTotal")}
-              value={`$${(data.totals.drift || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`}
-              sub={t("admin.auditDriftSub")}
-            />
-            <StatCard
-              label={t("admin.auditDuplicates")}
-              value={data.totals.duplicates}
-              sub={t("admin.auditDuplicatesSub")}
-            />
-          </div>
-
-          <div style={{ fontSize:11, color:"var(--charcoal-md)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em", fontWeight:700 }}>
-            {t("admin.auditFlaggedListTitle")}
-          </div>
-          {data.totalsByUser.length === 0 ? (
-            <div style={{ padding:"14px 12px", borderRadius:"var(--radius-sm)", background:"var(--green-bg)", color:"var(--green)", fontSize:13, fontWeight:600 }}>
-              {t("admin.auditClean")}
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {data.totalsByUser.map((u) => (
-                <div key={u.userId} style={{
-                  padding:"10px 12px",
-                  background:"var(--white)",
-                  border:"1px solid var(--border)",
-                  borderRadius:"var(--radius-sm)",
-                  fontSize:13,
-                  display:"flex",
-                  justifyContent:"space-between",
-                  alignItems:"center",
-                  gap:10,
-                }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:600, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                      {u.email || u.userId.slice(0, 8)}
-                    </div>
-                    <div style={{ fontSize:11, color:"var(--charcoal-md)" }}>
-                      {t("admin.auditPatientCount", { count: u.patientCount })}
-                    </div>
-                  </div>
-                  {u.drift > 0 && (
-                    <span style={{ fontWeight:700, color:"var(--amber)", fontSize:12 }}>
-                      ${(u.drift || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}
-                    </span>
-                  )}
-                  {u.duplicates > 0 && (
-                    <span style={{ fontWeight:700, color:"var(--red)", fontSize:12 }}>
-                      {t("admin.auditDupRow", { n: u.duplicates })}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ marginTop:14, fontSize:11, color:"var(--charcoal-md)", textAlign:"center" }}>
-            {t("admin.auditRunAt", { time: new Date(data.runAt).toLocaleString("es-MX") })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
   const { t } = useT();
   const [tab, setTab] = useState("accounts");
@@ -881,7 +762,6 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
     { k: "accounts", l: t("admin.tabAccounts") },
     { k: "metrics",  l: t("admin.tabMetrics") },
     { k: "bugs",     l: t("admin.tabBugs") },
-    { k: "audit",    l: t("admin.tabAudit") },
   ];
 
   return (
@@ -922,7 +802,6 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
         {tab === "accounts" && <AccountsTab onViewAs={onViewAs} currentAdminId={currentAdminId} />}
         {tab === "metrics"  && <MetricsTab />}
         {tab === "bugs"     && <BugsTab />}
-        {tab === "audit"    && <AuditTab />}
       </div>
     </div>
   );

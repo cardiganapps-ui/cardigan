@@ -41,6 +41,13 @@ html[data-theme="dark"] {
   --amber-bg:    rgba(212,160,64,0.12);
   --purple:      #A08FD8;
   --purple-bg:   rgba(139,126,200,0.12);
+  /* Blue tint missing from the original dark palette — virtual-modality
+     events on the Agenda week view used `--blue-bg` and fell back to
+     base.css's light-pastel #EBF1FA, which on the dark page rendered as
+     near-white with the inverted charcoal-on-white text → invisible
+     events. Match the alpha + tone of the other status tints. */
+  --blue:        #82A6E0;
+  --blue-bg:     rgba(91,140,215,0.12);
 
   /* ── Navigation ── */
   --nav-bg:      #141E22;
