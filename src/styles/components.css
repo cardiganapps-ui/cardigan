@@ -442,7 +442,19 @@ button.kpi-card:active {
   border: 1.5px solid var(--border); border-radius: var(--radius);
   font-size: 16px; font-family: var(--font); color: var(--charcoal);
   background: var(--white); outline: none; -webkit-appearance: none;
-  transition: border-color 0.4s, box-shadow 0.4s;
+  /* iOS Safari adds a 300ms double-tap-to-zoom delay on form
+     elements without this hint, which reads as "my tap didn't
+     register" — especially noticeable on the auth sheet where
+     a sheet-drag listener also sits on the panel. */
+  touch-action: manipulation;
+  /* Kill the gray flash iOS paints on tappable elements; the
+     focus ring already communicates the state. */
+  -webkit-tap-highlight-color: transparent;
+  /* The previous 400ms focus animation was long enough that the
+     border colour change felt detached from the tap — the user
+     read it as "tap didn't take, then later something happened".
+     150ms feels instant while still being visible. */
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(91,155,175,0.13); }
 .input::placeholder { color: var(--charcoal-xl); }
