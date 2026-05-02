@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconX } from "./Icons";
 import { supabase } from "../supabaseClient";
 import { getLogs } from "../utils/logBuffer";
@@ -18,7 +18,21 @@ export function BugReportSheet({ open, onClose, user, screen }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const closeSheet = () => { setDescription(""); onClose?.(); };
+  // Tracked so the post-success auto-close timer can be cancelled if
+  // the user closes the sheet manually within the 1200ms window.
+  // Without this, the timer fires onClose() against a closed sheet.
+  const successTimerRef = useRef(null);
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
+  const closeSheet = () => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setDescription("");
+    onClose?.();
+  };
   useEscape(open ? closeSheet : null);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(closeSheet, { isOpen: open });
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
@@ -38,7 +52,12 @@ export function BugReportSheet({ open, onClose, user, screen }) {
       });
       if (error) throw error;
       setSent(true);
-      setTimeout(() => { setSent(false); setDescription(""); onClose?.(); }, 1200);
+      successTimerRef.current = setTimeout(() => {
+        successTimerRef.current = null;
+        setSent(false);
+        setDescription("");
+        onClose?.();
+      }, 1200);
     } catch (err) {
       // Without this, an insert failure (RLS, network, schema mismatch)
       // would leave the button stuck on "Guardando…" forever.

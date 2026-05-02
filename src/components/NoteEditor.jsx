@@ -113,11 +113,24 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     cl();
   }, [showToast, t]);
 
+  const exitTimer = useRef(null);
+  // Cancel the exit-animation timer on unmount so a queued doClose()
+  // can't fire against a detached editor (e.g. user navigates away
+  // mid-exit-animation).
+  useEffect(() => () => {
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+  }, []);
   const handleClose = useCallback(() => {
     if (inlineMode) { doClose(); return; }
-    // Mobile: run exit animation then close.
+    // Mobile: run exit animation then close. Track the timer so a
+    // double-close (e.g. swipe-to-dismiss + Escape) doesn't queue
+    // two doClose() calls.
+    if (exitTimer.current) clearTimeout(exitTimer.current);
     setExiting(true);
-    setTimeout(() => { doClose(); }, 240);
+    exitTimer.current = setTimeout(() => {
+      exitTimer.current = null;
+      doClose();
+    }, 240);
   }, [doClose, inlineMode]);
 
   useLayer(inlineMode ? null : "noteEditor", inlineMode ? null : handleClose);

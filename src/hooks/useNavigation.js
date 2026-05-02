@@ -16,6 +16,12 @@ export function useNavigation() {
   const layerStack = useRef([]); // [{ key, closeFn }]
   const suppressPopState = useRef(false);
   const scrollPositions = useRef({});
+  // Pending direction-clear timer. Tracked so we can cancel it when a
+  // second nav happens within the 300ms animation window — without
+  // this, the first nav's timer fires mid-second-animation and clears
+  // direction, which cuts the slide-in transition. Visible as "the
+  // screen pops into place instead of sliding" on rapid tab-tapping.
+  const directionTimerRef = useRef(null);
 
   // ── Save/restore scroll ──
   const saveScroll = useCallback((screenId) => {
@@ -64,8 +70,22 @@ export function useNavigation() {
     }
     suppressPopState.current = false;
     restoreScroll(newScreen);
-    setTimeout(() => setDirection(null), 300);
+    // Cancel any prior timer before scheduling the new one so a second
+    // nav within 300ms doesn't get its animation cut short by the
+    // first nav's clear-direction firing.
+    if (directionTimerRef.current) clearTimeout(directionTimerRef.current);
+    directionTimerRef.current = setTimeout(() => {
+      directionTimerRef.current = null;
+      setDirection(null);
+    }, 300);
   }, [screen, saveScroll, restoreScroll]);
+
+  // Cancel the pending direction-clear timer on unmount so it can't
+  // fire setDirection against a detached hook (silent in React 19,
+  // but still wasted work).
+  useEffect(() => () => {
+    if (directionTimerRef.current) clearTimeout(directionTimerRef.current);
+  }, []);
 
   // ── Layer stack (modals/overlays) ──
   const pushLayer = useCallback((key, closeFn) => {

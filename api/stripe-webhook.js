@@ -225,9 +225,13 @@ async function applySubscriptionSnapshot(svc, sub, eventCreatedUnix) {
     const wasCancelling = !!row.cancel_at || !!row.cancel_at_period_end;
     const isCancelling = !!sub.cancel_at || !!sub.cancel_at_period_end;
 
-    if (isPro || (isCancelling && !wasCancelling) || (!isCancelling && wasCancelling)) {
-      // Anything actionable — pull the user's email + display name once,
-      // shared between welcome / cancellation paths.
+    const wantWelcome = isPro && !wasPro;
+    const wantCancellationEmail = isCancelling && !wasCancelling;
+    const wantClearCancellationDedupe = !isCancelling && wasCancelling;
+    if (wantWelcome || wantCancellationEmail || wantClearCancellationDedupe) {
+      // Only do the auth lookup when there's an actual transition to
+      // act on — otherwise every renewal webhook for an existing Pro
+      // user would hit the auth admin API for nothing.
       const { data: u } = await svc.auth.admin.getUserById(row.user_id);
       const email = u?.user?.email;
       if (email) {
