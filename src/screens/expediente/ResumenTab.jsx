@@ -6,6 +6,7 @@ import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { usesAnthropometrics } from "../../data/constants";
+import { formatMXN } from "../../utils/format";
 
 // ── Date helpers ──
 // Display format used across the Resumen card. Spanish locale renders
@@ -308,7 +309,7 @@ export function ResumenTab({
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
         <div className="stat-tile" style={{ textAlign:"center" }}>
           <div className="stat-tile-label">{t("finances.collected")}</div>
-          <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>${patient.paid.toLocaleString()}</div>
+          <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>{formatMXN(patient.paid)}</div>
         </div>
         <div className="stat-tile" style={{ textAlign:"center" }}>
           {/* When a patient has overpaid (credit > 0), the tile flips
@@ -320,12 +321,12 @@ export function ResumenTab({
           {patient.credit > 0 ? (
             <>
               <div className="stat-tile-label">{t("finances.credit")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>+${patient.credit.toLocaleString()}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>+{formatMXN(patient.credit)}</div>
             </>
           ) : (
             <>
               <div className="stat-tile-label">{t("finances.balance")}</div>
-              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-xl)" }}>${patient.amountDue.toLocaleString()}</div>
+              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-xl)" }}>{formatMXN(patient.amountDue)}</div>
             </>
           )}
         </div>

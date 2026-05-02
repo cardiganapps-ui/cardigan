@@ -17,6 +17,7 @@ import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../data/constants";
+import { formatMXN } from "../utils/format";
 
 /* ── Collapsible section for the edit form ──
    Hides secondary info by default so the sheet doesn't overwhelm. The
@@ -348,12 +349,12 @@ export function Patients() {
                         {" · "}
                       </>
                     )}
-                    ${p.rate.toLocaleString()} {t("expediente.perSession")}
+                    {formatMXN(p.rate)} {t("expediente.perSession")}
                   </div>
                 </div>
                 <div style={{ flexShrink:0 }}>
                   {filter === "owes"
-                    ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>${p.amountDue.toLocaleString()}</span>
+                    ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>{formatMXN(p.amountDue)}</span>
                     : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
                   }
                 </div>

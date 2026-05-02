@@ -4,6 +4,7 @@ import { exportPayments } from "../../utils/export";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { useT } from "../../i18n/index";
+import { formatMXN } from "../../utils/format";
 
 export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }) {
   const { t } = useT();
@@ -65,7 +66,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
       {/* Count + total */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
         <span style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", fontWeight:600 }}>{t("finances.paymentCount", { count: payFiltered.length })}</span>
-        <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--green)" }}>+${payTotal.toLocaleString()}</span>
+        <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--green)" }}>+{formatMXN(payTotal)}</span>
       </div>
 
       {/* Payment list */}
@@ -83,7 +84,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
                       <span>{p.method}</span>
                     </div>
                   </div>
-                  <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
+                  <div className="bal-amt amount-paid">+{formatMXN(p.amount)}</div>
                 </div>
               );
               return (

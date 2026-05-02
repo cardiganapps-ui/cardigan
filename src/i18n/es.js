@@ -587,6 +587,7 @@ export default {
     word: "Word",
     count: "{count} documento{plural}",
     noDocuments: "A\u00fan no hay documentos subidos",
+    emptyHint: "Sube PDFs, im\u00e1genes o documentos vinculados a una sesi\u00f3n.",
     noResults: "Sin resultados para este filtro",
     patientDocsEmpty: "Los documentos {client.del} aparecer\u00e1n aqu\u00ed",
     rename: "Renombrar",

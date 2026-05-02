@@ -3,6 +3,7 @@ import { getClientColor } from "../data/seedData";
 import { IconCheck, IconTrendingUp, IconUsers, IconPlus, IconDollar } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { shortDateToISO, todayISO } from "../utils/dates";
+import { formatMXN } from "../utils/format";
 import { useCardigan } from "../context/CardiganContext";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
@@ -103,7 +104,7 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
             <span>{p.method}</span>
           </div>
         </div>
-        <div className="bal-amt amount-paid">+${p.amount.toLocaleString()}</div>
+        <div className="bal-amt amount-paid">+{formatMXN(p.amount)}</div>
       </div>
     );
     return (
@@ -196,7 +197,7 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
             ? t("finances.patientCount", { count: Object.keys(grouped).length })
             : t("finances.paymentCount", { count: filtered.length })}
         </span>
-        <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--green)" }}>+${totalFiltered.toLocaleString()}</span>
+        <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--green)" }}>+{formatMXN(totalFiltered)}</span>
       </div>
 
       {filtered.length === 0
@@ -222,7 +223,7 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
                       <div className="bal-name">{name}</div>
                       <div className="bal-sub">{t("finances.paymentCount", { count: pList.length })}</div>
                     </div>
-                    <div className="bal-amt amount-paid">+${total.toLocaleString()}</div>
+                    <div className="bal-amt amount-paid">+{formatMXN(total)}</div>
                   </div>
                 );
               })}
@@ -357,12 +358,12 @@ function ProyeccionTab({ sessions, patients }) {
       <div className="fin-stats-grid" style={{ padding:0, marginBottom:16 }}>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastGross")}</div>
-          <div className="stat-tile-val">${gross.toLocaleString()}</div>
+          <div className="stat-tile-val">{formatMXN(gross)}</div>
           <div className="stat-tile-sub">{t("finances.forecastScheduled", { count: futureSessions.length, plural: futureSessions.length !== 1 ? "es" : "" })}</div>
         </div>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastNet")}</div>
-          <div className="stat-tile-val" style={{ color:"var(--green)" }}>${net.toLocaleString()}</div>
+          <div className="stat-tile-val" style={{ color:"var(--green)" }}>{formatMXN(net)}</div>
           <div className="stat-tile-sub">-{Math.round(cancelRate * 100)}% {t("finances.forecastCancelRateLower")}</div>
         </div>
       </div>
@@ -370,12 +371,12 @@ function ProyeccionTab({ sessions, patients }) {
       <div className="fin-stats-grid" style={{ padding:0, marginBottom:16 }}>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastPerWeek")}</div>
-          <div className="stat-tile-val">${perWeek.toLocaleString()}</div>
+          <div className="stat-tile-val">{formatMXN(perWeek)}</div>
           <div className="stat-tile-sub">{t("finances.forecastActivePatients", { count: activeContributing, plural: activeContributing !== 1 ? "s" : "" })}</div>
         </div>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastAvgSession")}</div>
-          <div className="stat-tile-val">${avgRate.toLocaleString()}</div>
+          <div className="stat-tile-val">{formatMXN(avgRate)}</div>
           <div className="stat-tile-sub">{t("expediente.perSession")}</div>
         </div>
       </div>
@@ -425,7 +426,7 @@ function ProyeccionTab({ sessions, patients }) {
                     <div className="bal-name">{p.name}</div>
                     <div className="bal-sub">{t("finances.sessionCount", { count: p.count, plural: p.count !== 1 ? "es" : "" })}</div>
                   </div>
-                  <div className="bal-amt" style={{ color:"var(--charcoal)", fontWeight:700 }}>${p.total.toLocaleString()}</div>
+                  <div className="bal-amt" style={{ color:"var(--charcoal)", fontWeight:700 }}>{formatMXN(p.total)}</div>
                 </div>
               );
             })}
@@ -505,7 +506,7 @@ export function Finances() {
               onClick={() => setBalanceFilter(balanceFilter === "owing" ? null : "owing")}
               className={`stat-tile stat-tile-clickable ${balanceFilter === "owing" ? "stat-tile-selected" : ""}`}>
               <div className="stat-tile-label">{t("finances.outstanding")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--red)" }}>${totalOwed.toLocaleString()}</div>
+              <div className="stat-tile-val" style={{ color:"var(--red)" }}>{formatMXN(totalOwed)}</div>
               <div className="stat-tile-sub">{t("finances.patientCount", { count: owingPatients.length })}</div>
             </button>
             <button type="button"
@@ -550,7 +551,7 @@ export function Finances() {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div className="bal-name">{p.name}</div>
                       </div>
-                      <div className="bal-amt amount-owe">${p.amountDue.toLocaleString()}</div>
+                      <div className="bal-amt amount-owe">{formatMXN(p.amountDue)}</div>
                     </div>
                     <button type="button"
                       aria-label={t("finances.recordPayment")}
@@ -574,7 +575,7 @@ export function Finances() {
                     <Avatar initials={p.initials} color={getClientColor(i + 4)} size="sm" />
                     <div style={{ flex:1 }}>
                       <div className="bal-name">{p.name}</div>
-                      <div className="bal-sub">${p.paid.toLocaleString()} {t("finances.paidAmount")}</div>
+                      <div className="bal-sub">{formatMXN(p.paid)} {t("finances.paidAmount")}</div>
                     </div>
                     {p.credit > 0 ? (
                       // Prepaid patients still live in the "Al
@@ -583,7 +584,7 @@ export function Finances() {
                       // no visible distinction from someone who paid
                       // exactly what they owed.
                       <span className="badge badge-green" style={{ fontSize: 11, fontWeight: 700 }}>
-                        +${p.credit.toLocaleString()} {t("finances.creditShort")}
+                        +{formatMXN(p.credit)} {t("finances.creditShort")}
                       </span>
                     ) : (
                       <div className="bal-amt amount-paid"><IconCheck size={16} /></div>

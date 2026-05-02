@@ -3,6 +3,7 @@ import { IconX, IconCheck, IconLock } from "./Icons";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { getStripe } from "../lib/stripe";
+import { formatMXN } from "../utils/format";
 
 /* ── StripePaymentSheet ───────────────────────────────────────────────
    Native checkout — Stripe Elements `PaymentElement` mounted inside
@@ -298,7 +299,7 @@ export default function StripePaymentSheet({
             </div>
             <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
               <div style={{ fontFamily: "var(--font-d)", fontSize: 22, fontWeight: 800, color: "var(--charcoal)", lineHeight: 1 }}>
-                ${(plan === "annual" ? PRICE_ANNUAL_MXN : PRICE_MONTHLY_MXN).toLocaleString()}
+                {formatMXN((plan === "annual" ? PRICE_ANNUAL_MXN : PRICE_MONTHLY_MXN))}
               </div>
               <div style={{ fontSize: 11, color: "var(--charcoal-md)", marginTop: 2 }}>
                 {plan === "annual" ? t("payment.priceUnitAnnual") : t("payment.priceUnitMonthly")}

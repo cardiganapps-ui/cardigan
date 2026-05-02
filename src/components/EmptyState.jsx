@@ -153,6 +153,53 @@ function EmptyIllustration({ kind, size = 160 }) {
     );
   }
 
+  if (kind === "documents") {
+    // Two stacked sheets — the back one folded-corner style — sitting
+    // above a soft spotlight. Uses outlined fills so the shape stays
+    // legible in both light and dark modes; a small teal upload chevron
+    // tucked into the lower-right corner hints at the primary action
+    // without dragging in a literal arrow icon.
+    return (
+      <svg width={size} height={size * 0.7} viewBox="0 0 200 140" aria-hidden="true">
+        <circle cx="100" cy="72" r="56" fill={tint} opacity="0.4" />
+        <ellipse cx="100" cy="122" rx="56" ry="6" fill={tint} opacity="0.55" />
+
+        {/* Back sheet — slightly offset, folded corner */}
+        <path
+          d="M 70 26 L 130 26 L 144 40 L 144 108 L 70 108 Z"
+          fill="var(--white)" stroke={stroke} strokeWidth="2.2" strokeLinejoin="round"
+        />
+        <path
+          d="M 130 26 L 130 40 L 144 40"
+          fill={tint} stroke={stroke} strokeWidth="2.2" strokeLinejoin="round"
+        />
+        <g stroke={stroke} strokeWidth="1.5" strokeLinecap="round" opacity="0.32">
+          <line x1="80" y1="56" x2="132" y2="56" />
+          <line x1="80" y1="68" x2="124" y2="68" />
+        </g>
+
+        {/* Front sheet — overlaps to the lower right */}
+        <path
+          d="M 84 50 L 156 50 L 156 122 L 84 122 Z"
+          fill="var(--white)" stroke={stroke} strokeWidth="2.2" strokeLinejoin="round"
+        />
+        <g stroke={stroke} strokeWidth="1.5" strokeLinecap="round" opacity="0.4">
+          <line x1="94" y1="68" x2="146" y2="68" />
+          <line x1="94" y1="80" x2="140" y2="80" />
+          <line x1="94" y1="92" x2="130" y2="92" />
+        </g>
+
+        {/* Teal upload chevron in the lower-right of the front sheet —
+           solid teal disc with a small white up-arrow inscribed. */}
+        <circle cx="142" cy="108" r="11" fill={fill} stroke={stroke} strokeWidth="2" />
+        <path
+          d="M 142 102 L 142 114 M 138 106 L 142 102 L 146 106"
+          fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
   if (kind === "finances") {
     // Outlined receipt with a teal $-emblem. Line-art (no opaque
     // fills) so the shape reads on both light and dark backgrounds

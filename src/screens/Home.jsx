@@ -13,6 +13,7 @@ import { NotificationsPrompt } from "../components/NotificationsPrompt";
 import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
+import { formatMXN } from "../utils/format";
 
 /* ── Compute next working day for the "Mañana" carousel panel ── */
 function getNextDay(today, sessions) {
@@ -285,12 +286,12 @@ export function Home({ setScreen, userName }) {
         </button>
         <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
           <div className="kpi-label">{t("finances.monthlyCollected")}</div>
-          <div className="kpi-value">${cobradoMes.toLocaleString()}</div>
+          <div className="kpi-value">{formatMXN(cobradoMes)}</div>
           <div className="kpi-meta">{strings.months[TODAY.getMonth()]}</div>
         </button>
         <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
           <div className="kpi-label">{t("finances.outstanding")}</div>
-          <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>${totalOwed.toLocaleString()}</div>
+          <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>{formatMXN(totalOwed)}</div>
           <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
         </button>
       </div>
@@ -413,7 +414,7 @@ export function Home({ setScreen, userName }) {
                     <div className="row-title">{p.name}</div>
                   </div>
                   <div className="row-right">
-                    <div className="row-amount amount-owe">${p.amountDue.toLocaleString()}</div>
+                    <div className="row-amount amount-owe">{formatMXN(p.amountDue)}</div>
                   </div>
                 </div>
               ))}
@@ -567,13 +568,13 @@ export function Home({ setScreen, userName }) {
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
                 {[
-                  { label: t("finances.collected"), value:`$${selected.paid.toLocaleString()}`, color:"var(--green)" },
+                  { label: t("finances.collected"), value:`${formatMXN(selected.paid)}`, color:"var(--green)" },
                   // When the patient has overpaid, swap the "Balance
                   // $0" tile for "Saldo a favor +$X" (green) so the
                   // prepayment doesn't read as a null state.
                   selected.credit > 0
-                    ? { label: t("finances.credit"),  value:`+$${selected.credit.toLocaleString()}`, color:"var(--green)" }
-                    : { label: t("finances.balance"), value:`$${selected.amountDue.toLocaleString()}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
+                    ? { label: t("finances.credit"),  value:`+${formatMXN(selected.credit)}`, color:"var(--green)" }
+                    : { label: t("finances.balance"), value:`${formatMXN(selected.amountDue)}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
                 ].map((s,i) => (
                   <div key={i} className="stat-tile" style={{ textAlign:"center" }}>
                     <div className="stat-tile-label">{s.label}</div>

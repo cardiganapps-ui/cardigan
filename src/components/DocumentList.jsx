@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IconEdit, IconTag, IconTrash } from "./Icons";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmptyState } from "./EmptyState";
 import { getFileIcon, formatFileSize } from "../utils/files";
 import { useT } from "../i18n/index";
 
@@ -36,9 +37,12 @@ export function DocumentList({
 
   if (documents.length === 0) {
     return (
-      <div className="card" style={{ padding:"32px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-        {emptyMessage || t("docs.noDocuments")}
-      </div>
+      <EmptyState
+        kind="documents"
+        title={emptyMessage || t("docs.noDocuments")}
+        body={t("docs.emptyHint")}
+        compact
+      />
     );
   }
 

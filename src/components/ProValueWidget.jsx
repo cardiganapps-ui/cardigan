@@ -3,6 +3,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { computeProValue } from "../utils/proValue.js";
 import { IconSparkle } from "./Icons";
+import { formatMXN } from "../utils/format";
 
 /* ── ProValueWidget ───────────────────────────────────────────────────
    Tiny "Pro paid for itself" framing for the Settings → plan panel.
@@ -58,7 +59,7 @@ export function ProValueWidget() {
         />
         {earnedMxn > 0 && (
           <Stat
-            value={`$${earnedMxn.toLocaleString("es-MX")}`}
+            value={`${formatMXN(earnedMxn)}`}
             label={t("subscription.valueEarnedThisMonth")}
           />
         )}

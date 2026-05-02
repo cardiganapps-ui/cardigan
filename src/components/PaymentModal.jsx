@@ -9,6 +9,7 @@ import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { haptic } from "../utils/haptics";
+import { formatMXN } from "../utils/format";
 
 export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }) {
   const { patients, createPayment, updatePayment, mutating } = useCardigan();
@@ -97,7 +98,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           date: isoToShortDate(date),
           note: paymentNote.trim(),
         });
-        if (ok) { haptic.success(); onClose(`Pago actualizado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`); }
+        if (ok) { haptic.success(); onClose(`Pago actualizado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
       } else {
         const ok = await createPayment({
           patientName: patientName.trim(),
@@ -106,7 +107,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           date: isoToShortDate(date),
           note: paymentNote.trim(),
         });
-        if (ok) { haptic.success(); onClose(`Pago registrado: $${parsedAmount.toLocaleString()} de ${patientName.trim()}`); }
+        if (ok) { haptic.success(); onClose(`Pago registrado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
       }
     } catch (ex) {
       setFormError(ex?.message || "Error al guardar");

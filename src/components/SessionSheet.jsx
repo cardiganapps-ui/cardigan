@@ -11,6 +11,7 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../data/constants";
+import { formatMXN } from "../utils/format";
 
 export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
   const { t } = useT();
@@ -46,7 +47,7 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const [reasonInput, setReasonInput] = useState("");
   if (!session) return null;
   const sessionRate = session.rate != null ? session.rate : (patients?.find(p => p.name === session.patient)?.rate || 0);
-  const rateDisplay = `$${sessionRate.toLocaleString()}`;
+  const rateDisplay = `${formatMXN(sessionRate)}`;
   const isCancelled = isCancelledStatus(session.status);
   const statusLbl = t(`sessions.${session.status}`);
   const isTutor = isTutorSession(session);

@@ -244,7 +244,7 @@ html[data-theme="dark"] .agenda-calendar-link {
 .bal-row:last-child { border-bottom: none; }
 .bal-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--charcoal); }
 .bal-sub  { font-size: 11px; color: var(--charcoal-xl); margin-top: 2px; }
-.bal-amt  { font-family: var(--font-d); font-size: 14px; font-weight: 800; }
+.bal-amt  { font-family: var(--font-d); font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* Stat tile — plain white, subtle border, no accent strip */
 .fin-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px 16px; }
@@ -261,7 +261,7 @@ button.stat-tile { cursor: pointer; min-height: 0; }
 .stat-tile-selected { background: var(--cream); border-color: var(--charcoal-xxl, var(--border)); }
 .modality-toggle:active { transform: scale(0.96); }
 .stat-tile-label { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--charcoal-xl); margin-bottom:5px; }
-.stat-tile-val { font-family:var(--font-d); font-size:20px; font-weight:800; color:var(--charcoal); letter-spacing:-0.3px; }
+.stat-tile-val { font-family:var(--font-d); font-size:20px; font-weight:800; color:var(--charcoal); letter-spacing:-0.3px; font-variant-numeric: tabular-nums; }
 .stat-tile-sub { font-size:11px; color:var(--charcoal-xl); margin-top:3px; }
 
 /* PATIENT LIST */

@@ -8,6 +8,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
+import { formatMXN } from "../../utils/format";
 
 export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime, initialPatientName, initialSessionType }) {
   const { t } = useT();
@@ -168,7 +169,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
             <button className={`btn ${isTutor ? "" : "btn-primary-teal"}`} type="submit" disabled={mutating || !!conflict}
               style={isTutor ? { background:"var(--purple)", color:"var(--white)", boxShadow:"none", width:"100%" } : undefined}>
-              {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · $${effectiveRate.toLocaleString()}` : t("sessions.schedule")}
+              {mutating ? t("sessions.scheduling") : isTutor ? `${t("sessions.scheduleWithTutor")} · ${formatMXN(effectiveRate)}` : t("sessions.schedule")}
             </button>
           </div>
         </form>

@@ -45,6 +45,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
 import { rowSubLine, billingSummary } from "../utils/subscriptionStatus";
+import { formatMXNCents } from "../utils/format";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
 // from locale strings.
@@ -1774,7 +1775,7 @@ export function Settings({ user, signOut, refreshUser }) {
                           {s.invoices.map((inv) => {
                             const date = new Date(inv.paid_at)
                               .toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
-                            const amount = `$${(inv.amount_cents / 100).toLocaleString("es-MX")}`;
+                            const amount = `${formatMXNCents(inv.amount_cents)}`;
                             const link = inv.hosted_invoice_url || inv.pdf_url;
                             return (
                               <a key={inv.id}
@@ -1900,7 +1901,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         {info.pendingCreditCents > 0
                           ? t("subscription.referralRewardsPending", {
                               n: info.rewardsCount,
-                              credit: `$${(info.pendingCreditCents / 100).toLocaleString("es-MX")}`,
+                              credit: `${formatMXNCents(info.pendingCreditCents)}`,
                             })
                           : t("subscription.referralRewardsApplied", { n: info.rewardsCount })}
                       </div>
