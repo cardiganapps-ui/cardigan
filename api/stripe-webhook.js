@@ -118,6 +118,16 @@ export function invoiceIsRewardEligible(invoice) {
    Returns { ok: true } on success or { ok: false, error } when the
    matching row can't be found. The caller decides whether to 200 or
    500 — most cases want 200 + log so Stripe doesn't retry forever. */
+// Predicate: does this (status, default_payment_method) pair mean the
+// user has real Pro access? Mirrors useSubscription.subscribedActive
+// so server- and client-side gating agree. Used to detect the
+// "just became Pro" transition that fires the pro_welcome email.
+function isProState(status, dpm) {
+  if (status === "active" || status === "past_due") return true;
+  if (status === "trialing" && !!dpm) return true;
+  return false;
+}
+
 async function applySubscriptionSnapshot(svc, sub, eventCreatedUnix) {
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
   if (!customerId) return { ok: false, error: "no customer id on subscription" };
@@ -125,10 +135,12 @@ async function applySubscriptionSnapshot(svc, sub, eventCreatedUnix) {
   // Find the matching row. If it doesn't exist (rare — could happen if
   // someone created a sub directly in the Stripe dashboard for an
   // email that matches a Cardigan user, with no /api/stripe-checkout
-  // ever called), skip rather than error.
+  // ever called), skip rather than error. We pull the prior subscription
+  // fields (status, dpm, cancel_at, cancel_at_period_end) so the
+  // transition detection below can decide which lifecycle emails to fire.
   const { data: row } = await svc
     .from("user_subscriptions")
-    .select("user_id, stripe_subscription_id, last_stripe_event_at")
+    .select("user_id, stripe_subscription_id, last_stripe_event_at, status, default_payment_method, cancel_at, cancel_at_period_end")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   if (!row) {
@@ -200,6 +212,74 @@ async function applySubscriptionSnapshot(svc, sub, eventCreatedUnix) {
   }
   const { error } = await upd;
   if (error) return { ok: false, error: error.message };
+
+  // Lifecycle-email transitions — best-effort, never fail the webhook.
+  // The dedupe via lifecycle_emails(user_id, kind) means we can call
+  // sendLifecycleEmail unconditionally for "is now Pro" and "is now
+  // cancelling"; only the first call per user-per-kind actually sends.
+  // We DO need transition detection to clear the pro_cancelled dedupe
+  // row on reactivation so a future cancellation re-fires.
+  try {
+    const wasPro = isProState(row.status, row.default_payment_method);
+    const isPro = isProState(sub.status, defaultPaymentMethod);
+    const wasCancelling = !!row.cancel_at || !!row.cancel_at_period_end;
+    const isCancelling = !!sub.cancel_at || !!sub.cancel_at_period_end;
+
+    if (isPro || (isCancelling && !wasCancelling) || (!isCancelling && wasCancelling)) {
+      // Anything actionable — pull the user's email + display name once,
+      // shared between welcome / cancellation paths.
+      const { data: u } = await svc.auth.admin.getUserById(row.user_id);
+      const email = u?.user?.email;
+      if (email) {
+        const fullName = u.user.user_metadata?.full_name || email.split("@")[0];
+        const firstName = String(fullName).split(" ")[0];
+
+        // pro_welcome — fires the first time the user becomes Pro.
+        // Subsequent renewals are deduped by lifecycle_emails. Re-firing
+        // a year later after they cancelled and resubscribed is also
+        // deduped (see CLAUDE.md billing notes).
+        if (isPro && !wasPro) {
+          await sendLifecycleEmail(svc, {
+            userId: row.user_id, email, firstName,
+            kind: "pro_welcome",
+          });
+        }
+
+        // pro_cancelled — fires when scheduled cancellation appears.
+        if (isCancelling && !wasCancelling) {
+          // Format the end-date in es-MX so the email shows e.g.
+          // "30 de mayo de 2026". Falls back to a generic phrase
+          // when no date is available.
+          const endIso = update.cancel_at || update.current_period_end;
+          let endDateStr = null;
+          if (endIso) {
+            try {
+              endDateStr = new Date(endIso).toLocaleDateString("es-MX", {
+                day: "numeric", month: "long", year: "numeric",
+              });
+            } catch { /* ignore — fallback handles it */ }
+          }
+          await sendLifecycleEmail(svc, {
+            userId: row.user_id, email, firstName,
+            kind: "pro_cancelled",
+            endDateStr,
+          });
+        }
+
+        // Reactivation — clear the pro_cancelled dedupe row so a
+        // future cancellation can re-fire the email.
+        if (!isCancelling && wasCancelling) {
+          await svc.from("lifecycle_emails")
+            .delete()
+            .eq("user_id", row.user_id)
+            .eq("kind", "pro_cancelled");
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("stripe-webhook: lifecycle email fire failed:", err?.message);
+  }
+
   return { ok: true };
 }
 

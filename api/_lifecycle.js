@@ -1,12 +1,22 @@
 /* ── Lifecycle email orchestration ────────────────────────────────────
-   Wraps the four one-off transactional emails Cardigan sends outside
-   of session reminders + auth flows:
+   Wraps the transactional emails Cardigan sends outside of session
+   reminders + auth flows:
 
      trial_day_3            — onboarding nudge ~3 days after sign-up
      trial_day_25           — "5 days left in your trial" reminder
      trial_winback_day_37   — winback ~7 days post-trial-expiry
      payment_failed         — fired from stripe-webhook on
                               invoice.payment_failed
+     pro_welcome            — fired the first time a user's Stripe sub
+                              transitions to a "real Pro" state (active,
+                              past_due, or trialing-with-dpm). Once per
+                              user — resubscribers don't get a second
+                              welcome.
+     pro_cancelled          — fired when a Pro user schedules cancellation
+                              (either cancel_at_period_end=true OR
+                              cancel_at=<future-ts>). Cleared from
+                              lifecycle_emails on reactivation so a
+                              future cancellation re-fires.
 
    Each call is dedupe-write into `lifecycle_emails(user_id, kind)`
    FIRST — a unique-violation means we already sent this kind to this
@@ -80,6 +90,33 @@ function compose(kind, ctx) {
         `),
       };
 
+    case "pro_welcome":
+      return {
+        subject: "Bienvenido a Cardigan Pro",
+        html: htmlWrap(`
+          <p>Hola ${escapeHtml(firstName)},</p>
+          <p>Confirmamos tu suscripción a Cardigan Pro. Gracias por confiarnos tu consultorio — te tomamos en serio.</p>
+          <p>Ya tienes acceso completo a todas las funciones: documentos cifrados, sincronización de calendario, recordatorios automáticos, y todo lo que vayamos lanzando.</p>
+          <p style="margin:24px 0;"><a href="${APP_URL}" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">Abrir Cardigan</a></p>
+          <p>Puedes administrar tu suscripción, cambiar tu método de pago o descargar tus recibos en cualquier momento desde Ajustes → Suscripción.</p>
+          <p>Si en algún momento tienes dudas o sugerencias, contesta este correo — leemos todo.</p>
+          <p>— El equipo de Cardigan</p>
+        `),
+      };
+
+    case "pro_cancelled":
+      return {
+        subject: "Tu suscripción a Cardigan Pro está programada para cancelarse",
+        html: htmlWrap(`
+          <p>Hola ${escapeHtml(firstName)},</p>
+          <p>Recibimos tu solicitud de cancelación. Conservas acceso completo a Cardigan Pro hasta el ${escapeHtml(ctx.endDateStr || "final del periodo")}; ese día tu cuenta vuelve al modo de prueba.</p>
+          <p>Tus pacientes, sesiones y notas se quedan intactos. Si decides regresar — sea en una semana o en un año — todo sigue exactamente como lo dejaste.</p>
+          <p style="margin:24px 0;"><a href="${APP_URL}" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">Reactivar suscripción</a></p>
+          <p>Si cancelaste por algo que podemos mejorar, contesta este correo — nos importa entender qué te llevó a la decisión.</p>
+          <p>— El equipo de Cardigan</p>
+        `),
+      };
+
     default:
       return null;
   }
@@ -102,11 +139,11 @@ function escapeHtml(s) {
    (user_id, kind) slot in lifecycle_emails before sending. Returns
    { ok: true, sent: false, reason: "duplicate" } when the slot was
    already claimed by a previous run. */
-export async function sendLifecycleEmail(svc, { userId, email, firstName, kind, invoiceUrl }) {
+export async function sendLifecycleEmail(svc, { userId, email, firstName, kind, invoiceUrl, endDateStr }) {
   if (!userId || !email || !kind) {
     return { ok: false, error: "missing userId/email/kind" };
   }
-  const composed = compose(kind, { firstName, invoiceUrl });
+  const composed = compose(kind, { firstName, invoiceUrl, endDateStr });
   if (!composed) return { ok: false, error: `unknown kind: ${kind}` };
 
   // Claim the slot first. A unique-violation (23505) means we've

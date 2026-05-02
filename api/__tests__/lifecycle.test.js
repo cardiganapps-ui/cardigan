@@ -126,4 +126,50 @@ describe("sendLifecycleEmail", () => {
     expect(captured.subject).toContain("cobro");
     expect(captured.html).toContain("https://invoice.example/in_xxx");
   });
+
+  it("composes a pro_welcome email", async () => {
+    let captured;
+    sendTransactionalEmail.mockImplementation(async (args) => {
+      captured = args;
+      return { ok: true, id: "re_w" };
+    });
+    const svc = makeStub();
+    await sendLifecycleEmail(svc, {
+      userId: "u1", email: "a@b.c", firstName: "Ana", kind: "pro_welcome",
+    });
+    expect(captured.subject).toContain("Bienvenido");
+    expect(captured.subject).toContain("Cardigan Pro");
+    expect(captured.html).toContain("Confirmamos tu suscripción");
+    expect(captured.html).toContain("Ana");
+  });
+
+  it("composes a pro_cancelled email with the end date", async () => {
+    let captured;
+    sendTransactionalEmail.mockImplementation(async (args) => {
+      captured = args;
+      return { ok: true, id: "re_c" };
+    });
+    const svc = makeStub();
+    await sendLifecycleEmail(svc, {
+      userId: "u1", email: "a@b.c", firstName: "Ana", kind: "pro_cancelled",
+      endDateStr: "30 de mayo de 2026",
+    });
+    expect(captured.subject).toContain("cancelarse");
+    expect(captured.html).toContain("30 de mayo de 2026");
+    // Reactivation CTA
+    expect(captured.html).toContain("Reactivar");
+  });
+
+  it("pro_cancelled falls back to a generic phrase when no end date provided", async () => {
+    let captured;
+    sendTransactionalEmail.mockImplementation(async (args) => {
+      captured = args;
+      return { ok: true, id: "re_c2" };
+    });
+    const svc = makeStub();
+    await sendLifecycleEmail(svc, {
+      userId: "u1", email: "a@b.c", firstName: "Ana", kind: "pro_cancelled",
+    });
+    expect(captured.html).toContain("final del periodo");
+  });
 });
