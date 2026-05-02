@@ -105,6 +105,15 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             {account.tier === "pro" && (
               <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
             )}
+            {/* Cancelling badge — when a Pro user has scheduled their
+                cancellation but still has access. Lets admin see at a
+                glance who's about to drop off; sub-line could surface
+                the date but the badge alone is enough for triage. */}
+            {account.tier === "pro" && (account.subscriptionCancelAt || account.subscriptionCancelAtPeriodEnd) && (
+              <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
+                Cancelando
+              </span>
+            )}
             {account.tier === "comp" && (
               <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>
             )}

@@ -61,7 +61,7 @@ export async function fetchAllAccounts() {
   let subscriptionData = [];
   try {
     const { data } = await supabase.from("user_subscriptions")
-      .select("user_id, status, current_period_end, comp_granted, comp_granted_at, comp_reason, referral_rewards_count, default_payment_method, trial_extension_days");
+      .select("user_id, status, current_period_end, cancel_at_period_end, cancel_at, comp_granted, comp_granted_at, comp_reason, referral_rewards_count, default_payment_method, trial_extension_days");
     subscriptionData = data || [];
   } catch (e) {
     console.error("fetchAllAccounts: user_subscriptions query failed", e);
@@ -107,6 +107,8 @@ export async function fetchAllAccounts() {
     if (!acct) return; // sub for an auth user we didn't list — skip
     acct.subscriptionStatus = sub.status || null;
     acct.subscriptionPeriodEnd = sub.current_period_end || null;
+    acct.subscriptionCancelAt = sub.cancel_at || null;
+    acct.subscriptionCancelAtPeriodEnd = !!sub.cancel_at_period_end;
     acct.compGranted = !!sub.comp_granted;
     acct.compReason = sub.comp_reason || null;
     acct.compGrantedAt = sub.comp_granted_at || null;
