@@ -141,7 +141,7 @@
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--dur-base) var(--ease-spring);
 }
 .av-picker-tile:active { transform: scale(0.94); }
 .av-picker-tile svg,
@@ -162,7 +162,7 @@
   border-radius: 50%;
   border: 3px solid var(--teal);
   pointer-events: none;
-  animation: avPickerSelectRing 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: avPickerSelectRing var(--dur-slow) var(--ease-spring);
 }
 @keyframes avPickerSelectRing {
   0% { transform: scale(0.7); opacity: 0; }
@@ -179,7 +179,7 @@
   text-align: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition: background var(--dur-base) ease, border-color var(--dur-base) ease, transform var(--dur-base) ease;
 }
 /* Scope hover behind (hover: hover) so iOS doesn't treat it as a
    sticky state that requires a priming tap before the click lands.
@@ -246,7 +246,7 @@
   position: relative;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--dur-base) var(--ease-spring);
 }
 .av-settings-avatar:active { transform: scale(0.95); }
 .av-settings-avatar[aria-disabled="true"] { cursor: default; }

@@ -89,6 +89,36 @@
   --text-2xl:     calc(24px * var(--text-scale));  /* page-level numbers */
   --font:        'Nunito Sans', sans-serif;
   --font-d:      'Nunito', sans-serif;
+
+  /* ── Motion tokens ──
+     Four named easings + four durations cover ~99% of the app's
+     animation needs. Defined here so the whole codebase speaks
+     with one motion vocabulary; inline cubic-beziers / arbitrary
+     ms values that drift away from these get pulled back in.
+
+     Easings (cribbed from Apple HIG + Material 3 with one Cardigan
+     spring twist):
+       --ease-out      smooth deceleration — default for most
+                       transitions (button, focus, opacity).
+       --ease-in-out   symmetric — page slides, color shifts.
+       --ease-spring   playful overshoot — sheets, FAB, surfaces
+                       that should feel "bouncy" landing.
+       --ease-spring-soft gentle overshoot — cards, smaller pieces.
+
+     Durations:
+       --dur-fast    150ms — tap response, focus ring, hover.
+       --dur-base    250ms — most surface transitions.
+       --dur-slow    400ms — sheet open, screen slide.
+       --dur-slower  600ms — full-page motion, drawer.
+  */
+  --ease-out:         cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring-soft: cubic-bezier(0.34, 1.3, 0.56, 1);
+  --dur-fast:    150ms;
+  --dur-base:    250ms;
+  --dur-slow:    400ms;
+  --dur-slower:  600ms;
   /* Safe-area insets. Fallback is 0 so desktop browsers (which resolve
      env() to 0) behave correctly; real iPhone/iPad values come through
      env(). Previously these fell back to 44/34 and were then blanket-
@@ -189,7 +219,7 @@ a[href^="tel:"], a[href^="mailto:"] {
   border-bottom: 1px solid var(--border-lt);
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); transition: background 0.25s ease, color 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); -webkit-tap-highlight-color: transparent; user-select: none; padding: 4px 12px; border-radius: var(--radius-pill); }
+.topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); transition: background var(--dur-base) ease, color var(--dur-base) ease, transform var(--dur-slow) var(--ease-spring); -webkit-tap-highlight-color: transparent; user-select: none; padding: 4px 12px; border-radius: var(--radius-pill); }
 .topbar-brand:active { background: var(--teal-pale); color: var(--teal-dark); transform: translateX(-50%) scale(0.88); }
 .topbar-right { display: flex; align-items: center; gap: 6px; }
 
@@ -225,7 +255,7 @@ a[href^="tel:"], a[href^="mailto:"] {
 .hamburger:active { opacity: 0.6; }
 .hamburger-line {
   width: 18px; height: 2px; background: var(--charcoal); border-radius: 2px;
-  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all var(--dur-slow) var(--ease-spring);
   transform-origin: center;
 }
 .hamburger.open .hamburger-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
@@ -300,7 +330,7 @@ button.avatar-sm::before {
   to   { opacity: 1; transform: translateY(0); }
 }
 .list-entry-stagger {
-  animation: listEntryIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: listEntryIn var(--dur-slow) var(--ease-spring) both;
   animation-delay: calc(var(--stagger-i, 0) * 32ms);
 }
 @keyframes toastIn {
@@ -455,7 +485,7 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   background: linear-gradient(to right, rgba(0,0,0,0.22), rgba(0,0,0,0));
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--dur-slow) ease;
 }
 .drawer-panel--visible::after { opacity: 1; }
 
@@ -497,7 +527,7 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   cursor: pointer; border: none; background: none; width: 100%;
   font-family: var(--font); text-align: left;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.35s;
+  transition: background var(--dur-slow);
   position: relative;
 }
 .drawer-item:active { background: rgba(255,255,255,0.06); }
@@ -536,7 +566,7 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
      active feedback so users discover the affordance. */
   width: 100%; border: none; cursor: pointer;
   font-family: inherit; color: inherit; text-align: left;
-  transition: background 0.18s ease, transform 0.16s ease;
+  transition: background var(--dur-fast) ease, transform 0.16s ease;
 }
 .drawer-plan:hover { background: rgba(255,255,255,0.10); }
 .drawer-plan:active { transform: scale(0.985); background: rgba(255,255,255,0.13); }

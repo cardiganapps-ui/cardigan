@@ -6,6 +6,7 @@ import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { PROFESSIONS } from "../data/constants";
 import { useCardigan } from "../context/CardiganContext";
+import { formatDate } from "../utils/format";
 
 function relativeTime(dateStr) {
   if (!dateStr) return "";
@@ -18,7 +19,7 @@ function relativeTime(dateStr) {
   const days = Math.floor(hrs / 24);
   if (days === 1) return "ayer";
   if (days < 7) return `hace ${days}d`;
-  return new Date(dateStr).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  return formatDate(dateStr, "short");
 }
 
 /* ── Account row ──
@@ -117,9 +118,7 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
                 let dateStr = null;
                 if (cancelIso) {
                   try {
-                    dateStr = new Date(cancelIso).toLocaleDateString("es-MX", {
-                      day: "numeric", month: "short",
-                    }).replace(/\.$/, "");
+                    dateStr = formatDate(cancelIso, "short").replace(/\.$/, "");
                   } catch { /* fall through */ }
                 }
                 return (

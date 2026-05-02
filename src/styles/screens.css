@@ -29,7 +29,7 @@
   z-index: var(--z-sheet);
   display: flex; align-items: flex-end; justify-content: center;
   overscroll-behavior: contain;
-  animation: fadeIn 0.4s ease;
+  animation: fadeIn var(--dur-slow) ease;
 }
 .sheet-panel {
   background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -37,7 +37,7 @@
   padding-bottom: var(--sab);
   max-height: 85dvh; overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  animation: slideUp 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: slideUp var(--dur-slower) var(--ease-spring);
 }
 /* Focus trap parks focus on the panel itself (tabindex=-1) so no inner
    button looks pre-selected when the sheet opens — hide the default
@@ -96,7 +96,7 @@
   font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.2s ease, transform 0.18s ease;
+  transition: background var(--dur-base) ease, transform var(--dur-fast) ease;
 }
 .agenda-calendar-link:active { background: var(--teal-pale); transform: scale(0.99); }
 .agenda-calendar-link:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
@@ -113,7 +113,7 @@ html[data-theme="dark"] .agenda-calendar-link {
 .month-cell {
   aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
   justify-content: center; border-radius: var(--radius-sm); cursor: pointer;
-  position: relative; -webkit-tap-highlight-color: transparent; transition: background 0.35s;
+  position: relative; -webkit-tap-highlight-color: transparent; transition: background var(--dur-slow);
 }
 .month-cell:active { background: var(--teal-pale); }
 .month-cell.active { background: var(--teal); }
@@ -129,7 +129,7 @@ html[data-theme="dark"] .agenda-calendar-link {
 .month-cell--drop-target {
   background: var(--teal-pale) !important;
   box-shadow: inset 0 0 0 2px var(--teal);
-  transition: background 0.1s ease, box-shadow 0.1s ease;
+  transition: background var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 .month-cell.today:not(.active) { background: var(--teal-pale); }
 .month-cell.other-month .month-cell-num { color: var(--cream-deeper); }
@@ -205,7 +205,7 @@ html[data-theme="dark"] .agenda-calendar-link {
   font-size: 9px; font-weight: 700; color: var(--teal-dark);
   overflow: hidden; cursor: pointer;
   display: flex; flex-direction: column;
-  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  transition: transform var(--dur-fast) ease, filter var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 .week-event-time { display: none; }
 .week-event.cancelled { background: var(--cream-dark); border-left-color: var(--charcoal-xl); color: var(--charcoal-lt); }
@@ -235,7 +235,7 @@ html[data-theme="dark"] .agenda-calendar-link {
 .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; padding: 0 4px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .bar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; border-radius: 6px 6px 0 0; overflow: hidden; }
-.bar-fill { width: 100%; border-radius: 6px 6px 0 0; transition: height 0.7s; }
+.bar-fill { width: 100%; border-radius: 6px 6px 0 0; transition: height var(--dur-slower); }
 .bar-label { font-size: 9px; font-weight: 700; color: var(--charcoal-xl); text-transform: uppercase; }
 .bar-val { font-size: 9px; font-weight: 700; color: var(--charcoal-md); }
 
@@ -256,7 +256,7 @@ html[data-theme="dark"] .agenda-calendar-link {
   font-family: inherit; color: inherit; text-align: left;
 }
 button.stat-tile { cursor: pointer; min-height: 0; }
-.stat-tile-clickable { transition: background 0.45s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.45s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+.stat-tile-clickable { transition: background var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring), border-color var(--dur-slow) ease; -webkit-tap-highlight-color: transparent; user-select: none; }
 .stat-tile-clickable:active { transform: scale(0.95); }
 .stat-tile-selected { background: var(--cream); border-color: var(--charcoal-xxl, var(--border)); }
 .modality-toggle:active { transform: scale(0.96); }
@@ -278,7 +278,7 @@ button.stat-tile { cursor: pointer; min-height: 0; }
   padding: 5px 13px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600;
   border: 1.5px solid var(--border); background: var(--white); color: var(--charcoal-lt);
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent; transition: all 0.35s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); font-family: var(--font);
+  -webkit-tap-highlight-color: transparent; transition: all var(--dur-slow), transform var(--dur-slow) var(--ease-spring); font-family: var(--font);
 }
 .chip.active { background: var(--teal); border-color: var(--teal); color: white; }
 .chip:active { transform: scale(0.93); }
@@ -296,7 +296,7 @@ button.stat-tile { cursor: pointer; min-height: 0; }
   opacity: 0.35;
   transform: scaleX(0);
   transform-origin: left center;
-  animation: noteLongPressFill 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: noteLongPressFill var(--dur-slower) var(--ease-in-out) forwards;
   pointer-events: none;
 }
 /* noteLongPressFill — linear progress fill for the long-press to

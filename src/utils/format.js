@@ -69,3 +69,39 @@ export function formatPercent(n) {
   if (Math.abs(v) <= 1) return NF_PERCENT.format(v);
   return `${NF_INT.format(v)}%`;
 }
+
+/* ── Date formatting ──
+   Single helper for user-facing dates so the whole app speaks one
+   format-vocabulary in es-MX. Variants:
+
+     "short"    "30 may"                    list rows, badges
+     "shortDay" "30 may, lun"               list rows that need DOW
+     "shortYear" "30 may 2026"              when year matters (history)
+     "long"     "30 de mayo de 2026"        hero / summary
+     "longTime" "30 de mayo de 2026, 22:16" notes / receipts
+
+   Accepts a Date, an ISO string, or anything `new Date(x)` parses.
+   Returns "" on null/invalid input rather than "Invalid Date" — caller
+   gates the empty-string with conditional rendering.
+
+   Storage-format helpers ("D-MMM" — see utils/dates.js::formatShortDate)
+   are SEPARATE on purpose: those are persisted in the DB and aren't
+   subject to the locale/format pass. This helper only owns display. */
+const DATE_OPTS = {
+  short:      { day: "numeric", month: "short" },
+  shortDay:   { day: "numeric", month: "short", weekday: "short" },
+  shortYear:  { day: "numeric", month: "short", year: "numeric" },
+  long:       { day: "numeric", month: "long", year: "numeric" },
+  longTime:   { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" },
+};
+
+export function formatDate(input, variant = "long") {
+  if (input == null || input === "") return "";
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return "";
+  const opts = DATE_OPTS[variant] || DATE_OPTS.long;
+  // Strip the trailing period es-MX appends to short month names
+  // ("30 may." → "30 may"). Keeps display tight; the period adds no
+  // information and clashes with how amounts/badges sit beside dates.
+  return d.toLocaleDateString("es-MX", opts).replace(/\.(?=,|$|\s)/g, "");
+}

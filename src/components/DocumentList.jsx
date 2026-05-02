@@ -4,6 +4,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import { getFileIcon, formatFileSize } from "../utils/files";
 import { useT } from "../i18n/index";
+import { formatDate } from "../utils/format";
 
 export function DocumentList({
   documents, sessions, patients,
@@ -98,7 +99,7 @@ export function DocumentList({
                       {p && <span style={{ fontWeight:600, cursor: onPatientClick ? "pointer" : undefined, color: onPatientClick ? "var(--teal-dark)" : undefined }}
                         onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(p); } : undefined}>{p.name} · </span>}
                       {formatFileSize(doc.file_size)}
-                      {doc.created_at && ` · ${new Date(doc.created_at).toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })}`}
+                      {doc.created_at && ` · ${formatDate(doc.created_at, "shortYear")}`}
                     </div>
                   </>
                 )}

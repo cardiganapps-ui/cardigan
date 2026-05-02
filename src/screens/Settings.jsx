@@ -23,7 +23,7 @@ function relativeTime(iso) {
   if (hrs < 24) return `hace ${hrs} ${hrs === 1 ? "hora" : "horas"}`;
   const days = Math.floor(hrs / 24);
   if (days < 30) return `hace ${days} ${days === 1 ? "día" : "días"}`;
-  return then.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  return formatDate(then, "shortYear");
 }
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
@@ -45,7 +45,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
 import { rowSubLine, billingSummary } from "../utils/subscriptionStatus";
-import { formatMXNCents } from "../utils/format";
+import { formatMXNCents, formatDate } from "../utils/format";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
 // from locale strings.
@@ -1773,8 +1773,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         </div>
                         <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                           {s.invoices.map((inv) => {
-                            const date = new Date(inv.paid_at)
-                              .toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+                            const date = formatDate(inv.paid_at, "shortYear");
                             const amount = `${formatMXNCents(inv.amount_cents)}`;
                             const link = inv.hosted_invoice_url || inv.pdf_url;
                             return (

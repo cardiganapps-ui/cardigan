@@ -3,7 +3,7 @@
   position: fixed; inset: 0;
   background: rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
-  animation: fadeIn 0.7s ease;
+  animation: fadeIn var(--dur-slower) ease;
   pointer-events: auto;
 }
 .tut-spotlight {
@@ -12,11 +12,11 @@
   box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62);
   z-index: var(--z-tutorial);
   pointer-events: none;
-  transition: top 1.6s cubic-bezier(0.32, 0.72, 0, 1),
-              left 1.6s cubic-bezier(0.32, 0.72, 0, 1),
-              width 1.6s cubic-bezier(0.32, 0.72, 0, 1),
-              height 1.6s cubic-bezier(0.32, 0.72, 0, 1);
-  animation: tutSpotlightIn 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: top 1.6s var(--ease-out),
+              left 1.6s var(--ease-out),
+              width 1.6s var(--ease-out),
+              height 1.6s var(--ease-out);
+  animation: tutSpotlightIn 1.6s var(--ease-out);
 }
 @keyframes tutSpotlightIn {
   from { opacity: 0; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0); }
@@ -36,7 +36,7 @@
   border-radius: calc(var(--radius-lg) + 4px);
   border: 2px solid rgba(255, 255, 255, 0.5);
   pointer-events: none;
-  animation: tutRingPulse 2.4s ease-in-out 0.3s infinite;
+  animation: tutRingPulse 2.4s ease-in-out var(--dur-slow) infinite;
 }
 @keyframes tutRingPulse {
   0%, 100% { opacity: 0.5; transform: scale(1); }
@@ -53,19 +53,19 @@
   padding: 18px 18px 14px;
   max-width: min(320px, calc(100vw - 24px));
   width: calc(100vw - 24px);
-  transition: top 1.4s cubic-bezier(0.32, 0.72, 0, 1),
-              left 1.4s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: top 1.4s var(--ease-out),
+              left 1.4s var(--ease-out);
 }
 /* Directional entrance animations — the tooltip slides from the side of the
    spotlight so the connection between element and tooltip feels deliberate. */
 .tut-bubble--enter-from-above {
-  animation: tutBubbleFromAbove 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleFromAbove 1.6s var(--ease-out);
 }
 .tut-bubble--enter-from-below {
-  animation: tutBubbleFromBelow 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleFromBelow 1.6s var(--ease-out);
 }
 .tut-bubble--enter-center {
-  animation: tutBubbleCenter 1.7s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleCenter 1.7s var(--ease-out);
 }
 @keyframes tutBubbleFromAbove {
   from { opacity: 0; transform: translateY(-14px) scale(0.98); }
@@ -85,7 +85,7 @@
   left: 50% !important; top: 50% !important;
   transform: translate(-50%, -50%);
   max-width: min(340px, calc(100vw - 32px));
-  animation: tutBubbleCenter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutBubbleCenter 1.2s var(--ease-out);
 }
 
 .tut-bubble-title {
@@ -116,7 +116,7 @@
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.5s ease, color 0.5s ease;
+  transition: background var(--dur-slower) ease, color var(--dur-slower) ease;
   padding: 0;
 }
 .tut-bubble-close:hover,
@@ -138,7 +138,7 @@
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--cream-dark);
-  transition: width 0.7s ease, background 0.7s ease;
+  transition: width var(--dur-slower) ease, background var(--dur-slower) ease;
 }
 .tut-dot--done {
   background: var(--teal-light);
@@ -161,7 +161,7 @@
   border: none; cursor: pointer;
   font-family: var(--font-d);
   font-size: 13px; font-weight: 700;
-  transition: transform 0.5s ease, background 0.5s ease, box-shadow 0.5s ease;
+  transition: transform var(--dur-slower) ease, background var(--dur-slower) ease, box-shadow var(--dur-slower) ease;
   -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
 }
@@ -183,7 +183,7 @@
    full-bleed-centered while the Tutorial orchestrator switches screens. */
 .tut-dim--transition {
   background: rgba(20, 20, 20, 0.48);
-  animation: fadeIn 0.7s ease;
+  animation: fadeIn var(--dur-slower) ease;
   pointer-events: auto;
 }
 .tut-welcome-overlay {
@@ -192,7 +192,7 @@
   z-index: var(--z-tutorial);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  animation: fadeIn 0.5s ease;
+  animation: fadeIn var(--dur-slower) ease;
 }
 .tut-welcome-card {
   background: var(--white);
@@ -201,7 +201,7 @@
   padding: 26px 22px 20px;
   max-width: 340px; width: 100%;
   text-align: center;
-  animation: tutWelcomeIn 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tutWelcomeIn 1.1s var(--ease-out);
 }
 @keyframes tutWelcomeIn {
   from { opacity: 0; transform: translateY(12px) scale(0.96); }
@@ -261,13 +261,13 @@ body.tut-drawer-active .drawer-overlay {
    items in JS-painted drawer chrome and brighten the matched one. */
 body.tut-drawer-active .drawer-item:not(.tut-target) {
   opacity: 0.32;
-  transition: opacity 0.4s ease;
+  transition: opacity var(--dur-slow) ease;
 }
 body.tut-drawer-active .drawer-item.tut-target {
   opacity: 1;
   background: rgba(91, 155, 175, 0.22);
   box-shadow: inset 3px 0 0 var(--teal-light);
-  transition: background 0.4s ease, opacity 0.4s ease;
+  transition: background var(--dur-slow) ease, opacity var(--dur-slow) ease;
 }
 body.tut-drawer-active .drawer-section-label {
   opacity: 0.45;
@@ -295,7 +295,7 @@ body.tut-drawer-active .drawer-section-label {
   padding: 0;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
-  transition: all 0.4s ease;
+  transition: all var(--dur-slow) ease;
 }
 .help-icon-btn::after {
   content: ""; position: absolute;
@@ -333,7 +333,7 @@ body.tut-drawer-active .drawer-section-label {
   box-shadow: 0 8px 28px rgba(0,0,0,0.18);
   padding: 14px 16px;
   z-index: 60;
-  animation: fadeIn 0.45s ease;
+  animation: fadeIn var(--dur-slow) ease;
 }
 .help-tip-list {
   list-style: none; margin: 0; padding: 0;

@@ -32,7 +32,7 @@
   -webkit-backdrop-filter: saturate(140%) blur(14px);
   border-bottom: 1px solid transparent;
   padding: calc(var(--sat) + 14px) 0 14px;
-  transition: padding 0.4s ease, border-color 0.4s ease, background 0.4s ease;
+  transition: padding var(--dur-slow) ease, border-color var(--dur-slow) ease, background var(--dur-slow) ease;
 }
 .lp-nav-inner {
   display: flex;
@@ -62,7 +62,7 @@
   cursor: pointer;
   padding: 8px 4px;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.35s ease;
+  transition: color var(--dur-slow) ease;
 }
 .lp-nav-link:hover { color: var(--charcoal); }
 
@@ -126,7 +126,7 @@
   letter-spacing: -0.028em;
   color: var(--charcoal);
   margin: 0 0 20px;
-  animation: lpRise 0.6s 0.06s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: lpRise var(--dur-slower) 0.06s var(--ease-spring) both;
 }
 .lp-accent { color: var(--teal-dark); }
 
@@ -136,17 +136,17 @@
   color: var(--charcoal-md);
   margin: 0 0 32px;
   max-width: 460px;
-  animation: lpRise 0.6s 0.16s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: lpRise var(--dur-slower) 0.16s var(--ease-spring) both;
 }
 
 .lp-hero-ctas {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  animation: lpRise 0.6s 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: lpRise var(--dur-slower) 0.26s var(--ease-spring) both;
 }
 .lp-hero-preview > .lp-preview {
-  animation: lpRise 0.7s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: lpRise var(--dur-slower) var(--dur-base) var(--ease-spring) both;
 }
 
 /* ── Profession chips ──
@@ -159,7 +159,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 18px;
-  animation: lpRise 0.6s 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: lpRise var(--dur-slower) 0.32s var(--ease-spring) both;
 }
 .lp-hero-professions-label {
   font-size: 12px;
@@ -195,10 +195,10 @@
   flex-direction: column;
   gap: 18px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.5s ease,
-              border-color 0.5s ease,
-              opacity 0.55s ease;
+  transition: transform var(--dur-slower) var(--ease-spring),
+              box-shadow var(--dur-slower) ease,
+              border-color var(--dur-slower) ease,
+              opacity var(--dur-slower) ease;
   /* Reveal-on-scroll initial state */
   opacity: 0;
   transform: translateY(16px);
@@ -371,8 +371,8 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   opacity: 0;
   transform: translateY(14px);
-  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
-              border-color 0.35s ease;
+  transition: opacity var(--dur-slower) ease, transform var(--dur-slower) var(--ease-spring),
+              border-color var(--dur-slow) ease;
   transition-delay: calc(var(--i, 0) * 90ms);
 }
 .lp-step.is-in { opacity: 1; transform: translateY(0); }
@@ -446,7 +446,7 @@
   white-space: nowrap;
   letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 320ms var(--ease-spring),
               box-shadow 320ms ease,
               background 320ms ease,
               color 320ms ease,
@@ -859,7 +859,7 @@
 .lp-prof-chip {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease;
 }
 .lp-prof-chip:hover { color: var(--charcoal); border-color: var(--teal-light); }
 .lp-prof-chip:active { transform: scale(0.96); }
@@ -932,7 +932,7 @@
      staggered via --i. */
   opacity: 0;
   transform: translateY(12px);
-  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity var(--dur-slower) ease, transform var(--dur-slower) var(--ease-spring);
   transition-delay: calc(var(--i, 0) * 80ms);
 }
 .lp-trust-pill.is-in { opacity: 1; transform: translateY(0); }
@@ -958,10 +958,10 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
   opacity: 0;
   transform: translateY(16px);
-  transition: opacity 0.55s ease,
-              transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
-              border-color 0.4s ease,
-              box-shadow 0.4s ease;
+  transition: opacity var(--dur-slower) ease,
+              transform var(--dur-slower) var(--ease-spring),
+              border-color var(--dur-slow) ease,
+              box-shadow var(--dur-slow) ease;
   transition-delay: calc(var(--i, 0) * 70ms);
 }
 .lp-feature-card.is-in { opacity: 1; transform: translateY(0); }
@@ -1008,7 +1008,7 @@
   /* Reveal-on-scroll: same pattern as feature cards. */
   opacity: 0;
   transform: translateY(16px);
-  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity var(--dur-slower) ease, transform var(--dur-slower) var(--ease-spring);
   transition-delay: calc(var(--i, 0) * 80ms);
 }
 .lp-pricing-card.is-in { opacity: 1; transform: translateY(0); }
@@ -1094,8 +1094,8 @@
   border-radius: var(--radius);
   padding: 0;
   overflow: hidden;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease,
-              opacity 0.55s ease, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: border-color var(--dur-slow) ease, box-shadow var(--dur-slow) ease,
+              opacity var(--dur-slower) ease, transform var(--dur-slower) var(--ease-spring);
   /* Reveal-on-scroll. */
   opacity: 0;
   transform: translateY(12px);
@@ -1126,7 +1126,7 @@
   align-items: center;
   justify-content: center;
   color: var(--charcoal-md);
-  transition: transform 0.25s ease;
+  transition: transform var(--dur-base) ease;
   flex-shrink: 0;
 }
 .lp-faq-item[open] .lp-faq-chevron { transform: rotate(180deg); color: var(--teal-dark); }
@@ -1190,7 +1190,7 @@
   color: var(--charcoal-md);
   text-decoration: none;
   text-align: left;
-  transition: color 0.2s ease;
+  transition: color var(--dur-base) ease;
   -webkit-tap-highlight-color: transparent;
 }
 .lp-footer-link:hover { color: var(--teal-dark); }

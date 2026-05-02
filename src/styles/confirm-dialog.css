@@ -4,7 +4,7 @@
    src/components/ConfirmDialog.jsx — see that file for the API.
 
    Visual contract:
-   - Card scales in from 0.92 → 1 over 0.3s on the canonical curve.
+   - Card scales in from 0.92 → 1 over var(--dur-slow) on the canonical curve.
    - Backdrop scrim uses the unified --scrim-bg + per-layer blur.
    - Destructive variant: red icon circle + red CTA.
    - Standard variant: charcoal CTA, no icon.
@@ -38,7 +38,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  animation: confirmDialogIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: confirmDialogIn var(--dur-slow) var(--ease-spring) both;
 }
 
 @keyframes confirmDialogIn {

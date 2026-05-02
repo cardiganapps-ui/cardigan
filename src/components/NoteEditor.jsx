@@ -15,6 +15,7 @@ import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
 import { useViewport } from "../hooks/useViewport";
+import { formatDate } from "../utils/format";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
@@ -31,7 +32,7 @@ function relativeTime(dateStr, t) {
   const days = Math.floor(hrs / 24);
   if (days === 1) return t("timeYesterday");
   if (days < 7) return t("timeDaysAgo", { count: days });
-  return new Date(dateStr).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  return formatDate(dateStr, "short");
 }
 
 /* ── Empty-note detection ──
@@ -309,7 +310,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const readingMins = wordCount > 0 ? Math.max(1, Math.round(wordCount / 200)) : 0;
 
   const dateStr = note?.updated_at
-    ? new Date(note.updated_at).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    ? formatDate(note.updated_at, "longTime")
     : "";
 
   const isBrandNewEmpty = !title && !content && !note?.title && !note?.content;

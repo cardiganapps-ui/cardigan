@@ -135,7 +135,7 @@
   background: var(--white);
   border-bottom: 1px solid var(--border-lt);
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.18s ease;
+  transition: background var(--dur-fast) ease;
 }
 
 .mediciones-row:last-child {

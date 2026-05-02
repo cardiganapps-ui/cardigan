@@ -6,7 +6,7 @@ import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { usesAnthropometrics } from "../../data/constants";
-import { formatMXN } from "../../utils/format";
+import { formatMXN, formatDate } from "../../utils/format";
 
 // ── Date helpers ──
 // Display format used across the Resumen card. Spanish locale renders
@@ -22,7 +22,7 @@ function formatISODateLong(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
   return capitalizeMonth(
-    new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })
+    formatDate(y, m - 1, d, "shortYear")
   );
 }
 
@@ -171,7 +171,7 @@ export function ResumenTab({
             const m = today.getMonth() - birth.getMonth();
             if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
             const formatted = capitalizeMonth(
-              birth.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" })
+              formatDate(birth, "shortYear")
             );
             return `${formatted} (${age} ${t("patients.yearsOld")})`;
           })() : null;

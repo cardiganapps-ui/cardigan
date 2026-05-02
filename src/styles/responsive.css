@@ -69,7 +69,7 @@
   .sheet-panel {
     max-width: clamp(520px, 70vw, 720px);
     border-radius: var(--radius-lg);
-    animation: sheetScaleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: sheetScaleIn var(--dur-slow) var(--ease-spring);
     max-height: 85dvh;
   }
   .sheet-handle { display: none; }
@@ -94,7 +94,7 @@
     width: 32px; height: 32px; border-radius: 50%;
     background: none; border: 1.5px solid var(--border);
     cursor: pointer; color: var(--charcoal-xl);
-    transition: all 0.4s; min-height: unset;
+    transition: all var(--dur-slow); min-height: unset;
   }
   .topbar-refresh-btn:hover { background: var(--teal-pale); color: var(--teal-dark); border-color: var(--teal-light); }
   /* On desktop the settings avatar uses solid teal. Target the ::before
@@ -137,7 +137,7 @@
     border-radius: 50%;
     color: var(--charcoal-lt);
     font-family: var(--font); cursor: pointer;
-    transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+    transition: background var(--dur-slow) ease, border-color var(--dur-slow) ease, color var(--dur-slow) ease, transform var(--dur-base) ease;
   }
   .topbar-search-btn:hover { background: var(--teal-mist); border-color: var(--teal-light); color: var(--teal-dark); }
   .topbar-search-btn:active { transform: scale(0.94); }
@@ -149,7 +149,7 @@
     font-family: var(--font); font-size: var(--text-sm); font-weight: 700;
     letter-spacing: 0.01em; cursor: pointer;
     box-shadow: var(--shadow-sm);
-    transition: background 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    transition: background var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring), box-shadow var(--dur-slow) ease;
   }
   .topbar-new-btn:hover { background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.18); transform: translateY(-1px); }
   .topbar-new-btn:active { transform: translateY(0) scale(0.97); }
@@ -161,7 +161,7 @@
     border-radius: var(--radius); box-shadow: var(--shadow-lg);
     padding: 4px; z-index: 60;
     display: flex; flex-direction: column;
-    animation: topbarNewMenuIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: topbarNewMenuIn var(--dur-base) var(--ease-spring);
   }
   .topbar-new-item {
     display: flex; align-items: center; gap: 10px;
@@ -171,8 +171,8 @@
     font-family: var(--font); font-size: var(--text-md); font-weight: 500;
     color: var(--charcoal);
     opacity: 0;
-    animation: fabActionIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    transition: background 0.15s ease, color 0.15s ease;
+    animation: fabActionIn var(--dur-slow) var(--ease-spring) both;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
   }
   .topbar-new-item:hover { background: var(--teal-mist); color: var(--teal-dark); }
   .topbar-new-item-icon {
@@ -213,7 +213,7 @@
     width: 580px !important;
     max-width: 50vw !important;
     border-radius: var(--radius-lg) 0 0 var(--radius-lg) !important;
-    animation: slideInRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    animation: slideInRight var(--dur-slower) var(--ease-spring) !important;
   }
   .expediente-desktop-panel .expediente-drag-handle { display: none; }
 
@@ -240,7 +240,7 @@
   .week-cell--drop-target {
     background: var(--teal-pale) !important;
     box-shadow: inset 0 0 0 2px var(--teal);
-    transition: background 0.1s ease, box-shadow 0.1s ease;
+    transition: background var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
   }
 }
 
@@ -280,7 +280,7 @@
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
 .row-item, .settings-row, .kpi-card, .month-cell, .week-cell, .chip { cursor: pointer; }
 .row-item, .settings-row, .drawer-item, .kpi-card, .month-cell, .week-cell, .chip,
-.btn, .fab, .fab-action { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.btn, .fab, .fab-action { transition: all var(--dur-slow) var(--ease-spring); }
 
 /* ── HOVER STATES (pointer devices only) ── */
 @media (hover: hover) {
@@ -491,7 +491,7 @@
     font-weight: 600;
     color: var(--charcoal-lt);
     text-align: left;
-    transition: background 0.2s, color 0.2s;
+    transition: background var(--dur-base), color var(--dur-base);
     -webkit-tap-highlight-color: transparent;
     min-height: 40px;
   }
