@@ -170,6 +170,17 @@ export function getSubscription(subscriptionId) {
   return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "GET" });
 }
 
+/* List subscriptions for a customer. Used by the force-sync flow to
+   reconcile DB state with Stripe's truth when a webhook delivery is
+   delayed or missed (e.g. user cancels in portal then immediately
+   refreshes — webhook hasn't arrived yet, DB still says "active"). */
+export function listCustomerSubscriptions(customerId) {
+  return stripeFetch(
+    `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=10`,
+    { method: "GET" }
+  );
+}
+
 export function cancelSubscription(subscriptionId) {
   return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "DELETE" });
 }

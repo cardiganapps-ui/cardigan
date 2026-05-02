@@ -575,6 +575,20 @@ export function Settings({ user, signOut, refreshUser }) {
     if (!res.ok) { setSubError(res.error || t("subscription.errorGeneric")); return; }
     if (res.url) window.location.href = res.url;
   };
+  // Manual reconciliation — pulls live Stripe state and writes to DB.
+  // Recovers from delayed/missed cancellation webhooks so the user
+  // doesn't see a stale "Activa" after cancelling in Stripe.
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
+  const handleSyncWithStripe = async () => {
+    if (syncBusy || !subscription?.syncWithStripe) return;
+    setSyncBusy(true); setSubError("");
+    const res = await subscription.syncWithStripe();
+    setSyncBusy(false);
+    if (!res.ok) { setSubError(res.error || t("subscription.errorGeneric")); return; }
+    setSyncDone(true);
+    setTimeout(() => setSyncDone(false), 2200);
+  };
   const copyReferralCode = async () => {
     const code = subscription?.referralInfo?.code;
     if (!code) return;
@@ -1703,6 +1717,26 @@ export function Settings({ user, signOut, refreshUser }) {
                         </button>
                         <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:4, lineHeight:1.4 }}>
                           {t("subscription.pauseHint")}
+                        </div>
+                        {/* Manual reconciliation — recovery affordance for the
+                            rare case where a Stripe webhook delivery lags or
+                            is missed (so the user cancelled in the portal but
+                            still sees "Activa" here). Hits /api/stripe-sync
+                            which pulls live Stripe state and writes to DB. */}
+                        <button type="button"
+                          onClick={handleSyncWithStripe} disabled={syncBusy || subBusy}
+                          style={{
+                            display:"block", margin:"14px auto 0", padding:"6px 12px",
+                            background:"transparent", border:"none",
+                            color: syncDone ? "var(--green)" : "var(--charcoal-xl)",
+                            fontSize:12, cursor:"pointer", textDecoration:"underline",
+                          }}>
+                          {syncBusy ? t("subscription.syncing")
+                            : syncDone ? t("subscription.syncDone")
+                            : t("subscription.syncCta")}
+                        </button>
+                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:2, lineHeight:1.4 }}>
+                          {t("subscription.syncHint")}
                         </div>
                       </div>
                     )}

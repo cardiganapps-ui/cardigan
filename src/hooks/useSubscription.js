@@ -106,13 +106,31 @@ export function useSubscription(user) {
   // Listen for billing-return events from the Stripe redirect URLs.
   // App.jsx parses `?billing=success|cancel|return` on mount and
   // dispatches a window event so this hook can refetch without a full
-  // page reload. Webhook latency is usually ~1-2s; we also schedule a
-  // delayed re-fetch to cover the rare longer tail.
+  // page reload.
+  //
+  // Webhook latency is usually ~1-2s but can stretch to minutes (or
+  // miss entirely if Stripe's webhook config drifts). We don't want
+  // a user who just cancelled in the Billing Portal to come back and
+  // still see "Activa" — so we hit /api/stripe-sync first, which
+  // pulls the live subscription state from Stripe and writes it to
+  // the DB, then refetch from the row. Falls back to a plain refresh
+  // if the sync endpoint errors.
   useEffect(() => {
-    const onReturn = () => {
-      refresh();
-      const t = setTimeout(refresh, 4000);
-      return () => clearTimeout(t);
+    const onReturn = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (token) {
+          await fetch("/api/stripe-sync", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` },
+          }).catch(() => {});
+        }
+      } finally {
+        refresh();
+        // Tail re-fetch in case the webhook lands seconds after sync.
+        setTimeout(refresh, 4000);
+      }
     };
     window.addEventListener("cardigan-billing-return", onReturn);
     return () => window.removeEventListener("cardigan-billing-return", onReturn);
@@ -310,6 +328,29 @@ export function useSubscription(user) {
     return { ok: true, granted: !!json.granted, totalDays: json.totalDays || 0 };
   }, [refresh]);
 
+  // Force-reconcile the DB row with Stripe's live state. Used from
+  // Settings as a manual "Actualizar estado" affordance when the row
+  // looks stale (e.g. cancellation webhook delivery is delayed). Also
+  // triggered automatically on billing-portal return — see the
+  // `cardigan-billing-return` listener above.
+  const syncWithStripe = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return { ok: false, error: "Not signed in" };
+    try {
+      const res = await fetch("/api/stripe-sync", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: json.error || "Sync failed" };
+      await refresh();
+      return { ok: true, status: json.status };
+    } catch (err) {
+      return { ok: false, error: err?.message || "Sync failed" };
+    }
+  }, [refresh]);
+
   const openPortal = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -344,6 +385,7 @@ export function useSubscription(user) {
     referralLeaderboardLoading,
     fetchReferralLeaderboard,
     refresh,
+    syncWithStripe,
     startCheckout,
     openPortal,
     grantTrialExtension,

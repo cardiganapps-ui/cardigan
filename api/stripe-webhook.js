@@ -113,7 +113,13 @@ async function applySubscriptionSnapshot(svc, sub) {
     return { ok: false, error: `no user_subscriptions row for customer ${customerId}` };
   }
 
-  const priceId = sub.items?.data?.[0]?.price?.id || null;
+  const item = sub.items?.data?.[0];
+  const priceId = item?.price?.id || null;
+  // Stripe API 2025-04-30.basil removed `current_period_end` from the
+  // Subscription root and surfaces it on the SubscriptionItem instead.
+  // Fall back to items[0] so the period boundary lands in the DB
+  // regardless of which API version the webhook endpoint is pinned to.
+  const periodEndUnix = sub.current_period_end ?? item?.current_period_end ?? null;
   // Stripe expands `default_payment_method` to a string id on most
   // events, but to a full object on a few of them — handle both.
   // NULL means the subscription has no card attached yet (an orphan
@@ -127,7 +133,7 @@ async function applySubscriptionSnapshot(svc, sub) {
     stripe_subscription_id: sub.id,
     stripe_price_id: priceId,
     status: sub.status,
-    current_period_end: isoOrNull(sub.current_period_end),
+    current_period_end: isoOrNull(periodEndUnix),
     cancel_at_period_end: !!sub.cancel_at_period_end,
     trial_end: isoOrNull(sub.trial_end),
     default_payment_method: defaultPaymentMethod,
