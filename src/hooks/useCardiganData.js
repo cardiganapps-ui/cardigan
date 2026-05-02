@@ -61,7 +61,7 @@ export async function fetchAllAccounts() {
   let subscriptionData = [];
   try {
     const { data } = await supabase.from("user_subscriptions")
-      .select("user_id, status, current_period_end, comp_granted, comp_granted_at, comp_reason, referral_rewards_count");
+      .select("user_id, status, current_period_end, comp_granted, comp_granted_at, comp_reason, referral_rewards_count, default_payment_method, trial_extension_days");
     subscriptionData = data || [];
   } catch (e) {
     console.error("fetchAllAccounts: user_subscriptions query failed", e);
@@ -111,7 +111,56 @@ export async function fetchAllAccounts() {
     acct.compReason = sub.comp_reason || null;
     acct.compGrantedAt = sub.comp_granted_at || null;
     acct.referralRewardsCount = sub.referral_rewards_count || 0;
+    acct.defaultPaymentMethod = sub.default_payment_method || null;
+    acct.trialExtensionDays = sub.trial_extension_days || 0;
   });
+
+  // Compute access tier per account so AdminPanel can render a
+  // single accurate badge per row instead of guessing from the raw
+  // status field. Mirrors the gate logic in
+  // src/hooks/useSubscription.js so admin + user views agree:
+  //   - "pro"     paid sub with a card on file
+  //   - "comp"    admin-granted complimentary access
+  //   - "trial"   inside the 30-day window (+any earned extension)
+  //   - "expired" trial lapsed, no active sub
+  const TRIAL_DAYS = 30;
+  const PAID = new Set(["active", "past_due"]);
+  for (const acct of accounts.values()) {
+    if (acct.compGranted) {
+      acct.tier = "comp";
+      acct.daysLeftInTrial = null;
+      continue;
+    }
+    const status = acct.subscriptionStatus;
+    const paid = status && (
+      PAID.has(status)
+      || (status === "trialing" && !!acct.defaultPaymentMethod)
+    );
+    if (paid) {
+      acct.tier = "pro";
+      acct.daysLeftInTrial = null;
+      continue;
+    }
+    // No paid sub: is the trial window still open?
+    const created = acct.firstSeen ? new Date(acct.firstSeen).getTime() : null;
+    if (!created || Number.isNaN(created)) {
+      // Missing created_at — treat as expired so we don't accidentally
+      // grant write access to a row we can't verify.
+      acct.tier = "expired";
+      acct.daysLeftInTrial = null;
+      continue;
+    }
+    const totalDays = TRIAL_DAYS + (acct.trialExtensionDays || 0);
+    const trialEndMs = created + totalDays * 86_400_000;
+    const daysLeft = Math.max(0, Math.ceil((trialEndMs - now) / 86_400_000));
+    if (now < trialEndMs) {
+      acct.tier = "trial";
+      acct.daysLeftInTrial = daysLeft;
+    } else {
+      acct.tier = "expired";
+      acct.daysLeftInTrial = 0;
+    }
+  }
   return [...accounts.values()];
 }
 

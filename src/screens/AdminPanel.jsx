@@ -93,12 +93,28 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
         <Avatar initials={(account.fullName || account.email || "?").charAt(0).toUpperCase()}
           color={account.blocked ? "var(--charcoal-xl)" : "var(--teal)"} size="md" />
         <div className="row-content">
-          <div className="row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
+          <div className="row-title" style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
             {account.fullName || t("admin.noName")}
             {account.blocked && <span className="badge badge-red">{t("admin.accountStatusBlocked")}</span>}
-            {account.compGranted && <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>}
-            {account.subscriptionStatus === "active" && !account.compGranted && (
+            {/* Access-tier badge — single source of truth driven by
+                fetchAllAccounts.tier so admin + user views agree on
+                whether someone is paid, comp'd, in trial, or
+                expired. Pre-fix this row showed "Gratis" for every
+                comp-granted account and silently nothing for trial
+                / expired users; admins couldn't tell at a glance. */}
+            {account.tier === "pro" && (
               <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
+            )}
+            {account.tier === "comp" && (
+              <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>
+            )}
+            {account.tier === "trial" && (
+              <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
+                Prueba: {account.daysLeftInTrial}d
+              </span>
+            )}
+            {account.tier === "expired" && (
+              <span className="badge" style={{ background:"var(--red-bg)", color:"var(--red)" }}>Vencida</span>
             )}
           </div>
           <div className="row-sub">
