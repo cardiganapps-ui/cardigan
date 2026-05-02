@@ -267,6 +267,14 @@ export function useSubscription(user) {
         .from("stripe_invoices")
         .select("id, amount_cents, currency, paid_at, hosted_invoice_url, pdf_url")
         .eq("user_id", userId)
+        // Filter out $0 invoices at the DB layer. Stripe fires
+        // `invoice.paid` for the auto-generated trial-start invoice
+        // (amount = 0 because trial_end is in the future), and the
+        // webhook dutifully records it — but the user never actually
+        // paid anything, so showing it under "Recibos recientes" is
+        // misleading. The audit row stays in stripe_invoices for
+        // forensic completeness; this query just hides the noise.
+        .gt("amount_cents", 0)
         .order("paid_at", { ascending: false })
         .limit(6);
       if (error) {
