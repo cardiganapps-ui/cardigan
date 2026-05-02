@@ -82,14 +82,34 @@ export function Documents() {
 
   const confirmUpload = async (patientId) => {
     if (!pendingFiles) return;
+    const total = pendingFiles.length;
     setUploading(true);
     setPendingFiles(null);
+    let ok = 0;
     try {
       for (const file of pendingFiles) {
-        await uploadDocument({ patientId, file, sessionId: null, name: file.name });
+        const result = await uploadDocument({ patientId, file, sessionId: null, name: file.name });
+        if (result) ok++;
       }
     } finally {
       setUploading(false);
+    }
+    // Toast feedback — explicit success / partial / failure so the
+    // user knows whether anything actually landed. Nothing happens
+    // visually otherwise except the document list re-rendering, which
+    // is hard to spot for a single file.
+    const failed = total - ok;
+    if (failed === 0) {
+      showToast(ok === 1 ? t("docs.uploadSuccessOne") : t("docs.uploadSuccessMany", { count: ok }), "success");
+    } else if (ok === 0) {
+      showToast(total === 1 ? t("docs.uploadFailedOne") : t("docs.uploadFailedMany"), "error");
+    } else {
+      showToast(
+        failed === 1
+          ? t("docs.uploadPartial", { ok, total, failed })
+          : t("docs.uploadPartialMany", { ok, total, failed }),
+        "warning"
+      );
     }
   };
 

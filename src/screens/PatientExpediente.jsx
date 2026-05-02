@@ -243,10 +243,27 @@ export function PatientExpediente({
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) return;
     setUploading(true);
+    let ok = 0;
     for (const file of valid) {
-      await uploadDocument({ patientId: patient.id, file, sessionId, name: file.name });
+      const result = await uploadDocument({ patientId: patient.id, file, sessionId, name: file.name });
+      if (result) ok++;
     }
     setUploading(false);
+    // Explicit toast feedback — see Documents.jsx::confirmUpload.
+    const total = valid.length;
+    const failed = total - ok;
+    if (failed === 0) {
+      showToast?.(ok === 1 ? t("docs.uploadSuccessOne") : t("docs.uploadSuccessMany", { count: ok }), "success");
+    } else if (ok === 0) {
+      showToast?.(total === 1 ? t("docs.uploadFailedOne") : t("docs.uploadFailedMany"), "error");
+    } else {
+      showToast?.(
+        failed === 1
+          ? t("docs.uploadPartial", { ok, total, failed })
+          : t("docs.uploadPartialMany", { ok, total, failed }),
+        "warning"
+      );
+    }
   };
 
   const handleFileUpload = async (e) => {

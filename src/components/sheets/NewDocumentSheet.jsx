@@ -54,9 +54,28 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
       if (result) count++;
     }
     setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    // When NOTHING succeeded, surface an error toast and stay on the
+    // form so the user can retry — the "0 documentos subidos" success
+    // panel was confusingly upbeat about a complete failure. When at
+    // least one file landed, the existing success-count panel still
+    // tells the story (we add a partial-failure toast on top).
+    const total = valid.length;
+    const failed = total - count;
+    if (count === 0) {
+      showToast?.(total === 1 ? t("docs.uploadFailedOne") : t("docs.uploadFailedMany"), "error");
+      return;
+    }
+    if (failed > 0) {
+      showToast?.(
+        failed === 1
+          ? t("docs.uploadPartial", { ok: count, total, failed })
+          : t("docs.uploadPartialMany", { ok: count, total, failed }),
+        "warning"
+      );
+    }
     setUploadedCount(count);
     setDone(true);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const selectedPatient = patients.find(p => p.id === patientId);

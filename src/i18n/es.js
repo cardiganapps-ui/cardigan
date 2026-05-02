@@ -601,6 +601,13 @@ export default {
     generalDoc: "Documento general",
     sizeLimit: "{names} excede{plural} el l\u00edmite de 10 MB",
     uploaded: "{count} documento{plural} subido{plural}",
+    // Toast feedback after upload attempts
+    uploadSuccessOne: "Documento subido",
+    uploadSuccessMany: "{count} documentos subidos",
+    uploadFailedOne: "No se pudo subir el documento. Intenta de nuevo.",
+    uploadFailedMany: "No se pudieron subir los documentos. Intenta de nuevo.",
+    uploadPartial: "Se subieron {ok} de {total} documentos. {failed} no se pudo subir.",
+    uploadPartialMany: "Se subieron {ok} de {total} documentos. {failed} no se pudieron subir.",
   },
 
   // ── Settings ──
