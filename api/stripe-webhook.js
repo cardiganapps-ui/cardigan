@@ -78,6 +78,38 @@ function isoOrNull(unix) {
   return new Date(unix * 1000).toISOString();
 }
 
+/* Decide whether an incoming Stripe webhook event is older than the
+   most recent state already applied to a user_subscriptions row.
+   Stripe webhook delivery is at-least-once and not strictly ordered;
+   without this guard, a stale older event delivered after a newer one
+   silently clobbers correct state. Pure helper — tested in isolation
+   so the ordering rule can't drift.
+
+   Returns true when the event should be skipped:
+     - eventCreatedIso is older than rowLastEventIso
+   Returns false otherwise:
+     - first-ever event (rowLastEventIso null)
+     - missing eventCreatedIso (replay / test fixture)
+     - eventCreatedIso >= rowLastEventIso (apply) */
+export function shouldSkipStaleEvent(eventCreatedIso, rowLastEventIso) {
+  if (!eventCreatedIso || !rowLastEventIso) return false;
+  return eventCreatedIso < rowLastEventIso;
+}
+
+/* Whether an `invoice.paid` payload represents a real-money payment
+   that should trigger a referral reward to the inviter. Stripe fires
+   `invoice.paid` for the auto-generated $0 trial-start invoice too
+   (because trial_end is in the future and the period is covered);
+   crediting the inviter on that event would mean the reward issues
+   the moment the invitee's trial begins, before they've paid anything.
+   Gate on `amount_paid > 0` so only the first true paid invoice
+   triggers the credit. Pure helper — tested. */
+export function invoiceIsRewardEligible(invoice) {
+  if (!invoice || typeof invoice !== "object") return false;
+  const amountPaid = typeof invoice.amount_paid === "number" ? invoice.amount_paid : 0;
+  return amountPaid > 0;
+}
+
 /* Roll a subscription object (from a customer.subscription.* event or
    a fresh GET /v1/subscriptions/:id call) into the user_subscriptions
    row. Keyed on stripe_customer_id — we look up the user_id from the
@@ -86,7 +118,7 @@ function isoOrNull(unix) {
    Returns { ok: true } on success or { ok: false, error } when the
    matching row can't be found. The caller decides whether to 200 or
    500 — most cases want 200 + log so Stripe doesn't retry forever. */
-async function applySubscriptionSnapshot(svc, sub) {
+async function applySubscriptionSnapshot(svc, sub, eventCreatedUnix) {
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
   if (!customerId) return { ok: false, error: "no customer id on subscription" };
 
@@ -96,7 +128,7 @@ async function applySubscriptionSnapshot(svc, sub) {
   // ever called), skip rather than error.
   const { data: row } = await svc
     .from("user_subscriptions")
-    .select("user_id")
+    .select("user_id, stripe_subscription_id, last_stripe_event_at")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   if (!row) {
@@ -111,6 +143,16 @@ async function applySubscriptionSnapshot(svc, sub) {
       });
     } catch { /* Sentry is best-effort */ }
     return { ok: false, error: `no user_subscriptions row for customer ${customerId}` };
+  }
+
+  // Event-ordering guard (read-side fast path). See shouldSkipStaleEvent
+  // for the rule. The actual update below also gates on
+  // last_stripe_event_at atomically — see below — so a concurrent
+  // newer event from a different Vercel instance can't be clobbered
+  // even if both pass this read-side check.
+  const eventCreatedIso = isoOrNull(eventCreatedUnix);
+  if (shouldSkipStaleEvent(eventCreatedIso, row.last_stripe_event_at)) {
+    return { ok: true, note: `stale event (${eventCreatedIso} < row.last ${row.last_stripe_event_at})` };
   }
 
   const item = sub.items?.data?.[0];
@@ -138,12 +180,20 @@ async function applySubscriptionSnapshot(svc, sub) {
     trial_end: isoOrNull(sub.trial_end),
     default_payment_method: defaultPaymentMethod,
     updated_at: new Date().toISOString(),
+    ...(eventCreatedIso ? { last_stripe_event_at: eventCreatedIso } : {}),
   };
 
-  const { error } = await svc
-    .from("user_subscriptions")
-    .update(update)
-    .eq("user_id", row.user_id);
+  // Atomic conditional update — gate on last_stripe_event_at to
+  // prevent a concurrent newer event (delivered to a different Vercel
+  // instance) from being clobbered by this writer. PostgREST's `or`
+  // syntax: write only when the row's last applied timestamp is null
+  // OR strictly older than this event. If the row was already
+  // advanced by a peer, we no-op silently.
+  let upd = svc.from("user_subscriptions").update(update).eq("user_id", row.user_id);
+  if (eventCreatedIso) {
+    upd = upd.or(`last_stripe_event_at.is.null,last_stripe_event_at.lt.${eventCreatedIso}`);
+  }
+  const { error } = await upd;
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
@@ -165,6 +215,11 @@ async function applySubscriptionSnapshot(svc, sub) {
    (it's the user-facing tally) and stamp `referral_reward_credited_at`
    on the invitee (the dedupe guard). */
 async function maybeCreditReferralReward(svc, invoice, customerId) {
+  // Skip $0 trial-start invoices — see invoiceIsRewardEligible.
+  if (!invoiceIsRewardEligible(invoice)) {
+    return { ok: true, note: "zero-amount invoice; skipping reward" };
+  }
+
   // Look up the invitee row.
   const { data: invitee } = await svc
     .from("user_subscriptions")
@@ -307,6 +362,10 @@ async function maybeCreditReferralReward(svc, invoice, customerId) {
 }
 
 async function handleEvent(svc, event) {
+  // Unix-second timestamp from Stripe's signed payload — used by the
+  // ordering guard inside applySubscriptionSnapshot. Always present
+  // on real events; tests / replays may omit it.
+  const eventCreatedUnix = typeof event.created === "number" ? event.created : null;
   switch (event.type) {
     case "checkout.session.completed": {
       // The session object includes a `subscription` id but not the
@@ -324,14 +383,14 @@ async function handleEvent(svc, event) {
       } catch (err) {
         return { ok: false, error: `getSubscription failed: ${err.message}` };
       }
-      return applySubscriptionSnapshot(svc, sub);
+      return applySubscriptionSnapshot(svc, sub, eventCreatedUnix);
     }
 
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
     case "customer.subscription.trial_will_end": {
-      return applySubscriptionSnapshot(svc, event.data.object);
+      return applySubscriptionSnapshot(svc, event.data.object, eventCreatedUnix);
     }
 
     case "invoice.paid":

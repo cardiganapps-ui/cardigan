@@ -68,6 +68,12 @@ async function handler(req, res) {
     return res.status(200).json({ synced: false, reason: "no_stripe_customer" });
   }
 
+  // Capture sync-start time BEFORE the Stripe list call. Any webhook
+  // event newer than this timestamp must not be clobbered by our
+  // about-to-be-stale Stripe-API view. The conditional updates below
+  // gate writes on last_stripe_event_at < syncStartIso so a peer
+  // webhook that landed mid-fetch silently wins.
+  const syncStartIso = new Date().toISOString();
   let list;
   try {
     list = await listCustomerSubscriptions(row.stripe_customer_id);
@@ -78,7 +84,11 @@ async function handler(req, res) {
   const sub = pickCurrent(list?.data || []);
   if (!sub) {
     // Customer exists but has no subscription — clear DB so the UI
-    // drops to expired/trial as appropriate.
+    // drops to expired/trial as appropriate. Stamp last_stripe_event_at
+    // so any later webhook for an older state of this customer is
+    // skipped by the ordering guard, and gate the write on the row's
+    // last applied event being older than syncStartIso so a peer
+    // webhook with a newer event can't be clobbered.
     await svc.from("user_subscriptions")
       .update({
         stripe_subscription_id: null,
@@ -88,9 +98,11 @@ async function handler(req, res) {
         cancel_at_period_end: false,
         trial_end: null,
         default_payment_method: null,
-        updated_at: new Date().toISOString(),
+        last_stripe_event_at: syncStartIso,
+        updated_at: syncStartIso,
       })
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .or(`last_stripe_event_at.is.null,last_stripe_event_at.lt.${syncStartIso}`);
     return res.status(200).json({ synced: true, status: null });
   }
 
@@ -107,13 +119,21 @@ async function handler(req, res) {
     cancel_at_period_end: !!sub.cancel_at_period_end,
     trial_end: isoOrNull(sub.trial_end),
     default_payment_method: defaultPaymentMethod,
-    updated_at: new Date().toISOString(),
+    // Stamp syncStartIso so the ordering guard in the webhook treats
+    // sync as the most-recent applied state. Any stale older webhook
+    // for this customer is skipped after this write.
+    last_stripe_event_at: syncStartIso,
+    updated_at: syncStartIso,
   };
 
+  // Atomic conditional update — see stripe-webhook.js for why. Don't
+  // overwrite a peer webhook that landed during our Stripe-list call
+  // with a newer event than syncStartIso.
   const { error: updError } = await svc
     .from("user_subscriptions")
     .update(update)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .or(`last_stripe_event_at.is.null,last_stripe_event_at.lt.${syncStartIso}`);
   if (updError) return res.status(500).json({ error: updError.message });
 
   return res.status(200).json({
