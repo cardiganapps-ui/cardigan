@@ -27,20 +27,36 @@ export function useSwipe(onLeft, onRight) {
   const [offset, setOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const [settling, setSettling] = useState(false);
-
-  // Release the coordinator lock on unmount — the owner screen may
-  // unmount mid-gesture (e.g. user navigates while settling).
-  useEffect(() => () => {
-    release(OWNER_ID);
+  // Pending settle-animation timer. Tracked so it can be cancelled on
+  // unmount (e.g. user navigates mid-settle) — without this, the
+  // queued setOffset/setSettling/onLeft fire against an unmounted
+  // hook and the navigation callback may run against stale screen
+  // state.
+  const settleTimerRef = useRef(null);
+  const cancelSettleTimer = useCallback(() => {
+    if (settleTimerRef.current) {
+      clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
   }, []);
+
+  // Release the coordinator lock + cancel any pending settle timer
+  // on unmount. The owner screen may unmount mid-gesture (user nav
+  // while settling) and we don't want the queued callbacks to run
+  // against a detached component.
+  useEffect(() => () => {
+    cancelSettleTimer();
+    release(OWNER_ID);
+  }, [cancelSettleTimer]);
 
   const resetGesture = useCallback(() => {
     ref.current = null;
     setSwiping(false);
     setOffset(0);
     setSettling(false);
+    cancelSettleTimer();
     release(OWNER_ID);
-  }, []);
+  }, [cancelSettleTimer]);
 
   const onTouchStart = useCallback((e) => {
     // Defensive: if a stale ref lingers from an aborted gesture,
@@ -90,6 +106,11 @@ export function useSwipe(onLeft, onRight) {
 
     const triggered = Math.abs(dx) > 80;
 
+    // Cancel any prior settle timer — a rapid swipe-end-swipe-end
+    // sequence shouldn't stack two timers, both of which would call
+    // onLeft / onRight against the navigation state at fire-time.
+    cancelSettleTimer();
+
     if (triggered) {
       // Animate to full panel width, then navigate. Keep the lock until
       // the settle animation completes so a racing edge-swipe can't
@@ -97,7 +118,8 @@ export function useSwipe(onLeft, onRight) {
       const dir = dx < 0 ? -1 : 1;
       setSettling(true);
       setOffset(dir * window.innerWidth);
-      setTimeout(() => {
+      settleTimerRef.current = setTimeout(() => {
+        settleTimerRef.current = null;
         if (dx < -80) onLeft();
         else onRight();
         setOffset(0);
@@ -108,12 +130,13 @@ export function useSwipe(onLeft, onRight) {
       // Snap back
       setSettling(true);
       setOffset(0);
-      setTimeout(() => {
+      settleTimerRef.current = setTimeout(() => {
+        settleTimerRef.current = null;
         setSettling(false);
         release(OWNER_ID);
       }, 250);
     }
-  }, [onLeft, onRight]);
+  }, [onLeft, onRight, cancelSettleTimer]);
 
   const onTouchCancel = useCallback(() => {
     resetGesture();

@@ -61,19 +61,39 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const dragRef = useRef(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // Pending swipe-to-close animation timer. Tracked so we can cancel
+  // it if the drawer is re-opened (or unmounted) before the timer
+  // fires. Without this guard, a fast close-then-reopen sequence
+  // hits the timer's onClose() ~280ms later and silently closes the
+  // drawer the user just opened.
+  const closeTimerRef = useRef(null);
+  const cancelCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
 
   // Reset any stale drag state whenever the drawer transitions closed →
   // open or is closed programmatically (e.g. nav change mid-gesture).
-  // Adjust-during-render pattern for setState; ref reset is in an
-  // effect (ref mutation during render is unsafe under concurrent
-  // rendering — an aborted render could leave the ref desynced).
+  // Adjust-during-render pattern for setState; ref resets are in
+  // effects (ref mutation during render is unsafe under concurrent
+  // rendering — an aborted render could leave refs desynced).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
     setDragging(false);
     setDragOffset(0);
   }
-  useEffect(() => { dragRef.current = null; }, [open]);
+  useEffect(() => {
+    dragRef.current = null;
+    // Cancel any swipe-close timer left over from the previous lifecycle
+    // — a re-open before t+280 must not still trigger the queued close.
+    cancelCloseTimer();
+  }, [open, cancelCloseTimer]);
+  // Belt-and-suspenders: also cancel on unmount so a queued timer
+  // can't fire against a detached component.
+  useEffect(() => () => cancelCloseTimer(), [cancelCloseTimer]);
 
   const onPanelTouchStart = useCallback((e) => {
     if (!open) return;
@@ -110,11 +130,18 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     // Close if dragged far enough left or fast enough leftward
     if (dx < -CLOSE_THRESHOLD || (dx < -10 && velocity > VELOCITY_THRESHOLD)) {
       setDragOffset(-PANEL_WIDTH);
-      setTimeout(() => { setDragOffset(0); onClose(); }, 280);
+      // Cancel any prior close timer (rapid swipe-then-swipe should
+      // not stack two timers either) before queueing the close.
+      cancelCloseTimer();
+      closeTimerRef.current = setTimeout(() => {
+        closeTimerRef.current = null;
+        setDragOffset(0);
+        onClose();
+      }, 280);
     } else {
       setDragOffset(0);
     }
-  }, [onClose]);
+  }, [onClose, cancelCloseTimer]);
 
   const onPanelTouchCancel = useCallback(() => {
     // iOS can cancel gestures (incoming call, multi-touch, etc). Clear all
