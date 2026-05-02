@@ -6,7 +6,7 @@
    Body: { userId: uuid }
    Auth: caller must be the admin (email === ADMIN_EMAIL) */
 
-import { r2, BUCKET } from "./_r2.js";
+import { getR2, BUCKET } from "./_r2.js";
 import { requireAdmin, getServiceClient, isValidUserId, deleteUserCascade } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
@@ -31,7 +31,7 @@ async function handler(req, res) {
 
   const result = await deleteUserCascade({
     svc,
-    r2Client: r2,
+    r2Client: await getR2(),
     bucket: BUCKET,
     userId,
     tombstone: { email: targetEmail, reason: "admin" },

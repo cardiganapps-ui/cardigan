@@ -1,5 +1,5 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
+import { getR2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
 import { withSentry } from "./_sentry.js";
 
 async function handler(req, res) {
@@ -14,6 +14,7 @@ async function handler(req, res) {
       return res.status(400).json({ error: "Invalid path" });
     }
 
+    const r2 = await getR2();
     await r2.send(new DeleteObjectCommand({
       Bucket: BUCKET,
       Key: path,

@@ -12,7 +12,7 @@
    Body: { confirmation: "ELIMINAR", password: "..." }
    Auth: standard JWT + password re-prove. */
 
-import { r2, BUCKET, getAuthUser } from "./_r2.js";
+import { getR2, BUCKET, getAuthUser } from "./_r2.js";
 import { getServiceClient, deleteUserCascade } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { verifyPasswordReauth } from "./_reauth.js";
@@ -40,7 +40,7 @@ async function handler(req, res) {
 
   const result = await deleteUserCascade({
     svc,
-    r2Client: r2,
+    r2Client: await getR2(),
     bucket: BUCKET,
     userId: user.id,
     tombstone: { email: user.email || null, reason: "self" },

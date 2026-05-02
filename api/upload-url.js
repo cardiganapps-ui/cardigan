@@ -1,6 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
+import { getR2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
 import { withSentry } from "./_sentry.js";
 
 /* ── R2 upload endpoint (two modes) ────────────────────────────────
@@ -71,6 +71,7 @@ async function handler(req, res) {
       if (buffer.length > MAX_DIRECT_BYTES) return res.status(413).json({ error: "Too large", code: "too_large" });
       const ct = match[1] === "png" ? "image/png" : "image/jpeg";
 
+      const r2 = await getR2();
       await r2.send(new PutObjectCommand({
         Bucket: BUCKET,
         Key: path,
@@ -87,6 +88,7 @@ async function handler(req, res) {
       return res.status(415).json({ error: "Unsupported content type", code: "unsupported_type" });
     }
 
+    const r2 = await getR2();
     const url = await getSignedUrl(r2, new PutObjectCommand({
       Bucket: BUCKET,
       Key: path,

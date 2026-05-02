@@ -22,7 +22,7 @@
 
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2, BUCKET, getAuthUser } from "./_r2.js";
+import { getR2, BUCKET, getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { verifyPasswordReauth } from "./_reauth.js";
@@ -75,6 +75,7 @@ async function handler(req, res) {
   // Document download links — 1-hour presigns. If the link list fails
   // mid-loop we continue with what we have; the user can re-export.
   const docLinks = {};
+  const r2 = (documents.data && documents.data.length) ? await getR2() : null;
   for (const d of documents.data || []) {
     if (typeof d.file_path === "string" && d.file_path.startsWith(`${user.id}/`)) {
       try {

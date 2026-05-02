@@ -10,7 +10,7 @@
    issues a HeadBucket which is cheap and doesn't list contents. */
 
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
-import { r2, BUCKET } from "./_r2.js";
+import { getR2, BUCKET } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
@@ -32,6 +32,7 @@ async function checkSupabase() {
 }
 
 async function checkR2() {
+  const r2 = await getR2();
   await r2.send(new HeadBucketCommand({ Bucket: BUCKET }));
 }
 

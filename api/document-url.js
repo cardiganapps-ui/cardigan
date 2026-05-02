@@ -1,6 +1,6 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
+import { getR2, BUCKET, getAuthUser, validatePath } from "./_r2.js";
 import { withSentry } from "./_sentry.js";
 
 /* Inline-previewable types — image preview + PDF reader are core UX so
@@ -54,6 +54,7 @@ async function handler(req, res) {
       ? `inline; filename="${filename}"`
       : `attachment; filename="${filename}"`;
 
+    const r2 = await getR2();
     const url = await getSignedUrl(r2, new GetObjectCommand({
       Bucket: BUCKET,
       Key: path,
