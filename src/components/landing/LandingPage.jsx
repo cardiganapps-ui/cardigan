@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { LogoIcon } from "../LogoMark";
 import { ProductPreview } from "./ProductPreview";
 import { MiniSessions, MiniPatients, MiniFinances } from "./MiniMocks";
@@ -15,16 +15,6 @@ function CTAButton({ variant = "primary", onClick, children, type = "button" }) 
     </button>
   );
 }
-
-/* Profession tabs — drive the mock data shown across the hero +
-   feature strip. Replaces the previous decorative chip row. */
-const PROFESSIONS = [
-  { k: "psychologist",  l: "Psicólogos" },
-  { k: "nutritionist",  l: "Nutriólogos" },
-  { k: "tutor",         l: "Profesores particulares" },
-  { k: "music_teacher", l: "Maestros de música" },
-  { k: "trainer",       l: "Entrenadores" },
-];
 
 /* Feature deck — six cards in a 3x2 grid (mobile: stacks). Each card
    is a mini-pitch: icon + title + 1-line body. Reuses the existing
@@ -48,7 +38,7 @@ const FEATURES = [
   {
     Icon: IconBell,
     title: "Nadie olvida la cita.",
-    body: "WhatsApp y push, en automático.",
+    body: "Recordatorios push, en automático.",
   },
   {
     Icon: IconDownload,
@@ -81,7 +71,7 @@ const FAQS = [
   },
   {
     q: "¿Tengo que enseñarle a usarla a mis pacientes?",
-    a: "No. Cardigan es solo para ti. Tus pacientes nunca entran a la app — reciben recordatorios automáticos por WhatsApp y eso es todo.",
+    a: "No. Cardigan es solo para ti. Tus pacientes nunca entran a la app — solo tú agendas y los recordatorios llegan al horario que elijas.",
   },
   {
     q: "¿Y si decido cancelar?",
@@ -92,8 +82,12 @@ const FAQS = [
 /* ── Landing page ────────────────────────────────────────────────── */
 export function LandingPage({ onPrimary, onSecondary, onLogin }) {
   const rootRef = useRef(null);
-  const [profession, setProfession] = useState("psychologist");
-  const mock = useMemo(() => getLandingMock(profession), [profession]);
+  // Mock data is locked to the psychologist demo seed. We tried a
+  // tab control that swapped seeds per profession, but visitors
+  // (correctly) noted the surfaces all look the same — the patient
+  // names change but the layout doesn't, so the switch added no
+  // signal. Reverting to a single fixed seed keeps the page lean.
+  const mock = useMemo(() => getLandingMock("psychologist"), []);
 
   // Sticky-nav style change after the hero scrolls past. Cheap
   // IntersectionObserver + class toggle on the nav.
@@ -174,24 +168,6 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
               <CTAButton variant="secondary" onClick={onSecondary}>
                 Probar demo
               </CTAButton>
-            </div>
-            {/* Profession tabs — clicking a chip swaps every mockup
-                on the page (hero phone, feature mini-cards) so the
-                visitor sees Cardigan adapt to their profession in
-                real time. */}
-            <div className="lp-hero-professions" role="tablist" aria-label="Profesiones soportadas">
-              <span className="lp-hero-professions-label">Para</span>
-              {PROFESSIONS.map((p) => (
-                <button
-                  key={p.k}
-                  type="button"
-                  role="tab"
-                  aria-selected={profession === p.k}
-                  className={`lp-prof-chip${profession === p.k ? " lp-prof-chip--active" : ""}`}
-                  onClick={() => setProfession(p.k)}>
-                  {p.l}
-                </button>
-              ))}
             </div>
           </div>
 
