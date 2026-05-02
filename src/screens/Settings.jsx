@@ -44,7 +44,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
-import { rowSubLine, chargeLine } from "../utils/subscriptionStatus";
+import { rowSubLine, billingSummary } from "../utils/subscriptionStatus";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
 // from locale strings.
@@ -1489,80 +1489,122 @@ export function Settings({ user, signOut, refreshUser }) {
                 // but we DO surface a clear amber warning + a one-tap
                 // "fix payment" route into the Stripe portal.
                 const isPastDue = s.subscription?.status === "past_due";
-                const accentColor = isComp ? "var(--green)"
-                  : isPastDue ? "var(--amber)"
-                  : isActive ? "var(--teal-dark)"
-                  : state === "expired" ? "var(--red)"
-                  : "var(--teal-dark)";
-                const accentBg = isComp ? "var(--green-bg)"
-                  : isPastDue ? "var(--amber-bg)"
-                  : isActive ? "var(--teal-pale)"
-                  : state === "expired" ? "var(--red-bg)"
-                  : "var(--cream)";
-                const HeroIcon = isComp ? IconCheck
-                  : isPastDue ? IconStar
-                  : isActive ? IconSparkle
-                  : state === "expired" ? IconLock
-                  : IconStar;
                 // Admin shortcut: accessState === "active" without
                 // a paid sub or comp grant is the admin's own row.
                 // Treat it as the same "Activa" hero as a real Pro
                 // sub so the panel doesn't read as perpetually
                 // loading for the admin.
                 const isAdminAccess = !isComp && !isActive && state === "active";
-                const heroTitle = isComp ? t("subscription.statusCompTitle")
-                  : isPastDue ? t("subscription.statusPastDueTitle")
-                  : isActive ? t("subscription.statusActiveTitle")
-                  : isAdminAccess ? t("subscription.statusActiveTitle")
-                  : state === "trial" ? t("subscription.statusTrialTitle")
-                  : state === "expired" ? t("subscription.statusExpiredTitle")
-                  : t("subscription.statusLoading");
-                // Charge-clarity sentence comes from
-                // utils/subscriptionStatus.js so the same string drives
-                // both the row sub-line and this hero. Admin and trial
-                // states without a Stripe sub fall through to safe
-                // generic copy.
-                const sentence = isAdminAccess
-                  ? t("subscription.compExplain")
-                  : (chargeLine(s, t)
-                     || (state === "trial" && s.daysLeftInTrial != null
-                       ? (s.daysLeftInTrial <= 1
-                           ? t("subscription.statusTrialEndsToday")
-                           : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial }))
-                       : ""));
+                // Structured hero summary — drives the icon tone, the
+                // emphasized end-date block, the charge chip, and which
+                // secondary action (pause / reactivate / none) to show.
+                // Admin's accessState=active without sub/comp falls
+                // through to "unknown" in the classifier; we override
+                // its hero copy below to match the real-Pro presentation.
+                const summary = billingSummary(s);
+                const tone = summary.tone || "teal";
+                const TONE_COLORS = {
+                  teal:  { color: "var(--teal-dark)", bg: "var(--teal-pale)" },
+                  amber: { color: "var(--amber)",     bg: "var(--amber-bg)" },
+                  green: { color: "var(--green)",     bg: "var(--green-bg)" },
+                  red:   { color: "var(--red)",       bg: "var(--red-bg)" },
+                };
+                const accentColor = TONE_COLORS[tone].color;
+                const accentBg = TONE_COLORS[tone].bg;
+                const HeroIcon = isComp ? IconCheck
+                  : isPastDue ? IconStar
+                  : (summary.state === "cancelling") ? IconStar
+                  : isActive ? IconSparkle
+                  : summary.state === "expired" ? IconLock
+                  : IconStar;
+                // For admin access (no sub, no comp), present as
+                // comp-style — they have full access and no charges.
+                const heroTitle = isAdminAccess
+                  ? t("subscription.statusActiveTitle")
+                  : t(summary.title);
+                const adminCaption = isAdminAccess ? t("subscription.compExplain") : null;
                 return (
                   <>
-                    {/* ── Hero card — combines status + (when applicable) price into a single
-                          well-framed unit. Background is a soft accent tint and the icon
-                          sits in a clean white circle so the card reads as a premium
-                          surface rather than a noisy alert. */}
+                    {/* ── Hero card — structured layout: tone-tinted bg, icon
+                          medallion, title, divider, emphasized end-date block
+                          (caption + big date), and a charge chip. Each piece
+                          carries one piece of the "what's happening" answer
+                          rather than one dense sentence. Active subs land
+                          here whether they're renewing or cancelling — the
+                          tone (teal vs amber) + chip text differentiate. */}
                     <div style={{
-                      padding: !isComp && !isActive && !isAdminAccess ? "20px 18px 22px" : "18px",
+                      padding: !isComp && !isActive && !isAdminAccess ? "22px 18px 22px" : "22px 18px",
                       borderRadius: "var(--radius-lg, 16px)",
                       marginBottom: 16,
                       background: accentBg,
                       textAlign: "center",
                     }}>
-                      <div style={{ width:52, height:52, borderRadius:"50%",
+                      <div style={{ width:56, height:56, borderRadius:"50%",
                         display:"flex", alignItems:"center", justifyContent:"center",
-                        background:"var(--white)", color: accentColor, margin:"0 auto 10px",
-                        boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
-                        <HeroIcon size={22} />
+                        background:"var(--white)", color: accentColor, margin:"0 auto 12px",
+                        boxShadow:"0 2px 10px rgba(0,0,0,0.06)" }}>
+                        <HeroIcon size={24} />
                       </div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>
+                      <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.3px", lineHeight:1.2 }}>
                         {heroTitle}
                       </div>
-                      {sentence && (
-                        <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:6, lineHeight:1.5, fontWeight: 500 }}>
-                          {sentence}
+
+                      {/* Admin shortcut: replicate the comp-style explanation
+                          (no charges, full access) since admins fall through
+                          billingSummary to "unknown". */}
+                      {isAdminAccess && adminCaption && (
+                        <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:8, lineHeight:1.5 }}>
+                          {adminCaption}
                         </div>
                       )}
 
-                      {/* Price line — only when there's a sale to make. Lives inside the
-                          hero so the user perceives value + cost together. The
-                          numbers reflect the currently selected billing cycle. */}
+                      {/* End-date block — the date is the most consequential
+                          piece of info on this card, so it gets display-font
+                          weight and size. The caption above ("Próximo cobro"
+                          / "Pierdes acceso a Pro" / "Tu prueba termina") tells
+                          the user what the date means. */}
+                      {summary.endLabel && summary.endCaption && !isAdminAccess && (
+                        <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.07)" }}>
+                          <div style={{ fontSize:11, color:"var(--charcoal-xl)", letterSpacing:"0.05em", textTransform:"uppercase", fontWeight:700 }}>
+                            {t(summary.endCaption)}
+                          </div>
+                          <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.4px", marginTop:4, lineHeight:1.15 }}>
+                            {summary.endLabel}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Charge chip — the unambiguous "this is what's
+                          happening to your money". Tone-colored pill so a
+                          glance separates "$299 every month" (positive)
+                          from "Sin cobros futuros" (warning). */}
+                      {summary.chipText && !isAdminAccess && (() => {
+                        const chipMap = {
+                          positive: { color: "var(--green)",   bg: "var(--green-bg)" },
+                          warning:  { color: "var(--amber)",   bg: "var(--amber-bg)" },
+                          danger:   { color: "var(--red)",     bg: "var(--red-bg)" },
+                          neutral:  { color: "var(--charcoal-md)", bg: "rgba(0,0,0,0.05)" },
+                        };
+                        const c = chipMap[summary.chipTone] || chipMap.neutral;
+                        const text = summary.chipText.startsWith("subscription.")
+                          ? t(summary.chipText)
+                          : summary.chipText;
+                        return (
+                          <div style={{
+                            display:"inline-block", marginTop:14,
+                            padding:"6px 14px", borderRadius:999,
+                            background:c.bg, color:c.color,
+                            fontSize:12, fontWeight:700, letterSpacing:"0.01em",
+                          }}>
+                            {text}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Price line — checkout flow only. Lives inside the
+                          hero so the user perceives value + cost together. */}
                       {!isComp && !isActive && !isAdminAccess && (
-                        <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.06)" }}>
+                        <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.07)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
                               ${selectedPlan === "annual" ? "2,990" : "299"}
@@ -1605,19 +1647,24 @@ export function Settings({ user, signOut, refreshUser }) {
                       </div>
                     )}
 
-                    {/* Latest-invoice link — shown when there's a hosted
-                        receipt URL on file (every paid invoice). The
-                        charge-clarity sentence is already in the hero
-                        above; this is just the one-tap "show me the
-                        receipt for that charge" affordance. */}
+                    {/* Latest-invoice row — styled as a quiet card so it
+                        reads as a "tap to view" affordance rather than
+                        a stray underlined link. */}
                     {isActive && !isPastDue && s.subscription?.hosted_invoice_url && (
-                      <div style={{ marginBottom:14, textAlign:"center" }}>
-                        <a href={s.subscription.hosted_invoice_url}
-                          target="_blank" rel="noopener noreferrer"
-                          style={{ color:"var(--teal-dark)", fontWeight:600, fontSize:13, textDecoration:"none" }}>
-                          {t("subscription.viewLatestReceipt")} →
-                        </a>
-                      </div>
+                      <a href={s.subscription.hosted_invoice_url}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{
+                          display:"flex", alignItems:"center", justifyContent:"space-between",
+                          padding:"12px 14px", marginBottom:14,
+                          borderRadius:"var(--radius)",
+                          background:"var(--white)",
+                          border:"1px solid var(--border)",
+                          color:"var(--charcoal)", textDecoration:"none",
+                          fontSize:13, fontWeight:600,
+                        }}>
+                        <span>{t("subscription.viewLatestReceipt")}</span>
+                        <span style={{ color:"var(--teal-dark)", fontSize:14 }}>→</span>
+                      </a>
                     )}
 
                     {/* Invite-code input — only when not yet subscribed
@@ -1666,48 +1713,40 @@ export function Settings({ user, signOut, refreshUser }) {
                     )}
                     {isActive && !isComp && (
                       <div style={{ marginBottom:22 }}>
+                        {/* Primary — label adapts to state. Cancelling subs
+                            see "Reactivar" (the most relevant action they
+                            could take); past-due see "Actualizar método de
+                            pago" (the urgent one); renewing see the generic
+                            "Administrar". All routes go to the same Stripe
+                            Billing Portal — Stripe surfaces the right
+                            in-portal flow based on sub state. */}
                         <button type="button" className="btn btn-primary"
                           onClick={handleOpenPortal} disabled={subBusy}>
-                          {subBusy ? t("loading") : t("subscription.managePortalCta")}
+                          {subBusy ? t("loading")
+                            : summary.primaryCta
+                              ? t(summary.primaryCta)
+                              : t("subscription.managePortalCta")}
                         </button>
                         <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:8, lineHeight:1.4 }}>
                           {t("subscription.portalFooter")}
                         </div>
-                        {/* Pause-subscription link — soft secondary affordance.
-                            Routes to the same Stripe portal as "Administrar"
-                            but the copy hints at the option for users who
-                            were going to cancel for a vacation and would
-                            otherwise just churn. The actual pause UI lives
-                            in the Stripe portal (configured to allow pause
-                            with default 1-month cap). */}
-                        <button type="button" className="btn btn-ghost"
-                          onClick={handleOpenPortal} disabled={subBusy}
-                          style={{ width:"100%", marginTop:10, fontSize:13 }}>
-                          {t("subscription.pauseCta")}
-                        </button>
-                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:4, lineHeight:1.4 }}>
-                          {t("subscription.pauseHint")}
-                        </div>
-                        {/* Manual reconciliation — recovery affordance for the
-                            rare case where a Stripe webhook delivery lags or
-                            is missed (so the user cancelled in the portal but
-                            still sees "Activa" here). Hits /api/stripe-sync
-                            which pulls live Stripe state and writes to DB. */}
-                        <button type="button"
-                          onClick={handleSyncWithStripe} disabled={syncBusy || subBusy}
-                          style={{
-                            display:"block", margin:"14px auto 0", padding:"6px 12px",
-                            background:"transparent", border:"none",
-                            color: syncDone ? "var(--green)" : "var(--charcoal-xl)",
-                            fontSize:12, cursor:"pointer", textDecoration:"underline",
-                          }}>
-                          {syncBusy ? t("subscription.syncing")
-                            : syncDone ? t("subscription.syncDone")
-                            : t("subscription.syncCta")}
-                        </button>
-                        <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:2, lineHeight:1.4 }}>
-                          {t("subscription.syncHint")}
-                        </div>
+                        {/* Pause-subscription link — only when the sub is
+                            actively renewing. Hidden for cancelling subs
+                            (they're already winding down — pause is
+                            redundant + confusing) and past_due (urgency
+                            should be on fixing payment). */}
+                        {summary.secondaryCta === "subscription.pauseCta" && (
+                          <>
+                            <button type="button" className="btn btn-ghost"
+                              onClick={handleOpenPortal} disabled={subBusy}
+                              style={{ width:"100%", marginTop:10, fontSize:13 }}>
+                              {t("subscription.pauseCta")}
+                            </button>
+                            <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:4, lineHeight:1.4 }}>
+                              {t("subscription.pauseHint")}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -1758,6 +1797,29 @@ export function Settings({ user, signOut, refreshUser }) {
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Recovery affordance — only relevant when there's a
+                        Stripe-side sub to reconcile. Tiny, subtle, lives at
+                        the bottom of the sheet so it doesn't compete with
+                        the primary actions. The hint is intentionally short
+                        — users who don't recognize the situation will scroll
+                        past; users with stale state recognize it instantly. */}
+                    {isActive && !isComp && (
+                      <div style={{ marginTop:24, paddingTop:14, borderTop:"1px solid var(--border-lt)", textAlign:"center" }}>
+                        <button type="button"
+                          onClick={handleSyncWithStripe} disabled={syncBusy || subBusy}
+                          style={{
+                            background:"transparent", border:"none",
+                            color: syncDone ? "var(--green)" : "var(--charcoal-xl)",
+                            fontSize:11, cursor:"pointer", padding:"4px 8px",
+                            fontWeight: 500,
+                          }}>
+                          {syncBusy ? t("subscription.syncing")
+                            : syncDone ? `✓ ${t("subscription.syncDone")}`
+                            : `↻ ${t("subscription.syncCta")}`}
+                        </button>
                       </div>
                     )}
 

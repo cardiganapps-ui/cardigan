@@ -972,6 +972,22 @@ export default {
     chargeLineTrialNoSubNoDate: "No se te cobrar\u00e1 durante tu prueba.",
     chargeLineTrialEndsToday: "Tu prueba termina hoy. Suscr\u00edbete para seguir usando Cardigan.",
     chargeLineExpired: "Tu prueba termin\u00f3. Suscr\u00edbete para reanudar el acceso.",
+    // \u2500\u2500 Hero card \u2014 structured copy that lets the layout emphasize the
+    //    date and a pill-shaped charge chip rather than burying both
+    //    in a single sentence.
+    heroTitleCancelling: "Suscripci\u00f3n cancelada",
+    heroTitleTrialWithSub: "Cardigan Pro \u2014 en prueba",
+    heroCaptionNextCharge: "Pr\u00f3ximo cobro",
+    heroCaptionAccessEnds: "Pierdes acceso a Pro",
+    heroCaptionFirstCharge: "Primer cobro",
+    heroCaptionTrialEnds: "Tu prueba termina",
+    heroChipNoMoreCharges: "Sin cobros futuros",
+    heroChipFreeTrial: "Sin cobros durante la prueba",
+    heroChipTrialEndsToday: "Tu prueba termina hoy",
+    heroChipPastDue: "Pago pendiente \u2014 actualiza tu tarjeta",
+    heroChipComp: "Acceso completo gratuito",
+    reactivateCta: "Reactivar suscripci\u00f3n",
+    fixPaymentLongCta: "Actualizar m\u00e9todo de pago",
     inviteCodeLabel: "C\u00f3digo de invitaci\u00f3n (opcional)",
     inviteCodePlaceholder: "ABC12345",
     inviteCodeHint: "Si alguien te invit\u00f3, escribe su c\u00f3digo y le regalaremos un mes gratis cuando completes tu suscripci\u00f3n.",

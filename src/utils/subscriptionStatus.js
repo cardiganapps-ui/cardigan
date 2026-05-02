@@ -115,9 +115,133 @@ export function endDateIso(s) {
   return null;
 }
 
-/* Compute the price for the user's current plan. Falls back to monthly
-   if the price id doesn't match anything we know. Cents — caller
-   decides the format. */
+/* Structured summary for the Suscripción sheet hero — one place to
+   describe the visual treatment per state. Returns:
+     {
+       state,        // classifyBillingState output
+       title,        // i18n key for the hero title
+       endIso,       // raw ISO end date if any
+       endLabel,     // human "30 de mayo de 2026" or null
+       endCaption,   // i18n key for the small line above the date
+                     // e.g. "Próximo cobro" / "Termina" / null
+       chipText,     // i18n key for the pill-shaped emphasis line
+                     // e.g. "$299 MXN" / "Sin cobros futuros" / null
+       chipTone,     // "neutral" | "positive" | "warning" | "danger"
+       tone,         // overall card tone — drives accent color
+                     // "teal" | "amber" | "green" | "red"
+       primaryCta,   // i18n key for the main button label
+       secondaryCta, // i18n key for the secondary link OR null
+     }
+
+   Pure helper — used by Settings.jsx hero + tested. */
+export function billingSummary(s) {
+  const state = classifyBillingState(s);
+  const endIso = endDateIso(s);
+  const endLabel = formatLong(endIso);
+  const priceStr = formatPriceMXN(planPriceCents(s));
+
+  switch (state) {
+    case "renewing":
+      return {
+        state, endIso, endLabel,
+        title: "subscription.statusActiveTitle",
+        endCaption: "subscription.heroCaptionNextCharge",
+        chipText: priceStr ? `${priceStr} MXN` : null,
+        chipTone: "positive",
+        tone: "teal",
+        primaryCta: "subscription.managePortalCta",
+        secondaryCta: "subscription.pauseCta",
+      };
+    case "cancelling":
+      return {
+        state, endIso, endLabel,
+        title: "subscription.heroTitleCancelling",
+        endCaption: "subscription.heroCaptionAccessEnds",
+        chipText: "subscription.heroChipNoMoreCharges",
+        chipTone: "warning",
+        tone: "amber",
+        primaryCta: "subscription.reactivateCta",
+        secondaryCta: null,
+      };
+    case "trial_with_sub":
+      return {
+        state, endIso, endLabel,
+        title: "subscription.heroTitleTrialWithSub",
+        endCaption: "subscription.heroCaptionFirstCharge",
+        chipText: priceStr ? `${priceStr} MXN` : null,
+        chipTone: "positive",
+        tone: "teal",
+        primaryCta: "subscription.managePortalCta",
+        secondaryCta: "subscription.pauseCta",
+      };
+    case "trial_no_sub":
+      return {
+        state, endIso, endLabel,
+        title: "subscription.statusTrialTitle",
+        endCaption: "subscription.heroCaptionTrialEnds",
+        chipText: "subscription.heroChipFreeTrial",
+        chipTone: "positive",
+        tone: "teal",
+        primaryCta: "subscription.subscribeCta",
+        secondaryCta: null,
+      };
+    case "trial_expiring_today":
+      return {
+        state, endIso: null, endLabel: null,
+        title: "subscription.statusTrialTitle",
+        endCaption: null,
+        chipText: "subscription.heroChipTrialEndsToday",
+        chipTone: "warning",
+        tone: "amber",
+        primaryCta: "subscription.subscribeCta",
+        secondaryCta: null,
+      };
+    case "past_due":
+      return {
+        state, endIso, endLabel,
+        title: "subscription.statusPastDueTitle",
+        endCaption: null,
+        chipText: "subscription.heroChipPastDue",
+        chipTone: "danger",
+        tone: "amber",
+        primaryCta: "subscription.fixPaymentLongCta",
+        secondaryCta: null,
+      };
+    case "comp":
+      return {
+        state, endIso: null, endLabel: null,
+        title: "subscription.statusCompTitle",
+        endCaption: null,
+        chipText: "subscription.heroChipComp",
+        chipTone: "positive",
+        tone: "green",
+        primaryCta: null,
+        secondaryCta: null,
+      };
+    case "expired":
+      return {
+        state, endIso: null, endLabel: null,
+        title: "subscription.statusExpiredTitle",
+        endCaption: null,
+        chipText: null,
+        chipTone: "neutral",
+        tone: "red",
+        primaryCta: "subscription.subscribeCta",
+        secondaryCta: null,
+      };
+    default:
+      return {
+        state, endIso: null, endLabel: null,
+        title: "subscription.statusLoading",
+        endCaption: null,
+        chipText: null,
+        chipTone: "neutral",
+        tone: "teal",
+        primaryCta: null,
+        secondaryCta: null,
+      };
+  }
+}
 export function planPriceCents(s) {
   const priceId = s?.subscription?.stripe_price_id;
   // We can't read env vars from the browser, so we infer plan by amount
