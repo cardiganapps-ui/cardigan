@@ -44,6 +44,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
+import { rowSubLine, chargeLine } from "../utils/subscriptionStatus";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
 // from locale strings.
@@ -866,25 +867,13 @@ export function Settings({ user, signOut, refreshUser }) {
             <div className="settings-row-title">{t("settings.subscriptionTitle")}</div>
             <div className="settings-row-sub" style={subscription?.subscription?.status === "past_due" ? { color: "var(--amber)" } : undefined}>{(() => {
               const s = subscription || {};
-              if (s.compGranted) return t("subscription.statusComp");
-              // Past-due jumps the line so the row reflects the
-              // payment problem before the generic "active" label.
-              if (s.subscription?.status === "past_due") return t("subscription.statusPastDue");
-              if (s.subscribedActive) return t("subscription.statusActive");
-              if (s.accessState === "trial" && s.daysLeftInTrial != null) {
-                return s.daysLeftInTrial <= 1
-                  ? t("subscription.statusTrialEndsToday")
-                  : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial });
+              // Admin fallthrough: useSubscription returns active for
+              // admins without comp/paid sub. rowSubLine doesn't have
+              // an admin branch, so handle it here.
+              if (!s.compGranted && !s.subscribedActive && s.accessState === "active") {
+                return t("subscription.statusActive");
               }
-              if (s.accessState === "expired") return t("subscription.statusExpired");
-              // Admin shortcut — useSubscription returns
-              // accessState="active" for admins regardless of
-              // comp / paid state, so neither subscribedActive nor
-              // compGranted is true. Without this fall-through the
-              // row was permanently stuck on "Cargando…" for the
-              // admin's own account.
-              if (s.accessState === "active") return t("subscription.statusActive");
-              return t("subscription.statusLoading");
+              return rowSubLine(s, t);
             })()}</div>
           </div>
           <IconChevron />
@@ -1500,23 +1489,6 @@ export function Settings({ user, signOut, refreshUser }) {
                 // but we DO surface a clear amber warning + a one-tap
                 // "fix payment" route into the Stripe portal.
                 const isPastDue = s.subscription?.status === "past_due";
-                // Stripe represents "scheduled cancellation" two ways
-                // (cancel_at_period_end boolean OR cancel_at timestamp);
-                // the user-facing meaning is identical. OR them so the
-                // UI surfaces the cancellation regardless of which
-                // path the Billing Portal took.
-                const cancelAtStr = s.subscription?.cancel_at || null;
-                const isCancelScheduled = !!s.subscription?.cancel_at_period_end || !!cancelAtStr;
-                // Effective end date = whichever signal Stripe gave us.
-                // Prefer cancel_at (explicit timestamp) → falls back to
-                // current_period_end → trial_end (when status=trialing
-                // and the API-version mismatch leaves period_end null).
-                const effectiveEndIso = cancelAtStr
-                  || s.subscription?.current_period_end
-                  || (s.subscription?.status === "trialing" ? s.subscription?.trial_end : null);
-                const periodEndStr = effectiveEndIso
-                  ? new Date(effectiveEndIso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
-                  : null;
                 const accentColor = isComp ? "var(--green)"
                   : isPastDue ? "var(--amber)"
                   : isActive ? "var(--teal-dark)"
@@ -1545,19 +1517,19 @@ export function Settings({ user, signOut, refreshUser }) {
                   : state === "trial" ? t("subscription.statusTrialTitle")
                   : state === "expired" ? t("subscription.statusExpiredTitle")
                   : t("subscription.statusLoading");
-                const heroSub = isComp ? t("subscription.compExplain")
-                  : isPastDue ? t("subscription.statusPastDueBody")
-                  : isActive && periodEndStr
-                    ? (isCancelScheduled
-                        ? t("subscription.cancelAt", { date: periodEndStr })
-                        : t("subscription.renewsOn", { date: periodEndStr }))
-                  : isAdminAccess ? t("subscription.compExplain")
-                  : state === "trial" && s.daysLeftInTrial != null
-                    ? (s.daysLeftInTrial <= 1
-                        ? t("subscription.statusTrialEndsToday")
-                        : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial }))
-                  : state === "expired" ? t("subscription.expiredExplain")
-                  : "";
+                // Charge-clarity sentence comes from
+                // utils/subscriptionStatus.js so the same string drives
+                // both the row sub-line and this hero. Admin and trial
+                // states without a Stripe sub fall through to safe
+                // generic copy.
+                const sentence = isAdminAccess
+                  ? t("subscription.compExplain")
+                  : (chargeLine(s, t)
+                     || (state === "trial" && s.daysLeftInTrial != null
+                       ? (s.daysLeftInTrial <= 1
+                           ? t("subscription.statusTrialEndsToday")
+                           : t("subscription.statusTrialDaysLeft", { n: s.daysLeftInTrial }))
+                       : ""));
                 return (
                   <>
                     {/* ── Hero card — combines status + (when applicable) price into a single
@@ -1580,9 +1552,9 @@ export function Settings({ user, signOut, refreshUser }) {
                       <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>
                         {heroTitle}
                       </div>
-                      {heroSub && (
-                        <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:4, lineHeight:1.5 }}>
-                          {heroSub}
+                      {sentence && (
+                        <div style={{ fontSize:13, color:"var(--charcoal-md)", marginTop:6, lineHeight:1.5, fontWeight: 500 }}>
+                          {sentence}
                         </div>
                       )}
 
@@ -1633,33 +1605,18 @@ export function Settings({ user, signOut, refreshUser }) {
                       </div>
                     )}
 
-                    {/* Active-plan transparency: next charge or cancel-at-period-end +
-                        a one-tap link to the most recent receipt. Reads entirely from
-                        already-stored fields on user_subscriptions; doesn't require a
-                        Stripe round-trip. */}
-                    {isActive && periodEndStr && !isPastDue && (
-                      <div style={{
-                        padding:"12px 14px",
-                        borderRadius:"var(--radius)",
-                        background:"var(--white)",
-                        border:"1px solid var(--border)",
-                        marginBottom:14,
-                        fontSize:13,
-                        color:"var(--charcoal-md)",
-                        lineHeight:1.55,
-                      }}>
-                        <div style={{ fontWeight:700, color:"var(--charcoal)" }}>
-                          {isCancelScheduled
-                            ? t("subscription.cancelAt", { date: periodEndStr })
-                            : t("subscription.nextChargeOn", { date: periodEndStr })}
-                        </div>
-                        {s.subscription?.hosted_invoice_url && (
-                          <a href={s.subscription.hosted_invoice_url}
-                            target="_blank" rel="noopener noreferrer"
-                            style={{ color:"var(--teal-dark)", fontWeight:600, fontSize:13, textDecoration:"none", display:"inline-block", marginTop:4 }}>
-                            {t("subscription.viewLatestReceipt")} →
-                          </a>
-                        )}
+                    {/* Latest-invoice link — shown when there's a hosted
+                        receipt URL on file (every paid invoice). The
+                        charge-clarity sentence is already in the hero
+                        above; this is just the one-tap "show me the
+                        receipt for that charge" affordance. */}
+                    {isActive && !isPastDue && s.subscription?.hosted_invoice_url && (
+                      <div style={{ marginBottom:14, textAlign:"center" }}>
+                        <a href={s.subscription.hosted_invoice_url}
+                          target="_blank" rel="noopener noreferrer"
+                          style={{ color:"var(--teal-dark)", fontWeight:600, fontSize:13, textDecoration:"none" }}>
+                          {t("subscription.viewLatestReceipt")} →
+                        </a>
                       </div>
                     )}
 
