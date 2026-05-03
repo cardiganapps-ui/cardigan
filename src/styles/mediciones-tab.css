@@ -187,3 +187,267 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Metric tabs ──
+   Above the sparkline. One tab per available time-series (Peso,
+   Grasa, Músculo, Score). Tabs whose underlying field doesn't exist
+   on any measurement are filtered out by the parent. The active tab
+   uses the same teal pill the rest of Cardigan reaches for. */
+.mediciones-metric-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 6px;
+  padding: 3px;
+  background: var(--cream);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mediciones-metric-tabs::-webkit-scrollbar { display: none; }
+
+.mediciones-metric-tab {
+  flex: 1 0 auto;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--charcoal-xl);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mediciones-metric-tab:hover { color: var(--charcoal); }
+
+.mediciones-metric-tab.is-active {
+  background: var(--white);
+  color: var(--teal-dark);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Visceral fat indicator pill ──
+   Color-coded against the InBody clinical thresholds: 1–9 normal
+   (green), 10–14 elevado (amber), 15+ alto (red). One-line affordance
+   below the body-comp stack so the practitioner sees the risk number
+   at a glance. */
+.mediciones-visceral {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mediciones-visceral.is-normal {
+  background: rgba(74, 144, 102, 0.12);
+  color: var(--success, #2E7D44);
+}
+.mediciones-visceral.is-elevated {
+  background: rgba(217, 161, 79, 0.16);
+  color: var(--warn, #B07028);
+}
+.mediciones-visceral.is-high {
+  background: rgba(196, 88, 80, 0.14);
+  color: var(--danger, #B0392F);
+}
+
+.mediciones-visceral-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Body-composition stack ──
+   Horizontal segmented bar inside the headline card showing what
+   makes up the patient's mass. Lives between Δ deltas and the
+   sparkline. */
+.body-comp-stack {
+  margin: 6px 0 10px;
+}
+
+.body-comp-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+.body-comp-segment {
+  display: block;
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.body-comp-segment + .body-comp-segment {
+  /* Hairline divider between segments so the eye reads them as
+     distinct buckets even when adjacent colors are close in value. */
+  box-shadow: -1px 0 0 0 rgba(255, 255, 255, 0.6);
+}
+
+.body-comp-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.body-comp-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--charcoal-md);
+  min-width: 0;
+}
+
+.body-comp-swatch {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.body-comp-legend-label {
+  font-weight: 600;
+  color: var(--charcoal);
+  flex: 0 0 auto;
+}
+
+.body-comp-legend-value {
+  color: var(--charcoal-xl);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Header CTA cluster ──
+   Two buttons (Importar de InBody + Añadir medición) live side-by-
+   side on the list header. On narrow phones they stack to keep
+   labels readable. */
+.mediciones-header-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 380px) {
+  .mediciones-header-actions {
+    flex-direction: column-reverse; /* primary action stays on top after stacking */
+  }
+}
+
+/* ── InBody import sheet ──
+   File-pick / preview / save flow. Reuses the avatar drop-zone styles
+   on step 1 so the visual language stays consistent with the rest of
+   the app. */
+.inbody-import-sheet { /* Inherits from .sheet-panel — no extra rules needed today,
+                          but giving it a hook so future tweaks scope cleanly. */ }
+
+.inbody-import-intro {
+  margin: 0 0 14px;
+  font-size: var(--text-sm);
+  color: var(--charcoal-md);
+  line-height: 1.5;
+}
+
+.inbody-import-help {
+  margin-top: 10px;
+  font-size: var(--text-xs);
+  color: var(--charcoal-xl);
+  line-height: 1.5;
+}
+
+.inbody-import-summary {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--charcoal);
+  margin: 0 0 12px;
+}
+
+.inbody-import-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  padding: 4px 0;
+  margin-bottom: 14px;
+}
+
+.inbody-import-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-lt);
+  cursor: pointer;
+}
+
+.inbody-import-row:last-child { border-bottom: none; }
+
+.inbody-import-row.is-existing {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.inbody-import-row input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.inbody-import-row-main {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--charcoal-md);
+}
+
+.inbody-import-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  color: var(--charcoal);
+}
+
+.inbody-import-row-tag {
+  font-size: var(--text-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--charcoal-xl);
+}
+
+.inbody-import-row-tag.warn {
+  background: rgba(217, 161, 79, 0.18);
+  color: var(--warn, #B07028);
+}
+
+.inbody-import-row-fields {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inbody-import-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}

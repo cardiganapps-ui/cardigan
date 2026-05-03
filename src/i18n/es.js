@@ -1320,10 +1320,79 @@ export default {
     goalProgress: "Avance hacia el objetivo",
     goalRemaining: "Faltan {value} kg",
     goalReached: "¡Objetivo alcanzado!",
+    /* Multi-goal lines: render once per goal the user has set so a
+       patient with weight + body-fat goals sees two complementary
+       lines. {metric} is the goal name (e.g. "Peso", "% Grasa"),
+       {value} the absolute remainder, {unit} the display unit. */
+    goalRemainingFor: "{metric}: faltan {value} {unit}",
+    goalReachedFor: "{metric}: ¡objetivo alcanzado!",
+    /* Metric tab labels — drive both the sparkline metric strip AND
+       the multi-goal line names so they stay aligned. */
+    metric: {
+      weight:  "Peso",
+      bodyFat: "% Grasa",
+      muscle:  "Músculo",
+      score:   "InBody Score",
+    },
+    metricTabsAria: "Cambiar la métrica que se grafica",
+    /* Trend labels per metric — the line under the sparkline. */
+    trend: {
+      weight:  "Peso (últimas mediciones)",
+      bodyFat: "% Grasa (últimas mediciones)",
+      muscle:  "Músculo esquelético (últimas mediciones)",
+      score:   "InBody Score (últimas mediciones)",
+    },
+    /* Body-composition stack labels. */
+    composition: {
+      water:  "Agua",
+      muscle: "Músculo",
+      fat:    "Grasa",
+      other:  "Otros",
+      aria:   "Composición corporal del último escaneo",
+    },
+    /* Visceral fat band copy — clinical thresholds, color-coded in
+       the UI. */
+    visceral: {
+      label:    "Grasa visceral",
+      normal:   "Normal",
+      elevated: "Elevado",
+      high:     "Alto",
+    },
+    /* Resumen tab — "Última medición" tile grid. */
+    lastScanTitle: "Última medición",
+    lastScanLabel: "Fecha del escaneo",
+    /* InBody import flow. */
+    import: {
+      cta: "Importar de InBody",
+      title: "Importar de InBody",
+      intro: "Sube el CSV exportado desde LookinBody. Cardigan reconoce los campos de cualquier modelo (270, 570, 770, 970) en español o inglés.",
+      dropTitle: "Sube el CSV",
+      dropSub: "Arrastra el archivo o toca para seleccionar.",
+      help: "Tip: en LookinBody, ve a Resultados → Exportar y elige formato CSV. Cardigan no envía nada hasta que confirmas.",
+      foundRows: "Encontramos {count} mediciones en este archivo.",
+      tagExisting: "Ya importada",
+      tagOtherPatient: "Otro paciente",
+      fat: "grasa",
+      changeFile: "Otro archivo",
+      saving: "Importando…",
+      confirm: "Importar {count}",
+      success: "{created} mediciones importadas.",
+      successMixed: "{created} importadas, {skipped} omitidas (ya existían).",
+      errors: {
+        notCsv: "Selecciona un archivo CSV.",
+        readFailed: "No pudimos leer el archivo. Intenta de nuevo.",
+        empty: "El archivo está vacío.",
+        noDataRows: "No encontramos mediciones válidas en el archivo.",
+        noWeightColumn: "Este CSV no parece de InBody — falta la columna de peso.",
+        writeFailed: "No pudimos guardar las mediciones. Intenta de nuevo.",
+      },
+    },
   },
   patientFields: {
     height: "Estatura (cm)",
     goalWeight: "Peso objetivo (kg)",
+    goalBodyFat: "% Grasa objetivo",
+    goalMuscle: "Músculo objetivo (kg)",
     allergies: "Alergias e intolerancias",
     allergiesPlaceholder: "Lácteos, mariscos, frutos secos…",
     medicalConditions: "Condiciones médicas",

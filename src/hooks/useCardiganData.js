@@ -444,7 +444,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
-  const { createMeasurement, updateMeasurement, deleteMeasurement } =
+  const { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements } =
     createMeasurementActions(userId, measurements, setMeasurements, setMutating, setMutationError);
 
   /* ── ENRICHMENT ── */
@@ -515,6 +515,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createMeasurement: guard(createMeasurement),
     updateMeasurement: guard(updateMeasurement),
     deleteMeasurement: guard(deleteMeasurement),
+    bulkCreateMeasurements: guard(bulkCreateMeasurements),
     refresh,
   };
 }

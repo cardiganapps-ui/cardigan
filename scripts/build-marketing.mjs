@@ -73,10 +73,11 @@ const PROFESSIONS = [
     rate: "Honorarios",
     title: "Software para nutriólogos en México",
     titleShort: "Cardigan para nutriólogos",
-    description: "La app para nutriólogos en México: agenda de consultas, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis.",
+    description: "La app para nutriólogos en México: agenda de consultas, importación de InBody, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis.",
     heroH1: "Lleva el control de tus pacientes y consultas.",
-    heroLead: "Cardigan reúne agenda, historial nutricional, mediciones corporales y pagos para nutriólogos en México. Menos hojas sueltas, más tiempo con tus pacientes.",
+    heroLead: "Cardigan reúne agenda, historial nutricional, importación de InBody, mediciones corporales y pagos para nutriólogos en México. Menos hojas sueltas, más tiempo con tus pacientes.",
     features: [
+      { icon: "inbody",   h: "Importa tus InBody",                 body: "Sube el CSV de LookinBody y todas las mediciones — músculo esquelético, grasa visceral, ángulo de fase — aparecen en el historial del paciente con gráficas listas." },
       { icon: "scale",    h: "Mediciones corporales con gráficos", body: "Peso, % grasa, perímetros — guarda mediciones y visualiza el progreso de cada paciente con gráficos automáticos." },
       { icon: "calendar", h: "Agenda de consultas",                body: "Consultas recurrentes, recordatorios automáticos y vista de mes / semana / día. Cancela una cita y Cardigan reorganiza el resto." },
       { icon: "doc",      h: "Plan alimenticio en notas",          body: "Adjunta planes, antecedentes médicos, alergias y foto del último análisis a la ficha de cada paciente." },
@@ -85,8 +86,9 @@ const PROFESSIONS = [
       { icon: "shield",   h: "Cumple LFPDPPP",                     body: "Datos cifrados en reposo y en tránsito. Exportación de información de cada paciente con un toque." },
     ],
     faqs: [
+      { q: "¿Puedo importar mis InBody?", a: "Sí. Exporta el CSV desde LookinBody (cualquier modelo: 270, 570, 770, 970), súbelo a Cardigan, revisa la lista y confirma. Las mediciones de músculo esquelético, grasa visceral, ángulo de fase y InBody Score aparecen en el historial del paciente con gráficas listas. Re-importar el mismo archivo es seguro: las mediciones repetidas se omiten automáticamente." },
       { q: "¿Puedo subir planes alimenticios y análisis?", a: "Sí. Sube PDFs, imágenes o Word a la ficha de cada paciente — quedan vinculados a su historial y se pueden consultar en cualquier momento." },
-      { q: "¿Cardigan grafica el peso de mis pacientes?", a: "Sí. Captura las mediciones (peso, % grasa, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición." },
+      { q: "¿Cardigan grafica el peso de mis pacientes?", a: "Sí. Captura las mediciones (peso, % grasa, músculo, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición. Si el paciente tiene escaneos InBody, la gráfica cambia entre métricas con un toque." },
       { q: "¿Funciona en mi celular?", a: "Sí. Se instala como app en iPhone, iPad y Android desde el navegador. También funciona perfecto en escritorio." },
       { q: "¿Hay contrato?", a: "No. $299 MXN al mes, cancelas cuando quieras. Sin penalizaciones." },
       { q: "¿Mis pacientes pueden ver su información?", a: "No. Cardigan es para ti — tus pacientes no tienen acceso. Si quieres compartirles algo, exportas el documento o se los envías por correo." },
@@ -318,6 +320,7 @@ function icon(name) {
     bell:    `<path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9z"/><path d="M10 21a2 2 0 004 0"/>`,
     shield:  `<path d="M12 3l8 4v6c0 5-4 8-8 8s-8-3-8-8V7l8-4z"/>`,
     scale:   `<path d="M4 21h16M9 21V8M15 21V8M9 4l-3 4h6L9 4zM15 4l3 4h-6l3-4z"/><circle cx="6" cy="9" r="3"/><circle cx="18" cy="9" r="3"/>`,
+    inbody:  `<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/><circle cx="17" cy="17" r="2"/>`,
   };
   return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>${path[name] || ""}</svg>`;
 }

@@ -87,6 +87,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const showHealthFields = usesAnthropometrics(profession);
   const [heightCm, setHeightCm] = useState("");
   const [goalWeightKg, setGoalWeightKg] = useState("");
+  const [goalBodyFatPct, setGoalBodyFatPct] = useState("");
+  const [goalSkeletalMuscleKg, setGoalSkeletalMuscleKg] = useState("");
   const [allergies, setAllergies] = useState("");
   const [medicalConditions, setMedicalConditions] = useState("");
 
@@ -205,6 +207,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         // actually uses them.
         heightCm: showHealthFields && heightCm ? Number(heightCm) : null,
         goalWeightKg: showHealthFields && goalWeightKg ? Number(goalWeightKg) : null,
+        goalBodyFatPct: showHealthFields && goalBodyFatPct ? Number(goalBodyFatPct) : null,
+        goalSkeletalMuscleKg: showHealthFields && goalSkeletalMuscleKg ? Number(goalSkeletalMuscleKg) : null,
         allergies: showHealthFields ? allergies.trim() : "",
         medicalConditions: showHealthFields ? medicalConditions.trim() : "",
         schedules, recurring: true,
@@ -445,6 +449,18 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                         <input className={`input ${goalInvalid ? "input-error" : ""}`} type="number" inputMode="decimal"
                           value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)}
                           min="20" max="300" step="0.1" />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.goalBodyFat")}</label>
+                        <input className="input" type="number" inputMode="decimal"
+                          value={goalBodyFatPct} onChange={e => setGoalBodyFatPct(e.target.value)}
+                          min="3" max="60" step="0.1" />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.goalMuscle")}</label>
+                        <input className="input" type="number" inputMode="decimal"
+                          value={goalSkeletalMuscleKg} onChange={e => setGoalSkeletalMuscleKg(e.target.value)}
+                          min="5" max="100" step="0.1" />
                       </div>
                     </div>
                     <div className="input-group">

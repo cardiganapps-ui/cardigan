@@ -88,18 +88,35 @@ export function ResumenTab({
   const { t } = useT();
   const { profession, measurements } = useCardigan();
   const showHealthBlock = usesAnthropometrics(profession);
-  // Latest weight is sourced from the measurements log so the Resumen
-  // shows the current state without requiring the user to open the
-  // Mediciones tab. Returns null when the patient has no entries yet.
-  const latestWeight = useMemo(() => {
-    if (!showHealthBlock) return null;
-    const mine = (measurements || []).filter(m => m.patient_id === patient.id && m.weight_kg != null);
-    if (!mine.length) return null;
-    // measurements arrive newest-first, but be defensive.
-    let best = mine[0];
-    for (const m of mine) if ((m.taken_at || "") > (best.taken_at || "")) best = m;
-    return best;
+  // Patient's measurements newest-first. The Resumen card uses the
+  // top two entries to render an "Última medición" block — current
+  // values + Δ vs. the prior visit, no need to open the tab.
+  const patientMeasurements = useMemo(() => {
+    if (!showHealthBlock) return [];
+    return (measurements || [])
+      .filter((m) => m.patient_id === patient.id)
+      .slice()
+      .sort((a, b) => {
+        if (a.taken_at !== b.taken_at) return a.taken_at < b.taken_at ? 1 : -1;
+        return (b.created_at || "").localeCompare(a.created_at || "");
+      });
   }, [measurements, patient.id, showHealthBlock]);
+  const latestMeasurement = patientMeasurements[0] || null;
+  const previousMeasurement = patientMeasurements[1] || null;
+  // Detect whether the latest scan carries InBody-richer fields.
+  // When it does we render a 4-tile body-comp grid; when it's a
+  // plain manual weigh-in we fall back to the simple weight row.
+  const hasInBodyDetail = !!(
+    latestMeasurement && (
+      latestMeasurement.skeletal_muscle_kg != null ||
+      latestMeasurement.body_fat_pct != null ||
+      latestMeasurement.visceral_fat_level != null ||
+      latestMeasurement.inbody_score != null
+    )
+  );
+  const latestWeight = latestMeasurement && latestMeasurement.weight_kg != null
+    ? latestMeasurement
+    : null;
 
   /* Counters split by status × tutor flag.
      - "Settled" sessions only — completed | cancelled | charged. Past
@@ -200,6 +217,85 @@ export function ResumenTab({
         })()}
       </div>
 
+      {/* Última medición — shown when the latest entry has InBody
+          fields. Surfaces 4 key numbers as tappable-feeling tiles
+          (weight, body fat %, muscle, date), each with the Δ vs. the
+          previous visit so the practitioner sees direction at a
+          glance. Falls back to nothing when the latest entry is a
+          plain manual weigh-in (the simpler "Peso" row inside the
+          Salud block below covers that case). */}
+      {showHealthBlock && hasInBodyDetail && latestMeasurement && (() => {
+        const renderDelta = (curKey) => {
+          if (!previousMeasurement) return null;
+          const a = latestMeasurement[curKey];
+          const b = previousMeasurement[curKey];
+          if (a == null || b == null) return null;
+          const diff = Number(a) - Number(b);
+          const sign = diff > 0 ? "+" : "";
+          return `${sign}${Number(diff).toFixed(1).replace(/\.0$/, "")}`;
+        };
+        const fmt = (n, d = 1) => n == null ? "—" : Number(n).toFixed(d).replace(/\.0$/, "");
+        const tiles = [
+          { label: t("measurements.metric.weight"),  value: latestMeasurement.weight_kg != null
+              ? `${fmt(latestMeasurement.weight_kg)} kg` : "—",
+            delta: renderDelta("weight_kg") },
+          { label: t("measurements.metric.bodyFat"), value: latestMeasurement.body_fat_pct != null
+              ? `${fmt(latestMeasurement.body_fat_pct)}%` : "—",
+            delta: renderDelta("body_fat_pct") },
+          { label: t("measurements.metric.muscle"),  value: latestMeasurement.skeletal_muscle_kg != null
+              ? `${fmt(latestMeasurement.skeletal_muscle_kg)} kg` : "—",
+            delta: renderDelta("skeletal_muscle_kg") },
+          { label: t("measurements.lastScanLabel"),
+            value: formatISODateLong(latestMeasurement.taken_at),
+            delta: null },
+        ];
+        return (
+          <>
+            <div style={{ ...SECTION_LABEL_STYLE, padding: "0 4px 6px" }}>
+              {t("measurements.lastScanTitle")}
+            </div>
+            <div className="card resumen-bodycomp" style={{ padding: 10, marginBottom: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {tiles.map((tile, i) => (
+                  <div key={i} style={{
+                    background: "var(--cream)",
+                    borderRadius: "var(--radius)",
+                    padding: "8px 10px",
+                    minWidth: 0,
+                  }}>
+                    <div style={{
+                      fontSize: "var(--text-eyebrow)",
+                      color: "var(--charcoal-xl)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      fontWeight: 700,
+                      marginBottom: 2,
+                    }}>{tile.label}</div>
+                    <div style={{
+                      fontFamily: "var(--font-d)",
+                      fontSize: "var(--text-lg)",
+                      fontWeight: 800,
+                      color: "var(--charcoal)",
+                      lineHeight: 1.1,
+                      fontVariantNumeric: "tabular-nums",
+                    }}>{tile.value}</div>
+                    {tile.delta && (
+                      <div style={{
+                        fontSize: "var(--text-eyebrow)",
+                        color: "var(--charcoal-xl)",
+                        fontWeight: 700,
+                        fontVariantNumeric: "tabular-nums",
+                        marginTop: 1,
+                      }}>{tile.delta}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
       {/* Salud / Anthropometric block — nutritionist + trainer only.
           Shows the static patient-level traits (height, goal weight,
           allergies, medical conditions) plus the most recent measured
@@ -207,7 +303,9 @@ export function ResumenTab({
           profession doesn't use it. */}
       {showHealthBlock && (() => {
         const rows = [];
-        if (latestWeight && latestWeight.weight_kg != null) {
+        // Skip the duplicate "Peso" row when the InBody tile grid
+        // above already surfaces the latest weight + Δ.
+        if (latestWeight && latestWeight.weight_kg != null && !hasInBodyDetail) {
           rows.push({
             label: t("measurements.fields.weight"),
             value: `${Number(latestWeight.weight_kg).toFixed(1).replace(/\.0$/, "")} kg`,

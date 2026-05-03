@@ -67,6 +67,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,
     measurements: data.measurements || [],
     createMeasurement: noopNote, updateMeasurement: noop, deleteMeasurement: noop,
+    bulkCreateMeasurements: async () => ({ created: 0, skipped: 0 }),
     refresh: async () => {},
   };
 }

@@ -5,7 +5,7 @@ import { recalcPatientCounters } from "../utils/patients";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, allergies, medicalConditions }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un registro con ese nombre.");
@@ -53,6 +53,8 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       // surface them, so the caller passes null/"").
       height_cm: heightCm || null,
       goal_weight_kg: goalWeightKg || null,
+      goal_body_fat_pct: goalBodyFatPct || null,
+      goal_skeletal_muscle_kg: goalSkeletalMuscleKg || null,
       allergies: allergies || "",
       medical_conditions: medicalConditions || "",
       sessions: seedCount,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <title>Software para nutriólogos en México — Cardigan</title>
-<meta name="description" content="La app para nutriólogos en México: agenda de consultas, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis." />
+<meta name="description" content="La app para nutriólogos en México: agenda de consultas, importación de InBody, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis." />
 <meta name="keywords" content="software nutriólogos méxico, agenda nutriólogos, control pacientes, app nutriólogos" />
 <link rel="canonical" href="https://cardigan.mx/nutriologos/" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,12 +13,12 @@
 <meta property="og:locale" content="es_MX" />
 <meta property="og:site_name" content="Cardigan" />
 <meta property="og:title" content="Software para nutriólogos en México — Cardigan" />
-<meta property="og:description" content="La app para nutriólogos en México: agenda de consultas, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis." />
+<meta property="og:description" content="La app para nutriólogos en México: agenda de consultas, importación de InBody, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis." />
 <meta property="og:url" content="https://cardigan.mx/nutriologos/" />
 <meta property="og:image" content="https://cardigan.mx/og-image.png" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Software para nutriólogos en México — Cardigan" />
-<meta name="twitter:description" content="La app para nutriólogos en México: agenda de consultas, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis." />
+<meta name="twitter:description" content="La app para nutriólogos en México: agenda de consultas, importación de InBody, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis." />
 <meta name="twitter:image" content="https://cardigan.mx/og-image.png" />
 <script type="application/ld+json">
 {
@@ -28,7 +28,7 @@
   "operatingSystem": "Web, iOS, Android",
   "applicationCategory": "BusinessApplication",
   "url": "https://cardigan.mx/nutriologos/",
-  "description": "La app para nutriólogos en México: agenda de consultas, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis.",
+  "description": "La app para nutriólogos en México: agenda de consultas, importación de InBody, mediciones corporales, planes alimenticios y pagos — en un solo lugar. 30 días gratis.",
   "inLanguage": "es-MX",
   "offers": {
     "@type": "Offer",
@@ -46,13 +46,18 @@
   "mainEntity": [
     {
       "@type": "Question",
+      "name": "¿Puedo importar mis InBody?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Exporta el CSV desde LookinBody (cualquier modelo: 270, 570, 770, 970), súbelo a Cardigan, revisa la lista y confirma. Las mediciones de músculo esquelético, grasa visceral, ángulo de fase y InBody Score aparecen en el historial del paciente con gráficas listas. Re-importar el mismo archivo es seguro: las mediciones repetidas se omiten automáticamente." }
+    },
+    {
+      "@type": "Question",
       "name": "¿Puedo subir planes alimenticios y análisis?",
       "acceptedAnswer": { "@type": "Answer", "text": "Sí. Sube PDFs, imágenes o Word a la ficha de cada paciente — quedan vinculados a su historial y se pueden consultar en cualquier momento." }
     },
     {
       "@type": "Question",
       "name": "¿Cardigan grafica el peso de mis pacientes?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Captura las mediciones (peso, % grasa, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Captura las mediciones (peso, % grasa, músculo, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición. Si el paciente tiene escaneos InBody, la gráfica cambia entre métricas con un toque." }
     },
     {
       "@type": "Question",
@@ -92,7 +97,7 @@
       <div class="mkt-container">
         <span class="mkt-hero-eyebrow">Cardigan para nutriólogos</span>
         <h1>Lleva el control de tus pacientes y consultas.</h1>
-        <p class="lead">Cardigan reúne agenda, historial nutricional, mediciones corporales y pagos para nutriólogos en México. Menos hojas sueltas, más tiempo con tus pacientes.</p>
+        <p class="lead">Cardigan reúne agenda, historial nutricional, importación de InBody, mediciones corporales y pagos para nutriólogos en México. Menos hojas sueltas, más tiempo con tus pacientes.</p>
         <div class="mkt-hero-cta-row">
           <a href="/" class="mkt-btn-primary">Comenzar gratis</a>
           <a href="#precios" class="mkt-btn-secondary">Ver precios</a>
@@ -111,6 +116,11 @@
         <p class="mkt-features-sub">Diseñado para nutriólogos. Sin las complicaciones de un sistema hospitalario.</p>
         <div class="mkt-features-grid">
           
+          <div class="mkt-feature">
+            <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/><circle cx="17" cy="17" r="2"/></svg></div>
+            <h3>Importa tus InBody</h3>
+            <p>Sube el CSV de LookinBody y todas las mediciones — músculo esquelético, grasa visceral, ángulo de fase — aparecen en el historial del paciente con gráficas listas.</p>
+          </div>
           <div class="mkt-feature">
             <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><path d="M4 21h16M9 21V8M15 21V8M9 4l-3 4h6L9 4zM15 4l3 4h-6l3-4z"/><circle cx="6" cy="9" r="3"/><circle cx="18" cy="9" r="3"/></svg></div>
             <h3>Mediciones corporales con gráficos</h3>
@@ -174,12 +184,16 @@
         <div class="mkt-faq-list">
           
           <details class="mkt-faq">
+            <summary>¿Puedo importar mis InBody?</summary>
+            <div class="mkt-faq-body">Sí. Exporta el CSV desde LookinBody (cualquier modelo: 270, 570, 770, 970), súbelo a Cardigan, revisa la lista y confirma. Las mediciones de músculo esquelético, grasa visceral, ángulo de fase y InBody Score aparecen en el historial del paciente con gráficas listas. Re-importar el mismo archivo es seguro: las mediciones repetidas se omiten automáticamente.</div>
+          </details>
+          <details class="mkt-faq">
             <summary>¿Puedo subir planes alimenticios y análisis?</summary>
             <div class="mkt-faq-body">Sí. Sube PDFs, imágenes o Word a la ficha de cada paciente — quedan vinculados a su historial y se pueden consultar en cualquier momento.</div>
           </details>
           <details class="mkt-faq">
             <summary>¿Cardigan grafica el peso de mis pacientes?</summary>
-            <div class="mkt-faq-body">Sí. Captura las mediciones (peso, % grasa, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición.</div>
+            <div class="mkt-faq-body">Sí. Captura las mediciones (peso, % grasa, músculo, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición. Si el paciente tiene escaneos InBody, la gráfica cambia entre métricas con un toque.</div>
           </details>
           <details class="mkt-faq">
             <summary>¿Funciona en mi celular?</summary>

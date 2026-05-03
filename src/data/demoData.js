@@ -79,14 +79,23 @@ const NUTRITIONIST_PATIENT_DEFS = [
   // First 5 entries carry rich anthropometric data so the Mediciones tab
   // and Salud block render well in demo. The rest leave the fields blank
   // (still valid — most clients won't have full data on day one).
+  // Patients with `inbody: true` get the richer body-comp fields seeded
+  // on every measurement (skeletal_muscle_kg, visceral_fat_level,
+  // phase_angle, inbody_score, …) so the multi-metric sparkline + body-
+  // composition stack + visceral pill + Resumen tile grid all demo live.
+  // The other two stay manual to mirror real clinics where some patients
+  // have InBody scans and others don't.
   { name: "Natalia Bravo",      day: "Lunes",     time: "09:00", rate: 900, status: "active", phone: "+52 55 1010 2020", email: "natalia.bravo@example.com", paidAhead: true,
-    height_cm: 168, goal_weight_kg: 65, allergies: "Lácteos", medical_conditions: "Hipotiroidismo controlado",
+    height_cm: 168, goal_weight_kg: 65, goal_body_fat_pct: 26, allergies: "Lácteos", medical_conditions: "Hipotiroidismo controlado",
+    inbody: true,
     start_weight_kg: 78, start_waist_cm: 92, start_body_fat_pct: 32 },
   { name: "Roberto Aguilar",    day: "Lunes",     time: "11:00", rate: 850, status: "active", modality: "virtual", phone: "+52 55 2020 3030", overdue: true,
     height_cm: 178, goal_weight_kg: 80, allergies: "", medical_conditions: "Diabetes tipo 2",
+    inbody: true,
     start_weight_kg: 96, start_waist_cm: 105, start_body_fat_pct: 28 },
   { name: "Mariana Velasco",    day: "Lunes",     time: "16:00", rate: 900, status: "active", phone: "+52 55 3030 4040",
     height_cm: 162, goal_weight_kg: 58, allergies: "Mariscos", medical_conditions: "",
+    inbody: true,
     start_weight_kg: 70, start_waist_cm: 84, start_body_fat_pct: 30 },
   { name: "Pablo Estrada",      day: "Martes",    time: "10:00", rate: 850, status: "active", phone: "+52 55 4040 5050", email: "pablo.estrada@example.com",
     height_cm: 175, goal_weight_kg: 75, allergies: "Frutos secos",
@@ -515,6 +524,8 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       // nutri + trainer demo seeds; the others leave them null/empty.
       height_cm: def.height_cm ?? null,
       goal_weight_kg: def.goal_weight_kg ?? null,
+      goal_body_fat_pct: def.goal_body_fat_pct ?? null,
+      goal_skeletal_muscle_kg: def.goal_skeletal_muscle_kg ?? null,
       allergies: def.allergies || "",
       medical_conditions: def.medical_conditions || "",
       created_at: startDate.toISOString(),
@@ -541,7 +552,11 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
         const waistCm = def.start_waist_cm
           ? +(def.start_waist_cm - (start - weightKg) / 0.7).toFixed(1)
           : null;
-        measurements.push({
+        const bodyFatPct = def.start_body_fat_pct
+          ? +(def.start_body_fat_pct - (start - weightKg) * 0.4).toFixed(1)
+          : null;
+
+        const baseRow = {
           id: uuid(),
           user_id: demoUserId,
           patient_id: patientId,
@@ -549,12 +564,54 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           weight_kg: weightKg,
           waist_cm: waistCm,
           hip_cm: null,
-          body_fat_pct: def.start_body_fat_pct
-            ? +(def.start_body_fat_pct - (start - weightKg) * 0.4).toFixed(1)
-            : null,
+          body_fat_pct: bodyFatPct,
           notes: "",
           created_at: measureDate.toISOString(),
-        });
+        };
+
+        // InBody-rich rows: layer the body-comp body of work on top of
+        // the basic weight + waist + body fat already computed. Values
+        // are derived deterministically from weight + body fat so the
+        // chart trends look real (muscle slightly improves as fat
+        // drops, water tracks lean mass, score climbs with progress).
+        if (def.inbody && bodyFatPct != null) {
+          const fatKg = +(weightKg * (bodyFatPct / 100)).toFixed(1);
+          const leanKg = +(weightKg - fatKg).toFixed(1);
+          const muscleKg = +(leanKg * 0.55).toFixed(1);     // SMM ≈ 55% of lean
+          const waterKg = +(leanKg * 0.62).toFixed(1);      // TBW ≈ 62% of lean
+          const proteinKg = +(leanKg * 0.18).toFixed(1);    // Protein ≈ 18% of lean
+          const mineralsKg = +(leanKg * 0.04).toFixed(2);   // Bone + minerals ≈ 4%
+          // Visceral fat trends from elevado → normal as the patient
+          // progresses; capped at the typical clinical range.
+          const visceralStart = bodyFatPct > 30 ? 13 : (bodyFatPct > 25 ? 11 : 9);
+          const visceralLevel = Math.max(5, Math.round(visceralStart - t * 4));
+          // BMR follows Mifflin-St Jeor approximation, gendered output
+          // omitted for brevity — close enough for demo visuals.
+          const bmr = Math.round(10 * weightKg + 6.25 * (def.height_cm || 170) - 5 * 35 + 5);
+          // Phase angle: 4.5–6.5 typical, drifts up with progress.
+          const phaseAngle = +(4.8 + t * 0.9 + (Math.random() * 0.2 - 0.1)).toFixed(2);
+          // InBody Score: 60–90 typical, climbs with progress.
+          const inbodyScore = Math.min(95, Math.round(70 + t * 15));
+
+          Object.assign(baseRow, {
+            source: "inbody_csv",
+            scanned_at: measureDate.toISOString(),
+            device_model: "InBody 770",
+            skeletal_muscle_kg: muscleKg,
+            body_fat_kg: fatKg,
+            visceral_fat_level: visceralLevel,
+            total_body_water_kg: waterKg,
+            protein_kg: proteinKg,
+            minerals_kg: mineralsKg,
+            basal_metabolic_rate_kcal: bmr,
+            phase_angle: phaseAngle,
+            inbody_score: inbodyScore,
+          });
+        } else {
+          baseRow.source = "manual";
+        }
+
+        measurements.push(baseRow);
       }
     }
 

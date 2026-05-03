@@ -4,6 +4,8 @@ import { useCardigan } from "../../context/CardiganContext";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { EmptyState } from "../../components/EmptyState";
 import { MeasurementSheet } from "../../components/sheets/MeasurementSheet";
+import { InBodyImportSheet } from "../../components/sheets/InBodyImportSheet";
+import { BodyCompositionStack } from "../../components/BodyCompositionStack";
 import { IconTrendingUp } from "../../components/Icons";
 
 /* ── Mediciones tab ──
@@ -36,19 +38,16 @@ function formatDateShort(iso) {
 }
 
 /* ── Sparkline ──
-   Compact weight-over-time chart. Each datapoint plots at its actual
+   Compact value-over-time chart. Each datapoint plots at its actual
    date (x ∝ days), not its index, so a long gap reads as a gap.
-   On first mount the line draws left-to-right via stroke-dasharray
-   over 0.6s on the canonical curve. The two end-point dots fade in
-   immediately after the line finishes. Re-renders during the same
-   session don't re-animate (the animation is keyed by `points` length
-   only on first mount via `firstRender`). */
+   On first mount (and on metric change — we deliberately re-key the
+   component from the parent) the line draws left-to-right via
+   stroke-dasharray over 0.6s on the spring curve. The two end-point
+   dots fade in immediately after the line finishes. Re-renders
+   driven by adding a new measurement don't re-animate. */
 function Sparkline({ points, color = "var(--teal-dark)" }) {
   const pathRef = useRef(null);
   const [drawn, setDrawn] = useState(false);
-  // Only animate the first time a sparkline is rendered for this
-  // patient session. We use a ref to remember whether we've already
-  // animated, so adding a measurement (new point) doesn't re-draw.
   const firstRenderRef = useRef(true);
 
   useEffect(() => {
@@ -57,19 +56,13 @@ function Sparkline({ points, color = "var(--teal-dark)" }) {
     if (firstRenderRef.current) {
       pathRef.current.style.strokeDasharray = String(length);
       pathRef.current.style.strokeDashoffset = String(length);
-      // Force layout so the next style assignment animates instead of
-      // collapsing into a single repaint. void-context lets eslint
-      // know the read isn't a typo.
       void pathRef.current.getBoundingClientRect();
       pathRef.current.style.transition = "stroke-dashoffset 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)";
       pathRef.current.style.strokeDashoffset = "0";
       firstRenderRef.current = false;
-      // After the line finishes drawing, fade the end-point dots in.
       const id = setTimeout(() => setDrawn(true), 620);
       return () => clearTimeout(id);
     }
-    // Subsequent renders: ensure the path is fully visible without
-    // animating (guard against React re-creating the element).
     pathRef.current.style.strokeDasharray = "";
     pathRef.current.style.strokeDashoffset = "0";
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -117,6 +110,19 @@ function Sparkline({ points, color = "var(--teal-dark)" }) {
   );
 }
 
+/* Per-metric config for the sparkline tab strip. `field` matches the
+   measurements column; `label` resolves through i18n; `unit` and
+   `digits` drive the headline number formatting. The tab strip
+   surfaces only metrics whose underlying field appears on at least
+   one measurement, so a manual-only patient sees just "Peso" and an
+   InBody patient sees the full set. */
+const METRICS = [
+  { id: "weight",  field: "weight_kg",          unit: "kg", digits: 1 },
+  { id: "bodyFat", field: "body_fat_pct",       unit: "%",  digits: 1 },
+  { id: "muscle",  field: "skeletal_muscle_kg", unit: "kg", digits: 1 },
+  { id: "score",   field: "inbody_score",       unit: "",   digits: 0 },
+];
+
 export function MedicionesTab({ patient }) {
   const { t } = useT();
   const { measurements, createMeasurement, updateMeasurement, deleteMeasurement, readOnly, showSuccess } = useCardigan();
@@ -132,19 +138,41 @@ export function MedicionesTab({ patient }) {
       });
   }, [measurements, patient.id]);
 
+  // Available metrics: only show a tab if at least one measurement
+  // has a non-null value for its field. Always keep "weight" so the
+  // empty-data path doesn't flash an empty tab strip.
+  const availableMetrics = useMemo(() => {
+    return METRICS.filter(({ id, field }) =>
+      id === "weight" || ordered.some((m) => m[field] != null),
+    );
+  }, [ordered]);
+
+  // Two-tier state: the user's REQUESTED metric vs. the metric we
+  // can actually plot. If a previously-active metric vanishes (rare,
+  // e.g. the user deleted the only InBody scan), `activeMetric`
+  // gracefully falls back to the first available tab without an
+  // effect — derive at render time, no cascading setState.
+  const [requestedMetricId, setRequestedMetricId] = useState("weight");
+  const activeMetric = useMemo(
+    () => availableMetrics.find((m) => m.id === requestedMetricId) || availableMetrics[0],
+    [availableMetrics, requestedMetricId],
+  );
+  const activeMetricId = activeMetric?.id || "weight";
+
   // Sparkline points: chronological (oldest first), only entries that
-  // have a weight reading. `t` is unix-day so the x-axis spreads by
-  // real date intervals.
+  // have a value for the active metric.
   const sparkPoints = useMemo(() => {
+    if (!activeMetric) return [];
     const pts = [];
     for (const m of ordered) {
-      if (m.weight_kg == null) continue;
+      const v = m[activeMetric.field];
+      if (v == null) continue;
       const d = new Date(m.taken_at + "T12:00:00");
       const t = Math.floor(d.getTime() / 86400000);
-      pts.push({ t, v: Number(m.weight_kg) });
+      pts.push({ t, v: Number(v) });
     }
     return pts.reverse();
-  }, [ordered]);
+  }, [ordered, activeMetric]);
 
   // Most recent entry is the headline. Compare against the immediately
   // previous one (Δ desde la última) and against the very first one
@@ -163,21 +191,50 @@ export function MedicionesTab({ patient }) {
     return formatter(sign + fmt(diff, 1));
   };
 
-  // Goal progress (only meaningful for weight + when the patient has
-  // a goal_weight_kg set).
-  let goalLine = null;
-  if (latest && latest.weight_kg != null && patient.goal_weight_kg) {
-    const remaining = Number(latest.weight_kg) - Number(patient.goal_weight_kg);
-    if (Math.abs(remaining) < 0.5) {
-      goalLine = t("measurements.goalReached");
-    } else {
-      goalLine = t("measurements.goalRemaining", { value: fmt(Math.abs(remaining), 1) });
-    }
-  }
+  /* Multi-goal tracking. `goal_weight_kg` has been around since
+     migration 024; `goal_body_fat_pct` and `goal_skeletal_muscle_kg`
+     are added in migration 039. Render a line per goal that's set,
+     so a patient with all three sees three lines and a patient with
+     just the weight goal sees the original single line. */
+  const goalLines = useMemo(() => {
+    if (!latest) return [];
+    const lines = [];
+    const make = (label, current, target, fmtUnit) => {
+      if (current == null || target == null) return null;
+      const remaining = Number(current) - Number(target);
+      if (Math.abs(remaining) < 0.5) {
+        return t("measurements.goalReachedFor", { metric: label });
+      }
+      return t("measurements.goalRemainingFor", {
+        metric: label,
+        value: fmt(Math.abs(remaining), 1),
+        unit: fmtUnit,
+      });
+    };
+    const weightLine = make(t("measurements.metric.weight"), latest.weight_kg, patient.goal_weight_kg, "kg");
+    if (weightLine) lines.push(weightLine);
+    const bodyFatLine = make(t("measurements.metric.bodyFat"), latest.body_fat_pct, patient.goal_body_fat_pct, "%");
+    if (bodyFatLine) lines.push(bodyFatLine);
+    const muscleLine = make(t("measurements.metric.muscle"), latest.skeletal_muscle_kg, patient.goal_skeletal_muscle_kg, "kg");
+    if (muscleLine) lines.push(muscleLine);
+    return lines;
+  }, [latest, patient.goal_weight_kg, patient.goal_body_fat_pct, patient.goal_skeletal_muscle_kg, t]);
+
+  // Visceral fat band on the latest scan (1–9 normal, 10–14 elevado, 15+ alto).
+  const visceral = useMemo(() => {
+    if (!latest || latest.visceral_fat_level == null) return null;
+    const v = Number(latest.visceral_fat_level);
+    if (!Number.isFinite(v)) return null;
+    let band = "is-normal", labelKey = "measurements.visceral.normal";
+    if (v >= 15) { band = "is-high"; labelKey = "measurements.visceral.high"; }
+    else if (v >= 10) { band = "is-elevated"; labelKey = "measurements.visceral.elevated"; }
+    return { value: v, band, labelKey };
+  }, [latest]);
 
   // Sheet state. `editing` is the row being edited, or a sentinel
   // string "new" for create mode.
   const [editing, setEditing] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
   const sheetOpen = editing !== null;
 
   const closeSheet = () => setEditing(null);
@@ -216,6 +273,16 @@ export function MedicionesTab({ patient }) {
     if (ok) showSuccess?.(t("deleted"));
   };
 
+  // Headline number for the active metric. Falls back to "—" if the
+  // latest row doesn't have the metric (e.g. activeMetric is "muscle"
+  // but the most recent entry was a manual weigh-in).
+  const headlineValue = activeMetric ? latest?.[activeMetric.field] : null;
+  const deltaFormatter = (v) => {
+    if (!activeMetric) return v;
+    const unit = activeMetric.unit ? ` ${activeMetric.unit}` : "";
+    return `${v}${unit}`;
+  };
+
   return (
     <div className="mediciones-tab">
       {/* Headline / sparkline card. Hidden when there are zero measurements. */}
@@ -223,8 +290,10 @@ export function MedicionesTab({ patient }) {
         <div className="card mediciones-headline">
           <div className="mediciones-headline-row">
             <div className="mediciones-headline-weight">
-              {fmt(latest.weight_kg, 1) ?? "—"}
-              {latest.weight_kg != null && <span className="mediciones-headline-unit">kg</span>}
+              {headlineValue != null ? fmt(headlineValue, activeMetric.digits) : "—"}
+              {headlineValue != null && activeMetric.unit && (
+                <span className="mediciones-headline-unit">{activeMetric.unit}</span>
+              )}
             </div>
             <div className="mediciones-headline-date">{formatDateShort(latest.taken_at)}</div>
           </div>
@@ -232,23 +301,62 @@ export function MedicionesTab({ patient }) {
           <div className="mediciones-deltas">
             <div>
               <span className="mediciones-delta-label">{t("measurements.delta.sinceLast")}: </span>
-              <strong>{renderDelta(latest, previous, "weight_kg", v => t("measurements.delta.kg", { value: v }))}</strong>
+              <strong>{renderDelta(latest, previous, activeMetric.field, deltaFormatter)}</strong>
             </div>
             <div>
               <span className="mediciones-delta-label">{t("measurements.delta.sinceFirst")}: </span>
-              <strong>{renderDelta(latest, earliest, "weight_kg", v => t("measurements.delta.kg", { value: v }))}</strong>
+              <strong>{renderDelta(latest, earliest, activeMetric.field, deltaFormatter)}</strong>
             </div>
           </div>
 
+          {/* Body-composition stack — only renders when the latest scan
+              has the four constituent fields (water, muscle, fat,
+              total weight). Manual entries skip past silently. */}
+          <BodyCompositionStack measurement={latest} t={t} />
+
+          {/* Metric tab strip. Shown only if we actually have more than
+              one metric available (otherwise it's a single-tab strip
+              that adds visual noise without offering a choice). */}
+          {availableMetrics.length > 1 && (
+            <div className="mediciones-metric-tabs" role="tablist" aria-label={t("measurements.metricTabsAria")}>
+              {availableMetrics.map((m) => (
+                <button
+                  key={m.id}
+                  role="tab"
+                  type="button"
+                  aria-selected={m.id === activeMetricId}
+                  className={"mediciones-metric-tab" + (m.id === activeMetricId ? " is-active" : "")}
+                  onClick={() => setRequestedMetricId(m.id)}>
+                  {t(`measurements.metric.${m.id}`)}
+                </button>
+              ))}
+            </div>
+          )}
+
           {sparkPoints.length >= 2 && (
             <>
-              <Sparkline points={sparkPoints} />
-              <div className="mediciones-trend-label">{t("measurements.weightTrend")}</div>
+              <Sparkline key={activeMetricId} points={sparkPoints} />
+              <div className="mediciones-trend-label">
+                {t(`measurements.trend.${activeMetricId}`)}
+              </div>
             </>
           )}
 
-          {goalLine && (
-            <div className="mediciones-goal">{goalLine}</div>
+          {visceral && (
+            <div className={`mediciones-visceral ${visceral.band}`} role="status">
+              <span className="mediciones-visceral-dot" aria-hidden />
+              <span>{t("measurements.visceral.label")}</span>
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>· {visceral.value}</span>
+              <span>· {t(visceral.labelKey)}</span>
+            </div>
+          )}
+
+          {goalLines.length > 0 && (
+            <div className="mediciones-goal">
+              {goalLines.map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -259,12 +367,20 @@ export function MedicionesTab({ patient }) {
           {t("measurements.sectionTitle")} · {ordered.length}
         </div>
         {!readOnly && (
-          <button
-            type="button"
-            className="btn btn-secondary mediciones-add-cta"
-            onClick={() => setEditing("new")}>
-            {t("measurements.addCta")}
-          </button>
+          <div className="mediciones-header-actions">
+            <button
+              type="button"
+              className="btn btn-secondary mediciones-add-cta"
+              onClick={() => setImportOpen(true)}>
+              {t("measurements.import.cta")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary mediciones-add-cta"
+              onClick={() => setEditing("new")}>
+              {t("measurements.addCta")}
+            </button>
+          </div>
         )}
       </div>
 
@@ -339,6 +455,14 @@ export function MedicionesTab({ patient }) {
           measurement={editing === "new" ? null : editing}
           onSave={handleSave}
           onClose={closeSheet}
+        />
+      )}
+
+      {importOpen && (
+        <InBodyImportSheet
+          open={importOpen}
+          patient={patient}
+          onClose={() => setImportOpen(false)}
         />
       )}
     </div>

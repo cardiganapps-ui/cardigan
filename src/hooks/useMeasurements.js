@@ -53,6 +53,74 @@ export function createMeasurementActions(userId, measurements, setMeasurements, 
     return true;
   }
 
+  /* Bulk insert from an InBody / LookinBody CSV import. Each `row` is
+     already mapped to the canonical `measurements` column names by
+     src/utils/inbody.js — we just stamp user_id + patient_id + source
+     and write. The partial unique index on
+     (patient_id, scanned_at, source) makes a re-import idempotent at
+     the DB level; we additionally pre-filter against local state so
+     the "ya importada" preview lines up with what actually gets
+     written.
+
+     Returns { created, skipped }. `skipped` covers both pre-filtered
+     duplicates and any DB-side conflicts the unique index catches —
+     a generic count is enough for the toast, the user can re-open
+     the import sheet to see the row-level breakdown if they care. */
+  async function bulkCreateMeasurements({ patientId, rows }) {
+    if (!patientId || !Array.isArray(rows) || rows.length === 0) {
+      return { created: 0, skipped: 0 };
+    }
+    // Canonicalize timestamps before comparing — Supabase returns
+    // timestamptz as `+00:00` and the parser emits `…Z`; same instant,
+    // different strings. Date round-trip normalizes both.
+    const canon = (s) => {
+      if (!s) return null;
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? null : d.toISOString();
+    };
+    const existingScans = new Set(
+      (measurements || [])
+        .filter((m) => m.patient_id === patientId && m.scanned_at)
+        .map((m) => canon(m.scanned_at))
+        .filter(Boolean),
+    );
+    const fresh = rows.filter((r) => {
+      const iso = canon(r.scanned_at);
+      return iso && !existingScans.has(iso);
+    });
+    const skippedLocal = rows.length - fresh.length;
+    if (fresh.length === 0) return { created: 0, skipped: skippedLocal };
+
+    const payload = fresh.map((r) => {
+      const { _name, _matchesPatient, ...clean } = r; // strip preview-only fields
+      return {
+        user_id: userId,
+        patient_id: patientId,
+        source: "inbody_csv",
+        // taken_at is the stable date label used by the rest of the
+        // UI (sparkline x-axis, list grouping). Derive it from the
+        // exact scanned_at so the two stay aligned.
+        taken_at: clean.scanned_at.slice(0, 10),
+        ...clean,
+      };
+    });
+
+    setMutating(true);
+    setMutationError("");
+    const { data, error } = await supabase
+      .from("measurements")
+      .insert(payload)
+      .select();
+    setMutating(false);
+    if (error) {
+      setMutationError(error.message);
+      return { created: 0, skipped: rows.length };
+    }
+    setMeasurements((prev) => [...(data || []), ...prev]);
+    const created = data?.length || 0;
+    return { created, skipped: skippedLocal + (fresh.length - created) };
+  }
+
   async function deleteMeasurement(id) {
     setMutating(true);
     setMutationError("");
@@ -64,5 +132,5 @@ export function createMeasurementActions(userId, measurements, setMeasurements, 
     return true;
   }
 
-  return { createMeasurement, updateMeasurement, deleteMeasurement };
+  return { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements };
 }
