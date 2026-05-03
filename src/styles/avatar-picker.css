@@ -267,3 +267,128 @@
   border: 2px solid var(--white);
   pointer-events: none;
 }
+
+/* ── Crop editor ─────────────────────────────────────────────────
+   Renders inside the same sheet panel as the picker (not as a
+   separate sheet) so the surface feels continuous. The frame is a
+   square viewport that the user's photo lives inside; an SVG mask
+   on top of the photo punches a circular cutout for preview. */
+.av-crop-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 20px 24px;
+  gap: 18px;
+  /* iOS-style smooth entry */
+  animation: avCropFadeIn var(--dur-base) var(--ease-out);
+}
+@keyframes avCropFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.av-crop-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.av-crop-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #000;
+  /* Soft shadow + subtle ring read as a depth cue — the photo feels
+     contained inside a tangible viewport rather than just floating. */
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.1),
+    0 8px 24px -6px rgba(0,0,0,0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.06);
+  /* Touch handling: pan-y/pan-x default plus pinch are blocked on
+     the frame; the JS handlers drive movement instead. */
+  touch-action: none;
+  /* Don't let the user accidentally drag the image outside the
+     frame on long-press. */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.av-crop-frame:active { cursor: grabbing; }
+
+.av-crop-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Zoom slider — cardigan-styled range input */
+.av-crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+.av-crop-zoom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--charcoal-md);
+  flex-shrink: 0;
+}
+.av-crop-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--cream-deeper);
+  cursor: pointer;
+  outline: none;
+}
+.av-crop-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 3px solid var(--white);
+  box-shadow: 0 1px 4px rgba(46,46,46,0.18), 0 0 0 1px var(--teal-pale);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.av-crop-slider::-webkit-slider-thumb:active { transform: scale(0.92); }
+.av-crop-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 3px solid var(--white);
+  box-shadow: 0 1px 4px rgba(46,46,46,0.18), 0 0 0 1px var(--teal-pale);
+  cursor: pointer;
+}
+.av-crop-slider:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.av-crop-hint {
+  font-size: 12px;
+  color: var(--charcoal-xl);
+  text-align: center;
+  line-height: 1.4;
+  max-width: 280px;
+}
+
+.av-crop-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+.av-crop-actions .btn { flex: 1; }

@@ -3,11 +3,12 @@ import { IconX, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useEscape } from "../hooks/useEscape";
-import { resizeToSquareJpeg, avatarPath } from "../utils/imageUpload";
+import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
 import { invalidateAvatarUrl } from "../hooks/useAvatarUrl";
 import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
+import { AvatarCropEditor } from "./AvatarCropEditor";
 
 /* ── Cardigan avatar picker ─────────────────────────────────────────
    Bottom sheet with two ways to set a profile photo:
@@ -50,23 +51,41 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     return !sameAvatar(draftToStored(draft), currentAvatar);
   }, [draft, currentAvatar]);
 
-  const onFile = useCallback(async (file) => {
+  /* ── File pick → crop preview ──
+     Validate the file fits Cardigan's avatar contract (image/* and
+     ≤10 MB), then route into the crop editor. The editor is the
+     source of truth for the final blob — center-crop is no longer
+     applied automatically because the user might want a different
+     framing than dead-centre. */
+  const onFile = useCallback((file) => {
+    const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
     setError("");
     if (!file) return;
-    try {
-      const blob = await resizeToSquareJpeg(file, 256);
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-      const previewUrl = URL.createObjectURL(blob);
-      previewUrlRef.current = previewUrl;
-      setDraft({ kind: "uploaded-file", blob, previewUrl });
-      haptic.tap();
-    } catch (err) {
-      const msg = err?.message || "";
-      if (msg === "too_large") setError(t("avatar.err.tooLarge") || "La imagen debe pesar menos de 10 MB.");
-      else if (msg === "not_image") setError(t("avatar.err.notImage") || "Selecciona una imagen.");
-      else setError(t("avatar.err.generic") || "No se pudo procesar la imagen.");
+    if (!(file.type || "").startsWith("image/")) {
+      setError(t("avatar.err.notImage") || "Selecciona una imagen.");
+      return;
     }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError(t("avatar.err.tooLarge") || "La imagen debe pesar menos de 10 MB.");
+      return;
+    }
+    setDraft({ kind: "cropping", file });
+    haptic.tap();
   }, [t]);
+
+  /* When the cropper hands back a final blob, switch to "uploaded-file"
+     state — the existing save path picks it up unchanged. */
+  const onCropConfirm = useCallback((blob) => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const previewUrl = URL.createObjectURL(blob);
+    previewUrlRef.current = previewUrl;
+    setDraft({ kind: "uploaded-file", blob, previewUrl });
+    haptic.success();
+  }, []);
+
+  const onCropCancel = useCallback(() => {
+    setDraft(fromCurrent(currentAvatar));
+  }, [currentAvatar]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
@@ -176,12 +195,29 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       >
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">{t("avatar.title") || "Cambiar foto"}</span>
+          <span className="sheet-title">
+            {draft.kind === "cropping"
+              ? (t("avatar.crop.title") || "Ajusta tu foto")
+              : (t("avatar.title") || "Cambiar foto")}
+          </span>
           <button className="sheet-close" aria-label={t("close") || "Cerrar"} onClick={onClose}>
             <IconX size={14} />
           </button>
         </div>
 
+        {/* Cropping UI takes over the sheet body — replaces the preset
+            grid + drop zone while the user is positioning their photo.
+            Returning to the picker (Cancelar) restores the previous
+            draft (whatever was saved before). */}
+        {draft.kind === "cropping" && (
+          <AvatarCropEditor
+            file={draft.file}
+            onCancel={onCropCancel}
+            onConfirm={onCropConfirm}
+          />
+        )}
+
+        {draft.kind !== "cropping" && (
         <div className="av-picker-body">
           <div className="av-picker-preview-row">
             <div className="av-picker-preview">{previewNode}</div>
@@ -271,6 +307,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
