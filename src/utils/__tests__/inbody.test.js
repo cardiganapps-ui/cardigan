@@ -9,6 +9,7 @@ import {
   parseNumber,
   namesMatch,
   normalizeName,
+  parseFromRows,
 } from "../inbody";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -237,6 +238,105 @@ describe("parseInBodyCSV — null-safety on missing values", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].weight_kg).toBe(77);
     expect(warnings).toContain("row_without_date");
+  });
+});
+
+describe("parseFromRows — XLSX-shaped input (native Date / number cells)", () => {
+  // Mirrors the shape `read-excel-file` returns: header row of strings,
+  // data rows where date cells are real JS Date objects and numeric
+  // cells are real JS numbers. The shared parseFromRows path must
+  // accept that without losing precision or coercing through "76.4".
+  const header = [
+    "Nombre", "Fecha de prueba", "Modelo", "Peso", "PGC (%)", "MME",
+    "Nivel de Grasa Visceral", "TMB", "Puntuación",
+  ];
+
+  it("preserves native number cells (no false zero, no rounding drift)", () => {
+    const cells = [
+      header,
+      ["Ana García", new Date("2026-04-12T10:30:00Z"), "InBody 770",
+       76.4, 32.1, 24.6, 11, 1420, 72],
+    ];
+    const { rows } = parseFromRows(cells);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].weight_kg).toBe(76.4);
+    expect(rows[0].body_fat_pct).toBe(32.1);
+    expect(rows[0].skeletal_muscle_kg).toBe(24.6);
+    expect(rows[0].visceral_fat_level).toBe(11);
+    expect(rows[0].basal_metabolic_rate_kcal).toBe(1420);
+    expect(rows[0].inbody_score).toBe(72);
+  });
+
+  it("accepts a native Date for scanned_at", () => {
+    const cells = [
+      header,
+      ["Ana", new Date("2026-04-12T10:30:00Z"), "770", 76.4, 32, 24, 11, 1400, 70],
+    ];
+    const { rows } = parseFromRows(cells);
+    expect(rows[0].scanned_at).toBe("2026-04-12T10:30:00.000Z");
+  });
+
+  it("emits row_without_date when a Date cell is invalid", () => {
+    const cells = [
+      header,
+      ["Ana", new Date("nope"), "770", 76.4, 32, 24, 11, 1400, 70],
+    ];
+    const { rows, warnings } = parseFromRows(cells);
+    expect(rows).toHaveLength(0);
+    expect(warnings).toContain("row_without_date");
+  });
+
+  it("treats null cells as missing (never coerces to 0)", () => {
+    const cells = [
+      header,
+      ["Ana", new Date("2026-04-12T10:30:00Z"), "770", 76.4, null, null, null, null, null],
+    ];
+    const { rows } = parseFromRows(cells);
+    expect(rows[0].weight_kg).toBe(76.4);
+    expect(rows[0].body_fat_pct).toBeUndefined();
+    expect(rows[0].skeletal_muscle_kg).toBeUndefined();
+    expect(rows[0].visceral_fat_level).toBeUndefined();
+  });
+
+  it("preserves unmapped XLSX cells under raw_extra (stringified)", () => {
+    const cells = [
+      ["Nombre", "Fecha de prueba", "Peso", "Algo Raro"],
+      ["Ana", new Date("2026-04-12T10:30:00Z"), 76.4, 99.5],
+    ];
+    const { rows } = parseFromRows(cells);
+    // Numbers in raw_extra get stringified for jsonb stability.
+    expect(rows[0].raw_extra).toEqual({ "Algo Raro": "99.5" });
+  });
+
+  it("rounds a fractional integer-field cell (defensive — Excel sometimes stores ints as floats)", () => {
+    const cells = [
+      ["Nombre", "Fecha de prueba", "Peso", "Nivel de Grasa Visceral"],
+      ["Ana", new Date("2026-04-12T10:30:00Z"), 76.4, 11.0],
+    ];
+    const { rows } = parseFromRows(cells);
+    expect(rows[0].visceral_fat_level).toBe(11);
+  });
+});
+
+describe("parseInBodyDate — Date-object passthrough", () => {
+  it("accepts a JS Date directly", () => {
+    expect(parseInBodyDate(new Date("2026-04-12T10:30:00Z")))
+      .toBe("2026-04-12T10:30:00.000Z");
+  });
+  it("returns null for an invalid Date", () => {
+    expect(parseInBodyDate(new Date("nope"))).toBeNull();
+  });
+});
+
+describe("parseNumber — native-number passthrough", () => {
+  it("accepts a JS number directly", () => {
+    expect(parseNumber(76.4)).toBe(76.4);
+    expect(parseNumber(0)).toBe(0);
+    expect(parseNumber(-3.5)).toBe(-3.5);
+  });
+  it("rejects non-finite numbers", () => {
+    expect(parseNumber(NaN)).toBeNull();
+    expect(parseNumber(Infinity)).toBeNull();
   });
 });
 

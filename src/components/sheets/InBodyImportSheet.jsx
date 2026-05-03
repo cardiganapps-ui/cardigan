@@ -5,7 +5,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useCardigan } from "../../context/CardiganContext";
-import { parseInBodyCSV } from "../../utils/inbody";
+import { parseInBodyCSV, parseInBodyXLSX } from "../../utils/inbody";
 import { haptic } from "../../utils/haptics";
 
 /* ── InBodyImportSheet ───────────────────────────────────────────
@@ -82,18 +82,38 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
     setParseError("");
     if (!file) return;
     const name = (file.name || "").toLowerCase();
-    if (!(name.endsWith(".csv") || (file.type || "").includes("csv"))) {
-      setParseError(t("measurements.import.errors.notCsv"));
+    const isCsv  = name.endsWith(".csv")  || (file.type || "").includes("csv");
+    const isXlsx = name.endsWith(".xlsx") || (file.type || "").includes("spreadsheetml");
+    // Legacy .xls (binary, pre-2007) is the OOXML predecessor and is
+    // a different format that read-excel-file doesn't support. Tell
+    // the user explicitly instead of routing it down the xlsx path
+    // and getting a generic "no pudimos leer" — most users can
+    // re-export as .xlsx or .csv.
+    const isLegacyXls = name.endsWith(".xls") && !isXlsx;
+
+    if (isLegacyXls) {
+      setParseError(t("measurements.import.errors.legacyXls"));
       return;
     }
-    let text;
-    try {
-      text = await file.text();
-    } catch {
-      setParseError(t("measurements.import.errors.readFailed"));
+    if (!isCsv && !isXlsx) {
+      setParseError(t("measurements.import.errors.unsupportedFile"));
       return;
     }
-    const result = parseInBodyCSV(text, { expectedName: patient?.name });
+
+    let result;
+    if (isXlsx) {
+      result = await parseInBodyXLSX(file, { expectedName: patient?.name });
+    } else {
+      let text;
+      try {
+        text = await file.text();
+      } catch {
+        setParseError(t("measurements.import.errors.readFailed"));
+        return;
+      }
+      result = parseInBodyCSV(text, { expectedName: patient?.name });
+    }
+
     if (!result.rows.length) {
       // Translate the most common warning codes into actionable Spanish.
       const code = result.warnings[0] || "no_data_rows";
@@ -102,6 +122,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
         no_data_rows:      t("measurements.import.errors.noDataRows"),
         no_weight_column:  t("measurements.import.errors.noWeightColumn"),
         row_without_date:  t("measurements.import.errors.noDataRows"),
+        xlsx_read_failed:  t("measurements.import.errors.readFailed"),
       }[code] || t("measurements.import.errors.noDataRows");
       setParseError(msg);
       return;
@@ -205,7 +226,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 style={{ display: "none" }}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />

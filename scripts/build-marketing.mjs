@@ -77,7 +77,7 @@ const PROFESSIONS = [
     heroH1: "Lleva el control de tus pacientes y consultas.",
     heroLead: "Cardigan reúne agenda, historial nutricional, importación de InBody, mediciones corporales y pagos para nutriólogos en México. Menos hojas sueltas, más tiempo con tus pacientes.",
     features: [
-      { icon: "inbody",   h: "Importa tus InBody",                 body: "Sube el CSV de LookinBody y todas las mediciones — músculo esquelético, grasa visceral, ángulo de fase — aparecen en el historial del paciente con gráficas listas." },
+      { icon: "inbody",   h: "Importa tus InBody",                 body: "Sube el CSV o Excel de LookinBody y todas las mediciones — músculo esquelético, grasa visceral, ángulo de fase — aparecen en el historial del paciente con gráficas listas." },
       { icon: "scale",    h: "Mediciones corporales con gráficos", body: "Peso, % grasa, perímetros — guarda mediciones y visualiza el progreso de cada paciente con gráficos automáticos." },
       { icon: "calendar", h: "Agenda de consultas",                body: "Consultas recurrentes, recordatorios automáticos y vista de mes / semana / día. Cancela una cita y Cardigan reorganiza el resto." },
       { icon: "doc",      h: "Plan alimenticio en notas",          body: "Adjunta planes, antecedentes médicos, alergias y foto del último análisis a la ficha de cada paciente." },
@@ -86,7 +86,7 @@ const PROFESSIONS = [
       { icon: "shield",   h: "Cumple LFPDPPP",                     body: "Datos cifrados en reposo y en tránsito. Exportación de información de cada paciente con un toque." },
     ],
     faqs: [
-      { q: "¿Puedo importar mis InBody?", a: "Sí. Exporta el CSV desde LookinBody (cualquier modelo: 270, 570, 770, 970), súbelo a Cardigan, revisa la lista y confirma. Las mediciones de músculo esquelético, grasa visceral, ángulo de fase y InBody Score aparecen en el historial del paciente con gráficas listas. Re-importar el mismo archivo es seguro: las mediciones repetidas se omiten automáticamente." },
+      { q: "¿Puedo importar mis InBody?", a: "Sí. Exporta el archivo desde LookinBody en formato CSV o Excel (.xlsx), de cualquier modelo (270, 570, 770, 970), súbelo a Cardigan, revisa la lista y confirma. Las mediciones de músculo esquelético, grasa visceral, ángulo de fase y InBody Score aparecen en el historial del paciente con gráficas listas. Re-importar el mismo archivo es seguro: las mediciones repetidas se omiten automáticamente." },
       { q: "¿Puedo subir planes alimenticios y análisis?", a: "Sí. Sube PDFs, imágenes o Word a la ficha de cada paciente — quedan vinculados a su historial y se pueden consultar en cualquier momento." },
       { q: "¿Cardigan grafica el peso de mis pacientes?", a: "Sí. Captura las mediciones (peso, % grasa, músculo, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición. Si el paciente tiene escaneos InBody, la gráfica cambia entre métricas con un toque." },
       { q: "¿Funciona en mi celular?", a: "Sí. Se instala como app en iPhone, iPad y Android desde el navegador. También funciona perfecto en escritorio." },

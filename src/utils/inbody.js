@@ -164,9 +164,15 @@ function mapHeaderRow(headerCells) {
 
 /* "76,4" → 76.4, "1,234.5" → 1234.5, "76.4 kg" → 76.4, "" → null,
    "—" / "-" → null, "N/A" → null. Strips any non-numeric trailing
-   suffix (units), tolerates either decimal separator. */
+   suffix (units), tolerates either decimal separator.
+
+   Native numbers (XLSX cells coerced by the reader) pass through
+   untouched — the LookinBody Excel export stores numerics as
+   actual cells, not formatted text, so we'd mangle them by
+   string-coercing first. */
 export function parseNumber(s) {
   if (s == null) return null;
+  if (typeof s === "number") return Number.isFinite(s) ? s : null;
   const raw = String(s).trim();
   if (!raw || raw === "-" || raw === "—" || /^n\/?a$/i.test(raw)) return null;
   // Drop trailing non-numeric (units like " kg", " %", " cm").
@@ -198,16 +204,26 @@ export function parseNumber(s) {
   return Number.isFinite(n) ? n : null;
 }
 
-/* InBody dates come in two formats from LookinBody:
+/* InBody dates come in two text formats from LookinBody:
      "YYYY-MM-DD HH:mm:ss"   (English / ISO)
      "DD/MM/YYYY HH:mm"      (Spanish)
      "DD/MM/YYYY"            (Spanish, time omitted)
+   …or as a native Date cell when the source is XLSX (read-excel-file
+   coerces date-typed cells to JS Date instances). We accept both.
+
    Returns an ISO timestamp (UTC-anchored noon to keep the date
    stable across timezones — InBody never reports a timezone, and
    the consultorio's local date is what the nutritionist cares about).
    Returns null on anything unparseable. */
 export function parseInBodyDate(s) {
-  if (!s || typeof s !== "string") return null;
+  if (!s) return null;
+  // Native Date (XLSX cell) — round-trip through toISOString. Skip
+  // the timezone-anchoring on this path because read-excel-file
+  // already gives us a real instant.
+  if (s instanceof Date) {
+    return Number.isNaN(s.getTime()) ? null : s.toISOString();
+  }
+  if (typeof s !== "string") return null;
   const raw = s.trim();
   if (!raw) return null;
 
@@ -229,9 +245,21 @@ export function parseInBodyDate(s) {
   return null;
 }
 
+/* Coerce a raw cell value (may be string / number / Date / null
+   / undefined / boolean from XLSX) to a trimmed display string for
+   identity / extra / device_model fields. Numbers + Dates stringify
+   to their canonical form; null → "". */
+function cellToString(val) {
+  if (val == null) return "";
+  if (val instanceof Date) return Number.isNaN(val.getTime()) ? "" : val.toISOString();
+  return String(val).trim();
+}
+
 /* Parse one data row given the column-mapped header. Values land in
    either named fields or raw_extra; numeric fields go through
-   parseNumber, the date through parseInBodyDate. */
+   parseNumber, the date through parseInBodyDate. Cells may be raw
+   strings (CSV path) or native JS values (XLSX path) — both helpers
+   normalise upstream of this function. */
 function parseRow(headerMap, cells) {
   const out = { raw_extra: {} };
   let identityName = null;
@@ -240,14 +268,16 @@ function parseRow(headerMap, cells) {
     const val = cells[i];
     if (slot.extra) {
       // Preserve the raw cell — empty strings still get recorded so a
-      // forensic dump shows the column was present but blank.
-      if (val !== undefined && val !== "") out.raw_extra[slot.extra] = val;
+      // forensic dump shows the column was present but blank. XLSX
+      // gives us native types here; stringify before storing in jsonb.
+      const str = cellToString(val);
+      if (str !== "") out.raw_extra[slot.extra] = str;
       continue;
     }
     const field = slot.field;
-    if (field === "name") { identityName = (val || "").trim(); continue; }
+    if (field === "name") { identityName = cellToString(val); continue; }
     if (field === "external_id") {
-      const trimmed = (val || "").trim();
+      const trimmed = cellToString(val);
       if (trimmed) out.external_id = trimmed;
       continue;
     }
@@ -266,7 +296,7 @@ function parseRow(headerMap, cells) {
       continue;
     }
     // Plain string field (device_model).
-    const trimmed = (val || "").trim();
+    const trimmed = cellToString(val);
     if (trimmed) out[field] = trimmed;
   }
   // Drop the empty raw_extra so downstream JSON.stringify doesn't
@@ -275,7 +305,41 @@ function parseRow(headerMap, cells) {
   return { row: out, name: identityName };
 }
 
-/* Top-level entry point.
+/* Shared logic between CSV and XLSX paths: takes an array of arrays
+   (header row first, then data) and produces the canonical
+   { rows, warnings, totalRows } shape. Exported so callers can plug
+   in alternative sources (e.g. a future drag-paste-from-clipboard
+   flow) without re-implementing the InBody column map. */
+export function parseFromRows(cells, { expectedName = "" } = {}) {
+  const warnings = [];
+  if (cells.length < 2) {
+    return { rows: [], warnings: ["no_data_rows"], totalRows: 0 };
+  }
+  const headerMap = mapHeaderRow(cells[0].map(cellToString));
+  const hasWeight = headerMap.some((h) => h.field === "weight_kg");
+  if (!hasWeight) warnings.push("no_weight_column");
+
+  const expectedNorm = normalizeName(expectedName);
+  const rows = [];
+  for (let i = 1; i < cells.length; i++) {
+    const { row, name } = parseRow(headerMap, cells[i]);
+    if (!row.scanned_at) {
+      warnings.push("row_without_date");
+      continue;
+    }
+    const rowName = name || "";
+    rows.push({
+      ...row,
+      _name: rowName,
+      _matchesPatient: expectedNorm
+        ? namesMatch(normalizeName(rowName), expectedNorm)
+        : true,
+    });
+  }
+  return { rows, warnings, totalRows: cells.length - 1 };
+}
+
+/* Top-level entry point — CSV.
 
    `text` is the raw CSV content. `expectedName` is the patient's name
    (used to flag rows that don't match — the import sheet uses this
@@ -291,43 +355,50 @@ function parseRow(headerMap, cells) {
 
    Never throws on malformed input — degrades to `{ rows: [],
    warnings: [...] }` so the UI can render a clear error state. */
-export function parseInBodyCSV(text, { expectedName = "" } = {}) {
-  const warnings = [];
+export function parseInBodyCSV(text, opts = {}) {
   if (!text || typeof text !== "string") {
     return { rows: [], warnings: ["empty"], totalRows: 0 };
   }
-  const cells = parseCSV(text);
-  if (cells.length < 2) {
+  return parseFromRows(parseCSV(text), opts);
+}
+
+/* Top-level entry point — XLSX.
+
+   `file` is a File / Blob (browser) or a Buffer (Node, for tests).
+   The xlsx reader is lazy-imported via dynamic import so the
+   ~70KB-gzipped library stays out of the main bundle for the 95% of
+   users who never touch this path.
+
+   read-excel-file returns rows as `[[cell, ...], ...]` with native
+   types preserved: numbers, Date objects, booleans, null. The shared
+   parseFromRows path handles all of those — see parseNumber +
+   parseInBodyDate which both accept native types as a first-class
+   path. Same return shape as parseInBodyCSV; same graceful-degrade
+   behaviour on parse errors. */
+export async function parseInBodyXLSX(file, opts = {}) {
+  if (!file) return { rows: [], warnings: ["empty"], totalRows: 0 };
+  let cells;
+  try {
+    // read-excel-file ships separate entry points per environment.
+    // The browser bundle is smallest and is the only path we ever
+    // invoke at runtime — this code only runs from the import sheet
+    // after the user has dropped a file. /* @vite-ignore */ keeps
+    // Vite from trying to statically analyze the dynamic import
+    // (which would fail under SSR pre-render anyway).
+    const mod = await import("read-excel-file/browser");
+    const readXlsxFile = mod.default || mod;
+    cells = await readXlsxFile(file);
+  } catch (err) {
+    // Common failure modes: corrupt zip, password-protected workbook,
+    // legacy .xls (binary, not the OOXML zip format). Surface a
+    // single warning code; the UI translates that to the actionable
+    // Spanish error so we don't ship raw library messages to users.
+    return { rows: [], warnings: ["xlsx_read_failed"], totalRows: 0, error: err };
+  }
+  if (!Array.isArray(cells) || cells.length < 1) {
     return { rows: [], warnings: ["no_data_rows"], totalRows: 0 };
   }
-  const headerMap = mapHeaderRow(cells[0]);
-  // Sanity check: a LookinBody export always has a Peso/Weight column.
-  const hasWeight = headerMap.some((h) => h.field === "weight_kg");
-  if (!hasWeight) {
-    warnings.push("no_weight_column");
-  }
-
-  const expectedNorm = normalizeName(expectedName);
-  const rows = [];
-  for (let i = 1; i < cells.length; i++) {
-    const { row, name } = parseRow(headerMap, cells[i]);
-    // A row without a scanned_at is meaningless for our schema (no
-    // unique key to dedupe against, no x-axis position for the
-    // sparkline). Skip it but warn so the user knows.
-    if (!row.scanned_at) {
-      warnings.push("row_without_date");
-      continue;
-    }
-    const rowName = name || "";
-    rows.push({
-      ...row,
-      _name: rowName,
-      _matchesPatient: expectedNorm
-        ? namesMatch(normalizeName(rowName), expectedNorm)
-        : true,
-    });
-  }
-  return { rows, warnings, totalRows: cells.length - 1 };
+  return parseFromRows(cells, opts);
 }
 
 /* Lower-cased, whitespace-collapsed, accent-stripped name for fuzzy
