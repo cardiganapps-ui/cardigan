@@ -1395,11 +1395,11 @@ export default {
   // sesión", a nutritionist reads "Próxima consulta", a tutor reads
   // "Próxima clase". Mirror of the existing home.nextSession pattern.
   scheduling: {
-    modeLabel:        "¿Cómo van las {session.p}?",
+    modeLabel:        "¿Cómo prefieres agendar las {session.p}?",
     recurring:        "Recurrentes",
     episodic:         "A demanda",
-    recurringHint:    "Mismo día y hora cada semana — se renueva sola.",
-    episodicHint:     "Sin horario fijo — agendas la siguiente al final de cada {session.s}.",
+    recurringHint:    "Mismo día y hora cada semana. Cardigan va renovando la agenda solo.",
+    episodicHint:     "Sin horario fijo. Agendas cada {session.s} al terminar la anterior.",
     nextConsult:      "Próxima {session.s}",
     lastConsult:      "Última {session.s}",
     lastConsultLabel: "Última {session.s}",
@@ -1411,22 +1411,22 @@ export default {
     date:             "Fecha",
     firstConsult:        "Primera {session.s}",
     skipFirstConsult:    "Agendar más tarde",
-    skipFirstConsultHint:"Crea el paciente sin agendar todavía. Programas la primera {session.s} desde el {record.s} cuando quieras.",
+    skipFirstConsultHint:"Crea el paciente y agenda su primera {session.s} más adelante desde el {record.s}.",
     // Mode-switch (recurring → episodic only in v1; the reverse needs
     // a slot picker which is its own follow-on).
     switchToEpisodic:        "Cambiar a modo a demanda",
     switchToEpisodicTitle:   "¿Cambiar a modo a demanda?",
-    switchToEpisodicBody:    "Las {session.p} ya agendadas se conservan. Dejaremos de generar nuevas {session.p} semanales automáticamente — vas a programar cada una al terminar la anterior.",
+    switchToEpisodicBody:    "Las {session.p} ya agendadas no se pierden. Dejamos de crear las semanales automáticamente — agendarás cada una al terminar la anterior.",
     switchToEpisodicConfirm: "Cambiar",
     switchToRecurring:        "Cambiar a modo recurrente",
     switchToRecurringTitle:   "Definir horario recurrente",
-    switchToRecurringIntro:   "Elige el día y hora semanal. Cardigan agenda las próximas 15 semanas y mantiene la agenda viva mientras el paciente esté activo.",
+    switchToRecurringIntro:   "Elige el día y la hora semanal. Cardigan agenda las próximas 15 semanas y se va renovando mientras el paciente siga activo.",
     switchToRecurringConfirm: "Activar recurrencia",
     weekday:                  "Día",
     modeChanged:              "Modo actualizado",
     modeChangedRecurring:     "Horario recurrente activado",
     endOfVisitPrompt:         "{session.S} completada",
-    episodicEditHint:         "Este paciente está en modo \"a demanda\" — cada {session.s} se agenda al final de la anterior. Para activar un horario semanal recurrente, usa \"Cambiar a recurrentes\" en el resumen.",
+    episodicEditHint:         "Este paciente está en modo \"a demanda\" — cada {session.s} se agenda al terminar la anterior. Si quieres un horario semanal fijo, usa \"Cambiar a modo recurrente\" en el resumen.",
     quickPickAria:    "Cadencia rápida",
     quickPick: {
       in2w:   "En 2 semanas",
