@@ -97,20 +97,22 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             still surfaces via the inline badge to the right of the
             name. */}
         <div className="row-content">
-          <div className="row-title" style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+          <div className="row-title">
             {account.fullName || t("admin.noName")}
+          </div>
+          {/* Access-tier + state badges — pulled out of the title row
+              and aligned to the left below the name so the column of
+              pills lines up across rows. Pre-fix the badges sat
+              inline with the name and floated to wherever the name
+              ended, which read disorganised when names varied in
+              length. Single source of truth driven by
+              fetchAllAccounts.tier so admin + user views agree on
+              whether someone is paid, comp'd, in trial, or expired.
+              For Pro users who scheduled cancellation, a SINGLE amber
+              badge "Pro · termina <date>" replaces the two-badge
+              "Pro" + "Cancelando" stack. */}
+          <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", margin:"3px 0 1px" }}>
             {account.blocked && <span className="badge badge-red">{t("admin.accountStatusBlocked")}</span>}
-            {/* Access-tier badge — single source of truth driven by
-                fetchAllAccounts.tier so admin + user views agree on
-                whether someone is paid, comp'd, in trial, or
-                expired. Pre-fix this row showed "Gratis" for every
-                comp-granted account and silently nothing for trial
-                / expired users; admins couldn't tell at a glance.
-                For Pro users who scheduled cancellation, a SINGLE
-                amber badge "Pro · termina <date>" replaces the
-                two-badge "Pro" + "Cancelando" stack — that read as
-                two unrelated facts ("they're Pro AND they're
-                cancelling?") instead of "Pro until X". */}
             {account.tier === "pro" && (() => {
               const cancelIso = account.subscriptionCancelAt
                 || account.subscriptionPeriodEnd
