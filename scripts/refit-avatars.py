@@ -36,17 +36,19 @@ layer_close_re = re.compile(r'</g>(\s*</svg>)')
 DEFAULT_SCALE = 0.86
 DEFAULT_TY    = 512   # vertical centre after the inner translate
 
-# Per-file overrides — animals wear sweaters whose bottom corners
-# extend close to the artwork's bounding-box corners. Those corners
-# fall outside the inscribed circle at scale 0.86, so the sweater gets
-# clipped where it should be most visible. We shrink the animal art
-# slightly and shift it down a touch so the whole sweater sits inside
-# the visible circle.
+# Per-file overrides — animals wear sweaters whose hem (bottom edge
+# of the body) sits *just inside* the inscribed circle at the default
+# scale, so the circular CSS clip lands a horizontal chord across the
+# hem and the avatar reads as "torso cut off" rather than "portrait
+# headshot". Shifting ty down + scaling slightly tighter pushes the
+# hem past the SVG bottom (clipped naturally, off-frame) so the
+# circle's bottom curve becomes the natural framing line — the same
+# visual language a portrait headshot uses.
 PER_FILE = {
-    "perrito.svg": {"scale": 0.80, "ty": 542},
-    "carly.svg":   {"scale": 0.80, "ty": 542},
-    "gatito.svg":  {"scale": 0.80, "ty": 542},
-    "osito.svg":   {"scale": 0.80, "ty": 542},
+    "perrito.svg": {"scale": 0.78, "ty": 600},
+    "carly.svg":   {"scale": 0.78, "ty": 600},
+    "gatito.svg":  {"scale": 0.78, "ty": 600},
+    "osito.svg":   {"scale": 0.78, "ty": 600},
 }
 
 n_done = 0
