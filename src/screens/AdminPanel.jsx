@@ -97,56 +97,67 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             still surfaces via the inline badge to the right of the
             name. */}
         <div className="row-content">
-          <div className="row-title">
-            {account.fullName || t("admin.noName")}
-          </div>
-          {/* Access-tier + state badges — pulled out of the title row
-              and aligned to the left below the name so the column of
-              pills lines up across rows. Pre-fix the badges sat
-              inline with the name and floated to wherever the name
-              ended, which read disorganised when names varied in
-              length. Single source of truth driven by
-              fetchAllAccounts.tier so admin + user views agree on
-              whether someone is paid, comp'd, in trial, or expired.
-              For Pro users who scheduled cancellation, a SINGLE amber
-              badge "Pro · termina <date>" replaces the two-badge
-              "Pro" + "Cancelando" stack. */}
-          <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", margin:"3px 0 1px" }}>
-            {account.blocked && <span className="badge badge-red">{t("admin.accountStatusBlocked")}</span>}
-            {account.tier === "pro" && (() => {
-              const cancelIso = account.subscriptionCancelAt
-                || account.subscriptionPeriodEnd
-                || null;
-              const isCancelling = !!account.subscriptionCancelAt
-                || !!account.subscriptionCancelAtPeriodEnd;
-              if (isCancelling) {
-                let dateStr = null;
-                if (cancelIso) {
-                  try {
-                    dateStr = formatDate(cancelIso, "short").replace(/\.$/, "");
-                  } catch { /* fall through */ }
+          {/* Name + tier badge live on the same line, with the badge
+              pinned to the right via justify-content: space-between.
+              That puts the pill in a stable column on the right edge
+              regardless of name length AND keeps the row at its
+              original single-line height. The name uses min-width:0
+              + ellipsis so a long name (e.g. "Maria Aurora Tello de
+              Meneses Sanchez") truncates instead of pushing the
+              badge off-row. The blocked badge stays inline with the
+              name on the left — it's a state warning that needs to
+              read alongside the name, not as a tier classification.
+              Tier source: fetchAllAccounts.tier (single source of
+              truth shared with the user-facing subscription view).
+              Pro+cancelling collapses to a single amber pill
+              "Pro · termina <date>". */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
+            <div className="row-title" style={{
+              flex:1, minWidth:0,
+              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+              display:"flex", alignItems:"center", gap:6,
+            }}>
+              <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 }}>
+                {account.fullName || t("admin.noName")}
+              </span>
+              {account.blocked && <span className="badge badge-red" style={{ flexShrink:0 }}>{t("admin.accountStatusBlocked")}</span>}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+              {account.tier === "pro" && (() => {
+                const cancelIso = account.subscriptionCancelAt
+                  || account.subscriptionPeriodEnd
+                  || null;
+                const isCancelling = !!account.subscriptionCancelAt
+                  || !!account.subscriptionCancelAtPeriodEnd;
+                if (isCancelling) {
+                  let dateStr = null;
+                  if (cancelIso) {
+                    try {
+                      dateStr = formatDate(cancelIso, "short").replace(/\.$/, "");
+                    } catch { /* fall through */ }
+                  }
+                  return (
+                    <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
+                      {dateStr ? `Pro · termina ${dateStr}` : "Pro · cancelada"}
+                    </span>
+                  );
                 }
                 return (
-                  <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
-                    {dateStr ? `Pro · termina ${dateStr}` : "Pro · cancelada"}
-                  </span>
+                  <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
                 );
-              }
-              return (
-                <span className="badge" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}>Pro</span>
-              );
-            })()}
-            {account.tier === "comp" && (
-              <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>
-            )}
-            {account.tier === "trial" && (
-              <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
-                Prueba: {account.daysLeftInTrial}d
-              </span>
-            )}
-            {account.tier === "expired" && (
-              <span className="badge" style={{ background:"var(--red-bg)", color:"var(--red)" }}>Vencida</span>
-            )}
+              })()}
+              {account.tier === "comp" && (
+                <span className="badge" style={{ background:"var(--green-bg)", color:"var(--green)" }}>Gratis</span>
+              )}
+              {account.tier === "trial" && (
+                <span className="badge" style={{ background:"var(--amber-bg)", color:"var(--amber)" }}>
+                  Prueba: {account.daysLeftInTrial}d
+                </span>
+              )}
+              {account.tier === "expired" && (
+                <span className="badge" style={{ background:"var(--red-bg)", color:"var(--red)" }}>Vencida</span>
+              )}
+            </div>
           </div>
           <div className="row-sub">
             {emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}
