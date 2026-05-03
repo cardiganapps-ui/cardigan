@@ -1164,13 +1164,16 @@
 }
 .lp-footer-cols {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 28px;
 }
 .lp-footer-col {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  /* Anchor every column at the top of the grid track so a column with
+     more items doesn't pull a neighbour's items down with it. */
+  align-self: start;
 }
 .lp-footer-col-title {
   font-size: 12px;
@@ -1187,14 +1190,30 @@
   cursor: pointer;
   font-family: var(--font);
   font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--charcoal-md);
   text-decoration: none;
   text-align: left;
+  /* All link rows align to the same baseline regardless of how many
+     visual lines their label takes — fixes the "Maestros de música"
+     two-line wrap that was throwing off the vertical rhythm. */
+  min-height: 18px;
   transition: color var(--dur-base) ease;
   -webkit-tap-highlight-color: transparent;
 }
 .lp-footer-link:hover { color: var(--teal-dark); }
-.lp-footer-link--btn { font: inherit; }
+/* Button-as-link reset — the existing demo button picked up native
+   button defaults (different font + weight + height) that read as
+   misaligned next to the anchor links. Force inheritance from the
+   parent column so it's visually indistinguishable. */
+.lp-footer-link--btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--charcoal-md);
+}
 .lp-footer-meta {
   font-size: 12px;
   color: var(--charcoal-xl);
@@ -1231,6 +1250,12 @@
     gap: 24px;
   }
   .lp-footer-meta { align-self: start; }
+  /* Tablet: 4 cols squeezed under a narrow content column gets crowded;
+     drop to 2x2 here so each column has breathing room. */
+  .lp-footer-cols {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px 32px;
+  }
 }
 @media (max-width: 640px) {
   .lp-feature-deck { grid-template-columns: 1fr; }
@@ -1239,7 +1264,7 @@
   .lp-pricing-card { padding: 28px 22px; }
   .lp-footer-cols {
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 22px 20px;
   }
 }
 
