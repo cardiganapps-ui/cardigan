@@ -1,0 +1,547 @@
+CARDIGAN — PROJECT CONTEXT FOR STRATEGY PLANNING
+================================================
+
+Read me first
+-------------
+This document is a self-contained briefing on Cardigan, a SaaS product
+the founder is preparing to launch. The goal of pasting this into chat
+is to give you (Claude) enough context to help plan the launch, the
+marketing strategy, and the medium-term expansion roadmap.
+
+Today's date for reference: May 2026.
+
+Treat the founder as a non-technical-strategy partner: they know the
+product cold, they want you to bring outside-in thinking on
+positioning, channel strategy, growth experiments, pricing structure,
+ICP refinement, partnership ideas, content plan, and launch sequencing.
+
+Don't propose engineering changes — the product is built. Focus on
+go-to-market.
+
+When the founder asks for a "plan", default to a structured doc with
+phases, owner-actions, and what success looks like — not just bullet
+lists.
+
+================================================================
+1. ELEVATOR PITCH
+================================================================
+
+Cardigan is a mobile-first PWA (web app you install from your browser,
+no App Store) that gives independent practitioners — psychologists,
+nutritionists, tutors, music teachers, personal trainers — a single
+place to run their practice: agenda, patient/client roster, sessions,
+payments, notes, documents, and reminders.
+
+Tagline currently shipped on the landing page:
+    "Tu práctica, en orden. Una sola app. Para todo."
+    ("Your practice, in order. One app. For everything.")
+
+It's built and operated for the Mexican market: 100% Spanish UI,
+prices in MXN, hosted on the cardigan.mx domain, transactional email
+from no-reply@cardigan.mx, payments through Stripe, optional WhatsApp
+session reminders via Meta's Cloud API, and a privacy posture written
+to LFPDPPP (Mexico's federal data-protection law).
+
+The product is built by a single founder/operator. It is pre-launch
+(no paid users yet); the codebase, infra, billing, compliance scaffold,
+and brand are all in place and the founder is now planning the public
+launch.
+
+================================================================
+2. WHO IT'S FOR
+================================================================
+
+Primary ICP today:
+- Independent **psychologists** in Mexico running a private practice
+  out of a home office, a rented consultorio, or remote (telehealth).
+  Typically 10–60 active patients, sees 15–35 sessions/week, charges
+  $500–$1,500 MXN per session, manages everything alone (no
+  receptionist, no biller, no admin).
+
+Adjacent ICPs the product already supports today:
+- **Nutritionists** (clinical, also handles sensitive notes; same
+  encryption affordance as psychologists)
+- **Tutors** (private academic tutoring)
+- **Music teachers** (private instrument lessons)
+- **Personal trainers** (1:1 fitness, includes a "mediciones"
+  body-composition tab for tracking progress)
+
+Each profession has its own onboarding flow at sign-up
+(ProfessionOnboarding screen) and the in-app vocabulary swaps
+accordingly — a psychologist sees "paciente / sesión / expediente",
+a tutor sees "alumno / clase", a nutritionist sees "paciente /
+consulta", etc. So the product is technically multi-vertical from day
+one, even if marketing should likely lead with one vertical.
+
+Profession lock: chosen at sign-up, only an admin can change it
+afterward — so the choice is durable but the founder can intervene.
+
+What the product is NOT:
+- Not a marketplace / patient-facing booking site (patients never
+  log in).
+- Not a billing/insurance integration (Mexican private practice is
+  largely cash, transfer, or card; there is no equivalent of
+  US-style insurance billing).
+- Not an EMR for institutions (single-practitioner tool).
+
+================================================================
+3. THE PRODUCT TODAY (what's shipped, end of April 2026)
+================================================================
+
+Core surfaces (already live):
+- **Home / dashboard**: today's sessions, quick actions, command
+  palette.
+- **Agenda**: weekly calendar with drag, recurring sessions
+  (auto-extends 15 weeks ahead when the next-to-last week comes
+  within 105 days).
+- **Patients/Clients (Pacientes)**: full roster with avatars,
+  contact info, schedule, and per-patient profile (Expediente)
+  split into 4 tabs: Resumen / Sesiones / Finanzas / Archivo
+  (+ Mediciones for trainers).
+- **Sessions**: scheduled / completed / cancelled / charged states,
+  with auto-complete display logic (past scheduled sessions render
+  as completed without persisting that change), tutor-session prefix
+  ("T·") for sessions with a minor's tutor.
+- **Finances**: per-patient balance owed/credit, payments ledger
+  (cash, transfer, card, etc.), historical rate accuracy preserved
+  per session (rate changes don't retroactively recompute old
+  sessions).
+- **Notes**: rich-text per-session notes; opt-in **at-rest
+  encryption** (master key wrapped client-side under the user's
+  passphrase + an RSA recovery wrap). A Supabase-only DB breach
+  cannot decrypt notes without the user's passphrase or the server
+  recovery key.
+- **Documents (Archivo)**: per-patient files stored in Cloudflare R2,
+  presigned upload/download, viewer for images and PDFs.
+- **Web push reminders**: configurable lead-time before each session,
+  delivered via service worker.
+- **WhatsApp session reminders**: per-patient opt-in, sends via
+  Meta's WhatsApp Business Cloud API using an approved utility
+  template (`cardigan_session_reminder`). Currently DB + cron live
+  but UI is gated behind a build-time flag — flip it on once Meta
+  template + env vars are ready.
+- **iCalendar feed**: each user can mint a personal `.ics` URL and
+  subscribe from Google/iCloud/Outlook calendars.
+- **Bug-report FAB** in-app, with a CLI viewer for the founder to
+  triage.
+- **Tutorial / activation checklist** for new users, milestone
+  celebrations.
+- **Demo mode**: instant access from the landing page — "Probar
+  demo" loads a seeded psychologist account with all writes no-oped,
+  so visitors can poke around without signing up.
+- **Admin "view as user"** mode: the founder can read another
+  account's data in a read-only banner-marked mode (useful for
+  support).
+
+Auth & account:
+- Email + password via Supabase Auth (mailer requires verification
+  before sign-in). SMTP through Resend.
+- Password recovery flow.
+- MFA challenge gate.
+- ARCO endpoints (LFPDPPP-mandated): export-my-data (1/hour) and
+  delete-my-account (with "ELIMINAR" confirmation), both wired to
+  the cascade-delete pipeline.
+
+Cross-cutting:
+- Spanish-only UI, no English locale.
+- MXN currency formatting throughout.
+- PWA installable from Safari/Chrome with custom service worker;
+  update prompt surfaces "Actualización disponible" toast for new
+  versions instead of forcing reload.
+- Dark mode supported.
+- Sentry on client + server, scrubbing PII before send.
+- Health check at /api/health for uptime monitoring.
+
+================================================================
+4. TECH & INFRASTRUCTURE AT A GLANCE
+================================================================
+
+(Useful so you can speak to scalability/cost questions in strategy
+context — not for engineering planning.)
+
+- **Frontend**: React 19 + Vite, custom CSS (no UI library), PWA.
+- **Backend**: Supabase (Postgres + Auth + RLS) for app data;
+  Cloudflare R2 (S3-compatible) for documents; Vercel serverless
+  functions for admin ops, presigned URLs, push, WhatsApp, Stripe.
+- **Hosting**: Vercel (Pro tier), region pinned to US-East
+  (lowest-latency US region for MX traffic).
+- **Domain**: cardigan.mx, DNS via Cloudflare.
+- **Observability**: Sentry for errors, Vercel runtime logs, an
+  audit-accounting script that re-derives every patient's balance
+  from raw rows to catch drift, plus a kill-switch flag system in
+  Vercel Edge Config (cron pause, WhatsApp pause, encryption-setup
+  pause).
+- **Cost profile** (rough): Vercel Pro (~$20/mo), Supabase free→pro
+  tier as user count grows, Cloudflare R2 (cheap egress), Resend
+  (transactional email, free tier covers low volume), Meta
+  WhatsApp (utility templates billed per conversation, ~$0.005–
+  0.05 USD each in MX), Stripe (2.9% + $3 MXN per successful card
+  charge plus FX on payouts). Marginal cost per active user at
+  current scale is well under $1/mo.
+
+Capacity is not a current bottleneck — even 1,000 paying users
+would fit comfortably on the existing stack with no architecture
+changes.
+
+================================================================
+5. PRICING & MONETIZATION
+================================================================
+
+Plan today (live):
+- **Cardigan Pro** — single tier
+- **$299 MXN/month**, tax-inclusive, no Stripe-side trial
+- Annual variant teased on landing page: **$2,990/year** ("ahorras
+  17%") — note: the $2,990 annual is shown on the landing page
+  but only the monthly Stripe price ID is wired up server-side at
+  the moment, so annual checkout would need to be added if it
+  becomes a launch lever.
+- **30-day in-app trial** for every new account (starts at signup).
+  After day 30 the account drops to read-only ("expired" state);
+  data is preserved indefinitely; subscribing re-enables writes.
+- **Comp accounts**: founder can flip `comp_granted` on any
+  user_subscriptions row to grant always-free access (used for the
+  founder's own account, early-access friends, pilot users).
+- **Referral system**: every user gets a unique 8-character referral
+  code (A-Z, 2-9, no 0/O/1/I/L). When an invitee's first invoice
+  is paid, the inviter gets credited — Stripe customer balance if
+  they're an active paying customer, or `pending_credit_amount_cents`
+  accrued if not yet a customer (drained at first checkout). Counter
+  of total referrals tracked per user. (Reward amount per referral
+  is tunable — currently set to credit some amount on the inviter's
+  next invoice; verify exact value if pricing it as a marketing
+  message.)
+
+What's NOT in v1 (deliberate):
+- No annual auto-renewal flow on the server side yet (UI claims
+  $2,990/year discount; needs to be wired before being marketed).
+- No multi-seat / clinic plan.
+- No tax-handling beyond tax-inclusive MXN pricing (no CFDI/invoice
+  issuance — therapists who need a fiscal invoice for the SaaS
+  subscription will hit a friction point; consider Konta/Facturapi
+  integration if this becomes a top sales objection).
+- No automated dunning UX inside the app (Stripe's email + portal
+  cover renewal failures).
+- No usage-based pricing.
+
+Unit economics back-of-envelope:
+- Monthly ARPU: $299 MXN ≈ ~$17.50 USD at current FX
+- Stripe fee per monthly charge: ~$11.7 MXN (3.9%)
+- Net per paid month: ~$287 MXN
+- Marginal infra cost per active user: <$10 MXN/mo
+- → ~$275 MXN gross profit per active sub per month
+- Break-even point covering hosting + tools + email is ~30–50
+  paying subs depending on overhead assumptions. Real upside
+  starts at ~200 paying subs.
+
+================================================================
+6. DISTRIBUTION & CHANNELS
+================================================================
+
+Live distribution surface:
+- **cardigan.mx landing page** with hero, 6-feature deck,
+  3-mockup strip, 3-step onboarding, pricing card, FAQ, footer.
+- Footer links out to per-profession landing pages
+  (`/psicologos/`, `/nutriologos/`, `/entrenadores/`,
+  `/maestros-de-musica/`, `/tutores/`) — these are slot-stubs
+  intended for SEO. Status of the actual content of each
+  per-profession page is **unknown / likely placeholder**; this
+  is one of the higher-leverage launch tasks.
+- **Blog** at `/blog/` — referenced in footer, content status
+  unknown.
+- **Demo mode** (no signup required) — a strong asset for paid
+  ads and warm intros.
+
+NOT live:
+- No mobile app stores (intentional — the PWA installs from the
+  browser; this is positioned as a feature, "App sin App Store").
+- No public referral storefront / shareable code surface beyond
+  the in-app Settings panel.
+- No content marketing engine yet.
+- No paid-ad campaigns running.
+- No partnerships / integrations.
+
+The "no app store" choice is meaningful for strategy:
++ Faster ship cycles (no store review).
++ No 30% Apple/Google take.
++ Updates are instant and automatic (service worker).
+- iOS install UX is friction (Share → Add to Home Screen is
+  non-obvious); needs in-product hand-holding (an InstallPrompt
+  component exists).
+- "App sin App Store" needs to be framed as a benefit, not a
+  defect, in marketing copy. Currently the landing page does
+  this cleanly.
+
+================================================================
+7. COMPLIANCE & TRUST POSTURE
+================================================================
+
+What's actually built:
+- LFPDPPP-aligned privacy notice at /privacy (POLICY_VERSION
+  bumped on material changes; users re-prompted via
+  ConsentBanner on next login).
+- ARCO rights: in-app self-serve export and delete.
+- Note encryption (opt-in, end-to-end at rest): a Supabase DB
+  breach alone does not yield therapy-note plaintext.
+- Row-level security on every Postgres table (auth.uid() =
+  user_id); admin overrides only via a SQL helper and a
+  service-role-key path that never runs in the browser.
+- Service-role key is only used in server functions, never
+  in the client bundle.
+- Push notifications use VAPID; WhatsApp webhook verifies
+  HMAC; Stripe webhook verifies HMAC; Resend webhook verifies
+  HMAC.
+- Vercel firewall: rate limit 120 req/min per IP on /api/*.
+- DDoS mitigation via Vercel Pro (free, always-on).
+- ARCO contact: privacy@cardigan.mx.
+- "Hecho en México" appears in the footer (relevant given
+  data-residency optics; note the actual servers are US-East —
+  this is disclosed in the privacy policy).
+
+Open compliance items (founder is aware):
+- Privacy policy text is a first draft; founder plans to get a
+  Mexican data-privacy lawyer to review before claiming LFPDPPP
+  compliance externally / in marketing assets.
+- No SOC2 / ISO 27001 (not relevant for ICP).
+- WhatsApp data-transfer copy in the privacy notice is currently
+  removed because the WhatsApp UI is gated off. When the UI
+  ships, the policy needs the Meta paragraph back AND
+  POLICY_VERSION must be bumped to force re-acceptance.
+
+Trust signals already on the landing page:
+- "Notas blindadas" (notes encrypted)
+- "Tus datos, tuyos" (export anytime, no lock-in)
+- "Cero contratos" (no commitment)
+
+================================================================
+8. BRAND & POSITIONING
+================================================================
+
+Visual identity:
+- Wordmark "cardigan", lowercase, soft sans-serif (custom drawn).
+- Mark: a stylized "a" in a continuous-loop / Möbius shape.
+- Brand color: teal `#5B9BAF` (with a darker teal `#437D8C`
+  used in the app icon's gradient).
+- Charcoal `#2E2E2E` for body text.
+- Typeface: **Nunito** (display) + **Nunito Sans** (body),
+  self-hosted from Google Fonts, weights 300–800.
+- Logo files (SVG, PNG transparent, JPEG) live in
+  `public/logos/` in 4 color variants (teal, charcoal, black,
+  white) for both the wordmark and the icon-only mark, plus a
+  rendered "app icon" version with the teal gradient
+  background.
+
+Tone of voice (from the landing page):
+- Warm, calm, non-corporate. Short sentences.
+- Practitioner-first language ("Tu día. De un vistazo.",
+  "Cobras lo que toca.", "Cada cliente, un toque.").
+- No jargon. No tech-bro vocabulary. No emojis in product copy.
+- Hecha en México is part of the identity, not a feature.
+
+Naming rationale (founder's intent):
+- "Cardigan" suggests warmth, soft expertise, and a tool that
+  takes care of you the way a comfortable sweater does. It's
+  also intentionally not a clinical/medical word — leaves room
+  to expand beyond psychology.
+
+================================================================
+9. WHERE THINGS STAND RIGHT NOW
+================================================================
+
+Build readiness: ~95% complete.
+Launch readiness: ~60%.
+
+Specifically:
++ Product works end-to-end. Founder is using it daily.
++ Billing works (Stripe live mode wired, webhooks idempotent).
++ Privacy/legal scaffolding in place.
++ Landing page exists and is polished.
++ Brand assets exist in all major formats.
++ Demo mode lets prospects try before signing up.
+
+- Per-profession landing pages (the SEO slots) need real content.
+- Blog has zero published posts (or near-zero — needs verification).
+- WhatsApp reminders are dark-launched (DB ready, UI gated, Meta
+  template approval pending).
+- Annual pricing is shown in marketing but not wired to checkout.
+- No CFDI/invoice issuance for paid subs — possible objection from
+  formal-practice users.
+- No paid acquisition running.
+- No PR plan, no launch list, no influencer/partner outreach.
+- No early-access cohort yet beyond a handful of comp'd friends.
+- No public launch announcement made.
+
+================================================================
+10. OPEN STRATEGIC QUESTIONS
+================================================================
+
+These are the things the founder is wrestling with — start here
+when planning:
+
+a) **Which vertical to lead with?** The product supports five
+   professions. Concentrating launch comms on one (probably
+   psychologists, since that's the founder's network and the
+   product was first designed for them) is faster, but
+   long-term the breadth is a moat. How do we sequence?
+
+b) **Pricing**: $299/mo is roughly the cost of one session.
+   Is that the right anchor? Should there be a cheaper "Starter"
+   tier (say, capped at 10 patients) to widen the funnel? Or
+   does keeping a single tier reduce friction?
+
+c) **Trial length**: 30 days is generous. Is shorter (14 days)
+   + an aggressive activation drip more conversion-efficient?
+
+d) **Annual plan**: needs to be wired before being marketed.
+   Should annual default to a bigger discount (~25–30%) to drive
+   commitment + reduce churn? Or stay at 17%?
+
+e) **Distribution-channel thesis**: where do MX therapists
+   actually hang out? Facebook groups, WhatsApp networks,
+   colegio chapters, university alumni networks, supervision
+   groups, conferences (e.g. CNEIP, FAMECOM)? Need an
+   evidence-based channel ranking, not guesses.
+
+f) **First 100 customers tactic**: cold outreach to founder's
+   network? Free 1:1 onboarding calls? A "switcher" promo
+   targeting people on Doctoralia, Atenttiva, Konsulta, or
+   spreadsheets? A referral-driven "bring a colleague" play
+   leveraging the existing referral mechanic?
+
+g) **Content/SEO strategy**: per-profession landing pages
+   exist as routes; what's the topic taxonomy that ranks for
+   queries like "agenda psicólogos México", "facturar consulta
+   psicológica", "manejo de citas terapeutas"? Should the blog
+   lead with practical operations content (taxes, no-shows,
+   pricing your sessions) over product content?
+
+h) **Partnerships**: Mexican payment processors (Conekta,
+   Mercado Pago)? Education platforms (Crehana, etc.)?
+   Professional associations? Universities?
+
+i) **Brand expansion**: when (and how) to introduce a
+   secondary product surface — group therapy, supervisor mode,
+   small clinic with 2-3 practitioners? The current data model
+   could support multi-seat with moderate effort.
+
+j) **Internationalization**: codebase is plain JS, all UI
+   strings flow through useT(), but the resolver is
+   Spanish-only. Other Spanish-speaking markets (Colombia,
+   Argentina, Chile, Spain) are technically the easiest
+   expansion (no translation, just price/locale/legal). Is this
+   the v2 expansion or premature?
+
+================================================================
+11. WHAT THE FOUNDER WANTS YOU (CLAUDE) TO HELP WITH
+================================================================
+
+In rough priority order:
+
+1. **Launch plan** (next 4–8 weeks): a phased plan to take
+   Cardigan from "private" to "public", with concrete weekly
+   actions, what content/assets need to be produced, what
+   metrics to instrument before launch, and what signals would
+   tell us to hold/proceed.
+
+2. **Marketing strategy** (3–6 months): channel mix, content
+   calendar themes, paid-vs-organic split, a brand voice
+   sharpening pass, and ICP messaging that maps to the channels
+   identified.
+
+3. **Pricing & packaging review**: stress-test the current
+   single-tier model against alternatives, taking into account
+   the install base size, churn risk, and competitive context
+   in Mexico.
+
+4. **Expansion roadmap** (6–18 months): which adjacent vertical
+   to commercialize next, when to push international, when to
+   add multi-seat, and what proof-points need to be in place
+   before each move.
+
+5. **Risk-and-mitigation review**: what's most likely to kill
+   this in the first 12 months (regulatory, competitive,
+   founder-bandwidth, channel saturation, pricing) and what's
+   the cheapest hedge for each.
+
+When you produce plans, prefer concrete weekly cadences and
+named experiments (e.g. "Week 3: 50 cold-DM tests on Instagram
+to MX psychologists with a free-trial code; success bar = 10%
+trial-start rate") over abstract recommendations.
+
+================================================================
+APPENDIX A — KEY FACTS RECAP
+================================================================
+
+- Domain: cardigan.mx
+- Pricing: $299 MXN/month (single tier today); $2,990/year shown
+  but not yet wired to checkout
+- Trial: 30 days, in-app, no credit card required
+- Currency: MXN
+- Language: Spanish only
+- Market: Mexico (today); broader LatAm + Spain plausible later
+- Verticals supported in-product: psychologists, nutritionists,
+  tutors, music teachers, personal trainers
+- Distribution: PWA installed from browser (no App Store)
+- Founder team size: 1
+- Public launch: not yet
+- Customer base: 0 paying (a handful of comp'd accounts)
+- Build status: production-ready, in active solo use
+- Brand color: teal #5B9BAF
+- Typeface: Nunito + Nunito Sans
+- Privacy contact: privacy@cardigan.mx
+- Compliance frame: LFPDPPP (Mexico's federal data-protection
+  law), with ARCO rights wired
+
+================================================================
+APPENDIX B — CURRENT LANDING PAGE COPY (verbatim, for tone
+reference)
+================================================================
+
+Hero:
+    Tu práctica, en orden.
+    Una sola app. Para todo.
+    [Comenzar gratis]  [Probar demo]
+
+Trust strip:
+    Notas blindadas · Tus datos, tuyos · Cero contratos
+
+Section title: "Lo necesario. Nada más."
+Subtitle: "Hecho en México, para ti."
+
+Feature deck (6 cards):
+    Tu agenda, en automático.        — Repite cada semana, sola.
+    Cada cliente, un toque.          — Notas, pagos, archivos. Ahí mismo.
+    Tus notas, blindadas.            — Cifradas. Solo tú las lees.
+    Nadie olvida la cita.            — Recordatorios push, en automático.
+    Tus datos, tuyos.                — Exporta cuando quieras. Sin candados.
+    App sin App Store.               — Instálala desde tu navegador.
+
+Mockup strip captions:
+    Tu día. De un vistazo.
+    Cada cliente, un toque.
+    Cobras lo que toca.
+
+Onboarding promise: "Listo en 3 pasos."
+    1. Crea tu cuenta
+    2. Agrega tu primer cliente
+    3. Agenda tu primera cita
+
+Pricing card:
+    Cardigan Pro
+    $299 MXN al mes
+    O $2,990 al año — ahorras 17%.
+    · 30 días gratis. Sin tarjeta.
+    · Todo, desde el día uno.
+    · Cancela en un toque.
+
+FAQ titles:
+    ¿Funciona en mi celular?
+    ¿Mis datos están seguros?
+    ¿Puedo exportar mis pacientes?
+    ¿Hay contrato o permanencia?
+    ¿Tengo que enseñarle a usarla a mis pacientes?
+    ¿Y si decido cancelar?
+
+Footer:
+    Hecho en México
+
+— END OF BRIEFING —
