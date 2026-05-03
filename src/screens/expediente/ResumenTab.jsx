@@ -3,7 +3,7 @@ import { shortDateToISO, todayISO } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { QuickScheduleSheet } from "../../components/sheets/QuickScheduleSheet";
+import { SetWeeklySlotSheet } from "../../components/sheets/SetWeeklySlotSheet";
 import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
@@ -88,11 +88,11 @@ export function ResumenTab({
   onRecordPayment, onGoToSesiones, onGoToArchivo, mutating,
 }) {
   const { t } = useT();
-  const { profession, measurements, updatePatient, showSuccess } = useCardigan();
+  const { profession, measurements, updatePatient, showSuccess, openQuickSchedule } = useCardigan();
   const patientIsEpisodic = isEpisodic(patient);
-  const [quickScheduleOpen, setQuickScheduleOpen] = useState(false);
   const [confirmModeChange, setConfirmModeChange] = useState(false);
   const [modeChangeBusy, setModeChangeBusy] = useState(false);
+  const [setSlotOpen, setSetSlotOpen] = useState(false);
   const showHealthBlock = usesAnthropometrics(profession);
   // Patient's measurements newest-first. The Resumen card uses the
   // top two entries to render an "Última medición" block — current
@@ -285,7 +285,7 @@ export function ResumenTab({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setQuickScheduleOpen(true)}
+                      onClick={() => openQuickSchedule?.(patient)}
                       style={{
                         background:"var(--teal-pale)",
                         color:"var(--teal-dark)",
@@ -646,15 +646,17 @@ export function ResumenTab({
         </button>
       </div>
 
-      {/* Mode-switch link — only the recurring → episodic direction
-          is available in v1. The reverse (episodic → recurring) needs
-          a slot picker which is its own follow-on; for now the
-          recommended path is to set the mode at creation. */}
-      {!patientIsEpisodic && !isEnded && (
+      {/* Mode-switch link — works in both directions. R→E flips
+          scheduling_mode + clears day/time (existing future rows
+          stay; auto-extend stops adding more). E→R opens a slot
+          picker that seeds a fresh weekly schedule. Hidden for
+          ended patients since neither direction is meaningful for
+          a closed engagement. */}
+      {!isEnded && (
         <div style={{ marginTop:14, textAlign:"center" }}>
           <button
             type="button"
-            onClick={() => setConfirmModeChange(true)}
+            onClick={() => patientIsEpisodic ? setSetSlotOpen(true) : setConfirmModeChange(true)}
             disabled={mutating}
             style={{
               background:"none",
@@ -669,15 +671,15 @@ export function ResumenTab({
               textDecorationColor:"var(--border)",
               textUnderlineOffset:"2px",
             }}>
-            {t("scheduling.switchToEpisodic")}
+            {patientIsEpisodic ? t("scheduling.switchToRecurring") : t("scheduling.switchToEpisodic")}
           </button>
         </div>
       )}
 
-      {quickScheduleOpen && (
-        <QuickScheduleSheet
+      {setSlotOpen && (
+        <SetWeeklySlotSheet
           patient={patient}
-          onClose={() => setQuickScheduleOpen(false)}
+          onClose={() => setSetSlotOpen(false)}
         />
       )}
 

@@ -61,7 +61,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     createPatient: noop, updatePatient: noop, deletePatient: noop,
     createSession: noop, updateSessionStatus: noop, deleteSession: noop,
     rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
-    updateSessionModality: noop, updateSessionRate: noop, updateCancelReason: noop,
+    updateSessionModality: noop, updateSessionRate: noop, updateSessionVisitType: noop, updateCancelReason: noop,
     createPayment: noop, deletePayment: noop, updatePayment: noop,
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,

@@ -444,7 +444,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
-  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateCancelReason } =
+  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment, updatePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
@@ -513,6 +513,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
     finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality), updateSessionRate: guard(updateSessionRate),
+    updateSessionVisitType: guard(updateSessionVisitType),
     updateCancelReason: guard(updateCancelReason),
     createPayment: guard(createPayment), deletePayment: guard(deletePayment), updatePayment: guard(updatePayment),
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),

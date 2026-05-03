@@ -4,6 +4,8 @@ import { isTutorSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
+import { usesVisitTypes, VISIT_TYPES } from "../../data/constants";
 
 const SESSIONS_COLLAPSED_COUNT = 5;
 
@@ -55,7 +57,22 @@ export function SesionesTab({
   onSelectSession, onOpenNote,
 }) {
   const { t } = useT();
-
+  const { profession, updateSessionVisitType, readOnly, showSuccess } = useCardigan();
+  const showVisitTypes = usesVisitTypes(profession);
+  /* Cycle through visit types on tap: null → intake → followup →
+     maintenance → null. Practitioner override; the auto-tag at create
+     time is just a starting point. The cycle includes the "no tag"
+     state so a row that's irrelevant (e.g. an unscheduled placeholder)
+     can be cleared. */
+  const cycleVisitType = (s) => async (e) => {
+    e.stopPropagation();
+    if (readOnly || !updateSessionVisitType) return;
+    const seq = [null, ...VISIT_TYPES];
+    const idx = seq.indexOf(s.visit_type ?? null);
+    const next = seq[(idx + 1) % seq.length];
+    const ok = await updateSessionVisitType(s.id, next);
+    if (ok) showSuccess?.(t("visitType.updated"));
+  };
 
   if (pSessions.length === 0) {
     return (
@@ -130,6 +147,9 @@ export function SesionesTab({
               pNotes={pNotes}
               onSelect={onSelectSession}
               onOpenNote={onOpenNote}
+              showVisitTypes={showVisitTypes}
+              readOnly={readOnly}
+              cycleVisitType={cycleVisitType}
               moreLabelKey="expediente.showMoreSessions"
               t={t}
             />
@@ -143,6 +163,9 @@ export function SesionesTab({
                 pNotes={pNotes}
                 onSelect={onSelectSession}
                 onOpenNote={onOpenNote}
+                showVisitTypes={showVisitTypes}
+                readOnly={readOnly}
+                cycleVisitType={cycleVisitType}
                 moreLabelKey="expediente.showMorePastSessions"
                   t={t}
               />
@@ -163,7 +186,7 @@ const SECTION_LABEL_STYLE = {
   marginBottom: 6,
 };
 
-function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, t }) {
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, t, showVisitTypes, readOnly, cycleVisitType }) {
   const [visibleCount, setVisibleCount] = useState(SESSIONS_COLLAPSED_COUNT);
   // Reset to the initial window whenever the filtered list changes so
   // switching filters doesn't leave a stale expanded view visible.
@@ -199,7 +222,8 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
           // Tutor sessions are excluded — they get their own purple
           // eyebrow regardless.
           const oneOff = !tutor && s.is_recurring === false;
-          const hasSecondLine = tutor || oneOff || hasNote;
+          const showVisitChip = showVisitTypes && !tutor;
+          const hasSecondLine = tutor || oneOff || hasNote || showVisitChip;
           return (
             <div className="row-item" key={s.id} onClick={() => onSelect(s)}>
               <div className="row-content">
@@ -225,6 +249,34 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                       <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--charcoal-xl)", textTransform:"uppercase", letterSpacing:"0.06em" }}>
                         {t("sessions.oneOffBadge")}
                       </span>
+                    )}
+                    {showVisitChip && (
+                      readOnly ? (
+                        <span style={{
+                          fontSize:"var(--text-eyebrow)", fontWeight:700,
+                          color:"var(--teal-dark)", textTransform:"uppercase",
+                          letterSpacing:"0.06em",
+                        }}>
+                          {s.visit_type ? t(`visitType.${s.visit_type}`) : t("visitType.none")}
+                        </span>
+                      ) : (
+                        <button type="button"
+                          onClick={cycleVisitType(s)}
+                          aria-label={t("visitType.aria")}
+                          style={{
+                            fontSize:"var(--text-eyebrow)", fontWeight:700,
+                            color: s.visit_type ? "var(--teal-dark)" : "var(--charcoal-xl)",
+                            textTransform:"uppercase", letterSpacing:"0.06em",
+                            background: s.visit_type ? "var(--teal-pale)" : "transparent",
+                            border: s.visit_type ? "none" : "1px dashed var(--border)",
+                            padding:"2px 8px", borderRadius:"999px",
+                            cursor:"pointer", fontFamily:"inherit",
+                            WebkitTapHighlightColor:"transparent",
+                            minHeight:"unset",
+                          }}>
+                          {s.visit_type ? t(`visitType.${s.visit_type}`) : t("visitType.none")}
+                        </button>
+                      )
                     )}
                     {hasNote && (
                       onOpenNote ? (

@@ -1418,7 +1418,14 @@ export default {
     switchToEpisodicTitle:   "¿Cambiar a 'a demanda'?",
     switchToEpisodicBody:    "Las {session.pl} ya agendadas se conservan. Dejaremos de generar nuevas {session.pl} semanales automáticamente — vas a programar cada una al terminar la anterior.",
     switchToEpisodicConfirm: "Cambiar",
-    modeChanged:             "Modo actualizado",
+    switchToRecurring:        "Cambiar a recurrentes",
+    switchToRecurringTitle:   "Definir horario recurrente",
+    switchToRecurringIntro:   "Elige el día y hora semanal. Cardigan agenda las próximas 15 semanas y mantiene la agenda viva mientras el paciente esté activo.",
+    switchToRecurringConfirm: "Activar recurrencia",
+    weekday:                  "Día",
+    modeChanged:              "Modo actualizado",
+    modeChangedRecurring:     "Horario recurrente activado",
+    endOfVisitPrompt:         "{session.S} completada",
     quickPickAria:    "Cadencia rápida",
     quickPick: {
       in2w:   "En 2 semanas",
@@ -1431,6 +1438,20 @@ export default {
       missingDate:  "Selecciona una fecha y hora.",
       writeFailed:  "No pudimos agendar. Intenta de nuevo.",
     },
+  },
+
+  // ── Visit type (intake / followup / maintenance) ──
+  // Surfaced only for nutritionists + trainers. Auto-tagged at create
+  // time (first session → intake, rest → followup); the practitioner
+  // can override via a tap on the session row.
+  visitType: {
+    intake:      "Valoración",
+    followup:    "Seguimiento",
+    maintenance: "Mantenimiento",
+    label:       "Tipo de {session.s}",
+    aria:        "Cambiar tipo de {session.s}",
+    none:        "Sin clasificar",
+    updated:     "Tipo actualizado",
   },
 
   patientFields: {

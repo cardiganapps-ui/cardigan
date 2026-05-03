@@ -35,7 +35,9 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       // One-off first consult — same shape as a recurring seed but
       // is_recurring=false so auto-extend never picks it up. day is
       // derived from the date for display consistency with the rest
-      // of the calendar (sessions.day is the weekday name).
+      // of the calendar (sessions.day is the weekday name). Tagged
+      // visit_type='intake' since this is, by definition, the first
+      // visit on this patient's record.
       const dur = Number(firstConsult.duration) > 0 ? Number(firstConsult.duration) : 60;
       const mod = firstConsult.modality || "presencial";
       const day = dayNameFromISO(firstConsult.date);
@@ -46,6 +48,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         modality: mod,
         date: formatShortDate(new Date(firstConsult.date + "T12:00:00")),
         is_recurring: false,
+        visit_type: "intake",
       });
     }
     const seedCount = sessionSeeds.length;
@@ -102,6 +105,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         // patients seed at most ONE row, `is_recurring=false`, so
         // auto-extend never picks it up.
         is_recurring: s.is_recurring !== false,
+        visit_type: s.visit_type || null,
       }));
       const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
       if (!sessErr && sessData) {

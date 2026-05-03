@@ -117,6 +117,31 @@ export function isEpisodic(patient) {
   return patient?.scheduling_mode === SCHEDULING_MODE.EPISODIC;
 }
 
+// Per-session visit type — surfaces "where in the engagement is this
+// visit?" Tagged automatically at create time (first session →
+// 'intake', rest → 'followup') with manual override available. Other
+// professions ignore the column entirely; the UI only surfaces it for
+// the same set that uses anthropometric measurements (nutritionists
+// + trainers, where the "intake / follow-up / maintenance" model is
+// natural). Mirrors the sessions.visit_type CHECK in migration 041.
+export const VISIT_TYPE = Object.freeze({
+  INTAKE:      "intake",
+  FOLLOWUP:    "followup",
+  MAINTENANCE: "maintenance",
+});
+
+export const VISIT_TYPES = [
+  VISIT_TYPE.INTAKE,
+  VISIT_TYPE.FOLLOWUP,
+  VISIT_TYPE.MAINTENANCE,
+];
+
+export function usesVisitTypes(profession) {
+  // Same gate as Mediciones — the audiences who think clinically in
+  // intake / follow-up / maintenance terms.
+  return ANTHROPOMETRIC_PROFESSIONS.has(profession);
+}
+
 // Session modality. Values must match the sessions.modality check
 // constraint in supabase/schema.sql / migrations/020 + 022. Per-profession
 // subsets live in MODALITIES_BY_PROFESSION below — the dropdowns and the

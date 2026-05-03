@@ -43,6 +43,9 @@ const Tutorial = lazy(() => import("./components/Tutorial/Tutorial").then(m => (
 import { STEP_IDS_REQUIRING_FAB } from "./components/Tutorial/tutorialSteps";
 import { useTutorial } from "./hooks/useTutorial";
 import { ToastStack } from "./components/Toast";
+import { QuickScheduleSheet } from "./components/sheets/QuickScheduleSheet";
+import { isEpisodic } from "./data/constants";
+import { shortDateToISO, todayISO as todayISOFn } from "./utils/dates";
 import { Home } from "./screens/Home";
 import { Agenda } from "./screens/Agenda";
 import { Patients } from "./screens/Patients";
@@ -506,7 +509,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   /* Only pull out what App.jsx uses directly — everything else flows
      into context via `...data` spread in ctxValue below. */
   const {
-    patients,
+    patients, upcomingSessions,
     loading, mutationError, clearMutationError,
     updateSessionStatus,
     refresh,
@@ -540,6 +543,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         id, kind: type, message: msg,
         persistent: !!opts.persistent,
         onRetry: opts.onRetry,
+        actionLabel: opts.actionLabel,
         key: opts.key,
       }];
       if (next.length <= 5) return next;
@@ -569,6 +573,17 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     if (!msg) return;
     showToast(msg, "success");
   }, [showToast]);
+
+  /* QuickScheduleSheet at the App level — renders once, opened from
+     anywhere via openQuickSchedule(patient) on the cardigan context.
+     The end-of-visit toast (fired below from onMarkCompleted) routes
+     into this so the user can schedule the next consult with one tap
+     from the toast, regardless of which screen they're on. */
+  const [quickScheduleFor, setQuickScheduleFor] = useState(null);
+  const openQuickSchedule = useCallback((patient) => {
+    if (!patient) return;
+    setQuickScheduleFor(patient);
+  }, []);
   // Post-reload "Actualizado correctamente" toast — UpdatePrompt
   // stamps localStorage right before the SW reload, and we surface
   // the confirmation once the new build mounts. consumePostUpdateToast
@@ -1037,9 +1052,42 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       pendingExpedienteRef.current = null;
       return v;
     },
+    openQuickSchedule,
     onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
-    onMarkCompleted: async (s, overrideStatus) => !readOnly && await updateSessionStatus(s.id, overrideStatus || "completed"),
-  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+    /* onMarkCompleted intercepts the standard updateSessionStatus
+       call to layer in the "schedule next?" affordance for episodic
+       patients. After the status flip succeeds, if the patient has
+       no future scheduled session, fire an actionable toast that
+       opens QuickScheduleSheet on tap. Recurring patients see no
+       prompt — their schedule already covers the next visit. */
+    onMarkCompleted: async (s, overrideStatus) => {
+      if (readOnly) return false;
+      const ok = await updateSessionStatus(s.id, overrideStatus || "completed");
+      if (!ok) return ok;
+      const patient = patients.find((p) => p.id === s.patient_id);
+      if (!patient || !isEpisodic(patient)) return ok;
+      // "Has a future visit already" check: any scheduled session
+      // dated today-or-later that isn't this one.
+      const todayIso = todayISOFn();
+      const hasFuture = (upcomingSessions || []).some((row) => {
+        if (row.patient_id !== patient.id) return false;
+        if (row.id === s.id) return false;
+        if (row.status === "cancelled" || row.status === "charged") return false;
+        const iso = shortDateToISO(row.date);
+        return iso >= todayIso;
+      });
+      if (hasFuture) return ok;
+      // Fire the prompt toast. Reuses the toast queue's onRetry slot;
+      // the new actionLabel prop (added in this round) carries the
+      // localized "Programar próxima" label so this isn't mistaken
+      // for an error retry.
+      showToast(t("scheduling.endOfVisitPrompt"), "success", {
+        actionLabel: t("scheduling.scheduleNext"),
+        onRetry: () => openQuickSchedule(patient),
+      });
+      return ok;
+    },
+  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: show ProfessionOnboarding before mounting the
   // main shell when the user has no user_profiles row yet. Demo mode
@@ -1364,6 +1412,16 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           <Suspense fallback={null}>
             <Tutorial />
           </Suspense>
+        )}
+        {/* Global QuickScheduleSheet — opened from the
+            end-of-visit toast or any "openQuickSchedule(patient)"
+            consumer. Mounted unconditionally; renders null when no
+            patient is set so the rest of the shell isn't affected. */}
+        {quickScheduleFor && (
+          <QuickScheduleSheet
+            patient={quickScheduleFor}
+            onClose={() => setQuickScheduleFor(null)}
+          />
         )}
       </div>
     </div>

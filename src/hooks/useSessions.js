@@ -13,13 +13,29 @@ export { getRecurringDates };
 
 export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
 
-  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate, modality }) {
+  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate, modality, visitType }) {
     if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
     const patient = patients.find(p => p.name === patientName);
     if (!patient) return false;
 
     const dateObj = parseShortDate(date);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
+
+    // Auto-detect visit type: a patient's very first non-tutor session
+    // is the intake; everything else defaults to 'followup'. The caller
+    // can override via the explicit `visitType` param (e.g. when
+    // editing or when the practitioner picks 'maintenance' for a
+    // post-goal patient). Tutor sessions stay null — the taxonomy is
+    // about the patient's clinical journey, not the parent's
+    // operational visits.
+    const sessionVisitType = (() => {
+      if (visitType) return visitType;
+      if (isTutor) return null;
+      const hasPriorRegular = (upcomingSessions || []).some(
+        (s) => s.patient_id === patient.id && s.session_type !== "tutor",
+      );
+      return hasPriorRegular ? "followup" : "intake";
+    })();
 
     // Tutor sessions render with the parent's initials; the
     // `session_type` column (DB) and the avatar color (UI) carry the
@@ -47,6 +63,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       duration: sessionDuration, rate: sessionRate,
       modality: modality || "presencial",
       session_type: isTutor ? "tutor" : "regular",
+      visit_type: sessionVisitType,
       // Manual one-off session — must NEVER seed an auto-extend
       // recurrence. Per user direction: any session added via this
       // path (NewSessionSheet's "agendar sesión") is a one-off,
@@ -238,7 +255,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           initials: patient.initials, time: s.time, day: s.day,
           date: ds, duration: dur, rate: patient.rate,
           modality: s.modality || "presencial",
-          color_idx: patient.colorIdx || 0 });
+          color_idx: patient.colorIdx || 0,
+          // These rows ARE the recurring schedule. Without is_recurring=true
+          // the schedule-derivation in ResumenTab + the auto-extend loop
+          // both ignore them, so a "Cambiar a recurrentes" flow that
+          // calls this function would silently produce no recurring slot.
+          // The prime-directive accounting tests rely on this signal as
+          // well — see CLAUDE.md rule #8.
+          is_recurring: true });
         existingSlots.add(slot);
       });
     }
@@ -400,6 +424,22 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
+  async function updateSessionVisitType(sessionId, visitType) {
+    // null clears the tag (returns the row to "Sin clasificar"). Any
+    // other value must match the CHECK constraint set in migration
+    // 041; the upstream UI uses the VISIT_TYPE enum so this is a
+    // belt-and-suspenders rather than a user-input boundary.
+    const next = visitType == null ? null : String(visitType);
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("sessions")
+      .update({ visit_type: next }).eq("id", sessionId).eq("user_id", userId);
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, visit_type: next } : s));
+    return true;
+  }
+
   async function updateSessionRate(sessionId, newRate) {
     const rate = Number(newRate);
     // Allow any non-negative finite number. Zero is valid (pro-bono).
@@ -447,5 +487,5 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateCancelReason };
+  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason };
 }

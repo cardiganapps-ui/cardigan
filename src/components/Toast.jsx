@@ -15,7 +15,7 @@ function GlyphAlert({ size = 16 }) {
   );
 }
 
-export function Toast({ message, type = "error", duration, onDismiss, onRetry, persistent = false, stackIndex = 0 }) {
+export function Toast({ message, type = "error", duration, onDismiss, onRetry, actionLabel, persistent = false, stackIndex = 0 }) {
   const { t } = useT();
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -105,7 +105,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, p
               borderRadius:"var(--radius-pill)", padding:"4px 12px", fontSize:"var(--text-sm)", fontWeight:700,
               fontFamily:"var(--font)", cursor:"pointer", flexShrink:0, minHeight:0,
             }}>
-            {t("retry")}
+            {actionLabel || t("retry")}
           </button>
         )}
         {/* Explicit dismiss button — the click-anywhere-to-dismiss was
@@ -146,6 +146,7 @@ export function ToastStack({ toasts, onDismiss, max = 3 }) {
       persistent={toast.persistent}
       onDismiss={() => onDismiss(toast.id)}
       onRetry={toast.onRetry}
+      actionLabel={toast.actionLabel}
     />
   ));
 }

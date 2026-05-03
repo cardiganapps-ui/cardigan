@@ -98,6 +98,10 @@ const NUTRITIONIST_PATIENT_DEFS = [
   { name: "Mariana Velasco",    day: "Lunes",     time: "16:00", rate: 900, status: "active", phone: "+52 55 3030 4040",
     height_cm: 162, goal_weight_kg: 58, allergies: "Mariscos", medical_conditions: "",
     inbody: true, scheduling_mode: "episodic", episodicCadenceWeeks: [4, 6], episodicNextInWeeks: 4,
+    // Mariana is in maintenance phase — past goal, occasional
+    // check-ins. Last 3 visits get tagged maintenance to demo the
+    // visit-type taxonomy alongside the cadence variation.
+    maintenanceTail: 3,
     start_weight_kg: 70, start_waist_cm: 84, start_body_fat_pct: 30 },
   // Recurring nutrition patients — kept on a fixed weekly slot to demo
   // the per-patient override (a nutritionist with stable workshop-style
@@ -350,6 +354,9 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       // mirror what an episodic patient's calendar actually looks
       // like: standalone visits scheduled at the end of each prior
       // visit, no perpetual slot.
+      // Visit-type taxonomy is layered post-loop: first chronological
+      // visit → intake; the rest → followup; the very last 1–2 if
+      // the patient is in maintenance phase per def.maintenanceTail.
       const cadenceWeeks = def.episodicCadenceWeeks || [3, 4]; // min, max
       // Walk backward from "first future visit" so the next visit
       // sits at the end and the past stretches behind it. This
@@ -395,6 +402,20 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
         // Step back by a varying-but-realistic cadence.
         const jitter = cadenceWeeks[0] + Math.floor(Math.random() * (cadenceWeeks[1] - cadenceWeeks[0] + 1));
         walker = addWeeks(walker, -jitter);
+      }
+      // Layer visit-types post-loop. patientSessions is in reverse-
+      // chronological order (we walked back from the future), so
+      // index N-1 is the chronologically-first visit (the intake).
+      // The remaining rows default to followup; if the patient is in
+      // maintenance phase (def.maintenanceTail truthy), the most
+      // recent N rows get tagged 'maintenance' instead.
+      if (patientSessions.length > 0) {
+        const tail = def.maintenanceTail || 0;
+        for (let i = 0; i < patientSessions.length; i++) {
+          if (i === patientSessions.length - 1) patientSessions[i].visit_type = "intake";
+          else if (i < tail)                    patientSessions[i].visit_type = "maintenance";
+          else                                  patientSessions[i].visit_type = "followup";
+        }
       }
     } else while (current <= endDate) {
       const sessId = uuid();
