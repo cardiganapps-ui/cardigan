@@ -22,7 +22,15 @@ import { haptic } from "../utils/haptics";
      totalScale = baseScale * userZoom         // userZoom ∈ [1, 4]
      pan        = top-left of displayed image relative to frame top-left
      The pan is always clamped so the image fully covers the frame —
-     no scrim ever shows through under the image. */
+     no scrim ever shows through under the image.
+
+   EXIF orientation: we use createImageBitmap with
+   imageOrientation:"from-image" so the bitmap is pre-rotated according
+   to the file's EXIF tag. Without this, portrait photos straight from
+   an iPhone camera roll save sideways on older Safari (the on-screen
+   <img> auto-rotates, but canvas drawImage of an <img> doesn't honour
+   orientation across all browsers). createImageBitmap normalises both
+   paths through the same rotated bitmap. */
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
@@ -45,89 +53,162 @@ function dist(a, b) {
   return Math.hypot(dx, dy);
 }
 
+/* Decode the file into both an HTMLImageElement (for on-screen display)
+   AND an ImageBitmap (for the canvas draw at confirm time). The bitmap
+   is EXIF-rotated via imageOrientation:"from-image" so the saved
+   output matches what the user sees on screen — even on iOS Safari
+   where canvas drawImage of an <img> historically ignored EXIF.
+   Returns { url, htmlImage, bitmap, width, height }. The bitmap has
+   the rotated dimensions; the htmlImage is rendered with the same
+   image-orientation:from-image CSS so the displayed dimensions match. */
+async function decodeFile(file) {
+  const url = URL.createObjectURL(file);
+  // ImageBitmap path. Honours EXIF and returns a renderable surface
+  // for drawImage. createImageBitmap is supported in iOS Safari 15+,
+  // Chrome 81+, Firefox 79+ — every browser Cardigan targets.
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    bitmap = null;
+  }
+  // HTMLImageElement path for on-screen display. Wait for load so the
+  // caller can read .width/.height immediately and so init pan math
+  // uses the post-decode size (matters when the orientation flips
+  // dimensions vs. the file's declared metadata).
+  const htmlImage = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("decode_failed"));
+    img.src = url;
+  });
+  // Prefer bitmap dimensions when available — they reflect EXIF rotation.
+  const width = bitmap?.width || htmlImage.naturalWidth || htmlImage.width;
+  const height = bitmap?.height || htmlImage.naturalHeight || htmlImage.height;
+  return { url, htmlImage, bitmap, width, height };
+}
+
 export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel, onConfirm }) {
   const { t } = useT();
-  const [imgEl, setImgEl] = useState(null);
+  const [decoded, setDecoded] = useState(null); // { url, htmlImage, bitmap, width, height } | null
+  const [loadError, setLoadError] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
-  // Track active touches by identifier so a stray fourth finger doesn't
-  // disrupt a two-finger pinch in progress on iPad.
+  // Active drag/pinch state. ref-based so every render reads / writes
+  // the same gesture context without rerendering.
   const dragRef = useRef(null);
 
-  // Load + decode the picked file once. Free the object URL on unmount
-  // / file-change so we don't leak across consecutive crops.
+  // Refs that mirror the latest pan / zoom / decoded values. The
+  // native touch + wheel listeners attached in a useEffect below read
+  // from these refs instead of capturing closures — that lets us
+  // attach the listeners ONCE (not on every render) without ever
+  // operating on stale state. Without these refs, the listeners
+  // re-attached on every gesture tick (zoom changed → callback ref
+  // changed → effect re-ran), which on continuous pinch caused
+  // hundreds of add/remove cycles per second.
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const decodedRef = useRef(decoded);
+  decodedRef.current = decoded;
+
+  // Decode the file once on mount / file-change. Both the bitmap and
+  // the HTMLImageElement get their object URL revoked on cleanup so
+  // we never leak across consecutive crops.
   useEffect(() => {
+    if (!file) return;
     let alive = true;
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      if (!alive) return;
-      setImgEl(img);
-      // Initialise pan so the image is visually centered inside the
-      // frame at default 1× zoom.
-      const baseScale = Math.max(frameSize / img.width, frameSize / img.height);
-      const dispW = img.width * baseScale;
-      const dispH = img.height * baseScale;
+    let result = null;
+    setLoadError(false);
+    decodeFile(file).then(r => {
+      if (!alive) {
+        // Stale decode; clean up immediately.
+        URL.revokeObjectURL(r.url);
+        if (r.bitmap?.close) try { r.bitmap.close(); } catch { /* ignore */ }
+        return;
+      }
+      result = r;
+      setDecoded(r);
+      // Init pan so the image is visually centered inside the frame
+      // at default 1× zoom.
+      const baseScale = Math.max(frameSize / r.width, frameSize / r.height);
+      const dispW = r.width * baseScale;
+      const dispH = r.height * baseScale;
       setPan({
         x: -(dispW - frameSize) / 2,
         y: -(dispH - frameSize) / 2,
       });
       setZoom(1);
+    }).catch(() => {
+      if (alive) setLoadError(true);
+    });
+    return () => {
+      alive = false;
+      if (result) {
+        URL.revokeObjectURL(result.url);
+        if (result.bitmap?.close) try { result.bitmap.close(); } catch { /* ignore */ }
+      }
     };
-    img.onerror = () => { /* parent shows the file-error toast */ };
-    img.src = url;
-    return () => { alive = false; URL.revokeObjectURL(url); };
   }, [file, frameSize]);
 
   const baseScale = useMemo(
-    () => imgEl ? Math.max(frameSize / imgEl.width, frameSize / imgEl.height) : 1,
-    [imgEl, frameSize]
+    () => decoded ? Math.max(frameSize / decoded.width, frameSize / decoded.height) : 1,
+    [decoded, frameSize]
   );
   const totalScale = baseScale * zoom;
 
   // Re-clamp pan whenever zoom changes — zooming out can leave the
-  // image not covering the frame anymore; clamp pulls it back.
+  // image not covering the frame anymore; clamp pulls it back. This
+  // is intentionally a setState-in-effect because the clamp is the
+  // sync between two independent state shards (zoom and pan).
   useEffect(() => {
-    if (!imgEl) return;
-    setPan(p => clampPan(p.x, p.y, totalScale, imgEl.width, imgEl.height, frameSize));
-  }, [zoom, totalScale, imgEl, frameSize]);
+    if (!decoded) return;
+    setPan(p => clampPan(p.x, p.y, totalScale, decoded.width, decoded.height, frameSize));
+  }, [zoom, totalScale, decoded, frameSize]);
 
   // ── Touch handling ──
   // Single finger = pan. Two fingers = pinch zoom (centered between
   // the two fingers, anchored against the image so the gesture feels
   // like manipulating the photo directly).
   const onTouchStart = useCallback((e) => {
-    if (!imgEl) return;
+    if (!decoded) return;
     if (e.touches.length === 1) {
       const t0 = e.touches[0];
       dragRef.current = {
         mode: "pan",
         startX: t0.clientX,
         startY: t0.clientY,
-        panX: pan.x,
-        panY: pan.y,
+        panX: panRef.current.x,
+        panY: panRef.current.y,
       };
     } else if (e.touches.length === 2) {
       dragRef.current = {
         mode: "pinch",
         startDist: dist(e.touches[0], e.touches[1]),
-        startZoom: zoom,
+        startZoom: zoomRef.current,
       };
     }
-  }, [pan.x, pan.y, zoom, imgEl]);
+  }, [decoded]);
 
-  const onTouchMove = useCallback((e) => {
-    if (!dragRef.current || !imgEl) return;
+  // Touch move handler — must call preventDefault to block the iOS
+  // page-zoom hijack on pinch. Reads pan/zoom from refs so the same
+  // attached listener stays valid across re-renders.
+  const onTouchMoveNative = useCallback((e) => {
+    if (!dragRef.current) return;
+    const dec = decodedRef.current;
+    if (!dec) return;
     e.preventDefault();
     if (dragRef.current.mode === "pan" && e.touches.length === 1) {
       const t0 = e.touches[0];
       const dx = t0.clientX - dragRef.current.startX;
       const dy = t0.clientY - dragRef.current.startY;
+      const ts = Math.max(frameSize / dec.width, frameSize / dec.height) * zoomRef.current;
       setPan(clampPan(
         dragRef.current.panX + dx,
         dragRef.current.panY + dy,
-        totalScale, imgEl.width, imgEl.height, frameSize
+        ts, dec.width, dec.height, frameSize
       ));
     } else if (dragRef.current.mode === "pinch" && e.touches.length === 2) {
       const newDist = dist(e.touches[0], e.touches[1]);
@@ -135,7 +216,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
       const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, dragRef.current.startZoom * ratio));
       setZoom(next);
     }
-  }, [totalScale, imgEl, frameSize]);
+  }, [frameSize]);
 
   const onTouchEnd = useCallback((e) => {
     // If we drop from pinch to one finger, transition into pan from
@@ -146,75 +227,92 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
         mode: "pan",
         startX: t0.clientX,
         startY: t0.clientY,
-        panX: pan.x,
-        panY: pan.y,
+        panX: panRef.current.x,
+        panY: panRef.current.y,
       };
     } else if (e.touches.length === 0) {
       dragRef.current = null;
     }
-  }, [pan.x, pan.y]);
+  }, []);
 
   // ── Mouse handling (desktop) ──
+  // Window listeners are tracked in a ref so we can clean them up on
+  // unmount even if the user navigates away mid-drag. Without the
+  // unmount cleanup, a closed component leaves dangling listeners
+  // that fire setState on a detached tree.
+  const mouseListenersRef = useRef(null);
+  useEffect(() => {
+    return () => {
+      const l = mouseListenersRef.current;
+      if (l) {
+        window.removeEventListener("mousemove", l.onMove);
+        window.removeEventListener("mouseup", l.onUp);
+        mouseListenersRef.current = null;
+      }
+    };
+  }, []);
   const onMouseDown = useCallback((e) => {
-    if (!imgEl || e.button !== 0) return;
+    const dec = decodedRef.current;
+    if (!dec || e.button !== 0) return;
     e.preventDefault();
     dragRef.current = {
       mode: "pan",
       startX: e.clientX,
       startY: e.clientY,
-      panX: pan.x,
-      panY: pan.y,
+      panX: panRef.current.x,
+      panY: panRef.current.y,
     };
     const onMove = (ev) => {
       if (!dragRef.current) return;
+      const d = decodedRef.current;
+      if (!d) return;
+      const ts = Math.max(frameSize / d.width, frameSize / d.height) * zoomRef.current;
       const dx = ev.clientX - dragRef.current.startX;
       const dy = ev.clientY - dragRef.current.startY;
       setPan(clampPan(
         dragRef.current.panX + dx,
         dragRef.current.panY + dy,
-        totalScale, imgEl.width, imgEl.height, frameSize
+        ts, d.width, d.height, frameSize
       ));
     };
     const onUp = () => {
       dragRef.current = null;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      mouseListenersRef.current = null;
     };
+    mouseListenersRef.current = { onMove, onUp };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [pan.x, pan.y, totalScale, imgEl, frameSize]);
+  }, [frameSize]);
 
-  // Wheel zoom — desktop trackpad pinch + mouse-wheel both fire wheel
-  // with ctrlKey for pinch, plain wheel for scroll. We treat both the
-  // same: incremental zoom by wheel delta.
-  const onWheel = useCallback((e) => {
-    if (!imgEl) return;
+  // Wheel zoom — desktop trackpad pinch (ctrl+wheel) + mouse-wheel.
+  const onWheelNative = useCallback((e) => {
+    if (!decodedRef.current) return;
     e.preventDefault();
     const factor = Math.exp(-e.deltaY * 0.0015);
     setZoom(z => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * factor)));
-  }, [imgEl]);
+  }, []);
 
-  // The browser blocks preventDefault inside a passive listener, and
-  // React attaches touch/wheel handlers as passive. Attach native
-  // non-passive listeners so onWheel + onTouchMove can preventDefault
-  // — without this, mobile Safari hijacks pinch to zoom the page and
-  // desktop trackpads scroll the sheet underneath.
+  // Attach native non-passive listeners ONCE per mount. React's
+  // synthetic touch/wheel handlers are passive — preventDefault is
+  // ignored — so we have to bypass synthetic. Now stable across
+  // re-renders thanks to the ref-based handlers above.
   const frameRef = useRef(null);
   useEffect(() => {
     const el = frameRef.current;
     if (!el) return;
-    const wheelHandler = (e) => onWheel(e);
-    const moveHandler = (e) => onTouchMove(e);
-    el.addEventListener("wheel", wheelHandler, { passive: false });
-    el.addEventListener("touchmove", moveHandler, { passive: false });
+    el.addEventListener("wheel", onWheelNative, { passive: false });
+    el.addEventListener("touchmove", onTouchMoveNative, { passive: false });
     return () => {
-      el.removeEventListener("wheel", wheelHandler);
-      el.removeEventListener("touchmove", moveHandler);
+      el.removeEventListener("wheel", onWheelNative);
+      el.removeEventListener("touchmove", onTouchMoveNative);
     };
-  }, [onWheel, onTouchMove]);
+  }, [onWheelNative, onTouchMoveNative]);
 
   const confirm = async () => {
-    if (!imgEl || busy) return;
+    const dec = decodedRef.current;
+    if (!dec || busy) return;
     setBusy(true);
     try {
       // Render exactly what the frame currently shows to a square
@@ -230,14 +328,20 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       // Source rect in original-image coords:
-      //   sx = -panX / totalScale  (because pan is in screen px and
-      //                             scale maps image→screen)
+      //   sx = -panX / totalScale  (pan is in screen px; scale maps
+      //                             image→screen)
       //   sw = frame / totalScale
       const sx = -pan.x / totalScale;
       const sy = -pan.y / totalScale;
       const sw = frameSize / totalScale;
       const sh = frameSize / totalScale;
-      ctx.drawImage(imgEl, sx, sy, sw, sh, 0, 0, output, output);
+      // Prefer the EXIF-rotated bitmap when the platform supports it
+      // (createImageBitmap with imageOrientation:"from-image"). Fall
+      // back to the HTMLImageElement on platforms that didn't return
+      // a bitmap. Both honour EXIF in their respective decode paths
+      // on the browsers Cardigan targets.
+      const source = dec.bitmap || dec.htmlImage;
+      ctx.drawImage(source, sx, sy, sw, sh, 0, 0, output, output);
       const blob = await new Promise((resolve, reject) => {
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("encode_failed"))),
@@ -256,6 +360,34 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
     }
   };
 
+  // Image load failure UX — if createImageBitmap AND the <img> fallback
+  // both fail (corrupted file, unsupported HEIC on desktop Chrome, etc.)
+  // surface a friendly message + a way back to the picker.
+  if (loadError) {
+    return (
+      <div className="av-crop-editor av-crop-editor--error">
+        <div className="av-crop-error-icon" aria-hidden>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+        </div>
+        <div className="av-crop-error-title">
+          {t("avatar.crop.loadFailedTitle") || "No pudimos abrir esa imagen"}
+        </div>
+        <div className="av-crop-error-body">
+          {t("avatar.crop.loadFailedBody") || "Intenta con otra foto. Si subiste un HEIC, prueba con un JPG o PNG."}
+        </div>
+        <div className="av-crop-actions">
+          <button type="button" className="btn btn-primary-teal" onClick={onCancel}>
+            {t("back") || "Volver"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="av-crop-editor">
       <div className="av-crop-stage">
@@ -268,22 +400,30 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
           onTouchCancel={onTouchEnd}
           onMouseDown={onMouseDown}
         >
-          {imgEl && (
+          {decoded && (
             <img
-              src={imgEl.src}
+              src={decoded.url}
               alt=""
               draggable={false}
               style={{
                 position: "absolute",
                 top: 0, left: 0,
-                width: imgEl.width,
-                height: imgEl.height,
+                width: decoded.width,
+                height: decoded.height,
                 transformOrigin: "0 0",
                 transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${totalScale})`,
                 userSelect: "none",
                 pointerEvents: "none",
+                // Honour EXIF on the displayed image so it matches the
+                // EXIF-rotated bitmap the canvas reads from.
+                imageOrientation: "from-image",
               }}
             />
+          )}
+          {!decoded && (
+            <div className="av-crop-loading" aria-busy="true">
+              <span className="av-crop-spinner" />
+            </div>
           )}
           {/* Circular cutout overlay — dark scrim everywhere except the
               circle in the middle. SVG mask is the cleanest cross-
@@ -325,6 +465,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
           onChange={(e) => setZoom(parseFloat(e.target.value))}
           className="av-crop-slider"
           aria-label={t("avatar.crop.zoom") || "Acercar"}
+          disabled={!decoded}
         />
         <span className="av-crop-zoom-icon" aria-hidden>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -341,7 +482,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
         <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={busy}>
           {t("cancel") || "Cancelar"}
         </button>
-        <button type="button" className="btn btn-primary-teal" onClick={confirm} disabled={!imgEl || busy}>
+        <button type="button" className="btn btn-primary-teal" onClick={confirm} disabled={!decoded || busy}>
           {busy ? (t("saving") || "Guardando…") : (t("avatar.crop.confirm") || "Listo")}
         </button>
       </div>

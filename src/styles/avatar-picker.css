@@ -392,3 +392,52 @@
   margin-top: 4px;
 }
 .av-crop-actions .btn { flex: 1; }
+
+/* ── Crop editor: loading + error states ── */
+.av-crop-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cream);
+  border-radius: inherit;
+}
+.av-crop-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--cream-deeper);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: avCropSpin 0.7s linear infinite;
+}
+@keyframes avCropSpin { to { transform: rotate(360deg); } }
+
+.av-crop-editor--error {
+  text-align: center;
+  padding: 28px 24px 24px;
+  gap: 12px;
+}
+.av-crop-error-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--amber-bg);
+  color: var(--amber);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.av-crop-error-title {
+  font-family: var(--font-d);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--charcoal);
+  letter-spacing: -0.2px;
+  margin-top: 4px;
+}
+.av-crop-error-body {
+  font-size: 13px;
+  color: var(--charcoal-md);
+  line-height: 1.5;
+  max-width: 280px;
+}
