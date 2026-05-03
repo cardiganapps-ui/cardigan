@@ -299,12 +299,51 @@
   .week-event:hover { background: var(--teal-pale); filter: brightness(0.97); }
   .chip:hover { opacity: 0.85; }
   .kpi-card:hover { border-color: var(--teal-light); }
+  /* Newly added — surfaces that read as hover-y on desktop but had
+     no visual response. Same teal-mist tint as .row-item so the
+     cursor signals "this is interactive" everywhere consistently. */
+  .bal-row:hover { background: var(--teal-mist); }
+  .session-row:hover { background: var(--teal-mist); }
+  .note-card:hover { background: var(--teal-mist); border-color: var(--teal-pale); }
+  .fin-tab:hover:not(.active) { background: var(--cream); }
+  .auth-tab:hover:not(.active) { background: var(--cream); }
+  .seg-btn:hover:not(.active),
+  .segmented-btn:hover:not(.active),
+  .view-btn:hover:not(.active) { background: var(--cream); }
+  .see-all:hover { color: var(--teal); text-decoration: underline; }
+  .cmdp-item:hover { background: var(--teal-mist); }
+  .topbar-search-btn:hover { background: var(--cream); border-color: var(--teal-light); }
+  .topbar-new-btn:hover { background: #000; }
+  .topbar-new-item:hover { background: var(--teal-mist); }
+  /* Anchor links in body copy — privacy, terms, mailto, etc. */
+  a:not(.btn):not(.lp-btn):hover { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
 }
 
-/* ── FOCUS-VISIBLE (keyboard navigation) ── */
-:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: var(--radius-sm); }
+/* ── FOCUS-VISIBLE (keyboard navigation) ──
+   Universal teal outline on any focusable element that doesn't define
+   its own focus styling (.input handles its own via box-shadow).
+   Components with high-contrast backgrounds (drawer, FAB) get tone-
+   adjusted overrides so the outline stays visible on either side.
+   .focus-visible-none is an opt-out for components that want no ring
+   at all — used sparingly, e.g. on a div that gets focus()'d to park
+   the focus trap. */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
 .btn:focus-visible, .lp-btn:focus-visible { outline-offset: 3px; }
 .drawer-item:focus-visible { outline-color: var(--teal-light); outline-offset: -2px; }
+.fab:focus-visible { outline-color: var(--white); outline-offset: 4px; }
+.cmdp-item:focus-visible { outline-offset: -2px; }
+.row-item:focus-visible,
+.bal-row:focus-visible,
+.session-row:focus-visible,
+.note-card:focus-visible {
+  outline-offset: -2px;
+}
+.icon-btn:focus-visible { outline-offset: 0; border-radius: 50%; }
+.focus-visible-none:focus-visible { outline: none; }
 
 /* ── DESKTOP DRAWER: stronger active state ── */
 @media (min-width: 768px) {

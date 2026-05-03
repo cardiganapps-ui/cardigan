@@ -25,7 +25,10 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  animation: fadeIn 0.22s ease;
+  animation: fadeIn var(--dur-base) var(--ease-out);
+}
+.confirm-dialog-overlay.is-leaving {
+  animation: fadeOut var(--dur-fast) var(--ease-out) both;
 }
 
 .confirm-dialog {
@@ -40,11 +43,20 @@
   gap: 10px;
   animation: confirmDialogIn var(--dur-slow) var(--ease-spring) both;
 }
+.confirm-dialog.is-leaving {
+  animation: confirmDialogOut var(--dur-fast) var(--ease-out) both;
+}
 
 @keyframes confirmDialogIn {
   0%   { opacity: 0; transform: scale(0.92); }
   60%  { opacity: 1; }
   100% { opacity: 1; transform: scale(1); }
+}
+@keyframes confirmDialogOut {
+  to { opacity: 0; transform: scale(0.96); }
+}
+@keyframes fadeOut {
+  to { opacity: 0; }
 }
 
 /* Icon circle for destructive variant. The icon itself sits inside a

@@ -869,10 +869,42 @@ button.kpi-card:active {
 .btn-teal { background: var(--teal); color: var(--white); height: 44px; font-size: var(--text-sm); box-shadow: none; }
 .btn-teal-soft { background: var(--teal-pale); color: var(--teal-dark); height: 44px; font-size: var(--text-sm); box-shadow: none; }
 
-/* SESSION STATUS PILL */
+/* SESSION STATUS PILL —
+   Inline-flex wrapper so the ::before glyph dot sits centered against
+   the label (an inline-block with text-baseline alignment puts the
+   dot below the cap-line on some fonts). The dot inherits the pill's
+   foreground color so it always reads as "the same thing as the
+   text" rather than a separate decorative element. */
 .session-status {
-  padding: 3px 10px; border-radius: var(--radius-pill);
-  font-size: var(--text-xs); font-weight: 700; display: inline-block;
+  padding: 3px 10px 3px 8px; border-radius: var(--radius-pill);
+  font-size: var(--text-xs); font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px;
+  line-height: 1.2;
+}
+.session-status::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+/* Cancelled: solid filled "X" feel — replace the dot with a hollow
+   ring so the eye reads "marked off" without losing alignment with
+   the other variants' bullet shapes. */
+.session-status.status-cancelled::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+/* "Just changed" pulse — animate the pill briefly when the session
+   transitions status. Components opt in by adding the .is-pulsing
+   class for ~1s after the change. */
+.session-status.is-pulsing {
+  animation: statusPulse 0.9s var(--ease-out) both;
+}
+@keyframes statusPulse {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 /* SESSION ROW RAIL — 3px status-colored accent on the left edge.

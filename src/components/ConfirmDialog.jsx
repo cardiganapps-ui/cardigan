@@ -57,6 +57,12 @@ export function ConfirmDialog({
   const containerRef = useFocusTrap(open);
   useEscape(open && !busy ? onCancel : null);
   const [typed, setTyped] = useState("");
+  // Exit animation — keep the dialog mounted briefly after `open` flips
+  // false so the scale-out keyframes can play. Without this the dialog
+  // snapped away abruptly while the scrim faded; mismatch read as
+  // "two things detaching at different speeds".
+  const [renderOpen, setRenderOpen] = useState(open);
+  const [leaving, setLeaving] = useState(false);
 
   // Reset the type-to-confirm input every time the dialog closes so a
   // re-open starts blank rather than carrying over the prior attempt.
@@ -68,6 +74,28 @@ export function ConfirmDialog({
     if (!open) setTyped("");
   }, [open]);
 
+  // Drive the leaving / unmount sequence from the open prop. Open=true
+  // mounts immediately and clears any prior leaving state. Open=false
+  // marks leaving and schedules an unmount once the exit animation
+  // (~200ms) has played; if open flips back to true mid-leave, we
+  // cancel the unmount. setState in this effect IS the state-machine
+  // driver (mirrors UpdatePrompt + Toast + Drawer); the lint rule is
+  // appropriate for accidental cascading renders, not for explicit
+  // mount-lifecycle synchronisation.
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRenderOpen(true);
+      setLeaving(false);
+      return;
+    }
+    if (renderOpen) {
+      setLeaving(true);
+      const id = setTimeout(() => setRenderOpen(false), 200);
+      return () => clearTimeout(id);
+    }
+  }, [open, renderOpen]);
+
   // Fire haptic.warn() exactly once per open (destructive only). We
   // gate on `open` flipping to true rather than on render so a
   // re-render during the same open doesn't double-fire.
@@ -75,7 +103,7 @@ export function ConfirmDialog({
     if (open && destructive) haptic.warn();
   }, [open, destructive]);
 
-  if (!open) return null;
+  if (!renderOpen) return null;
 
   const expectedText = typeToConfirm?.value || "";
   const matchesType = expectedText
@@ -90,12 +118,12 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="confirm-dialog-overlay"
+      className={`confirm-dialog-overlay${leaving ? " is-leaving" : ""}`}
       onClick={handleOverlayClick}
       role="presentation">
       <div
         ref={containerRef}
-        className={`confirm-dialog ${destructive ? "confirm-dialog--destructive" : ""}`}
+        className={`confirm-dialog ${destructive ? "confirm-dialog--destructive" : ""}${leaving ? " is-leaving" : ""}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
