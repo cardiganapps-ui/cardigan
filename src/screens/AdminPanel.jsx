@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { haptic } from "../utils/haptics";
 import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, adminGrantComp, fetchAdminAnalytics } from "../hooks/useCardiganData";
 import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
-import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { PROFESSIONS } from "../data/constants";
 import { useCardigan } from "../context/CardiganContext";
@@ -91,8 +90,12 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
       <div className="row-item"
         style={{ cursor:"pointer", borderBottom:"none" }}
         onClick={() => setMode(m => m === "collapsed" ? "actions" : "collapsed")}>
-        <Avatar initials={(account.fullName || account.email || "?").charAt(0).toUpperCase()}
-          color={account.blocked ? "var(--charcoal-xl)" : "var(--teal)"} size="md" />
+        {/* No avatar — the admin list is dense by design (email +
+            tier badge + profession + patient count fit on the row),
+            and a leading initial circle pushed long emails / full
+            names into a wrap that read messy. The blocked state
+            still surfaces via the inline badge to the right of the
+            name. */}
         <div className="row-content">
           <div className="row-title" style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
             {account.fullName || t("admin.noName")}
