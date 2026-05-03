@@ -326,6 +326,19 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
               <button type="button" className="lp-footer-link lp-footer-link--btn" onClick={onSecondary}>
                 Probar demo
               </button>
+              <a href="/blog/" className="lp-footer-link">Blog</a>
+            </div>
+            {/* Profession-specific landing pages — internal links so
+                Google indexes them and so a visitor coming via a
+                generic search ("software de consultorio") can self-
+                select into the page that speaks their vocabulary. */}
+            <div className="lp-footer-col">
+              <div className="lp-footer-col-title">Por profesión</div>
+              <a href="/psicologos/" className="lp-footer-link">Psicólogos</a>
+              <a href="/nutriologos/" className="lp-footer-link">Nutriólogos</a>
+              <a href="/entrenadores/" className="lp-footer-link">Entrenadores</a>
+              <a href="/maestros-de-musica/" className="lp-footer-link">Maestros de música</a>
+              <a href="/tutores/" className="lp-footer-link">Tutores</a>
             </div>
             <div className="lp-footer-col">
               <div className="lp-footer-col-title">Legal</div>
