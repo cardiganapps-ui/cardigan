@@ -1390,12 +1390,12 @@ export default {
     },
   },
   // ── Scheduling mode (recurring vs episodic) ──
-  // Profession-aware via {session.s} / {session.pl} placeholders so a
+  // Profession-aware via {session.s} / {session.p} placeholders so a
   // psychologist who flips a patient to episodic reads "Próxima
   // sesión", a nutritionist reads "Próxima consulta", a tutor reads
   // "Próxima clase". Mirror of the existing home.nextSession pattern.
   scheduling: {
-    modeLabel:        "¿Cómo van las {session.pl}?",
+    modeLabel:        "¿Cómo van las {session.p}?",
     recurring:        "Recurrentes",
     episodic:         "A demanda",
     recurringHint:    "Mismo día y hora cada semana — se renueva sola.",
@@ -1416,7 +1416,7 @@ export default {
     // a slot picker which is its own follow-on).
     switchToEpisodic:        "Cambiar a modo a demanda",
     switchToEpisodicTitle:   "¿Cambiar a modo a demanda?",
-    switchToEpisodicBody:    "Las {session.pl} ya agendadas se conservan. Dejaremos de generar nuevas {session.pl} semanales automáticamente — vas a programar cada una al terminar la anterior.",
+    switchToEpisodicBody:    "Las {session.p} ya agendadas se conservan. Dejaremos de generar nuevas {session.p} semanales automáticamente — vas a programar cada una al terminar la anterior.",
     switchToEpisodicConfirm: "Cambiar",
     switchToRecurring:        "Cambiar a modo recurrente",
     switchToRecurringTitle:   "Definir horario recurrente",
