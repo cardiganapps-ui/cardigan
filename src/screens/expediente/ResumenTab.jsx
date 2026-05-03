@@ -291,6 +291,7 @@ export function ResumenTab({
                   ) : (
                     <button
                       type="button"
+                      className="chip-pill"
                       onClick={() => openQuickSchedule?.(patient)}
                       style={{
                         background:"var(--teal-pale)",

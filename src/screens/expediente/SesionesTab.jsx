@@ -269,6 +269,7 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                       }
                       return (
                         <button type="button"
+                          className="chip-pill"
                           onClick={cycleVisitType(s)}
                           aria-label={t("visitType.aria")}
                           style={{
@@ -279,7 +280,6 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                             border: tagged ? "none" : "1px dashed var(--border)",
                             padding:"2px 8px", borderRadius:"999px",
                             cursor:"pointer", fontFamily:"inherit",
-                            WebkitTapHighlightColor:"transparent",
                             minHeight:"unset",
                           }}>{label}</button>
                       );

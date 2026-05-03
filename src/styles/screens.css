@@ -283,6 +283,21 @@ button.stat-tile { cursor: pointer; min-height: 0; }
 .chip.active { background: var(--teal); border-color: var(--teal); color: white; }
 .chip:active { transform: scale(0.93); }
 
+/* Inline action pills (e.g. ResumenTab "Programar próxima",
+   QuickScheduleSheet quick-picks, SesionesTab visit-type chip).
+   Smaller than .chip — sized to fit on a row of meta info — but
+   carries the same press affordance + subtle hover so they feel
+   tactile on desktop and bouncy on mobile. */
+.chip-pill {
+  transition: transform var(--dur-slow) var(--ease-spring),
+              background var(--dur-fast) ease,
+              opacity var(--dur-fast) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.chip-pill:hover { opacity: 0.88; }
+.chip-pill:active { transform: scale(0.93); }
+.chip-pill:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
 /* Note long-press feedback */
 .note-card-pressing {
   background: var(--cream) !important;

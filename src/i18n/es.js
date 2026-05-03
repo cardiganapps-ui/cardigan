@@ -1414,11 +1414,11 @@ export default {
     skipFirstConsultHint:"Crea el paciente sin agendar todavía. Programas la primera {session.s} desde el {record.s} cuando quieras.",
     // Mode-switch (recurring → episodic only in v1; the reverse needs
     // a slot picker which is its own follow-on).
-    switchToEpisodic:        "Cambiar a a demanda",
-    switchToEpisodicTitle:   "¿Cambiar a 'a demanda'?",
+    switchToEpisodic:        "Cambiar a modo a demanda",
+    switchToEpisodicTitle:   "¿Cambiar a modo a demanda?",
     switchToEpisodicBody:    "Las {session.pl} ya agendadas se conservan. Dejaremos de generar nuevas {session.pl} semanales automáticamente — vas a programar cada una al terminar la anterior.",
     switchToEpisodicConfirm: "Cambiar",
-    switchToRecurring:        "Cambiar a recurrentes",
+    switchToRecurring:        "Cambiar a modo recurrente",
     switchToRecurringTitle:   "Definir horario recurrente",
     switchToRecurringIntro:   "Elige el día y hora semanal. Cardigan agenda las próximas 15 semanas y mantiene la agenda viva mientras el paciente esté activo.",
     switchToRecurringConfirm: "Activar recurrencia",

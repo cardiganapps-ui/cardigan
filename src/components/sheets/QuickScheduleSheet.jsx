@@ -206,6 +206,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
               <button
                 key={p.id}
                 type="button"
+                className="chip-pill"
                 onClick={() => setSelectedDate(isoOffsetDays(p.days))}
                 style={{
                   padding: "8px 12px",
@@ -217,8 +218,6 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
                   fontWeight: 700,
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  transition: "background var(--dur-fast) ease, border-color var(--dur-fast) ease",
-                  WebkitTapHighlightColor: "transparent",
                 }}>
                 {t(`scheduling.quickPick.${p.id}`)}
               </button>
