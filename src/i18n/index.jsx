@@ -23,8 +23,8 @@ export function I18nProvider({ children }) {
   }, [strings, vocab]);
 
   const value = useMemo(
-    () => ({ lang: "es", switchLang: () => {}, t, strings, profession, setProfession }),
-    [t, strings, profession]
+    () => ({ lang: "es", switchLang: () => {}, t, strings, profession, setProfession, vocab }),
+    [t, strings, profession, vocab]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

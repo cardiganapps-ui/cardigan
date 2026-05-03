@@ -198,6 +198,69 @@ describe("vocabulary — Spanish article contractions", () => {
   });
 });
 
+describe("vocab — gender + agreement helpers", () => {
+  it("first apocopates for masculine, full form for feminine", () => {
+    expect(PSYCH.session.first).toBe("primera");   // sesión (la) — fem
+    expect(NUTRI.session.first).toBe("primera");   // consulta (la) — fem
+    expect(TUTOR.session.first).toBe("primera");   // clase (la) — fem
+    expect(TRAINER.session.first).toBe("primer");  // entrenamiento (el) — masc, apocopated
+    expect(PSYCH.client.first).toBe("primer");     // paciente (el) — masc
+    expect(TRAINER.client.first).toBe("primer");   // cliente (el) — masc
+  });
+
+  it("First capitalises the singular form", () => {
+    expect(PSYCH.session.First).toBe("Primera");
+    expect(TRAINER.session.First).toBe("Primer");
+  });
+
+  it("agreed / agreedP follow article gender", () => {
+    // "registrad{agreed}" → registrada / registrado
+    expect(PSYCH.session.agreed).toBe("a");
+    expect(TRAINER.session.agreed).toBe("o");
+    expect(TUTOR.client.agreed).toBe("o");          // alumno (el) → masc
+    // Plural variants
+    expect(PSYCH.session.agreedP).toBe("as");
+    expect(TRAINER.session.agreedP).toBe("os");
+  });
+
+  it("withArt / withArtP yield grammatical 'article + noun' pairs", () => {
+    expect(PSYCH.client.withArt).toBe("el paciente");
+    expect(TUTOR.client.withArt).toBe("el alumno");
+    expect(PSYCH.session.withArtP).toBe("las sesiones");
+    expect(TRAINER.session.withArtP).toBe("los entrenamientos");
+    expect(PSYCH.rate.withArt).toBe("los Honorarios");   // grammatically plural, kept
+    expect(TUTOR.rate.withArt).toBe("la Colegiatura");
+    expect(TRAINER.rate.withArt).toBe("la Tarifa");
+  });
+
+  it("WithArt / WithArtP capitalise both article and noun", () => {
+    expect(PSYCH.client.WithArt).toBe("El Paciente");
+    expect(TRAINER.session.WithArtP).toBe("Los Entrenamientos");
+  });
+
+  it("composes a gender-correct 'first session' in a real template", () => {
+    const tpl = "Registra tu {session.first} {session.s}";
+    expect(resolveTemplate(tpl, undefined, PSYCH))
+      .toBe("Registra tu primera sesión");
+    expect(resolveTemplate(tpl, undefined, NUTRI))
+      .toBe("Registra tu primera consulta");
+    expect(resolveTemplate(tpl, undefined, TUTOR))
+      .toBe("Registra tu primera clase");
+    expect(resolveTemplate(tpl, undefined, TRAINER))
+      .toBe("Registra tu primer entrenamiento");
+  });
+
+  it("composes the changeWarning correctly for every profession", () => {
+    const tpl = "{session.WithArtP} desde la fecha indicada se reemplazarán con el nuevo horario y {rate.s}.";
+    expect(resolveTemplate(tpl, undefined, PSYCH))
+      .toBe("Las Sesiones desde la fecha indicada se reemplazarán con el nuevo horario y Honorarios.");
+    expect(resolveTemplate(tpl, undefined, TUTOR))
+      .toBe("Las Clases desde la fecha indicada se reemplazarán con el nuevo horario y Colegiatura.");
+    expect(resolveTemplate(tpl, undefined, TRAINER))
+      .toBe("Los Entrenamientos desde la fecha indicada se reemplazarán con el nuevo horario y Tarifa.");
+  });
+});
+
 describe("lookupKey", () => {
   const strings = {
     nav: { home: "Inicio", patients: "Pacientes" },

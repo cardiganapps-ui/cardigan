@@ -49,6 +49,10 @@ export function buildMonthlySummaryPdf({
   patients,
   now = new Date(),
   therapistName = "",
+  // Per-profession noun for the "Cobros por X" section header. Caller
+  // passes `cap(vocab.client.s)` ("Paciente" / "Alumno" / "Cliente").
+  // Falls back to "paciente" for the legacy default.
+  clientLabel = "paciente",
 }) {
   const monthIdx = now.getMonth();
   const monthLabel = FULL_MONTHS_ES[monthIdx];
@@ -144,7 +148,7 @@ export function buildMonthlySummaryPdf({
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(46, 46, 46);
-  doc.text("Cobros por paciente", margin, y);
+  doc.text(`Cobros por ${clientLabel}`, margin, y);
   y += 8;
 
   if (patientRows.length === 0) {

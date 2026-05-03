@@ -8,7 +8,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, allergies, medicalConditions }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
-      setMutationError("Ya existe un paciente con ese nombre.");
+      setMutationError("Ya existe un registro con ese nombre.");
       return false;
     }
     const sched = schedules?.length ? schedules : [{ day: "Lunes", time: "16:00" }];

@@ -137,7 +137,7 @@ export default function CommandPalette({ open, onClose }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder={t("cmdp.placeholder") || "Buscar comandos, pacientes\u2026"}
+            placeholder={t("cmdp.placeholder")}
           />
           <kbd className="cmdp-kbd">ESC</kbd>
         </div>
@@ -165,7 +165,7 @@ export default function CommandPalette({ open, onClose }) {
                 </span>
                 <span className="cmdp-tip">
                   <kbd className="cmdp-kbd">⌘N</kbd>
-                  <span>Nuevo paciente</span>
+                  <span>{t("cmdp.newPatient")}</span>
                 </span>
                 <span className="cmdp-tip">
                   <kbd className="cmdp-kbd">g</kbd>

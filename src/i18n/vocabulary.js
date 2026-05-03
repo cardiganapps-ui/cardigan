@@ -44,7 +44,37 @@ function noun(s, p, art, artP) {
   // Plural articles never contract with de/a.
   const delP = `de ${artP} ${p}`;
   const alP  = `a ${artP} ${p}`;
-  return { s, p, art, artP, del, al, delP, alP };
+  // Article + noun, ready to drop into a sentence as the subject.
+  // "{rate.withArt} cambia mañana" → "los Honorarios cambia mañana"
+  // / "la Colegiatura cambia mañana" / "la Tarifa cambia mañana".
+  // Cap variant ("Los Honorarios", "La Colegiatura") capitalises both
+  // article and noun for sentence-start use.
+  const withArt   = `${art} ${s}`;
+  const withArtP  = `${artP} ${p}`;
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  const WithArt  = `${cap(art)} ${cap(s)}`;
+  const WithArtP = `${cap(artP)} ${cap(p)}`;
+  // Gender-agreement helpers — derived from the singular article. Spanish
+  // adjectives like "primero/primera" need to agree with the noun they
+  // modify, so callers that write "tu {session.first} {session.s}" get
+  // "tu primera sesión" for fem. nouns and "tu primer entrenamiento"
+  // (apocopated) for masc. nouns. Both lower- and upper-case shapes
+  // exposed for sentence-start / mid-sentence use.
+  const isFem = art === "la" || art === "las";
+  const first  = isFem ? "primera" : "primer";
+  const First  = cap(first);
+  // Past-participle agreement ("modificado/a" — for "Honorarios
+  // modificados", "Tarifa modificada", etc.). Drives the rate-changed
+  // toasts. Caller picks `agreed` (matches singular) or `agreedP`
+  // (matches plural). For Honorarios (s and p both "Honorarios"
+  // grammatically plural) callers use agreedP.
+  const agreed  = isFem ? "a" : "o";
+  const agreedP = isFem ? "as" : "os";
+  return {
+    s, p, art, artP, del, al, delP, alP,
+    withArt, withArtP, WithArt, WithArtP,
+    first, First, agreed, agreedP,
+  };
 }
 
 export const VOCAB = {

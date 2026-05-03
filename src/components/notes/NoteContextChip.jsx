@@ -61,7 +61,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
             className="sheet-panel"
             role="dialog"
             aria-modal="true"
-            aria-label={t("notes.linkToPatient") || "Vincular a paciente"}
+            aria-label={t("notes.linkToPatient")}
             onClick={(e) => e.stopPropagation()}
             {...panelHandlers}
           >
@@ -94,7 +94,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
                     value={sessionId || ""}
                     onChange={e => onChange({ patientId, sessionId: e.target.value || null })}
                   >
-                    <option value="">{t("notes.generalPatientNote") || "Nota general del paciente"}</option>
+                    <option value="">{t("notes.generalPatientNote")}</option>
                     {patientSessions.map(s => (
                       <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`) || s.status}</option>
                     ))}

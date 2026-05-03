@@ -448,7 +448,7 @@ export function Finances() {
   // `deletePayment` is already wrapped at the context level to surface
   // a success toast, so we use it directly here.
   const { patients, payments, upcomingSessions, openRecordPaymentModal, openEditPaymentModal, deletePayment, mutating, openExpediente, requestFabAction, readOnly, userName, subscription, requirePro } = useCardigan();
-  const { t } = useT();
+  const { t, vocab } = useT();
   const [tab, setTab] = useState("balances");
   const [balanceFilter, setBalanceFilter] = useState(null); // null | "owing" | "paid"
   const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
@@ -468,12 +468,15 @@ export function Finances() {
       downloadMonthlySummaryPdf({
         payments, sessions: upcomingSessions, patients,
         therapistName: userName,
+        // Use the profession-specific noun in the PDF section header
+        // ("Cobros por paciente / alumno / cliente").
+        clientLabel: vocab?.client?.s || "paciente",
       });
       track("pdf_summary_downloaded");
     } finally {
       setPdfBusy(false);
     }
-  }, [pdfBusy, subscription?.isPro, requirePro, payments, upcomingSessions, patients, userName]);
+  }, [pdfBusy, subscription?.isPro, requirePro, payments, upcomingSessions, patients, userName, vocab?.client?.s]);
 
   return (
     <div className="page" data-tour="finances-section">
