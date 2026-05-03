@@ -1,5 +1,5 @@
 import { Component } from "react";
-import { Sentry } from "../lib/sentry";
+import { captureException } from "../lib/sentry";
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -12,7 +12,11 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    Sentry.captureException(error, { extra: { componentStack: info?.componentStack } });
+    // Buffered until the Sentry SDK loads (deferred to idle in
+    // main.jsx). If a crash happens during the first ~100ms before
+    // init, the event sits in the in-memory queue and flushes the
+    // moment the SDK chunk lands.
+    captureException(error, { extra: { componentStack: info?.componentStack } });
   }
 
   render() {

@@ -9,7 +9,19 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './lib/skewProtection'
 import { installBodyScrollLock } from './lib/bodyScrollLock'
 
-initSentry()
+/* Defer Sentry init to browser idle. The SDK is dynamic-imported
+   inside initSentry() — without the deferral the chunk would still
+   fetch eagerly via the main-thread parse path. ErrorBoundary
+   buffers any errors that happen in the meantime and flushes once
+   the SDK lands. requestIdleCallback is the right fit here (Safari
+   < 17 needs the setTimeout fallback). */
+if (typeof window !== 'undefined') {
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(() => { initSentry(); }, { timeout: 3000 });
+  } else {
+    setTimeout(() => { initSentry(); }, 1500);
+  }
+}
 // Watch the DOM for sheet / confirm-dialog / drawer overlays and
 // lock body scroll while one is mounted. Single global observer —
 // no per-sheet wiring, and any future sheet that follows the

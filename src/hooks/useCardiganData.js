@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { loadCachedData, saveCachedData } from "../lib/dataCache";
 import { supabase } from "../supabaseClient";
 import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
 import {
@@ -280,13 +281,27 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const userId = viewAsUserId || user?.id;
   const readOnly = !!viewAsUserId;
   const noteCrypto = options.noteCrypto;
-  const [patients, setPatients] = useState([]);
-  const [upcomingSessions, setUpcomingSessions] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [notes, setNotes] = useState([]);
-  const [documents, setDocuments] = useState([]);
-  const [measurements, setMeasurements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  /* Stale-while-revalidate hydration: read the user's last-seen
+     snapshot before useState so the initial render uses cached rows
+     instead of empty arrays + a skeleton. The fetch still runs (in
+     refresh below) — when it finishes it overwrites this with fresh
+     data. Result: cold-start time-to-first-meaningful-paint drops
+     from "supabase round-trip" to "localStorage read" (microseconds).
+     For viewAsUserId (admin "view as") the cache key is the target
+     user's id, not the admin's — separate cache per identity, no
+     leak. Logged-out / pre-auth render gets null and falls through
+     to empty arrays + the loading skeleton, same as before. */
+  const initialCache = useMemo(() => loadCachedData(userId), [userId]);
+  const [patients, setPatients] = useState(initialCache?.patients || []);
+  const [upcomingSessions, setUpcomingSessions] = useState(initialCache?.upcomingSessions || []);
+  const [payments, setPayments] = useState(initialCache?.payments || []);
+  const [notes, setNotes] = useState(initialCache?.notes || []);
+  const [documents, setDocuments] = useState(initialCache?.documents || []);
+  const [measurements, setMeasurements] = useState(initialCache?.measurements || []);
+  // Skeleton stays hidden when we hydrated from cache — the user
+  // sees their data immediately. Skeleton fires only on a true cold
+  // start (no cache, fresh login, or after the cache aged out).
+  const [loading, setLoading] = useState(!initialCache);
   const [fetchError, setFetchError] = useState("");
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
@@ -430,6 +445,22 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     setDocuments(dRes.data || []);
     setMeasurements(mRes.data || []);
     setLoading(false);
+
+    /* Persist the fresh snapshot for next cold start. We do this
+       AFTER all the in-memory setters fire so the cache and the
+       React state are always in sync — if a render aborted
+       mid-update we'd still be writing the canonical fetched data,
+       not a partial state. Mutations after this point flow through
+       in-memory state only; the next refresh () writes the
+       up-to-date cache. */
+    saveCachedData(userId, {
+      patients: pData,
+      upcomingSessions: sData,
+      payments: mapRows(pmRes.data),
+      notes: notesData,
+      documents: dRes.data || [],
+      measurements: mRes.data || [],
+    });
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
     // include the encrypt/decrypt fns in deps directly because they

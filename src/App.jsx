@@ -47,12 +47,19 @@ import { QuickScheduleSheet } from "./components/sheets/QuickScheduleSheet";
 import { isEpisodic } from "./data/constants";
 import { shortDateToISO, todayISO as todayISOFn } from "./utils/dates";
 import { Home } from "./screens/Home";
-import { Agenda } from "./screens/Agenda";
-import { Patients } from "./screens/Patients";
-import { Finances } from "./screens/Finances";
-import { Archivo } from "./screens/Archivo";
-import { Settings } from "./screens/Settings";
-import { PrivacyPolicy } from "./screens/PrivacyPolicy";
+/* Secondary screens — lazy-loaded so the main bundle drops the
+   weight of components a user may never visit in a session.
+   Patients pulls in PatientExpediente + the full edit sheet;
+   Agenda has Day/Week/Month + drag-drop; Finances has charts,
+   PagosTab, Balances; Settings is huge (subscription, encryption,
+   calendar token, accent picker). LoadingSkeleton is the Suspense
+   fallback (already keyed by screen name for per-screen shapes). */
+const Agenda = lazy(() => import("./screens/Agenda").then(m => ({ default: m.Agenda })));
+const Patients = lazy(() => import("./screens/Patients").then(m => ({ default: m.Patients })));
+const Finances = lazy(() => import("./screens/Finances").then(m => ({ default: m.Finances })));
+const Archivo = lazy(() => import("./screens/Archivo").then(m => ({ default: m.Archivo })));
+const Settings = lazy(() => import("./screens/Settings").then(m => ({ default: m.Settings })));
+const PrivacyPolicy = lazy(() => import("./screens/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 import { AuthScreen } from "./screens/AuthScreen";
 // AdminPanel is only mounted when the admin opens it from the
 // topbar (one user across the whole platform). Lazy so the ~40 KB
@@ -1413,7 +1420,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
               showContent={!(loading && patients.length === 0)}
               skeletonScreen={screen}
             >
-              {screenMap[screen]}
+              {/* Suspense boundary for the lazy screen chunks. The
+                  fallback is the same per-screen LoadingSkeleton the
+                  data-loading path uses, so a chunk-fetch flash and
+                  a data-fetch flash look identical to the user. */}
+              <Suspense fallback={<LoadingSkeleton screen={screen} />}>
+                {screenMap[screen]}
+              </Suspense>
             </SkeletonCrossfade>
           </div>
         </PullToRefresh>

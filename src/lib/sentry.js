@@ -1,4 +1,11 @@
-import * as Sentry from "@sentry/react";
+/* @sentry/react is dynamically imported by initSentry() — kept off
+   the static graph so the SDK's ~6.6 KB gzipped chunk doesn't fetch
+   on the cold-start critical path. captureException + setSentryTag
+   buffer events when called before init, then flush as soon as the
+   SDK finishes loading. */
+let sentryInstance = null;
+const pendingEvents = [];
+const pendingTags = [];
 
 /* PII / secret fields scrubbed from every Sentry event, breadcrumb,
    and context. Add new sensitive fields here whenever the schema or
@@ -72,9 +79,13 @@ export function scrubPII(obj) {
   return out;
 }
 
-export function initSentry() {
+export async function initSentry() {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!dsn || !import.meta.env.PROD) return;
+  // Dynamic import keeps @sentry/react off the eager chunk graph.
+  // The SDK chunk fetches in parallel with whatever the user is
+  // doing — typical first-paint critical path doesn't wait on it.
+  const Sentry = await import("@sentry/react");
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
@@ -93,6 +104,26 @@ export function initSentry() {
       return event;
     },
   });
+  sentryInstance = Sentry;
+  // Flush anything captured before the SDK was ready. Empty in the
+  // common case (no errors during the first ~100ms), but if the app
+  // crashed during boot we still get the report.
+  for (const ev of pendingEvents) Sentry.captureException(ev.error, ev.context);
+  pendingEvents.length = 0;
+  for (const tag of pendingTags) Sentry.setTag(tag.key, tag.value);
+  pendingTags.length = 0;
+}
+
+/* captureException — drop-in for Sentry.captureException, safe to
+   call before initSentry resolves. Buffered events flush during
+   initSentry; if init never runs (no DSN, dev mode) the buffer just
+   stays in memory and gets garbage-collected on reload. */
+export function captureException(error, context) {
+  if (sentryInstance) {
+    sentryInstance.captureException(error, context);
+  } else {
+    pendingEvents.push({ error, context });
+  }
 }
 
 // Tags every subsequent Sentry event with the active profession + demo
@@ -100,12 +131,13 @@ export function initSentry() {
 // only affect (say) nutritionist users are filterable in the Sentry UI.
 // Profession is non-PII — it's the same enum we'd put in a feature flag.
 export function setSentryProfession(profession, { demo = false } = {}) {
-  try {
-    Sentry.setTag("profession", profession || "unknown");
-    Sentry.setTag("demo", demo ? "1" : "0");
-  } catch {
-    // Sentry not initialised (no DSN, dev mode) — no-op.
+  const tags = [
+    { key: "profession", value: profession || "unknown" },
+    { key: "demo", value: demo ? "1" : "0" },
+  ];
+  if (sentryInstance) {
+    for (const t of tags) sentryInstance.setTag(t.key, t.value);
+  } else {
+    pendingTags.push(...tags);
   }
 }
-
-export { Sentry };
