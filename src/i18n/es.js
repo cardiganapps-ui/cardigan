@@ -366,7 +366,6 @@ export default {
   finances: {
     balances: "Saldos",
     payments: "Pagos",
-    downloadMonthlyPdf: "Descargar resumen del mes (PDF)",
     totalCollected: "Total cobrado",
     pending: "Pendiente",
     billed: "Facturado",
