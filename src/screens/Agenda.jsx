@@ -5,7 +5,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { CalendarLinkSheet } from "../components/sheets/CalendarLinkSheet";
-import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconChevron } from "../components/Icons";
+import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconChevron, IconPlus } from "../components/Icons";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { BulkActionsBar } from "../components/BulkActionsBar";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -1049,7 +1049,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction } = useCardigan();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -1311,13 +1311,33 @@ export function Agenda() {
       {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} />}
-      {upcomingSessions.length === 0 && (
-        <EmptyState
-          kind="agenda"
-          title={t("sessions.noSessions")}
-          body={t("agenda.emptyHint")}
-        />
-      )}
+      {upcomingSessions.length === 0 && (() => {
+        // Two flavours of "no sessions": brand-new user with zero
+        // patients, or an existing user whose calendar is genuinely
+        // empty for the period. The CTA differs — first patient
+        // creation vs schedule a session — so the affordance points
+        // at the right next step instead of dropping the user on a
+        // dead end. readOnly suppresses both (demo / admin view-as).
+        const noPatients = (patients || []).length === 0;
+        const action = readOnly ? null : (
+          <button
+            type="button"
+            onClick={() => requestFabAction?.(noPatients ? "patient" : "session")}
+            className="btn btn-primary"
+            style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+            <IconPlus size={16} />
+            {noPatients ? t("patients.addFirstCta") : t("sessions.scheduleFirst")}
+          </button>
+        );
+        return (
+          <EmptyState
+            kind="agenda"
+            title={t("sessions.noSessions")}
+            body={noPatients ? t("agenda.emptyHintNoPatients") : t("agenda.emptyHint")}
+            cta={action}
+          />
+        );
+      })()}
       {newSessionPrefill && (
         <NewSessionSheet
           onClose={() => setNewSessionPrefill(null)}

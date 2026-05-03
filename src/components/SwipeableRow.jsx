@@ -18,6 +18,15 @@ const ROW_OWNER_ID = "swipeable-row";
 
 const REVEAL_PX = -80;
 const ACTIVATE_PX = -40;
+const HINT_PEEK_PX = -36; // ~half-reveal — enough to see the action, not enough to commit
+const HINT_STORAGE_KEY = "cardigan.swipe.hint.shown";
+
+/* Module-level guard so only the FIRST SwipeableRow mounted in a
+   session triggers the discoverability peek. Persists across the
+   session even if the localStorage flag is unset (e.g. private mode);
+   a refresh resets it, but the localStorage flag below covers the
+   normal case so the peek never plays twice for the same user. */
+let hintShownThisSession = false;
 
 const TONE_BG = {
   danger: "var(--red)",
@@ -35,6 +44,34 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
   // Keep ref in sync so touch handlers see the latest committed offset
   // without re-binding on every render.
   useEffect(() => { offsetRef.current = offset; }, [offset]);
+
+  /* Discoverability peek. The first SwipeableRow rendered for a user
+     who hasn't seen the hint yet plays a subtle peek-and-snap-back
+     ~600ms after mount: the row shifts left ~36px (just enough to
+     surface the red action slot) then springs back via the existing
+     transform transition. Tells first-time users "you can swipe me"
+     without an explicit tutorial. Persists in localStorage so it
+     never repeats — existing users see it once after the first
+     deploy with this commit, then never again. */
+  useEffect(() => {
+    if (hintShownThisSession) return;
+    let alreadyShown = false;
+    try { alreadyShown = localStorage.getItem(HINT_STORAGE_KEY) === "1"; }
+    catch { /* private mode */ }
+    if (alreadyShown) {
+      hintShownThisSession = true;
+      return;
+    }
+    hintShownThisSession = true;
+    try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch { /* ignore */ }
+
+    // Two-stage animation via the existing offset state. The
+    // transform transition (cubic-bezier spring) handles the actual
+    // motion — we just nudge the value.
+    const peekIn  = setTimeout(() => setOffset(HINT_PEEK_PX), 700);
+    const peekOut = setTimeout(() => setOffset(0), 1300);
+    return () => { clearTimeout(peekIn); clearTimeout(peekOut); };
+  }, []);
 
   const onTouchStart = useCallback((e) => {
     ref.current = {

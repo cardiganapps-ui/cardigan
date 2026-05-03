@@ -14,7 +14,7 @@ import { useT } from "../i18n/index";
 const FINANCES_INITIAL_WINDOW = 60;
 const FINANCES_WINDOW_INCREMENT = 40;
 
-function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating }) {
+function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating, onAddFirstPatient }) {
   const { t } = useT();
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -201,14 +201,44 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
       </div>
 
       {filtered.length === 0
-        ? <div className="card" style={{ padding: 0 }}>
-            <EmptyState
-              kind="finances"
-              compact
-              title={t("finances.noPaymentsInPeriod")}
-              body={t("finances.emptyBody")}
-            />
-          </div>
+        ? (() => {
+            // Two sources of "no payments visible": the user has
+            // never recorded a payment yet (first-time state — show
+            // the CTA), or there's a filter applied that just doesn't
+            // match anything (subsequent state — no CTA, the user
+            // adjusts the filter). For brand-new users with zero
+            // patients, the CTA points at patient creation instead.
+            const noPatients = (patients || []).length === 0;
+            const hasAnyPayments = (payments || []).length > 0;
+            const action = !hasAnyPayments && !noPatients ? (
+              <button
+                type="button"
+                onClick={() => onRecordPayment(null)}
+                className="btn btn-primary"
+                style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+                <IconPlus size={16} /> {t("finances.recordFirst")}
+              </button>
+            ) : noPatients ? (
+              <button
+                type="button"
+                onClick={onAddFirstPatient}
+                className="btn btn-primary"
+                style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+                <IconPlus size={16} /> {t("patients.addFirstCta")}
+              </button>
+            ) : null;
+            return (
+              <div className="card" style={{ padding: 0 }}>
+                <EmptyState
+                  kind="finances"
+                  compact={hasAnyPayments}
+                  title={hasAnyPayments ? t("finances.noPaymentsInPeriod") : t("finances.noPayments")}
+                  body={t("finances.emptyBody")}
+                  cta={action}
+                />
+              </div>
+            );
+          })()
         : groupByClient
           ? <div className="card">
               {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, pList], gi) => {
@@ -602,7 +632,7 @@ export function Finances() {
         </div>
       )}
 
-      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={openRecordPaymentModal} onEditPayment={openEditPaymentModal} onDeletePayment={deletePayment} mutating={mutating} />}
+      {tab==="pagos" && <PagosTab payments={payments} patients={patients} onRecordPayment={openRecordPaymentModal} onEditPayment={openEditPaymentModal} onDeletePayment={deletePayment} mutating={mutating} onAddFirstPatient={() => requestFabAction?.("patient")} />}
 
       {tab==="proyeccion" && <ProyeccionTab sessions={upcomingSessions} patients={patients} />}
 

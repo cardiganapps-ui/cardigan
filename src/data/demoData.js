@@ -457,6 +457,13 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           : null,
         modality: def.modality || "presencial",
         session_type: "regular",
+        // Demo recurring patients are seeded by a weekly loop — these
+        // rows ARE the recurring schedule. Without this flag,
+        // ResumenTab's derivePatientSchedules filters them all out and
+        // demo recurring patients display "Sin recurrencia" on their
+        // info card. (Pre-existing bug spotted during the episodic
+        // round; fixed here.) Episodic + tutor rows below stay false.
+        is_recurring: true,
         color_idx: colorIdx,
         colorIdx: colorIdx,
         created_at: current.toISOString(),
@@ -495,6 +502,9 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
           : null,
         modality: def.modality || "presencial",
         session_type: "regular",
+        // Secondary recurring slot — same recurring-schedule semantic
+        // as the primary loop above.
+        is_recurring: true,
         color_idx: colorIdx,
         colorIdx: colorIdx,
         created_at: extraCurrent.toISOString(),
