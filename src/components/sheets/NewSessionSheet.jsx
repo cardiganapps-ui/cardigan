@@ -7,8 +7,25 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
-import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic } from "../../data/constants";
 import { formatMXN } from "../../utils/format";
+
+/* For episodic patients, the natural default is "next visit two weeks
+   out" (the most common nutrition cadence during plan rollout) — not
+   today. Saves a couple of taps on the most common path. Recurring
+   patients keep today's behavior since their next slot is implied by
+   the schedule, not a date the user invents. */
+const EPISODIC_DEFAULT_OFFSET_DAYS = 14;
+function defaultDateForPatient(patient) {
+  if (!isEpisodic(patient)) return todayISO();
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + EPISODIC_DEFAULT_OFFSET_DAYS);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime, initialPatientName, initialSessionType }) {
   const { t } = useT();
@@ -26,7 +43,10 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const tutorAllowed = initialSessionType === "tutor" && initialPatient && !!initialPatient.parent;
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [sessionType, setSessionType] = useState(tutorAllowed ? "tutor" : "patient");
-  const [date, setDate] = useState(initialDate || todayISO());
+  // Episodic-aware date default: explicit `initialDate` always wins;
+  // otherwise we look at the (initial) patient's mode and pick today
+  // for recurring, today+14 for episodic.
+  const [date, setDate] = useState(initialDate || defaultDateForPatient(initialPatient));
   const [time, setTime] = useState(initialTime || "16:00");
   const [duration, setDuration] = useState("60");
   const [modality, setModality] = useState("presencial");
@@ -51,6 +71,11 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
     const p = patients.find(pt => pt.name === name);
     setSessionType("patient");
     setCustomRate(p ? String(p.rate) : "");
+    // Re-default the date when the picked patient is episodic — saves
+    // the user from manually pushing it out 2 weeks. Skip when the
+    // caller pinned a specific `initialDate` (e.g. tap on a calendar
+    // cell), since that's a stronger intent.
+    if (!initialDate && p) setDate(defaultDateForPatient(p));
   };
 
   // Conflict detection: check if any session exists at same date+time

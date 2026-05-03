@@ -59,6 +59,22 @@ describe("computeAutoExtendRows — accounting safety", () => {
     expect(rows).toEqual([]);
   });
 
+  it("returns no rows for an episodic patient — even with an is_recurring future row", () => {
+    // Defense-in-depth: a stray is_recurring=true row on an episodic
+    // patient (manual DB edit, post-mode-flip leftover) must NOT
+    // trigger the weekly extender. The user opted out of perpetual
+    // recurrence by flipping mode; honor that.
+    const ctx = buildContext(new Date());
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient({ scheduling_mode: "episodic" }),
+      allPSess: [
+        { ...scheduledMon10(7, ctx.today), is_recurring: true },
+      ],
+    });
+    expect(rows).toEqual([]);
+  });
+
   it("returns no rows when patient has no sessions", () => {
     const ctx = buildContext(new Date());
     expect(computeAutoExtendRows({

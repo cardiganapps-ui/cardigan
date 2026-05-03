@@ -6,12 +6,13 @@ import { capitalizeName } from "../../utils/names";
 import { Toggle } from "../Toggle";
 import { IconX } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
+import { SegmentedControl } from "../SegmentedControl";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, usesAnthropometrics } from "../../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics } from "../../data/constants";
 
 // Weekdays + hours to search through when picking a sensible default
 // for the first recurring slot. Weekday-major, then by hour — the
@@ -103,6 +104,18 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   const [hasEndDate, setHasEndDate] = useState(false);
   const [endDate, setEndDate] = useState("");
 
+  // Scheduling mode — per-patient (not per-profession). Profession sets
+  // the default in the form; the user can flip either way at creation.
+  // Episodic patients have NO perpetual weekly slot; they have at most
+  // one "first consult" (which itself is optional — intake-call-first
+  // workflows leave it blank and schedule from Resumen later).
+  const [schedulingMode, setSchedulingMode] = useState(() => defaultSchedulingMode(profession));
+  const [firstConsultDate, setFirstConsultDate] = useState(todayISO());
+  const [firstConsultTime, setFirstConsultTime] = useState("10:00");
+  const [firstConsultDuration, setFirstConsultDuration] = useState("60");
+  const [firstConsultModality, setFirstConsultModality] = useState(modalities[0] || "presencial");
+  const [skipFirstConsult, setSkipFirstConsult] = useState(false);
+
   // Transient feedback for missed-field / conflict nudges on tap of
   // "Siguiente" or "Agregar paciente". A silently-disabled button was
   // leaving the user wondering why the form wasn't advancing — this
@@ -157,7 +170,14 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   // toast.
   const rateNum = Number(rate);
   const rateValid = rate !== "" && Number.isFinite(rateNum) && rateNum >= 0;
-  const canAdvance = !!name.trim() && rateValid && schedules.length > 0 && !hasConflict;
+  // Episodic mode skips weekly-slot validation entirely — the only
+  // schedule-shaped field is the optional "Primera consulta" picker,
+  // which is allowed to be empty (`skipFirstConsult`). Recurring mode
+  // keeps today's gate: at least one slot, no internal/external
+  // conflicts.
+  const isEpisodicMode = schedulingMode === SCHEDULING_MODE.EPISODIC;
+  const scheduleValid = isEpisodicMode ? true : (schedules.length > 0 && !hasConflict);
+  const canAdvance = !!name.trim() && rateValid && scheduleValid;
 
   const goNext = () => {
     if (!name.trim()) { flash(t("patients.enterName")); return; }
@@ -165,7 +185,9 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
       flash(t("patients.duplicateName")); return;
     }
     if (!rateValid) { flash(t("patients.enterRate")); return; }
-    if (hasConflict) { flash(t("patients.resolveConflicts")); return; }
+    // Skip slot-conflict + slot-presence checks for episodic patients.
+    // The recurring-slot UI isn't even rendered in that mode.
+    if (!isEpisodicMode && hasConflict) { flash(t("patients.resolveConflicts")); return; }
     // Dismiss the iOS keyboard when stepping past step 1 (rate input).
     // Without this, the soft keyboard stays open over step 2's date
     // pickers because the previously-focused MoneyInput unmounts but
@@ -211,9 +233,21 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         goalSkeletalMuscleKg: showHealthFields && goalSkeletalMuscleKg ? Number(goalSkeletalMuscleKg) : null,
         allergies: showHealthFields ? allergies.trim() : "",
         medicalConditions: showHealthFields ? medicalConditions.trim() : "",
-        schedules, recurring: true,
-        startDate,
-        endDate: hasEndDate ? endDate : null,
+        schedulingMode,
+        // Recurring path: today's params are unchanged.
+        // Episodic path: pass the optional first consult (or null when
+        // skipFirstConsult is set). schedules/recurring/startDate are
+        // ignored on the hook side when schedulingMode === 'episodic'.
+        schedules: isEpisodicMode ? [] : schedules,
+        recurring: !isEpisodicMode,
+        startDate: isEpisodicMode ? null : startDate,
+        endDate: !isEpisodicMode && hasEndDate ? endDate : null,
+        firstConsult: isEpisodicMode && !skipFirstConsult && firstConsultDate ? {
+          date: firstConsultDate,
+          time: firstConsultTime,
+          duration: Number(firstConsultDuration) || 60,
+          modality: firstConsultModality,
+        } : null,
       });
       if (ok) onClose();
       else setSubmitting(false);
@@ -322,7 +356,95 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                 <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
               </div>
 
-              {/* 4. Schedule */}
+              {/* 4. Scheduling mode — recurring (perpetual weekly slot)
+                  vs episodic (no slot, schedule next at end of each
+                  consult). Profession sets the default; user can flip. */}
+              <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 8px" }}>{t("scheduling.modeLabel")}</div>
+              <div style={{ marginBottom:12 }}>
+                <SegmentedControl
+                  size="md"
+                  value={schedulingMode}
+                  onChange={setSchedulingMode}
+                  ariaLabel={t("scheduling.modeLabel")}
+                  items={[
+                    { k: SCHEDULING_MODE.RECURRING, l: t("scheduling.recurring") },
+                    { k: SCHEDULING_MODE.EPISODIC,  l: t("scheduling.episodic")  },
+                  ]}
+                />
+                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6, lineHeight:1.5 }}>
+                  {isEpisodicMode ? t("scheduling.episodicHint") : t("scheduling.recurringHint")}
+                </div>
+              </div>
+
+              {/* 5a. EPISODIC schedule block — single optional first
+                  consult. Skipping is legal so an intake-call-first
+                  workflow can create the patient without committing
+                  to a date and schedule from Resumen later. */}
+              {isEpisodicMode && (
+                <>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 10px" }}>{t("scheduling.firstConsult")}</div>
+                  <div
+                    onClick={() => setSkipFirstConsult(v => !v)}
+                    style={{
+                      display:"flex", alignItems:"center", justifyContent:"space-between",
+                      padding:"10px 14px", marginBottom:12, cursor:"pointer",
+                      borderRadius:"var(--radius)",
+                      border: skipFirstConsult ? "1.5px solid var(--teal)" : "1.5px solid var(--border-lt)",
+                      background: skipFirstConsult ? "var(--cream)" : "var(--white)",
+                      transition: "all 0.3s",
+                    }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{t("scheduling.skipFirstConsult")}</div>
+                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("scheduling.skipFirstConsultHint")}</div>
+                    </div>
+                    <Toggle on={skipFirstConsult} onToggle={() => {}} />
+                  </div>
+                  {!skipFirstConsult && (
+                    <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, display:"grid", gap:10 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("patients.start")}</label>
+                          <input className="input" type="date"
+                            value={firstConsultDate}
+                            min={todayISO()}
+                            onChange={e => setFirstConsultDate(e.target.value)} />
+                        </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("sessions.time")}</label>
+                          <input className="input" type="time"
+                            value={firstConsultTime}
+                            onChange={e => setFirstConsultTime(e.target.value)} />
+                        </div>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("sessions.duration")}</label>
+                          <select className="input" value={firstConsultDuration} onChange={e => setFirstConsultDuration(e.target.value)}>
+                            <option value="30">30 min</option>
+                            <option value="45">45 min</option>
+                            <option value="60">1 h</option>
+                            <option value="90">1½ h</option>
+                            <option value="120">2 h</option>
+                          </select>
+                        </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("sessions.modality")}</label>
+                          <select className="input" value={firstConsultModality} onChange={e => setFirstConsultModality(e.target.value)}>
+                            {modalities.map(m => (
+                              <option key={m} value={m}>{t(`sessions.modalities.${MODALITY_I18N_KEY[m]}`)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 5b. RECURRING schedule block — today's UI unchanged.
+                  Hidden in episodic mode. */}
+              {!isEpisodicMode && (
+                <>
               <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 10px" }}>{t("patients.schedules")}</div>
               {schedules.map((s, i) => {
                 const hasIssue = internalConflictRows.includes(i) || externalConflicts.some(c => c.row === i);
@@ -412,6 +534,8 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                   <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
                 )}
               </div>
+                </>
+              )}
             </>
           )}
 

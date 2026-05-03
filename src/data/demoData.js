@@ -85,18 +85,23 @@ const NUTRITIONIST_PATIENT_DEFS = [
   // composition stack + visceral pill + Resumen tile grid all demo live.
   // The other two stay manual to mirror real clinics where some patients
   // have InBody scans and others don't.
+  // Episodic + InBody — the canonical "modern nutritionist" setup:
+  // no weekly slot, biweekly-ish follow-ups, full body-comp scans.
   { name: "Natalia Bravo",      day: "Lunes",     time: "09:00", rate: 900, status: "active", phone: "+52 55 1010 2020", email: "natalia.bravo@example.com", paidAhead: true,
     height_cm: 168, goal_weight_kg: 65, goal_body_fat_pct: 26, allergies: "Lácteos", medical_conditions: "Hipotiroidismo controlado",
-    inbody: true,
+    inbody: true, scheduling_mode: "episodic", episodicCadenceWeeks: [2, 3], episodicNextInWeeks: 2,
     start_weight_kg: 78, start_waist_cm: 92, start_body_fat_pct: 32 },
   { name: "Roberto Aguilar",    day: "Lunes",     time: "11:00", rate: 850, status: "active", modality: "virtual", phone: "+52 55 2020 3030", overdue: true,
     height_cm: 178, goal_weight_kg: 80, allergies: "", medical_conditions: "Diabetes tipo 2",
-    inbody: true,
+    inbody: true, scheduling_mode: "episodic", episodicCadenceWeeks: [3, 4], episodicNextInWeeks: 1,
     start_weight_kg: 96, start_waist_cm: 105, start_body_fat_pct: 28 },
   { name: "Mariana Velasco",    day: "Lunes",     time: "16:00", rate: 900, status: "active", phone: "+52 55 3030 4040",
     height_cm: 162, goal_weight_kg: 58, allergies: "Mariscos", medical_conditions: "",
-    inbody: true,
+    inbody: true, scheduling_mode: "episodic", episodicCadenceWeeks: [4, 6], episodicNextInWeeks: 4,
     start_weight_kg: 70, start_waist_cm: 84, start_body_fat_pct: 30 },
+  // Recurring nutrition patients — kept on a fixed weekly slot to demo
+  // the per-patient override (a nutritionist with stable workshop-style
+  // clients won't always work episodically).
   { name: "Pablo Estrada",      day: "Martes",    time: "10:00", rate: 850, status: "active", phone: "+52 55 4040 5050", email: "pablo.estrada@example.com",
     height_cm: 175, goal_weight_kg: 75, allergies: "Frutos secos",
     start_weight_kg: 88, start_waist_cm: 100 },
@@ -280,6 +285,14 @@ function getNextDay(dayName, fromDate) {
   return d;
 }
 
+// Inverse of DAY_TO_JS — used when seeding episodic sessions, which
+// have no fixed weekday. The row's `day` column still holds the
+// literal weekday-of-the-date for calendar display.
+const JS_TO_DAY = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+function weekdayName(date) {
+  return JS_TO_DAY[date.getDay()];
+}
+
 export function generateDemoData(profession = DEFAULT_PROFESSION) {
   const patientDefs = PATIENT_DEFS_BY_PROFESSION[profession]
     ?? PATIENT_DEFS_BY_PROFESSION[DEFAULT_PROFESSION];
@@ -303,6 +316,12 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     const initials = getInitials(def.name);
     const colorIdx = idx % COLORS;
 
+    // Episodic = no perpetual weekly slot. Default for nutrition seeds
+    // unless the def opts back into recurring (we keep 1-2 nutrition
+    // patients on recurring to demo per-patient overrides). Other
+    // professions stay on weekly recurrence as today.
+    const isEpisodicPatient = def.scheduling_mode === "episodic";
+
     // Generate weekly sessions from 9 months ago to 4 weeks from now
     const firstSession = getNextDay(def.day, startDate);
     const endGen = addWeeks(now, 4);
@@ -323,7 +342,61 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       ? new Date(now.getFullYear(), now.getMonth() - 2, 15)
       : endGen;
 
-    while (current <= endDate) {
+    if (isEpisodicPatient) {
+      // Episodic seed: a stream of past one-offs every 2–5 weeks
+      // (variable, modulated per patient via def.episodicCadenceWeeks)
+      // plus 0–2 future scheduled rows so "Próxima consulta" demos
+      // live on the Resumen tab. Rows are NOT is_recurring — they
+      // mirror what an episodic patient's calendar actually looks
+      // like: standalone visits scheduled at the end of each prior
+      // visit, no perpetual slot.
+      const cadenceWeeks = def.episodicCadenceWeeks || [3, 4]; // min, max
+      // Walk backward from "first future visit" so the next visit
+      // sits at the end and the past stretches behind it. This
+      // produces a more realistic "I just saw them" pattern than
+      // marching forward from the start_date.
+      const futureOffsetWeeks = def.episodicNextInWeeks ?? 2;
+      let walker = addWeeks(now, futureOffsetWeeks);
+      const horizonBack = endDate < now ? endDate : startDate;
+      while (walker >= horizonBack) {
+        const isPast = walker < now;
+        let status = "scheduled";
+        if (isPast) {
+          const rand = Math.random();
+          if (rand < 0.85) status = "completed";
+          else if (rand < 0.92) status = "charged";
+          else status = "cancelled";
+        }
+        patientSessions.push({
+          id: uuid(),
+          user_id: demoUserId,
+          patient_id: patientId,
+          patient: def.name,
+          initials,
+          time: def.time,
+          // Episodic patients have no perpetual day-of-week, but the
+          // sessions table still stores the row's literal weekday for
+          // calendar display. Derive it from the date so the name
+          // matches the actual day.
+          day: weekdayName(walker),
+          date: dateStr(walker),
+          duration: 60,
+          rate: def.rate,
+          status,
+          cancel_reason: status === "cancelled" || status === "charged"
+            ? CANCEL_REASONS[Math.floor(Math.random() * CANCEL_REASONS.length)]
+            : null,
+          modality: def.modality || "presencial",
+          session_type: "regular",
+          color_idx: colorIdx,
+          colorIdx,
+          created_at: walker.toISOString(),
+        });
+        // Step back by a varying-but-realistic cadence.
+        const jitter = cadenceWeeks[0] + Math.floor(Math.random() * (cadenceWeeks[1] - cadenceWeeks[0] + 1));
+        walker = addWeeks(walker, -jitter);
+      }
+    } else while (current <= endDate) {
       const sessId = uuid();
       const sessDate = dateStr(current);
       const isPast = current < now;
@@ -506,8 +579,12 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       parent: def.parent || "",
       initials,
       rate: def.rate,
-      day: def.day,
-      time: def.time,
+      // Episodic patients have no perpetual weekly slot — set day/time
+      // to NULL so the rest of the app reads "no recurring schedule"
+      // cleanly. Recurring patients keep today's behavior.
+      day:  isEpisodicPatient ? null : def.day,
+      time: isEpisodicPatient ? null : def.time,
+      scheduling_mode: isEpisodicPatient ? "episodic" : "recurring",
       status: def.status,
       phone: def.phone || "",
       email: def.email || "",

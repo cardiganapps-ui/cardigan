@@ -1,11 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { shortDateToISO, todayISO } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { QuickScheduleSheet } from "../../components/sheets/QuickScheduleSheet";
 import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { usesAnthropometrics } from "../../data/constants";
+import { usesAnthropometrics, isEpisodic, SCHEDULING_MODE } from "../../data/constants";
 import { formatMXN, formatDate } from "../../utils/format";
 
 // ── Date helpers ──
@@ -86,7 +88,11 @@ export function ResumenTab({
   onRecordPayment, onGoToSesiones, onGoToArchivo, mutating,
 }) {
   const { t } = useT();
-  const { profession, measurements } = useCardigan();
+  const { profession, measurements, updatePatient, showSuccess } = useCardigan();
+  const patientIsEpisodic = isEpisodic(patient);
+  const [quickScheduleOpen, setQuickScheduleOpen] = useState(false);
+  const [confirmModeChange, setConfirmModeChange] = useState(false);
+  const [modeChangeBusy, setModeChangeBusy] = useState(false);
   const showHealthBlock = usesAnthropometrics(profession);
   // Patient's measurements newest-first. The Resumen card uses the
   // top two entries to render an "Última medición" block — current
@@ -173,6 +179,75 @@ export function ResumenTab({
     return latestIso;
   }, [upcomingSessions, patient.id]);
 
+  /* Episodic-mode helpers — used only when scheduling_mode === 'episodic'
+     to surface "Próxima consulta" + "Última consulta" rows on the patient
+     info card. We derive these from upcomingSessions (the same row set
+     the rest of the card already reads) so the data is always in sync
+     with the calendar. Cancelled / charged sessions are excluded — they
+     read as "didn't happen" in the same way the recurring schedule
+     filter does. */
+  const nextEpisodicSession = useMemo(() => {
+    if (!patientIsEpisodic) return null;
+    const today = todayISO();
+    let bestIso = null;
+    let bestRow = null;
+    for (const s of (upcomingSessions || [])) {
+      if (s.patient_id !== patient.id) continue;
+      if (s.status === "cancelled" || s.status === "charged") continue;
+      const iso = shortDateToISO(s.date);
+      if (iso < today) continue;
+      // Prefer earliest future date; tiebreak by time so the Resumen
+      // shows the patient's literal next appointment.
+      if (!bestIso || iso < bestIso || (iso === bestIso && (s.time || "") < (bestRow?.time || ""))) {
+        bestIso = iso;
+        bestRow = s;
+      }
+    }
+    return bestRow;
+  }, [upcomingSessions, patient.id, patientIsEpisodic]);
+
+  const lastEpisodicSession = useMemo(() => {
+    if (!patientIsEpisodic) return null;
+    const today = todayISO();
+    let bestIso = null;
+    let bestRow = null;
+    for (const s of (upcomingSessions || [])) {
+      if (s.patient_id !== patient.id) continue;
+      if (s.status === "cancelled" || s.status === "charged") continue;
+      const iso = shortDateToISO(s.date);
+      if (iso > today) continue;
+      if (!bestIso || iso > bestIso || (iso === bestIso && (s.time || "") > (bestRow?.time || ""))) {
+        bestIso = iso;
+        bestRow = s;
+      }
+    }
+    return bestRow;
+  }, [upcomingSessions, patient.id, patientIsEpisodic]);
+
+  /* Mode-switch handler. v1 supports recurring → episodic only; the
+     opposite direction needs a slot picker which is a bigger UX problem
+     (when does the recurrence start? what duration / modality?) and
+     gets its own follow-on. The transition keeps existing future
+     sessions in place — they'll appear on the calendar but auto-extend
+     stops adding more, so the patient's current bookings aren't
+     surprise-deleted. */
+  const handleSwitchToEpisodic = async () => {
+    setModeChangeBusy(true);
+    try {
+      const ok = await updatePatient(patient.id, {
+        scheduling_mode: SCHEDULING_MODE.EPISODIC,
+        day:  null,
+        time: null,
+      });
+      if (ok) {
+        showSuccess?.(t("scheduling.modeChanged"));
+        setConfirmModeChange(false);
+      }
+    } finally {
+      setModeChangeBusy(false);
+    }
+  };
+
   return (
     <div style={{ padding:"16px" }}>
       {/* General info */}
@@ -192,11 +267,53 @@ export function ResumenTab({
             );
             return `${formatted} (${age} ${t("patients.yearsOld")})`;
           })() : null;
-          // Order requested by product: schedule → rate → tutor info →
-          // dates. The last-session fallback for ended patients stays
-          // folded into the Fecha de inicio row block.
+          // Episodic patients have no perpetual slot — replace the
+          // "Horarios" row with two rows that match how they actually
+          // think about scheduling: the next concrete appointment +
+          // the last visit. The "Próxima consulta" row degrades to a
+          // "[Programar próxima]" CTA when nothing future is on the
+          // calendar — the most common state right after marking a
+          // consult complete.
+          const scheduleRows = patientIsEpisodic
+            ? [
+                {
+                  label: t("scheduling.nextConsult"),
+                  // node renders a button when there's no upcoming
+                  // session; otherwise a plain date+time string.
+                  node: nextEpisodicSession ? (
+                    <span>{nextEpisodicSession.date} · {nextEpisodicSession.time}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setQuickScheduleOpen(true)}
+                      style={{
+                        background:"var(--teal-pale)",
+                        color:"var(--teal-dark)",
+                        border:"none",
+                        borderRadius:"var(--radius-pill)",
+                        padding:"4px 10px",
+                        fontSize:"var(--text-xs)",
+                        fontWeight:700,
+                        cursor:"pointer",
+                        fontFamily:"inherit",
+                        WebkitTapHighlightColor:"transparent",
+                      }}>
+                      {t("scheduling.scheduleNext")}
+                    </button>
+                  ),
+                },
+                {
+                  label: t("scheduling.lastConsult"),
+                  value: lastEpisodicSession
+                    ? `${lastEpisodicSession.date} · ${lastEpisodicSession.time}`
+                    : "—",
+                },
+              ]
+            : [
+                { label: t("expediente.scheduleRow"), value: scheduleValue, multiline: schedules.length > 1 },
+              ];
           const rows = [
-            { label: t("expediente.scheduleRow"), value: scheduleValue, multiline: schedules.length > 1 },
+            ...scheduleRows,
             { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
             ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
             ...(patient.tutor_frequency ? [{ label: t("expediente.tutorSessionsRow"), value: t("patients.everyNWeeks", { count: patient.tutor_frequency }) }] : []),
@@ -209,7 +326,9 @@ export function ResumenTab({
               {rows.map((row, i) => (
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems: row.multiline ? "flex-start" : "center", minHeight:42, padding:"10px 16px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none", gap:12 }}>
                   <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
-                  <span style={{ fontSize:"var(--text-sm)", lineHeight:1.35, fontWeight:600, color:"var(--charcoal)", textAlign:"right", whiteSpace:"pre-line" }}>{row.value}</span>
+                  <span style={{ fontSize:"var(--text-sm)", lineHeight:1.35, fontWeight:600, color:"var(--charcoal)", textAlign:"right", whiteSpace:"pre-line" }}>
+                    {row.node || row.value}
+                  </span>
                 </div>
               ))}
             </>
@@ -526,6 +645,52 @@ export function ResumenTab({
           {t("expediente.archivo")}
         </button>
       </div>
+
+      {/* Mode-switch link — only the recurring → episodic direction
+          is available in v1. The reverse (episodic → recurring) needs
+          a slot picker which is its own follow-on; for now the
+          recommended path is to set the mode at creation. */}
+      {!patientIsEpisodic && !isEnded && (
+        <div style={{ marginTop:14, textAlign:"center" }}>
+          <button
+            type="button"
+            onClick={() => setConfirmModeChange(true)}
+            disabled={mutating}
+            style={{
+              background:"none",
+              border:"none",
+              color:"var(--charcoal-xl)",
+              fontSize:"var(--text-xs)",
+              fontWeight:600,
+              cursor:"pointer",
+              fontFamily:"inherit",
+              padding:"6px 10px",
+              textDecoration:"underline",
+              textDecorationColor:"var(--border)",
+              textUnderlineOffset:"2px",
+            }}>
+            {t("scheduling.switchToEpisodic")}
+          </button>
+        </div>
+      )}
+
+      {quickScheduleOpen && (
+        <QuickScheduleSheet
+          patient={patient}
+          onClose={() => setQuickScheduleOpen(false)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={confirmModeChange}
+        title={t("scheduling.switchToEpisodicTitle")}
+        body={t("scheduling.switchToEpisodicBody")}
+        confirmLabel={t("scheduling.switchToEpisodicConfirm")}
+        cancelLabel={t("cancel")}
+        busy={modeChangeBusy}
+        onConfirm={handleSwitchToEpisodic}
+        onCancel={() => setConfirmModeChange(false)}
+      />
     </div>
   );
 }

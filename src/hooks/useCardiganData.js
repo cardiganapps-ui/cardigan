@@ -368,6 +368,14 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         const patientUpdates = new Map();
 
         for (const patient of pData) {
+          // Episodic patients have no perpetual slot — the practitioner
+          // schedules the next visit at the end of each consult. Skip
+          // auto-extend entirely. (computeAutoExtendRows would no-op
+          // anyway since they own zero is_recurring=true rows; this is
+          // the explicit guard so the intent is visible to readers and
+          // a stray recurring row from manual DB edits can't surprise
+          // anyone.)
+          if (patient.scheduling_mode === "episodic") continue;
           const allPSess = sData.filter(s => s.patient_id === patient.id);
           const rows = computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId });
           if (rows.length === 0) continue;

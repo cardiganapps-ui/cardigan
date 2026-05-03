@@ -64,6 +64,11 @@ export function getRecurringDates(dayName, startDateStr, endDateStr) {
  */
 export function computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId }) {
   if (!patient || patient.status !== PATIENT_STATUS.ACTIVE) return [];
+  // Episodic patients have no perpetual weekly slot — the practitioner
+  // schedules the next visit at the end of each consult. Defensive
+  // guard that mirrors the call-site filter in useCardiganData; cheaper
+  // here than scanning allPSess for is_recurring=true rows.
+  if (patient.scheduling_mode === "episodic") return [];
   if (!Array.isArray(allPSess) || allPSess.length === 0) return [];
 
   // CRITICAL — see CLAUDE.md prime directive on financial integrity.

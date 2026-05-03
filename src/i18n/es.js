@@ -1389,6 +1389,50 @@ export default {
       },
     },
   },
+  // ── Scheduling mode (recurring vs episodic) ──
+  // Profession-aware via {session.s} / {session.pl} placeholders so a
+  // psychologist who flips a patient to episodic reads "Próxima
+  // sesión", a nutritionist reads "Próxima consulta", a tutor reads
+  // "Próxima clase". Mirror of the existing home.nextSession pattern.
+  scheduling: {
+    modeLabel:        "¿Cómo van las {session.pl}?",
+    recurring:        "Recurrentes",
+    episodic:         "A demanda",
+    recurringHint:    "Mismo día y hora cada semana — se renueva sola.",
+    episodicHint:     "Sin horario fijo — agendas la siguiente al final de cada {session.s}.",
+    nextConsult:      "Próxima {session.s}",
+    lastConsult:      "Última {session.s}",
+    lastConsultLabel: "Última {session.s}",
+    noneScheduled:    "Sin agendar",
+    scheduleNext:     "Programar próxima",
+    scheduling:       "Agendando…",
+    confirmCta:       "Agendar",
+    scheduledToast:   "Próxima {session.s} agendada",
+    date:             "Fecha",
+    firstConsult:        "Primera {session.s}",
+    skipFirstConsult:    "Agendar más tarde",
+    skipFirstConsultHint:"Crea el paciente sin agendar todavía. Programas la primera {session.s} desde el {record.s} cuando quieras.",
+    // Mode-switch (recurring → episodic only in v1; the reverse needs
+    // a slot picker which is its own follow-on).
+    switchToEpisodic:        "Cambiar a a demanda",
+    switchToEpisodicTitle:   "¿Cambiar a 'a demanda'?",
+    switchToEpisodicBody:    "Las {session.pl} ya agendadas se conservan. Dejaremos de generar nuevas {session.pl} semanales automáticamente — vas a programar cada una al terminar la anterior.",
+    switchToEpisodicConfirm: "Cambiar",
+    modeChanged:             "Modo actualizado",
+    quickPickAria:    "Cadencia rápida",
+    quickPick: {
+      in2w:   "En 2 semanas",
+      in4w:   "En 4 semanas",
+      in6w:   "En 6 semanas",
+      in2mo:  "En 2 meses",
+      in3mo:  "En 3 meses",
+    },
+    errors: {
+      missingDate:  "Selecciona una fecha y hora.",
+      writeFailed:  "No pudimos agendar. Intenta de nuevo.",
+    },
+  },
+
   patientFields: {
     height: "Estatura (cm)",
     goalWeight: "Peso objetivo (kg)",

@@ -85,6 +85,38 @@ export function usesAnthropometrics(profession) {
   return ANTHROPOMETRIC_PROFESSIONS.has(profession);
 }
 
+// Scheduling mode — per-patient, NOT per-profession. Profession sets
+// the default in the UI; every patient can flip either way.
+//   'recurring' — today's perpetual weekly slot model. Auto-extend
+//                 regenerates future weekly rows. Default for
+//                 psychologist / tutor / music_teacher / trainer.
+//   'episodic'  — no perpetual slot. The practitioner schedules the
+//                 next visit at the end of each consult (how
+//                 nutritionists actually work). Auto-extend no-ops.
+//                 Default for nutritionist.
+// Mirrors the patients.scheduling_mode CHECK constraint in
+// migrations/040_scheduling_mode.sql — keep these in sync.
+export const SCHEDULING_MODE = Object.freeze({
+  RECURRING: "recurring",
+  EPISODIC:  "episodic",
+});
+
+const SCHEDULING_DEFAULTS = Object.freeze({
+  psychologist:  SCHEDULING_MODE.RECURRING,
+  nutritionist:  SCHEDULING_MODE.EPISODIC,
+  tutor:         SCHEDULING_MODE.RECURRING,
+  music_teacher: SCHEDULING_MODE.RECURRING,
+  trainer:       SCHEDULING_MODE.RECURRING,
+});
+
+export function defaultSchedulingMode(profession) {
+  return SCHEDULING_DEFAULTS[profession] ?? SCHEDULING_MODE.RECURRING;
+}
+
+export function isEpisodic(patient) {
+  return patient?.scheduling_mode === SCHEDULING_MODE.EPISODIC;
+}
+
 // Session modality. Values must match the sessions.modality check
 // constraint in supabase/schema.sql / migrations/020 + 022. Per-profession
 // subsets live in MODALITIES_BY_PROFESSION below — the dropdowns and the

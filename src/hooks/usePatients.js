@@ -5,12 +5,13 @@ import { recalcPatientCounters } from "../utils/patients";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un registro con ese nombre.");
       return false;
     }
+    const mode = schedulingMode === "episodic" ? "episodic" : "recurring";
     const sched = schedules?.length ? schedules : [{ day: "Lunes", time: "16:00" }];
     const patientRate = Number(rate) || 0;
     const colorIdx = patients.length % 7;
@@ -18,16 +19,34 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     // Pre-compute the recurring session rows client-side so the initial
     // patient INSERT can include final `sessions` and `billed` counters.
     // Saves an entire round-trip vs. the previous flow (insert → insert
-    // sessions → update counters).
+    // sessions → update counters). Episodic patients get at most one
+    // session row (the first consult, if the user filled it in) and
+    // never participate in this loop.
     const sessionSeeds = [];
-    if (recurring && startDate) {
+    if (mode === "recurring" && recurring && startDate) {
       for (const s of sched) {
         const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
         const mod = s.modality || "presencial";
         getRecurringDates(s.day, startDate, endDate).forEach(d =>
-          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, date: formatShortDate(d) })
+          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, date: formatShortDate(d), is_recurring: true })
         );
       }
+    } else if (mode === "episodic" && firstConsult?.date) {
+      // One-off first consult — same shape as a recurring seed but
+      // is_recurring=false so auto-extend never picks it up. day is
+      // derived from the date for display consistency with the rest
+      // of the calendar (sessions.day is the weekday name).
+      const dur = Number(firstConsult.duration) > 0 ? Number(firstConsult.duration) : 60;
+      const mod = firstConsult.modality || "presencial";
+      const day = dayNameFromISO(firstConsult.date);
+      sessionSeeds.push({
+        day,
+        time: firstConsult.time || "10:00",
+        duration: dur,
+        modality: mod,
+        date: formatShortDate(new Date(firstConsult.date + "T12:00:00")),
+        is_recurring: false,
+      });
     }
     const seedCount = sessionSeeds.length;
     const seedBilled = patientRate * seedCount;
@@ -42,10 +61,13 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       email: email?.trim() || "",
       initials: getInitials(name),
       rate: patientRate,
-      day: sched[0].day,
-      time: sched[0].time,
+      // Episodic patients have no perpetual slot — leave day/time NULL
+      // so the rest of the app reads "no recurring schedule" cleanly.
+      day:  mode === "recurring" ? sched[0].day  : null,
+      time: mode === "recurring" ? sched[0].time : null,
       color_idx: colorIdx,
-      start_date: recurring && startDate ? startDate : null,
+      start_date: mode === "recurring" && recurring && startDate ? startDate : null,
+      scheduling_mode: mode,
       birthdate: birthdate || null,
       tutor_frequency: tutorFrequency || null,
       // Anthropometric / health-history fields. Set for nutritionist
@@ -75,10 +97,11 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         initials: getInitials(name), time: s.time, day: s.day,
         date: s.date, duration: s.duration, rate: patientRate,
         modality: s.modality, color_idx: colorIdx,
-        // Patient-creation seed batch — these rows ARE the recurring
-        // schedule. Auto-extend is allowed to derive future weeks
-        // from them.
-        is_recurring: true,
+        // Recurring patients seed `is_recurring=true` — auto-extend
+        // is allowed to derive future weeks from them. Episodic
+        // patients seed at most ONE row, `is_recurring=false`, so
+        // auto-extend never picks it up.
+        is_recurring: s.is_recurring !== false,
       }));
       const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
       if (!sessErr && sessData) {
@@ -168,4 +191,14 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   }
 
   return { createPatient, updatePatient, deletePatient };
+}
+
+/* "2026-05-12" → "Martes". Anchored at noon to dodge timezone edge
+   cases on the date boundary. Used when seeding an episodic patient's
+   first consult — sessions.day stores the weekday name, so we derive
+   it from the picked ISO date instead of asking the form for it. */
+function dayNameFromISO(iso) {
+  const d = new Date((iso || "").slice(0, 10) + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return "Lunes";
+  return DAY_ORDER[(d.getDay() + 6) % 7]; // Sun=0 → 6 → Sunday last
 }
