@@ -47,7 +47,10 @@ DEFAULT_TY    = 512   # vertical centre after the inner translate
 PER_FILE = {
     "perrito.svg": {"scale": 0.78, "ty": 600},
     "carly.svg":   {"scale": 0.78, "ty": 600},
-    "gatito.svg":  {"scale": 0.78, "ty": 600},
+    # gatito's sweater hem sits a few SVG-units lower than the others
+    # in its source artwork, so it needs an extra ~25 unit shift to
+    # push the hem fully past the SVG bottom alongside the rest.
+    "gatito.svg":  {"scale": 0.78, "ty": 625},
     "osito.svg":   {"scale": 0.78, "ty": 600},
 }
 
