@@ -1062,8 +1062,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
        prompt — their schedule already covers the next visit. */
     onMarkCompleted: async (s, overrideStatus) => {
       if (readOnly) return false;
-      const ok = await updateSessionStatus(s.id, overrideStatus || "completed");
+      const newStatus = overrideStatus || "completed";
+      const ok = await updateSessionStatus(s.id, newStatus);
       if (!ok) return ok;
+      // The prompt is specifically a "you just FINISHED a visit"
+      // affordance — fire only when the new status lands at
+      // 'completed'. Toggling a row back to 'scheduled' (rare but
+      // possible from the same handler) shouldn't surface a
+      // "completed" toast.
+      if (newStatus !== "completed") return ok;
       const patient = patients.find((p) => p.id === s.patient_id);
       if (!patient || !isEpisodic(patient)) return ok;
       // "Has a future visit already" check: any row with status=
@@ -1086,10 +1093,27 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       // the new actionLabel prop (added in this round) carries the
       // localized "Programar próxima" label so this isn't mistaken
       // for an error retry.
-      showToast(t("scheduling.endOfVisitPrompt"), "success", {
-        actionLabel: t("scheduling.scheduleNext"),
-        onRetry: () => openQuickSchedule(patient),
-      });
+      // Toast carries the patient's first name so a user marking
+      // two consecutive consults complete (e.g. on the Agenda screen)
+      // sees which one the [Programar próxima] button refers to.
+      // First name only — the toast is narrow on phones and the full
+      // "Apellido Apellido" tail crowds the action button.
+      const firstName = (patient.name || "").split(" ")[0];
+      showToast(
+        firstName
+          ? `${firstName} · ${t("scheduling.endOfVisitPrompt")}`
+          : t("scheduling.endOfVisitPrompt"),
+        "success",
+        {
+          actionLabel: t("scheduling.scheduleNext"),
+          onRetry: () => openQuickSchedule(patient),
+          // De-dup per patient — repeatedly toggling status (or
+          // quickly marking two consecutive consults complete)
+          // shouldn't stack multiple "Programar próxima" toasts.
+          // The latest one wins.
+          key: `end-of-visit:${patient.id}`,
+        },
+      );
       return ok;
     },
   }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);

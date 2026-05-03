@@ -120,8 +120,18 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
         {...panelHandlers}>
         <div className="sheet-handle" aria-hidden />
         <div className="sheet-header">
-          <div id="set-slot-title" className="sheet-title">
-            {t("scheduling.switchToRecurringTitle")}
+          <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0, flex:1 }}>
+            <div id="set-slot-title" className="sheet-title">
+              {t("scheduling.switchToRecurringTitle")}
+            </div>
+            <div style={{
+              fontSize:"var(--text-xs)",
+              color:"var(--charcoal-xl)",
+              fontWeight:600,
+              overflow:"hidden",
+              textOverflow:"ellipsis",
+              whiteSpace:"nowrap",
+            }}>{patient.name}</div>
           </div>
           <button
             type="button"

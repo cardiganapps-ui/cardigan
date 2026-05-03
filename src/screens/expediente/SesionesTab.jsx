@@ -250,34 +250,40 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                         {t("sessions.oneOffBadge")}
                       </span>
                     )}
-                    {showVisitChip && (
-                      readOnly ? (
-                        <span style={{
-                          fontSize:"var(--text-eyebrow)", fontWeight:700,
-                          color:"var(--teal-dark)", textTransform:"uppercase",
-                          letterSpacing:"0.06em",
-                        }}>
-                          {s.visit_type ? t(`visitType.${s.visit_type}`) : t("visitType.none")}
-                        </span>
-                      ) : (
+                    {showVisitChip && (() => {
+                      // Validate against the canonical enum so a corrupt
+                      // or future-unknown value falls back to the
+                      // "Sin clasificar" affordance instead of leaking
+                      // the literal i18n key into the UI.
+                      const known = VISIT_TYPES.includes(s.visit_type) ? s.visit_type : null;
+                      const label = known ? t(`visitType.${known}`) : t("visitType.none");
+                      const tagged = !!known;
+                      if (readOnly) {
+                        return (
+                          <span style={{
+                            fontSize:"var(--text-eyebrow)", fontWeight:700,
+                            color: tagged ? "var(--teal-dark)" : "var(--charcoal-xl)",
+                            textTransform:"uppercase", letterSpacing:"0.06em",
+                          }}>{label}</span>
+                        );
+                      }
+                      return (
                         <button type="button"
                           onClick={cycleVisitType(s)}
                           aria-label={t("visitType.aria")}
                           style={{
                             fontSize:"var(--text-eyebrow)", fontWeight:700,
-                            color: s.visit_type ? "var(--teal-dark)" : "var(--charcoal-xl)",
+                            color: tagged ? "var(--teal-dark)" : "var(--charcoal-xl)",
                             textTransform:"uppercase", letterSpacing:"0.06em",
-                            background: s.visit_type ? "var(--teal-pale)" : "transparent",
-                            border: s.visit_type ? "none" : "1px dashed var(--border)",
+                            background: tagged ? "var(--teal-pale)" : "transparent",
+                            border: tagged ? "none" : "1px dashed var(--border)",
                             padding:"2px 8px", borderRadius:"999px",
                             cursor:"pointer", fontFamily:"inherit",
                             WebkitTapHighlightColor:"transparent",
                             minHeight:"unset",
-                          }}>
-                          {s.visit_type ? t(`visitType.${s.visit_type}`) : t("visitType.none")}
-                        </button>
-                      )
-                    )}
+                          }}>{label}</button>
+                      );
+                    })()}
                     {hasNote && (
                       onOpenNote ? (
                         <button type="button"

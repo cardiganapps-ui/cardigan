@@ -152,8 +152,23 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
         {...panelHandlers}>
         <div className="sheet-handle" aria-hidden />
         <div className="sheet-header">
-          <div id="quick-schedule-title" className="sheet-title">
-            {t("scheduling.scheduleNext")}
+          <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0, flex:1 }}>
+            <div id="quick-schedule-title" className="sheet-title">
+              {t("scheduling.scheduleNext")}
+            </div>
+            {/* Patient subtitle — the sheet is mounted at the App
+                level and can be opened from anywhere (e.g. the cross-
+                screen end-of-visit toast). Surfacing the name keeps
+                the user oriented when they tapped through from a
+                non-patient screen. */}
+            <div style={{
+              fontSize:"var(--text-xs)",
+              color:"var(--charcoal-xl)",
+              fontWeight:600,
+              overflow:"hidden",
+              textOverflow:"ellipsis",
+              whiteSpace:"nowrap",
+            }}>{patient.name}</div>
           </div>
           <button
             type="button"
