@@ -52,21 +52,19 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   }, [draft, currentAvatar]);
 
   /* ── File pick → crop preview ──
-     Validate the file fits Cardigan's avatar contract (image/* and
-     ≤10 MB), then route into the crop editor. The editor is the
-     source of truth for the final blob — center-crop is no longer
-     applied automatically because the user might want a different
-     framing than dead-centre. */
+     Confirm the pick is an image, then route into the crop editor.
+     No byte-size cap: users can't see file sizes in their photo
+     library before picking, so a pre-flight bound is just a
+     confusing dead end. The cropper always emits a 256² JPEG, so
+     the source size only affects local decode RAM — fine on any
+     modern device for any reasonable photo. If decode does fail
+     (corrupt file, exotic format), the cropper surfaces its own
+     "no se pudo cargar" UI with a Volver button. */
   const onFile = useCallback((file) => {
-    const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
     setError("");
     if (!file) return;
     if (!(file.type || "").startsWith("image/")) {
       setError(t("avatar.err.notImage") || "Selecciona una imagen.");
-      return;
-    }
-    if (file.size > MAX_AVATAR_BYTES) {
-      setError(t("avatar.err.tooLarge") || "La imagen debe pesar menos de 10 MB.");
       return;
     }
     setDraft({ kind: "cropping", file });
@@ -290,7 +288,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
               {t("avatar.dropTitle") || "Sube tu propia foto"}
             </div>
             <div className="av-picker-drop-sub">
-              {t("avatar.dropSub") || "JPG o PNG hasta 10 MB. Se recorta automáticamente en círculo."}
+              {t("avatar.dropSub") || "JPG, PNG o HEIC. La recortas en círculo en el siguiente paso."}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }}
               onChange={(e) => onFile(e.target.files?.[0])} />

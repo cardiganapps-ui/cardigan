@@ -536,7 +536,7 @@ export default {
     presetSelected: "Avatar seleccionado",
     uploadTitle: "O sube tu propia foto",
     dropTitle: "Sube tu propia foto",
-    dropSub: "JPG o PNG hasta 10 MB. Se recorta autom\u00e1ticamente en c\u00edrculo.",
+    dropSub: "JPG, PNG o HEIC. La recortas en c\u00edrculo en el siguiente paso.",
     remove: "Quitar foto",
     noPhoto: "Sin foto",
     uploaded: "Foto actual",
@@ -554,7 +554,6 @@ export default {
       carly: "Carly",
     },
     err: {
-      tooLarge: "La imagen debe pesar menos de 10 MB.",
       notImage: "Selecciona una imagen v\u00e1lida.",
       generic: "No se pudo procesar la imagen.",
       presign: "No se pudo iniciar la subida. Revisa tu conexi\u00f3n.",
