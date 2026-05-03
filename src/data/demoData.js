@@ -363,8 +363,17 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
       // produces a more realistic "I just saw them" pattern than
       // marching forward from the start_date.
       const futureOffsetWeeks = def.episodicNextInWeeks ?? 2;
-      let walker = addWeeks(now, futureOffsetWeeks);
-      const horizonBack = endDate < now ? endDate : startDate;
+      // Active patients: walker starts in the future so "Próxima
+      // consulta" demos live, walks back through history to the
+      // patient's start_date.
+      // Ended patients: the engagement closed at endDate (~2 months
+      // ago), so walker starts there (no future visits) and walks
+      // back to start_date to fill the historical timeline.
+      const walkerStart = def.status === "ended"
+        ? endDate
+        : addWeeks(now, futureOffsetWeeks);
+      let walker = new Date(walkerStart);
+      const horizonBack = startDate;
       while (walker >= horizonBack) {
         const isPast = walker < now;
         let status = "scheduled";

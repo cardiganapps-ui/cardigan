@@ -1066,13 +1066,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       if (!ok) return ok;
       const patient = patients.find((p) => p.id === s.patient_id);
       if (!patient || !isEpisodic(patient)) return ok;
-      // "Has a future visit already" check: any scheduled session
-      // dated today-or-later that isn't this one.
+      // "Has a future visit already" check: any row with status=
+      // 'scheduled' dated today-or-later that isn't the one we just
+      // marked complete. Specifically NOT the broader "anything not
+      // cancelled/charged" — a future row that's somehow already
+      // 'completed' (early-marked) shouldn't suppress the prompt; the
+      // user just wrapped a visit and likely wants to schedule the
+      // next one regardless.
       const todayIso = todayISOFn();
       const hasFuture = (upcomingSessions || []).some((row) => {
         if (row.patient_id !== patient.id) return false;
         if (row.id === s.id) return false;
-        if (row.status === "cancelled" || row.status === "charged") return false;
+        if (row.status !== "scheduled") return false;
         const iso = shortDateToISO(row.date);
         return iso >= todayIso;
       });

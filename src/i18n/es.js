@@ -1426,6 +1426,7 @@ export default {
     modeChanged:              "Modo actualizado",
     modeChangedRecurring:     "Horario recurrente activado",
     endOfVisitPrompt:         "{session.S} completada",
+    episodicEditHint:         "Este paciente está en modo \"a demanda\" — cada {session.s} se agenda al final de la anterior. Para activar un horario semanal recurrente, usa \"Cambiar a recurrentes\" en el resumen.",
     quickPickAria:    "Cadencia rápida",
     quickPick: {
       in2w:   "En 2 semanas",
@@ -1437,6 +1438,7 @@ export default {
     errors: {
       missingDate:  "Selecciona una fecha y hora.",
       writeFailed:  "No pudimos agendar. Intenta de nuevo.",
+      seedFailed:   "No pudimos crear el horario semanal. Intenta de nuevo.",
     },
   },
 

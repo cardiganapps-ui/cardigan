@@ -73,15 +73,31 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
         setSubmitting(false);
         return;
       }
-      // Seed the upcoming-15-weeks schedule. Generates rows already
-      // marked is_recurring=true (since the bug-fix in this round)
-      // so auto-extend keeps the schedule healthy long-term.
-      await generateRecurringSessions(
+      // Seed the upcoming-15-weeks schedule. Generates rows marked
+      // is_recurring=true so auto-extend keeps the schedule healthy
+      // long-term. If this fails the patient row is already flipped to
+      // 'recurring' but has no recurring sessions — a half-state where
+      // ResumenTab would show "Sin recurrencia" but auto-extend can't
+      // bootstrap (it only seeds from existing is_recurring rows).
+      // Roll the patient row back to its previous shape so the user
+      // can retry from a clean state.
+      const seeded = await generateRecurringSessions(
         patient.id,
         [{ day, time, duration: Number(duration) || 60, modality }],
         startDate,
         null, // open-ended
       );
+      if (!seeded) {
+        await updatePatient(patient.id, {
+          scheduling_mode: SCHEDULING_MODE.EPISODIC,
+          day:  null,
+          time: null,
+          start_date: null,
+        });
+        setError(t("scheduling.errors.seedFailed"));
+        setSubmitting(false);
+        return;
+      }
       showSuccess?.(t("scheduling.modeChangedRecurring"));
       haptic.success();
       onSwitched?.();

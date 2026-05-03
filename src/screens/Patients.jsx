@@ -16,7 +16,7 @@ import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
-import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic } from "../data/constants";
 import { formatMXN } from "../utils/format";
 
 /* ── Collapsible section for the edit form ──
@@ -128,7 +128,16 @@ export function Patients() {
   };
 
   const openEditForPatient = (p, opts = {}) => {
-    const scheds = [{ day: p.day, time: p.time }];
+    // Episodic patients have no perpetual day/time; reading p.day / p.time
+    // for them produces (null, null) which would render as empty selects
+    // and, on save, trigger applyScheduleChange with bogus values that
+    // flip the patient to a recurring slot the practitioner never picked.
+    // Seed a sane placeholder ONLY for the form's internal state shape;
+    // the schedule UI is hidden for episodic patients (see render gate
+    // below), and the save path skips applyScheduleChange entirely.
+    const scheds = isEpisodic(p)
+      ? [{ day: "Lunes", time: "16:00" }]
+      : [{ day: p.day, time: p.time }];
     setEditName(p.name);
     setEditIsMinor(!!p.parent);
     setEditParent(p.parent || "");
@@ -197,7 +206,15 @@ export function Patients() {
       return;
     }
 
-    if (scheduleOrRateChanged()) {
+    // Episodic patients have no perpetual slot — applyScheduleChange
+    // would treat the placeholder schedules array as the new recurring
+    // schedule and silently flip the patient to a slot they didn't
+    // pick. Skip the schedule path entirely; only basic info + rate
+    // can change for episodic patients here. (To switch them to
+    // recurring, the user uses the dedicated "Cambiar a recurrentes"
+    // affordance on Resumen, which seeds the schedule properly.)
+    const editedIsEpisodic = isEpisodic(selected);
+    if (!editedIsEpisodic && scheduleOrRateChanged()) {
       // Schedule or rate changed — apply with effective date
       const ok = await applyScheduleChange(selected.id, {
         schedules: editSchedules,
@@ -390,7 +407,10 @@ export function Patients() {
               onClose={closeExpediente}
               onRecordPayment={openRecordPaymentModal}
               onEdit={(p) => {
-                const scheds = [{ day: p.day, time: p.time }];
+                // Same episodic guard as openEditForPatient — see comment there.
+                const scheds = isEpisodic(p)
+                  ? [{ day: "Lunes", time: "16:00" }]
+                  : [{ day: p.day, time: p.time }];
                 setEditName(p.name);
                 setEditIsMinor(!!p.parent);
                 setEditParent(p.parent || "");
@@ -478,13 +498,23 @@ export function Patients() {
 
                   {/* Rate & Schedules — the most commonly edited fields,
                       always visible. Hidden only while finalizing
-                      (status=ended) since schedules no longer apply. */}
+                      (status=ended) since schedules no longer apply.
+                      For episodic patients the schedule UI is hidden
+                      entirely — they have no perpetual slot, and the
+                      rate input still applies on its own. The recurrence
+                      flow lives behind the dedicated "Cambiar a
+                      recurrentes" affordance on Resumen. */}
                   {!isFinalizingPatient && (
                     <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:4, paddingTop:14 }}>
                       <div className="input-group">
                         <label className="input-label">{t("patients.ratePerSession")}</label>
                         <MoneyInput min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
                       </div>
+                      {isEpisodic(selected) ? (
+                        <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", lineHeight:1.5, paddingBottom:6 }}>
+                          {t("scheduling.episodicEditHint")}
+                        </div>
+                      ) : (<>
                       <div style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--charcoal)", marginBottom:8 }}>{t("patients.schedules")}</div>
                       {editSchedules.map((s, i) => (
                         <div key={i} style={{ border:"1px solid var(--border-lt)", borderRadius:"var(--radius)", padding:"10px 10px 6px", marginBottom:8, position:"relative" }}>
@@ -560,6 +590,7 @@ export function Patients() {
                           )}
                         </div>
                       )}
+                      </>)}
                     </div>
                   )}
 
@@ -770,7 +801,10 @@ export function Patients() {
             setExpedienteOrigin(null);
             setHideFab?.(false);
             setSelected(p);
-            const scheds = [{ day: p.day, time: p.time }];
+            // Same episodic guard as openEditForPatient — see comment there.
+            const scheds = isEpisodic(p)
+              ? [{ day: "Lunes", time: "16:00" }]
+              : [{ day: p.day, time: p.time }];
             setEditName(p.name);
             setEditIsMinor(!!p.parent);
             setEditParent(p.parent || "");

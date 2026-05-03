@@ -88,7 +88,7 @@ export function ResumenTab({
   onRecordPayment, onGoToSesiones, onGoToArchivo, mutating,
 }) {
   const { t } = useT();
-  const { profession, measurements, updatePatient, showSuccess, openQuickSchedule } = useCardigan();
+  const { profession, measurements, updatePatient, showSuccess, openQuickSchedule, readOnly } = useCardigan();
   const patientIsEpisodic = isEpisodic(patient);
   const [confirmModeChange, setConfirmModeChange] = useState(false);
   const [modeChangeBusy, setModeChangeBusy] = useState(false);
@@ -282,6 +282,12 @@ export function ResumenTab({
                   // session; otherwise a plain date+time string.
                   node: nextEpisodicSession ? (
                     <span>{nextEpisodicSession.date} · {nextEpisodicSession.time}</span>
+                  ) : readOnly ? (
+                    // Read-only mode (demo / admin view-as) — show the
+                    // "no agenda" state but skip the CTA; the underlying
+                    // createSession is a no-op and the user would just
+                    // get a confusing "no pudimos agendar" toast.
+                    <span style={{ color: "var(--charcoal-xl)" }}>{t("scheduling.noneScheduled")}</span>
                   ) : (
                     <button
                       type="button"
@@ -650,9 +656,10 @@ export function ResumenTab({
           scheduling_mode + clears day/time (existing future rows
           stay; auto-extend stops adding more). E→R opens a slot
           picker that seeds a fresh weekly schedule. Hidden for
-          ended patients since neither direction is meaningful for
-          a closed engagement. */}
-      {!isEnded && (
+          ended patients (neither direction is meaningful for a
+          closed engagement) and in read-only mode (the underlying
+          updatePatient is a no-op so the toggle would confuse). */}
+      {!isEnded && !readOnly && (
         <div style={{ marginTop:14, textAlign:"center" }}>
           <button
             type="button"
