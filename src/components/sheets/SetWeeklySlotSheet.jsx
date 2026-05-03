@@ -159,7 +159,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
                 </select>
               </div>
               <div className="input-group" style={{ marginBottom: 0 }}>
-                <label className="input-label">{t("sessions.time")}</label>
+                <label className="input-label">{t("patients.time")}</label>
                 <input className="input" type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)} />
@@ -180,7 +180,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
                 <label className="input-label">{t("sessions.modality")}</label>
                 <select className="input" value={modality} onChange={(e) => setModality(e.target.value)}>
                   {modalities.map((m) => (
-                    <option key={m} value={m}>{t(`sessions.modalities.${MODALITY_I18N_KEY[m]}`)}</option>
+                    <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
                   ))}
                 </select>
               </div>

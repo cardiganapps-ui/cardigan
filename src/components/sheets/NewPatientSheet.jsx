@@ -410,7 +410,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                             onChange={e => setFirstConsultDate(e.target.value)} />
                         </div>
                         <div className="input-group" style={{ marginBottom:0 }}>
-                          <label className="input-label">{t("sessions.time")}</label>
+                          <label className="input-label">{t("patients.time")}</label>
                           <input className="input" type="time"
                             value={firstConsultTime}
                             onChange={e => setFirstConsultTime(e.target.value)} />
@@ -431,7 +431,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
                           <label className="input-label">{t("sessions.modality")}</label>
                           <select className="input" value={firstConsultModality} onChange={e => setFirstConsultModality(e.target.value)}>
                             {modalities.map(m => (
-                              <option key={m} value={m}>{t(`sessions.modalities.${MODALITY_I18N_KEY[m]}`)}</option>
+                              <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
                             ))}
                           </select>
                         </div>
