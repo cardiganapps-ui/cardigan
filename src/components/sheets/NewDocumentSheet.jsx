@@ -23,6 +23,11 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
+  // Per-file progress for the in-flight batch. Index aligns with the
+  // valid-files array, so the UI can show a stack of bars when
+  // uploading multiple at once. Total files in flight = totalFiles;
+  // the progress bar uses the average across all of them.
+  const [batchProgress, setBatchProgress] = useState({ totalFiles: 0, perFile: [] });
   const fileInputRef = useRef(null);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -48,12 +53,27 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
     if (valid.length === 0) { if (fileInputRef.current) fileInputRef.current.value = ""; return; }
     setUploading(true);
+    setBatchProgress({ totalFiles: valid.length, perFile: valid.map(() => 0) });
     let count = 0;
-    for (const file of valid) {
-      const result = await uploadDocument({ patientId: patientId || null, file, sessionId: sessionId || null, name: file.name });
+    for (let i = 0; i < valid.length; i++) {
+      const file = valid[i];
+      const result = await uploadDocument({
+        patientId: patientId || null,
+        file,
+        sessionId: sessionId || null,
+        name: file.name,
+        onProgress: (frac) => {
+          setBatchProgress((prev) => {
+            const perFile = [...prev.perFile];
+            perFile[i] = frac;
+            return { ...prev, perFile };
+          });
+        },
+      });
       if (result) count++;
     }
     setUploading(false);
+    setBatchProgress({ totalFiles: 0, perFile: [] });
     if (fileInputRef.current) fileInputRef.current.value = "";
     // When NOTHING succeeded, surface an error toast and stay on the
     // form so the user can retry — the "0 documentos subidos" success
@@ -142,6 +162,44 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                 <IconUpload size={16} />
                 {uploading ? t("docs.uploading") : t("docs.selectFiles")}
               </button>
+              {/* Progress bar — average across all files in the batch.
+                  Surfaces an actual % so a multi-MB upload over a
+                  weak mobile connection reads as "working" instead
+                  of "frozen". The bar animates from 0 → 1 fluidly
+                  thanks to the CSS transition. */}
+              {uploading && batchProgress.totalFiles > 0 && (() => {
+                const avg = batchProgress.perFile.reduce((s, p) => s + p, 0) / batchProgress.totalFiles;
+                const pct = Math.round(avg * 100);
+                return (
+                  <div style={{ marginTop:12 }}>
+                    <div style={{
+                      height: 4, borderRadius: 999,
+                      background: "var(--cream)",
+                      overflow: "hidden",
+                    }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+                      <div style={{
+                        height: "100%",
+                        width: `${pct}%`,
+                        background: "var(--teal)",
+                        borderRadius: 999,
+                        transition: "width 0.2s ease",
+                      }} />
+                    </div>
+                    <div style={{
+                      marginTop: 6,
+                      fontSize: "var(--text-xs)",
+                      color: "var(--charcoal-xl)",
+                      fontVariantNumeric: "tabular-nums",
+                      textAlign: "center",
+                      fontWeight: 600,
+                    }}>
+                      {batchProgress.totalFiles > 1
+                        ? t("docs.uploadingProgressMany", { pct, count: batchProgress.totalFiles })
+                        : t("docs.uploadingProgress", { pct })}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>

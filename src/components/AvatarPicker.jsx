@@ -6,7 +6,8 @@ import { useEscape } from "../hooks/useEscape";
 import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
-import { invalidateAvatarUrl } from "../hooks/useAvatarUrl";
+import { invalidateAvatarUrl, setAvatarUrl } from "../hooks/useAvatarUrl";
+import { useCardigan } from "../context/CardiganContext";
 import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
 import { AvatarCropEditor } from "./AvatarCropEditor";
 
@@ -27,6 +28,10 @@ const KIND_PRESET   = "preset";
 
 export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const { t } = useT();
+  // Pulled from context so the upload-path can fire toasts AFTER the
+  // sheet closes (the optimistic-close flow leaves no UI behind in
+  // the AvatarPicker itself for inline error display).
+  const { showSuccess, showToast } = useCardigan() || {};
   useEscape(onClose);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
@@ -107,17 +112,71 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
   const save = async () => {
     setError("");
+
+    /* Uploaded photo path: optimistic close. The R2 upload + auth
+       metadata update + session refresh chain takes ~600-1000ms on
+       mobile. Blocking the sheet that long for what reads as "save"
+       feels broken. We pre-cache a local blob URL keyed by the
+       future R2 path so AvatarContent can render the new avatar
+       the moment the auth state propagates, close the sheet
+       immediately, and run the actual work in the background.
+       Errors surface via the toast queue (an inline error in a
+       dismissed sheet would be invisible). */
+    if (draft.kind === "uploaded-file") {
+      const path = avatarPath(user.id);
+      const blob = draft.blob;
+      const previousAvatar = currentAvatar;
+      const localBlobUrl = URL.createObjectURL(blob);
+      // Seed the cache with the local blob URL keyed by the FUTURE
+      // R2 path. useAvatarUrl picks this up on the next render and
+      // shows the new avatar instantly; the actual signed-URL fetch
+      // is short-circuited until invalidateAvatarUrl fires (e.g.
+      // hard reload re-fetches the real R2 URL — which is fine
+      // because the upload has long since completed).
+      setAvatarUrl(path, localBlobUrl);
+      onClose();
+      showSuccess?.(t("avatar.saving") || "Guardando avatar…");
+
+      (async () => {
+        try {
+          await uploadBlobToR2(path, blob);
+          if (previousAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(previousAvatar.value);
+          const nextAvatar = { kind: KIND_UPLOADED, value: path };
+          const { data: updData, error: updErr } = await supabase.auth.updateUser({
+            data: { avatar: nextAvatar },
+          });
+          if (updErr) throw Object.assign(new Error(updErr.message || "update_failed"), { stage: "update" });
+          try { await supabase.auth.refreshSession(); } catch (_) { /* non-fatal */ }
+          haptic.success();
+          onSaved?.(nextAvatar, updData?.user || null);
+        } catch (err) {
+          // Roll back the optimistic blob URL — leaving it would
+          // serve a stale local image after a hard reload, since
+          // the auth metadata never landed. Free the URL too so
+          // we don't leak the blob.
+          invalidateAvatarUrl(path);
+          try { URL.revokeObjectURL(localBlobUrl); } catch { /* ignore */ }
+          const tag = err?.code || err?.status ? ` (${err?.code || `HTTP ${err?.status}`})` : "";
+          showToast?.((t("avatar.err.save") || "No se pudo guardar avatar.") + tag, "error");
+          console.error("[avatar] background save failed", {
+            stage: err?.stage, status: err?.status, code: err?.code,
+            hint: err?.hint, message: err?.message, info: err?.info, err,
+          });
+        }
+      })();
+      return;
+    }
+
+    /* Preset / remove paths stay synchronous — no R2 upload, just
+       a single auth.updateUser round-trip (~300ms). The user is
+       picking an avatar from a grid; they expect to see the
+       confirmation land before the sheet closes. */
     setSaving(true);
     try {
       let nextAvatar = null;
 
       if (draft.kind === "remove") {
         nextAvatar = null;
-      } else if (draft.kind === "uploaded-file") {
-        const path = avatarPath(user.id);
-        await uploadBlobToR2(path, draft.blob);
-        if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
-        nextAvatar = { kind: KIND_UPLOADED, value: path };
       } else if (draft.kind === KIND_PRESET) {
         if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
         nextAvatar = { kind: KIND_PRESET, value: draft.id };
@@ -151,12 +210,8 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
         info: err?.info,
         err,
       });
-      const stage = err?.stage;
       const tag = err?.code || err?.status ? ` (${err?.code || `HTTP ${err?.status}`})` : "";
-      if (stage === "presign")    setError((t("avatar.err.presign") || "No se pudo iniciar la subida. Revisa tu conexión.") + tag);
-      else if (stage === "put")   setError((t("avatar.err.upload")  || "No se pudo subir la imagen. Intenta de nuevo.") + tag);
-      else if (stage === "update") setError((t("avatar.err.update") || "La foto se subió pero no se guardó tu perfil. Intenta de nuevo.") + tag);
-      else setError((t("avatar.err.save") || "No se pudo guardar. Intenta de nuevo.") + tag);
+      setError((t("avatar.err.save") || "No se pudo guardar. Intenta de nuevo.") + tag);
     } finally {
       setSaving(false);
     }

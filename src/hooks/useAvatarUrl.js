@@ -40,6 +40,16 @@ export function invalidateAvatarUrl(path) {
   if (path) urlCache.delete(path);
 }
 
+/* Seed the cache with a known URL for a given path — used by the
+   optimistic avatar-upload flow to pre-populate a local blob URL
+   keyed by the future R2 path. AvatarContent can then render
+   instantly while the actual upload + auth.updateUser run in the
+   background. The blob URL stays cached across the upload window;
+   browser GC will free it on page unload. */
+export function setAvatarUrl(path, url) {
+  if (path && url) urlCache.set(path, url);
+}
+
 export function useAvatarUrl(avatar) {
   const resolved = resolveAvatar(avatar);
   const uploadedPath = resolved.kind === "uploaded" ? resolved.path : null;

@@ -10,7 +10,7 @@ async function authHeaders() {
 
 export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
 
-  async function uploadDocument({ patientId, file, sessionId, name }) {
+  async function uploadDocument({ patientId, file, sessionId, name, onProgress }) {
     if (!file) return null;
     setMutating(true);
     setMutationError("");
@@ -28,13 +28,29 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     if (!res.ok) { setMutating(false); setMutationError("Error al generar URL de subida"); return null; }
     const { url } = await res.json();
 
-    // Upload directly to R2
-    const uploadRes = await fetch(url, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type || "application/octet-stream" },
+    // Upload directly to R2 via XHR so we can surface progress
+    // events. fetch() doesn't expose a body-upload progress callback;
+    // for files in the MB range the user needs to see motion or the
+    // upload reads as frozen. The onProgress callback is optional —
+    // call sites that don't care (background uploads, future
+    // automation) just omit it and lose nothing.
+    const ok = await new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      if (onProgress) {
+        xhr.upload.addEventListener("progress", (ev) => {
+          if (ev.lengthComputable) onProgress(ev.loaded / ev.total);
+        });
+      }
+      xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+      xhr.onerror = () => resolve(false);
+      xhr.onabort = () => resolve(false);
+      xhr.send(file);
     });
-    if (!uploadRes.ok) { setMutating(false); setMutationError("Error al subir archivo"); return null; }
+    if (!ok) { setMutating(false); setMutationError("Error al subir archivo"); return null; }
+    onProgress?.(1); // belt — guarantee the bar lands at 100% even if the
+                     //         last progress event was rounded down
 
     // Save metadata to Supabase
     const { data, error } = await supabase.from("documents").insert({

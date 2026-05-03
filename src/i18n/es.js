@@ -544,6 +544,7 @@ export default {
     noPhoto: "Sin foto",
     uploaded: "Foto actual",
     uploadedPending: "Foto lista para guardar",
+    saving: "Guardando avatar…",
     presetComingSoon: "Avatares próximamente",
     presetComingSoonSub: "Estamos preparando una colección. Por ahora puedes subir tu propia foto.",
     preset: {
@@ -572,6 +573,8 @@ export default {
     openError: "No se pudo abrir el documento. Intenta de nuevo.",
     upload: "Subir documento",
     uploading: "Subiendo...",
+    uploadingProgress:     "{pct}% subido",
+    uploadingProgressMany: "{pct}% subido · {count} archivos",
     uploadBtn: "Subir",
     dropHere: "Soltar para subir",
     selectFiles: "Seleccionar archivos",

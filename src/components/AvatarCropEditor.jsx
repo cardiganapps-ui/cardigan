@@ -346,7 +346,11 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("encode_failed"))),
           "image/jpeg",
-          0.88
+          // 0.82 is the sweet spot for 256² avatars — visually
+          // indistinguishable from 0.88 at this size, ~25% smaller
+          // on disk. Compounds nicely with the optimistic-close
+          // upload flow: less to ship, faster to land.
+          0.82
         );
       });
       haptic.success();
