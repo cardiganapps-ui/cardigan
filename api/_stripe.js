@@ -27,6 +27,15 @@ import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
+// Pin the API version so behavior is stable across Stripe's automatic
+// account-version upgrades. This account was auto-upgraded to a
+// version that renamed the `coupon` parameter on /promotion_codes,
+// breaking the influencer-codes feature; pinning to 2024-04-10
+// (which supports `coupon` as documented) restores deterministic
+// behavior across every endpoint we hit. Bumping this is a deliberate
+// migration step — verify all helpers + the webhook handler against
+// the new version's changelog before changing.
+const STRIPE_API_VERSION = "2024-04-10";
 const TRIAL_DAYS = 30;
 
 function getSecret() {
@@ -100,6 +109,7 @@ async function stripeFetch(path, { method = "POST", body, idempotencyKey } = {})
   const headers = {
     "Authorization": `Bearer ${getSecret()}`,
     "Content-Type": "application/x-www-form-urlencoded",
+    "Stripe-Version": STRIPE_API_VERSION,
   };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`${STRIPE_API_BASE}${path}`, {
