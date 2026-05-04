@@ -932,6 +932,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       if (!edgeRef.current || drawerOpenRef.current) return;
       const dx = e.touches[0].clientX - edgeRef.current.startX;
       const dy = e.touches[0].clientY - edgeRef.current.startY;
+      // Suppress iOS Safari's native edge-swipe-back AS EARLY AS
+      // possible. iOS makes its mind up about back-peek within the
+      // first ~5px of horizontal motion — calling preventDefault
+      // only AFTER our 10px engagement threshold lets iOS paint the
+      // previous-history page during the gap (the "swipe opened a
+      // brief flash of the previous screen" glitch). As soon as
+      // we see clearly-horizontal motion, claim the gesture by
+      // preventDefault'ing every move; the 10px threshold below
+      // still gates whether we engage the drawer animation.
+      if (!edgeRef.current.active && Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy)) {
+        if (e.cancelable) e.preventDefault();
+      }
       if (!edgeRef.current.active) {
         if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
           // Claim exclusive ownership of the horizontal-swipe arbiter.
@@ -948,11 +960,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         } else return;
       }
       if (edgeRef.current.active) {
-        // Suppress iOS Safari's native back-peek while the user is dragging
-        // the drawer in. This is the key to resolving the drawer-vs-back
-        // conflict on non-standalone mobile browsers — and it must run
-        // even when the screen-slide lockout is active, so Safari can't
-        // paint the previous page underneath our animation.
+        // Continue suppressing back-peek through the rest of the drag.
         if (e.cancelable) e.preventDefault();
         if (!edgeRef.current.blockedByAnim) {
           setSwipeProgress(Math.max(0, dx));
