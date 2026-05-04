@@ -202,7 +202,14 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
         }} />
 
       {/* Panel */}
-      <div className="drawer" style={{ pointerEvents: visible ? "auto" : "none" }} onClick={open ? onClose : undefined}
+      {/* Tap-outside closes whenever the drawer is visible — not just when
+          `open` is true. If an edge-swipe gesture is interrupted (iOS drops
+          touchend on multi-touch / system gesture), swipeProgress can stick
+          > 0 with open=false; the drawer renders fully but every close
+          path was previously gated on `open` and stayed dead. Gating on
+          `visible` + having onClose reset both state values (App.jsx) lets
+          the user always tap the right strip to escape. */}
+      <div className="drawer" style={{ pointerEvents: visible ? "auto" : "none" }} onClick={visible ? onClose : undefined}
         onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove}
         onTouchEnd={onPanelTouchEnd} onTouchCancel={onPanelTouchCancel}>
         <div className={`drawer-panel${visible ? " drawer-panel--visible" : ""}`} onClick={e => e.stopPropagation()}

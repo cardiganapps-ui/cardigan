@@ -1239,9 +1239,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           accessState={subscription.accessState}
         />
       )}
-      <Drawer screen={screen} setScreen={setScreen} onClose={() => setDrawerOpen(false)}
+      <Drawer screen={screen} setScreen={setScreen} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
-        onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setBugReportOpen(true); } : null} />
+        onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
 
       <div className="main-content">
         <div className="status-bar" />
