@@ -466,6 +466,35 @@ async function handleEvent(svc, event) {
       if (!subId) {
         return { ok: true, note: "checkout.session.completed without subscription (one-time?)" };
       }
+      // Back-stamp influencer_code_id when a Cardigan-issued
+      // promotion code was applied. Closes the attribution gap for
+      // the manual-entry path (user typed MARIANA20 at Stripe
+      // Checkout instead of using the /c/MARIANA20 link). Auto-
+      // apply path already stamps server-side at /api/stripe-checkout
+      // creation time; this catches the manual entry. Only stamps
+      // when influencer_code_id is currently null (first-touch wins).
+      try {
+        const userId = session?.metadata?.user_id;
+        const promoIds = (session?.discounts || [])
+          .map((d) => typeof d?.promotion_code === "string" ? d.promotion_code : d?.promotion_code?.id)
+          .filter(Boolean);
+        if (userId && promoIds.length > 0) {
+          const { data: code } = await svc
+            .from("influencer_codes")
+            .select("id")
+            .in("stripe_promotion_code_id", promoIds)
+            .maybeSingle();
+          if (code?.id) {
+            await svc.from("user_subscriptions")
+              .update({ influencer_code_id: code.id, updated_at: new Date().toISOString() })
+              .eq("user_id", userId)
+              .is("influencer_code_id", null);
+          }
+        }
+      } catch (err) {
+        // Best-effort attribution — never fail the webhook for this.
+        console.warn("influencer back-stamp failed:", err?.message);
+      }
       let sub;
       try {
         sub = await getSubscription(typeof subId === "string" ? subId : subId.id);

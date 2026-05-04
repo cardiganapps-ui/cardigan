@@ -295,24 +295,42 @@ async function handler(req, res) {
     : undefined;
 
   let session;
+  // The discount auto-apply has several failure modes (admin deleted
+  // the Stripe Coupon from dashboard, our first_time_transaction
+  // heuristic was wrong, race against a toggle, archived promotion
+  // code, etc). When any of those fail, we don't want to block the
+  // user from subscribing — fall back to a no-discount Checkout
+  // Session. Attribution stays stamped on user_subscriptions, and
+  // allow_promotion_codes:true on the no-discount path lets the
+  // user retry the code manually at Stripe Checkout (where Stripe
+  // shows a clearer "este código solo aplica a clientes nuevos"
+  // type error if it's still ineligible).
+  const buildSession = (promoId) => createCheckoutSession({
+    customerId,
+    priceId,
+    successUrl: `${origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${origin}/?billing=cancel`,
+    metadata: {
+      user_id: user.id,
+      ...(finalReferredBy ? { referred_by: finalReferredBy } : {}),
+      ...(resolvedInfluencer ? { influencer_code_id: resolvedInfluencer.id } : {}),
+    },
+    promotionCodeId: promoId,
+  });
+
   try {
-    session = await createCheckoutSession({
-      customerId,
-      priceId,
-      // We bounce both success and cancel back to the Settings sheet so
-      // the UX feels in-place. The status badge will reflect the new
-      // sub on the next render (the webhook completes within seconds).
-      successUrl: `${origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/?billing=cancel`,
-      metadata: {
-        user_id: user.id,
-        ...(finalReferredBy ? { referred_by: finalReferredBy } : {}),
-        ...(resolvedInfluencer ? { influencer_code_id: resolvedInfluencer.id } : {}),
-      },
-      promotionCodeId: autoApplyPromoId,
-    });
+    session = await buildSession(autoApplyPromoId);
   } catch (err) {
-    return res.status(502).json({ error: err.message || "Stripe checkout create failed" });
+    if (autoApplyPromoId) {
+      console.warn("stripe-checkout: auto-apply discount failed, retrying without:", err?.message);
+      try {
+        session = await buildSession(undefined);
+      } catch (err2) {
+        return res.status(502).json({ error: err2.message || "Stripe checkout create failed" });
+      }
+    } else {
+      return res.status(502).json({ error: err.message || "Stripe checkout create failed" });
+    }
   }
 
   return res.status(200).json({ url: session.url });
