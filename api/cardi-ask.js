@@ -130,8 +130,28 @@ async function handler(req, res) {
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  // Streaming response. Once we commit to the SSE shape we can't change
+  // status — any post-headers error is sent as a `data: {error: ...}`
+  // event and the stream closes. Pre-headers errors (the validation
+  // block above) still return JSON with the right HTTP status, so the
+  // client's error-routing logic stays simple.
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  // Disable any reverse-proxy buffering (Vercel's CDN respects this).
+  res.setHeader("X-Accel-Buffering", "no");
+  res.statusCode = 200;
+  // A leading comment line forces the headers to flush immediately so
+  // the client's first byte arrives quickly even if Anthropic's first
+  // token hasn't.
+  res.write(": stream-open\n\n");
+
+  const writeEvent = (obj) => {
+    try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* socket closed */ }
+  };
+
   try {
-    const result = await anthropic.messages.create({
+    const stream = await anthropic.messages.stream({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 600,
       // Two-block system: the large static knowledge block is cached
@@ -152,18 +172,31 @@ async function handler(req, res) {
       messages,
     });
 
-    const block = result.content?.[0];
-    const answer = block?.type === "text" ? block.text : "";
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta?.type === "text_delta" &&
+        event.delta.text
+      ) {
+        writeEvent({ text: event.delta.text });
+      }
+    }
 
-    return res.status(200).json({
-      answer,
-      usage: result.usage,
-    });
+    // Final message carries accumulated usage (incl. cache hit counts).
+    // Best-effort — if the SDK doesn't expose finalMessage on this
+    // version, just close cleanly without usage.
+    let usage = null;
+    try {
+      const final = await stream.finalMessage();
+      usage = final?.usage || null;
+    } catch { /* ignore */ }
+
+    writeEvent({ done: true, usage });
+    res.end();
   } catch (err) {
-    // Don't leak SDK internals to the client. Sentry sees the full
-    // error via the wrapping handler.
     console.error("cardi-ask Anthropic error:", err?.message);
-    return res.status(502).json({ error: "Cardi no pudo responder. Intenta de nuevo." });
+    writeEvent({ error: "Cardi no pudo responder. Intenta de nuevo." });
+    res.end();
   }
 }
 

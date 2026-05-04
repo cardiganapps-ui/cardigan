@@ -1534,6 +1534,7 @@ export default {
     send: "Enviar",
     reset: "Reiniciar",
     thinking: "Pensando…",
+    thinkingRotation: ["Pensando…", "Buscando en la app…", "Casi listo…", "Un momento…"],
     error: "No pude responder. Reintentar.",
     rateLimit: "Has hecho muchas preguntas seguidas. Espera un momento.",
     paused: "Cardi está pausado temporalmente. Intenta más tarde.",

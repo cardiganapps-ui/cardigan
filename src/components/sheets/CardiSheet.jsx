@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { IconX, IconSparkle, IconArrowUp, IconChevron } from "../Icons";
+import { IconX, IconSparkle, IconArrowUp, IconChevron, IconRefresh } from "../Icons";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -17,12 +17,15 @@ import { useCardiChat } from "../../hooks/useCardiChat";
    v1 scope: navigation/help Q&A only. NEVER reads or sends patient
    data. Profession + screen + accessState + counts are passed as
    lightweight context so Cardi's vocabulary swaps (paciente / cliente)
-   without exposing anything sensitive. */
+   without exposing anything sensitive.
+
+   Responses stream token-by-token from /api/cardi-ask via SSE — see
+   useCardiChat for the reader logic. */
 
 const SUGGESTED_KEYS = ["schedule", "reminders", "calendar", "payment"];
 
 export function CardiSheet({ open, onClose }) {
-  const { t } = useT();
+  const { t, strings } = useT();
   const { profession, subscription, screen, patients = [] } = useCardigan();
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(open);
@@ -36,14 +39,12 @@ export function CardiSheet({ open, onClose }) {
     patientCount: patients.length,
   }), [profession, subscription?.accessState, screen, patients.length]);
 
-  const { messages, pending, send, retry, reset } = useCardiChat({ context });
+  const { messages, pending, streaming, send, retry, reset } = useCardiChat({ context });
 
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
   const bodyRef = useRef(null);
 
-  // Reset thread + input on close. Adjust-during-render keeps
-  // react-hooks/set-state-in-effect happy.
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -62,9 +63,9 @@ export function CardiSheet({ open, onClose }) {
     return () => cancelAnimationFrame(id);
   }, [messages, pending]);
 
-  // Auto-resize the textarea so it grows with multi-line input but
-  // never exceeds the configured cap. CSS-only auto-grow doesn't work
-  // for textarea, so this is the standard "measure scrollHeight" trick.
+  // Auto-resize textarea up to the cap. CSS-only auto-grow doesn't
+  // exist for textarea so we measure scrollHeight after each input
+  // change.
   const adjustTextareaHeight = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -98,6 +99,10 @@ export function CardiSheet({ open, onClose }) {
 
   const empty = messages.length === 0;
   const canSend = !pending && input.trim().length > 0;
+  // Show thinking dots only while waiting for the first streamed
+  // chunk. Once tokens are arriving, the assistant bubble grows
+  // naturally and the dots would be redundant.
+  const showThinking = pending && !streaming;
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -119,21 +124,31 @@ export function CardiSheet({ open, onClose }) {
             </span>
             <span className="sheet-title">{t("cardi.title")}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={reset}
+                aria-label={t("cardi.reset")}
+                title={t("cardi.reset")}
                 style={{
-                  background: "none", border: "none",
+                  width: 30,
+                  height: 30,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "none",
+                  border: "none",
+                  borderRadius: "50%",
                   color: "var(--charcoal-md)",
-                  fontSize: 13, fontWeight: 600,
-                  padding: "6px 10px", cursor: "pointer",
-                  fontFamily: "inherit",
+                  cursor: "pointer",
                   WebkitTapHighlightColor: "transparent",
+                  transition: "background-color var(--dur-fast) ease, color var(--dur-fast) ease",
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--cream)"; e.currentTarget.style.color = "var(--charcoal)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--charcoal-md)"; }}
               >
-                {t("cardi.reset")}
+                <IconRefresh size={15} />
               </button>
             )}
             <button className="sheet-close" aria-label={t("close")} onClick={onClose}>
@@ -142,7 +157,6 @@ export function CardiSheet({ open, onClose }) {
           </div>
         </div>
 
-        {/* Scrollable body */}
         <div
           ref={bodyRef}
           style={{
@@ -170,15 +184,16 @@ export function CardiSheet({ open, onClose }) {
                   pending={pending}
                 />
               ))}
-              {pending && <CardiThinking />}
+              {showThinking && <CardiThinking strings={strings} />}
             </>
           )}
         </div>
 
-        {/* Composer — the textarea + send button live in a single
-            rounded container so they read as one element, like every
-            modern chat input. The send button is icon-only so the
-            label doesn't visually compete with the input text. */}
+        {/* Composer — symmetrical pill: 44px tall outer, 36px circular
+            send button, textarea content vertically centered via
+            line-height. Multi-line input grows the textarea up to
+            120px; the button stays vertically centered (the auto-
+            resize keeps the textarea visually balanced). */}
         <div style={{
           borderTop: "1px solid var(--border-lt)",
           padding: "10px 14px max(10px, var(--sab))",
@@ -186,13 +201,12 @@ export function CardiSheet({ open, onClose }) {
         }}>
           <div style={{
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: "center",
             gap: 6,
             background: "var(--cream)",
             borderRadius: 22,
-            padding: "4px 4px 4px 14px",
-            border: "1px solid transparent",
-            transition: "border-color var(--dur-fast) ease, background-color var(--dur-fast) ease",
+            padding: "4px 4px 4px 16px",
+            minHeight: 44,
           }}>
             <textarea
               ref={inputRef}
@@ -206,17 +220,19 @@ export function CardiSheet({ open, onClose }) {
               style={{
                 flex: 1,
                 minWidth: 0,
-                minHeight: 28,
+                height: 36,
                 maxHeight: 120,
                 background: "transparent",
                 border: "none",
                 outline: "none",
                 resize: "none",
-                padding: "8px 0",
+                padding: "6px 0",
+                margin: 0,
                 fontFamily: "inherit",
                 fontSize: 14,
-                lineHeight: 1.45,
+                lineHeight: "24px",
                 color: "var(--charcoal)",
+                display: "block",
               }}
             />
             <button
@@ -228,6 +244,9 @@ export function CardiSheet({ open, onClose }) {
                 flexShrink: 0,
                 width: 36,
                 height: 36,
+                minWidth: 36,
+                padding: 0,
+                margin: 0,
                 borderRadius: "50%",
                 border: "none",
                 background: canSend ? "var(--teal-dark)" : "var(--cream-deeper)",
@@ -236,8 +255,10 @@ export function CardiSheet({ open, onClose }) {
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: canSend ? "pointer" : "default",
-                transition: "background-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease",
+                appearance: "none",
+                WebkitAppearance: "none",
                 WebkitTapHighlightColor: "transparent",
+                transition: "background-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease",
               }}
               onMouseDown={(e) => { if (canSend) e.currentTarget.style.transform = "scale(0.94)"; }}
               onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
@@ -261,10 +282,6 @@ export function CardiSheet({ open, onClose }) {
   );
 }
 
-/* Empty state — a quiet greeting + a list of pressable suggestion
-   rows (same row pattern as Settings, not chunky filled chips). The
-   privacy note moved to the composer area; it's more relevant when
-   the user is about to type than when they're scanning suggestions. */
 function CardiEmptyState({ t, onSuggest }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 14, paddingBottom: 8 }}>
@@ -404,9 +421,6 @@ function CardiBubble({ message, t, onRetry, pending }) {
         border: isUser ? "none" : "1px solid var(--border-lt)",
         padding: "9px 13px",
         borderRadius: 16,
-        // Slight asymmetry on the corner closest to the speaker — the
-        // standard "speech bubble tail" cue used by every modern chat
-        // UI. Keeps the radius uniform but signals direction.
         borderBottomRightRadius: isUser ? 6 : 16,
         borderBottomLeftRadius: isUser ? 16 : 6,
         fontSize: 14,
@@ -421,21 +435,42 @@ function CardiBubble({ message, t, onRetry, pending }) {
   );
 }
 
-function CardiThinking() {
+/* Thinking bubble shown only while waiting for the first streamed
+   chunk. Cycles through a few phrases so the wait feels alive
+   instead of stuck — the rotation pauses on the last phrase rather
+   than looping (typical first-token latency is < 4s, so we never
+   reach the end in normal use; if we do, "Casi listo…" is the
+   right message to land on). */
+function CardiThinking({ strings }) {
+  const phrases = strings?.cardi?.thinkingRotation || ["Pensando…"];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (idx >= phrases.length - 1) return;
+    const id = setTimeout(() => setIdx(i => i + 1), 1400);
+    return () => clearTimeout(id);
+  }, [idx, phrases.length]);
+
   return (
     <div style={{
       alignSelf: "flex-start",
       background: "var(--white)",
       border: "1px solid var(--border-lt)",
-      padding: "11px 14px",
+      padding: "10px 14px",
       borderRadius: 16,
       borderBottomLeftRadius: 6,
       display: "inline-flex",
       alignItems: "center",
-      gap: 4,
+      gap: 10,
       marginTop: 2,
-    }} aria-label="Cardi está pensando">
+    }} aria-live="polite" aria-label={phrases[idx]}>
       <ThinkingDots />
+      <span style={{
+        fontSize: 13,
+        color: "var(--charcoal-md)",
+        lineHeight: 1,
+      }}>
+        {phrases[idx]}
+      </span>
     </div>
   );
 }
