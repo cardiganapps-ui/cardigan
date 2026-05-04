@@ -15,13 +15,41 @@
      bounce too via the same default. */
   overscroll-behavior-y: auto;
   padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
+  /* Anchors the absolutely-positioned `::after` rubber-band sentinel
+     below. The descendant chain inside `.page` already establishes its
+     own positioning context wherever it needs absolute children, so
+     promoting `.page` itself to a positioned element is safe. */
+  position: relative;
 }
 .page::-webkit-scrollbar { display: none; }
+/* iOS rubber-band guarantee. The naive in-flow `1px` spacer below
+   only generates overflow on pages whose natural content already
+   meets or exceeds the viewport — short pages (empty states, single
+   cards, the "no patients" greeting) stay exactly clientHeight tall
+   and iOS skips the bounce entirely because there's nothing to
+   rubber-band against. An absolutely-positioned sentinel anchored
+   `1px` past the bottom of the visible viewport contributes to
+   `scrollHeight` regardless of in-flow content size, so every screen
+   bounces the same way. The element is invisible (1×1, hidden) and
+   non-interactive, and its position is in the scroll container's
+   content coordinate space so it never visually "appears" on screen
+   — the user just feels the elastic give. */
+.page::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  visibility: hidden;
+}
 /* 1px spacer pseudo — nudges the scrollable content just past the
-   container edge so iOS has something to rubber-band against on pages
-   that happen to fit the viewport exactly. Plain in-flow block, never
-   interferes with layout or touch handling. */
-.page::after,
+   container edge so iOS has something to rubber-band against on
+   surfaces that happen to fit the viewport exactly. Plain in-flow
+   block, never interferes with layout or touch handling. Used for
+   the non-`.page` scroll surfaces below; `.page` uses the absolute
+   sentinel above instead so even short content bounces. */
 .drawer-nav::after,
 .cmdp-list::after,
 .sheet-panel::after,
