@@ -6,7 +6,14 @@
   flex: 1;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  /* `auto` (the default) preserves iOS's elastic rubber-band when
+     the user scrolls past the top or bottom of a screen — Cardigan
+     felt rudimentary without it. The earlier `contain` was added
+     to prevent scroll chaining, but the parent `.shell` already
+     uses `overflow: clip`, so there's no parent for a chained scroll
+     to bubble into. Sheets and any other nested scroll surface get
+     bounce too via the same default. */
+  overscroll-behavior-y: auto;
   padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
 }
 .page::-webkit-scrollbar { display: none; }
