@@ -1,20 +1,25 @@
 /* POST /api/cardi-ask
-   Cardi — in-app navigation/help chatbot. Pure Q&A with Claude Haiku
-   over a static system prompt that maps the Cardigan app. NO patient
-   data is read or sent. Server-side Pro gate mirrors the client check
-   so a bypassed UI can't backdoor the endpoint.
+   Cardi — in-app AI helper. Streaming SSE. Now with tool use: Claude
+   can call list_patients / get_patient_detail / get_finance_summary
+   to answer questions over the user's actual practice data. Server
+   executes tools scoped to the auth'd user_id; results feed back
+   into the conversation via the agentic loop.
 
    Request:
      { messages: [{ role: "user"|"assistant", content: string }, ...],
        context: { profession?, screen?, accessState?, patientCount?, sessionCount? } }
 
-   Response (200):
-     { answer: string, usage: { ... } }
+   Response: text/event-stream with `data: {text: "..."}` deltas,
+   then `data: {done: true, usage: {...}}`. Pre-stream errors stay
+   as JSON with a real HTTP status (401/403/422/429/503).
 
-   Errors: 401 (no JWT), 403 (not Pro, with action:"subscribe"),
-   413 (input too large), 422 (PII detected),
-   429 (rate limited), 503 (paused via Edge Config), 502 (Anthropic
-   error). All wrapped by withSentry. */
+   PII boundary: tool outputs include patient names, sessions,
+   payments, balances, schedules. They DO NOT include note bodies,
+   phone numbers, emails, birthdate, allergies, medical conditions,
+   or anthropometrics — see api/_cardiTools.js for the column-level
+   filtering. The user must accept a separate data-access consent
+   (cardi-data-v1) before the client opens the chat — gated by
+   CardiConsentGate inside the sheet. */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAuthUser } from "./_admin.js";
@@ -23,6 +28,12 @@ import { getFlag } from "./_flags.js";
 import { rateLimit } from "./_ratelimit.js";
 import { isProUser } from "./_subscription.js";
 import { CARDI_SYSTEM_PROMPT, buildCardiContext } from "../src/data/cardiKnowledge.js";
+import { TOOL_DEFINITIONS, executeTool } from "./_cardiTools.js";
+
+// Cap the agentic loop. In normal use Claude calls 0-2 tools per
+// turn; 5 is a generous safety net against an infinite tool/text/
+// tool oscillation.
+const MAX_TOOL_TURNS = 5;
 
 // Per-message and per-request bounds. Generous enough for normal use,
 // tight enough to keep cost predictable and reject pasted PII attempts.
@@ -130,68 +141,116 @@ async function handler(req, res) {
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Streaming response. Once we commit to the SSE shape we can't change
-  // status — any post-headers error is sent as a `data: {error: ...}`
-  // event and the stream closes. Pre-headers errors (the validation
-  // block above) still return JSON with the right HTTP status, so the
-  // client's error-routing logic stays simple.
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-store, no-transform");
   res.setHeader("Connection", "keep-alive");
-  // Disable any reverse-proxy buffering (Vercel's CDN respects this).
   res.setHeader("X-Accel-Buffering", "no");
   res.statusCode = 200;
-  // A leading comment line forces the headers to flush immediately so
-  // the client's first byte arrives quickly even if Anthropic's first
-  // token hasn't.
+  // Leading comment flushes headers so the client receives the first
+  // byte fast, even if Anthropic's first token hasn't arrived yet.
   res.write(": stream-open\n\n");
 
   const writeEvent = (obj) => {
     try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* socket closed */ }
   };
 
-  try {
-    const stream = await anthropic.messages.stream({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
-      // Two-block system: the large static knowledge block is cached
-      // (identical bytes across requests → ~10× cheaper repeats); the
-      // per-request context block is NOT cached (changes with screen,
-      // patient count, etc).
-      system: [
-        {
-          type: "text",
-          text: CARDI_SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-        {
-          type: "text",
-          text: buildCardiContext(context || {}),
-        },
-      ],
-      messages,
-    });
+  // Working copy of the conversation. We append assistant messages
+  // (with tool_use blocks) and user messages (with tool_result blocks)
+  // as the agentic loop runs.
+  const convo = messages.slice();
+  let totalUsage = null;
 
-    for await (const event of stream) {
-      if (
-        event.type === "content_block_delta" &&
-        event.delta?.type === "text_delta" &&
-        event.delta.text
-      ) {
-        writeEvent({ text: event.delta.text });
+  try {
+    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+      const stream = await anthropic.messages.stream({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        // Two-block system: the static knowledge block is cached
+        // (~10× cheaper repeat input). The per-request context
+        // block isn't.
+        system: [
+          {
+            type: "text",
+            text: CARDI_SYSTEM_PROMPT,
+            cache_control: { type: "ephemeral" },
+          },
+          {
+            type: "text",
+            text: buildCardiContext(context || {}),
+          },
+        ],
+        tools: TOOL_DEFINITIONS,
+        messages: convo,
+      });
+
+      // Stream text deltas as they arrive. Tool-use blocks come as
+      // separate events; we don't need to surface them token-by-token
+      // (they're invisible to the user anyway).
+      for await (const event of stream) {
+        if (
+          event.type === "content_block_delta" &&
+          event.delta?.type === "text_delta" &&
+          event.delta.text
+        ) {
+          writeEvent({ text: event.delta.text });
+        }
       }
+
+      const final = await stream.finalMessage();
+      // Accumulate usage across turns so the client sees the full
+      // cost. Just sum the simple counters; cache_creation /
+      // cache_read are surfaced from the last turn since aggregating
+      // them across turns isn't meaningful.
+      if (final?.usage) {
+        if (!totalUsage) {
+          totalUsage = { ...final.usage };
+        } else {
+          totalUsage.input_tokens = (totalUsage.input_tokens || 0) + (final.usage.input_tokens || 0);
+          totalUsage.output_tokens = (totalUsage.output_tokens || 0) + (final.usage.output_tokens || 0);
+        }
+      }
+
+      // No tool calls → final answer. Close the stream.
+      if (final.stop_reason !== "tool_use") {
+        writeEvent({ done: true, usage: totalUsage });
+        res.end();
+        return;
+      }
+
+      // Tool calls. Echo a hint to the client so the UI can show
+      // "Buscando en tus datos…" or similar; then execute each tool
+      // and append the results, then loop for Claude's next turn.
+      writeEvent({ status: "running_tools" });
+
+      // Append the assistant turn verbatim — we need the tool_use
+      // blocks intact for the tool_result references.
+      convo.push({ role: "assistant", content: final.content });
+
+      const toolResults = [];
+      for (const block of final.content) {
+        if (block.type !== "tool_use") continue;
+        let resultPayload;
+        let isError = false;
+        try {
+          const out = await executeTool(block.name, block.input, user.id);
+          resultPayload = JSON.stringify(out);
+        } catch (err) {
+          console.error(`cardi-ask tool ${block.name} failed:`, err?.message);
+          resultPayload = JSON.stringify({ error: err?.message || "tool error" });
+          isError = true;
+        }
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: resultPayload,
+          is_error: isError,
+        });
+      }
+      convo.push({ role: "user", content: toolResults });
     }
 
-    // Final message carries accumulated usage (incl. cache hit counts).
-    // Best-effort — if the SDK doesn't expose finalMessage on this
-    // version, just close cleanly without usage.
-    let usage = null;
-    try {
-      const final = await stream.finalMessage();
-      usage = final?.usage || null;
-    } catch { /* ignore */ }
-
-    writeEvent({ done: true, usage });
+    // Hit the loop cap — close gracefully.
+    writeEvent({ done: true, usage: totalUsage, truncated: true });
     res.end();
   } catch (err) {
     console.error("cardi-ask Anthropic error:", err?.message);
