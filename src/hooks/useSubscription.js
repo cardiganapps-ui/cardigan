@@ -192,12 +192,22 @@ export function useSubscription(user) {
   const accessExpired = accessState === "expired";
   const accessLoading = accessState === "loading";
 
-  const startCheckout = useCallback(async ({ referralCode, plan } = {}) => {
+  const startCheckout = useCallback(async ({ referralCode, influencerCode, plan } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) return { ok: false, error: "Not signed in" };
     const payload = {};
     if (referralCode) payload.referral_code = referralCode;
+    // Pull the influencer code from sessionStorage if the caller
+    // didn't pass one explicitly. Set by the /c/:code rewrite in
+    // App.jsx during initial render. Same pattern as the existing
+    // referral code handoff.
+    let ic = influencerCode;
+    if (!ic) {
+      try { ic = sessionStorage.getItem("cardigan.influencerCodeFromUrl") || null; }
+      catch { ic = null; }
+    }
+    if (ic) payload.influencer_code = ic;
     if (plan === "annual") payload.plan = "annual";
     const res = await fetch("/api/stripe-checkout", {
       method: "POST",

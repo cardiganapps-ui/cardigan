@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
-import { IconX, IconGoogle, IconApple } from "../components/Icons";
+import { IconX, IconGoogle, IconApple, IconSparkle } from "../components/Icons";
 import { PasswordInput } from "../components/PasswordInput";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { useT } from "../i18n/index";
@@ -146,6 +146,15 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   const [submitting, setSubmitting] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
   const [message, setMessage] = useState("");
+  // Influencer code captured by the /c/:code rewrite in App.jsx and
+  // stashed in sessionStorage. Surface a teal banner so the visitor
+  // sees that the discount was registered — drives signup confidence.
+  // Read once at mount; the value doesn't change during the session.
+  const [influencerCode] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try { return sessionStorage.getItem("cardigan.influencerCodeFromUrl") || null; }
+    catch { return null; }
+  });
   // Captcha token (Cloudflare Turnstile). null until the widget
   // resolves; required for submit when TURNSTILE_ENABLED. Reset to
   // null after each attempt — Turnstile tokens are single-use, so a
@@ -360,6 +369,30 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
             <span>{t("auth.orWithEmail")}</span>
           </div>
         </>
+      )}
+      {influencerCode && mode === "signup" && (
+        <div style={{
+          display:"flex", alignItems:"center", gap:10,
+          background:"var(--teal-pale)",
+          color:"var(--teal-dark)",
+          padding:"10px 14px",
+          borderRadius:"var(--radius)",
+          marginBottom:14,
+          fontSize:13,
+          lineHeight:1.45,
+        }}>
+          <span style={{ display:"inline-flex", flexShrink:0 }}>
+            <IconSparkle size={16} />
+          </span>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontWeight:700, marginBottom:2 }}>
+              {t("auth.influencerCodeAppliedTitle", { code: influencerCode })}
+            </div>
+            <div style={{ fontSize:12, opacity:0.85 }}>
+              {t("auth.influencerCodeAppliedSub")}
+            </div>
+          </div>
+        </div>
       )}
       <form onSubmit={handleSubmit}>
         {mode === "signup" && (

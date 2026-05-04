@@ -6,6 +6,12 @@
       "schedule": "*/5 * * * *"
     }
   ],
+  "rewrites": [
+    {
+      "source": "/c/:code",
+      "destination": "/?ic=:code"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

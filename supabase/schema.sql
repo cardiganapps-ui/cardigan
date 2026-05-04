@@ -188,6 +188,30 @@ create table if not exists user_profiles (
   updated_at timestamptz default now()
 );
 
+-- Admin-issued discount codes (influencer / partner promos). The
+-- code resolves to a Stripe Coupon + Promotion Code pair so the
+-- discount auto-applies at checkout when the visitor arrives via
+-- /c/<code>. Manual entry of the same code at the Stripe Checkout
+-- promo-code field also works (we set allow_promotion_codes:true).
+-- See migration 043 for full RLS + canonical column docs.
+create table if not exists influencer_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique check (code ~ '^[A-Z0-9]{4,20}$'),
+  stripe_coupon_id text not null,
+  stripe_promotion_code_id text not null,
+  influencer_name text,
+  percent_off integer not null check (percent_off >= 1 and percent_off <= 100),
+  duration text not null check (duration in ('once', 'repeating', 'forever')),
+  duration_in_months integer check (
+    (duration <> 'repeating' and duration_in_months is null)
+    or (duration = 'repeating' and duration_in_months between 1 and 12)
+  ),
+  active boolean not null default true,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz default now(),
+  notes text
+);
+
 -- ============================================================
 -- Indexes
 -- ============================================================

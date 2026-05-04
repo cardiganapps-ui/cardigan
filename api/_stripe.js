@@ -133,7 +133,7 @@ export function createCustomer({ email, name, metadata }) {
   });
 }
 
-export function createCheckoutSession({ customerId, priceId, successUrl, cancelUrl, metadata }) {
+export function createCheckoutSession({ customerId, priceId, successUrl, cancelUrl, metadata, promotionCodeId }) {
   // Mirror every metadata key onto BOTH the Checkout Session and the
   // Subscription so downstream webhooks (subscription.* and
   // invoice.paid → which carries `subscription`) can see them. Using
@@ -147,8 +147,18 @@ export function createCheckoutSession({ customerId, priceId, successUrl, cancelU
     success_url: successUrl,
     cancel_url: cancelUrl,
     locale: "es",
-    allow_promotion_codes: "true",
   };
+  // Stripe doesn't allow `discounts` and `allow_promotion_codes`
+  // simultaneously — when we auto-apply a promo code, the manual
+  // entry field is hidden. That's fine: an influencer-link visitor
+  // already has the right discount applied; they'd never need to
+  // type a different one. When no influencer code is present, keep
+  // the manual entry field on for users with peer-shared codes.
+  if (promotionCodeId) {
+    body["discounts[0][promotion_code]"] = promotionCodeId;
+  } else {
+    body.allow_promotion_codes = "true";
+  }
   for (const [k, v] of Object.entries(metadata || {})) {
     if (v == null) continue;
     body[`metadata[${k}]`] = String(v);
@@ -168,6 +178,62 @@ export function createBillingPortalSession({ customerId, returnUrl }) {
 
 export function getSubscription(subscriptionId) {
   return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "GET" });
+}
+
+/* ── Coupons + Promotion Codes ──
+   Used by the influencer-code feature. Each admin-created code is a
+   pair: a Coupon (defines the discount math) + a Promotion Code (the
+   customer-facing redemption token). The Promotion Code maps back to
+   the Coupon, so when a user enters "MARIANA20" at Checkout, Stripe
+   resolves to the right Coupon and applies the percent_off.
+
+   We always create them as percent-off in v1; amount-off can be
+   added by widening this signature when needed. Restrictions are
+   set so codes only apply to first-time customers (an influencer
+   shouldn't be able to give discounts to existing paying users). */
+
+export function createCoupon({ percentOff, duration, durationInMonths, name, metadata }) {
+  const body = {
+    percent_off: String(percentOff),
+    duration,
+    name: name || "",
+    currency: "mxn",
+  };
+  if (duration === "repeating") {
+    body.duration_in_months = String(durationInMonths);
+  }
+  for (const [k, v] of Object.entries(metadata || {})) {
+    if (v == null) continue;
+    body[`metadata[${k}]`] = String(v);
+  }
+  return stripeFetch("/coupons", { body });
+}
+
+export function createPromotionCode({ couponId, code, firstTimeOnly = true, metadata }) {
+  const body = {
+    coupon: couponId,
+    code,
+  };
+  if (firstTimeOnly) {
+    body["restrictions[first_time_transaction]"] = "true";
+  }
+  for (const [k, v] of Object.entries(metadata || {})) {
+    if (v == null) continue;
+    body[`metadata[${k}]`] = String(v);
+  }
+  return stripeFetch("/promotion_codes", { body });
+}
+
+/* Toggle a Promotion Code's active flag. Stripe doesn't allow
+   deleting promo codes (they live forever for audit), so the only
+   way to "disable" one is to flip active=false. Manual entry of the
+   code at Checkout will fail with a "promotion code not active"
+   error after this; auto-apply via discounts[promotion_code] also
+   fails. */
+export function updatePromotionCode(id, { active }) {
+  return stripeFetch(`/promotion_codes/${id}`, {
+    body: { active: String(!!active) },
+  });
 }
 
 /* List subscriptions for a customer. Used by the force-sync flow to

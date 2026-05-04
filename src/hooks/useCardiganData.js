@@ -237,6 +237,45 @@ export async function adminGrantComp(userId, granted, reason) {
   return res.json();
 }
 
+/* Influencer codes — admin-only CRUD. List returns each code with
+   signup_count + paid_count joined from user_subscriptions so the
+   tab can show conversion rates without a second round-trip. */
+export async function fetchInfluencerCodes() {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-influencer-codes", { method: "GET", headers });
+  if (!res.ok) {
+    let msg = "Fetch failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* default */ }
+    throw new Error(msg);
+  }
+  const j = await res.json();
+  return j.codes || [];
+}
+
+export async function createInfluencerCode(payload) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-influencer-codes", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || "Create failed");
+  return j.code;
+}
+
+export async function toggleInfluencerCode(id, active) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-influencer-codes", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ id, active }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || "Toggle failed");
+  return j;
+}
+
 /**
  * Pulls the headline numbers for the AdminPanel "Métricas" tab. Both
  * RPCs are admin-gated server-side via is_admin(); a non-admin caller

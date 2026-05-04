@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { haptic } from "../utils/haptics";
-import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, adminGrantComp, fetchAdminAnalytics } from "../hooks/useCardiganData";
-import { IconX, IconTrash, IconDownload, IconCheck } from "../components/Icons";
+import { fetchAllAccounts, fetchBugReports, deleteBugReport, archiveBugReports, adminBlockUser, adminDeleteUser, adminUpdateProfession, adminGrantComp, fetchAdminAnalytics, fetchInfluencerCodes, createInfluencerCode, toggleInfluencerCode } from "../hooks/useCardiganData";
+import { IconX, IconTrash, IconDownload, IconCheck, IconPlus, IconSparkle } from "../components/Icons";
 import { useT } from "../i18n/index";
 import { PROFESSIONS } from "../data/constants";
 import { useCardigan } from "../context/CardiganContext";
@@ -939,6 +939,539 @@ function AcquisitionSection({ sources }) {
   );
 }
 
+/* ── Influencer / partner discount codes tab ────────────────────────
+   Lists every code with its discount, duration, current state, and
+   conversion stats (signups + paid conversions). Inline "Activar /
+   Desactivar" toggle per row. "Nuevo código" opens a sheet that
+   creates a Stripe Coupon + Promotion Code pair and shows the
+   shareable link the admin can hand off to the influencer. */
+function CodesTab() {
+  const { t } = useT();
+  const [codes, setCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [justCreated, setJustCreated] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchInfluencerCodes();
+      setCodes(data);
+    } catch (e) {
+      setError(e.message || t("admin.codesLoadError"));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onToggle = async (code) => {
+    if (busyId) return;
+    setBusyId(code.id);
+    try {
+      await toggleInfluencerCode(code.id, !code.active);
+      setCodes(prev => prev.map(c => c.id === code.id ? { ...c, active: !c.active } : c));
+    } catch (e) {
+      setError(e.message || t("admin.codesToggleError"));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCreated = (newCode) => {
+    setJustCreated(newCode);
+    setCodes(prev => [{ ...newCode, signup_count: 0, paid_count: 0 }, ...prev]);
+    setShowNew(false);
+  };
+
+  return (
+    <>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10, marginBottom:14 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)" }}>
+            {t("admin.codesTitle")}
+          </div>
+          <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.45, marginTop:2 }}>
+            {t("admin.codesSubtitle")}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setShowNew(true); haptic.tap(); }}
+          className="btn"
+          style={{
+            height:36,
+            padding:"0 14px",
+            fontSize:13,
+            background:"var(--charcoal)",
+            color:"var(--white)",
+            display:"inline-flex",
+            alignItems:"center",
+            gap:6,
+            flexShrink:0,
+          }}
+        >
+          <IconPlus size={14} /> {t("admin.codesNew")}
+        </button>
+      </div>
+
+      {loading && (
+        <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>
+          {t("admin.codesLoading")}
+        </div>
+      )}
+      {error && !loading && (
+        <div style={{ background:"var(--red-bg)", color:"var(--red)", padding:"10px 14px", borderRadius:"var(--radius-sm)", fontSize:13, marginBottom:10 }}>
+          {error}
+        </div>
+      )}
+      {!loading && codes.length === 0 && !error && (
+        <div style={{ textAlign:"center", padding:40, color:"var(--charcoal-xl)", fontSize:13 }}>
+          {t("admin.codesEmpty")}
+        </div>
+      )}
+      {!loading && codes.length > 0 && (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {codes.map(c => (
+            <CodeRow
+              key={c.id}
+              code={c}
+              busy={busyId === c.id}
+              onToggle={() => onToggle(c)}
+              t={t}
+            />
+          ))}
+        </div>
+      )}
+
+      {showNew && (
+        <NewCodeSheet
+          onClose={() => setShowNew(false)}
+          onCreated={handleCreated}
+        />
+      )}
+      {justCreated && (
+        <CodeCreatedSheet
+          code={justCreated}
+          onClose={() => setJustCreated(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function CodeRow({ code, busy, onToggle, t }) {
+  const durationLabel =
+    code.duration === "once" ? t("admin.codesDurationOnce")
+    : code.duration === "forever" ? t("admin.codesDurationForever")
+    : t("admin.codesDurationRepeating", { months: code.duration_in_months });
+  const link = `https://cardigan.mx/c/${code.code}`;
+
+  return (
+    <div style={{
+      background:"var(--white)",
+      border:"1px solid var(--border-lt)",
+      borderRadius:"var(--radius)",
+      padding:"12px 14px",
+      opacity: code.active ? 1 : 0.6,
+    }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
+            <span style={{
+              fontFamily:"var(--font-mono, monospace)",
+              fontSize:14,
+              fontWeight:700,
+              color:"var(--charcoal)",
+              letterSpacing:"0.4px",
+            }}>
+              {code.code}
+            </span>
+            <span style={{
+              fontSize:10,
+              fontWeight:700,
+              textTransform:"uppercase",
+              letterSpacing:"0.5px",
+              color: code.active ? "var(--green)" : "var(--charcoal-xl)",
+              background: code.active ? "var(--green-bg)" : "var(--cream)",
+              padding:"2px 8px",
+              borderRadius:"var(--radius-pill)",
+            }}>
+              {code.active ? t("admin.codesActive") : t("admin.codesInactive")}
+            </span>
+          </div>
+          {code.influencer_name && (
+            <div style={{ fontSize:12, color:"var(--charcoal-md)", marginBottom:4 }}>
+              {code.influencer_name}
+            </div>
+          )}
+          <div style={{ fontSize:13, color:"var(--charcoal)", marginBottom:2 }}>
+            {t("admin.codesPercent", { percent: code.percent_off })} · {durationLabel}
+          </div>
+          <div style={{ fontSize:11, color:"var(--charcoal-xl)" }}>
+            {t("admin.codesUsage", { signups: code.signup_count || 0, paid: code.paid_count || 0 })}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={busy}
+          style={{
+            background:"none",
+            border:"1px solid var(--border)",
+            color:"var(--charcoal-md)",
+            padding:"4px 10px",
+            fontSize:11,
+            fontWeight:600,
+            borderRadius:"var(--radius-pill)",
+            cursor: busy ? "default" : "pointer",
+            fontFamily:"inherit",
+            flexShrink:0,
+            WebkitTapHighlightColor:"transparent",
+          }}
+        >
+          {code.active ? t("admin.codesDisable") : t("admin.codesEnable")}
+        </button>
+      </div>
+      <div style={{
+        marginTop:10,
+        paddingTop:10,
+        borderTop:"1px solid var(--border-lt)",
+        display:"flex",
+        alignItems:"center",
+        gap:8,
+      }}>
+        <CopyChip text={link} label={t("admin.codesShareLink")} t={t} />
+      </div>
+    </div>
+  );
+}
+
+function CopyChip({ text, label, t }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch { /* clipboard blocked */ }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      style={{
+        flex:1,
+        display:"flex",
+        alignItems:"center",
+        justifyContent:"space-between",
+        gap:8,
+        padding:"8px 12px",
+        background:"var(--cream)",
+        border:"none",
+        borderRadius:"var(--radius-sm)",
+        cursor:"pointer",
+        fontFamily:"inherit",
+        textAlign:"left",
+        WebkitTapHighlightColor:"transparent",
+      }}
+    >
+      <div style={{ minWidth:0, flex:1 }}>
+        <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.5px", color:"var(--charcoal-xl)", marginBottom:2 }}>
+          {label}
+        </div>
+        <div style={{
+          fontFamily:"var(--font-mono, monospace)",
+          fontSize:12,
+          color:"var(--charcoal)",
+          whiteSpace:"nowrap",
+          overflow:"hidden",
+          textOverflow:"ellipsis",
+        }}>
+          {text}
+        </div>
+      </div>
+      <span style={{
+        fontSize:11,
+        fontWeight:700,
+        color: copied ? "var(--green)" : "var(--teal-dark)",
+        flexShrink:0,
+      }}>
+        {copied ? t("admin.codesCopied") : t("admin.codesCopy")}
+      </span>
+    </button>
+  );
+}
+
+/* Sheet — admin-only modal-like surface for creating a code. Lives
+   inside the AdminPanel screen so we don't need to plumb through the
+   layer system or the global sheet stack. */
+function NewCodeSheet({ onClose, onCreated }) {
+  const { t } = useT();
+  const [code, setCode] = useState("");
+  const [influencerName, setInfluencerName] = useState("");
+  const [percentOff, setPercentOff] = useState(20);
+  const [duration, setDuration] = useState("once");
+  const [durationInMonths, setDurationInMonths] = useState(3);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const codeValid = /^[A-Z0-9]{4,20}$/.test(code);
+  const percentValid = Number.isInteger(percentOff) && percentOff >= 1 && percentOff <= 100;
+  const monthsValid = duration !== "repeating" || (Number.isInteger(durationInMonths) && durationInMonths >= 1 && durationInMonths <= 12);
+  const canSubmit = codeValid && percentValid && monthsValid && !busy;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    setError("");
+    try {
+      const created = await createInfluencerCode({
+        code,
+        influencerName: influencerName.trim() || null,
+        percentOff,
+        duration,
+        durationInMonths: duration === "repeating" ? durationInMonths : null,
+        notes: notes.trim() || null,
+      });
+      onCreated(created);
+    } catch (e) {
+      setError(e.message || t("admin.codesCreateError"));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div
+        className="sheet-panel"
+        role="dialog"
+        aria-modal="true"
+        onClick={e => e.stopPropagation()}
+        style={{ maxHeight:"92vh", overflowY:"auto" }}
+      >
+        <div className="sheet-handle" />
+        <div className="sheet-header" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <span className="sheet-title">{t("admin.codesNewTitle")}</span>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose}>
+            <IconX size={14} />
+          </button>
+        </div>
+        <div style={{ padding:"4px 20px 24px" }}>
+          <div style={{ fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, marginBottom:18 }}>
+            {t("admin.codesNewSubtitle")}
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">{t("admin.codesFieldCode")}</label>
+            <input
+              className="input"
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20))}
+              placeholder="MARIANA20"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              style={{ fontFamily:"var(--font-mono, monospace)", letterSpacing:"0.4px" }}
+            />
+            <div className="input-help">{t("admin.codesFieldCodeHint")}</div>
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">{t("admin.codesFieldInfluencer")}</label>
+            <input
+              className="input"
+              type="text"
+              value={influencerName}
+              onChange={(e) => setInfluencerName(e.target.value.slice(0, 80))}
+              placeholder="Mariana Pérez"
+            />
+            <div className="input-help">{t("admin.codesFieldInfluencerHint")}</div>
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">{t("admin.codesFieldPercent")}</label>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                max={100}
+                value={percentOff}
+                onChange={(e) => setPercentOff(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 0)))}
+                style={{ width:90, textAlign:"center", fontFamily:"var(--font-mono, monospace)" }}
+              />
+              <span style={{ fontSize:14, color:"var(--charcoal-md)" }}>%</span>
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">{t("admin.codesFieldDuration")}</label>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {[
+                { k: "once",      l: t("admin.codesFieldDurationOnce") },
+                { k: "repeating", l: t("admin.codesFieldDurationRepeating") },
+                { k: "forever",   l: t("admin.codesFieldDurationForever") },
+              ].map(opt => {
+                const active = duration === opt.k;
+                return (
+                  <button
+                    key={opt.k}
+                    type="button"
+                    onClick={() => { setDuration(opt.k); haptic.tap(); }}
+                    style={{
+                      textAlign:"left",
+                      padding:"10px 14px",
+                      borderRadius:"var(--radius)",
+                      border: active ? "2px solid var(--teal)" : "2px solid var(--border-lt)",
+                      background: active ? "var(--teal-pale)" : "var(--white)",
+                      color: "var(--charcoal)",
+                      fontFamily:"inherit",
+                      fontSize:14,
+                      fontWeight: active ? 700 : 500,
+                      cursor:"pointer",
+                      WebkitTapHighlightColor:"transparent",
+                    }}
+                  >
+                    {opt.l}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {duration === "repeating" && (
+            <div className="input-group">
+              <label className="input-label">{t("admin.codesFieldMonths")}</label>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={durationInMonths}
+                  onChange={(e) => setDurationInMonths(Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 1)))}
+                  style={{ width:90, textAlign:"center", fontFamily:"var(--font-mono, monospace)" }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="input-group">
+            <label className="input-label">{t("admin.codesFieldNotes")}</label>
+            <input
+              className="input"
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+              placeholder=""
+            />
+            <div className="input-help">{t("admin.codesFieldNotesHint")}</div>
+          </div>
+
+          <div style={{
+            background:"var(--cream)",
+            color:"var(--charcoal-md)",
+            padding:"8px 12px",
+            borderRadius:"var(--radius-sm)",
+            fontSize:11,
+            lineHeight:1.4,
+            marginBottom:14,
+          }}>
+            {t("admin.codesFirstTimeOnly")}
+          </div>
+
+          {error && (
+            <div style={{ background:"var(--red-bg)", color:"var(--red)", padding:"8px 12px", borderRadius:"var(--radius-sm)", fontSize:13, marginBottom:14 }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={!canSubmit}
+            style={{ width:"100%" }}
+          >
+            {busy ? t("admin.codesCreating") : t("admin.codesCreate")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Success sheet shown immediately after creation. Big, premium feel:
+   sparkle hero + the code in a copyable mono field + the shareable
+   link in another. Two copy buttons so the admin can grab whichever
+   format the influencer wants. */
+function CodeCreatedSheet({ code, onClose }) {
+  const { t } = useT();
+  const link = `https://cardigan.mx/c/${code.code}`;
+  const durationLabel =
+    code.duration === "once" ? t("admin.codesDurationOnce")
+    : code.duration === "forever" ? t("admin.codesDurationForever")
+    : t("admin.codesDurationRepeating", { months: code.duration_in_months });
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div
+        className="sheet-panel"
+        role="dialog"
+        aria-modal="true"
+        onClick={e => e.stopPropagation()}
+        style={{ maxHeight:"92vh", overflowY:"auto" }}
+      >
+        <div className="sheet-handle" />
+        <div className="sheet-header" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <span className="sheet-title">{t("admin.codesCreated")}</span>
+          <button className="sheet-close" aria-label={t("close")} onClick={onClose}>
+            <IconX size={14} />
+          </button>
+        </div>
+        <div style={{ padding:"8px 20px 24px" }}>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, padding:"12px 0 18px" }}>
+            <div style={{
+              width:54, height:54, borderRadius:"50%",
+              background:"var(--teal-pale)", color:"var(--teal-dark)",
+              display:"inline-flex", alignItems:"center", justifyContent:"center",
+            }}>
+              <IconSparkle size={24} />
+            </div>
+            <div style={{ textAlign:"center", fontSize:13, color:"var(--charcoal-md)", lineHeight:1.5, maxWidth:320 }}>
+              {t("admin.codesCreatedSubtitle")}
+            </div>
+            <div style={{ fontSize:13, color:"var(--charcoal-md)" }}>
+              {t("admin.codesPercent", { percent: code.percent_off })} · {durationLabel}
+            </div>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:14 }}>
+            <CopyChip text={code.code} label={t("admin.codesFieldCode")} t={t} />
+            <CopyChip text={link} label={t("admin.codesShareLink")} t={t} />
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            style={{ width:"100%" }}
+          >
+            {t("admin.codesClose")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
   const { t } = useT();
   const [tab, setTab] = useState("accounts");
@@ -946,6 +1479,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
   const tabs = [
     { k: "accounts", l: t("admin.tabAccounts") },
     { k: "metrics",  l: t("admin.tabMetrics") },
+    { k: "codes",    l: t("admin.tabCodes") },
     { k: "bugs",     l: t("admin.tabBugs") },
   ];
 
@@ -986,6 +1520,7 @@ export function AdminPanel({ onViewAs, onClose, currentAdminId }) {
       <div style={{ flex:1, minHeight:0, overflowY:"auto", padding:16 }}>
         {tab === "accounts" && <AccountsTab onViewAs={onViewAs} currentAdminId={currentAdminId} />}
         {tab === "metrics"  && <MetricsTab />}
+        {tab === "codes"    && <CodesTab />}
         {tab === "bugs"     && <BugsTab />}
       </div>
     </div>

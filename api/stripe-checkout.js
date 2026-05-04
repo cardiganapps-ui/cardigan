@@ -39,6 +39,19 @@ function parseReferralCode(body) {
   return code;
 }
 
+// Influencer codes (separate from peer-to-peer referral codes — these
+// are admin-issued partner promos that auto-apply a Stripe Coupon at
+// Checkout). Same A-Z 0-9 alphabet but allow up to 20 chars per the
+// influencer_codes.code check constraint.
+function parseInfluencerCode(body) {
+  if (!body || typeof body !== "object") return null;
+  const raw = body.influencer_code;
+  if (typeof raw !== "string") return null;
+  const code = raw.trim().toUpperCase();
+  if (!code || code.length > 20 || !/^[A-Z0-9]+$/.test(code)) return null;
+  return code;
+}
+
 function appOrigin(req) {
   // Prefer the explicit origin header (sent by browsers on same-site
   // POSTs) over host headers — that way returning to the same host
@@ -80,6 +93,7 @@ async function handler(req, res) {
   try { body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {}); }
   catch { /* malformed body, ignore — proceed without referral */ }
   const referralCode = parseReferralCode(body);
+  const influencerCode = parseInfluencerCode(body);
   const plan = resolvePlan(body.plan);
 
   const svc = getServiceClient();
@@ -109,6 +123,22 @@ async function handler(req, res) {
     if (inviter && inviter.user_id !== user.id) {
       resolvedReferredBy = referralCode;
     }
+  }
+
+  // Resolve influencer code to its Stripe Promotion Code id. Inactive
+  // codes are filtered out so a disabled code can't be used by
+  // someone who saved the link earlier. Unknown / inactive / malformed
+  // codes are silently ignored — same philosophy as the referral code:
+  // a bad code shouldn't block someone from subscribing.
+  let resolvedInfluencer = null;
+  if (influencerCode) {
+    const { data: ic } = await svc
+      .from("influencer_codes")
+      .select("id, stripe_promotion_code_id")
+      .eq("code", influencerCode)
+      .eq("active", true)
+      .maybeSingle();
+    if (ic) resolvedInfluencer = ic;
   }
 
   // Comp-granted users have unlimited free access — refuse to start a
@@ -175,6 +205,11 @@ async function handler(req, res) {
       ...(resolvedReferredBy && !existing?.referred_by
         ? { referred_by: resolvedReferredBy }
         : {}),
+      // Stamp influencer attribution on first checkout — never
+      // overwrite an existing influencer_code_id.
+      ...(resolvedInfluencer && !existing?.influencer_code_id
+        ? { influencer_code_id: resolvedInfluencer.id }
+        : {}),
       updated_at: new Date().toISOString(),
     };
     if (existing) {
@@ -185,12 +220,19 @@ async function handler(req, res) {
       const { error } = await svc.from("user_subscriptions").insert(persistFields);
       if (error) return res.status(500).json({ error: "Failed to persist customer record" });
     }
-  } else if (resolvedReferredBy && !existing?.referred_by) {
-    // Customer already exists but no referred_by stamped yet — set it.
-    // First-checkout-after-resub case.
-    await svc.from("user_subscriptions")
-      .update({ referred_by: resolvedReferredBy, updated_at: new Date().toISOString() })
-      .eq("user_id", user.id);
+  } else if (
+    (resolvedReferredBy && !existing?.referred_by)
+    || (resolvedInfluencer && !existing?.influencer_code_id)
+  ) {
+    // Customer already exists but the attribution columns aren't
+    // stamped yet — set whichever is missing. First-checkout-after-
+    // resub case for either signal.
+    const updates = { updated_at: new Date().toISOString() };
+    if (resolvedReferredBy && !existing?.referred_by) updates.referred_by = resolvedReferredBy;
+    if (resolvedInfluencer && !existing?.influencer_code_id) {
+      updates.influencer_code_id = resolvedInfluencer.id;
+    }
+    await svc.from("user_subscriptions").update(updates).eq("user_id", user.id);
   }
 
   // Drain any accrued pending referral credit into the Stripe
@@ -250,7 +292,13 @@ async function handler(req, res) {
       metadata: {
         user_id: user.id,
         ...(finalReferredBy ? { referred_by: finalReferredBy } : {}),
+        ...(resolvedInfluencer ? { influencer_code_id: resolvedInfluencer.id } : {}),
       },
+      // Auto-apply the influencer discount at checkout. Stripe also
+      // accepts manual entry of the same code via the promo-code
+      // field (allow_promotion_codes:true is set in createCheckoutSession),
+      // so removing the auto-apply still works as a fallback.
+      promotionCodeId: resolvedInfluencer?.stripe_promotion_code_id,
     });
   } catch (err) {
     return res.status(502).json({ error: err.message || "Stripe checkout create failed" });

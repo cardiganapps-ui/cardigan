@@ -105,23 +105,44 @@ function CardiganApp() {
   // capture below, so a visitor arriving from a friend's invite link skips
   // the landing page entirely.
   const [authIntent, setAuthIntent] = useState(() => {
-    // Capture ?ref=<code> at module/component initial render — runs
+    // Capture ?ref=<code> AND ?ic=<code> (influencer link from
+    // /c/:code rewrite) at module/component initial render — runs
     // BEFORE the auth gate so an unauthenticated visitor lands
     // straight on the signup sheet instead of having to find
-    // "Comenzar gratis" themselves. The code is stashed in
-    // sessionStorage so it survives the email-verify roundtrip and
-    // the eventual checkout pulls it from there. URL is stripped
+    // "Comenzar gratis" themselves. Codes are stashed in
+    // sessionStorage so they survive the email-verify roundtrip and
+    // the eventual checkout pulls them from there. URL is stripped
     // so a refresh + screenshot doesn't leak the parameter.
     if (typeof window === "undefined") return null;
     try {
       const params = new URLSearchParams(window.location.search);
+      let captured = false;
+
       const ref = params.get("ref");
-      if (!ref) return null;
-      const sanitized = ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
-      if (!sanitized) return null;
-      try { sessionStorage.setItem("cardigan.referralFromUrl", sanitized); }
-      catch { /* private mode — fine, the URL is gone after this anyway */ }
-      params.delete("ref");
+      if (ref) {
+        const sanitized = ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+        if (sanitized) {
+          try { sessionStorage.setItem("cardigan.referralFromUrl", sanitized); }
+          catch { /* private mode — fine, URL gets stripped anyway */ }
+          captured = true;
+        }
+        params.delete("ref");
+      }
+
+      const ic = params.get("ic");
+      if (ic) {
+        // Influencer codes are A-Z 0-9 up to 20 chars (matches
+        // influencer_codes.code check constraint).
+        const sanitized = ic.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+        if (sanitized && sanitized.length >= 4) {
+          try { sessionStorage.setItem("cardigan.influencerCodeFromUrl", sanitized); }
+          catch { /* ignore */ }
+          captured = true;
+        }
+        params.delete("ic");
+      }
+
+      if (!captured) return null;
       const newUrl = window.location.pathname
         + (params.toString() ? `?${params.toString()}` : "")
         + window.location.hash;
