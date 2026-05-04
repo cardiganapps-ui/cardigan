@@ -97,7 +97,7 @@ export default {
     documents: "Documentos",
     archivo: "Archivo",
     settings: "Ajustes",
-    cardi: "Cardi",
+    cardi: "Cardi (AI Helper)",
     principal: "Principal",
     account: "Cuenta",
     signOut: "Cerrar sesi\u00f3n",

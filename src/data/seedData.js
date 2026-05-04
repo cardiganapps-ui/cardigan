@@ -15,8 +15,8 @@ export const navItems = [
   { id:"patients",  label:"Pacientes",   iconId:"users",     section:"principal" },
   { id:"finances",  label:"Finanzas",    iconId:"dollar",    section:"principal" },
   { id:"archivo",   label:"Archivo",     iconId:"clipboard", section:"principal" },
-  { id:"settings",  label:"Ajustes",    iconId:"settings", section:"cuenta"    },
   { id:"cardi",     label:"Cardi",      iconId:"sparkle",  section:"cuenta"    },
+  { id:"settings",  label:"Ajustes",    iconId:"settings", section:"cuenta"    },
 ];
 
 export const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
