@@ -246,13 +246,53 @@ export async function adminGrantComp(userId, granted, reason) {
  *   { overview: {...counts and sums...}, daily: [{ day, signups, active_users, ... }] }
  */
 export async function fetchAdminAnalytics({ days = 30 } = {}) {
-  const [ovRes, dailyRes] = await Promise.all([
+  const [ovRes, dailyRes, sourcesRes] = await Promise.all([
     supabase.rpc("admin_analytics_overview"),
     supabase.rpc("admin_analytics_daily", { days }),
+    fetchSignupSources(),
   ]);
   if (ovRes.error) throw ovRes.error;
   if (dailyRes.error) throw dailyRes.error;
-  return { overview: ovRes.data, daily: dailyRes.data || [] };
+  return {
+    overview: ovRes.data,
+    daily: dailyRes.data || [],
+    signupSources: sourcesRes,
+  };
+}
+
+/* Acquisition source breakdown across ALL signups that completed
+   the source step. Admin-only by virtue of the user_profiles RLS
+   policy ("admin reads all"). Aggregated client-side because the
+   row count is per-user (small) and sorting/percentage math is
+   trivial; saves us another RPC migration. */
+export async function fetchSignupSources() {
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("signup_source, signup_source_detail, signup_source_recorded_at")
+    .not("signup_source_recorded_at", "is", null);
+  if (error) throw error;
+  const rows = data || [];
+  const counts = {};
+  const otherDetails = [];
+  for (const r of rows) {
+    counts[r.signup_source] = (counts[r.signup_source] || 0) + 1;
+    if (r.signup_source === "other" && r.signup_source_detail) {
+      otherDetails.push({
+        text: r.signup_source_detail,
+        at: r.signup_source_recorded_at,
+      });
+    }
+  }
+  const total = rows.length;
+  const breakdown = Object.entries(counts)
+    .map(([source, count]) => ({
+      source,
+      count,
+      pct: total > 0 ? count / total : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+  otherDetails.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+  return { breakdown, otherDetails, total };
 }
 
 export async function fetchBugReports({ archived = false } = {}) {

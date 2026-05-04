@@ -787,6 +787,8 @@ function MetricsTab() {
         <DailyBars daily={daily} accessor={(r) => r.sessions_created} label={t("admin.metricsSessionsDaily")} color="var(--charcoal-md)" />
       </div>
 
+      <AcquisitionSection sources={data?.signupSources} />
+
       <div style={{ marginTop:14, textAlign:"right" }}>
         <button onClick={load}
           style={{ fontSize:11, fontWeight:600, color:"var(--charcoal-md)", background:"none", border:"none", cursor:"pointer", padding:"4px 8px", fontFamily:"var(--font)" }}>
@@ -794,6 +796,146 @@ function MetricsTab() {
         </button>
       </div>
     </>
+  );
+}
+
+/* Acquisition source breakdown — appears below the daily bars in
+   the Métricas tab. All-time only (signups are rare events; a 30-day
+   window would underflow at small scale). Shows a percentage bar
+   per source, plus a list of free-form "Otro" responses so we can
+   spot channels that should become predefined options. */
+function AcquisitionSection({ sources }) {
+  const { t } = useT();
+  if (!sources || sources.total === 0) {
+    return (
+      <div style={{
+        marginTop: 14,
+        padding: "14px 16px",
+        background: "var(--cream)",
+        borderRadius: "var(--radius)",
+        border: "1px solid var(--border-lt)",
+      }}>
+        <div style={{
+          fontSize: "var(--text-eyebrow)",
+          textTransform: "uppercase",
+          letterSpacing: "0.6px",
+          color: "var(--charcoal-xl)",
+          fontWeight: 700,
+          marginBottom: 6,
+        }}>
+          {t("admin.acquisitionTitle")}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--charcoal-md)", lineHeight: 1.45 }}>
+          {t("admin.acquisitionEmpty")}
+        </div>
+      </div>
+    );
+  }
+
+  const { breakdown, otherDetails, total } = sources;
+  const max = breakdown[0]?.count || 1;
+
+  return (
+    <div style={{
+      marginTop: 14,
+      padding: "14px 16px",
+      background: "var(--white)",
+      borderRadius: "var(--radius)",
+      border: "1px solid var(--border-lt)",
+    }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+        <div style={{
+          fontSize: "var(--text-eyebrow)",
+          textTransform: "uppercase",
+          letterSpacing: "0.6px",
+          color: "var(--charcoal-xl)",
+          fontWeight: 700,
+        }}>
+          {t("admin.acquisitionTitle")}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--charcoal-xl)", fontWeight: 600 }}>
+          {t("admin.acquisitionTotal", { count: total, plural: total === 1 ? "" : "s" })}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--charcoal-md)", marginBottom: 10, lineHeight: 1.45 }}>
+        {t("admin.acquisitionSubtitle")}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {breakdown.map(({ source, count, pct }) => {
+          const widthPct = ((count / max) * 100).toFixed(1);
+          return (
+            <div key={source} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                fontSize: 12,
+                color: "var(--charcoal)",
+                width: 140,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}>
+                {t(`onboarding.sources.${source}.label`)}
+              </div>
+              <div style={{
+                flex: 1,
+                height: 8,
+                background: "var(--cream-deeper)",
+                borderRadius: 4,
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  width: `${widthPct}%`,
+                  height: "100%",
+                  background: "var(--teal)",
+                  borderRadius: 4,
+                }} />
+              </div>
+              <div style={{
+                fontSize: 12,
+                color: "var(--charcoal-md)",
+                width: 64,
+                textAlign: "right",
+                flexShrink: 0,
+                fontVariantNumeric: "tabular-nums",
+              }}>
+                {count} · {Math.round(pct * 100)}%
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {otherDetails.length > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-lt)" }}>
+          <div style={{
+            fontSize: "var(--text-eyebrow)",
+            textTransform: "uppercase",
+            letterSpacing: "0.6px",
+            color: "var(--charcoal-xl)",
+            fontWeight: 700,
+            marginBottom: 8,
+          }}>
+            {t("admin.acquisitionOtherTitle")} ({otherDetails.length})
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {otherDetails.map((d, i) => (
+              <div key={i} style={{
+                fontSize: 12,
+                color: "var(--charcoal-md)",
+                padding: "4px 8px",
+                background: "var(--cream)",
+                borderRadius: "var(--radius-sm)",
+                lineHeight: 1.4,
+                wordBreak: "break-word",
+              }}>
+                "{d.text}"
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
