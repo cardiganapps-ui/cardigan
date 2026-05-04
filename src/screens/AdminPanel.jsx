@@ -160,12 +160,13 @@ function AccountRow({ account, currentAdminId, onViewAs, onAction }) {
             </div>
           </div>
           <div className="row-sub">
-            {emailLabel} · {account.patientCount} {t("nav.patients").toLowerCase()}
+            {emailLabel}
             {account.profession && (
               <> · <span style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
                 {t(`onboarding.professions.${account.profession}.label`)}
               </span></>
             )}
+            {" · "}{account.patientCount} {t("nav.patients").toLowerCase()}
           </div>
         </div>
         <span className="row-chevron" style={{ transform: mode !== "collapsed" ? "rotate(90deg)" : undefined, transition:"transform 0.4s" }}>›</span>
