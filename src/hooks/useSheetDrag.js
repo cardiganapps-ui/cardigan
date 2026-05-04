@@ -56,6 +56,22 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
   const onTouchStart = useCallback((e) => {
     if (closingRef.current) return;
     const t = e.touches[0];
+    // Skip drag-to-dismiss when the touch begins on an interactive
+    // element. Inputs / textareas / selects / buttons / contenteditable
+    // surfaces should behave like normal taps; without this guard the
+    // 6px activation threshold below trips on the natural finger drift
+    // of an iOS tap (5-10px is common), the panel translates a few
+    // pixels, the iOS keyboard slides up onto a moved target, and the
+    // input becomes glitchy / hard to focus. Sheet dismissal still
+    // works from the handle, header, surrounding whitespace, or the
+    // overlay click — the surface area for intentional drag is plenty.
+    const target = e.target;
+    if (target?.closest && target.closest(
+      "input, textarea, select, button, [contenteditable=true], [role='button'], [role='switch'], [role='checkbox'], [role='radio'], a[href]"
+    )) {
+      startRef.current = { cancelled: true };
+      return;
+    }
     startRef.current = {
       y: t.clientY,
       x: t.clientX,
@@ -91,13 +107,21 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
       const atTop = scrollTop <= 0;
       const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
 
-      if (dy > 6 && atTop) {
+      // 10px activation threshold (was 6) — gives a comfortable
+      // dead-zone for taps on non-input regions (header text, sheet
+      // background) so a casual finger drift doesn't trigger a
+      // panel translation under the user's tap.
+      if (dy > 10 && atTop) {
         s.active = true;
         s.dir = 1;
-      } else if (dy < -6 && atBottom) {
+      } else if (dy < -10 && atBottom) {
         s.active = true;
         s.dir = -1;
-      } else if (Math.abs(dy) > 4) {
+      } else if (Math.abs(dy) > 8) {
+        // Once the finger has moved noticeably without satisfying
+        // the activation rule (e.g. dragging down while the inner
+        // content is scrolled), abandon — don't lazily activate
+        // later if the finger eventually scrolls back to top.
         s.cancelled = true;
         return;
       } else {
