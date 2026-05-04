@@ -158,38 +158,20 @@
   --z-tutorial:       700;
 }
 
-/* Tell the browser the page supports both light and dark schemes.
-   Without this, native UI (scrollbars, form controls) defaults to
-   light-mode chrome — which produces a white flash on iOS warm
-   resume and on cold load before any CSS variable resolves. */
-:root { color-scheme: light dark; }
-
-/* Set by the inline pageshow/visibilitychange snippet in index.html.
-   Held for two rAF frames after the page becomes visible so any
-   cascade re-resolution (kpi-card bg, row-item bg, etc.) snaps to
-   the correct value instead of animating across its 400ms transition.
-   Animation duration is also zeroed so any in-flight CSS animation
-   doesn't restart visibly. */
-html.no-transitions, html.no-transitions *, html.no-transitions *::before, html.no-transitions *::after {
-  transition: none !important;
-  animation-duration: 0s !important;
-}
-
-/* Belt-and-suspenders dark first-paint: when the user's system is
-   dark, paint the html bg dark via media query BEFORE the inline
-   boot script runs and BEFORE any data-theme override. Eliminates
-   the white flash on iOS warm resume (the OS doesn't re-run the
-   boot script on resume, so the only thing keeping the bg dark is
-   the data-theme attribute that may not be honored during the
-   recompose frame). The literal hex matches --white in dark.css. */
+/* color-scheme — must MATCH the active theme, not advertise both.
+   `color-scheme: light dark` lets the browser pick based on the
+   system pref, which contradicts an explicit data-theme override
+   (user on system=light who picked dark would get light native UI
+   on a dark page → mismatch frame on iOS warm resume). Default to
+   prefers-color-scheme via the media query below; override per
+   data-theme so an explicit choice always wins. */
+:root { color-scheme: light; }
 @media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
   html { background-color: #1A1A1A; }
 }
-/* Explicit data-theme overrides (user picked a non-system theme).
-   Literal hex on purpose — these run before var(--white) is even
-   computed, so a CSS variable here would be a no-op on first paint. */
-html[data-theme="dark"] { background-color: #1A1A1A; }
-html[data-theme="light"] { background-color: #FFFFFF; }
+html[data-theme="dark"] { color-scheme: dark; background-color: #1A1A1A; }
+html[data-theme="light"] { color-scheme: light; background-color: #FFFFFF; }
 
 html, body {
   font-family: var(--font);
