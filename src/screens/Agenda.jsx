@@ -571,10 +571,10 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
 }
 
-/* ── Helper: parse "HH:MM" to fractional hours from grid start (8:00) ── */
+/* ── Helper: parse "HH:MM" to fractional hours from grid start (7:00) ── */
 function timeToFloat(time) {
-  const [h, m] = (time || "08:00").split(":").map(Number);
-  return (h || 8) + (m || 0) / 60 - 8;
+  const [h, m] = (time || "07:00").split(":").map(Number);
+  return (h || 7) + (m || 0) / 60 - 7;
 }
 
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
@@ -717,7 +717,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
   const visibleDays = (showWeekends ? weekDays : weekDays.slice(0, 5));
   const todayIdx = visibleDays.findIndex(d => isSameDay(d, now));
   const nowHourFloat = now.getHours() + now.getMinutes() / 60;
-  const showNow = todayIdx >= 0 && nowHourFloat >= 8 && nowHourFloat <= 21;
+  const showNow = todayIdx >= 0 && nowHourFloat >= 7 && nowHourFloat <= 23;
   const dayCount = visibleDays.length;
 
   return (
@@ -753,7 +753,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
             style={{
               left: `calc(44px + (100% - 44px) * ${todayIdx} / ${dayCount})`,
               width: `calc((100% - 44px) / ${dayCount})`,
-              top: `calc(52px + var(--week-row-h) * ${nowHourFloat - 8})`,
+              top: `calc(52px + var(--week-row-h) * ${nowHourFloat - 7})`,
             }} />
         )}
       </div>
