@@ -111,30 +111,33 @@ export function CalendarLinkPanel({ readOnly = false }) {
   // that existing subscribers will stop receiving updates.
   if (!url) {
     return (
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div className="settings-row-title">{t("settings.calendarTitle")}</div>
-          <div className="settings-row-sub">{t("settings.calendarActive")}</div>
+      <>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ color:"var(--teal-dark)" }}><IconCalendar size={18} /></div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div className="settings-row-title">{t("settings.calendarTitle")}</div>
+            <div className="settings-row-sub">{t("settings.calendarActive")}</div>
+          </div>
+          <button
+            type="button"
+            onClick={rotate}
+            disabled={busy || readOnly}
+            style={{
+              background:"none",
+              border:"none",
+              padding:"6px 4px",
+              color:"var(--teal-dark)",
+              fontSize:13,
+              fontWeight:600,
+              cursor: busy || readOnly ? "default" : "pointer",
+              whiteSpace:"nowrap",
+            }}
+          >
+            {busy ? t("loading") : t("settings.calendarRenew")}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={rotate}
-          disabled={busy || readOnly}
-          style={{
-            background:"none",
-            border:"none",
-            padding:"6px 4px",
-            color:"var(--teal-dark)",
-            fontSize:13,
-            fontWeight:600,
-            cursor: busy || readOnly ? "default" : "pointer",
-            whiteSpace:"nowrap",
-          }}
-        >
-          {busy ? t("loading") : t("settings.calendarRenew")}
-        </button>
-      </div>
+        <UnlinkInstructions t={t} />
+      </>
     );
   }
 
@@ -233,6 +236,39 @@ export function CalendarLinkPanel({ readOnly = false }) {
           </button>
         </div>
       )}
+
+      <UnlinkInstructions t={t} />
     </>
+  );
+}
+
+/* Native <details> disclosure shown whenever the user has a token.
+   Unsubscribing from an .ics feed has to happen in the user's calendar
+   app — Cardigan can't reach into iOS / Google / Outlook to revoke a
+   subscription, so the best we can do is tell them where to tap. */
+function UnlinkInstructions({ t }) {
+  return (
+    <details style={{ marginTop:14 }}>
+      <summary
+        style={{
+          cursor:"pointer",
+          fontSize:13,
+          color:"var(--charcoal-md)",
+          padding:"4px 0",
+          listStyle:"revert",
+        }}
+      >
+        {t("settings.calendarUnlinkLabel")}
+      </summary>
+      <div style={{ fontSize:12, color:"var(--charcoal-md)", lineHeight:1.55, marginTop:8 }}>
+        <div style={{ marginBottom:8 }}>{t("settings.calendarUnlinkIntro")}</div>
+        <ul style={{ margin:0, paddingLeft:18, display:"flex", flexDirection:"column", gap:6 }}>
+          <li>{t("settings.calendarUnlinkApple")}</li>
+          <li>{t("settings.calendarUnlinkAppleMac")}</li>
+          <li>{t("settings.calendarUnlinkGoogle")}</li>
+          <li>{t("settings.calendarUnlinkOutlook")}</li>
+        </ul>
+      </div>
+    </details>
   );
 }
