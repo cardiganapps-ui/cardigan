@@ -25,6 +25,7 @@ const FEATURE_ICON = {
   documents: IconDocument,
   encryption: IconLock,
   calendar: IconCalendar,
+  cardi: IconSparkle,
   default: IconSparkle,
 };
 

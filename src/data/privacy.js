@@ -23,8 +23,8 @@
    Section bodies may contain `\n\n` to render as multiple paragraphs
    in PrivacyPolicy.jsx. */
 
-export const POLICY_VERSION = "2026-04-v4";
-export const POLICY_PUBLISHED = "26 de abril de 2026";
+export const POLICY_VERSION = "2026-05-v5";
+export const POLICY_PUBLISHED = "4 de mayo de 2026";
 
 export const POLICY_SECTIONS = [
   {
@@ -129,6 +129,10 @@ export const POLICY_SECTIONS = [
       "• Sentry (Functional Software, Inc., Estados Unidos de América) — captura de errores técnicos para " +
       "diagnóstico (los errores se filtran de cualquier dato personal o de paciente antes de salir del " +
       "navegador).\n" +
+      "• Anthropic PBC (Estados Unidos de América) — procesamiento de las preguntas que envíes al asistente " +
+      "Cardi (función Pro). Únicamente se transmite el texto de tu pregunta y un contexto reducido (tu " +
+      "profesión, pantalla actual, conteos generales). NO se envían nombres, notas, ni datos clínicos de " +
+      "tus pacientes.\n" +
       "• Google LLC y Apple Inc. — entrega de notificaciones push, únicamente cuando hayas habilitado los " +
       "recordatorios y a través de los servicios estándar de tu sistema operativo.\n\n" +
       "Algunas de estas transferencias implican el envío de datos personales fuera de los Estados Unidos " +

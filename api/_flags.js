@@ -29,7 +29,13 @@
                                 Web push reminders continue. Use
                                 during a Meta Cloud API outage, a
                                 template-approval issue, or while
-                                investigating a runaway send. */
+                                investigating a runaway send.
+     cardi_paused             — when true, /api/cardi-ask returns
+                                503 and the in-app chat surfaces a
+                                "pausado" banner. Use during an
+                                Anthropic outage, a runaway-cost
+                                incident, or to pull the feature
+                                instantly without a redeploy. */
 
 import { get as edgeGet } from "@vercel/edge-config";
 
@@ -38,6 +44,7 @@ const DEFAULTS = {
   encryption_setup_enabled: true,
   signups_paused: false,
   whatsapp_paused: false,
+  cardi_paused: false,
 };
 
 export async function getFlag(name) {

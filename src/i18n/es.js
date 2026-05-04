@@ -97,6 +97,7 @@ export default {
     documents: "Documentos",
     archivo: "Archivo",
     settings: "Ajustes",
+    cardi: "Cardi",
     principal: "Principal",
     account: "Cuenta",
     signOut: "Cerrar sesi\u00f3n",
@@ -1046,6 +1047,10 @@ export default {
       title: "Sincroniza con tu calendario",
       body: "Lleva todas tus {session.p} a Google Calendar, iCloud u Outlook con un solo enlace privado. Disponible con Cardigan Pro.",
     },
+    cardi: {
+      title: "Cardi, tu asistente",
+      body: "Pregúntale a Cardi cómo usar cualquier función de Cardigan, en español y al instante. Disponible con Cardigan Pro.",
+    },
     default: {
       title: "Función Cardigan Pro",
       body: "Esta herramienta forma parte de Cardigan Pro. Suscríbete para desbloquearla junto con todas las demás.",
@@ -1518,6 +1523,30 @@ export default {
     confirm: "Confirmar cambio",
     saving: "Guardando…",
     saveFailed: "No se pudo cambiar la profesión.",
+  },
+
+  // ── Cardi chat ──
+  cardi: {
+    title: "Cardi",
+    subtitle: "Tu asistente de Cardigan",
+    greeting: "Hola, soy Cardi. Pregúntame cómo hacer cualquier cosa en la app — agendar {session.p}, registrar pagos, sincronizar tu calendario, lo que necesites.",
+    placeholder: "Escribe tu pregunta…",
+    send: "Enviar",
+    reset: "Reiniciar",
+    thinking: "Pensando…",
+    error: "No pude responder. Reintentar.",
+    rateLimit: "Has hecho muchas preguntas seguidas. Espera un momento.",
+    paused: "Cardi está pausado temporalmente. Intenta más tarde.",
+    noPii: "Por privacidad, no incluyas correos ni teléfonos en tus preguntas.",
+    proRequired: "Cardi es una función de Cardigan Pro. Suscríbete para usarlo.",
+    suggestedTitle: "O prueba con:",
+    suggested: {
+      schedule: "¿Cómo agendo una {session.s} recurrente?",
+      reminders: "¿Cómo activo los recordatorios?",
+      calendar: "¿Cómo sincronizo mi calendario?",
+      payment: "¿Cómo registro un pago?",
+    },
+    privacyNote: "Cardi no ve tus {client.p} ni tus notas. Solo conoce la estructura de la app.",
   },
 
   // ── Bug reports ──

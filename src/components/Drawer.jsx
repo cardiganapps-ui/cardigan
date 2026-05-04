@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { navItems } from "../data/seedData";
-import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut, IconBug } from "./Icons";
+import { IconHome, IconCalendar, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut, IconBug, IconSparkle } from "./Icons";
 import { LogoIcon } from "./LogoMark";
 import { AvatarContent } from "./Avatar";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -16,6 +16,7 @@ const NAV_ICONS = {
   clipboard: IconClipboard,
   document: IconDocument,
   settings: IconSettings,
+  sparkle: IconSparkle,
 };
 
 const PANEL_WIDTH = 300;

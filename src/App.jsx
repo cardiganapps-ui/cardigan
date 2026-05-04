@@ -8,6 +8,7 @@ import { MilestoneCelebration } from "./components/MilestoneCelebration.jsx";
 // user actually opens the welcome-modal subscribe flow.
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
 const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet.jsx").then(m => ({ default: m.ProUpgradeSheet })));
+const CardiSheet = lazy(() => import("./components/sheets/CardiSheet.jsx").then(m => ({ default: m.CardiSheet })));
 const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt.jsx"));
 // Lazy because it pulls a small confetti renderer + a celebration
 // modal that 99% of users see once or never. No reason to bundle it
@@ -748,6 +749,23 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     setProSheetOpen(true);
   }, []);
 
+  // ── Cardi (in-app navigation chatbot) ──
+  // Lives as a sheet, not a screen — the drawer routes the "cardi"
+  // nav id through `handleDrawerNav` below, which gates on isPro and
+  // either opens the sheet or bumps the user to ProUpgradeSheet.
+  const [cardiOpen, setCardiOpen] = useState(false);
+  const handleDrawerNav = useCallback((id) => {
+    if (id === "cardi") {
+      if (!subscription.isPro) {
+        requirePro("cardi");
+        return;
+      }
+      setCardiOpen(true);
+      return;
+    }
+    setScreen(id);
+  }, [subscription.isPro, requirePro, setScreen]);
+
   // ── Trial reminder prompt (15 / 10 / 5 / 3 / 2 / 1 days left) ──
   // Fires at most once per (user, day) combination so the user isn't
   // pestered if they reload mid-day, and doesn't fire at all once
@@ -1200,6 +1218,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           />
         )}
       </Suspense>
+      {/* Cardi — in-app navigation/help chatbot. Lazy-loaded so the
+          @anthropic-ai/sdk-powered hook + the sheet bundle only ship
+          when the user actually opens the chat. */}
+      <Suspense fallback={null}>
+        {cardiOpen && (
+          <CardiSheet open={cardiOpen} onClose={() => setCardiOpen(false)} />
+        )}
+      </Suspense>
       {/* Trial reminder — fires once per day at 15/10/5/3/2/1 days left.
           The dedicated payment sheet next to it stays mounted so the
           subscribe path keeps working even after the reminder closes. */}
@@ -1239,7 +1265,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           accessState={subscription.accessState}
         />
       )}
-      <Drawer screen={screen} setScreen={setScreen} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
+      <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
         user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
         onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
 
