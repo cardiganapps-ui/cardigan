@@ -184,6 +184,33 @@
       document.querySelector('meta[name="theme-color"]').content='#1A1A1A';}
       }catch(e){}})();
     </script>
+    <!-- Suppress CSS transitions for one frame whenever the page is
+         restored from background (iOS warm resume) or from the
+         bfcache. Many components (kpi-card, stat-tile, row-item)
+         transition `background` over 400ms — when iOS recomposes the
+         page and any cascade briefly re-resolves a CSS variable, the
+         slow transition makes the snap-back visible as a flash.
+         Adding `.no-transitions` instantly + removing it after two
+         rAF frames lets the corrected value paint without animating.
+         Two rAFs because the first lets the class apply, the second
+         lets the corrected paint commit. -->
+    <script>
+      (function(){
+        function quiet(){
+          var h=document.documentElement;
+          h.classList.add('no-transitions');
+          requestAnimationFrame(function(){
+            requestAnimationFrame(function(){
+              h.classList.remove('no-transitions');
+            });
+          });
+        }
+        window.addEventListener('pageshow',function(e){if(e.persisted)quiet();});
+        document.addEventListener('visibilitychange',function(){
+          if(document.visibilityState==='visible')quiet();
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

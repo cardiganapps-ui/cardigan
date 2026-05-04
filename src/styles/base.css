@@ -164,6 +164,17 @@
    resume and on cold load before any CSS variable resolves. */
 :root { color-scheme: light dark; }
 
+/* Set by the inline pageshow/visibilitychange snippet in index.html.
+   Held for two rAF frames after the page becomes visible so any
+   cascade re-resolution (kpi-card bg, row-item bg, etc.) snaps to
+   the correct value instead of animating across its 400ms transition.
+   Animation duration is also zeroed so any in-flight CSS animation
+   doesn't restart visibly. */
+html.no-transitions, html.no-transitions *, html.no-transitions *::before, html.no-transitions *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+}
+
 /* Belt-and-suspenders dark first-paint: when the user's system is
    dark, paint the html bg dark via media query BEFORE the inline
    boot script runs and BEFORE any data-theme override. Eliminates
