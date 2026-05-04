@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mockup 06 — Grid aesthetic preview
+  Format: 1080x1080 composed of 9 tiles, 360x360 each, 3x3.
+  Use: REFERENCE ONLY. Shows what the first 9 IG posts feel like together.
+       The designer delivers individual tiles separately at full 1080x1080.
+
+  Tile order (left→right, top→bottom):
+    1. Manifesto — "Tu práctica, en orden."
+    2. Producto-UI — Agenda peek
+    3. Manifesto — "blindadas" feature
+    4. Carrusel cover — numeral "01"
+    5. Vida-ilustración — coffee + notebook
+    6. Manifesto — "Una sola app. Para todo."
+    7. Manifesto — "Tus datos, tuyos."
+    8. Producto-UI — Patients list peek
+    9. Detrás — solid teal + wordmark
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,800;0,900;1,800&amp;family=Nunito+Sans:wght@400;600&amp;display=swap');
+      .display { font-family: 'Nunito', system-ui, sans-serif; }
+      .body { font-family: 'Nunito Sans', system-ui, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- =================== Row 1 =================== -->
+
+  <!-- Tile 1 (0,0): Manifesto — "Tu práctica, en orden." -->
+  <g>
+    <rect x="0" y="0" width="360" height="360" fill="#F5F0EB"/>
+    <rect x="40" y="40" width="48" height="3" fill="#5B9BAF"/>
+    <text x="40" y="180" class="display" font-size="44" font-weight="800" fill="#2E2E2E">Tu práctica,</text>
+    <text x="40" y="230" class="display" font-size="44" font-weight="900" font-style="italic" fill="#5B9BAF">en orden.</text>
+    <text x="40" y="320" class="display" font-size="18" font-weight="800" fill="#2E2E2E">cardigan</text>
+  </g>
+
+  <!-- Tile 2 (1,0): Producto-UI — Agenda peek -->
+  <g transform="translate(360, 0)">
+    <rect x="0" y="0" width="360" height="360" fill="#FFFFFF"/>
+    <!-- Phone-frame card -->
+    <g transform="translate(50, 40) rotate(-3)">
+      <rect x="0" y="0" width="260" height="280" rx="20" fill="#F5F0EB" stroke="#E3DBD1" stroke-width="2"/>
+      <text x="20" y="40" class="display" font-size="22" font-weight="800" fill="#2E2E2E">Lunes</text>
+      <text x="20" y="60" class="body" font-size="12" font-weight="400" fill="#9E9E9E">4 sesiones</text>
+      <!-- Session bars -->
+      <rect x="20" y="80" width="220" height="28" rx="6" fill="#5B9BAF"/>
+      <text x="32" y="100" class="body" font-size="12" font-weight="600" fill="#FFFFFF">9:00 · MR</text>
+      <rect x="20" y="116" width="220" height="28" rx="6" fill="#5B9BAF" opacity="0.8"/>
+      <text x="32" y="136" class="body" font-size="12" font-weight="600" fill="#FFFFFF">11:00 · LG</text>
+      <rect x="20" y="152" width="220" height="28" rx="6" fill="#7AB5C7"/>
+      <text x="32" y="172" class="body" font-size="12" font-weight="600" fill="#FFFFFF">14:00 · T·JC</text>
+      <rect x="20" y="188" width="220" height="28" rx="6" fill="#5B9BAF" opacity="0.6"/>
+      <text x="32" y="208" class="body" font-size="12" font-weight="600" fill="#FFFFFF">17:00 · ES</text>
+    </g>
+  </g>
+
+  <!-- Tile 3 (2,0): Manifesto — "blindadas" feature -->
+  <g transform="translate(720, 0)">
+    <rect x="0" y="0" width="360" height="360" fill="#EAF4F7"/>
+    <!-- Padlock -->
+    <g transform="translate(155, 90)" stroke="#4A8799" stroke-width="4" fill="none" stroke-linecap="round">
+      <path d="M12 26 V18 a18 18 0 0 1 36 0 V26"/>
+      <rect x="3" y="26" width="54" height="46" rx="6" fill="#FFFFFF"/>
+      <circle cx="30" cy="46" r="4" fill="#4A8799" stroke="none"/>
+      <rect x="28" y="49" width="4" height="10" fill="#4A8799" stroke="none"/>
+    </g>
+    <text x="180" y="240" text-anchor="middle" class="display" font-size="38" font-weight="900" fill="#2E2E2E">Tus notas,</text>
+    <text x="180" y="280" text-anchor="middle" class="display" font-size="38" font-weight="900" fill="#2E2E2E">blindadas.</text>
+    <text x="180" y="320" text-anchor="middle" class="body" font-size="14" font-weight="400" fill="#555">Cifradas. Solo tú las lees.</text>
+  </g>
+
+  <!-- =================== Row 2 =================== -->
+
+  <!-- Tile 4 (0,1): Carrusel cover — numeral 01 -->
+  <g transform="translate(0, 360)">
+    <rect x="0" y="0" width="360" height="360" fill="#F5F0EB"/>
+    <text x="-15" y="200" class="display" font-size="220" font-weight="900" fill="#7AB5C7" opacity="0.55">01</text>
+    <text x="40" y="270" class="display" font-size="32" font-weight="900" fill="#2E2E2E">Antecedentes</text>
+    <text x="40" y="305" class="display" font-size="32" font-weight="900" fill="#2E2E2E">médicos.</text>
+    <text x="40" y="335" class="body" font-size="14" font-weight="400" fill="#9E9E9E">2 / 6</text>
+  </g>
+
+  <!-- Tile 5 (1,1): Vida-ilustración — coffee + notebook -->
+  <g transform="translate(360, 360)">
+    <rect x="0" y="0" width="360" height="360" fill="#F5F0EB"/>
+    <!-- Notebook -->
+    <rect x="60" y="160" width="180" height="130" rx="6" fill="#FFFFFF" stroke="#E3DBD1" stroke-width="2"/>
+    <line x1="80" y1="190" x2="220" y2="190" stroke="#E3DBD1" stroke-width="1.5"/>
+    <line x1="80" y1="210" x2="200" y2="210" stroke="#E3DBD1" stroke-width="1.5"/>
+    <line x1="80" y1="230" x2="220" y2="230" stroke="#E3DBD1" stroke-width="1.5"/>
+    <line x1="80" y1="250" x2="180" y2="250" stroke="#E3DBD1" stroke-width="1.5"/>
+    <!-- Coffee cup -->
+    <g transform="translate(240, 180)">
+      <ellipse cx="40" cy="20" rx="35" ry="10" fill="#5B9BAF"/>
+      <path d="M5 20 Q5 80 40 80 Q75 80 75 20 Z" fill="#FFFFFF" stroke="#5B9BAF" stroke-width="3"/>
+      <path d="M75 35 Q95 35 95 55 Q95 75 75 75" fill="none" stroke="#5B9BAF" stroke-width="3"/>
+      <!-- Steam -->
+      <path d="M30 -10 Q35 -20 30 -30" fill="none" stroke="#9E9E9E" stroke-width="2" opacity="0.5"/>
+      <path d="M50 -10 Q55 -20 50 -30" fill="none" stroke="#9E9E9E" stroke-width="2" opacity="0.5"/>
+    </g>
+    <!-- Caption hint -->
+    <text x="180" y="60" text-anchor="middle" class="body" font-size="16" font-weight="600" fill="#9E9E9E" letter-spacing="3">DOMINGO</text>
+  </g>
+
+  <!-- Tile 6 (2,1): Manifesto — "Una sola app. Para todo." -->
+  <g transform="translate(720, 360)">
+    <rect x="0" y="0" width="360" height="360" fill="#FFFFFF"/>
+    <text x="180" y="170" text-anchor="middle" class="display" font-size="38" font-weight="900" fill="#2E2E2E">Una sola app.</text>
+    <text x="180" y="215" text-anchor="middle" class="display" font-size="38" font-weight="900" fill="#5B9BAF" font-style="italic">Para todo.</text>
+    <line x1="140" y1="250" x2="220" y2="250" stroke="#5B9BAF" stroke-width="3"/>
+  </g>
+
+  <!-- =================== Row 3 =================== -->
+
+  <!-- Tile 7 (0,2): Manifesto — "Tus datos, tuyos." -->
+  <g transform="translate(0, 720)">
+    <rect x="0" y="0" width="360" height="360" fill="#F5F0EB"/>
+    <text x="40" y="170" class="display" font-size="44" font-weight="800" fill="#2E2E2E">Tus datos,</text>
+    <text x="40" y="220" class="display" font-size="44" font-weight="900" font-style="italic" fill="#5B9BAF">tuyos.</text>
+    <text x="40" y="270" class="body" font-size="16" font-weight="400" fill="#555">Sin candados.</text>
+    <text x="40" y="335" class="display" font-size="18" font-weight="800" fill="#2E2E2E">cardigan</text>
+  </g>
+
+  <!-- Tile 8 (1,2): Producto-UI — Patients list peek -->
+  <g transform="translate(360, 720)">
+    <rect x="0" y="0" width="360" height="360" fill="#FFFFFF"/>
+    <g transform="translate(50, 40) rotate(2)">
+      <rect x="0" y="0" width="260" height="280" rx="20" fill="#F5F0EB" stroke="#E3DBD1" stroke-width="2"/>
+      <text x="20" y="40" class="display" font-size="22" font-weight="800" fill="#2E2E2E">Pacientes</text>
+      <!-- Patient rows -->
+      <g transform="translate(20, 60)">
+        <circle cx="20" cy="20" r="16" fill="#5B9BAF"/>
+        <text x="20" y="25" text-anchor="middle" class="body" font-size="12" font-weight="700" fill="#FFFFFF">MR</text>
+        <text x="50" y="20" class="body" font-size="13" font-weight="600" fill="#2E2E2E">María R.</text>
+        <text x="50" y="35" class="body" font-size="10" font-weight="400" fill="#9E9E9E">$0 · al día</text>
+      </g>
+      <g transform="translate(20, 110)">
+        <circle cx="20" cy="20" r="16" fill="#5B9BAF" opacity="0.85"/>
+        <text x="20" y="25" text-anchor="middle" class="body" font-size="12" font-weight="700" fill="#FFFFFF">LG</text>
+        <text x="50" y="20" class="body" font-size="13" font-weight="600" fill="#2E2E2E">Luis G.</text>
+        <text x="50" y="35" class="body" font-size="10" font-weight="400" fill="#D96B6B">$1,200 pendiente</text>
+      </g>
+      <g transform="translate(20, 160)">
+        <circle cx="20" cy="20" r="16" fill="#8B7EC8"/>
+        <text x="20" y="25" text-anchor="middle" class="body" font-size="12" font-weight="700" fill="#FFFFFF">JC</text>
+        <text x="50" y="20" class="body" font-size="13" font-weight="600" fill="#2E2E2E">Juan C. (T·)</text>
+        <text x="50" y="35" class="body" font-size="10" font-weight="400" fill="#9E9E9E">$0 · al día</text>
+      </g>
+      <g transform="translate(20, 210)">
+        <circle cx="20" cy="20" r="16" fill="#5B9BAF" opacity="0.7"/>
+        <text x="20" y="25" text-anchor="middle" class="body" font-size="12" font-weight="700" fill="#FFFFFF">ES</text>
+        <text x="50" y="20" class="body" font-size="13" font-weight="600" fill="#2E2E2E">Elena S.</text>
+        <text x="50" y="35" class="body" font-size="10" font-weight="400" fill="#3DAB74">$800 a favor</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Tile 9 (2,2): Detrás — solid teal + wordmark -->
+  <g transform="translate(720, 720)">
+    <rect x="0" y="0" width="360" height="360" fill="#5B9BAF"/>
+    <!-- Glyph in white, scaled small -->
+    <svg viewBox="330 240 370 280" x="120" y="100" width="120" height="90">
+      <path fill="#FFFFFF" d="M465.486908,353.571228 C474.090210,336.407806 482.106873,319.350922 491.049652,302.794220 C507.495972,272.345459 533.544800,256.787231 567.993652,255.748184 C599.452759,254.799316 625.348145,266.962311 644.410645,291.838776 C680.562561,339.016815 657.004272,409.877563 600.107971,427.019165 C588.789185,430.429291 577.294495,431.815765 565.639832,432.090698 C551.631104,432.421143 541.504761,437.837585 534.487610,450.592590 C520.503235,476.011749 498.809967,491.664398 470.558411,498.628937 C426.776581,509.422028 378.399597,487.563873 359.407501,446.857910 C338.089233,401.166321 357.395447,347.117218 407.480682,325.787262 C425.934418,317.928314 445.234436,317.533417 464.516876,317.984039 C464.901245,318.817078 465.234009,319.205627 465.144745,319.392456 C460.128296,329.888000 455.130615,340.393311 449.992065,350.829224 C448.645355,353.564301 445.784424,353.049988 443.325989,353.217987 C427.544678,354.296600 413.335907,359.111908 401.960358,370.648560 C382.453339,390.431671 380.663818,420.755676 397.709930,442.677643 C420.052704,471.411346 461.031647,475.683807 488.679413,451.990387 C494.767212,446.773315 499.888123,440.578857 503.628876,433.390350 C516.228882,409.177155 536.942078,398.494415 563.450317,397.793243 C573.520630,397.526855 583.406982,396.570374 592.815247,392.808777 C617.522583,382.930389 628.672119,357.778625 626.331421,337.888367 C622.858276,308.375580 595.711487,290.757385 574.521301,290.039307 C549.799683,289.201508 531.911194,298.969116 520.917480,321.527832 C508.438812,347.133484 495.429779,372.480957 482.609070,397.919342 C478.609131,405.855865 472.895386,411.532715 463.257568,411.202484 C450.846710,410.777252 442.988129,397.964691 448.448853,386.801544 C453.863129,375.733368 459.678528,364.861420 465.486908,353.571228z"/>
+    </svg>
+    <text x="180" y="240" text-anchor="middle" class="display" font-size="44" font-weight="900" fill="#FFFFFF">cardigan</text>
+    <text x="180" y="280" text-anchor="middle" class="body" font-size="14" font-weight="400" fill="#FFFFFF" opacity="0.85">Hecho en México</text>
+  </g>
+
+  <!-- Hairline grid gutter (white separators on top, simulates IG 1px gutter) -->
+  <g stroke="#FFFFFF" stroke-width="2" opacity="0.6">
+    <line x1="360" y1="0" x2="360" y2="1080"/>
+    <line x1="720" y1="0" x2="720" y2="1080"/>
+    <line x1="0" y1="360" x2="1080" y2="360"/>
+    <line x1="0" y1="720" x2="1080" y2="720"/>
+  </g>
+</svg>

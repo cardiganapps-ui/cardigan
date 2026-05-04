@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mockup 03 — Carousel cover (Educación práctica pillar)
+  Format: Instagram feed 4:5 portrait, 1080x1350
+  Use: cover slide of an educational carousel. Pair with 04-carousel-slide.svg.
+
+  Headline mirrors the post idea #3 in strategy.md §5.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <defs>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;800;900&amp;family=Nunito+Sans:wght@400;600;700&amp;display=swap');
+      .display { font-family: 'Nunito', system-ui, sans-serif; }
+      .body { font-family: 'Nunito Sans', system-ui, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- White background -->
+  <rect width="1080" height="1350" fill="#FFFFFF"/>
+
+  <!-- Eyebrow label -->
+  <text x="100" y="200" class="body" font-size="32" font-weight="700" fill="#5B9BAF" letter-spacing="6">
+    GUÍA RÁPIDA
+  </text>
+
+  <!-- Three-line headline; last word "tener" in teal -->
+  <text x="100" y="420" class="display" font-size="120" font-weight="900" fill="#2E2E2E">
+    5 cosas que tu
+  </text>
+  <text x="100" y="560" class="display" font-size="120" font-weight="900" fill="#2E2E2E">
+    expediente
+  </text>
+  <text x="100" y="700" class="display" font-size="120" font-weight="900" fill="#2E2E2E">
+    debería <tspan fill="#5B9BAF" font-style="italic">tener.</tspan>
+  </text>
+
+  <!-- Subtext -->
+  <text x="100" y="800" class="body" font-size="36" font-weight="400" fill="#555">
+    (y casi nunca tienen)
+  </text>
+
+  <!-- Swipe pill bottom-right -->
+  <g transform="translate(720, 1180)">
+    <rect x="0" y="0" width="280" height="80" rx="40" fill="#EAF4F7"/>
+    <text x="140" y="52" text-anchor="middle" class="body" font-size="32" font-weight="600" fill="#2E2E2E">
+      desliza →
+    </text>
+  </g>
+
+  <!-- Wordmark bottom-left -->
+  <text x="100" y="1230" class="display" font-size="40" font-weight="800" fill="#2E2E2E">cardigan</text>
+
+  <!-- Slide indicator bottom-left -->
+  <text x="100" y="1280" class="body" font-size="28" font-weight="400" fill="#9E9E9E">
+    1 / 6
+  </text>
+</svg>

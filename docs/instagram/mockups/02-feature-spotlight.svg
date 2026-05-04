@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mockup 02 — Feature spotlight (Producto en uso pillar)
+  Format: Instagram feed 4:5 portrait, 1080x1350
+  Use: single-feature highlight (here: encrypted notes).
+
+  Verbatim copy from src/components/landing/LandingPage.jsx:
+    title: "Tus notas, blindadas."
+    body:  "Cifradas. Solo tú las lees."
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <defs>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&amp;family=Nunito+Sans:wght@400;600&amp;display=swap');
+      .display { font-family: 'Nunito', system-ui, sans-serif; }
+      .body { font-family: 'Nunito Sans', system-ui, sans-serif; }
+    </style>
+    <linearGradient id="paleToWhite" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EAF4F7"/>
+      <stop offset="65%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background gradient: teal-pale → white -->
+  <rect width="1080" height="1350" fill="url(#paleToWhite)"/>
+
+  <!-- Padlock icon, centered, teal-dark -->
+  <g transform="translate(490, 280)" stroke="#4A8799" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Shackle -->
+    <path d="M30 50 V35 a40 40 0 0 1 80 0 V50"/>
+    <!-- Body -->
+    <rect x="10" y="50" width="120" height="100" rx="14" fill="#EAF4F7"/>
+    <!-- Keyhole -->
+    <circle cx="70" cy="92" r="9" fill="#4A8799" stroke="none"/>
+    <rect x="65" y="98" width="10" height="22" fill="#4A8799" stroke="none"/>
+  </g>
+
+  <!-- Headline -->
+  <text x="540" y="610" text-anchor="middle" class="display" font-size="96" font-weight="900" fill="#2E2E2E">
+    Tus notas, blindadas.
+  </text>
+
+  <!-- Subhead -->
+  <text x="540" y="700" text-anchor="middle" class="body" font-size="40" font-weight="400" fill="#555">
+    Cifradas. Solo tú las lees.
+  </text>
+
+  <!-- Decorative cream footer band with URL + wordmark -->
+  <rect x="0" y="1230" width="1080" height="120" fill="#F5F0EB"/>
+  <text x="80" y="1305" class="display" font-size="36" font-weight="800" fill="#2E2E2E">cardigan</text>
+  <text x="1000" y="1305" text-anchor="end" class="body" font-size="32" font-weight="600" fill="#4A8799">
+    cardigan.mx
+  </text>
+</svg>

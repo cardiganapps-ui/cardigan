@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mockup 05 — Story tip card (Educación práctica pillar)
+  Format: Instagram story 9:16, 1080x1920
+  Use: standalone story or part of a multi-story burst.
+
+  IMPORTANT: top + bottom 250px are Instagram safe zones (UI overlay).
+  Dashed guides + DELETE-ME comments mark them — designer must remove
+  before exporting the final asset.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;800;900&amp;family=Nunito+Sans:wght@400;600;700&amp;display=swap');
+      .display { font-family: 'Nunito', system-ui, sans-serif; }
+      .body { font-family: 'Nunito Sans', system-ui, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Background: white right two-thirds + teal-pale left third -->
+  <rect width="1080" height="1920" fill="#FFFFFF"/>
+  <rect x="0" y="0" width="240" height="1920" fill="#EAF4F7"/>
+
+  <!-- Decorative teal-dark vertical accent on left band -->
+  <rect x="105" y="780" width="6" height="360" fill="#4A8799"/>
+
+  <!-- Eyebrow -->
+  <text x="320" y="820" class="body" font-size="32" font-weight="700" fill="#5B9BAF" letter-spacing="6">
+    TIP RÁPIDO
+  </text>
+
+  <!-- Tip body, multi-line, large -->
+  <text x="320" y="940" class="display" font-size="72" font-weight="800" fill="#2E2E2E">
+    Cobra la
+  </text>
+  <text x="320" y="1030" class="display" font-size="72" font-weight="800" fill="#2E2E2E">
+    no-asistencia
+  </text>
+  <text x="320" y="1120" class="display" font-size="72" font-weight="800" fill="#2E2E2E">
+    con una <tspan fill="#5B9BAF" font-style="italic">regla,</tspan>
+  </text>
+  <text x="320" y="1210" class="display" font-size="72" font-weight="800" fill="#2E2E2E">
+    no con un mensaje
+  </text>
+  <text x="320" y="1300" class="display" font-size="72" font-weight="800" fill="#2E2E2E">
+    incómodo.
+  </text>
+
+  <!-- Author / source line -->
+  <text x="320" y="1430" class="body" font-size="32" font-weight="400" fill="#555">
+    — guía completa en cardigan.mx
+  </text>
+
+  <!-- Wordmark bottom-left, inside safe zone bottom -->
+  <text x="320" y="1550" class="display" font-size="42" font-weight="800" fill="#2E2E2E">cardigan</text>
+
+  <!-- Sticker placeholder (poll / question) -->
+  <g transform="translate(540, 1620)">
+    <rect x="-200" y="0" width="400" height="120" rx="20" fill="none" stroke="#9E9E9E" stroke-width="3" stroke-dasharray="10 6"/>
+    <text x="0" y="50" text-anchor="middle" class="body" font-size="20" font-weight="600" fill="#9E9E9E">
+      [POLL / QUESTION STICKER HERE]
+    </text>
+    <text x="0" y="80" text-anchor="middle" class="body" font-size="18" font-weight="400" fill="#9E9E9E">
+      Place IG sticker over this rectangle
+    </text>
+  </g>
+
+  <!-- =================================================================
+       DELETE-ME — Instagram story safe-zone guides (top 250 / bottom 250)
+       Remove the next 4 elements before exporting final asset.
+       ================================================================= -->
+  <line x1="0" y1="250" x2="1080" y2="250" stroke="#D96B6B" stroke-width="2" stroke-dasharray="14 10" opacity="0.7"/>
+  <line x1="0" y1="1670" x2="1080" y2="1670" stroke="#D96B6B" stroke-width="2" stroke-dasharray="14 10" opacity="0.7"/>
+  <text x="40" y="240" class="body" font-size="20" font-weight="600" fill="#D96B6B">
+    ↑ DELETE-ME · IG safe-zone top (250px)
+  </text>
+  <text x="40" y="1700" class="body" font-size="20" font-weight="600" fill="#D96B6B">
+    ↓ DELETE-ME · IG safe-zone bottom (250px)
+  </text>
+  <!-- ================================================================= -->
+</svg>
