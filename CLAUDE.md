@@ -54,16 +54,27 @@ Mobile-first PWA for therapists to manage patients, sessions, payments, notes, a
 
 ```bash
 npm run dev              # Local dev server
-npm run build            # Production build
+npm run build            # Production build (prebuild runs audit:api + audit:deps)
 npm run preview          # Preview production build
 npm run lint             # ESLint (ignores dist/ and scripts/)
 npm run test             # Run vitest once
 npm run test:watch       # Vitest watch mode
+npm run test:hooks       # Just the hook tests (src/hooks/__tests__)
 npm run test -- dates    # Run a single test file (matches utils/__tests__/dates.test.js)
+npm run audit:api        # Static-analyses api/*.js for missing JWT gates before service-role use
+npm run audit:deps       # `npm audit --omit=dev --audit-level=critical`
+npm run audit:db         # Live structural integrity check on prod Supabase (RLS on, indexes present, etc.)
+npm run audit:orphans    # Looks for rows whose user_id no longer exists in auth.users
+npm run audit:signup     # End-to-end smoke of the sign-up + email verification flow
 npm run bugs -- list     # CLI bug report viewer; also: show <id>, delete <id>, clear
 ```
 
-Tests live in `src/utils/__tests__/` and cover the pure utilities (dates, sessions, contact, files). No component or hook tests exist — don't invent a testing framework for them.
+`prebuild` chains `audit:api` + `audit:deps`, so a `npm run build` (and Vercel's CI build) hard-fails on a new auth gap or a critical dep CVE. Don't bypass it — fix the underlying issue.
+
+Tests live in two trees:
+- `src/utils/__tests__/` — pure helpers (dates, sessions, accounting, recurrence, encryption, scheduling, sentry scrub, etc.). New accounting branches MUST land with a test here per the prime directive.
+- `src/hooks/__tests__/` — hooks that touch Supabase (currently `usePayments`, `useSessions`). Run under `happy-dom` with `@testing-library/react`. Use `src/test/mockSupabase.js` to stub the client; `src/test/setup.js` is loaded by `vitest.config.js` and wires jest-dom matchers + global cleanup.
+- `api/__tests__/` — Node-side tests for serverless helpers (calendar ICS shape, lifecycle email dedupe, stripe webhook idempotency).
 
 The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work. `.env.local` additionally carries admin tokens for full autonomous control — use them freely; the user has accepted the risk and asked they stay in place:
 - `SUPABASE_PAT` — Supabase Management API PAT (DDL, auth config, SMTP settings)
@@ -84,12 +95,17 @@ Mutations go through the domain hooks, which update Supabase and local state opt
 Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so every screen works unmodified.
 
 ### Critical business rules
-- **`amountDue = patient.billed − (futureSessionCount × currentRate) − patient.paid`** — preserves historical rate accuracy when rates change.
+- **`amountDue` formula is fixed in the prime directive above** — uses raw `upcomingSessions` + `sessionCountsTowardBalance`, NEVER `enrichedSessions`. Per-session `rate` (with patient fallback) preserves historical accuracy.
 - **Dates are stored as `"D-MMM"` strings** (Spanish months: `"8-Abr"`) in `sessions.date` and `payments.date`. Parsers accept the legacy space-separated form too, and `useCardiganData::mapRows` normalizes on read so the UI never sees the old format. Convert with `utils/dates.js` (`formatShortDate`, `shortDateToISO`, `isoToShortDate`; `formatShortDateWithYear`/`isoToShortDateWithYear` for the rare case where year context matters, rendered as `"8-Abr-26"`). Date inputs use ISO; display uses short form.
 - **Auto-complete is display-only.** Past `scheduled` sessions render as `completed` but are NOT persisted. Users can override any session's status to any other (including reverting to scheduled). See `SESSION_STATUS` in `data/constants.js` — the DB check constraint mirrors this and must stay in sync.
 - **Tutor sessions** (for minor patients) are marked by a `"T·"` prefix on `sessions.initials`. Helpers in `utils/sessions.js`. Purple styling is derived from this prefix.
 - **Schedule/rate changes** take an effective date, delete future sessions, and regenerate at the new rate.
 - **Duplicate patient names are rejected** at creation.
+- **Scheduling mode is per-patient** (`patients.scheduling_mode`, `'recurring'` | `'episodic'`). Recurring = perpetual weekly slot + auto-extend. Episodic = practitioner books the next visit at end-of-consult, auto-extend no-ops. Default per profession lives in `SCHEDULING_DEFAULTS` (nutritionists default to episodic; everyone else to recurring). Mirrors the CHECK in `migrations/040_scheduling_mode.sql`.
+- **Visit types** (`sessions.visit_type`: `intake | followup | maintenance`) are auto-tagged at create time (first session = intake, rest = followup) and only surface in the UI for `usesVisitTypes(profession)` — currently nutritionist + trainer. Other professions persist the column but ignore it. Mirrors migration `041_visit_type.sql`.
+- **Modality is profession-scoped.** `MODALITIES_BY_PROFESSION` filters which values render in dropdowns / tap-toggles per active profession; existing DB rows outside the active subset are preserved (defensively recognised by the cycle helper). DB check constraint enumerates the union; updating it is a migration step. `MODALITY_I18N_KEY` maps hyphenated values (`a-domicilio`) to their camelCase i18n keys.
+- **Anthropometric professions** (`ANTHROPOMETRIC_PROFESSIONS` = nutritionist + trainer) gate the Mediciones tab, the InBody import, and the body-comp dashboard. `usesAnthropometrics(profession)` is the read predicate.
+- **Clinical professions** (`CLINICAL_PROFESSIONS` = psychologist + nutritionist) see the encryption-setup prompt by default. Other professions don't write clinical notes; the prompt is hidden but existing encrypted notes still decrypt.
 
 ### Database & security
 - `supabase/schema.sql` is the canonical schema; forward-looking incremental changes go in numbered files under `supabase/migrations/`. Already-applied catch-up migrations live in `supabase/migrations/archive/` (kept for history, don't re-run). Keep the `sessions.status` and `payments.method` check constraints in sync with `SESSION_STATUS` / `PAYMENT_METHODS` (`data/constants.js`), and keep `ADMIN_EMAIL` in sync with the `is_admin()` function in `schema.sql`.
@@ -97,10 +113,32 @@ Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so e
 - Service-role key is ONLY used in `api/` (Vercel serverless) via `api/_admin.js::getServiceClient()`. Admin endpoints must call `requireAdmin(req, res)` first. Never reference `SUPABASE_SERVICE_ROLE_KEY` from anything under `src/`.
 
 ### Serverless API (`api/`)
-- `_admin.js`, `_r2.js`, `_push.js` are shared helpers — they must verify the caller's JWT before using the service-role client.
-- `upload-url.js` / `document-url.js` / `delete-document.js` issue presigned R2 URLs; `_r2.js::validatePath` enforces `${userId}/…` prefix and blocks traversal.
-- `send-session-reminders.js` is the web-push cron (auth'd by `CRON_SECRET`). `push-subscribe.js` / `push-unsubscribe.js` manage `push_subscriptions`. See `supabase/migrations/006_push_notifications.sql` and `007_push_cron.sql`.
-- `admin-block-user.js` / `admin-delete-user.js` are admin-only mutations over `auth.users`.
+Underscore-prefixed helpers (not routed):
+- `_admin.js` — `getServiceClient()`, `requireAdmin(req,res)`, `getCallerUser(req)`, `deleteUserCascade(userId)` (shared by admin + self-delete).
+- `_r2.js` — presigning helpers, `validatePath` enforces `${userId}/…` and blocks traversal.
+- `_push.js` — web-push send + `verifyCronSecret`.
+- `_email.js` — Resend transactional send (used by `_lifecycle.js` and a couple of one-shots).
+- `_lifecycle.js` — composes + dedupe-sends the lifecycle emails (`trial_day_3`, `trial_day_25`, `trial_winback_day_37`, `payment_failed`, `pro_welcome`, `pro_cancelled`). Inserts into `lifecycle_emails(user_id, kind)` BEFORE calling Resend so a webhook re-delivery or concurrent cron tick can't double-send.
+- `_ratelimit.js` — sliding-window per-endpoint counter backed by `rate_limits` table. Wrap any handler that hits a paid external API or does meaningful DB work; the Vercel Firewall global cap (120/min/IP) is too coarse. Best-effort: a DB hiccup returns ok:true (fail-open by design).
+- `_reauth.js` — `verifyPasswordReauth` for step-up auth on `export-user-data` + `delete-my-account`. Returns `{ok:false, code:"oauth_only"}` when the user has no email-password identity, so the UI can route them to "set a password first".
+- `_stripe.js` — Stripe API client + signature verification for the webhook.
+- `_calendar.js` — pure ICS generator (tested in `api/__tests__/calendar.test.js`).
+- `_sentry.js` — `withSentry(handler, {name})` wrapper used by every mutating route.
+- `_flags.js` — Edge Config reader.
+
+Routed endpoints worth calling out:
+- **Documents:** `upload-url.js` / `document-url.js` / `delete-document.js` issue presigned R2 URLs.
+- **Push:** `send-session-reminders.js` (cron, auth'd by `CRON_SECRET`), `push-subscribe.js` / `push-unsubscribe.js`, plus diagnostic + ops endpoints `push-diagnose.js`, `push-resubscribe.js` (single-use rotation token, no JWT), `push-test.js` (fires a one-off to the caller).
+- **Calendar:** `calendar-token.js` (CRUD on the secret-URL token; one active token per user enforced by unique constraint, rotation = upsert-in-place which breaks all subscriptions), `calendar/[token].js` (the public ICS feed at `/api/calendar/<token>`).
+- **Stripe:** `stripe-checkout.js` (Checkout Session), `stripe-create-subscription.js` (Payment Element direct subscribe), `stripe-portal.js`, `stripe-webhook.js` (HMAC-verified, idempotency-deduped), `stripe-sync.js` (admin-only force-sync from Stripe → `user_subscriptions`).
+- **Subscription ops:** `referral-code.js` (lazy-mints), `grant-trial-extension.js` (admin-grants extra trial days; rate-limited per user), `admin-grant-comp.js` (toggles `comp_granted`).
+- **Encryption:** `encryption.js` (POST gated by `encryption_setup_enabled` Edge Config flag; 503 when paused). Recovery: `admin-recover-encryption.js` is the only place `NOTES_RECOVERY_PRIVATE_KEY` is read.
+- **Privacy/ARCO:** `record-consent.js`, `export-user-data.js` (1/hour via `export_audit`, requires re-auth), `delete-my-account.js` (cascade-deletes via `_admin.js::deleteUserCascade`, requires re-auth + `confirmation: "ELIMINAR"`).
+- **Webhooks:** `whatsapp-webhook.js` (Meta — HMAC over raw body, body parser disabled), `resend-webhook.js` (Resend events → `resend_events`), `stripe-webhook.js` (above).
+- **Health:** `health.js` (unauth, 200/503 with per-dependency status).
+- **Admin:** `admin-block-user.js`, `admin-delete-user.js`, `admin-update-profession.js`, `admin-grant-comp.js`, `admin-recover-encryption.js`, `stripe-sync.js`.
+
+Every mutating route is wrapped in `withSentry(...)`. Every route that touches the service-role client must call `requireAdmin` (admin-only) or `getCallerUser` (auth required) FIRST — the `audit:api` script enforces this and runs in `prebuild`. Webhooks bypass via HMAC verification inside the handler; `health.js` and `push-resubscribe.js` are explicitly allowlisted.
 
 ### Service worker & updates
 `main.jsx` registers `/sw.js` with `updateViaCache: 'none'`, polls for updates on focus and every 30 min, and dispatches `cardigan-update-ready` events. `components/UpdatePrompt.jsx` surfaces the "Actualización disponible" toast; tapping it posts `SKIP_WAITING` and reloads on `controllerchange`. Do NOT auto-activate waiting SWs — it would reload mid-action.
@@ -115,6 +153,36 @@ Demo mode (`useDemoData`) returns the same shape with all mutations no-ops, so e
 - Demo: `AuthScreen → "Ver demo"` bypasses login with `useDemoData`. Teal banner, FAB hidden, all mutations no-op.
 
 Both flows rely on a single `readOnly` flag branching — don't split the rendering paths.
+
+### Auth hardening: MFA + Turnstile + step-up
+- **TOTP MFA** — `useMfa` wraps `supabase.auth.mfa.{enroll,challenge,verify,unenroll}` for enrollment in Settings. `MfaChallengeGate` blocks the app shell for any user whose JWT is at AAL1 but who has a verified factor (Supabase forces a fresh challenge before granting AAL2). Recovery codes are not generated by Supabase — surface that in the enrollment copy so users save the QR/secret.
+- **Cloudflare Turnstile** — `TurnstileWidget` renders a captcha when `VITE_TURNSTILE_SITE_KEY` is set; `useAuth` passes the token to Supabase Auth's `signInWithPassword` / `signUp` `captchaToken` option. Server-side verification is Supabase's responsibility. Unset the env var to disable in dev/preview.
+- **Step-up reauth** — `_reauth.js::verifyPasswordReauth` is required by `export-user-data` and `delete-my-account`. Any new sensitive endpoint should adopt the same pattern: take a `password` field, call the helper, return 401 on mismatch BEFORE doing any work.
+
+### Lifecycle emails
+Transactional emails outside session reminders + auth flows are orchestrated by `_lifecycle.js`. Each `kind` is dedupe-stamped in `lifecycle_emails(user_id, kind)` BEFORE the Resend send, so retries / concurrent ticks can't double-fire. Kinds:
+- `trial_day_3` / `trial_day_25` / `trial_winback_day_37` — fired by the cron loop in `send-session-reminders.js` (one cron does double duty for push + lifecycle to keep operational surface small).
+- `payment_failed` — fired from `stripe-webhook.js` on `invoice.payment_failed`.
+- `pro_welcome` — fires the first time a user's Stripe sub transitions into a "real Pro" state (`active` / `past_due` / trialing-with-default-payment-method). Once-per-user.
+- `pro_cancelled` — fires when a Pro user schedules cancellation (`cancel_at_period_end` OR `cancel_at` set). Cleared from `lifecycle_emails` on reactivation so a future cancellation re-fires.
+
+All copy in Spanish, plain prose with one CTA — no marketing template. To add a kind: add to `compose()` + the eligibility check, and add a unique `(user_id, kind)` row guard.
+
+### Measurements / InBody (anthropometric professions)
+Nutritionist + trainer track body composition over time:
+- **`measurements` table** (migration `024`) — one row per visit, indexed on `(user_id, patient_id, date)`. Hooks: `useMeasurements` (CRUD, mirror-shape with the other domain hooks; composed into `useCardiganData`).
+- **InBody import** — `InBodyImportSheet` accepts CSV (columns mapped in `utils/inbody.js`) or `.xlsx` (parsed via `read-excel-file`). Each row becomes a `measurements` row keyed to the matching patient by name. Tested in `utils/__tests__/inbody.test.js`.
+- **UI** — `MedicionesTab` (under `screens/expediente/`) renders the body-comp dashboard via `BodyCompositionStack`. Gated on `usesAnthropometrics(profession)`; the tab simply doesn't render for other professions.
+- **Inbody patient fields** — height + sex + birthdate live on `patients` (migration `039_inbody_fields.sql`) so derivations like BMI reference the patient row, not the measurement row.
+
+### Profession-aware vocabulary
+`PROFESSION` set + `MODALITIES_BY_PROFESSION` + `SCHEDULING_DEFAULTS` + `usesVisitTypes` + `usesAnthropometrics` + `isClinicalProfession` all branch product behavior. The active profession is locked at sign-up via `screens/ProfessionOnboarding.jsx`, surfaced via `useCardigan().profession`, and forwarded into `I18nProvider` so `t("…{client.s}…")` placeholders resolve to the right vocabulary in `src/i18n/vocabulary.js`. Marketing landing pages under `components/landing/` are profession-targeted; the static SEO build (`scripts/build-marketing.mjs`) emits one landing page per profession plus a shared blog. The sitemap is regenerated from there.
+
+### Tutorial / onboarding
+First-run users go through a coachmark walkthrough rendered by `components/Tutorial/Tutorial.jsx`. Steps live in `tutorialSteps.js` (profession-conditional). State is persisted in `useTutorial` so a partial walkthrough can resume after a refresh. `ActivationChecklist` surfaces remaining onboarding tasks on Home until completed. Don't add a feature without thinking about whether it needs a tutorial step — most don't, but the high-value ones do.
+
+### Code-splitting + cold-start cache
+`App.jsx` uses `React.lazy` for the heavier screens; chunks load on first navigation. `lib/dataCache.js` persists the latest fetched payload in `localStorage` so cold reloads can paint stale data immediately and revalidate in the background. Sentry init is deferred until after first paint (`lib/sentry.js`). `ErrorBoundary` auto-recovers from `ChunkLoadError` by reloading once — that's the "stale deploy" path when a user opens an old tab after a deploy.
 
 ## Ops — running things against live infra
 
@@ -285,5 +353,6 @@ Until then, runtime logs are visible only in the Vercel dashboard's Functions ta
 - **Inline styles** for component-one-offs; reach for `src/styles/*.css` when a class is reused.
 - **Conventional commits** (`feat:`, `fix:`, `refactor:`, `style:`, `chore:`).
 - **Don't deploy on every commit** — Vercel free tier caps at 100 deploys/day (resets midnight UTC). Batch changes and push when asked.
-- When adding or changing a session status / payment method / patient lifecycle value, update `data/constants.js` AND the DB check constraint in `supabase/schema.sql` (plus a migration).
+- When adding or changing a session status / payment method / patient lifecycle value / scheduling mode / visit type / modality, update `data/constants.js` AND the matching DB check constraint in `supabase/schema.sql` (plus a migration). For modality also update `MODALITIES_BY_PROFESSION` and `MODALITY_I18N_KEY`.
+- New `api/*.js` route handler? Make sure either (a) it calls an auth gate (`requireAdmin` / `getCallerUser`) before touching `getServiceClient()`, or (b) it has its own HMAC verification (webhooks). Otherwise `npm run audit:api` (and `prebuild`) will fail.
 - **Profession enum** (`PROFESSION` in `data/constants.js`) is mirrored in three other places that must stay in sync: the `user_profiles.profession` check constraint in `supabase/schema.sql` / migration `021_user_profiles.sql`, the `ALLOWED` set in `api/admin-update-profession.js`, and the keys in `src/i18n/vocabulary.js`. Adding a profession requires touching all four. Profession is locked at sign-up (chosen via `src/screens/ProfessionOnboarding.jsx`); only admin can change it afterwards via `AdminPanel`. The active profession flows through `CardiganContext` (`useCardigan().profession`) and is also pushed into `I18nProvider` so `t("…{client.s}…")`-style placeholders resolve to the right vocabulary (`src/i18n/vocabulary.js`).
