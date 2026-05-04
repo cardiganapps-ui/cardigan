@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { shortDateToISO, todayISO } from "../../utils/dates";
+import { shortDateToISO, todayISO, parseLocalDate } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -21,10 +21,16 @@ function capitalizeMonth(str) {
 }
 function formatISODateLong(iso) {
   if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
+  // Accept "YYYY-MM-DD" or full timestamps ("YYYY-MM-DDTHH:mm:ss...").
+  const datePart = String(iso).slice(0, 10);
+  const [y, m, d] = datePart.split("-").map(Number);
+  if (!y || !m || !d) return String(iso);
+  // formatDate's signature is (input, variant) — passing (y, m-1, d, variant)
+  // collapsed `input` to the bare year, which `new Date(year)` interprets as
+  // milliseconds-since-epoch (so 2024 → Dec 31 1969 18:00 in MX). Build a
+  // local Date first, then format.
   return capitalizeMonth(
-    formatDate(y, m - 1, d, "shortYear")
+    formatDate(parseLocalDate(datePart), "long")
   );
 }
 
@@ -63,7 +69,10 @@ function derivePatientSchedules(sessions, patientId, includePast) {
     const key = `${s.day}|${s.time}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push({ day: s.day, time: s.time });
+    // Carry duration so Horarios can render the end time. Default 60
+    // matches the rest of the codebase (see Agenda.jsx) for legacy rows
+    // without an explicit duration.
+    result.push({ day: s.day, time: s.time, duration: s.duration || 60 });
   }
   result.sort((a, b) => {
     const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
@@ -71,6 +80,19 @@ function derivePatientSchedules(sessions, patientId, includePast) {
     return (a.time || "").localeCompare(b.time || "");
   });
   return result;
+}
+
+// "14:00" + 60min → "15:00". Returns "" if either input is missing or malformed.
+function addMinutesToTime(time, minutes) {
+  if (!time || typeof time !== "string") return "";
+  const [h, m] = time.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return "";
+  const total = h * 60 + m + (Number(minutes) || 0);
+  // Wrap past 24:00 (a 23:30 + 60min slot would otherwise show "24:30").
+  const wrapped = ((total % 1440) + 1440) % 1440;
+  const eh = Math.floor(wrapped / 60);
+  const em = wrapped % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
 }
 
 const SECTION_LABEL_STYLE = {
@@ -255,7 +277,10 @@ export function ResumenTab({
         {(() => {
           const scheduleValue = schedules.length === 0
             ? t("patients.notRecurring") || "Sin recurrencia"
-            : schedules.map(s => `${s.day} · ${s.time}`).join("\n");
+            : schedules.map(s => {
+                const end = addMinutesToTime(s.time, s.duration);
+                return end ? `${s.day} · ${s.time}–${end}` : `${s.day} · ${s.time}`;
+              }).join("\n");
           const birthdateValue = patient.birthdate ? (() => {
             const birth = new Date(patient.birthdate + "T00:00:00");
             const today = new Date();
