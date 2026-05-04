@@ -193,12 +193,18 @@ export function getSubscription(subscriptionId) {
    shouldn't be able to give discounts to existing paying users). */
 
 export function createCoupon({ percentOff, duration, durationInMonths, name, metadata }) {
+  // `currency` is required ONLY for amount_off coupons — Stripe
+  // rejects it on percent_off coupons with parameter_unknown on
+  // stricter API versions. v1 is percent-off only, so we omit it
+  // entirely. If we ever add amount_off support, branch the body
+  // shape here based on which one is set.
   const body = {
     percent_off: String(percentOff),
     duration,
-    name: name || "",
-    currency: "mxn",
   };
+  // Stripe Coupon `name` is capped at 40 chars. Truncate defensively
+  // so a long influencer name doesn't take down the create flow.
+  if (name) body.name = String(name).slice(0, 40);
   if (duration === "repeating") {
     body.duration_in_months = String(durationInMonths);
   }

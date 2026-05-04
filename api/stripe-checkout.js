@@ -101,7 +101,7 @@ async function handler(req, res) {
   // 1. Look up existing customer/subscription row.
   const { data: existing, error: lookupError } = await svc
     .from("user_subscriptions")
-    .select("stripe_customer_id, stripe_subscription_id, status, comp_granted, referred_by, referral_code, pending_credit_amount_cents, default_payment_method")
+    .select("stripe_customer_id, stripe_subscription_id, status, comp_granted, referred_by, referral_code, pending_credit_amount_cents, default_payment_method, influencer_code_id")
     .eq("user_id", user.id)
     .maybeSingle();
   if (lookupError) {
@@ -279,6 +279,21 @@ async function handler(req, res) {
   const finalReferredBy = resolvedReferredBy
     || (existing?.referred_by && !resolvedReferredBy ? existing.referred_by : null);
 
+  // Auto-apply the influencer discount ONLY when this user is likely
+  // a first-time subscriber. Stripe's Promotion Code has
+  // first_time_transaction:true; if we auto-apply for a returning
+  // subscriber Stripe rejects the whole Checkout Session creation
+  // (400) and the user can't subscribe at all. Skipping auto-apply
+  // for returning users still leaves attribution stamped on the
+  // user_subscriptions row above, AND the manual-entry path
+  // (allow_promotion_codes:true, set when promotionCodeId is omitted)
+  // lets the user try the code by hand — Stripe will then give a
+  // clear "este código solo aplica a clientes nuevos" message.
+  const likelyFirstTime = !existing?.stripe_subscription_id;
+  const autoApplyPromoId = (resolvedInfluencer && likelyFirstTime)
+    ? resolvedInfluencer.stripe_promotion_code_id
+    : undefined;
+
   let session;
   try {
     session = await createCheckoutSession({
@@ -294,11 +309,7 @@ async function handler(req, res) {
         ...(finalReferredBy ? { referred_by: finalReferredBy } : {}),
         ...(resolvedInfluencer ? { influencer_code_id: resolvedInfluencer.id } : {}),
       },
-      // Auto-apply the influencer discount at checkout. Stripe also
-      // accepts manual entry of the same code via the promo-code
-      // field (allow_promotion_codes:true is set in createCheckoutSession),
-      // so removing the auto-apply still works as a fallback.
-      promotionCodeId: resolvedInfluencer?.stripe_promotion_code_id,
+      promotionCodeId: autoApplyPromoId,
     });
   } catch (err) {
     return res.status(502).json({ error: err.message || "Stripe checkout create failed" });

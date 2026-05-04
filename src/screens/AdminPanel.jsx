@@ -1214,16 +1214,24 @@ function NewCodeSheet({ onClose, onCreated }) {
   const { t } = useT();
   const [code, setCode] = useState("");
   const [influencerName, setInfluencerName] = useState("");
-  const [percentOff, setPercentOff] = useState(20);
+  // Number inputs are stored as STRINGS so the user can clear the
+  // field mid-typing without it snapping to 1 (the previous
+  // `parseInt(e.target.value, 10) || 0` clamp made it impossible to
+  // retype a 2-digit number naturally). Validation parses + clamps
+  // at submit time.
+  const [percentOff, setPercentOff] = useState("20");
   const [duration, setDuration] = useState("once");
-  const [durationInMonths, setDurationInMonths] = useState(3);
+  const [durationInMonths, setDurationInMonths] = useState("3");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  const percentParsed = parseInt(percentOff, 10);
+  const monthsParsed = parseInt(durationInMonths, 10);
   const codeValid = /^[A-Z0-9]{4,20}$/.test(code);
-  const percentValid = Number.isInteger(percentOff) && percentOff >= 1 && percentOff <= 100;
-  const monthsValid = duration !== "repeating" || (Number.isInteger(durationInMonths) && durationInMonths >= 1 && durationInMonths <= 12);
+  const percentValid = Number.isInteger(percentParsed) && percentParsed >= 1 && percentParsed <= 100;
+  const monthsValid = duration !== "repeating"
+    || (Number.isInteger(monthsParsed) && monthsParsed >= 1 && monthsParsed <= 12);
   const canSubmit = codeValid && percentValid && monthsValid && !busy;
 
   const submit = async () => {
@@ -1234,9 +1242,9 @@ function NewCodeSheet({ onClose, onCreated }) {
       const created = await createInfluencerCode({
         code,
         influencerName: influencerName.trim() || null,
-        percentOff,
+        percentOff: percentParsed,
         duration,
-        durationInMonths: duration === "repeating" ? durationInMonths : null,
+        durationInMonths: duration === "repeating" ? monthsParsed : null,
         notes: notes.trim() || null,
       });
       onCreated(created);
@@ -1301,10 +1309,17 @@ function NewCodeSheet({ onClose, onCreated }) {
               <input
                 className="input"
                 type="number"
+                inputMode="numeric"
                 min={1}
                 max={100}
                 value={percentOff}
-                onChange={(e) => setPercentOff(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 0)))}
+                onChange={(e) => setPercentOff(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                onBlur={() => {
+                  // Snap to the valid range only on blur — so mid-typing
+                  // doesn't clobber a half-entered "10" that the user
+                  // is on their way to typing as "100".
+                  if (!percentValid) setPercentOff("20");
+                }}
                 style={{ width:90, textAlign:"center", fontFamily:"var(--font-mono, monospace)" }}
               />
               <span style={{ fontSize:14, color:"var(--charcoal-md)" }}>%</span>
@@ -1353,10 +1368,12 @@ function NewCodeSheet({ onClose, onCreated }) {
                 <input
                   className="input"
                   type="number"
+                  inputMode="numeric"
                   min={1}
                   max={12}
                   value={durationInMonths}
-                  onChange={(e) => setDurationInMonths(Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 1)))}
+                  onChange={(e) => setDurationInMonths(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                  onBlur={() => { if (!monthsValid) setDurationInMonths("3"); }}
                   style={{ width:90, textAlign:"center", fontFamily:"var(--font-mono, monospace)" }}
                 />
               </div>

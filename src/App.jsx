@@ -105,18 +105,27 @@ function CardiganApp() {
   // capture below, so a visitor arriving from a friend's invite link skips
   // the landing page entirely.
   const [authIntent, setAuthIntent] = useState(() => {
-    // Capture ?ref=<code> AND ?ic=<code> (influencer link from
-    // /c/:code rewrite) at module/component initial render — runs
-    // BEFORE the auth gate so an unauthenticated visitor lands
-    // straight on the signup sheet instead of having to find
-    // "Comenzar gratis" themselves. Codes are stashed in
-    // sessionStorage so they survive the email-verify roundtrip and
-    // the eventual checkout pulls them from there. URL is stripped
-    // so a refresh + screenshot doesn't leak the parameter.
+    // Capture acquisition signals at initial render so they're in
+    // place BEFORE the auth gate. Two channels:
+    //   ?ref=<code>          — peer referral code (existing user invites
+    //                          a friend). Existed before influencer codes.
+    //   /c/<CODE>            — influencer / partner discount code. Parsed
+    //                          from pathname directly because Vercel
+    //                          rewrites preserve the SOURCE URL in the
+    //                          browser (window.location.search stays
+    //                          empty for the rewritten dest); the only
+    //                          way client-side JS sees the code is to
+    //                          read pathname. Also accepts ?ic=<code>
+    //                          as a manual fallback for testing.
+    // Both are stashed in sessionStorage so they survive the email-
+    // verify roundtrip and useSubscription.startCheckout can pull them
+    // when the user actually subscribes. URL is then cleaned via
+    // replaceState so a refresh / screenshot doesn't leak.
     if (typeof window === "undefined") return null;
     try {
       const params = new URLSearchParams(window.location.search);
       let captured = false;
+      let pathRewrite = null;
 
       const ref = params.get("ref");
       if (ref) {
@@ -129,21 +138,27 @@ function CardiganApp() {
         params.delete("ref");
       }
 
-      const ic = params.get("ic");
-      if (ic) {
-        // Influencer codes are A-Z 0-9 up to 20 chars (matches
-        // influencer_codes.code check constraint).
-        const sanitized = ic.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+      // Influencer code via /c/CODE pathname OR ?ic=CODE query.
+      // Accept both for robustness (deep-links shared as the canonical
+      // /c/ path; manual debugging via ?ic= still works).
+      const matchPath = window.location.pathname.match(/^\/c\/([A-Za-z0-9]+)\/?$/);
+      const rawIc = matchPath ? matchPath[1] : params.get("ic");
+      if (rawIc) {
+        const sanitized = rawIc.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+        // Min length matches the influencer_codes.code check constraint
+        // (4-20 chars). A 3-char prefix that incidentally matches /c/
+        // shouldn't try to apply.
         if (sanitized && sanitized.length >= 4) {
           try { sessionStorage.setItem("cardigan.influencerCodeFromUrl", sanitized); }
           catch { /* ignore */ }
           captured = true;
         }
+        if (matchPath) pathRewrite = "/";
         params.delete("ic");
       }
 
       if (!captured) return null;
-      const newUrl = window.location.pathname
+      const newUrl = (pathRewrite || window.location.pathname)
         + (params.toString() ? `?${params.toString()}` : "")
         + window.location.hash;
       window.history.replaceState({}, "", newUrl);
