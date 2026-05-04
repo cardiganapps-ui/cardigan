@@ -58,6 +58,40 @@ export const PROFESSIONS = [
 // all psychologists per migration 021.
 export const DEFAULT_PROFESSION = PROFESSION.PSYCHOLOGIST;
 
+// ── Signup acquisition source ──
+// Captured during onboarding (step 2 after profession). Canonical
+// values mirror the user_profiles.signup_source check constraint
+// in migration 042. Adding a new option requires updating both
+// the constraint and i18n/es.js (signupSource.options.*).
+// 'other' always pairs with a free-form signup_source_detail.
+export const SIGNUP_SOURCE = Object.freeze({
+  INSTAGRAM: "instagram",
+  FACEBOOK:  "facebook",
+  TIKTOK:    "tiktok",
+  GOOGLE:    "google",
+  COLLEAGUE: "colleague",
+  PODCAST:   "podcast",
+  EVENT:     "event",
+  OTHER:     "other",
+});
+export const SIGNUP_SOURCES = [
+  SIGNUP_SOURCE.INSTAGRAM,
+  SIGNUP_SOURCE.FACEBOOK,
+  SIGNUP_SOURCE.TIKTOK,
+  SIGNUP_SOURCE.GOOGLE,
+  SIGNUP_SOURCE.COLLEAGUE,
+  SIGNUP_SOURCE.PODCAST,
+  SIGNUP_SOURCE.EVENT,
+  SIGNUP_SOURCE.OTHER,
+];
+// Cutoff for "is this a new user who should be prompted for source?"
+// User accounts created at or after this timestamp are eligible for
+// the source step; older accounts (who already moved past the
+// profession-only onboarding) are not backfill-prompted. Set to the
+// deploy date.
+export const SIGNUP_SOURCE_CUTOFF_ISO = "2026-05-04T00:00:00Z";
+export const SIGNUP_SOURCE_DETAIL_MAX_LEN = 60;
+
 // Clinical professions handle sensitive health data and the at-rest
 // note encryption affordance is surfaced for them by default. Tutor /
 // music / trainer don't write clinical notes, so the encryption setup

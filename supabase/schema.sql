@@ -170,6 +170,20 @@ create table if not exists user_profiles (
   profession text not null check (profession in (
     'psychologist', 'nutritionist', 'tutor', 'music_teacher', 'trainer'
   )),
+  -- Acquisition source captured during signup onboarding (step 2 after
+  -- profession). Canonical values mirror SIGNUP_SOURCE in
+  -- src/data/constants.js. signup_source_detail is only populated
+  -- when source = 'other'. Nullable so users created before
+  -- migration 042 stay valid.
+  signup_source text check (
+    signup_source is null
+    or signup_source in ('instagram','facebook','tiktok','google','colleague','podcast','event','other')
+  ),
+  signup_source_detail text check (
+    signup_source_detail is null
+    or (signup_source = 'other' and length(signup_source_detail) <= 60)
+  ),
+  signup_source_recorded_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

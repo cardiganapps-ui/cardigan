@@ -67,9 +67,10 @@ import { AuthScreen } from "./screens/AuthScreen";
 // admin chunk doesn't ship to every regular user.
 const AdminPanel = lazy(() => import("./screens/AdminPanel").then(m => ({ default: m.AdminPanel })));
 import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
+import { SignupSourceStep } from "./screens/SignupSourceStep";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useAccentTheme } from "./hooks/useAccentTheme";
-import { DEFAULT_PROFESSION } from "./data/constants";
+import { DEFAULT_PROFESSION, SIGNUP_SOURCE_CUTOFF_ISO } from "./data/constants";
 import { setSentryProfession } from "./lib/sentry";
 import { identify as analyticsIdentify, track as analyticsTrack, reset as analyticsReset } from "./lib/analytics";
 import ConsentBanner from "./components/ConsentBanner";
@@ -1151,14 +1152,29 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     },
   }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
-  // First-time user gate: show ProfessionOnboarding before mounting the
-  // main shell when the user has no user_profiles row yet. Demo mode
-  // and admin "view as user" mode bypass this — the former never has a
-  // user, the latter is read-only and the target user already has a
-  // profile. The brief loading window falls through to the main shell
-  // (with DEFAULT_PROFESSION); existing users have a backfilled row so
-  // they see no flash. New users see splash → maybe one frame of empty
-  // shell → onboarding.
+  // First-time user gate: a 2-step onboarding wizard before mounting
+  // the main shell. Demo mode and admin "view as user" mode bypass —
+  // the former never has a user, the latter is read-only and the
+  // target user already has a profile. The brief loading window
+  // falls through to the main shell (with DEFAULT_PROFESSION);
+  // existing users have a backfilled row so they see no flash.
+  //
+  // Step 1 (ProfessionOnboarding): shown when profession is null.
+  //   Triggered for any user with no row yet OR with a row missing
+  //   profession. Persists profession on submit.
+  //
+  // Step 2 (SignupSourceStep): shown when profession is set but
+  //   signup_source_recorded_at is null AND the user signed up at
+  //   or after SIGNUP_SOURCE_CUTOFF_ISO. Cutoff exists so existing
+  //   users (created before this feature shipped) aren't backfill-
+  //   prompted with a question they can only answer poorly from
+  //   memory. Persists source on submit.
+  const eligibleForSourcePrompt = (() => {
+    if (!user?.created_at) return false;
+    const createdAt = new Date(user.created_at).getTime();
+    const cutoff = new Date(SIGNUP_SOURCE_CUTOFF_ISO).getTime();
+    return createdAt >= cutoff;
+  })();
   if (
     !demo
     && !viewAsUserId
@@ -1169,6 +1185,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     return (
       <ProfessionOnboarding
         onSelect={(p) => userProfile.createProfile(p)}
+        onSignOut={signOut}
+      />
+    );
+  }
+  if (
+    !demo
+    && !viewAsUserId
+    && user
+    && !userProfile.loading
+    && userProfile.profession !== null
+    && !userProfile.signupSourceRecordedAt
+    && eligibleForSourcePrompt
+  ) {
+    return (
+      <SignupSourceStep
+        onSubmit={(payload) => userProfile.setSignupSource(payload)}
         onSignOut={signOut}
       />
     );

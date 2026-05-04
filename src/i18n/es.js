@@ -1514,6 +1514,24 @@ export default {
         description: "Clientes, entrenamientos, medidas y rutinas.",
       },
     },
+    // Step 2 — captured right after profession. Helps us understand
+    // where new users come from so we can invest in the right channels.
+    sourceTitle: "¿Cómo nos conociste?",
+    sourceSubtitle: "Una pregunta más antes de empezar — nos ayuda a llegar a más profesionales como tú.",
+    sourceCta: "Empezar",
+    sourceRequired: "Selecciona una opción para continuar.",
+    sourceOtherPlaceholder: "Cuéntanos cómo (60 caracteres)",
+    sourceOtherRequired: "Escribe brevemente cómo nos conociste.",
+    sources: {
+      instagram: { label: "Instagram" },
+      facebook:  { label: "Facebook" },
+      tiktok:    { label: "TikTok" },
+      google:    { label: "Búsqueda en Google" },
+      colleague: { label: "Recomendación de un colega" },
+      podcast:   { label: "Podcast" },
+      event:     { label: "Evento o conferencia" },
+      other:     { label: "Otro" },
+    },
   },
 
   // ── Admin profession ──
