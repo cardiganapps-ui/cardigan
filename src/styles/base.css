@@ -158,6 +158,28 @@
   --z-tutorial:       700;
 }
 
+/* Tell the browser the page supports both light and dark schemes.
+   Without this, native UI (scrollbars, form controls) defaults to
+   light-mode chrome — which produces a white flash on iOS warm
+   resume and on cold load before any CSS variable resolves. */
+:root { color-scheme: light dark; }
+
+/* Belt-and-suspenders dark first-paint: when the user's system is
+   dark, paint the html bg dark via media query BEFORE the inline
+   boot script runs and BEFORE any data-theme override. Eliminates
+   the white flash on iOS warm resume (the OS doesn't re-run the
+   boot script on resume, so the only thing keeping the bg dark is
+   the data-theme attribute that may not be honored during the
+   recompose frame). The literal hex matches --white in dark.css. */
+@media (prefers-color-scheme: dark) {
+  html { background-color: #1A1A1A; }
+}
+/* Explicit data-theme overrides (user picked a non-system theme).
+   Literal hex on purpose — these run before var(--white) is even
+   computed, so a CSS variable here would be a no-op on first paint. */
+html[data-theme="dark"] { background-color: #1A1A1A; }
+html[data-theme="light"] { background-color: #FFFFFF; }
+
 html, body {
   font-family: var(--font);
   background: var(--white);

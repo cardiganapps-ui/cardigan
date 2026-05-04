@@ -120,6 +120,10 @@ export const IconPlus = (p) => (
   <I {...p}><path d="M12 5v14M5 12h14"/></I>
 );
 
+export const IconArrowUp = (p) => (
+  <I {...p}><path d="M12 19V5M5 12l7-7 7 7"/></I>
+);
+
 export const IconUserPlus = (p) => (
   <I {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></I>
 );

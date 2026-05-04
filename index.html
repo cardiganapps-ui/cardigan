@@ -78,7 +78,15 @@
          screen appearance; the monochrome SVG is used as a tint mask. -->
     <link rel="apple-touch-icon" href="/icon-dark.svg" media="(prefers-color-scheme: dark)" />
     <link rel="mask-icon" href="/icon-mono.svg" color="#5B9BAF" />
-    <meta name="theme-color" content="#FFFFFF" />
+    <!-- Two media-scoped theme-color tags so iOS picks the correct
+         OS-chrome color without JS. The inline boot script below still
+         overrides when the user has chosen a non-system theme; these
+         media queries cover the system-default path AND the resume-
+         from-background frame (iOS doesn't re-run the boot script on
+         resume, so the static meta is what the OS uses for the
+         transition). The dark color matches --white in dark.css. -->
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1A1A1A" media="(prefers-color-scheme: dark)" />
     <!-- maximum-scale=1 prevents iOS Safari from auto-zooming on input
          focus and (more importantly) failing to restore the original zoom
          level on blur. Modern iOS still honors user pinch-zoom for
