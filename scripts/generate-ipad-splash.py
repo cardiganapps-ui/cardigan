@@ -19,11 +19,25 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "public", "splash")
 ICON_SVG = os.path.join(os.path.dirname(__file__), "..", "public", "logos", "icon-white.svg")
 
 DEVICES = [
-    ("ipad-mini",   744, 1133),
-    ("ipad-10",     810, 1080),
-    ("ipad-air",    820, 1180),
-    ("ipad-pro-11", 834, 1194),
-    ("ipad-pro-13", 1024, 1366),
+    # iPad — 2x scale (Retina). Values in CSS pt; render at 2x for the
+    # actual pixel dimensions Apple's matcher expects.
+    ("ipad-mini",   744, 1133, 2),
+    ("ipad-10",     810, 1080, 2),
+    ("ipad-air",    820, 1180, 2),
+    ("ipad-pro-11", 834, 1194, 2),
+    ("ipad-pro-13", 1024, 1366, 2),
+    # iPhone — 3x scale (Super Retina XDR / Liquid Retina). Without
+    # these splashes, iOS Safari's PWA cold-start on a home-screen
+    # icon shows the apple-touch-icon stretched, which reads as a
+    # deformed teal oval especially in landscape.
+    ("iphone-se",          375, 667, 2),  # SE 2/3 — last 2x iPhone Apple supports
+    ("iphone-12-13-mini",  375, 812, 3),
+    ("iphone-12-13-14",    390, 844, 3),
+    ("iphone-12-13-pro-max", 428, 926, 3),
+    ("iphone-14-pro",      393, 852, 3),
+    ("iphone-14-pro-max",  430, 932, 3),
+    ("iphone-16-pro",      402, 874, 3),
+    ("iphone-16-pro-max",  440, 956, 3),
 ]
 
 
@@ -52,7 +66,7 @@ def render_icon(target_w):
     return Image.open(io.BytesIO(png_bytes)).convert("RGBA")
 
 
-def render(width_pt, height_pt, scale=2):
+def render(width_pt, height_pt, scale):
     w, h = width_pt * scale, height_pt * scale
     img = Image.new("RGB", (w, h), BG_LIGHT)
     short = min(w, h)
@@ -90,12 +104,12 @@ def render(width_pt, height_pt, scale=2):
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    for name, w, h in DEVICES:
-        portrait = render(w, h)
+    for name, w, h, scale in DEVICES:
+        portrait = render(w, h, scale)
         portrait.save(os.path.join(OUT_DIR, f"{name}-portrait.png"), optimize=True)
-        landscape = render(h, w)
+        landscape = render(h, w, scale)
         landscape.save(os.path.join(OUT_DIR, f"{name}-landscape.png"), optimize=True)
-        print(f"  {name}: {w}x{h} portrait + {h}x{w} landscape")
+        print(f"  {name}: {w}x{h}@{scale}x portrait + {h}x{w}@{scale}x landscape")
 
 
 if __name__ == "__main__":
