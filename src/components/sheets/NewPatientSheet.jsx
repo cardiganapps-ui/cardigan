@@ -12,7 +12,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics } from "../../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 
 // Weekdays + hours to search through when picking a sensible default
 // for the first recurring slot. Weekday-major, then by hour — the
@@ -98,7 +98,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
   // the user is typing.
   const [schedules, setSchedules] = useState(() => {
     const slot = findEmptySlot(sessions, []);
-    return [{ ...slot, duration: "60", modality: "presencial" }];
+    return [{ ...slot, duration: "60", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }];
   });
   const [startDate, setStartDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate] = useState(false);
@@ -160,7 +160,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     setSchedules(prev => {
       const extraTaken = prev.map(s => `${s.day}|${s.time}`);
       const slot = findEmptySlot(sessions, extraTaken);
-      return [...prev, { ...slot, duration: "60", modality: "presencial" }];
+      return [...prev, { ...slot, duration: "60", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }];
     });
   };
 
@@ -449,50 +449,72 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
               {schedules.map((s, i) => {
                 const hasIssue = internalConflictRows.includes(i) || externalConflicts.some(c => c.row === i);
                 return (
-                  <div key={i} style={{ display:"grid", gridTemplateColumns: scheduleRowCols, gap:8, marginBottom:8, alignItems:"end" }}>
-                    <div className="input-group" style={{ marginBottom:0 }}>
-                      {i === 0 && <label className="input-label">{t("patients.day")}</label>}
-                      <select
-                        className="input"
-                        value={s.day}
-                        onChange={e => updateSched(i, "day", e.target.value)}
-                        style={hasIssue ? { borderColor:"var(--amber)" } : undefined}>
-                        {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
+                  <div key={i} style={{ marginBottom:10 }}>
+                    <div style={{ display:"grid", gridTemplateColumns: scheduleRowCols, gap:8, alignItems:"end" }}>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("patients.day")}</label>}
+                        <select
+                          className="input"
+                          value={s.day}
+                          onChange={e => updateSched(i, "day", e.target.value)}
+                          style={hasIssue ? { borderColor:"var(--amber)" } : undefined}>
+                          {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("patients.time")}</label>}
+                        <input
+                          className="input"
+                          type="time"
+                          value={s.time}
+                          onChange={e => updateSched(i, "time", e.target.value)}
+                          style={hasIssue ? { borderColor:"var(--amber)" } : undefined} />
+                      </div>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("sessions.duration")}</label>}
+                        <select className="input" value={s.duration || "60"} onChange={e => updateSched(i, "duration", e.target.value)}>
+                          <option value="30">30m</option>
+                          <option value="45">45m</option>
+                          <option value="60">1h</option>
+                          <option value="90">1½h</option>
+                          <option value="120">2h</option>
+                        </select>
+                      </div>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
+                        <select className="input" value={s.modality || "presencial"} onChange={e => updateSched(i, "modality", e.target.value)}>
+                          {modalities.map(m => (
+                            <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {schedules.length > 1 && (
+                        <button type="button" onClick={() => removeSched(i)}
+                          style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                          <IconX size={12} />
+                        </button>
+                      )}
                     </div>
-                    <div className="input-group" style={{ marginBottom:0 }}>
-                      {i === 0 && <label className="input-label">{t("patients.time")}</label>}
-                      <input
-                        className="input"
-                        type="time"
-                        value={s.time}
-                        onChange={e => updateSched(i, "time", e.target.value)}
-                        style={hasIssue ? { borderColor:"var(--amber)" } : undefined} />
+                    {/* Frequency picker as a row-below segmented control —
+                        keeps the day/time/duration/modality grid uncluttered
+                        on phone widths while still surfacing the new
+                        feature inline with each slot it applies to. */}
+                    <div style={{ marginTop:6, display:"flex", alignItems:"center", gap:8 }}>
+                      <span style={{ fontSize:11, color:"var(--charcoal-md)", fontWeight:600, flexShrink:0 }}>
+                        {t("patients.frequency")}
+                      </span>
+                      <SegmentedControl
+                        items={[
+                          { k: RECURRENCE_FREQUENCY.WEEKLY,   l: t("patients.frequencyWeekly") },
+                          { k: RECURRENCE_FREQUENCY.BIWEEKLY, l: t("patients.frequencyBiweekly") },
+                          { k: RECURRENCE_FREQUENCY.MONTHLY,  l: t("patients.frequencyMonthly") },
+                        ]}
+                        value={s.frequency || DEFAULT_RECURRENCE_FREQUENCY}
+                        onChange={(v) => updateSched(i, "frequency", v)}
+                        ariaLabel={t("patients.frequency")}
+                        style={{ flex:1 }}
+                      />
                     </div>
-                    <div className="input-group" style={{ marginBottom:0 }}>
-                      {i === 0 && <label className="input-label">{t("sessions.duration")}</label>}
-                      <select className="input" value={s.duration || "60"} onChange={e => updateSched(i, "duration", e.target.value)}>
-                        <option value="30">30m</option>
-                        <option value="45">45m</option>
-                        <option value="60">1h</option>
-                        <option value="90">1½h</option>
-                        <option value="120">2h</option>
-                      </select>
-                    </div>
-                    <div className="input-group" style={{ marginBottom:0 }}>
-                      {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
-                      <select className="input" value={s.modality || "presencial"} onChange={e => updateSched(i, "modality", e.target.value)}>
-                        {modalities.map(m => (
-                          <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {schedules.length > 1 && (
-                      <button type="button" onClick={() => removeSched(i)}
-                        style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                        <IconX size={12} />
-                      </button>
-                    )}
                   </div>
                 );
               })}

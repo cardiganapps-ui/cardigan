@@ -7,7 +7,8 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useCardigan } from "../../context/CardiganContext";
 import { todayISO } from "../../utils/dates";
 import { DAY_ORDER } from "../../data/seedData";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, SCHEDULING_MODE } from "../../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, SCHEDULING_MODE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
+import { SegmentedControl } from "../SegmentedControl";
 import { haptic } from "../../utils/haptics";
 
 /* ── SetWeeklySlotSheet ──────────────────────────────────────────────
@@ -49,6 +50,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
   const [duration, setDuration] = useState("60");
   const [modality, setModality] = useState(modalities[0] || "presencial");
   const [startDate, setStartDate] = useState(todayISO());
+  const [frequency, setFrequency] = useState(DEFAULT_RECURRENCE_FREQUENCY);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,7 +85,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
       // can retry from a clean state.
       const seeded = await generateRecurringSessions(
         patient.id,
-        [{ day, time, duration: Number(duration) || 60, modality }],
+        [{ day, time, duration: Number(duration) || 60, modality, frequency }],
         startDate,
         null, // open-ended
       );
@@ -184,6 +186,19 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label className="input-label">{t("patients.frequency")}</label>
+              <SegmentedControl
+                items={[
+                  { k: RECURRENCE_FREQUENCY.WEEKLY,   l: t("patients.frequencyWeekly") },
+                  { k: RECURRENCE_FREQUENCY.BIWEEKLY, l: t("patients.frequencyBiweekly") },
+                  { k: RECURRENCE_FREQUENCY.MONTHLY,  l: t("patients.frequencyMonthly") },
+                ]}
+                value={frequency}
+                onChange={setFrequency}
+                ariaLabel={t("patients.frequency")}
+              />
             </div>
             <div className="input-group" style={{ marginBottom: 0 }}>
               <label className="input-label">{t("patients.start")}</label>

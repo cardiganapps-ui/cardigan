@@ -71,8 +71,15 @@ function derivePatientSchedules(sessions, patientId, includePast) {
     seen.add(key);
     // Carry duration so Horarios can render the end time. Default 60
     // matches the rest of the codebase (see Agenda.jsx) for legacy rows
-    // without an explicit duration.
-    result.push({ day: s.day, time: s.time, duration: s.duration || 60 });
+    // without an explicit duration. Frequency falls back to 'weekly'
+    // for pre-migration-044 rows; the column default backfilled all
+    // existing rows so this is just defensive.
+    result.push({
+      day: s.day,
+      time: s.time,
+      duration: s.duration || 60,
+      frequency: s.recurrence_frequency || "weekly",
+    });
   }
   result.sort((a, b) => {
     const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
@@ -279,7 +286,15 @@ export function ResumenTab({
             ? t("patients.notRecurring") || "Sin recurrencia"
             : schedules.map(s => {
                 const end = addMinutesToTime(s.time, s.duration);
-                return end ? `${s.day} · ${s.time}–${end}` : `${s.day} · ${s.time}`;
+                const base = end ? `${s.day} · ${s.time}–${end}` : `${s.day} · ${s.time}`;
+                // Show the frequency only when it's NOT the default
+                // weekly — keeps the row clean for the common case
+                // (pre-migration patients all read as weekly) while
+                // surfacing biweekly / monthly slots clearly.
+                const freq = s.frequency;
+                if (freq === "biweekly") return `${base} · ${t("patients.frequencyBiweekly")}`;
+                if (freq === "monthly")  return `${base} · ${t("patients.frequencyMonthly")}`;
+                return base;
               }).join("\n");
           const birthdateValue = patient.birthdate ? (() => {
             const birth = new Date(patient.birthdate + "T00:00:00");

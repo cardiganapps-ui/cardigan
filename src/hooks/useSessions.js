@@ -247,7 +247,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const allRows = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
-      getRecurringDates(s.day, startDate, endDate).forEach(d => {
+      const freq = s.frequency || "weekly";
+      getRecurringDates(s.day, startDate, endDate, freq).forEach(d => {
         const ds = formatShortDate(d);
         const slot = `${ds}|${s.time}`;
         if (existingSlots.has(slot)) return;
@@ -262,7 +263,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           // calls this function would silently produce no recurring slot.
           // The prime-directive accounting tests rely on this signal as
           // well — see CLAUDE.md rule #8.
-          is_recurring: true });
+          is_recurring: true,
+          recurrence_frequency: freq });
         existingSlots.add(slot);
       });
     }
@@ -341,7 +343,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const allRows = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
-      getRecurringDates(s.day, effectiveDate, endDate).forEach(d => {
+      const freq = s.frequency || "weekly";
+      getRecurringDates(s.day, effectiveDate, endDate, freq).forEach(d => {
         const ds = formatShortDate(d);
         const slot = `${ds}|${s.time}`;
         if (!existingSlots.has(slot)) {
@@ -353,6 +356,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
             // are the new canonical recurring schedule for the
             // patient.
             is_recurring: true,
+            recurrence_frequency: freq,
             color_idx: updated.color_idx || 0 });
           existingSlots.add(slot);
         }

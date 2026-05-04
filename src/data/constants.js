@@ -220,3 +220,30 @@ export function getModalitiesForProfession(profession) {
 // Threshold = 105 days so every patient gets re-extended on each load if needed.
 export const RECURRENCE_EXTEND_THRESHOLD_DAYS = 105;
 export const RECURRENCE_WINDOW_WEEKS = 15;
+
+// Recurrence frequency for a patient's slot. Stored on every session
+// row that's part of the recurring schedule (mirrors the
+// recurrence_frequency check constraint in migration 044). The
+// stride map is the canonical "how many days between consecutive
+// sessions in this slot" — used by getRecurringDates and the
+// auto-extend math. Treat 'monthly' as every 4 weeks rather than
+// calendar-monthly so the day-of-week stays locked (a Lunes 14:00
+// slot stays on Mondays); calendar-monthly would shift the weekday
+// each month, which doesn't match how therapy / coaching slots
+// actually work.
+export const RECURRENCE_FREQUENCY = Object.freeze({
+  WEEKLY:   "weekly",
+  BIWEEKLY: "biweekly",
+  MONTHLY:  "monthly",
+});
+export const RECURRENCE_FREQUENCIES = [
+  RECURRENCE_FREQUENCY.WEEKLY,
+  RECURRENCE_FREQUENCY.BIWEEKLY,
+  RECURRENCE_FREQUENCY.MONTHLY,
+];
+export const RECURRENCE_STRIDE_DAYS = Object.freeze({
+  [RECURRENCE_FREQUENCY.WEEKLY]:   7,
+  [RECURRENCE_FREQUENCY.BIWEEKLY]: 14,
+  [RECURRENCE_FREQUENCY.MONTHLY]:  28,
+});
+export const DEFAULT_RECURRENCE_FREQUENCY = RECURRENCE_FREQUENCY.WEEKLY;

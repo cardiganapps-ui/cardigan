@@ -27,8 +27,9 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       for (const s of sched) {
         const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
         const mod = s.modality || "presencial";
-        getRecurringDates(s.day, startDate, endDate).forEach(d =>
-          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, date: formatShortDate(d), is_recurring: true })
+        const freq = s.frequency || "weekly";
+        getRecurringDates(s.day, startDate, endDate, freq).forEach(d =>
+          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, frequency: freq, date: formatShortDate(d), is_recurring: true })
         );
       }
     } else if (mode === "episodic" && firstConsult?.date) {
@@ -105,6 +106,12 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         // patients seed at most ONE row, `is_recurring=false`, so
         // auto-extend never picks it up.
         is_recurring: s.is_recurring !== false,
+        // Stamp recurrence_frequency on every recurring row so
+        // auto-extend can read the slot's stride later. Episodic
+        // first-consult rows pass through with the DB default
+        // ('weekly') — harmless because is_recurring=false keeps
+        // them out of the schedule-derivation path entirely.
+        recurrence_frequency: s.frequency || "weekly",
         visit_type: s.visit_type || null,
       }));
       const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();

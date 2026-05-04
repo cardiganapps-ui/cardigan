@@ -8,21 +8,40 @@
    never happened) and must stay covered by tests.
 */
 
-import { PATIENT_STATUS, SESSION_STATUS } from "../data/constants";
+import {
+  PATIENT_STATUS, SESSION_STATUS,
+  RECURRENCE_WINDOW_WEEKS,
+  RECURRENCE_FREQUENCY, RECURRENCE_STRIDE_DAYS, DEFAULT_RECURRENCE_FREQUENCY,
+} from "../data/constants";
 import { isTutorSession } from "./sessions";
 import { formatShortDate, parseLocalDate, parseShortDate, shortDateToISO, toISODate } from "./dates";
-import { RECURRENCE_WINDOW_WEEKS } from "../data/constants";
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
 
+/* Resolve a frequency string to its stride in days. Falls back to
+   weekly for unknown / null / undefined values so legacy rows with
+   no recurrence_frequency column read as weekly (matches the DB
+   migration 044 default). */
+function strideFor(frequency) {
+  return RECURRENCE_STRIDE_DAYS[frequency] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
+}
+
 /**
- * Weekly date series for `dayName` from `startDateStr` (inclusive) to
- * `endDateStr` (inclusive). Both inputs are ISO dates ("YYYY-MM-DD"). If
- * `endDateStr` is omitted, defaults to RECURRENCE_WINDOW_WEEKS past start.
+ * Recurring date series for `dayName` from `startDateStr` (inclusive)
+ * to `endDateStr` (inclusive). Stride varies by `frequency` —
+ * 'weekly' (every 7 days, default), 'biweekly' (every 14), 'monthly'
+ * (every 28). Both date inputs are ISO ("YYYY-MM-DD"). If `endDateStr`
+ * is omitted, defaults to RECURRENCE_WINDOW_WEEKS past start.
+ *
+ * Note on monthly: stride=28 (4 weeks) so the day-of-week is
+ * preserved. Calendar-monthly (same date each month) would shift
+ * the weekday with the monthly drift, which doesn't match how a
+ * therapist's "Lunes" slot actually works.
  */
-export function getRecurringDates(dayName, startDateStr, endDateStr) {
+export function getRecurringDates(dayName, startDateStr, endDateStr, frequency = DEFAULT_RECURRENCE_FREQUENCY) {
   const target = DAY_TO_JS[dayName];
   if (target == null) return [];
+  const stride = strideFor(frequency);
   const start = parseLocalDate(startDateStr);
   let diff = target - start.getDay();
   if (diff < 0) diff += 7;
@@ -33,7 +52,7 @@ export function getRecurringDates(dayName, startDateStr, endDateStr) {
   current.setDate(start.getDate() + diff);
   while (current <= end) {
     dates.push(new Date(current));
-    current.setDate(current.getDate() + 7);
+    current.setDate(current.getDate() + stride);
   }
   return dates;
 }
@@ -132,6 +151,14 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
       day: s.day, time: s.time,
       duration: s.duration || 60,
       modality: s.modality || "presencial",
+      // Read frequency from the slot's existing future sessions —
+      // every session in a slot carries the same value (set at
+      // create / applyScheduleChange time). When a user changes
+      // frequency, applyScheduleChange replays the future window at
+      // the new value, so this naturally tracks the latest decision.
+      // Legacy rows missing the column read as weekly via the
+      // strideFor fallback.
+      frequency: s.recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY,
     });
   });
   if (schedMap.size === 0) return [];
@@ -142,25 +169,45 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   // DB unique index uniq_sessions_patient_date_time.
   const existingSlots = new Set(allPSess.map(s => `${s.date}|${s.time}`));
 
-  let latest = null;
+  // Per-slot latest. Each slot's cadence is preserved by anchoring
+  // its extension to that slot's most recent scheduled session — not
+  // a global "latest across all slots" — so a multi-slot patient
+  // with mixed frequencies (e.g. Lunes weekly + Miércoles monthly)
+  // extends each one correctly.
+  const latestPerSlot = new Map();
   scheduledRegular.forEach(s => {
+    const k = `${s.day}|${s.time}`;
+    if (!schedMap.has(k)) return;
     const d = parseShortDate(s.date);
-    if (!latest || d > latest) latest = d;
+    const cur = latestPerSlot.get(k);
+    if (!cur || d > cur) latestPerSlot.set(k, d);
   });
-  if (!latest || latest > threshold) return [];
 
-  // Hard floor at `today`. If the previous window expired between
-  // logins or the patient took a hiatus, latest is in the past and
-  // we'd otherwise back-fill the gap with phantom sessions.
-  const startMs = Math.max(latest.getTime() + 86400000, today.getTime());
-  const startISO = toISODate(new Date(startMs));
-  // ISO comparison: an empty range (start past end) returns no dates,
-  // but we guard anyway so the intent is explicit.
-  if (startISO > extendEnd) return [];
+  // Threshold gate uses the soonest-running-out slot — if every
+  // slot is comfortably out past the threshold, no extend.
+  let earliestLast = null;
+  for (const d of latestPerSlot.values()) {
+    if (!earliestLast || d < earliestLast) earliestLast = d;
+  }
+  if (!earliestLast || earliestLast > threshold) return [];
 
+  const DAY_MS = 86400000;
   const rows = [];
-  for (const sched of schedMap.values()) {
-    getRecurringDates(sched.day, startISO, extendEnd).forEach(d => {
+  for (const [slotKey, sched] of schedMap.entries()) {
+    const slotLatest = latestPerSlot.get(slotKey);
+    if (!slotLatest) continue;
+    // Stride-aware step from THIS slot's latest, then floored at
+    // today so a hiatus doesn't back-fill the gap with phantoms.
+    // For weekly (stride=7), this matches the previous "+1 day +
+    // weekday-skip" behavior (the getRecurringDates skip absorbed
+    // the missing 6 days). For biweekly/monthly the stride must be
+    // applied here, otherwise the first inserted row would land 7
+    // days after `latest` and break the cadence.
+    const stride = RECURRENCE_STRIDE_DAYS[sched.frequency] || 7;
+    const startMs = Math.max(slotLatest.getTime() + stride * DAY_MS, today.getTime());
+    const startISO = toISODate(new Date(startMs));
+    if (startISO > extendEnd) continue;
+    getRecurringDates(sched.day, startISO, extendEnd, sched.frequency).forEach(d => {
       const ds = formatShortDate(d);
       const slot = `${ds}|${sched.time}`;
       if (existingSlots.has(slot)) return;
@@ -181,6 +228,9 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
         modality: sched.modality,
         // Auto-extend rows ARE recurring by definition.
         is_recurring: true,
+        // Carry the slot's frequency forward so the next auto-extend
+        // round reads the same value.
+        recurrence_frequency: sched.frequency,
         color_idx: patient.color_idx || 0,
       });
       existingSlots.add(slot);

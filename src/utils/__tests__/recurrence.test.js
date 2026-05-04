@@ -416,6 +416,122 @@ describe("getRecurringDates", () => {
     expect(dates).toHaveLength(3);
     expect(dates[0].getDay()).toBe(1);
   });
+
+  it("biweekly stride: every 14 days, day-of-week preserved", () => {
+    // Apr 20 → Jun 1: 7 weekly Mondays (20, 27 / 4, 11, 18, 25 / 1),
+    // 4 biweekly (20 / 4 / 18 / 1).
+    const weekly = getRecurringDates("Lunes", "2026-04-20", "2026-06-01", "weekly");
+    const biweekly = getRecurringDates("Lunes", "2026-04-20", "2026-06-01", "biweekly");
+    expect(weekly).toHaveLength(7);
+    expect(biweekly).toHaveLength(4);
+    expect(biweekly.every(d => d.getDay() === 1)).toBe(true);
+    // Verify the gap is 14 days.
+    expect((biweekly[1] - biweekly[0]) / DAY_MS).toBe(14);
+    expect((biweekly[2] - biweekly[1]) / DAY_MS).toBe(14);
+  });
+
+  it("monthly stride: every 28 days, day-of-week preserved", () => {
+    // Apr 20 → Aug 17 (~17 weeks): 4 monthly Mondays at stride 28.
+    const monthly = getRecurringDates("Lunes", "2026-04-20", "2026-08-17", "monthly");
+    expect(monthly).toHaveLength(5);
+    expect(monthly.every(d => d.getDay() === 1)).toBe(true);
+    expect((monthly[1] - monthly[0]) / DAY_MS).toBe(28);
+    expect((monthly[4] - monthly[0]) / DAY_MS).toBe(28 * 4);
+  });
+
+  it("unknown frequency falls back to weekly", () => {
+    const fallback = getRecurringDates("Lunes", "2026-04-20", "2026-05-04", "annually");
+    const weekly = getRecurringDates("Lunes", "2026-04-20", "2026-05-04");
+    expect(fallback).toHaveLength(weekly.length);
+    expect(fallback.map(d => d.getTime())).toEqual(weekly.map(d => d.getTime()));
+  });
+});
+
+describe("computeAutoExtendRows — recurrence frequency", () => {
+  it("reads frequency from existing future sessions and projects forward at the same stride", () => {
+    const ctx = buildContext("2026-04-20T08:00:00");
+    // Two biweekly Mondays in flight: today and +14d. Both have
+    // recurrence_frequency='biweekly'. Latest is today + 14 days,
+    // well within threshold so auto-extend fires.
+    const allPSess = [
+      { ...scheduledMon10(0,  ctx.today), recurrence_frequency: "biweekly" },
+      { ...scheduledMon10(14, ctx.today), recurrence_frequency: "biweekly" },
+    ];
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess,
+    });
+    // Every inserted row carries biweekly + the date stride is 14d.
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every(r => r.recurrence_frequency === "biweekly")).toBe(true);
+    // First inserted row must be ≥ 14 days after the latest existing
+    // session (today+14d). Subsequent rows differ by 14 days.
+    const inserted = rows.map(r => isoFromShortDate(r.date, ctx.today));
+    expect(inserted[0] >= toISODate(new Date(ctx.today.getTime() + 28 * DAY_MS))).toBe(true);
+  });
+
+  it("legacy rows missing recurrence_frequency read as weekly", () => {
+    const ctx = buildContext("2026-04-20T08:00:00");
+    // No recurrence_frequency on the rows — represents pre-migration data.
+    const allPSess = [
+      scheduledMon10(0,  ctx.today),
+      scheduledMon10(7,  ctx.today),
+    ];
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess,
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    // All inserted rows are stamped weekly (the safe default) so the
+    // next auto-extend round agrees with the previous one.
+    expect(rows.every(r => r.recurrence_frequency === "weekly")).toBe(true);
+  });
+
+  it("two slots with different frequencies extend independently", () => {
+    const ctx = buildContext("2026-04-20T08:00:00");
+    // Lunes 10:00 weekly + Miércoles 14:00 monthly.
+    const monRows = [0, 7].map(d => ({
+      ...scheduledMon10(d, ctx.today),
+      recurrence_frequency: "weekly",
+    }));
+    const wedRows = [2, 30].map(d => {
+      const dt = new Date(ctx.today.getTime() + d * DAY_MS);
+      return {
+        id: `w-${d}`, patient_id: "p1",
+        status: SESSION_STATUS.SCHEDULED,
+        initials: "AN", day: "Miércoles", time: "14:00",
+        duration: 60, rate: 700, modality: "presencial",
+        date: formatShortDate(dt),
+        recurrence_frequency: "monthly",
+      };
+    });
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [...monRows, ...wedRows],
+    });
+    // Both slots extended.
+    const monNew = rows.filter(r => r.day === "Lunes");
+    const wedNew = rows.filter(r => r.day === "Miércoles");
+    expect(monNew.length).toBeGreaterThan(0);
+    expect(wedNew.length).toBeGreaterThan(0);
+    expect(monNew.every(r => r.recurrence_frequency === "weekly")).toBe(true);
+    expect(wedNew.every(r => r.recurrence_frequency === "monthly")).toBe(true);
+    // Stride respected per slot: weekly ones cluster densely, monthly
+    // ones spaced ~28d apart.
+    const monIsos = monNew.map(r => isoFromShortDate(r.date, ctx.today)).sort();
+    if (monIsos.length >= 2) {
+      const gap = (new Date(monIsos[1]).getTime() - new Date(monIsos[0]).getTime()) / DAY_MS;
+      expect(gap).toBe(7);
+    }
+    const wedIsos = wedNew.map(r => isoFromShortDate(r.date, ctx.today)).sort();
+    if (wedIsos.length >= 2) {
+      const gap = (new Date(wedIsos[1]).getTime() - new Date(wedIsos[0]).getTime()) / DAY_MS;
+      expect(gap).toBe(28);
+    }
+  });
 });
 
 // Local helper: convert a "D-MMM" short date (Spanish) to ISO using the

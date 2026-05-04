@@ -16,7 +16,8 @@ import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic } from "../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
+import { SegmentedControl } from "../components/SegmentedControl";
 import { formatMXN } from "../utils/format";
 
 /* ── Collapsible section for the edit form ──
@@ -44,6 +45,25 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
       {isOpen && <div style={{ paddingBottom:4 }}>{children}</div>}
     </div>
   );
+}
+
+/* Read the recurrence frequency of a patient's slot from the most
+   recent scheduled session that's part of the recurring schedule.
+   Every session in a recurring slot carries the same value (set
+   at create / applyScheduleChange time). Pre-migration-044 rows
+   have 'weekly' via the column default, so existing patients show
+   "Semanal" in the edit form — no behavioral change for them. */
+function deriveSlotFrequency(p, sessions) {
+  if (!p?.day || !p?.time) return DEFAULT_RECURRENCE_FREQUENCY;
+  const future = (sessions || []).filter(s =>
+    s.patient_id === p.id
+    && s.day === p.day
+    && s.time === p.time
+    && s.is_recurring !== false
+    && s.recurrence_frequency
+  );
+  if (future.length === 0) return DEFAULT_RECURRENCE_FREQUENCY;
+  return future[0].recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY;
 }
 
 export function Patients() {
@@ -85,7 +105,7 @@ export function Patients() {
   const [editBirthdate, setEditBirthdate] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editStatus, setEditStatus]   = useState("");
-  const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00", modality: "presencial" }]);
+  const [editSchedules, setEditSchedules] = useState([{ day: "Lunes", time: "16:00", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }]);
   const [effectiveDate, setEffectiveDate] = useState(todayISO());
   const [hasEndDate, setHasEndDate]       = useState(false);
   const [endDate, setEndDate]             = useState("");
@@ -135,9 +155,10 @@ export function Patients() {
     // Seed a sane placeholder ONLY for the form's internal state shape;
     // the schedule UI is hidden for episodic patients (see render gate
     // below), and the save path skips applyScheduleChange entirely.
+    const slotFreq = deriveSlotFrequency(p, upcomingSessions);
     const scheds = isEpisodic(p)
-      ? [{ day: "Lunes", time: "16:00" }]
-      : [{ day: p.day, time: p.time }];
+      ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
+      : [{ day: p.day, time: p.time, frequency: slotFreq }];
     setEditName(p.name);
     setEditIsMinor(!!p.parent);
     setEditParent(p.parent || "");
@@ -409,8 +430,8 @@ export function Patients() {
               onEdit={(p) => {
                 // Same episodic guard as openEditForPatient — see comment there.
                 const scheds = isEpisodic(p)
-                  ? [{ day: "Lunes", time: "16:00" }]
-                  : [{ day: p.day, time: p.time }];
+                  ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
+                  : [{ day: p.day, time: p.time, frequency: deriveSlotFrequency(p, upcomingSessions) }];
                 setEditName(p.name);
                 setEditIsMinor(!!p.parent);
                 setEditParent(p.parent || "");
@@ -555,9 +576,34 @@ export function Patients() {
                               </select>
                             </div>
                           </div>
+                          {/* Frequency picker — defaults to weekly for
+                              existing patients (deriveSlotFrequency
+                              reads it from current sessions; pre-
+                              migration-044 rows have 'weekly' from
+                              the column default). Changes here are
+                              forward-looking only — they ride the
+                              existing applyScheduleChange path which
+                              deletes future sessions ≥ effectiveDate
+                              and regenerates at the new cadence. */}
+                          <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8 }}>
+                            <span style={{ fontSize:11, color:"var(--charcoal-md)", fontWeight:600, flexShrink:0 }}>
+                              {t("patients.frequency")}
+                            </span>
+                            <SegmentedControl
+                              items={[
+                                { k: RECURRENCE_FREQUENCY.WEEKLY,   l: t("patients.frequencyWeekly") },
+                                { k: RECURRENCE_FREQUENCY.BIWEEKLY, l: t("patients.frequencyBiweekly") },
+                                { k: RECURRENCE_FREQUENCY.MONTHLY,  l: t("patients.frequencyMonthly") },
+                              ]}
+                              value={s.frequency || DEFAULT_RECURRENCE_FREQUENCY}
+                              onChange={(v) => updateEditSched(i, "frequency", v)}
+                              ariaLabel={t("patients.frequency")}
+                              style={{ flex:1 }}
+                            />
+                          </div>
                         </div>
                       ))}
-                      <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: "presencial" }])}
+                      <button type="button" onClick={() => setEditSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }])}
                         style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 10px", fontFamily:"var(--font)" }}>
                         {t("patients.addSchedule")}
                       </button>
@@ -803,8 +849,8 @@ export function Patients() {
             setSelected(p);
             // Same episodic guard as openEditForPatient — see comment there.
             const scheds = isEpisodic(p)
-              ? [{ day: "Lunes", time: "16:00" }]
-              : [{ day: p.day, time: p.time }];
+              ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
+              : [{ day: p.day, time: p.time, frequency: deriveSlotFrequency(p, upcomingSessions) }];
             setEditName(p.name);
             setEditIsMinor(!!p.parent);
             setEditParent(p.parent || "");

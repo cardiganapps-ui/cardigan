@@ -59,6 +59,13 @@ create table if not exists sessions (
   -- manual session can never seed a phantom recurrence. See
   -- supabase/migrations/025_sessions_is_recurring.sql.
   is_recurring boolean not null default false,
+  -- Stride of the recurring schedule that minted this row. Read by
+  -- auto-extend so an existing biweekly slot projects forward at the
+  -- correct cadence. Property of the SLOT — every session in the
+  -- same (patient, day, time) carries the same value. See migration
+  -- 044.
+  recurrence_frequency text not null default 'weekly'
+    check (recurrence_frequency in ('weekly', 'biweekly', 'monthly')),
   color_idx integer default 0,
   created_at timestamptz default now()
 );
