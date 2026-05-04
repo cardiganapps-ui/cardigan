@@ -246,6 +246,15 @@ async function handler(req, res) {
           is_error: isError,
         });
       }
+      // Mark the LAST tool_result with cache_control so a follow-up
+      // question in the same chat session ("y de María?") re-uses the
+      // prior tool data as cache instead of paying full input cost
+      // again. The 5-min ephemeral window covers a typical multi-turn
+      // chat. Cache breakpoints stack with the system prompt's one;
+      // Anthropic supports up to 4 breakpoints per request.
+      if (toolResults.length > 0) {
+        toolResults[toolResults.length - 1].cache_control = { type: "ephemeral" };
+      }
       convo.push({ role: "user", content: toolResults });
     }
 

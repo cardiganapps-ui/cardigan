@@ -23,8 +23,8 @@
    Section bodies may contain `\n\n` to render as multiple paragraphs
    in PrivacyPolicy.jsx. */
 
-export const POLICY_VERSION = "2026-05-v5";
-export const POLICY_PUBLISHED = "4 de mayo de 2026";
+export const POLICY_VERSION = "2026-05-v6";
+export const POLICY_PUBLISHED = "4 de mayo de 2026 (rev. Cardi)";
 
 export const POLICY_SECTIONS = [
   {
@@ -130,9 +130,12 @@ export const POLICY_SECTIONS = [
       "diagnóstico (los errores se filtran de cualquier dato personal o de paciente antes de salir del " +
       "navegador).\n" +
       "• Anthropic PBC (Estados Unidos de América) — procesamiento de las preguntas que envíes al asistente " +
-      "Cardi (función Pro). Únicamente se transmite el texto de tu pregunta y un contexto reducido (tu " +
-      "profesión, pantalla actual, conteos generales). NO se envían nombres, notas, ni datos clínicos de " +
-      "tus pacientes.\n" +
+      "Cardi (función Pro). Si autorizas a Cardi a consultar tus datos al abrirlo, se transmitirán: " +
+      "nombre y estado de tus {client.p}, honorarios, balance pendiente y crédito a favor, montos y métodos " +
+      "de pagos recibidos, fechas y estados de sesiones (asistencia, cancelaciones, modalidad), y horarios " +
+      "recurrentes. NO se envían: notas clínicas (cifradas o no), teléfonos, correos electrónicos, fechas " +
+      "de nacimiento, alergias, condiciones médicas, ni datos antropométricos. Anthropic procesa la " +
+      "información únicamente para generar la respuesta y no la utiliza para entrenar modelos.\n" +
       "• Google LLC y Apple Inc. — entrega de notificaciones push, únicamente cuando hayas habilitado los " +
       "recordatorios y a través de los servicios estándar de tu sistema operativo.\n\n" +
       "Algunas de estas transferencias implican el envío de datos personales fuera de los Estados Unidos " +

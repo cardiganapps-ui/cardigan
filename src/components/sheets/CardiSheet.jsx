@@ -7,6 +7,8 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useLayer } from "../../hooks/useLayer";
 import { useCardigan } from "../../context/CardiganContext";
 import { useCardiChat } from "../../hooks/useCardiChat";
+import { useCardiConsent } from "../../hooks/useCardiConsent";
+import { CardiConsentGate } from "../CardiConsentGate";
 
 /* ── CardiSheet ───────────────────────────────────────────────────────
    Bottom sheet hosting the Cardi AI helper. Same structural shape as
@@ -22,11 +24,15 @@ import { useCardiChat } from "../../hooks/useCardiChat";
    Responses stream token-by-token from /api/cardi-ask via SSE — see
    useCardiChat for the reader logic. */
 
-const SUGGESTED_KEYS = ["schedule", "reminders", "calendar", "payment"];
+const SUGGESTED_KEYS = ["balance", "summary", "schedule", "calendar"];
 
 export function CardiSheet({ open, onClose }) {
   const { t, strings } = useT();
-  const { profession, subscription, screen, patients = [] } = useCardigan();
+  const { profession, subscription, screen, patients = [], user } = useCardigan();
+  // Cardi-specific data-access consent (separate from the global
+  // privacy-policy consent in ConsentBanner). Only checked while the
+  // sheet is open so we don't fire the lookup on every drawer render.
+  const consent = useCardiConsent({ user, enabled: open });
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
@@ -99,10 +105,14 @@ export function CardiSheet({ open, onClose }) {
 
   const empty = messages.length === 0;
   const canSend = !pending && input.trim().length > 0;
-  // Show thinking dots only while waiting for the first streamed
-  // chunk. Once tokens are arriving, the assistant bubble grows
-  // naturally and the dots would be redundant.
   const showThinking = pending && !streaming;
+  // Consent gating. Until the user has accepted cardi-data-v1, the
+  // body shows the gate instead of the chat and the composer is
+  // hidden — Cardi can't see anything unless the user explicitly
+  // opts in. The "unknown" state is the brief lookup window; we
+  // render nothing in the body during it (rare and very short).
+  const showGate = consent.state === "not_accepted";
+  const showLoading = consent.state === "unknown";
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -162,13 +172,20 @@ export function CardiSheet({ open, onClose }) {
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: empty ? "12px 20px 8px" : "12px 16px 8px",
+            padding: showGate ? "8px 20px 8px" : (empty ? "12px 20px 8px" : "12px 16px 8px"),
             display: "flex",
             flexDirection: "column",
-            gap: empty ? 0 : 8,
+            gap: empty || showGate ? 0 : 8,
           }}
         >
-          {empty ? (
+          {showLoading ? null : showGate ? (
+            <CardiConsentGate
+              onAccept={consent.accept}
+              onCancel={onClose}
+              submitting={consent.submitting}
+              error={consent.error}
+            />
+          ) : empty ? (
             <CardiEmptyState
               t={t}
               onSuggest={(text) => submit(text)}
@@ -189,11 +206,12 @@ export function CardiSheet({ open, onClose }) {
           )}
         </div>
 
-        {/* Composer — symmetrical pill: 44px tall outer, 36px circular
-            send button, textarea content vertically centered via
-            line-height. Multi-line input grows the textarea up to
-            120px; the button stays vertically centered (the auto-
-            resize keeps the textarea visually balanced). */}
+        {/* Composer — hidden while the consent gate is showing
+            (nothing to type until the user accepts). Symmetrical
+            pill: 44px tall outer, 36px circular send button,
+            textarea content vertically centered via line-height.
+            Multi-line input grows up to 120px. */}
+        {!showGate && !showLoading && (
         <div style={{
           borderTop: "1px solid var(--border-lt)",
           padding: "10px 14px max(10px, var(--sab))",
@@ -277,6 +295,7 @@ export function CardiSheet({ open, onClose }) {
             {t("cardi.privacyNote")}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
