@@ -242,6 +242,12 @@ html[data-theme="dark"] .admin-breadcrumbs,
 html[data-theme="dark"] .admin-breadcrumbs button,
 html[data-theme="dark"] .admin-breadcrumb-sep { color: #8A8A8A; }
 html[data-theme="dark"] .admin-breadcrumbs button:hover { color: #BFBFBF; }
+html[data-theme="dark"] .admin-exit-btn {
+  background: #2A2A2A;
+  border-color: #3A3A3A;
+  color: #BFBFBF;
+}
+html[data-theme="dark"] .admin-exit-btn:hover { background: #333333; color: #EAEAEA; }
 html[data-theme="dark"] .admin-card {
   background: #1E1E1E;
   border-color: #2A2A2A;

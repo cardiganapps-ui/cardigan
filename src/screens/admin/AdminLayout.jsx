@@ -202,6 +202,11 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
               {/* Page-specific actions (e.g. "Nuevo código") are rendered
                   inside each page rather than plumbed through here — keeps
                   pages self-contained and the layout stable. */}
+              <button type="button" className="admin-exit-btn" onClick={() => onLeaveAdmin?.()}
+                aria-label="Salir de admin" title="Salir">
+                <IconLogOut size={16} />
+                <span className="admin-exit-btn-label">Salir</span>
+              </button>
             </div>
           </div>
         </header>
