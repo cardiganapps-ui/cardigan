@@ -1,13 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const VALID_SCREENS = ["home", "agenda", "patients", "finances", "archivo", "settings", "privacy"];
+const VALID_SCREENS = ["home", "agenda", "patients", "finances", "archivo", "settings", "privacy", "admin"];
 // privacy sits "after" settings so the slide direction matches the
-// Settings → Aviso de Privacidad → back flow.
-const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, finances: 3, archivo: 4, settings: 5, privacy: 6 };
+// Settings → Aviso de Privacidad → back flow. admin is last — slides
+// in from the right when you enter it from anywhere else, slides out
+// to the right when you go back home.
+const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, finances: 3, archivo: 4, settings: 5, privacy: 6, admin: 7 };
 
 function getHashScreen() {
-  const hash = window.location.hash.replace("#", "").split("?")[0];
-  return VALID_SCREENS.includes(hash) ? hash : "home";
+  // The hash may carry a sub-route (e.g. "#admin/users/<uid>"). The
+  // top-level router only knows about the FIRST segment; the
+  // remaining segments are parsed by per-screen route hooks (see
+  // src/screens/admin/useAdminRoute.js for the admin family). Strip
+  // any "?..." search portion first, then split on "/" and take
+  // the first segment.
+  const raw = window.location.hash.replace("#", "").split("?")[0];
+  const top = raw.split("/")[0];
+  return VALID_SCREENS.includes(top) ? top : "home";
 }
 
 export function useNavigation() {
@@ -49,27 +58,41 @@ export function useNavigation() {
   // modal, which pushes its own entry via pushLayer) — no in-app navigation
   // conflict. The URL hash still reflects the current screen for deep links
   // and reloads.
-  const navigate = useCallback((newScreen) => {
-    if (!VALID_SCREENS.includes(newScreen) || newScreen === screen) return;
-    saveScroll(screen);
+  const navigate = useCallback((target) => {
+    // `target` may be a bare screen name ("home") OR a screen with a
+    // sub-path ("admin/users/<uid>"). The top-level router cares only
+    // about the first segment for screen identity + slide direction;
+    // the rest is parsed by per-screen route hooks (see
+    // src/screens/admin/useAdminRoute.js).
+    const targetStr = String(target || "");
+    const top = targetStr.split("/")[0];
+    if (!VALID_SCREENS.includes(top)) return;
+    // Allow same-screen sub-route changes (admin/users → admin/codes)
+    // even when `top === screen` — the hash has changed even though
+    // the React-level screen hasn't, so we still want to write it.
+    const sameTop = top === screen;
+    if (sameTop && ("#" + targetStr) === window.location.hash) return;
+    if (!sameTop) saveScroll(screen);
     // Close all layers first
     while (layerStack.current.length > 0) {
       const layer = layerStack.current.pop();
       layer.closeFn();
     }
-    // Determine direction
-    const dir = SCREEN_ORDER[newScreen] > SCREEN_ORDER[screen] ? "left" : "right";
-    setDirection(dir);
-    setScreen(newScreen);
+    // Determine direction (only for actual screen changes).
+    if (!sameTop) {
+      const dir = SCREEN_ORDER[top] > SCREEN_ORDER[screen] ? "left" : "right";
+      setDirection(dir);
+      setScreen(top);
+    }
     suppressPopState.current = true;
     try {
-      history.replaceState({ screen: newScreen }, "", "#" + newScreen);
+      history.replaceState({ screen: top }, "", "#" + targetStr);
     } catch {
       // Fallback for environments without History API access.
-      window.location.hash = newScreen;
+      window.location.hash = targetStr;
     }
     suppressPopState.current = false;
-    restoreScroll(newScreen);
+    restoreScroll(top);
     // Cancel any prior timer before scheduling the new one so a second
     // nav within 300ms doesn't get its animation cut short by the
     // first nav's clear-direction firing.

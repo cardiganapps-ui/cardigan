@@ -360,3 +360,21 @@ begin
     left join user_profiles up on up.user_id = au.id;
 end;
 $$ language plpgsql security definer;
+
+-- Admin audit log (migration 045). Every action through /api/admin-*
+-- writes a row here for compliance. is_admin() RLS for SELECT;
+-- writes go via service-role client only.
+create table if not exists admin_audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid not null,
+  target_user_id uuid,
+  action text not null,
+  payload jsonb,
+  ip text,
+  ua text,
+  created_at timestamptz not null default now()
+);
+
+-- Revenue overview RPC (migration 046). Single-snapshot JSON for the
+-- /admin/revenue page. is_admin() gated. Mirrors useSubscription.js
+-- isPro semantics for the active-sub count.

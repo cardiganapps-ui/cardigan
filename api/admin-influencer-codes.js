@@ -19,7 +19,7 @@
    (~300ms per call); a per-admin rate limit catches accidental
    double-clicks but isn't tight enough to be annoying. */
 
-import { requireAdmin, getServiceClient } from "./_admin.js";
+import { requireAdmin, getServiceClient, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { rateLimit } from "./_ratelimit.js";
 import { createCoupon, createPromotionCode, updatePromotionCode } from "./_stripe.js";
@@ -121,6 +121,18 @@ async function handleCreate(req, res, admin) {
     // Same orphan caveat — Stripe entries exist, DB row doesn't.
     return res.status(500).json({ error: `DB insert: ${insertErr.message}` });
   }
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    action: "create_code",
+    payload: {
+      code: parsed.code,
+      percent_off: parsed.percentOff,
+      duration: parsed.duration,
+      duration_in_months: parsed.durationInMonths,
+      influencer_name: parsed.influencerName,
+    },
+    req,
+  });
   return res.status(200).json({ ok: true, code: row });
 }
 
@@ -169,7 +181,7 @@ async function handleList(req, res) {
   return res.status(200).json({ codes: out });
 }
 
-async function handleToggle(req, res) {
+async function handleToggle(req, res, admin) {
   const body = typeof req.body === "string" ? safeJsonParse(req.body) : (req.body || {});
   const id = String(body?.id || "");
   const active = !!body?.active;
@@ -204,6 +216,12 @@ async function handleToggle(req, res) {
   if (updateErr) {
     return res.status(500).json({ error: `DB update: ${updateErr.message}` });
   }
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    action: "toggle_code",
+    payload: { id, active },
+    req,
+  });
   return res.status(200).json({ ok: true });
 }
 
@@ -229,7 +247,7 @@ async function handler(req, res) {
       return res.status(429).json({ error: "Demasiadas operaciones. Espera un momento." });
     }
     if (req.method === "POST") return handleCreate(req, res, admin);
-    return handleToggle(req, res);
+    return handleToggle(req, res, admin);
   }
 
   return res.status(405).json({ error: "Method not allowed" });

@@ -5,7 +5,7 @@
    Body: { userId: uuid, block: boolean }
    Auth: caller must be the admin (email === ADMIN_EMAIL) */
 
-import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
+import { requireAdmin, getServiceClient, isValidUserId, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
 async function handler(req, res) {
@@ -41,6 +41,12 @@ async function handler(req, res) {
   if (error) {
     return res.status(500).json({ error: error.message || "Update failed" });
   }
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    targetUserId: userId,
+    action: block ? "block_user" : "unblock_user",
+    req,
+  });
   return res.status(200).json({
     ok: true,
     blocked: block,

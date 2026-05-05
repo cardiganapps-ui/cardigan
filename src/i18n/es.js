@@ -98,6 +98,7 @@ export default {
     archivo: "Archivo",
     settings: "Ajustes",
     cardi: "Cardi (AI Helper)",
+    admin: "Admin",
     principal: "Principal",
     account: "Cuenta",
     signOut: "Cerrar sesi\u00f3n",

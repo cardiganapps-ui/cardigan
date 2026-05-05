@@ -62,10 +62,10 @@ const Archivo = lazy(() => import("./screens/Archivo").then(m => ({ default: m.A
 const Settings = lazy(() => import("./screens/Settings").then(m => ({ default: m.Settings })));
 const PrivacyPolicy = lazy(() => import("./screens/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 import { AuthScreen } from "./screens/AuthScreen";
-// AdminPanel is only mounted when the admin opens it from the
-// topbar (one user across the whole platform). Lazy so the ~40 KB
-// admin chunk doesn't ship to every regular user.
-const AdminPanel = lazy(() => import("./screens/AdminPanel").then(m => ({ default: m.AdminPanel })));
+// Admin dashboard is gated by isAdmin(user) and lives on its own
+// `#admin/...` route family. Lazy so the chunk only ships when the
+// admin (one user platform-wide) actually opens it.
+const AdminLayout = lazy(() => import("./screens/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
 import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
 import { SignupSourceStep } from "./screens/SignupSourceStep";
 import { useUserProfile } from "./hooks/useUserProfile";
@@ -290,7 +290,7 @@ function SkeletonCrossfade({ showContent, skeletonScreen, children }) {
    land. The skeleton-to-content swap then reads as "the same screen
    filling in" rather than "two different screens cross-fading".
    Falls back to a generic "header + list" skeleton for any screen
-   not yet specialised (Settings, AdminPanel, etc.). */
+   not yet specialised (Settings, admin dashboard, etc.). */
 function LoadingSkeleton({ screen = "home" }) {
   const skeletonAvatarRow = (key, idx) => (
     <div key={key} className="row-item" style={{ cursor:"default" }}>
@@ -467,7 +467,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isTablet } = useViewport();
   const [viewAsUserId, setViewAsUserId] = useState(null);
-  const [showAdmin, setShowAdmin] = useState(false);
   // `localHideFab` is controlled by non-tutorial callers (e.g. the Patients
   // expediente drawer). The tutorial contributes its own reason to hide
   // the FAB, derived synchronously from `tutorial` state below — that way
@@ -724,7 +723,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const tutorial = useTutorial({ user, demo, readOnly });
   const tutorialHidesFab = tutorial?.isActive
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
-  const hideFab = localHideFab || tutorialHidesFab;
+  // Admin owns its own chrome (sidebar + header) and covers the
+  // topbar / FAB / BottomTabs via the fixed `.admin-shell` overlay.
+  // Hide the global affordances while in admin so they don't render
+  // behind it (no leak, but wasted layout).
+  const hideFab = localHideFab || tutorialHidesFab || screen === "admin";
   const notifications = useNotifications(demo ? null : user);
 
   // Welcome-to-Pro prompt: fires once, after the user has finished or
@@ -1104,6 +1107,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
     user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
+    isAdminUser: admin, // surfaced to CommandPalette for admin-only commands
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
     pendingFabAction,
@@ -1188,7 +1192,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       );
       return ok;
     },
-  }), [data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: a 2-step onboarding wizard before mounting
   // the main shell. Demo mode and admin "view as user" mode bypass —
@@ -1252,6 +1256,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     archivo: <Archivo />,
     settings: <Settings user={user} signOut={signOut} refreshUser={refreshUser} />,
     privacy: <PrivacyPolicy />,
+    admin: admin && !readOnly ? (
+      <AdminLayout
+        currentAdminId={user?.id}
+        onViewAs={(uid) => { setViewAsUserId(uid); navigate("home"); }}
+        onLeaveAdmin={() => navigate("home")}
+      />
+    ) : <Home setScreen={setScreen} userName={userName} />,
   };
 
   return (
@@ -1495,7 +1506,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
               <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
             </Tooltip>
             {admin && !readOnly && (
-              <button className="admin-btn" onClick={() => setShowAdmin(true)}>
+              <button className="admin-btn" onClick={() => navigate("admin")}>
                 Admin
               </button>
             )}
@@ -1542,15 +1553,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {!hideFab && <BottomTabs />}
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-        {showAdmin && (
-          <Suspense fallback={null}>
-            <AdminPanel
-              onViewAs={(uid) => { setViewAsUserId(uid); setShowAdmin(false); setScreen("home"); }}
-              onClose={() => setShowAdmin(false)}
-              currentAdminId={user?.id}
-            />
-          </Suspense>
-        )}
         {user && !demo && !readOnly && (
           <BugReportSheet open={bugReportOpen} onClose={() => setBugReportOpen(false)} user={user} screen={screen} />
         )}

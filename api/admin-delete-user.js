@@ -7,7 +7,7 @@
    Auth: caller must be the admin (email === ADMIN_EMAIL) */
 
 import { getR2, BUCKET } from "./_r2.js";
-import { requireAdmin, getServiceClient, isValidUserId, deleteUserCascade } from "./_admin.js";
+import { requireAdmin, getServiceClient, isValidUserId, deleteUserCascade, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
 async function handler(req, res) {
@@ -40,6 +40,13 @@ async function handler(req, res) {
   if (!result.ok) {
     return res.status(500).json({ error: `Failed to delete ${result.failedTable}: ${result.error}` });
   }
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    targetUserId: userId,
+    action: "delete_user",
+    payload: { email: targetEmail || null },
+    req,
+  });
   return res.status(200).json({ ok: true });
 }
 

@@ -224,3 +224,27 @@ export const IconApple = ({ size = 18 }) => (
     <path d="M16.365 1.43c0 1.14-.45 2.22-1.17 3-.74.81-1.93 1.43-3.07 1.35-.12-1.12.44-2.26 1.15-3.01.78-.84 2.09-1.46 3.09-1.34zM20.5 17.36c-.57 1.26-.84 1.82-1.57 2.93-1.01 1.55-2.44 3.48-4.21 3.5-1.58.02-1.98-1.03-4.12-1.02-2.14.01-2.58 1.03-4.16 1.01-1.77-.02-3.12-1.76-4.13-3.31C-.55 16.77-.81 10.71 2.2 7.63c1.07-1.1 2.54-1.8 4.03-1.8 1.55 0 2.53.85 3.81.85 1.24 0 2-.85 3.79-.85 1.34 0 2.77.73 3.78 1.99-3.32 1.82-2.78 6.56.89 7.54z"/>
   </svg>
 );
+
+// Admin dashboard nav icons. Same I-base as the rest of the icon
+// family so they inherit currentColor + standard stroke weight.
+export const IconBarChart = (p) => (
+  <I {...p}><line x1="4" y1="20" x2="4" y2="10"/><line x1="10" y1="20" x2="10" y2="4"/><line x1="16" y1="20" x2="16" y2="14"/><line x1="22" y1="20" x2="2" y2="20"/></I>
+);
+export const IconList = (p) => (
+  <I {...p}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></I>
+);
+export const IconWrench = (p) => (
+  <I {...p}><path d="M14.7 6.3a4 4 0 11-5.6 5.6L3 18l3 3 6.1-6.1a4 4 0 015.6-5.6l-2 2-1.6-1.6 2-2z"/></I>
+);
+export const IconActivity = (p) => (
+  <I {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></I>
+);
+export const IconMenu = (p) => (
+  <I {...p}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></I>
+);
+export const IconChevronRight = (p) => (
+  <I {...p}><polyline points="9 18 15 12 9 6"/></I>
+);
+export const IconArrowLeft = (p) => (
+  <I {...p}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></I>
+);

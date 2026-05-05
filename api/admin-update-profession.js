@@ -5,7 +5,7 @@
    Body: { userId: uuid, profession: string }
    Auth: caller must be the admin (email === ADMIN_EMAIL) */
 
-import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
+import { requireAdmin, getServiceClient, isValidUserId, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
 const ALLOWED = new Set([
@@ -33,6 +33,14 @@ async function handler(req, res) {
     return res.status(500).json({ error: err?.message || "Service client unavailable" });
   }
 
+  // Read the previous profession FIRST so the audit trail captures the
+  // before/after pair.
+  const { data: prior } = await svc
+    .from("user_profiles")
+    .select("profession")
+    .eq("user_id", userId)
+    .maybeSingle();
+
   // Upsert: target user might lack a row (shouldn't happen post-021,
   // but a future user signed up before backfill could). on_conflict
   // overwrites the existing profession + bumps updated_at.
@@ -45,6 +53,13 @@ async function handler(req, res) {
   if (error) {
     return res.status(500).json({ error: error.message || "Update failed" });
   }
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    targetUserId: userId,
+    action: "update_profession",
+    payload: { from: prior?.profession || null, to: profession },
+    req,
+  });
   return res.status(200).json({ ok: true, profession });
 }
 

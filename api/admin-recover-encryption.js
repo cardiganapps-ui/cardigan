@@ -17,7 +17,7 @@
    scope — it's a few KB and idempotent imports are cheap. */
 
 import crypto from "node:crypto";
-import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
+import { requireAdmin, getServiceClient, isValidUserId, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
 let cachedPrivateKey = null;
@@ -80,6 +80,13 @@ async function handler(req, res) {
     kid: row.recovery_kid,
     ts: new Date().toISOString(),
   }));
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    targetUserId: userId,
+    action: "recover_encryption",
+    payload: { kid: row.recovery_kid },
+    req,
+  });
 
   return res.status(200).json({
     master_key: masterKeyBytes.toString("base64"),

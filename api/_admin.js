@@ -57,6 +57,38 @@ export function getServiceClient() {
   });
 }
 
+/* ── logAuditEvent ─────────────────────────────────────────────────────
+   Append an immutable row to admin_audit_log. Called by every
+   /api/admin-* endpoint AFTER the primary action has succeeded, so a
+   logging failure can never block the user-visible operation
+   (compliance trade-off: prefer "succeeded but audit missed" over
+   "blocked because audit table was briefly unreachable").
+
+   Reads IP + UA from request headers (best-effort). The table has no
+   INSERT policy — only the service-role client can write, which is
+   exactly what we have here. */
+export async function logAuditEvent(svc, { actorId, targetUserId, action, payload, req } = {}) {
+  if (!svc || !actorId || !action) return;
+  try {
+    const ip = req
+      ? (req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || null)
+      : null;
+    const ua = req?.headers?.["user-agent"] || null;
+    await svc.from("admin_audit_log").insert({
+      actor_id: actorId,
+      target_user_id: targetUserId || null,
+      action,
+      payload: payload || null,
+      ip,
+      ua,
+    });
+  } catch (err) {
+    // Swallowed by design — never fail the parent endpoint on audit
+    // table unavailability. Vercel function logs will show it.
+    console.warn("audit log write failed:", err?.message);
+  }
+}
+
 export function isValidUserId(id) {
   // UUID v4-ish validation to guard against malformed input that could
   // slip into SQL filters or admin API calls.

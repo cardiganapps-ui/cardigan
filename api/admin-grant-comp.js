@@ -24,7 +24,7 @@
    in its confirmation copy ("This grants free access until you revoke
    it"). This endpoint just flips the flag. */
 
-import { requireAdmin, getServiceClient, isValidUserId } from "./_admin.js";
+import { requireAdmin, getServiceClient, isValidUserId, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
 async function handler(req, res) {
@@ -99,6 +99,13 @@ async function handler(req, res) {
     if (error) return res.status(500).json({ error: error.message });
   }
 
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    targetUserId: userId,
+    action: granted ? "grant_comp" : "revoke_comp",
+    payload: granted ? { reason: reason || null } : null,
+    req,
+  });
   return res.status(200).json({ ok: true, comp_granted: granted });
 }
 

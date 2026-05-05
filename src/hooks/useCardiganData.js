@@ -356,6 +356,63 @@ export async function deleteBugReport(id) {
   if (error) throw error;
 }
 
+/* ── Admin Dashboard v2 — composed reads ──
+   These three helpers feed the dedicated `#admin/...` dashboard.
+   Each is admin-gated server-side (RPC via is_admin() RLS or
+   requireAdmin in the Vercel function). */
+export async function fetchUserDetail(uid) {
+  const headers = await authHeaders();
+  const res = await fetch(`/api/admin-user-detail?uid=${encodeURIComponent(uid)}`, { method: "GET", headers });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || "Fetch failed");
+  return j;
+}
+
+export async function fetchAuditLog({ targetUserId = null, action = null, actorId = null, limit = 200 } = {}) {
+  let q = supabase
+    .from("admin_audit_log")
+    .select("id, actor_id, target_user_id, action, payload, ip, ua, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (targetUserId) q = q.eq("target_user_id", targetUserId);
+  if (action) q = q.eq("action", action);
+  if (actorId) q = q.eq("actor_id", actorId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchRevenueOverview() {
+  const { data, error } = await supabase.rpc("admin_revenue_overview");
+  if (error) throw error;
+  return data;
+}
+
+/* Recent invoices for the Revenue page. Caps at 50 — admin can
+   drill into Stripe for the full ledger. */
+export async function fetchRecentInvoices({ limit = 50 } = {}) {
+  const { data, error } = await supabase
+    .from("stripe_invoices")
+    .select("id, user_id, amount_cents, currency, paid_at, hosted_invoice_url, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+/* Client-initiated audit log entry. Used by "Ver como" since the
+   impersonation flow is a state flip in the React app, not a server
+   round-trip — without this the audit log would have a gap on every
+   view-as event. */
+export async function logAdminViewAs(targetUserId) {
+  const headers = await authHeaders();
+  await fetch("/api/admin-audit", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ action: "view_as", targetUserId, payload: null }),
+  }).catch(() => { /* best-effort, never block view-as on logging */ });
+}
+
 export function useCardiganData(user, viewAsUserId, options = {}) {
   const userId = viewAsUserId || user?.id;
   const readOnly = !!viewAsUserId;

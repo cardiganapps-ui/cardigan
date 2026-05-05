@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { IconSearch, IconX, IconUsers, IconCalendar, IconDollar, IconClipboard, IconDocument, IconHome, IconUserPlus, IconCalendarPlus } from "./Icons";
+import { IconSearch, IconX, IconUsers, IconCalendar, IconDollar, IconClipboard, IconDocument, IconHome, IconUserPlus, IconCalendarPlus, IconShield, IconBarChart, IconTrendingUp, IconTag, IconBug, IconActivity } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useT } from "../i18n/index";
+import { fetchAllAccounts } from "../hooks/useCardiganData";
 
 const NAV_COMMANDS = [
   { id: "nav:home",     group: "Navegar", labelKey: "nav.home",      screen: "home",     Icon: IconHome },
@@ -11,6 +12,22 @@ const NAV_COMMANDS = [
   { id: "nav:finances", group: "Navegar", labelKey: "nav.finances",  screen: "finances", Icon: IconDollar },
   { id: "nav:archivo",  group: "Navegar", labelKey: "nav.archivo",   screen: "archivo",  Icon: IconDocument },
   { id: "nav:settings", group: "Navegar", labelKey: "nav.settings",  screen: "settings", Icon: IconClipboard },
+];
+
+// Admin nav commands. Surfaced ONLY when ctx.isAdminUser is true. Each
+// runs `navigate("admin/<section>")` so the per-section URL is
+// deep-linkable and the admin layout's useAdminRoute hook reads it on
+// mount.
+const ADMIN_COMMANDS = [
+  { id: "admin:overview",    group: "Admin", label: "Admin: Overview",     target: "admin/overview",    Icon: IconHome },
+  { id: "admin:users",       group: "Admin", label: "Admin: Users",        target: "admin/users",       Icon: IconUsers },
+  { id: "admin:revenue",     group: "Admin", label: "Admin: Revenue",      target: "admin/revenue",     Icon: IconDollar },
+  { id: "admin:acquisition", group: "Admin", label: "Admin: Acquisition",  target: "admin/acquisition", Icon: IconTrendingUp },
+  { id: "admin:codes",       group: "Admin", label: "Admin: Codes",        target: "admin/codes",       Icon: IconTag },
+  { id: "admin:reports",     group: "Admin", label: "Admin: Reports",      target: "admin/reports",     Icon: IconBug },
+  { id: "admin:audit",       group: "Admin", label: "Admin: Audit",        target: "admin/audit",       Icon: IconShield },
+  { id: "admin:health",      group: "Admin", label: "Admin: Health",       target: "admin/health",      Icon: IconActivity },
+  { id: "admin:metrics",     group: "Admin", label: "Admin: Métricas (alias)", target: "admin/overview",  Icon: IconBarChart },
 ];
 
 const ACTION_COMMANDS = [
@@ -35,7 +52,11 @@ function score(query, text) {
 
 export default function CommandPalette({ open, onClose }) {
   const { t } = useT();
-  const { navigate, patients, requestFabAction, openExpediente } = useCardigan();
+  const { navigate, patients, requestFabAction, openExpediente, isAdminUser } = useCardigan();
+  // Admin account list — lazy-fetched the first time the palette opens
+  // for an admin so non-admin sessions never make this round-trip.
+  const [adminAccounts, setAdminAccounts] = useState([]);
+  const adminFetchedRef = useRef(false);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef(null);
@@ -61,6 +82,16 @@ export default function CommandPalette({ open, onClose }) {
     return () => clearTimeout(id);
   }, [open]);
 
+  // First-open lazy fetch of every account so the admin can jump to
+  // any user's detail page from the palette. Skipped for non-admins.
+  useEffect(() => {
+    if (!open || !isAdminUser || adminFetchedRef.current) return;
+    adminFetchedRef.current = true;
+    fetchAllAccounts()
+      .then((rows) => setAdminAccounts(rows || []))
+      .catch(() => { adminFetchedRef.current = false; });
+  }, [open, isAdminUser]);
+
   const commands = useMemo(() => {
     const navCmds = NAV_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { navigate(c.screen); onClose(); } }));
     const actionCmds = ACTION_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { requestFabAction?.(c.fabKey); onClose(); } }));
@@ -71,8 +102,20 @@ export default function CommandPalette({ open, onClose }) {
       Icon: IconUsers,
       run: () => { openExpediente?.(p); onClose(); },
     }));
-    return [...navCmds, ...actionCmds, ...patientCmds];
-  }, [patients, t, navigate, requestFabAction, openExpediente, onClose]);
+    const adminNavCmds = isAdminUser
+      ? ADMIN_COMMANDS.map((c) => ({ ...c, run: () => { navigate(c.target); onClose(); } }))
+      : [];
+    const adminAccountCmds = isAdminUser
+      ? adminAccounts.map((a) => ({
+          id: `adminUser:${a.userId}`,
+          group: "Admin · usuarios",
+          label: a.fullName ? `${a.fullName} · ${a.email || ""}` : (a.email || a.userId.slice(0, 8) + "…"),
+          Icon: IconUsers,
+          run: () => { navigate(`admin/users/${a.userId}`); onClose(); },
+        }))
+      : [];
+    return [...navCmds, ...actionCmds, ...adminNavCmds, ...patientCmds, ...adminAccountCmds];
+  }, [patients, t, navigate, requestFabAction, openExpediente, onClose, isAdminUser, adminAccounts]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) {

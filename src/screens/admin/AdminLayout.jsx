@@ -1,0 +1,206 @@
+import { useState, useEffect, useCallback } from "react";
+import { useAdminRoute } from "./useAdminRoute";
+import {
+  IconHome, IconUsers, IconDollar, IconTrendingUp, IconTag, IconBug, IconShield,
+  IconActivity, IconMenu, IconX, IconChevronRight, IconArrowLeft, IconLogOut,
+} from "../../components/Icons";
+import { LogoIcon } from "../../components/LogoMark";
+import { AdminOverview } from "./AdminOverview";
+import { AdminUsers } from "./AdminUsers";
+import { AdminUserDetail } from "./AdminUserDetail";
+import { AdminRevenue } from "./AdminRevenue";
+import { AdminAcquisition } from "./AdminAcquisition";
+import { AdminCodes } from "./AdminCodes";
+import { AdminReports } from "./AdminReports";
+import { AdminAudit } from "./AdminAudit";
+import { AdminHealth } from "./AdminHealth";
+
+const SECTIONS = [
+  { key: "overview",    label: "Overview",    icon: IconHome,        group: "insights" },
+  { key: "users",       label: "Users",       icon: IconUsers,       group: "insights" },
+  { key: "revenue",     label: "Revenue",     icon: IconDollar,      group: "insights" },
+  { key: "acquisition", label: "Acquisition", icon: IconTrendingUp,  group: "insights" },
+  { key: "codes",       label: "Codes",       icon: IconTag,         group: "ops" },
+  { key: "reports",     label: "Reports",     icon: IconBug,         group: "ops" },
+  { key: "audit",       label: "Audit",       icon: IconShield,      group: "ops" },
+  { key: "health",      label: "Health",      icon: IconActivity,    group: "ops" },
+];
+
+const TITLE_BY_SECTION = {
+  overview: "Overview",
+  users: "Users",
+  revenue: "Revenue",
+  acquisition: "Acquisition",
+  codes: "Codes",
+  reports: "Reports",
+  audit: "Audit log",
+  health: "Health",
+};
+
+/* ── AdminLayout ──
+   Shell + sidebar + header for the dedicated `#admin/...` family.
+   Hash routing only — `useAdminRoute` parses the section and id, and
+   navigation between pages updates `window.location.hash` via
+   replaceState to avoid history spam (matches useNavigation's
+   pattern). Leaving admin (Salir) navigates the parent router back to
+   `#home`.
+
+   On mobile (<900px) the rail collapses to a slide-in drawer behind
+   a hamburger; on desktop it's a fixed 224px column. */
+export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
+  const route = useAdminRoute();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Close the mobile drawer when the section changes — without this,
+  // tapping a section on a small viewport leaves the drawer open over
+  // the new content. set-state-in-effect is the right shape here:
+  // the drawer's "open" state is genuinely derived from the route,
+  // not from its own external system.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setDrawerOpen(false); }, [route.section, route.id]);
+
+  // Esc closes the mobile drawer.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") setDrawerOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  const goSection = useCallback((section) => {
+    route.navigate(section);
+  }, [route]);
+
+  const handleViewAs = useCallback((uid) => {
+    onViewAs?.(uid);
+  }, [onViewAs]);
+
+  // Build breadcrumbs. User Detail gets a parent crumb back to /users.
+  const breadcrumbs = [];
+  breadcrumbs.push({ label: "Admin", onClick: () => goSection("overview") });
+  if (route.section === "users" && route.id) {
+    breadcrumbs.push({ label: "Users", onClick: () => goSection("users") });
+    breadcrumbs.push({ label: "Detalle" });
+  } else {
+    breadcrumbs.push({ label: TITLE_BY_SECTION[route.section] || "Overview" });
+  }
+
+  const insightsSections = SECTIONS.filter(s => s.group === "insights");
+  const opsSections = SECTIONS.filter(s => s.group === "ops");
+
+  let pageTitle = TITLE_BY_SECTION[route.section] || "Overview";
+  if (route.section === "users" && route.id) pageTitle = "Detalle de usuario";
+
+  let body;
+  switch (route.section) {
+    case "users":
+      body = route.id
+        ? <AdminUserDetail uid={route.id} onViewAs={handleViewAs} onBack={() => goSection("users")} currentAdminId={currentAdminId} />
+        : <AdminUsers onViewAs={handleViewAs} onSelect={(uid) => route.navigate("users", uid)} currentAdminId={currentAdminId} />;
+      break;
+    case "revenue":     body = <AdminRevenue />; break;
+    case "acquisition": body = <AdminAcquisition />; break;
+    case "codes":       body = <AdminCodes />; break;
+    case "reports":     body = <AdminReports />; break;
+    case "audit":       body = <AdminAudit />; break;
+    case "health":      body = <AdminHealth />; break;
+    case "overview":
+    default:
+      body = <AdminOverview onJump={goSection} />;
+  }
+
+  return (
+    <div className="admin-shell">
+      {drawerOpen && (
+        <div className="admin-rail-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
+      )}
+      <aside className={`admin-rail${drawerOpen ? " admin-rail--open" : ""}`} aria-label="Admin navigation">
+        <div className="admin-rail-brand">
+          <LogoIcon size={18} color="currentColor" />
+          <div>
+            <div>cardigan</div>
+            <div className="admin-rail-brand-meta">Admin</div>
+          </div>
+        </div>
+
+        <div className="admin-rail-section-label">Insights</div>
+        {insightsSections.map((s) => {
+          const Icon = s.icon;
+          const active = route.section === s.key;
+          return (
+            <button key={s.key} type="button"
+              className={`admin-rail-item${active ? " admin-rail-item--active" : ""}`}
+              onClick={() => goSection(s.key)}>
+              <span className="admin-rail-icon"><Icon size={16} /></span>
+              <span>{s.label}</span>
+            </button>
+          );
+        })}
+
+        <div className="admin-rail-section-label" style={{ marginTop: 6 }}>Operaciones</div>
+        {opsSections.map((s) => {
+          const Icon = s.icon;
+          const active = route.section === s.key;
+          return (
+            <button key={s.key} type="button"
+              className={`admin-rail-item${active ? " admin-rail-item--active" : ""}`}
+              onClick={() => goSection(s.key)}>
+              <span className="admin-rail-icon"><Icon size={16} /></span>
+              <span>{s.label}</span>
+            </button>
+          );
+        })}
+
+        <div className="admin-rail-footer">
+          <span className="admin-rail-badge">Modo administrador</span>
+          <button type="button" className="admin-rail-item" onClick={() => onLeaveAdmin?.()}>
+            <span className="admin-rail-icon"><IconLogOut size={16} /></span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <header className="admin-header">
+          <div className="admin-header-left">
+            <button type="button" className="admin-hamburger" aria-label="Menu"
+              onClick={() => setDrawerOpen((o) => !o)}>
+              {drawerOpen ? <IconX size={18} /> : <IconMenu size={18} />}
+            </button>
+            {route.section === "users" && route.id && (
+              <button type="button"
+                onClick={() => goSection("users")}
+                style={{
+                  background: "none", border: "none", padding: 0, cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", color: "var(--charcoal-md)",
+                }}
+                aria-label="Volver">
+                <IconArrowLeft size={18} />
+              </button>
+            )}
+            <div className="admin-breadcrumbs" aria-label="Breadcrumb">
+              {breadcrumbs.map((c, i) => (
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {i > 0 && <span className="admin-breadcrumb-sep"><IconChevronRight size={12} /></span>}
+                  {c.onClick ? <button type="button" onClick={c.onClick}>{c.label}</button> : <span>{c.label}</span>}
+                </span>
+              ))}
+            </div>
+          </div>
+          <h1 className="admin-page-title">{pageTitle}</h1>
+          <div className="admin-header-actions">
+            {/* Page-specific actions (e.g. "Nuevo código") are rendered
+                inside each page rather than plumbed through here — keeps
+                pages self-contained and the layout stable. */}
+          </div>
+        </header>
+
+        <div className="admin-content">
+          <div className="admin-content-inner">
+            {body}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
