@@ -379,6 +379,23 @@ button.avatar-sm::before {
   0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
   50% { transform: scale(1.15) rotate(180deg); opacity: 0.7; }
 }
+
+/* Cardigan boot splash — subtle breathing on the logo to indicate
+   "loading, not stuck" without veering into spinner territory. The
+   ease-in-out + slow ~1.8s tempo reads as calm + premium. Disabled
+   for users with reduced-motion preferences. */
+.cardigan-splash-logo {
+  display: inline-flex;
+  transform-origin: center;
+  animation: cardiganSplashBreathe 1.8s var(--ease-in-out) infinite;
+}
+@keyframes cardiganSplashBreathe {
+  0%, 100% { transform: scale(0.96); opacity: 0.72; }
+  50%      { transform: scale(1.04); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardigan-splash-logo { animation: none; }
+}
 @keyframes ptr-check-in {
   0% { transform: scale(0) rotate(-90deg); opacity: 0; }
   60% { transform: scale(1.15) rotate(8deg); opacity: 1; }

@@ -182,7 +182,9 @@ function CardiganApp() {
   if (authLoading && !demoMode) {
     return (
       <div className="shell" style={{ justifyContent:"center", alignItems:"center", gap:12 }}>
-        <LogoIcon size={48} color="var(--teal)" />
+        <span className="cardigan-splash-logo" aria-hidden="true">
+          <LogoIcon size={48} color="var(--teal)" />
+        </span>
         <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.3px" }}>cardigan</div>
       </div>
     );
