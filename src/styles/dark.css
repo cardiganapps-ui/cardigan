@@ -203,21 +203,72 @@ html[data-theme="dark"] .topbar-new-btn:hover { background: #FFFFFF; }
 
 /* ── Admin dashboard dark overrides ──
    Admin surfaces use the existing --white / --charcoal tokens almost
-   everywhere, so most of the dashboard inverts cleanly. The few hard-
-   coded accents below need explicit dark counterparts so the rail's
-   active state and table hover stay readable. */
-html[data-theme="dark"] .admin-shell { background: #1A1A1A; }
-html[data-theme="dark"] .admin-rail { background: #1F1F1F; border-right-color: #2F2F2F; }
-html[data-theme="dark"] .admin-rail-item:hover { background: #242424; color: #EAEAEA; }
+   everywhere, so most of the dashboard inverts cleanly. The hard-
+   coded charcoals below give the rail / header / cards real depth in
+   dark mode — without them the "elevated card on cream" look we get
+   in light collapses to a flat grey-on-grey wash.
+
+   Hierarchy (darkest → lightest):
+     #161616  shell bg (canvas)
+     #1E1E1E  card / rail / header bg (elevated)
+     #2A2A2A  hover surface, borders */
+html[data-theme="dark"] .admin-shell { background: #161616; }
+html[data-theme="dark"] .admin-rail {
+  background: #1E1E1E;
+  border-right-color: #2A2A2A;
+}
+html[data-theme="dark"] .admin-rail-section-label { color: #8A8A8A; }
+html[data-theme="dark"] .admin-rail-brand { color: #EAEAEA; }
+html[data-theme="dark"] .admin-rail-item { color: #BFBFBF; }
+html[data-theme="dark"] .admin-rail-item:hover { background: #2A2A2A; color: #EAEAEA; }
 html[data-theme="dark"] .admin-rail-item--active,
 html[data-theme="dark"] .admin-rail-item--active:hover {
-  background: #1B3A42; color: #E0F2F4;
+  background: #1B3A42;
+  color: #E0F2F4;
 }
-html[data-theme="dark"] .admin-header { background: #1F1F1F; border-bottom-color: #2F2F2F; }
-html[data-theme="dark"] .admin-card { background: #1F1F1F; border-color: #2F2F2F; box-shadow: none; }
-html[data-theme="dark"] .admin-table thead th { background: #1A1A1A; color: #BFBFBF; border-bottom-color: #2F2F2F; }
-html[data-theme="dark"] .admin-table tbody td { border-bottom-color: #2F2F2F; }
-html[data-theme="dark"] .admin-table tbody tr:hover { background: #242424; }
+html[data-theme="dark"] .admin-rail-footer { border-top-color: #2A2A2A; }
+html[data-theme="dark"] .admin-rail-badge { color: #8A8A8A; }
+html[data-theme="dark"] .admin-header {
+  background: #1E1E1E;
+  border-bottom-color: #2A2A2A;
+}
+html[data-theme="dark"] .admin-page-title { color: #EAEAEA; }
+html[data-theme="dark"] .admin-breadcrumbs,
+html[data-theme="dark"] .admin-breadcrumbs button,
+html[data-theme="dark"] .admin-breadcrumb-sep { color: #8A8A8A; }
+html[data-theme="dark"] .admin-breadcrumbs button:hover { color: #BFBFBF; }
+html[data-theme="dark"] .admin-card {
+  background: #1E1E1E;
+  border-color: #2A2A2A;
+  /* A sliver of inner highlight + ambient lift gives the card a real
+     elevated feel against the near-black canvas; pure flat reads as
+     a single grey block. */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    0 1px 2px rgba(0,0,0,0.4),
+    0 6px 18px rgba(0,0,0,0.25);
+}
+html[data-theme="dark"] .admin-card-title { color: #EAEAEA; }
+html[data-theme="dark"] .admin-card-sub { color: #8A8A8A; }
+html[data-theme="dark"] .admin-table thead th {
+  background: #1A1A1A;
+  color: #8A8A8A;
+  border-bottom-color: #2A2A2A;
+}
+html[data-theme="dark"] .admin-table tbody td { border-bottom-color: #2A2A2A; color: #D8D8D8; }
+html[data-theme="dark"] .admin-table tbody tr:hover { background: #2A2A2A; }
 html[data-theme="dark"] .admin-search-input,
-html[data-theme="dark"] .admin-filter-pill { background: #242424; border-color: #3A3A3A; color: #EAEAEA; }
-html[data-theme="dark"] .admin-filter-pill--active { background: #1B3A42; color: #E0F2F4; border-color: #2D6577; }
+html[data-theme="dark"] .admin-filter-pill {
+  background: #2A2A2A;
+  border-color: #3A3A3A;
+  color: #EAEAEA;
+}
+html[data-theme="dark"] .admin-filter-pill:hover { background: #333333; }
+html[data-theme="dark"] .admin-filter-pill--active {
+  background: #1B3A42;
+  color: #E0F2F4;
+  border-color: #2D6577;
+}
+html[data-theme="dark"] .admin-empty { color: #8A8A8A; }
+html[data-theme="dark"] .admin-hamburger { color: #EAEAEA; }
+html[data-theme="dark"] .admin-hamburger:hover { background: #2A2A2A; }

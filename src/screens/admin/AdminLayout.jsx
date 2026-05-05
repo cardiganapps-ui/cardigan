@@ -162,36 +162,38 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
 
       <main className="admin-main">
         <header className="admin-header">
-          <div className="admin-header-left">
-            <button type="button" className="admin-hamburger" aria-label="Menu"
-              onClick={() => setDrawerOpen((o) => !o)}>
-              {drawerOpen ? <IconX size={18} /> : <IconMenu size={18} />}
-            </button>
-            {route.section === "users" && route.id && (
-              <button type="button"
-                onClick={() => goSection("users")}
-                style={{
-                  background: "none", border: "none", padding: 0, cursor: "pointer",
-                  display: "inline-flex", alignItems: "center", color: "var(--charcoal-md)",
-                }}
-                aria-label="Volver">
-                <IconArrowLeft size={18} />
+          <div className="admin-header-row">
+            <div className="admin-header-left">
+              <button type="button" className="admin-hamburger" aria-label="Menu"
+                onClick={() => setDrawerOpen((o) => !o)}>
+                {drawerOpen ? <IconX size={18} /> : <IconMenu size={18} />}
               </button>
-            )}
-            <div className="admin-breadcrumbs" aria-label="Breadcrumb">
-              {breadcrumbs.map((c, i) => (
-                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  {i > 0 && <span className="admin-breadcrumb-sep"><IconChevronRight size={12} /></span>}
-                  {c.onClick ? <button type="button" onClick={c.onClick}>{c.label}</button> : <span>{c.label}</span>}
-                </span>
-              ))}
+              {route.section === "users" && route.id && (
+                <button type="button"
+                  onClick={() => goSection("users")}
+                  style={{
+                    background: "none", border: "none", padding: 0, cursor: "pointer",
+                    display: "inline-flex", alignItems: "center", color: "var(--charcoal-md)",
+                  }}
+                  aria-label="Volver">
+                  <IconArrowLeft size={18} />
+                </button>
+              )}
+              <nav className="admin-breadcrumbs" aria-label="Breadcrumb">
+                {breadcrumbs.map((c, i) => (
+                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {i > 0 && <span className="admin-breadcrumb-sep"><IconChevronRight size={12} /></span>}
+                    {c.onClick ? <button type="button" onClick={c.onClick}>{c.label}</button> : <span>{c.label}</span>}
+                  </span>
+                ))}
+              </nav>
             </div>
-          </div>
-          <h1 className="admin-page-title">{pageTitle}</h1>
-          <div className="admin-header-actions">
-            {/* Page-specific actions (e.g. "Nuevo código") are rendered
-                inside each page rather than plumbed through here — keeps
-                pages self-contained and the layout stable. */}
+            <h1 className="admin-page-title">{pageTitle}</h1>
+            <div className="admin-header-actions">
+              {/* Page-specific actions (e.g. "Nuevo código") are rendered
+                  inside each page rather than plumbed through here — keeps
+                  pages self-contained and the layout stable. */}
+            </div>
           </div>
         </header>
 
