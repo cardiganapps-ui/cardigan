@@ -115,6 +115,8 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
         <div className="admin-rail-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
       )}
       <aside className={`admin-rail${drawerOpen ? " admin-rail--open" : ""}`} aria-label="Admin navigation">
+        {/* Top zone — pinned. Bakes safe-area-top so the brand isn't
+            crammed under the iOS status bar. */}
         <div className="admin-rail-brand">
           <LogoIcon size={18} color="currentColor" />
           <div>
@@ -123,34 +125,41 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
           </div>
         </div>
 
-        <div className="admin-rail-section-label">Insights</div>
-        {insightsSections.map((s) => {
-          const Icon = s.icon;
-          const active = route.section === s.key;
-          return (
-            <button key={s.key} type="button"
-              className={`admin-rail-item${active ? " admin-rail-item--active" : ""}`}
-              onClick={() => goSection(s.key)}>
-              <span className="admin-rail-icon"><Icon size={16} /></span>
-              <span>{s.label}</span>
-            </button>
-          );
-        })}
+        {/* Middle zone — only this scrolls (matches .drawer-nav).
+            Long item lists or short viewports keep the brand and
+            footer visible while the user scrolls between sections. */}
+        <div className="admin-rail-nav">
+          <div className="admin-rail-section-label">Insights</div>
+          {insightsSections.map((s) => {
+            const Icon = s.icon;
+            const active = route.section === s.key;
+            return (
+              <button key={s.key} type="button"
+                className={`admin-rail-item${active ? " admin-rail-item--active" : ""}`}
+                onClick={() => goSection(s.key)}>
+                <span className="admin-rail-icon"><Icon size={16} /></span>
+                <span>{s.label}</span>
+              </button>
+            );
+          })}
 
-        <div className="admin-rail-section-label" style={{ marginTop: 6 }}>Operaciones</div>
-        {opsSections.map((s) => {
-          const Icon = s.icon;
-          const active = route.section === s.key;
-          return (
-            <button key={s.key} type="button"
-              className={`admin-rail-item${active ? " admin-rail-item--active" : ""}`}
-              onClick={() => goSection(s.key)}>
-              <span className="admin-rail-icon"><Icon size={16} /></span>
-              <span>{s.label}</span>
-            </button>
-          );
-        })}
+          <div className="admin-rail-section-label" style={{ marginTop: 6 }}>Operaciones</div>
+          {opsSections.map((s) => {
+            const Icon = s.icon;
+            const active = route.section === s.key;
+            return (
+              <button key={s.key} type="button"
+                className={`admin-rail-item${active ? " admin-rail-item--active" : ""}`}
+                onClick={() => goSection(s.key)}>
+                <span className="admin-rail-icon"><Icon size={16} /></span>
+                <span>{s.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
+        {/* Bottom zone — pinned. Bakes safe-area-bottom so the
+            "Salir" button stays clear of the home indicator. */}
         <div className="admin-rail-footer">
           <span className="admin-rail-badge">Modo administrador</span>
           <button type="button" className="admin-rail-item" onClick={() => onLeaveAdmin?.()}>

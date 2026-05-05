@@ -21,8 +21,12 @@
 }
 
 /* Sidebar rail. White surface with a 1px right border so the cream
-   page bg fills the gutter beyond it cleanly. Top padding lifts past
-   the iOS notch / status bar; bottom respects the home indicator. */
+   page bg fills the gutter beyond it cleanly. Three-zone layout
+   mirrors the main app's .drawer-panel — brand pinned at top (under
+   the safe-area inset), nav scrolls in the middle, footer stays
+   pinned at bottom (above the home-indicator inset). Without this
+   the whole rail would scroll and the brand/Salir would slide out
+   of view on a tall nav. */
 .admin-rail {
   width: 232px;
   flex-shrink: 0;
@@ -30,22 +34,24 @@
   border-right: 1px solid var(--border-lt);
   display: flex;
   flex-direction: column;
-  padding: calc(var(--sat, 0px) + 16px) 12px calc(var(--sab, 0px) + 14px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  /* No vertical padding here — each zone handles its own padding so
+     the scroll area can fill from edge to edge of the middle zone. */
+  padding: 0;
+  overflow: hidden;
 }
 
 .admin-rail-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 6px 18px;
+  padding: calc(var(--sat, 0px) + 16px) 18px 14px;
   font-family: var(--font-d);
   font-size: 16px;
   font-weight: 800;
   color: var(--charcoal);
   letter-spacing: -0.3px;
   line-height: 1.1;
+  flex-shrink: 0;
 }
 .admin-rail-brand-meta {
   font-size: 10px;
@@ -95,9 +101,28 @@
   justify-content: center;
 }
 
+/* Middle zone — only this scrolls. flex: 1 + min-height: 0 lets it
+   take all the leftover height between brand + footer; overflow-y
+   auto + momentum scroll mirrors .drawer-nav. */
+.admin-rail-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 4px 12px 12px;
+}
+/* Subtle scrollbar so the user can see overflow but it doesn't
+   compete with the nav items visually. Matches .drawer-nav's
+   responsive override pattern. */
+.admin-rail-nav::-webkit-scrollbar { width: 4px; }
+.admin-rail-nav::-webkit-scrollbar-track { background: transparent; }
+.admin-rail-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.admin-rail-nav { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
 .admin-rail-footer {
-  margin-top: auto;
-  padding-top: 14px;
+  flex-shrink: 0;
+  padding: 12px 12px calc(var(--sab, 0px) + 14px);
   border-top: 1px solid var(--border-lt);
   display: flex;
   flex-direction: column;
@@ -333,25 +358,52 @@
 .admin-hamburger:hover { background: var(--cream); }
 
 /* Mobile collapse: rail becomes a slide-in drawer at <900px.
-   Cadence matches the main app's .drawer-panel — same spring, same
-   slow duration — so the two drawers feel like the same primitive. */
+   Width / duration / easing match the main app's .drawer-panel
+   (78% with a 300px cap, 600ms cubic-bezier(0.34, 1.56, 0.64, 1)
+   = --dur-slower + --ease-spring) so the two drawers feel like the
+   exact same primitive. The rail keeps its `overflow-y: auto`
+   from the base rule so a tall nav + footer scrolls cleanly with
+   momentum on iOS. */
 @media (max-width: 900px) {
   .admin-rail {
     position: fixed;
     inset: 0 auto 0 0;
+    width: 78%;
+    max-width: 300px;
     z-index: 1;
     transform: translateX(-100%);
-    transition: transform var(--dur-slow) var(--ease-spring);
-    box-shadow: 4px 0 18px rgba(0,0,0,0.08);
+    transition: transform var(--dur-slower) var(--ease-spring);
+    will-change: transform;
+    /* Right-edge gradient shadow only when open — matches the
+       .drawer-panel::after pattern so the shell has the same depth
+       cue as the main drawer. */
+    box-shadow: none;
+  }
+  .admin-rail::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 100%;
+    width: 40px;
+    bottom: 0;
+    background: linear-gradient(to right, rgba(0,0,0,0.22), rgba(0,0,0,0));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-slow) ease;
   }
   .admin-rail--open { transform: translateX(0); }
+  .admin-rail--open::after { opacity: 1; }
+  /* Scrim always renders so it can fade in/out on the same cadence
+     as the panel slide — matching the main drawer's overlay. The
+     wrapper's onClick still dismisses; pointer-events disable when
+     fully transparent so it doesn't eat taps. */
   .admin-rail-scrim {
     position: fixed; inset: 0;
     background: var(--scrim-bg);
     z-index: 0;
     -webkit-backdrop-filter: var(--blur-drawer);
     backdrop-filter: var(--blur-drawer);
-    animation: fadeIn var(--dur-slow) ease;
+    animation: fadeIn var(--dur-slower) ease;
   }
   .admin-hamburger { display: inline-flex; }
   .admin-content { padding: 18px 16px calc(var(--sab, 0px) + 18px); }
