@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { fetchInfluencerCodes, toggleInfluencerCode } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
 import { haptic } from "../../utils/haptics";
@@ -6,43 +6,36 @@ import { IconPlus } from "../../components/Icons";
 import { NewCodeSheet } from "./parts/NewCodeSheet";
 import { CodeCreatedSheet } from "./parts/CodeCreatedSheet";
 import { CopyChip } from "./parts/CopyChip";
+import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
 
 /* ── AdminCodes ──
    Influencer / partner discount codes. Lifted from CodesTab in
-   AdminPanel.jsx with no behavior changes. */
+   AdminPanel.jsx with no behavior changes. Uses useAdminQuery with
+   optimistic mutate() so a toggle or create is reflected instantly
+   without waiting on a refetch. */
 export function AdminCodes() {
   const { t } = useT();
-  const [codes, setCodes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [justCreated, setJustCreated] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [toggleError, setToggleError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await fetchInfluencerCodes();
-      setCodes(data);
-    } catch (e) {
-      setError(e.message || t("admin.codesLoadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => { load(); }, [load]);
+  const { data: codes = [], loading, error, mutate } = useAdminQuery("codes", fetchInfluencerCodes);
 
   const onToggle = async (code) => {
     if (busyId) return;
     setBusyId(code.id);
-    setError("");
+    setToggleError("");
+    // Optimistic flip — instant feedback, server confirms shortly
+    mutate((prev) => (prev || []).map(c => c.id === code.id ? { ...c, active: !c.active } : c));
     try {
       await toggleInfluencerCode(code.id, !code.active);
-      setCodes(prev => prev.map(c => c.id === code.id ? { ...c, active: !c.active } : c));
+      // Acquisition page shows the same codes — drop its slot too.
+      invalidateAdminCache("acquisition");
     } catch (e) {
-      setError(e.message || t("admin.codesToggleError"));
+      // Revert the optimistic flip on failure
+      mutate((prev) => (prev || []).map(c => c.id === code.id ? { ...c, active: code.active } : c));
+      setToggleError(e.message || t("admin.codesToggleError"));
     } finally {
       setBusyId(null);
     }
@@ -50,9 +43,13 @@ export function AdminCodes() {
 
   const handleCreated = (newCode) => {
     setJustCreated(newCode);
-    setCodes(prev => [{ ...newCode, signup_count: 0, paid_count: 0 }, ...prev]);
+    mutate((prev) => [{ ...newCode, signup_count: 0, paid_count: 0 }, ...(prev || [])]);
+    invalidateAdminCache("acquisition");
     setShowNew(false);
   };
+
+  // Surface either the load error or the per-row toggle error.
+  const displayError = error || toggleError;
 
   return (
     <>
@@ -75,16 +72,16 @@ export function AdminCodes() {
           </button>
         </div>
 
-        {loading && <div className="admin-empty">{t("admin.codesLoading")}</div>}
-        {error && !loading && (
+        {loading && codes.length === 0 && <div className="admin-empty">{t("admin.codesLoading")}</div>}
+        {displayError && (
           <div style={{ background: "var(--red-bg)", color: "var(--red)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, marginBottom: 10 }}>
-            {error}
+            {displayError}
           </div>
         )}
         {!loading && codes.length === 0 && !error && (
           <div className="admin-empty">{t("admin.codesEmpty")}</div>
         )}
-        {!loading && codes.length > 0 && (
+        {codes.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {codes.map(c => (
               <CodeRow key={c.id} code={c} busy={busyId === c.id} onToggle={() => onToggle(c)} t={t} />

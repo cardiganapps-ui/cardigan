@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { fetchAuditLog } from "../../hooks/useCardiganData";
 import { downloadCsv } from "./parts/csv";
 import { IconDownload, IconSearch } from "../../components/Icons";
+import { useAdminQuery } from "./useAdminQuery";
 
 const ACTION_LABELS = {
   block_user: "Bloqueo de usuario",
@@ -35,26 +36,11 @@ const ACTION_FILTERS = [
    Chronological dump of admin_audit_log. Filters: action type + free
    text. CSV export supplies the raw rows for offline analysis. */
 export function AdminAudit() {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const r = await fetchAuditLog({ limit: 500 });
-      setRows(r);
-    } catch (e) {
-      setError(e.message || "Error al cargar");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  const fetcher = useCallback(() => fetchAuditLog({ limit: 500 }), []);
+  const { data: rows = [], loading, error } = useAdminQuery("audit", fetcher);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -113,10 +99,11 @@ export function AdminAudit() {
         </button>
       </div>
 
-      {loading && <div className="admin-empty">Cargando…</div>}
-      {error && <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>}
-      {!loading && !error && filtered.length === 0 && <div className="admin-empty">Sin eventos registrados.</div>}
-      {!loading && !error && filtered.length > 0 && (
+      {loading && rows.length === 0 && <div className="admin-empty">Cargando…</div>}
+      {error && rows.length === 0 && <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>}
+      {!loading && !error && filtered.length === 0 && rows.length > 0 && <div className="admin-empty">Sin resultados.</div>}
+      {!loading && !error && filtered.length === 0 && rows.length === 0 && <div className="admin-empty">Sin eventos registrados.</div>}
+      {filtered.length > 0 && (
         <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>

@@ -40,33 +40,24 @@ export function isAdmin(user) {
 }
 
 export async function fetchAllAccounts() {
-  let pData = [], profileData = [];
-  try {
-    const { data } = await supabase.from("patients").select("user_id, name, created_at").order("created_at");
-    pData = data || [];
-  } catch (e) {
-    // Admin-tooling diagnostic — keeps the failure visible in devtools
-    // so a "why is the admin list empty?" trace has a starting point.
-    // Not user-facing; the admin sees a graceful empty list either way.
-    console.error("fetchAllAccounts: patients query failed", e);
-  }
-  try {
-    const { data } = await supabase.rpc("get_user_profiles");
-    profileData = data || [];
-  } catch (e) {
-    console.error("fetchAllAccounts: get_user_profiles RPC failed", e);
-  }
-  // Subscription/comp/referral state per user. Admin RLS allows
-  // SELECT across all rows. A failure here is non-fatal — the panel
-  // still works without comp badges.
-  let subscriptionData = [];
-  try {
-    const { data } = await supabase.from("user_subscriptions")
-      .select("user_id, status, current_period_end, cancel_at_period_end, cancel_at, comp_granted, comp_granted_at, comp_reason, referral_rewards_count, default_payment_method, trial_extension_days");
-    subscriptionData = data || [];
-  } catch (e) {
-    console.error("fetchAllAccounts: user_subscriptions query failed", e);
-  }
+  // Three indexed reads run in parallel — sequential awaits added a
+  // visible "page is loading" delay on the admin Users tab even on
+  // a fast connection because each round-trip waited for the prior
+  // one. Promise.allSettled keeps the partial-failure semantics
+  // (panel still renders if subscriptions read fails, etc.).
+  const [pRes, profRes, subRes] = await Promise.allSettled([
+    supabase.from("patients").select("user_id, name, created_at").order("created_at"),
+    supabase.rpc("get_user_profiles"),
+    supabase.from("user_subscriptions")
+      .select("user_id, status, current_period_end, cancel_at_period_end, cancel_at, comp_granted, comp_granted_at, comp_reason, referral_rewards_count, default_payment_method, trial_extension_days"),
+  ]);
+  let pData = [], profileData = [], subscriptionData = [];
+  if (pRes.status === "fulfilled") pData = pRes.value.data || [];
+  else console.error("fetchAllAccounts: patients query failed", pRes.reason);
+  if (profRes.status === "fulfilled") profileData = profRes.value.data || [];
+  else console.error("fetchAllAccounts: get_user_profiles RPC failed", profRes.reason);
+  if (subRes.status === "fulfilled") subscriptionData = subRes.value.data || [];
+  else console.error("fetchAllAccounts: user_subscriptions query failed", subRes.reason);
 
   // Start from auth.users so accounts with zero patients still appear —
   // otherwise the admin can't block/delete a freshly-created empty

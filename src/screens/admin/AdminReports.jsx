@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { fetchBugReports, deleteBugReport, archiveBugReports } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
 import { IconCheck, IconDownload, IconSearch } from "../../components/Icons";
 import { BugReportRow } from "./parts/BugReportRow";
 import { downloadCsv } from "./parts/csv";
+import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
 
 function formatReportText(r) {
   const date = r.created_at ? new Date(r.created_at).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -35,45 +36,45 @@ function downloadReportsTxt(reports) {
    + CSV export added. */
 export function AdminReports() {
   const { t } = useT();
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [search, setSearch] = useState("");
+  const [actionError, setActionError] = useState("");
 
-  const load = useCallback(() => {
-    setLoading(true);
-    fetchBugReports({ archived: showArchived })
-      .then(r => { setReports(r); setError(""); setLoading(false); })
-      .catch(e => { setError(e.message || t("admin.bugsLoadError")); setLoading(false); });
-  }, [t, showArchived]);
-
-  useEffect(() => { load(); }, [load]);
+  // Cache key includes the active/archived flag so flipping the
+  // toggle doesn't blow away the other tab's already-loaded list.
+  const cacheKey = `reports:${showArchived ? "archived" : "active"}`;
+  const fetcher = useCallback(() => fetchBugReports({ archived: showArchived }), [showArchived]);
+  const { data: reports = [], loading, error: loadError, mutate } = useAdminQuery(cacheKey, fetcher);
 
   const handleDelete = async (id) => {
     await deleteBugReport(id);
-    setReports(prev => prev.filter(r => r.id !== id));
+    mutate((prev) => (prev || []).filter(r => r.id !== id));
   };
 
   const handleArchiveAll = async () => {
     setArchiving(true);
-    setError("");
+    setActionError("");
     try {
       const ids = reports.map(r => r.id);
       await archiveBugReports(ids);
       const fresh = await fetchBugReports({ archived: false });
       const stillPending = fresh.filter(r => ids.includes(r.id));
       if (stillPending.length > 0) throw new Error(t("admin.bugsArchiveFailed"));
-      setReports(fresh);
+      mutate(fresh);
+      // The "archived" tab now has new entries — drop its slot so
+      // flipping to it triggers a fresh fetch.
+      invalidateAdminCache("reports:archived");
       setConfirmArchive(false);
     } catch (e) {
-      setError(e.message || "Error");
+      setActionError(e.message || "Error");
     } finally {
       setArchiving(false);
     }
   };
+
+  const error = loadError || actionError;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

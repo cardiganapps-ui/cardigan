@@ -1,35 +1,23 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { fetchSignupSources, fetchInfluencerCodes } from "../../hooks/useCardiganData";
 import { AcquisitionSection } from "./parts/AcquisitionSection";
+import { useAdminQuery } from "./useAdminQuery";
 
 /* ── AdminAcquisition ──
    Full-page acquisition surface. Today: source breakdown + influencer
    code attribution table. Cohort matrix is v2. */
 export function AdminAcquisition() {
-  const [sources, setSources] = useState(null);
-  const [codes, setCodes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const fetcher = useCallback(() => Promise.all([
+    fetchSignupSources(),
+    fetchInfluencerCodes(),
+  ]).then(([sources, codes]) => ({ sources, codes })), []);
+  const { data, loading, error } = useAdminQuery("acquisition", fetcher);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [s, c] = await Promise.all([fetchSignupSources(), fetchInfluencerCodes()]);
-      setSources(s);
-      setCodes(c);
-    } catch (e) {
-      setError(e.message || "Error al cargar");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  if (loading && !data) return <div className="admin-empty">Cargando…</div>;
+  if (error && !data) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
 
-  useEffect(() => { load(); }, [load]);
-
-  if (loading) return <div className="admin-empty">Cargando…</div>;
-  if (error) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
-
+  const sources = data?.sources;
+  const codes = data?.codes || [];
   const totalAttribSignups = codes.reduce((sum, c) => sum + (c.signup_count || 0), 0);
   const totalAttribPaid = codes.reduce((sum, c) => sum + (c.paid_count || 0), 0);
 

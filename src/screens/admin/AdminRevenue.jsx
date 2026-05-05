@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { fetchRevenueOverview, fetchRecentInvoices } from "../../hooks/useCardiganData";
 import { StatCard } from "./parts/StatCard";
 import { downloadCsv } from "./parts/csv";
 import { IconDownload } from "../../components/Icons";
+import { useAdminQuery } from "./useAdminQuery";
 
 function fmtMoneyCents(cents, currency = "MXN") {
   const amount = (Number(cents) || 0) / 100;
@@ -17,32 +18,16 @@ function fmtDate(iso) {
    v1: KPI band + recent invoices. RPC `admin_revenue_overview` (mig
    046) returns a single JSON aggregate. */
 export function AdminRevenue() {
-  const [overview, setOverview] = useState(null);
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const fetcher = useCallback(() => Promise.all([
+    fetchRevenueOverview(),
+    fetchRecentInvoices({ limit: 50 }),
+  ]).then(([overview, invoices]) => ({ overview, invoices })), []);
+  const { data, loading, error } = useAdminQuery("revenue", fetcher);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [ov, inv] = await Promise.all([
-        fetchRevenueOverview(),
-        fetchRecentInvoices({ limit: 50 }),
-      ]);
-      setOverview(ov);
-      setInvoices(inv);
-    } catch (e) {
-      setError(e.message || "Error al cargar");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  if (loading) return <div className="admin-empty">Cargando…</div>;
-  if (error) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
+  if (loading && !data) return <div className="admin-empty">Cargando…</div>;
+  if (error && !data) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
+  const overview = data?.overview;
+  const invoices = data?.invoices || [];
 
   const onExport = () => {
     downloadCsv("cardigan-invoices-{date}.csv", invoices, [

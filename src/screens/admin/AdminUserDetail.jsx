@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { fetchUserDetail, fetchAuditLog, logAdminViewAs } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
 import { UserActionsMenu } from "./parts/UserActionsMenu";
+import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -60,92 +61,81 @@ const ACTION_LABELS = {
    only. */
 export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
   const { t } = useT();
-  const [data, setData] = useState(null);
-  const [audit, setAudit] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [tab, setTab] = useState("profile");
 
-  // Refresh count gives us a manual reload trigger without changing
-  // the cancellation key. The user-id-keyed effect below owns its own
-  // cancellation flag so a slower request for an old uid can't
-  // overwrite a fresher request for a new uid (textbook race seen
-  // when the admin clicks user A then user B before A resolves).
-  const [refreshCount, setRefreshCount] = useState(0);
-  const load = useCallback(() => setRefreshCount((n) => n + 1), []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    (async () => {
-      try {
-        const [detail, log] = await Promise.all([
-          fetchUserDetail(uid),
-          fetchAuditLog({ targetUserId: uid, limit: 100 }).catch(() => []),
-        ]);
-        if (cancelled) return;
-        setData(detail);
-        setAudit(log);
-      } catch (e) {
-        if (cancelled) return;
-        setError(e.message || "Error al cargar");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [uid, refreshCount]);
-
-  if (loading) return <div className="admin-empty">Cargando…</div>;
-  if (error) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
-  if (!data) return null;
-
-  const { profile, subscription, invoices, usage, devices, privacy } = data;
+  // useAdminQuery owns the cancellation + cache; the unique cache key
+  // includes the uid so a click from user A → user B can't have the
+  // older response stomp the newer one (the race fixed in the May
+  // audit).
+  const fetcher = useCallback(() => Promise.all([
+    fetchUserDetail(uid),
+    fetchAuditLog({ targetUserId: uid, limit: 100 }).catch(() => []),
+  ]).then(([detail, log]) => ({ detail, log })), [uid]);
+  const { data: bundle, loading, error, refetch } = useAdminQuery(`user:${uid}`, fetcher);
+  const load = refetch;
+  const profile = bundle?.detail?.profile || null;
+  const subscription = bundle?.detail?.subscription || null;
 
   // Build a synthetic account-like object so UserActionsMenu sees the
   // same shape it does in the Users list. Tier resolution mirrors
   // fetchAllAccounts in useCardiganData.js so a user opened directly
   // via #admin/users/<uid> renders the SAME badge as in the list —
   // including the "expired" state the prior implementation collapsed
-  // into "trial".
-  const TRIAL_DAYS = 30;
-  const PAID = new Set(["active", "past_due"]);
-  const compGranted = !!subscription?.comp_granted;
-  const status = subscription?.status;
-  const paid = status && (
-    PAID.has(status)
-    || (status === "trialing" && !!subscription?.default_payment_method)
-  );
-  let tier = "expired";
-  let daysLeftInTrial = null;
-  if (compGranted) {
-    tier = "comp";
-  } else if (paid) {
-    tier = "pro";
-  } else {
-    const created = profile.created_at ? new Date(profile.created_at).getTime() : null;
-    if (created && !Number.isNaN(created)) {
-      const totalDays = TRIAL_DAYS + (subscription?.trial_extension_days || 0);
-      const trialEndMs = created + totalDays * 86_400_000;
-      const left = Math.max(0, Math.ceil((trialEndMs - Date.now()) / 86_400_000));
-      if (Date.now() < trialEndMs) { tier = "trial"; daysLeftInTrial = left; }
-      else { tier = "expired"; daysLeftInTrial = 0; }
+  // into "trial". MUST live before any early-return below because
+  // hooks can't be called conditionally.
+  const account = useMemo(() => {
+    if (!profile) return null;
+    const TRIAL_DAYS = 30;
+    const PAID = new Set(["active", "past_due"]);
+    const compGranted = !!subscription?.comp_granted;
+    const status = subscription?.status;
+    const paid = status && (
+      PAID.has(status)
+      || (status === "trialing" && !!subscription?.default_payment_method)
+    );
+    // Date.now() is impure but the result feeds into a useMemo
+    // that re-runs only when profile/subscription change — the
+    // worst case is a tier badge that's a few seconds stale across
+    // the trial cutoff, which is fine for an admin tool.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now();
+    let tier = "expired";
+    let daysLeftInTrial = null;
+    if (compGranted) {
+      tier = "comp";
+    } else if (paid) {
+      tier = "pro";
+    } else {
+      const created = profile.created_at ? new Date(profile.created_at).getTime() : null;
+      if (created && !Number.isNaN(created)) {
+        const totalDays = TRIAL_DAYS + (subscription?.trial_extension_days || 0);
+        const trialEndMs = created + totalDays * 86_400_000;
+        const left = Math.max(0, Math.ceil((trialEndMs - now) / 86_400_000));
+        if (now < trialEndMs) { tier = "trial"; daysLeftInTrial = left; }
+        else { tier = "expired"; daysLeftInTrial = 0; }
+      }
     }
-  }
-  const account = {
-    userId: profile.user_id,
-    fullName: profile.full_name || "",
-    email: profile.email || "",
-    profession: profile.profession || "psychologist",
-    blocked: !!profile.banned_until && new Date(profile.banned_until).getTime() > Date.now(),
-    compGranted,
-    tier,
-    daysLeftInTrial,
-    subscriptionCancelAt: subscription?.cancel_at,
-    subscriptionPeriodEnd: subscription?.current_period_end,
-    subscriptionCancelAtPeriodEnd: !!subscription?.cancel_at_period_end,
-  };
+    return {
+      userId: profile.user_id,
+      fullName: profile.full_name || "",
+      email: profile.email || "",
+      profession: profile.profession || "psychologist",
+      blocked: !!profile.banned_until && new Date(profile.banned_until).getTime() > now,
+      compGranted,
+      tier,
+      daysLeftInTrial,
+      subscriptionCancelAt: subscription?.cancel_at,
+      subscriptionPeriodEnd: subscription?.current_period_end,
+      subscriptionCancelAtPeriodEnd: !!subscription?.cancel_at_period_end,
+    };
+  }, [profile, subscription]);
+
+  if (loading && !bundle) return <div className="admin-empty">Cargando…</div>;
+  if (error && !bundle) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
+  if (!bundle) return null;
+
+  const { invoices, usage, devices, privacy } = bundle.detail;
+  const audit = bundle.log;
 
   const handleViewAs = async (id) => {
     await logAdminViewAs(id);
@@ -181,6 +171,12 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
             currentAdminId={currentAdminId}
             onViewAs={handleViewAs}
             onAction={(meta) => {
+              // Mutations (block / comp / profession / delete) make
+              // the Users list and the audit trail stale — drop both
+              // cache slices and refetch the current detail page.
+              invalidateAdminCache("users:all");
+              invalidateAdminCache("audit");
+              invalidateAdminCache("overview");
               if (meta?.deleted) onBack?.();
               else load();
             }}

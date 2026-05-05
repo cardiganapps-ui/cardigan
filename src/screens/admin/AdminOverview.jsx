@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { fetchAdminAnalytics, fetchAuditLog, fetchRevenueOverview } from "../../hooks/useCardiganData";
 import { StatCard } from "./parts/StatCard";
 import { DailyBars } from "./parts/DailyBars";
+import { useAdminQuery } from "./useAdminQuery";
 
 function fmtMoney(n) {
   return `$${(Number(n) || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
@@ -38,42 +39,25 @@ const ACTION_LABELS = {
 
 /* ── AdminOverview ──
    Landing page: hero KPI band + 30-day daily charts + a recent
-   activity feed sourced from the new admin_audit_log table. */
+   activity feed sourced from the new admin_audit_log table.
+   Uses useAdminQuery so revisits (Overview → Users → Overview)
+   render instantly from cache and revalidate in the background. */
 export function AdminOverview({ onJump }) {
-  const [analytics, setAnalytics] = useState(null);
-  const [revenue, setRevenue] = useState(null);
-  const [recent, setRecent] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const fetcher = useCallback(() => Promise.all([
+    fetchAdminAnalytics({ days: 30 }),
+    fetchRevenueOverview().catch(() => null),
+    fetchAuditLog({ limit: 20 }).catch(() => []),
+  ]).then(([analytics, revenue, recent]) => ({ analytics, revenue, recent })), []);
+  const { data, loading, error } = useAdminQuery("overview", fetcher);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [analyticsData, revenueData, audit] = await Promise.all([
-        fetchAdminAnalytics({ days: 30 }),
-        fetchRevenueOverview().catch(() => null),
-        fetchAuditLog({ limit: 20 }).catch(() => []),
-      ]);
-      setAnalytics(analyticsData);
-      setRevenue(revenueData);
-      setRecent(audit);
-    } catch (e) {
-      setError(e.message || "Error al cargar");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  if (loading && !data) return <div className="admin-empty">Cargando…</div>;
+  if (error && !data) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
 
-  useEffect(() => { load(); }, [load]);
-
-  if (loading) return <div className="admin-empty">Cargando…</div>;
-  if (error) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
-
-  const ov = analytics?.overview || {};
-  const daily = analytics?.daily || [];
-  const mrrCents = revenue?.mrr_estimate_cents || 0;
-  const activeSubs = revenue?.active_subs || 0;
+  const ov = data?.analytics?.overview || {};
+  const daily = data?.analytics?.daily || [];
+  const mrrCents = data?.revenue?.mrr_estimate_cents || 0;
+  const activeSubs = data?.revenue?.active_subs || 0;
+  const recent = data?.recent || [];
 
   return (
     <>

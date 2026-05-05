@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { fetchAllAccounts } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
 import { Avatar } from "../../components/Avatar";
 import { TierBadge } from "./parts/TierBadge";
 import { downloadCsv } from "./parts/csv";
 import { IconDownload, IconSearch } from "../../components/Icons";
+import { useAdminQuery } from "./useAdminQuery";
 
 function nameParts(fullName) {
   const tokens = (fullName || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -62,25 +63,11 @@ const SORTS = [
    surfaces the full action set with proper self-protection guards. */
 export function AdminUsers({ onSelect }) {
   const { t } = useT();
-  const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
   const [sort, setSort] = useState("name");
 
-  const load = useCallback(() => {
-    setLoading(true);
-    fetchAllAccounts()
-      .then((a) => { setAccounts(a); setError(""); setLoading(false); })
-      .catch((e) => { setError(e.message || "Error al cargar"); setLoading(false); });
-  }, []);
-
-  // setLoading(true) inside load() is a no-op on mount since loading
-  // initialises to true; matches the AccountsTab pattern in
-  // AdminPanel.jsx.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const { data: accounts = [], loading, error } = useAdminQuery("users:all", fetchAllAccounts);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
