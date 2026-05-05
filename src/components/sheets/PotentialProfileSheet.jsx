@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { IconX, IconPhone, IconMail, IconTrash, IconCheck } from "../Icons";
+import { IconX, IconPhone, IconMail, IconTrash, IconCheck, IconChevronRight } from "../Icons";
 import { Avatar } from "../Avatar";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useLayer } from "../../hooks/useLayer";
-import { SESSION_STATUS, SESSION_TYPE } from "../../data/constants";
+import { SESSION_STATUS } from "../../data/constants";
 import { statusClass, statusLabel, railClass } from "../../utils/sessions";
 import { formatPhoneMX } from "../../utils/contact";
 import { formatMXN } from "../../utils/format";
@@ -36,7 +36,7 @@ import { formatMXN } from "../../utils/format";
 
 export function PotentialProfileSheet({
   patient, interviewSession, onClose,
-  onConvert, onDiscard, onOpenSession, mutating,
+  onConvert, onDiscard, onOpenSession, mutating, readOnly = false,
 }) {
   const { t } = useT();
   useEscape(onClose);
@@ -167,7 +167,7 @@ export function PotentialProfileSheet({
                 {interviewSession ? (
                   <div className="card" style={{ overflow:"hidden" }}>
                     <div
-                      className={`row-item session-row ${railClass(interviewSession.status)} ${interviewSession.session_type === SESSION_TYPE.INTERVIEW ? "rail-interview" : ""}`}
+                      className={`row-item session-row ${railClass(interviewSession.status)}`}
                       onClick={() => onOpenSession?.(interviewSession)}
                       role="button" tabIndex={0}>
                       <Avatar initials={patient.initials} color="var(--rose)" size="md" />
@@ -188,10 +188,38 @@ export function PotentialProfileSheet({
               </div>
 
               {/* Convert nudge — appears once the interview is marked
-                  completed (or charged). Pure encouragement; the same
-                  Convertir button stays at the bottom regardless. */}
-              {interviewCompleted && (
-                <div style={{ background:"var(--teal-pale)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14, display:"flex", alignItems:"center", gap:10 }}>
+                  completed (or charged). Tappable shortcut into the
+                  conversion sheet so the practitioner doesn't have
+                  to scroll to the bottom button after marking the
+                  interview done. The chevron + subtle scale-on-press
+                  signal "this takes you somewhere", matching the rest
+                  of Cardigan's primary-action affordances. Hidden in
+                  readOnly so demo users don't tap a dead-end. */}
+              {interviewCompleted && !readOnly && (
+                <button
+                  type="button"
+                  onClick={() => onConvert?.(patient)}
+                  disabled={mutating}
+                  className="ready-to-convert-cta"
+                  style={{
+                    width: "100%",
+                    background: "var(--teal-pale)",
+                    border: "none",
+                    borderRadius: "var(--radius)",
+                    padding: "12px 14px",
+                    marginBottom: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    cursor: "pointer",
+                    fontFamily: "var(--font)",
+                    textAlign: "left",
+                    WebkitTapHighlightColor: "transparent",
+                    transition: "transform 0.18s var(--ease-cardi, ease), background 0.18s ease",
+                  }}
+                  onMouseDown={e => { e.currentTarget.style.transform = "scale(0.985)"; }}
+                  onMouseUp={e => { e.currentTarget.style.transform = ""; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ""; }}>
                   <div style={{ width:36, height:36, borderRadius:"50%", background:"var(--teal)", color:"var(--white)", display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <IconCheck size={18} />
                   </div>
@@ -200,7 +228,8 @@ export function PotentialProfileSheet({
                       {t("patients.readyToConvertCta")}
                     </div>
                   </div>
-                </div>
+                  <IconChevronRight size={16} />
+                </button>
               )}
 
               {/* Pending notice — when the interview hasn't happened
@@ -218,24 +247,32 @@ export function PotentialProfileSheet({
 
               <div style={{ marginTop:18 }} />
 
-              {/* Convert (primary) */}
-              <button className="btn btn-primary-teal" type="button"
-                onClick={() => onConvert?.(patient)}
-                disabled={mutating}
-                style={{ marginBottom:10 }}>
-                {t("patients.convertToPatient")}
-              </button>
+              {/* Action buttons — hidden in readOnly (demo / admin
+                  view-as-user) so users can't trigger no-op writes
+                  with a stuck-spinner UX. The profile itself stays
+                  visible for browsing. */}
+              {!readOnly && (
+                <>
+                  {/* Convert (primary) */}
+                  <button className="btn btn-primary-teal" type="button"
+                    onClick={() => onConvert?.(patient)}
+                    disabled={mutating}
+                    style={{ marginBottom:10 }}>
+                    {t("patients.convertToPatient")}
+                  </button>
 
-              {/* Discard (secondary, rose-tinted to signal lane).
-                  Hidden for already-discarded potentials — re-running
-                  discard is a no-op that fires a misleading toast. */}
-              {!alreadyDiscarded && (
-                <button className="btn" type="button"
-                  onClick={() => setConfirmDiscard(true)}
-                  disabled={mutating}
-                  style={{ width:"100%", height:44, fontSize:"var(--text-sm)", background:"var(--rose-bg)", color:"var(--rose)", boxShadow:"none", gap:8 }}>
-                  <IconTrash size={14} /> {t("patients.discardPotential")}
-                </button>
+                  {/* Discard (secondary, rose-tinted to signal lane).
+                      Hidden for already-discarded potentials — re-running
+                      discard is a no-op that fires a misleading toast. */}
+                  {!alreadyDiscarded && (
+                    <button className="btn" type="button"
+                      onClick={() => setConfirmDiscard(true)}
+                      disabled={mutating}
+                      style={{ width:"100%", height:44, fontSize:"var(--text-sm)", background:"var(--rose-bg)", color:"var(--rose)", boxShadow:"none", gap:8 }}>
+                      <IconTrash size={14} /> {t("patients.discardPotential")}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

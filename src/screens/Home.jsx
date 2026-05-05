@@ -201,9 +201,8 @@ export function Home({ setScreen, userName }) {
     const avatarBg = interview ? "var(--rose)" : tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
     const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
     const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
-    const railOverride = interview ? "rail-interview" : "";
     return (
-      <div className={`row-item session-row ${railClass(s.status)} ${railOverride}`} key={s.id} onClick={() => setSelectedSession(s)}>
+      <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
         <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
         <div className="row-content">
           <div className="row-title">

@@ -392,14 +392,13 @@ function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSele
   const avatarBg = interview ? "var(--rose)" : tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
   const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
   const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
-  const railOverride = interview ? "rail-interview" : "";
   const handleClick = () => {
     if (selectionMode) onToggleSelect?.(s);
     else onClick?.(s);
   };
   return (
     <div
-      className={`row-item session-row ${railClass(s.status)} ${railOverride}`}
+      className={`row-item session-row ${railClass(s.status)}`}
       key={s.id}
       onClick={handleClick}
       style={selectionMode && selected ? { background: "var(--teal-pale)" } : undefined}

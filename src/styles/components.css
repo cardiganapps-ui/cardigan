@@ -951,10 +951,10 @@ button.kpi-card:active {
 .row-item.session-row.rail-completed { --rail-color: var(--green); }
 .row-item.session-row.rail-cancelled { --rail-color: var(--charcoal-xl); }
 .row-item.session-row.rail-charged   { --rail-color: var(--amber); }
-/* Interview-stage session: rail overrides the status-derived color so
-   "Entrevista" reads at a glance even when the session is still
-   scheduled or already completed. Tied to session_type, not status. */
-.row-item.session-row.rail-interview { --rail-color: var(--rose); }
+/* Note: interview sessions don't override the status rail. The lane
+   signal lives on the rose avatar + "Entrevista" badge so a cancelled
+   interview correctly shows the cancelled rail (matches the tutor
+   pattern: status drives rail, subtype drives avatar/badge). */
 
 /* POTENTIAL PATIENT ROW — Patients-screen rows in the Potenciales
    filter (and its archived sub-filter). Subtle rose tint distinguishes
