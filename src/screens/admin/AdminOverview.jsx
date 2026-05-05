@@ -9,7 +9,9 @@ function fmtMoney(n) {
 
 function fmtRelative(iso) {
   if (!iso) return "—";
-  const diff = Date.now() - new Date(iso).getTime();
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const diff = Date.now() - t;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "ahora";
   if (mins < 60) return `hace ${mins}m`;

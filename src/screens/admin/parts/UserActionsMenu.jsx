@@ -39,10 +39,15 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
   const [compBusy, setCompBusy] = useState(false);
   const [compErr, setCompErr] = useState("");
 
-  const isSelf = account.userId === currentAdminId;
-  const emailLabel = account.email || `ID: ${account.userId.slice(0, 8)}…`;
-  const deleteConfirmMatches = account.email
-    ? deleteConfirmText.trim().toLowerCase() === account.email.trim().toLowerCase()
+  // Defensive: account.userId should always be a uuid, but guarding
+  // means a bad row from a future RPC change can't crash the entire
+  // admin surface. Same for email — null-safe before .trim().
+  const userIdSafe = account.userId || "";
+  const emailSafe = account.email || "";
+  const isSelf = !!userIdSafe && userIdSafe === currentAdminId;
+  const emailLabel = emailSafe || `ID: ${userIdSafe.slice(0, 8) || "?"}…`;
+  const deleteConfirmMatches = emailSafe
+    ? deleteConfirmText.trim().toLowerCase() === emailSafe.trim().toLowerCase()
     : false;
 
   const reset = () => { setMode("default"); setErr(""); setDeleteConfirmText(""); };

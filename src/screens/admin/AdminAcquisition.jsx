@@ -64,10 +64,7 @@ export function AdminAcquisition() {
                     <td style={{ fontFamily: "var(--font-mono, monospace)", fontWeight: 700 }}>{c.code}</td>
                     <td>{c.influencer_name || "—"}</td>
                     <td>
-                      <span className="badge" style={{
-                        background: c.active ? "var(--green-bg)" : "var(--cream)",
-                        color: c.active ? "var(--green)" : "var(--charcoal-xl)",
-                      }}>
+                      <span className={`badge ${c.active ? "badge-green" : "badge-gray"}`}>
                         {c.active ? "Activo" : "Inactivo"}
                       </span>
                     </td>

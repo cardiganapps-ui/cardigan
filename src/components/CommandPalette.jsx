@@ -19,15 +19,15 @@ const NAV_COMMANDS = [
 // deep-linkable and the admin layout's useAdminRoute hook reads it on
 // mount.
 const ADMIN_COMMANDS = [
-  { id: "admin:overview",    group: "Admin", label: "Admin: Overview",     target: "admin/overview",    Icon: IconHome },
-  { id: "admin:users",       group: "Admin", label: "Admin: Users",        target: "admin/users",       Icon: IconUsers },
-  { id: "admin:revenue",     group: "Admin", label: "Admin: Revenue",      target: "admin/revenue",     Icon: IconDollar },
-  { id: "admin:acquisition", group: "Admin", label: "Admin: Acquisition",  target: "admin/acquisition", Icon: IconTrendingUp },
-  { id: "admin:codes",       group: "Admin", label: "Admin: Codes",        target: "admin/codes",       Icon: IconTag },
-  { id: "admin:reports",     group: "Admin", label: "Admin: Reports",      target: "admin/reports",     Icon: IconBug },
-  { id: "admin:audit",       group: "Admin", label: "Admin: Audit",        target: "admin/audit",       Icon: IconShield },
-  { id: "admin:health",      group: "Admin", label: "Admin: Health",       target: "admin/health",      Icon: IconActivity },
-  { id: "admin:metrics",     group: "Admin", label: "Admin: Métricas (alias)", target: "admin/overview",  Icon: IconBarChart },
+  { id: "admin:overview",    group: "Admin", label: "Admin · Resumen",      target: "admin/overview",    Icon: IconHome },
+  { id: "admin:users",       group: "Admin", label: "Admin · Usuarios",     target: "admin/users",       Icon: IconUsers },
+  { id: "admin:revenue",     group: "Admin", label: "Admin · Ingresos",     target: "admin/revenue",     Icon: IconDollar },
+  { id: "admin:acquisition", group: "Admin", label: "Admin · Adquisición",  target: "admin/acquisition", Icon: IconTrendingUp },
+  { id: "admin:codes",       group: "Admin", label: "Admin · Códigos",      target: "admin/codes",       Icon: IconTag },
+  { id: "admin:reports",     group: "Admin", label: "Admin · Reportes",     target: "admin/reports",     Icon: IconBug },
+  { id: "admin:audit",       group: "Admin", label: "Admin · Auditoría",    target: "admin/audit",       Icon: IconShield },
+  { id: "admin:health",      group: "Admin", label: "Admin · Salud",        target: "admin/health",      Icon: IconActivity },
+  { id: "admin:metrics",     group: "Admin", label: "Admin · Métricas",     target: "admin/overview",    Icon: IconBarChart },
 ];
 
 const ACTION_COMMANDS = [

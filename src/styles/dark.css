@@ -213,9 +213,12 @@ html[data-theme="dark"] .topbar-new-btn:hover { background: #FFFFFF; }
      #1E1E1E  card / rail / header bg (elevated)
      #2A2A2A  hover surface, borders */
 html[data-theme="dark"] .admin-shell { background: #161616; }
+/* Rail + header sit at the canvas tier (#1A1A1A) so the cards
+   (#1E1E1E + ambient shadow) visibly lift above the chrome — same
+   elevation hierarchy that white-on-cream gives in light mode. */
 html[data-theme="dark"] .admin-rail {
-  background: #1E1E1E;
-  border-right-color: #2A2A2A;
+  background: #1A1A1A;
+  border-right-color: #262626;
 }
 html[data-theme="dark"] .admin-rail-section-label { color: #8A8A8A; }
 html[data-theme="dark"] .admin-rail-brand { color: #EAEAEA; }
@@ -229,8 +232,8 @@ html[data-theme="dark"] .admin-rail-item--active:hover {
 html[data-theme="dark"] .admin-rail-footer { border-top-color: #2A2A2A; }
 html[data-theme="dark"] .admin-rail-badge { color: #8A8A8A; }
 html[data-theme="dark"] .admin-header {
-  background: #1E1E1E;
-  border-bottom-color: #2A2A2A;
+  background: #1A1A1A;
+  border-bottom-color: #262626;
 }
 html[data-theme="dark"] .admin-page-title { color: #EAEAEA; }
 html[data-theme="dark"] .admin-breadcrumbs,
@@ -272,3 +275,35 @@ html[data-theme="dark"] .admin-filter-pill--active {
 html[data-theme="dark"] .admin-empty { color: #8A8A8A; }
 html[data-theme="dark"] .admin-hamburger { color: #EAEAEA; }
 html[data-theme="dark"] .admin-hamburger:hover { background: #2A2A2A; }
+html[data-theme="dark"] .admin-link-tile {
+  background: #1E1E1E;
+  border-color: #2A2A2A;
+  color: #EAEAEA;
+}
+html[data-theme="dark"] .admin-link-tile-title { color: #EAEAEA; }
+html[data-theme="dark"] .admin-link-tile-sub { color: #8A8A8A; }
+@media (hover: hover) {
+  html[data-theme="dark"] .admin-link-tile:hover {
+    background: #242424;
+    border-color: #2D6577;
+  }
+  html[data-theme="dark"] .admin-stat:hover {
+    border-color: #2D6577;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.4),
+      0 8px 22px rgba(0,0,0,0.32);
+  }
+}
+/* User detail header — text colors derive from --charcoal (which
+   inverts) but the avatar is hard-pinned to teal in light mode and
+   reads OK on dark; the name + meta use --charcoal which already
+   inverts. No additional overrides needed beyond confirming the
+   avatar contrast against the dark page bg. */
+html[data-theme="dark"] .admin-user-avatar {
+  /* Slightly desaturated so the bright teal disc isn't blinding
+     against the near-black page bg. */
+  background: var(--teal);
+  color: #FFFFFF;
+}
+/* The page-fade animation relies on existing color tokens — no
+   override needed. */

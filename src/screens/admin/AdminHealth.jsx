@@ -58,20 +58,9 @@ export function AdminHealth() {
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           {DASHBOARDS.map((d) => (
             <a key={d.name} href={d.href} target="_blank" rel="noopener noreferrer"
-              style={{
-                display: "block",
-                padding: "12px 14px",
-                borderRadius: "var(--radius)",
-                border: "1px solid var(--border-lt)",
-                background: "var(--cream)",
-                textDecoration: "none",
-                color: "var(--charcoal)",
-                transition: "background-color var(--dur-fast) ease",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--white)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--cream)"; }}>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{d.name} →</div>
-              <div style={{ fontSize: 11, color: "var(--charcoal-xl)", marginTop: 2 }}>{d.sub}</div>
+              className="admin-link-tile">
+              <div className="admin-link-tile-title">{d.name} →</div>
+              <div className="admin-link-tile-sub">{d.sub}</div>
             </a>
           ))}
         </div>

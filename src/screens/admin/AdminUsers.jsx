@@ -38,7 +38,13 @@ const SORTS = [
    Searchable, filterable, sortable list of every user. Filters are
    client-side over the result of fetchAllAccounts (already paginates
    via Supabase and the row count is admin-tractable). Click a row to
-   open `/admin/users/<uid>`. */
+   open `/admin/users/<uid>`.
+
+   Per-row inline View-as / Block / etc. is intentionally NOT rendered
+   here in v1 — the row click opens UserDetail, where UserActionsMenu
+   surfaces the full action set with proper self-protection guards.
+   Keeping the list dense reads more like a real admin list (Stripe /
+   Linear) than rows that grow inline action strips. */
 export function AdminUsers({ onSelect }) {
   const { t } = useT();
   const [accounts, setAccounts] = useState([]);

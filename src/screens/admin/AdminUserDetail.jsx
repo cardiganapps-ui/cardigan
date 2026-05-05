@@ -16,10 +16,13 @@ function fmtMoneyCents(cents, currency = "MXN") {
   return amount.toLocaleString("es-MX", { style: "currency", currency, maximumFractionDigits: 0 });
 }
 function fmtBytes(b) {
-  if (!b) return "0 B";
+  // Guard non-positive (corrupt rows can produce negatives or NaN —
+  // Math.log(<=0) returns NaN/-Infinity and the unit lookup goes
+  // sideways, surfacing "NaN undefined" to the admin).
+  if (!b || b <= 0 || !Number.isFinite(b)) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(b) / Math.log(k));
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(b) / Math.log(k)));
   return `${(b / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 function initialsFor(name, email) {
@@ -30,7 +33,7 @@ function initialsFor(name, email) {
 }
 
 const TABS = [
-  { k: "profile", l: "Profile" },
+  { k: "profile", l: "Perfil" },
   { k: "subscription", l: "Suscripción" },
   { k: "usage", l: "Uso" },
   { k: "devices", l: "Dispositivos" },
@@ -63,24 +66,36 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("profile");
 
-  const load = useCallback(async () => {
+  // Refresh count gives us a manual reload trigger without changing
+  // the cancellation key. The user-id-keyed effect below owns its own
+  // cancellation flag so a slower request for an old uid can't
+  // overwrite a fresher request for a new uid (textbook race seen
+  // when the admin clicks user A then user B before A resolves).
+  const [refreshCount, setRefreshCount] = useState(0);
+  const load = useCallback(() => setRefreshCount((n) => n + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError("");
-    try {
-      const [detail, log] = await Promise.all([
-        fetchUserDetail(uid),
-        fetchAuditLog({ targetUserId: uid, limit: 100 }).catch(() => []),
-      ]);
-      setData(detail);
-      setAudit(log);
-    } catch (e) {
-      setError(e.message || "Error al cargar");
-    } finally {
-      setLoading(false);
-    }
-  }, [uid]);
-
-  useEffect(() => { load(); }, [load]);
+    (async () => {
+      try {
+        const [detail, log] = await Promise.all([
+          fetchUserDetail(uid),
+          fetchAuditLog({ targetUserId: uid, limit: 100 }).catch(() => []),
+        ]);
+        if (cancelled) return;
+        setData(detail);
+        setAudit(log);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e.message || "Error al cargar");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid, refreshCount]);
 
   if (loading) return <div className="admin-empty">Cargando…</div>;
   if (error) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
@@ -89,20 +104,44 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
   const { profile, subscription, invoices, usage, devices, privacy } = data;
 
   // Build a synthetic account-like object so UserActionsMenu sees the
-  // same shape it does in the Users list.
+  // same shape it does in the Users list. Tier resolution mirrors
+  // fetchAllAccounts in useCardiganData.js so a user opened directly
+  // via #admin/users/<uid> renders the SAME badge as in the list —
+  // including the "expired" state the prior implementation collapsed
+  // into "trial".
+  const TRIAL_DAYS = 30;
+  const PAID = new Set(["active", "past_due"]);
+  const compGranted = !!subscription?.comp_granted;
+  const status = subscription?.status;
+  const paid = status && (
+    PAID.has(status)
+    || (status === "trialing" && !!subscription?.default_payment_method)
+  );
+  let tier = "expired";
+  let daysLeftInTrial = null;
+  if (compGranted) {
+    tier = "comp";
+  } else if (paid) {
+    tier = "pro";
+  } else {
+    const created = profile.created_at ? new Date(profile.created_at).getTime() : null;
+    if (created && !Number.isNaN(created)) {
+      const totalDays = TRIAL_DAYS + (subscription?.trial_extension_days || 0);
+      const trialEndMs = created + totalDays * 86_400_000;
+      const left = Math.max(0, Math.ceil((trialEndMs - Date.now()) / 86_400_000));
+      if (Date.now() < trialEndMs) { tier = "trial"; daysLeftInTrial = left; }
+      else { tier = "expired"; daysLeftInTrial = 0; }
+    }
+  }
   const account = {
     userId: profile.user_id,
     fullName: profile.full_name || "",
     email: profile.email || "",
     profession: profile.profession || "psychologist",
     blocked: !!profile.banned_until && new Date(profile.banned_until).getTime() > Date.now(),
-    compGranted: !!subscription?.comp_granted,
-    tier:
-      subscription?.comp_granted ? "comp"
-      : (subscription?.status === "active" || subscription?.status === "past_due") ? "pro"
-      : (subscription?.status === "trialing" && subscription?.default_payment_method) ? "pro"
-      : "trial",
-    daysLeftInTrial: null,
+    compGranted,
+    tier,
+    daysLeftInTrial,
     subscriptionCancelAt: subscription?.cancel_at,
     subscriptionPeriodEnd: subscription?.current_period_end,
     subscriptionCancelAtPeriodEnd: !!subscription?.cancel_at_period_end,
@@ -238,7 +277,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                               <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                                 {fmtMoneyCents(inv.amount_cents, inv.currency || "MXN")}
                               </td>
-                              <td>{inv.paid_at ? <span className="badge" style={{ background: "var(--green-bg)", color: "var(--green)" }}>Pagada</span> : "—"}</td>
+                              <td>{inv.paid_at ? <span className="badge badge-green">Pagada</span> : "—"}</td>
                               <td>
                                 {inv.hosted_invoice_url ? (
                                   <a href={inv.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
@@ -333,7 +372,11 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                       <tr key={r.id}>
                         <td style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.created_at)}</td>
                         <td style={{ fontWeight: 600 }}>{ACTION_LABELS[r.action] || r.action}</td>
-                        <td style={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--charcoal-xl)" }}>
+                        <td title={r.payload ? JSON.stringify(r.payload) : ""}
+                          style={{
+                            fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--charcoal-xl)",
+                            maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
                           {r.payload ? JSON.stringify(r.payload) : "—"}
                         </td>
                       </tr>

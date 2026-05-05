@@ -16,25 +16,25 @@ import { AdminAudit } from "./AdminAudit";
 import { AdminHealth } from "./AdminHealth";
 
 const SECTIONS = [
-  { key: "overview",    label: "Overview",    icon: IconHome,        group: "insights" },
-  { key: "users",       label: "Users",       icon: IconUsers,       group: "insights" },
-  { key: "revenue",     label: "Revenue",     icon: IconDollar,      group: "insights" },
-  { key: "acquisition", label: "Acquisition", icon: IconTrendingUp,  group: "insights" },
-  { key: "codes",       label: "Codes",       icon: IconTag,         group: "ops" },
-  { key: "reports",     label: "Reports",     icon: IconBug,         group: "ops" },
-  { key: "audit",       label: "Audit",       icon: IconShield,      group: "ops" },
-  { key: "health",      label: "Health",      icon: IconActivity,    group: "ops" },
+  { key: "overview",    label: "Resumen",     icon: IconHome,        group: "insights" },
+  { key: "users",       label: "Usuarios",    icon: IconUsers,       group: "insights" },
+  { key: "revenue",     label: "Ingresos",    icon: IconDollar,      group: "insights" },
+  { key: "acquisition", label: "Adquisición", icon: IconTrendingUp,  group: "insights" },
+  { key: "codes",       label: "Códigos",     icon: IconTag,         group: "ops" },
+  { key: "reports",     label: "Reportes",    icon: IconBug,         group: "ops" },
+  { key: "audit",       label: "Auditoría",   icon: IconShield,      group: "ops" },
+  { key: "health",      label: "Salud",       icon: IconActivity,    group: "ops" },
 ];
 
 const TITLE_BY_SECTION = {
-  overview: "Overview",
-  users: "Users",
-  revenue: "Revenue",
-  acquisition: "Acquisition",
-  codes: "Codes",
-  reports: "Reports",
-  audit: "Audit log",
-  health: "Health",
+  overview: "Resumen",
+  users: "Usuarios",
+  revenue: "Ingresos",
+  acquisition: "Adquisición",
+  codes: "Códigos",
+  reports: "Reportes",
+  audit: "Registro de auditoría",
+  health: "Salud del sistema",
 };
 
 /* ── AdminLayout ──
@@ -79,16 +79,16 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
   const breadcrumbs = [];
   breadcrumbs.push({ label: "Admin", onClick: () => goSection("overview") });
   if (route.section === "users" && route.id) {
-    breadcrumbs.push({ label: "Users", onClick: () => goSection("users") });
+    breadcrumbs.push({ label: "Usuarios", onClick: () => goSection("users") });
     breadcrumbs.push({ label: "Detalle" });
   } else {
-    breadcrumbs.push({ label: TITLE_BY_SECTION[route.section] || "Overview" });
+    breadcrumbs.push({ label: TITLE_BY_SECTION[route.section] || "Resumen" });
   }
 
   const insightsSections = SECTIONS.filter(s => s.group === "insights");
   const opsSections = SECTIONS.filter(s => s.group === "ops");
 
-  let pageTitle = TITLE_BY_SECTION[route.section] || "Overview";
+  let pageTitle = TITLE_BY_SECTION[route.section] || "Resumen";
   if (route.section === "users" && route.id) pageTitle = "Detalle de usuario";
 
   let body;
@@ -96,7 +96,7 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
     case "users":
       body = route.id
         ? <AdminUserDetail uid={route.id} onViewAs={handleViewAs} onBack={() => goSection("users")} currentAdminId={currentAdminId} />
-        : <AdminUsers onViewAs={handleViewAs} onSelect={(uid) => route.navigate("users", uid)} currentAdminId={currentAdminId} />;
+        : <AdminUsers onSelect={(uid) => route.navigate("users", uid)} />;
       break;
     case "revenue":     body = <AdminRevenue />; break;
     case "acquisition": body = <AdminAcquisition />; break;
@@ -198,7 +198,11 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
         </header>
 
         <div className="admin-content">
-          <div className="admin-content-inner">
+          {/* The key on this wrapper restarts the fade animation on
+              every section/id change so the body swap reads as
+              motion, not a hard cut. position:fixed shell can't ride
+              the global screen slide, so we add our own subtle cue. */}
+          <div className="admin-content-inner admin-page-fade" key={`${route.section}:${route.id || ""}`}>
             {body}
           </div>
         </div>

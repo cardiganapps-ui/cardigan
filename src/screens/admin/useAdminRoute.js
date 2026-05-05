@@ -43,9 +43,19 @@ export function useAdminRoute() {
   const [route, setRoute] = useState(parseHash);
 
   useEffect(() => {
-    const onHashChange = () => setRoute(parseHash());
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    // Subscribe to BOTH hashchange and popstate. iOS Safari sometimes
+    // fires popstate without hashchange on a back-button gesture, and
+    // the top-level useNavigation handles popstate for layer dismiss
+    // — so without listening here, Back inside the admin family
+    // appeared "stuck" while the URL had already updated. Mirror the
+    // pattern from useNavigation.js.
+    const onChange = () => setRoute(parseHash());
+    window.addEventListener("hashchange", onChange);
+    window.addEventListener("popstate", onChange);
+    return () => {
+      window.removeEventListener("hashchange", onChange);
+      window.removeEventListener("popstate", onChange);
+    };
   }, []);
 
   const navigate = useCallback((section, id) => {

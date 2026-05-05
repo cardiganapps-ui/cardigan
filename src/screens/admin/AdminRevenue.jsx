@@ -127,8 +127,8 @@ export function AdminRevenue() {
                   </td>
                   <td>
                     {inv.paid_at
-                      ? <span className="badge" style={{ background: "var(--green-bg)", color: "var(--green)" }}>Pagada</span>
-                      : <span className="badge" style={{ background: "var(--cream)", color: "var(--charcoal-xl)" }}>—</span>
+                      ? <span className="badge badge-green">Pagada</span>
+                      : <span className="badge badge-gray">—</span>
                     }
                   </td>
                   <td>

@@ -37,6 +37,7 @@ export function AdminCodes() {
   const onToggle = async (code) => {
     if (busyId) return;
     setBusyId(code.id);
+    setError("");
     try {
       await toggleInfluencerCode(code.id, !code.active);
       setCodes(prev => prev.map(c => c.id === code.id ? { ...c, active: !c.active } : c));
@@ -126,12 +127,8 @@ function CodeRow({ code, busy, onToggle, t }) {
             }}>
               {code.code}
             </span>
-            <span style={{
-              fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
-              color: code.active ? "var(--green)" : "var(--charcoal-xl)",
-              background: code.active ? "var(--green-bg)" : "var(--cream)",
-              padding: "2px 8px", borderRadius: "var(--radius-pill)",
-            }}>
+            <span className={`badge ${code.active ? "badge-green" : "badge-gray"}`}
+              style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.5px" }}>
               {code.active ? t("admin.codesActive") : t("admin.codesInactive")}
             </span>
           </div>

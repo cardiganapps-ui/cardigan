@@ -249,7 +249,10 @@
 }
 .admin-table tbody tr:last-child td { border-bottom: none; }
 .admin-table tbody tr { transition: background-color var(--dur-fast) ease; }
-.admin-table tbody tr:hover { background: var(--cream); }
+/* --teal-mist matches .row-item hover so tables and lists feel like
+   the same family of interactive surfaces. --cream would blend the
+   row into the page background. */
+.admin-table tbody tr:hover { background: var(--teal-mist); }
 .admin-table tbody tr.admin-table-row--clickable { cursor: pointer; }
 
 /* Filter row above tables */
@@ -321,14 +324,16 @@
 }
 .admin-hamburger:hover { background: var(--cream); }
 
-/* Mobile collapse: rail becomes a slide-in drawer at <900px. */
+/* Mobile collapse: rail becomes a slide-in drawer at <900px.
+   Cadence matches the main app's .drawer-panel — same spring, same
+   slow duration — so the two drawers feel like the same primitive. */
 @media (max-width: 900px) {
   .admin-rail {
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 1;
     transform: translateX(-100%);
-    transition: transform var(--dur-base) var(--ease-spring);
+    transition: transform var(--dur-slow) var(--ease-spring);
     box-shadow: 4px 0 18px rgba(0,0,0,0.08);
   }
   .admin-rail--open { transform: translateX(0); }
@@ -338,6 +343,7 @@
     z-index: 0;
     -webkit-backdrop-filter: var(--blur-drawer);
     backdrop-filter: var(--blur-drawer);
+    animation: fadeIn var(--dur-slow) ease;
   }
   .admin-hamburger { display: inline-flex; }
   .admin-content { padding: 18px 16px calc(var(--sab, 0px) + 18px); }
@@ -348,6 +354,78 @@
      for screen readers but visually collapse. */
   .admin-breadcrumbs { display: none; }
   .admin-page-title { font-size: var(--text-md, 16px); }
+}
+
+/* ── Section transitions ──
+   Page swaps inside the admin shell don't get the global
+   screenSlideLeft/Right because .admin-shell is position:fixed and
+   the body changes mid-shell. A short fade-in on the keyed page
+   container gives a subtle motion cue so the swap doesn't feel like
+   a hard cut. Mirrors expedienteTabContentIn from base.css. */
+.admin-page-fade {
+  animation: adminPageFadeIn var(--dur-base) ease-out;
+}
+@keyframes adminPageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stat card lift ──
+   KPI cards in the Overview / Revenue band lift on hover the way the
+   home-screen .kpi-card does, so the admin's stat tiles feel like
+   the same primitive. The transition uses --ease-spring + --dur-base
+   so the lift settles with the same cadence as the rest of the app. */
+.admin-stat {
+  transition:
+    transform var(--dur-base) var(--ease-spring),
+    box-shadow var(--dur-base) var(--ease-spring),
+    border-color var(--dur-fast) ease;
+}
+@media (hover: hover) {
+  .admin-stat:hover {
+    transform: translateY(-1px);
+    border-color: var(--teal-light);
+    box-shadow:
+      0 1px 2px rgba(46,46,46,0.05),
+      0 8px 22px rgba(46,46,46,0.06);
+  }
+}
+
+/* ── Health link tile ──
+   Replaces the inline mouseEnter/Leave hack on AdminHealth's external
+   dashboard tiles. CSS-driven so dark-mode token swaps work correctly
+   and the press feedback matches the rest of the app. */
+.admin-link-tile {
+  display: block;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-lt);
+  background: var(--cream);
+  text-decoration: none;
+  color: var(--charcoal);
+  transition:
+    background-color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .admin-link-tile:hover {
+    background: var(--white);
+    border-color: var(--teal-light);
+    transform: translateY(-1px);
+  }
+}
+.admin-link-tile:active { transform: translateY(0); }
+.admin-link-tile-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--charcoal);
+}
+.admin-link-tile-sub {
+  font-size: 11px;
+  color: var(--charcoal-xl);
+  margin-top: 2px;
 }
 
 /* User detail */

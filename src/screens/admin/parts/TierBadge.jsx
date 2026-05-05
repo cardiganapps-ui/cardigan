@@ -6,6 +6,9 @@ import { formatDate } from "../../../utils/format";
    tier-pill block (AdminPanel.jsx pre-v2) so the new dashboard renders
    identical badges to the legacy modal during the parity period.
 
+   Uses the shared .badge-* classes from components.css so dark-mode
+   token swaps stay in sync with every other badge in the app.
+
    Shape:
      account: { tier, subscriptionCancelAt, subscriptionPeriodEnd,
                 subscriptionCancelAtPeriodEnd, daysLeftInTrial }
@@ -22,27 +25,23 @@ export function TierBadge({ account }) {
         catch { /* fall through */ }
       }
       return (
-        <span className="badge" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
+        <span className="badge badge-amber">
           {dateStr ? `Pro · termina ${dateStr}` : "Pro · cancelada"}
         </span>
       );
     }
-    return (
-      <span className="badge" style={{ background: "var(--teal-pale)", color: "var(--teal-dark)" }}>Pro</span>
-    );
+    return <span className="badge badge-teal">Pro</span>;
   }
   if (account.tier === "comp") {
-    return <span className="badge" style={{ background: "var(--green-bg)", color: "var(--green)" }}>Gratis</span>;
+    return <span className="badge badge-green">Gratis</span>;
   }
   if (account.tier === "trial") {
     return (
-      <span className="badge" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}>
-        Prueba: {account.daysLeftInTrial}d
-      </span>
+      <span className="badge badge-amber">Prueba: {account.daysLeftInTrial}d</span>
     );
   }
   if (account.tier === "expired") {
-    return <span className="badge" style={{ background: "var(--red-bg)", color: "var(--red)" }}>Vencida</span>;
+    return <span className="badge badge-red">Vencida</span>;
   }
   return null;
 }
