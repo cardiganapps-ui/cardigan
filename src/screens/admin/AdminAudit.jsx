@@ -117,6 +117,7 @@ export function AdminAudit() {
       {error && <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>}
       {!loading && !error && filtered.length === 0 && <div className="admin-empty">Sin eventos registrados.</div>}
       {!loading && !error && filtered.length > 0 && (
+        <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>
             <tr>
@@ -145,6 +146,7 @@ export function AdminAudit() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

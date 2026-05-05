@@ -105,6 +105,7 @@ export function AdminRevenue() {
         {invoices.length === 0 ? (
           <div className="admin-empty">Sin facturas registradas.</div>
         ) : (
+          <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
@@ -143,6 +144,7 @@ export function AdminRevenue() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

@@ -224,7 +224,15 @@
   gap: 12px;
 }
 
-/* Tables — compact, sticky header, hover feedback. */
+/* Tables — compact, sticky header, hover feedback. Wrap consumers
+   in `.admin-table-wrap` so dense tables (audit log, invoices) get
+   horizontal scroll on narrow viewports instead of forcing the
+   whole shell to scroll. */
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -482,4 +490,76 @@
   width: 100%;
   height: 36px;
   margin-top: 6px;
+}
+
+/* ── Definition list (User Detail tabs) ──
+   2-column key/value grid that collapses to stacked rows when the
+   viewport is too narrow for both to share a line. The previous
+   `gridTemplateColumns: "200px 1fr"` forced a hard wrap that
+   wasted half the row on narrow screens. */
+.admin-deflist {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-deflist-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: 16px;
+  align-items: baseline;
+}
+.admin-deflist-row dt {
+  font-size: 12px;
+  color: var(--charcoal-xl);
+  font-weight: 600;
+}
+.admin-deflist-row dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--charcoal);
+  word-break: break-word;
+}
+@media (max-width: 600px) {
+  .admin-deflist-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* ── Users list (row-item flavor) ──
+   The Users list now uses .row-item rows inside a .card, identical
+   to Patients. The defaults below shape the multi-line `.row-sub`
+   so the email and the meta line behave nicely under viewport
+   pressure: email gets `overflow-wrap: anywhere` so a long address
+   wraps mid-string, but the meta line stays on its own line and
+   never goes character-by-character. */
+.admin-user-list { padding: 0; }
+.admin-user-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.admin-user-email {
+  /* Long emails wrap mid-string here instead of letter-by-letter
+     (browsers' default break-all on a `.` would stack characters
+     vertically — see the May review screenshot). */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  color: var(--charcoal-md);
+}
+.admin-user-meta-line {
+  color: var(--charcoal-xl);
+  font-size: 11px;
+}
+
+/* On narrow viewports the meta line (profession · pacientes · alta)
+   becomes secondary — the row already has the email + tier badge
+   carrying the visual weight, so we hide it and surface the same
+   info on the User Detail page when the admin taps in. Chevron +
+   tier badge stay on the right where the eye expects them. */
+@media (max-width: 600px) {
+  .admin-user-list .admin-user-meta-line { display: none; }
+  .admin-user-list .row-item { padding: 12px 14px; min-height: 56px; }
 }

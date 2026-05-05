@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { fetchAllAccounts } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
+import { Avatar } from "../../components/Avatar";
 import { TierBadge } from "./parts/TierBadge";
 import { downloadCsv } from "./parts/csv";
 import { IconDownload, IconSearch } from "../../components/Icons";
@@ -17,6 +18,19 @@ function compareNames(a, b) {
   const cmp = (x, y) => x.localeCompare(y, "es", { sensitivity: "base" });
   return cmp(an.first, bn.first) || cmp(an.last, bn.last)
     || cmp((a.email || "").toLowerCase(), (b.email || "").toLowerCase());
+}
+
+function initialsFor(name, email) {
+  const src = (name || email || "?").trim();
+  if (!src) return "?";
+  const parts = src.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function fmtDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" });
 }
 
 const TIER_FILTERS = [
@@ -36,15 +50,16 @@ const SORTS = [
 
 /* ── AdminUsers ──
    Searchable, filterable, sortable list of every user. Filters are
-   client-side over the result of fetchAllAccounts (already paginates
-   via Supabase and the row count is admin-tractable). Click a row to
-   open `/admin/users/<uid>`.
+   client-side over fetchAllAccounts (the row count is admin-tractable
+   in v1). Click a row to open `/admin/users/<uid>`.
 
-   Per-row inline View-as / Block / etc. is intentionally NOT rendered
-   here in v1 — the row click opens UserDetail, where UserActionsMenu
-   surfaces the full action set with proper self-protection guards.
-   Keeping the list dense reads more like a real admin list (Stripe /
-   Linear) than rows that grow inline action strips. */
+   Layout: a `.card` wrapping `.row-item` rows, identical to the
+   Patients screen so this reads as a Cardigan list, not a dense
+   Stripe-style table. The previous `<table>` rendering wrapped
+   emails character-by-character on mobile and was unscannable.
+   Per-row inline actions (View as / Block / etc.) are intentionally
+   NOT here — the row click opens UserDetail where UserActionsMenu
+   surfaces the full action set with proper self-protection guards. */
 export function AdminUsers({ onSelect }) {
   const { t } = useT();
   const [accounts, setAccounts] = useState([]);
@@ -103,10 +118,11 @@ export function AdminUsers({ onSelect }) {
 
   return (
     <>
+      {/* Filters surface (uses admin-card padding for breathing room) */}
       <div className="admin-card">
-        <div className="admin-filters">
-          <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--charcoal-xl)", display: "inline-flex" }}>
+        <div className="admin-filters" style={{ marginBottom: 0 }}>
+          <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--charcoal-xl)", display: "inline-flex", pointerEvents: "none" }}>
               <IconSearch size={14} />
             </span>
             <input
@@ -137,54 +153,63 @@ export function AdminUsers({ onSelect }) {
             <IconDownload size={13} /> CSV
           </button>
         </div>
-
-        {loading && <div className="admin-empty">Cargando…</div>}
-        {error && !loading && (
-          <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>
-        )}
-        {!loading && !error && filtered.length === 0 && (
-          <div className="admin-empty">Sin resultados.</div>
-        )}
-        {!loading && !error && filtered.length > 0 && (
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Profesión</th>
-                <th>Tier</th>
-                <th style={{ textAlign: "right" }}>Pacientes</th>
-                <th>Alta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((a) => (
-                <tr key={a.userId}
-                  className="admin-table-row--clickable"
-                  onClick={() => onSelect?.(a.userId)}>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontWeight: 600 }}>{a.fullName || <span style={{ color: "var(--charcoal-xl)" }}>{t("admin.noName")}</span>}</span>
-                      {a.blocked && <span className="badge badge-red" style={{ fontSize: 10 }}>Bloqueado</span>}
-                    </div>
-                  </td>
-                  <td style={{ color: "var(--charcoal-md)", wordBreak: "break-all" }}>
-                    {a.email || <span style={{ color: "var(--charcoal-xl)" }}>—</span>}
-                  </td>
-                  <td style={{ color: "var(--teal-dark)", fontWeight: 600 }}>
-                    {a.profession ? t(`onboarding.professions.${a.profession}.label`) : "—"}
-                  </td>
-                  <td><TierBadge account={a} /></td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.patientCount}</td>
-                  <td style={{ color: "var(--charcoal-xl)", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
-                    {a.firstSeen ? new Date(a.firstSeen).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </div>
+
+      {/* Result count + list. The list lives in its OWN .card (not
+          nested inside admin-card) so the row-item padding doesn't
+          compound with the admin-card padding. .card has overflow:
+          hidden so the row borders honor the rounded corners. */}
+      <div style={{ fontSize: 11, color: "var(--charcoal-xl)", padding: "0 4px" }}>
+        {filtered.length === accounts.length
+          ? `${filtered.length} ${filtered.length === 1 ? "cuenta" : "cuentas"}`
+          : `${filtered.length} de ${accounts.length}`}
+      </div>
+
+      {loading && <div className="admin-card admin-empty">Cargando…</div>}
+      {error && !loading && (
+        <div className="admin-card admin-empty" style={{ color: "var(--red)" }}>{error}</div>
+      )}
+      {!loading && !error && filtered.length === 0 && (
+        <div className="admin-card admin-empty">Sin resultados.</div>
+      )}
+      {!loading && !error && filtered.length > 0 && (
+        <div className="card admin-user-list">
+          {filtered.map((a) => (
+            <div key={a.userId}
+              className="row-item"
+              style={{ cursor: "pointer" }}
+              onClick={() => onSelect?.(a.userId)}>
+              <Avatar initials={initialsFor(a.fullName, a.email)} size="md" />
+              <div className="row-content">
+                <div className="row-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "0 1 auto" }}>
+                    {a.fullName || <span style={{ color: "var(--charcoal-xl)", fontWeight: 500, fontStyle: "italic" }}>{t("admin.noName")}</span>}
+                  </span>
+                  {a.blocked && <span className="badge badge-red">Bloqueado</span>}
+                </div>
+                <div className="row-sub admin-user-sub">
+                  <span className="admin-user-email">{a.email || "—"}</span>
+                  <span className="admin-user-meta-line">
+                    {a.profession && (
+                      <span style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
+                        {t(`onboarding.professions.${a.profession}.label`)}
+                      </span>
+                    )}
+                    {a.profession && " · "}
+                    {a.patientCount} {a.patientCount === 1 ? "paciente" : "pacientes"}
+                    {" · "}
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>alta {fmtDate(a.firstSeen)}</span>
+                  </span>
+                </div>
+              </div>
+              <div className="admin-user-tier" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <TierBadge account={a} />
+              </div>
+              <span className="row-chevron">›</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

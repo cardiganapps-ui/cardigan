@@ -45,6 +45,7 @@ export function AdminAcquisition() {
         {codes.length === 0 ? (
           <div className="admin-empty">Sin códigos creados.</div>
         ) : (
+          <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
@@ -76,6 +77,7 @@ export function AdminAcquisition() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

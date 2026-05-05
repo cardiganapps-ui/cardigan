@@ -261,6 +261,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                       <h3 style={{ fontFamily: "var(--font-d)", fontSize: 13, fontWeight: 800, marginTop: 18, marginBottom: 8 }}>
                         Últimas facturas
                       </h3>
+                      <div className="admin-table-wrap">
                       <table className="admin-table">
                         <thead>
                           <tr>
@@ -290,6 +291,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </>
                   )}
                 </>
@@ -323,6 +325,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
               {devices.push_subscriptions.length === 0 ? (
                 <div className="admin-empty">Sin dispositivos registrados.</div>
               ) : (
+                <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
                     <tr>
@@ -339,6 +342,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
               <h3 style={{ fontFamily: "var(--font-d)", fontSize: 13, fontWeight: 800, margin: "16px 0 8px" }}>
                 Token de calendario
@@ -359,6 +363,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
               {audit.length === 0 ? (
                 <div className="admin-empty">Sin eventos registrados para este usuario.</div>
               ) : (
+                <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
                     <tr>
@@ -383,6 +388,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </>
           )}
@@ -394,13 +400,11 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
 
 function DefList({ rows }) {
   return (
-    <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "200px 1fr", rowGap: 8, columnGap: 16 }}>
+    <dl className="admin-deflist">
       {rows.map(([label, value], i) => (
-        <div key={i} style={{ display: "contents" }}>
-          <dt style={{ fontSize: 12, color: "var(--charcoal-xl)", fontWeight: 600 }}>{label}</dt>
-          <dd style={{ margin: 0, fontSize: 13, color: "var(--charcoal)", wordBreak: "break-word" }}>
-            {value === null || value === undefined || value === "" ? "—" : String(value)}
-          </dd>
+        <div key={i} className="admin-deflist-row">
+          <dt>{label}</dt>
+          <dd>{value === null || value === undefined || value === "" ? "—" : String(value)}</dd>
         </div>
       ))}
     </dl>
