@@ -443,13 +443,18 @@ export function Patients() {
           {filtered.length === 0
             ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
                 {/* Empty-state copy depends on which lane the user is
-                    looking at. The Potenciales view gets a friendlier
-                    nudge than the generic "no results". */}
-                {isPotentialView
-                  ? (potentialSubFilter === "archived"
-                      ? t("patients.noArchived")
-                      : t("patients.addPotentialFirst"))
-                  : t("patients.noResults")}
+                    looking at AND whether they're searching. A search
+                    miss should always read as "no results", not as
+                    the cold-start "add your first potencial" CTA —
+                    the user knows the list isn't empty, they just
+                    can't find what they typed. */}
+                {search
+                  ? t("patients.noResults")
+                  : isPotentialView
+                    ? (potentialSubFilter === "archived"
+                        ? t("patients.noArchived")
+                        : t("patients.addPotentialFirst"))
+                    : t("patients.noResults")}
               </div>
             : filtered.map((p,i) => {
               const isPotential = p.status === PATIENT_STATUS.POTENTIAL;

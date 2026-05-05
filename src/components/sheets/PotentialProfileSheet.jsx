@@ -58,6 +58,11 @@ export function PotentialProfileSheet({
     || interviewSession.status === SESSION_STATUS.CHARGED
   );
   const interviewIsScheduled = interviewSession?.status === SESSION_STATUS.SCHEDULED;
+  // Discarded potentials still surface here (via the Archivados sub-
+  // filter) so the practitioner can review the audit trail or
+  // re-promote them. Hide Descartar for them — they're already
+  // discarded; tapping it would be a confusing no-op-with-toast.
+  const alreadyDiscarded = patient.status === "discarded";
 
   // End-time of the interview slot, for the row sub-text. Mirrors the
   // session-row math used elsewhere; small enough that re-deriving it
@@ -221,13 +226,17 @@ export function PotentialProfileSheet({
                 {t("patients.convertToPatient")}
               </button>
 
-              {/* Discard (secondary, rose-tinted to signal lane) */}
-              <button className="btn" type="button"
-                onClick={() => setConfirmDiscard(true)}
-                disabled={mutating}
-                style={{ width:"100%", height:44, fontSize:"var(--text-sm)", background:"var(--rose-bg)", color:"var(--rose)", boxShadow:"none", gap:8 }}>
-                <IconTrash size={14} /> {t("patients.discardPotential")}
-              </button>
+              {/* Discard (secondary, rose-tinted to signal lane).
+                  Hidden for already-discarded potentials — re-running
+                  discard is a no-op that fires a misleading toast. */}
+              {!alreadyDiscarded && (
+                <button className="btn" type="button"
+                  onClick={() => setConfirmDiscard(true)}
+                  disabled={mutating}
+                  style={{ width:"100%", height:44, fontSize:"var(--text-sm)", background:"var(--rose-bg)", color:"var(--rose)", boxShadow:"none", gap:8 }}>
+                  <IconTrash size={14} /> {t("patients.discardPotential")}
+                </button>
+              )}
             </div>
           )}
         </div>

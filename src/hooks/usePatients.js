@@ -354,11 +354,22 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     setMutating(false);
     if (sErr) { setMutationError(sErr.message); return false; }
 
-    setPatients(prev => prev.map(p => p.id === id ? { ...p, status: PATIENT_STATUS.DISCARDED } : p));
     setUpcomingSessions(prev => prev.map(s =>
       s.patient_id === id && s.session_type === SESSION_TYPE.INTERVIEW && s.status === SESSION_STATUS.SCHEDULED
         ? { ...s, status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial descartado" }
         : s
+    ));
+
+    // The interview row was previously contributing to patient.billed
+    // (createPotential stamped billed=rate). Cancelling it without
+    // adjusting the denormalized counter leaves billed > 0 forever
+    // for a discarded potential, which audit-accounting.mjs flags as
+    // drift. Recalc from truth — cheap, idempotent, and keeps the
+    // potential's row consistent if it ever gets re-converted.
+    const fixed = await recalcPatientCounters(id);
+    setPatients(prev => prev.map(p => p.id === id
+      ? { ...p, status: PATIENT_STATUS.DISCARDED, ...(fixed || {}) }
+      : p
     ));
     return true;
   }
@@ -387,29 +398,58 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
 
     // Pre-compute the new session seeds so we can stamp final counters
     // on the patient UPDATE in one round-trip.
+    //
+    // Critical dedup: the existing interview session occupies a
+    // (date, time) slot and the DB unique index
+    // uniq_sessions_patient_date_time treats (patient_id, date, time)
+    // as the conflict key — session_type doesn't disambiguate. So a
+    // recurring schedule whose startDate falls on the interview's
+    // day/time would 23505 on insert, partially-fail the conversion
+    // (patient flipped to active, no recurring rows landed), and
+    // recalcPatientCounters would silently swallow the mismatch.
+    // Skipping the colliding seed lets the conversion succeed and
+    // preserves the interview session intact at its original rate.
+    const existingSlots = new Set(
+      (upcomingSessions || [])
+        .filter(s => s.patient_id === id)
+        .map(s => `${s.date}|${s.time}`)
+    );
     const sessionSeeds = [];
     if (mode === "recurring" && startDate) {
       for (const s of sched) {
         const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
         const mod = s.modality || "presencial";
         const freq = s.frequency || "weekly";
-        getRecurringDates(s.day, startDate, endDate, freq).forEach(d =>
-          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, frequency: freq, date: formatShortDate(d), is_recurring: true })
-        );
+        getRecurringDates(s.day, startDate, endDate, freq).forEach(d => {
+          const date = formatShortDate(d);
+          const slot = `${date}|${s.time}`;
+          if (existingSlots.has(slot)) return;
+          existingSlots.add(slot);
+          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, frequency: freq, date, is_recurring: true });
+        });
       }
     } else if (mode === "episodic" && firstConsult?.date) {
       const dur = Number(firstConsult.duration) > 0 ? Number(firstConsult.duration) : 60;
       const mod = firstConsult.modality || "presencial";
       const day = dayNameFromISO(firstConsult.date);
-      sessionSeeds.push({
-        day,
-        time: firstConsult.time || "10:00",
-        duration: dur,
-        modality: mod,
-        date: formatShortDate(new Date(firstConsult.date + "T12:00:00")),
-        is_recurring: false,
-        visit_type: "intake",
-      });
+      const date = formatShortDate(new Date(firstConsult.date + "T12:00:00"));
+      const time = firstConsult.time || "10:00";
+      const slot = `${date}|${time}`;
+      // Same dedup safeguard for the episodic first-consult — if the
+      // practitioner picks the same date/time as the interview (e.g.
+      // the interview itself is being repurposed as the intake), skip.
+      if (!existingSlots.has(slot)) {
+        existingSlots.add(slot);
+        sessionSeeds.push({
+          day,
+          time,
+          duration: dur,
+          modality: mod,
+          date,
+          is_recurring: false,
+          visit_type: "intake",
+        });
+      }
     }
     const seedCount = sessionSeeds.length;
 
