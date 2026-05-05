@@ -13,7 +13,7 @@ import {
   RECURRENCE_WINDOW_WEEKS,
   RECURRENCE_FREQUENCY, RECURRENCE_STRIDE_DAYS, DEFAULT_RECURRENCE_FREQUENCY,
 } from "../data/constants";
-import { isTutorSession } from "./sessions";
+import { isTutorSession, isInterviewSession } from "./sessions";
 import { formatShortDate, parseLocalDate, parseShortDate, shortDateToISO, toISODate } from "./dates";
 
 const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
@@ -112,6 +112,14 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   const scheduledRegular = allPSess.filter(s => {
     if (s.status !== SESSION_STATUS.SCHEDULED) return false;
     if (isTutorSession(s)) return false;
+    // Interview sessions (migration 047) are one-offs by definition
+    // even after a potential is converted to an active patient. The
+    // is_recurring=false guard below also catches them — but
+    // explicitly skipping by session_type makes the intent obvious
+    // for any future maintainer reading this filter, and makes the
+    // function correct under any (defensive) regression where an
+    // interview row gets is_recurring=true by mistake.
+    if (isInterviewSession(s)) return false;
     if (shortDateToISO(s.date) < todayISOStr) return false;
     // is_recurring is the explicit "this row was created as part of
     // a recurring schedule" flag. Manual one-offs from

@@ -190,7 +190,14 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
       `${pad(endDate.getUTCHours())}:${pad(endDate.getUTCMinutes())}`
     );
 
-    const summary = `Sesión - ${escapeText(s.patient || s.initials || "?")}`;
+    // Interview sessions surface as "Entrevista - …" so a glance at
+    // the calendar tells the practitioner this is an interview slot,
+    // not a regular session. The SUMMARY also flows into the
+    // notification when a calendar client surfaces upcoming events,
+    // which matters for the unusual times interviews tend to land at.
+    const interviewSession = s.session_type === "interview";
+    const summaryPrefix = interviewSession ? "Entrevista" : "Sesión";
+    const summary = `${summaryPrefix} - ${escapeText(s.patient || s.initials || "?")}`;
     const descParts = [];
     if (s.modality) descParts.push(`Modalidad: ${s.modality}`);
     if (s.status === "charged") descParts.push("Cancelada con cargo.");

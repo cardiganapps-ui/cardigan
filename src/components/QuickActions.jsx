@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
+import { NewPotentialSheet } from "./sheets/NewPotentialSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { NoteEditor } from "./NoteEditor";
@@ -22,7 +23,7 @@ const ACTIONS = QUICK_ACTIONS;
 
 export function QuickActions() {
   const { t } = useT();
-  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
+  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createPotential, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
   const isPro = !!subscription?.isPro;
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
@@ -81,6 +82,14 @@ export function QuickActions() {
 
       {activeSheet === "patient" && (
         <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} sessions={upcomingSessions} />
+      )}
+      {/* "potential" doesn't appear in the FAB menu — it's triggered
+          contextually via requestFabAction("potential") from the
+          Patients screen when the Potenciales filter is active. Same
+          pendingFabAction → handleAction → setActiveSheet pipeline as
+          the menu actions. */}
+      {activeSheet === "potential" && (
+        <NewPotentialSheet onClose={closeSheet} onSubmit={createPotential} mutating={mutating} />
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} sessions={upcomingSessions} mutating={mutating} />

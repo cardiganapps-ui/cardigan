@@ -48,6 +48,10 @@ html[data-theme="dark"] {
      events. Match the alpha + tone of the other status tints. */
   --blue:        #82A6E0;
   --blue-bg:     rgba(91,140,215,0.12);
+  /* Rose (interview / potential) — same alpha-tinted strategy as
+     purple/blue/amber so the dark-mode contrast stays readable. */
+  --rose:        #D896B0;
+  --rose-bg:     rgba(199,126,156,0.14);
 
   /* ── Navigation ── */
   --nav-bg:      #141E22;

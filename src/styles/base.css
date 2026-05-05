@@ -40,6 +40,13 @@
   --purple-bg:   #F0EEF9;
   --blue:        #5B8FD4;
   --blue-bg:     #EBF1FA;
+  /* Rose — interview-stage / potential patients (migration 047).
+     Distinct from the established palette (teal active, purple tutor,
+     amber charged, blue virtual, green completed) so an interview
+     session and a row in the Potenciales filter both read as "this
+     belongs to the interview lane" at a glance. */
+  --rose:        #C77E9C;
+  --rose-bg:     #F9EEF3;
   --nav-bg:      #2C4A52;
   /* Modality dots (Agenda month view + future surfaces). Tokenized
      so dark mode + per-profession theme overrides flow uniformly

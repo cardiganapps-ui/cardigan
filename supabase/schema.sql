@@ -11,7 +11,14 @@ create table if not exists patients (
   rate integer default 700 check (rate >= 0),
   day text default 'Lunes',
   time text default '16:00',
-  status text default 'active' check (status in ('active', 'ended')),
+  -- 'active' / 'ended' are the regular patient lifecycle. 'potential'
+  -- and 'discarded' belong to the interview-stage flow (migration 047):
+  -- a 'potential' is an interviewee under evaluation, not counted in
+  -- KPIs and never picked up by recurring auto-extend; 'discarded' is
+  -- a soft-archive for potentials that didn't convert. ConvertPotential
+  -- flips 'potential' → 'active' in place to preserve the interview row
+  -- as part of the patient's history.
+  status text default 'active' check (status in ('active', 'ended', 'potential', 'discarded')),
   billed integer default 0,
   paid integer default 0,
   sessions integer default 0,
@@ -46,11 +53,17 @@ create table if not exists sessions (
   rate integer default null,
   cancel_reason text default null,
   modality text default 'presencial' check (modality in ('presencial', 'virtual', 'telefonica', 'a-domicilio')),
-  -- 'regular' = appointment with the patient/client/student themselves;
-  -- 'tutor'   = appointment with the parent/legal guardian of a minor.
+  -- 'regular'   = appointment with the patient/client/student themselves;
+  -- 'tutor'     = appointment with the parent/legal guardian of a minor;
+  -- 'interview' = first-contact session with a 'potential' patient
+  --               (migration 047). Always created with is_recurring=false
+  --               so it never seeds an auto-extend recurring slot, even
+  --               post-conversion. Surfaces with a rose visual accent and
+  --               the per-profession "Entrevista" / "Clase de prueba" /
+  --               "Evaluación inicial" / "Consulta inicial" label.
   -- Replaces the historical "T·" initials prefix as the source of truth
   -- (see migration 023). Read paths keep the prefix fallback.
-  session_type text not null default 'regular' check (session_type in ('regular', 'tutor')),
+  session_type text not null default 'regular' check (session_type in ('regular', 'tutor', 'interview')),
   -- True when the row was created as part of a recurring weekly
   -- schedule (NewPatientSheet's seed insert, applyScheduleChange,
   -- or auto-extend). False for manual one-off sessions added via

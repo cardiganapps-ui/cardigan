@@ -755,6 +755,106 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     }
   });
 
+  // ── Interview-stage demo seeds (migration 047) ──
+  // Two potentials per generation, regardless of profession. Profession
+  // vocabulary handles the per-discipline labels ("Entrevista" /
+  // "Clase de prueba" / etc.) at render time. Adds enough texture to
+  // demonstrate both the upcoming-interview state (rose chip + "Aún
+  // en evaluación" notice) and the just-completed state ("¿Listos para
+  // convertir?" CTA), without crowding the active-patient list.
+  const POTENTIAL_DEFS = [
+    {
+      name: "Andrés Vázquez",
+      rate: 0,            // free first interview — showcases the no-charge path
+      offsetDays: 2,      // upcoming interview, two days out
+      time: "10:00",
+      modality: "presencial",
+    },
+    {
+      name: "Camila Ortiz",
+      rate: 600,
+      offsetDays: -3,     // interview already happened (status=completed)
+      status: "completed",
+      time: "16:00",
+      modality: "virtual",
+      phone: "+52 55 0011 2233",
+      email: "camila.ortiz@example.com",
+    },
+  ];
+  POTENTIAL_DEFS.forEach((def, idx) => {
+    const patientId = uuid();
+    const initials = getInitials(def.name);
+    // Continue the color rotation past the regular-patient batch so
+    // the rose UI dominates and the underlying color_idx doesn't
+    // matter much — it's only relevant if/when conversion happens.
+    const colorIdx = (patients.length + idx) % COLORS;
+
+    const sessDate = new Date(now);
+    sessDate.setDate(sessDate.getDate() + (def.offsetDays || 0));
+    sessDate.setHours(...def.time.split(":").map(Number));
+
+    const sessionStatus = def.status || "scheduled";
+    const sessionRate = def.rate;
+
+    sessions.push({
+      id: uuid(),
+      user_id: demoUserId,
+      patient_id: patientId,
+      patient: def.name,
+      initials,
+      time: def.time,
+      day: weekdayName(sessDate),
+      date: dateStr(sessDate),
+      duration: 60,
+      rate: sessionRate,
+      status: sessionStatus,
+      cancel_reason: null,
+      modality: def.modality || "presencial",
+      session_type: "interview",
+      // Critical: interview rows are one-offs forever (see usePatients
+      // createPotential + recurrence.js notes). is_recurring=false
+      // keeps them out of any auto-extend derivation post-conversion.
+      is_recurring: false,
+      visit_type: null,
+      color_idx: colorIdx,
+      colorIdx,
+      created_at: sessDate.toISOString(),
+    });
+
+    patients.push({
+      id: patientId,
+      user_id: demoUserId,
+      name: def.name,
+      parent: "",
+      initials,
+      rate: def.rate,
+      day: null,
+      time: null,
+      scheduling_mode: "episodic",
+      // The whole point of this seed: surface a 'potential' patient
+      // in the demo so the Potenciales lane has content out of the
+      // box.
+      status: "potential",
+      phone: def.phone || "",
+      email: def.email || "",
+      birthdate: null,
+      start_date: null,
+      billed: sessionRate,
+      paid: 0,
+      sessions: 1,
+      color_idx: colorIdx,
+      colorIdx,
+      tutor_frequency: null,
+      height_cm: null,
+      goal_weight_kg: null,
+      goal_body_fat_pct: null,
+      goal_skeletal_muscle_kg: null,
+      allergies: "",
+      medical_conditions: "",
+      created_at: sessDate.toISOString(),
+    });
+  });
+
   // Sort payments newest first
   payments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   // Sort notes newest first

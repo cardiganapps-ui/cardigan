@@ -38,12 +38,20 @@ export function CardiSheet({ open, onClose }) {
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   useLayer(open ? "cardi" : null, onClose);
 
+  // patientCount surfaces in cardiKnowledge.js as "Pacientes activos".
+  // Filter to status='active' so the figure matches the label — and so
+  // potentials/discarded (interview lane) aren't conflated with real
+  // patient count.
+  const activePatientCount = useMemo(
+    () => patients.filter(p => p.status === "active").length,
+    [patients]
+  );
   const context = useMemo(() => ({
     profession,
     accessState: subscription?.accessState,
     screen,
-    patientCount: patients.length,
-  }), [profession, subscription?.accessState, screen, patients.length]);
+    patientCount: activePatientCount,
+  }), [profession, subscription?.accessState, screen, activePatientCount]);
 
   const { messages, pending, streaming, send, retry, reset } = useCardiChat({ context });
 

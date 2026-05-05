@@ -10,6 +10,7 @@ import { Avatar } from "../components/Avatar";
 import { SwipeableRow } from "../components/SwipeableRow";
 import { EmptyState } from "../components/EmptyState";
 import { useT } from "../i18n/index";
+import { isPotentialOrDiscarded, SESSION_TYPE } from "../data/constants";
 
 const FINANCES_INITIAL_WINDOW = 60;
 const FINANCES_WINDOW_INCREMENT = 40;
@@ -297,14 +298,35 @@ function ProyeccionTab({ sessions, patients }) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }, [period]);
 
+  // Patients whose sessions count toward the active-revenue forecast.
+  // Potentials and discarded leads are excluded — projecting "what will
+  // I earn next month" must not bake in interview revenue from leads
+  // who haven't converted yet (and whose interview sessions, even
+  // future ones, are one-off rose-rail rows we deliberately styled
+  // separately).
+  const projectablePatientIds = useMemo(() => {
+    const ids = new Set();
+    for (const p of patients) if (!isPotentialOrDiscarded(p)) ids.add(p.id);
+    return ids;
+  }, [patients]);
+
   // Scheduled sessions within the projection period (today through cutoff)
   const futureSessions = useMemo(() =>
     sessions.filter(s => {
       if (s.status !== "scheduled") return false;
+      // Interview sessions are one-offs by design and don't represent
+      // recurring revenue; even on a converted patient they stay at
+      // their original tariff and shouldn't contribute to the next
+      // period's forecast. Excluding them upstream also keeps
+      // activeContributing honest.
+      if (s.session_type === SESSION_TYPE.INTERVIEW) return false;
+      // Don't project sessions belonging to potentials/discarded — see
+      // projectablePatientIds above.
+      if (s.patient_id && !projectablePatientIds.has(s.patient_id)) return false;
       const iso = shortDateToISO(s.date);
       return iso >= today && iso <= cutoff;
     }),
-    [sessions, today, cutoff]
+    [sessions, today, cutoff, projectablePatientIds]
   );
 
   // Historical cancellation rate (cancelled without charge / total resolved)
@@ -481,9 +503,18 @@ export function Finances() {
   const { t } = useT();
   const [tab, setTab] = useState("balances");
   const [balanceFilter, setBalanceFilter] = useState(null); // null | "owing" | "paid"
-  const totalOwed     = patients.reduce((s,p) => s+p.amountDue, 0);
-  const owingPatients = patients.filter(p => p.amountDue>0);
-  const noPatients    = patients.length === 0;
+  // Balances and the Por-cobrar / Al-corriente lists belong to the
+  // active-patient lane only. Potentials with a past-1h scheduled
+  // interview auto-complete and otherwise inflate "Outstanding" before
+  // the practitioner has decided to convert them. Surfacing them in
+  // the Potenciales view is the right place; here they're noise.
+  const regularPatients = useMemo(
+    () => patients.filter(p => !isPotentialOrDiscarded(p)),
+    [patients]
+  );
+  const totalOwed     = regularPatients.reduce((s,p) => s+p.amountDue, 0);
+  const owingPatients = regularPatients.filter(p => p.amountDue>0);
+  const noPatients    = regularPatients.length === 0;
 
   return (
     <div className="page" data-tour="finances-section">
@@ -514,7 +545,7 @@ export function Finances() {
               onClick={() => setBalanceFilter(balanceFilter === "paid" ? null : "paid")}
               className={`stat-tile stat-tile-clickable ${balanceFilter === "paid" ? "stat-tile-selected" : ""}`}>
               <div className="stat-tile-label">{t("patients.upToDate")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)" }}>{patients.filter(p=>p.amountDue<=0).length}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)" }}>{regularPatients.filter(p=>p.amountDue<=0).length}</div>
               <div className="stat-tile-sub">{t("finances.patientsLabel")}</div>
             </button>
           </div>
@@ -542,7 +573,7 @@ export function Finances() {
             <div className="finances-balances-col" style={{ padding:"0 16px 8px" }}>
               <div className="section-title" style={{ marginBottom:10 }}>{t("finances.patientBalance")}</div>
               <div className="card">
-                {patients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
+                {regularPatients.filter(p=>p.amountDue>0).sort((a,b)=>b.amountDue-a.amountDue).map((p,i) => (
                   <div className="bal-row" key={p.id} style={{ gap:8 }}>
                     <div
                       role="button" tabIndex={0}
@@ -569,7 +600,7 @@ export function Finances() {
             <div className="finances-balances-col" style={{ padding: balanceFilter === "paid" ? "0 16px 8px" : "16px 16px 0" }}>
               <div className="section-title" style={{ marginBottom:10 }}>{t("patients.upToDate")}</div>
               <div className="card">
-                {patients.filter(p=>p.amountDue<=0).map((p,i) => (
+                {regularPatients.filter(p=>p.amountDue<=0).map((p,i) => (
                   <div className="bal-row" key={p.id} role="button" tabIndex={0}
                     onClick={() => openExpediente(p)}
                     style={{ cursor:"pointer" }}>

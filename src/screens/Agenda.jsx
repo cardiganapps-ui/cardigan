@@ -11,7 +11,7 @@ import { BulkActionsBar } from "../components/BulkActionsBar";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 import { formatShortDate, toISODate } from "../utils/dates";
-import { isCancelledStatus, statusClass, isTutorSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
+import { isCancelledStatus, statusClass, isTutorSession, isInterviewSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
 import { Avatar } from "../components/Avatar";
 import { useSwipe } from "../hooks/useSwipe";
 import { useViewport } from "../hooks/useViewport";
@@ -383,19 +383,23 @@ function buildMonthGrid(year, month) {
 function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSelect }) {
   const { t } = useT();
   const tutor = isTutorSession(s);
+  const interview = isInterviewSession(s);
   const isVirtual = s.modality === "virtual";
   const isTelefonica = s.modality === "telefonica";
   const isADomicilio = s.modality === "a-domicilio";
-  const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
+  // Interview sessions get the rose avatar regardless of modality —
+  // matches the Home stream and signals "interview lane" at a glance.
+  const avatarBg = interview ? "var(--rose)" : tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
   const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
   const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
+  const railOverride = interview ? "rail-interview" : "";
   const handleClick = () => {
     if (selectionMode) onToggleSelect?.(s);
     else onClick?.(s);
   };
   return (
     <div
-      className={`row-item session-row ${railClass(s.status)}`}
+      className={`row-item session-row ${railClass(s.status)} ${railOverride}`}
       key={s.id}
       onClick={handleClick}
       style={selectionMode && selected ? { background: "var(--teal-pale)" } : undefined}
@@ -418,6 +422,19 @@ function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSele
               }}
             >
               {t("sessions.tutor")}
+            </span>
+          )}
+          {interview && (
+            <span
+              className="badge badge-rose"
+              style={{
+                marginLeft: 6,
+                fontSize: "var(--text-eyebrow)",
+                textTransform: "uppercase",
+                letterSpacing: 0.3,
+              }}
+            >
+              {t("sessions.interview")}
             </span>
           )}
         </div>
@@ -667,6 +684,10 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                 if (startF < 0 || startF >= hours.length) return null;
                 const eventStyle = (() => {
                   if (isCancelledStatus(sess.status)) return undefined;
+                  // Interview takes precedence over tutor / modality so
+                  // the rose styling reads as the dominant signal —
+                  // matches the SessionRow + Home avatar treatments.
+                  if (isInterviewSession(sess)) return { background:"var(--rose-bg)", borderLeftColor:"var(--rose)", color:"var(--charcoal)" };
                   if (isTutorSession(sess)) return { background:"var(--purple-bg)", borderLeftColor:"var(--purple)", color:"var(--charcoal)" };
                   if (sess.modality === "virtual") return { background:"var(--blue-bg)", borderLeftColor:"var(--blue)", color:"var(--charcoal)" };
                   if (sess.modality === "telefonica") return { background:"var(--green-bg)", borderLeftColor:"var(--green)", color:"var(--charcoal)" };

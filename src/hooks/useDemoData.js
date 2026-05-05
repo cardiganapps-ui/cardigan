@@ -59,6 +59,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     // return value so every destructure across the app resolves to a
     // callable (readOnly UI prevents most of these from firing anyway).
     createPatient: noop, updatePatient: noop, deletePatient: noop,
+    createPotential: noop, discardPotential: noop, convertPotentialToActive: noop,
     createSession: noop, updateSessionStatus: noop, deleteSession: noop,
     rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
     updateSessionModality: noop, updateSessionRate: noop, updateSessionVisitType: noop, updateCancelReason: noop,

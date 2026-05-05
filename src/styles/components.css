@@ -354,6 +354,7 @@ button.kpi-card:active {
 .badge-amber  { background: var(--amber-bg);  color: var(--amber); }
 .badge-purple { background: var(--purple-bg); color: var(--purple); }
 .badge-blue   { background: var(--blue-bg);   color: var(--blue); }
+.badge-rose   { background: var(--rose-bg);   color: var(--rose); }
 
 /* ROW ITEMS */
 .row-item {
@@ -950,6 +951,29 @@ button.kpi-card:active {
 .row-item.session-row.rail-completed { --rail-color: var(--green); }
 .row-item.session-row.rail-cancelled { --rail-color: var(--charcoal-xl); }
 .row-item.session-row.rail-charged   { --rail-color: var(--amber); }
+/* Interview-stage session: rail overrides the status-derived color so
+   "Entrevista" reads at a glance even when the session is still
+   scheduled or already completed. Tied to session_type, not status. */
+.row-item.session-row.rail-interview { --rail-color: var(--rose); }
+
+/* POTENTIAL PATIENT ROW — Patients-screen rows in the Potenciales
+   filter (and its archived sub-filter). Subtle rose tint distinguishes
+   the interview lane from real active patients without shouting. The
+   left rail mirrors the interview-session rail above. */
+.row-item.row-potential {
+  border-left: 3px solid var(--rose);
+  background: var(--rose-bg);
+}
+.row-item.row-potential:active { background: var(--rose-bg); filter: brightness(0.97); }
+@media (hover: hover) {
+  .row-item.row-potential:hover { background: var(--rose-bg); filter: brightness(0.97); }
+}
+.row-item.row-potential.row-discarded {
+  /* Archived sub-filter: same lane but dimmed so it reads as past. */
+  opacity: 0.72;
+  background: var(--cream);
+  border-left-color: var(--charcoal-xl);
+}
 .status-scheduled  { background: var(--teal-pale);  color: var(--teal-dark); }
 .status-completed  { background: var(--green-bg);   color: var(--green); }
 .status-cancelled  { background: var(--cream-dark); color: var(--charcoal-lt); }

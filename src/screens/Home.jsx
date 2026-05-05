@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
 import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
 import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
-import { isTutorSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
+import { isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
 import { ActivationChecklist } from "../components/ActivationChecklist";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -14,6 +14,7 @@ import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { formatMXN } from "../utils/format";
+import { isPotentialOrDiscarded } from "../data/constants";
 
 /* ── Compute next working day for the "Mañana" carousel panel ── */
 function getNextDay(today, sessions) {
@@ -59,8 +60,15 @@ export function Home({ setScreen, userName }) {
   // drawerOpen, etc). Memo scopes recomputation to the inputs that
   // actually affect the result — cheap individually, but Home is
   // rendered ~50ms on a mid-range phone so every bit counts.
+  // Outstanding total + the "Saldos pendientes" list both belong to the
+  // active-patient lane. Potentials with a past-1h-old scheduled
+  // interview auto-complete via sessionCountsTowardBalance and would
+  // otherwise inject a ghost balance into Home before the practitioner
+  // has decided whether to convert them. Their interview's amountDue
+  // is still surfaced inside the Potencial profile sheet — just not in
+  // the global KPI.
   const totalOwed = useMemo(
-    () => patients.reduce((s, p) => s + p.amountDue, 0),
+    () => patients.reduce((s, p) => isPotentialOrDiscarded(p) ? s : s + p.amountDue, 0),
     [patients]
   );
   const activeCount = useMemo(
@@ -167,7 +175,7 @@ export function Home({ setScreen, userName }) {
     if (editingNote?.id) await deleteNote(editingNote.id);
   }, [editingNote, deleteNote]);
   const handleCloseNote = useCallback(() => setEditingNote(null), [setEditingNote]);
-  const owingPatients = patients.filter(p => p.amountDue > 0);
+  const owingPatients = patients.filter(p => p.amountDue > 0 && !isPotentialOrDiscarded(p));
 
   const openPatient = (name) => {
     const p = patients.find(p => p.name === name);
@@ -183,14 +191,19 @@ export function Home({ setScreen, userName }) {
 
   const renderSessionRow = (s) => {
     const tutor = isTutorSession(s);
+    const interview = isInterviewSession(s);
     const isVirtual = s.modality === "virtual";
     const isTelefonica = s.modality === "telefonica";
     const isADomicilio = s.modality === "a-domicilio";
-    const avatarBg = tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
+    // Interview sessions get the rose avatar regardless of modality —
+    // they're a distinct lane (the "before they're a patient" lane)
+    // and should read as such even on the unified Home stream.
+    const avatarBg = interview ? "var(--rose)" : tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
     const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
     const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
+    const railOverride = interview ? "rail-interview" : "";
     return (
-      <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
+      <div className={`row-item session-row ${railClass(s.status)} ${railOverride}`} key={s.id} onClick={() => setSelectedSession(s)}>
         <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
         <div className="row-content">
           <div className="row-title">
@@ -206,6 +219,19 @@ export function Home({ setScreen, userName }) {
                 }}
               >
                 {t("sessions.tutor")}
+              </span>
+            )}
+            {interview && (
+              <span
+                className="badge badge-rose"
+                style={{
+                  marginLeft: 6,
+                  fontSize: "var(--text-eyebrow)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {t("sessions.interview")}
               </span>
             )}
           </div>

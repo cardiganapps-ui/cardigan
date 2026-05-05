@@ -78,6 +78,23 @@ describe("generateICS", () => {
     expect(ics).toContain("SUMMARY:Sesión - AL");
   });
 
+  // Migration 047: interview sessions surface as "Entrevista - …" in
+  // calendar feeds so a glance tells the practitioner this is the
+  // interview slot, not a regular session.
+  it("emits 'Entrevista - …' for interview sessions", () => {
+    const ics = generateICS({
+      sessions: [
+        {
+          id: "s-1", date: "8-Abr", time: "10:00", duration: 60,
+          status: "scheduled", initials: "AL", patient: "Ana López",
+          session_type: "interview",
+        },
+      ],
+    });
+    expect(ics).toContain("SUMMARY:Entrevista - Ana López");
+    expect(ics).not.toContain("SUMMARY:Sesión - Ana López");
+  });
+
   it("marks cancelled sessions as STATUS:CANCELLED so clients render strikethroughs", () => {
     const ics = generateICS({
       sessions: [

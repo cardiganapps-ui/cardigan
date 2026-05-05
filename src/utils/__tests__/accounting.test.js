@@ -231,3 +231,60 @@ describe("enrichPatientsWithBalance", () => {
     expect(out.status).toBe("active");
   });
 });
+
+/* ── Interview-stage / potential patients (migration 047) ──
+   Critical safety: an interview session on a 'potential' patient must
+   pass through sessionCountsTowardBalance the same way a regular
+   session does — no special-case branch in the predicate. The
+   difference between a potential's interview balance and a real
+   patient's session balance is enforced ONE LEVEL UP, in the KPI
+   filters that exclude isPotentialOrDiscarded(p) from Home / Finances
+   / Cardi totals. These tests pin the predicate's behavior so a
+   future change can't accidentally couple the two layers. */
+describe("interview sessions (potential patients)", () => {
+  it("free interview (rate=0, completed) → consumed=0, amountDue=0, credit=0", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 0, 0, { status: "potential" })],
+      [sess("p1", "completed", 0, { date: "10-Abr", session_type: "interview" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("scheduled future interview does NOT pre-fire auto-complete", () => {
+    // 1-May is in the future from NOW (24-Abr).
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 500, 0, { status: "potential" })],
+      [sess("p1", "scheduled", 500, { date: "1-May", time: "10:00", session_type: "interview" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("completed paid interview at $500 contributes to consumed like any session", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 500, 0, { status: "potential" })],
+      [sess("p1", "completed", 500, { date: "10-Abr", session_type: "interview" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(500);
+  });
+
+  it("interview at $0 doesn't poison rate fallback for active patient's other sessions", () => {
+    // patient.rate = 700; one historical interview at $0 + one
+    // recurring session at $700. Rate fallback must use session.rate
+    // first so the interview's $0 doesn't override the regular rate.
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { status: "active" })],
+      [
+        sess("p1", "completed", 0,   { date: "5-Abr",  session_type: "interview" }),
+        sess("p1", "completed", 700, { date: "12-Abr", session_type: "regular" }),
+      ],
+      NOW,
+    );
+    // consumed = 0 (interview) + 700 (regular) = 700
+    expect(out.amountDue).toBe(700);
+  });
+});

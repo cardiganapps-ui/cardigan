@@ -79,7 +79,7 @@ async function handler(req, res) {
   const [sessionsRes, prefsRes] = await Promise.all([
     svc
       .from("sessions")
-      .select("id, date, time, duration, status, patient, initials, modality, cancel_reason")
+      .select("id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type")
       .eq("user_id", row.user_id)
       .in("status", ["scheduled", "completed"])
       .gte("created_at", oneYearAgo.toISOString())
