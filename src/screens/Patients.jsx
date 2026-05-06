@@ -372,36 +372,17 @@ export function Patients() {
           title={t("patients.noPatients")}
           body={t("patients.addFirst")}
           cta={!readOnly && (
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:10 }}>
-              <button
-                type="button"
-                onClick={() => requestFabAction?.("patient")}
-                className="btn btn-primary"
-                style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
-                <IconPlus size={16} /> {t("patients.addFirstCta")}
-              </button>
-              {/* Discreet secondary affordance — surfaces the
-                  Potenciales lane on day one without competing with
-                  the primary CTA. Cardigan's "billion-dollar"
-                  cold-start lets users find both paths from the
-                  same screen without an extra navigation hop. */}
-              <button
-                type="button"
-                onClick={() => requestFabAction?.("potential")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--rose)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "var(--font)",
-                  padding: "4px 8px",
-                  letterSpacing: 0.2,
-                }}>
-                {t("patients.newPotential")} →
-              </button>
-            </div>
+            /* Single primary CTA — the Paciente / Potencial toggle
+                lives inside NewPatientSheet, so users discover the
+                interview lane on day one without a second cold-start
+                affordance competing for attention. */
+            <button
+              type="button"
+              onClick={() => requestFabAction?.("patient")}
+              className="btn btn-primary"
+              style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+              <IconPlus size={16} /> {t("patients.addFirstCta")}
+            </button>
           )}
         />
       </div>

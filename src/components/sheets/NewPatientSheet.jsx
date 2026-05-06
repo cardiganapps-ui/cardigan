@@ -46,7 +46,7 @@ function findEmptySlot(sessions, extraTaken) {
   return { day: "Lunes", time: "16:00" };
 }
 
-export function NewPatientSheet({ onClose, onSubmit, mutating, patients, sessions }) {
+export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating, patients, sessions, initialMode = "patient" }) {
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -59,7 +59,21 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
     setPanelEl(el);
   };
 
-  // Two-step flow: 1 = essentials + schedule, 2 = contact + birthdate.
+  // Record type — "patient" (full two-step regular patient flow) or
+  // "potential" (slim single-step interview-stage flow). The user
+  // picks at the top of the sheet so the same FAB action handles
+  // both. `initialMode` lets external entry points (e.g. the
+  // Potenciales chip's inline CTA) pre-select the mode without an
+  // extra tap. Migration 047 introduced the potential lane; the form
+  // gained the mode toggle so the workflow stays a single primary
+  // path: + Paciente → pick mode → fill the right fields.
+  const [recordType, setRecordType] = useState(
+    initialMode === "potential" ? "potential" : "patient"
+  );
+  const isPotentialMode = recordType === "potential";
+
+  // Two-step flow (patient mode only): 1 = essentials + schedule,
+  // 2 = contact + birthdate. Potential mode is single-step.
   // Step 2 fields are entirely optional but the user must pass through
   // it so they confirm the completed profile rather than creating half
   // a patient by tapping out of a collapsed "advanced" section.
@@ -211,6 +225,46 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
 
   const submit = async (e) => {
     e?.preventDefault();
+
+    // Potential mode — single-step slim form. Validate, then call
+    // onPotentialSubmit (createPotential under the hood). Same flash-
+    // toast pattern as patient mode for missed-field feedback.
+    if (isPotentialMode) {
+      if (!name.trim()) { flash(t("patients.enterName")); return; }
+      const dupe = (patients || []).some(p =>
+        (p.status === "active" || p.status === "potential")
+        && p.name.toLowerCase() === name.trim().toLowerCase()
+      );
+      if (dupe) { flash(t("patients.potentialDuplicate")); return; }
+      if (!rateValid) { flash(t("patients.enterRate")); return; }
+      if (!firstConsultDate) { flash(t("sessions.selectDate")); return; }
+      if (!firstConsultTime) { flash(t("sessions.selectTime")); return; }
+      setFeedback(null);
+      setSubmitting(true);
+      try {
+        const ok = await onPotentialSubmit?.({
+          name: name.trim(),
+          parent: isMinor ? parent.trim() : "",
+          rate: Number(rate) || 0,
+          phone: phoneDigits(phone),
+          email: email.trim(),
+          whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
+          interview: {
+            date: firstConsultDate,
+            time: firstConsultTime,
+            duration: Number(firstConsultDuration) || 60,
+            modality: firstConsultModality,
+          },
+        });
+        if (ok) onClose();
+        else setSubmitting(false);
+      } catch (ex) {
+        flash(ex?.message || "Error al guardar");
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (step === 1) { goNext(); return; }
     // Step 2: re-check the gate in case the user bounced back to step 1
     // and introduced a conflict before coming back.
@@ -292,17 +346,22 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            <span className="sheet-title">{t("patients.newPatient")}</span>
-            {/* Progress strips. Current step is always teal; subsequent
+            <span className="sheet-title">
+              {isPotentialMode ? t("patients.newPotential") : t("patients.newPatient")}
+            </span>
+            {/* Progress strips — patient mode only (potential is
+                single-step). Current step is always teal; subsequent
                 steps fade to the neutral border color. Role=progressbar
                 + aria-valuenow keep it meaningful to screen readers even
                 though the visual is just two bars. */}
-            <div role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={step}
-              aria-label={t("patients.stepIndicator", { current: step, total: 2 })}
-              style={{ display:"flex", gap:6 }}>
-              <span aria-hidden style={{ height:4, width:72, borderRadius:2, background:"var(--teal)", transition:"background 0.3s" }} />
-              <span aria-hidden style={{ height:4, width:72, borderRadius:2, background: step >= 2 ? "var(--teal)" : "var(--border)", transition:"background 0.3s" }} />
-            </div>
+            {!isPotentialMode && (
+              <div role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={step}
+                aria-label={t("patients.stepIndicator", { current: step, total: 2 })}
+                style={{ display:"flex", gap:6 }}>
+                <span aria-hidden style={{ height:4, width:72, borderRadius:2, background:"var(--teal)", transition:"background 0.3s" }} />
+                <span aria-hidden style={{ height:4, width:72, borderRadius:2, background: step >= 2 ? "var(--teal)" : "var(--border)", transition:"background 0.3s" }} />
+              </div>
+            )}
           </div>
           <button className="sheet-close" aria-label={t("close")} onClick={onClose} disabled={submitting}><IconX size={14} /></button>
         </div>
@@ -310,7 +369,172 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
         <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
           <div>
 
-          {step === 1 && (
+          {/* Mode toggle — first thing the user sees so they can
+              pick "Paciente" (full profile + recurring schedule) or
+              "Potencial" (slim interview-stage flow) without leaving
+              the standard + Paciente entry point. Switching modes
+              keeps already-typed shared fields (name, rate, contact)
+              so the form doesn't penalize indecision. */}
+          <div style={{ marginBottom: 16, marginTop: 4 }}>
+            <SegmentedControl
+              size="md"
+              value={recordType}
+              onChange={(v) => { setRecordType(v); setFeedback(null); if (v === "potential") setStep(1); }}
+              ariaLabel={t("patients.recordTypeLabel")}
+              items={[
+                { k: "patient",   l: t("patients.recordTypePatient") },
+                { k: "potential", l: t("patients.recordTypePotential") },
+              ]}
+            />
+            <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6, lineHeight:1.5 }}>
+              {isPotentialMode ? t("patients.recordTypePotentialHint") : t("patients.recordTypePatientHint")}
+            </div>
+          </div>
+
+          {/* ── POTENTIAL MODE — single-step slim form ──
+              Reuses the existing first-consult inputs (date / time /
+              duration / modality) as the interview slot to avoid a
+              parallel set of state. Submits via onPotentialSubmit
+              (createPotential). */}
+          {isPotentialMode && (
+            <>
+              <div className="input-group">
+                <label className="input-label">
+                  {t("settings.fullName")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <input className="input" type="text" required value={name}
+                  onChange={e => setName(capitalizeName(e.target.value))}
+                  placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
+              </div>
+
+              <div
+                onClick={() => setIsMinor(v => !v)}
+                style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  padding:"14px 16px", marginBottom:14, cursor:"pointer",
+                  borderRadius:"var(--radius)",
+                  border: isMinor ? "1.5px solid var(--purple)" : "1.5px solid var(--border-lt)",
+                  background: isMinor ? "var(--purple-bg)" : "var(--white)",
+                  transition: "all 0.4s",
+                }}>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:700, color: isMinor ? "var(--purple)" : "var(--charcoal)" }}>{t("patients.isMinor")}</div>
+                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.isMinorHint")}</div>
+                </div>
+                <Toggle on={isMinor} onToggle={() => {}} />
+              </div>
+              {isMinor && (
+                <div className="input-group">
+                  <label className="input-label">{t("patients.tutor")}</label>
+                  <input className="input" type="text" value={parent}
+                    onChange={e => setParent(capitalizeName(e.target.value))}
+                    placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
+                </div>
+              )}
+
+              <div className="input-group">
+                <label className="input-label">
+                  {t("patients.ratePerSession")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <MoneyInput min="0" step="50" required value={rate}
+                  onChange={e => setRate(e.target.value)}
+                  placeholder={t("patients.ratePlaceholder")} />
+              </div>
+
+              {/* Interview block — rose-tinted to match the lane's
+                  visual identity. Same fields as the episodic first-
+                  consult picker; the difference is server-side, where
+                  this row is created with session_type='interview'. */}
+              <div style={{ background:"var(--rose-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
+                <div style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--rose)", marginBottom:8 }}>
+                  {t("sessions.interview")}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <div className="input-group">
+                    <label className="input-label">
+                      {t("sessions.date")}
+                      <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                    </label>
+                    <input className="input" type="date" required
+                      value={firstConsultDate}
+                      min={todayISO()}
+                      onChange={e => setFirstConsultDate(e.target.value)} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">
+                      {t("patients.time")}
+                      <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                    </label>
+                    <input className="input" type="time" required
+                      value={firstConsultTime}
+                      onChange={e => setFirstConsultTime(e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <div className="input-group" style={{ marginBottom:0 }}>
+                    <label className="input-label">{t("sessions.duration")}</label>
+                    <select className="input" value={firstConsultDuration} onChange={e => setFirstConsultDuration(e.target.value)}>
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">1 h</option>
+                      <option value="90">1½ h</option>
+                      <option value="120">2 h</option>
+                    </select>
+                  </div>
+                  <div className="input-group" style={{ marginBottom:0 }}>
+                    <label className="input-label">{t("sessions.modality")}</label>
+                    <select className="input" value={firstConsultModality} onChange={e => setFirstConsultModality(e.target.value)}>
+                      {modalities.map(m => (
+                        <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional contact — same fields as patient mode's
+                  step 2, surfaced inline since potential mode is
+                  single-step. */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div className="input-group">
+                  <label className="input-label">{t("patients.phone")}</label>
+                  <input className="input" type="tel" inputMode="tel" autoComplete="tel"
+                    value={phone}
+                    onChange={e => setPhone(formatPhoneMX(e.target.value))}
+                    placeholder={t("patients.phonePlaceholder")} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">{t("settings.email")}</label>
+                  <input className="input" type="email" inputMode="email" autoComplete="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={t("patients.emailPlaceholder")} />
+                </div>
+              </div>
+              {import.meta.env.VITE_WHATSAPP_UI_ENABLED === "true" && (
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:4, marginBottom:8, gap:12 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                      {t("patients.whatsappReminders")}
+                    </div>
+                    <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                      {phoneDigits(phone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                    </div>
+                  </div>
+                  <Toggle
+                    on={whatsappEnabled && !!phoneDigits(phone)}
+                    disabled={!phoneDigits(phone)}
+                    ariaLabel={t("patients.whatsappReminders")}
+                    onToggle={() => setWhatsappEnabled(v => !v)}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {!isPotentialMode && step === 1 && (
             <>
               {/* 1. Name */}
               <div className="input-group">
@@ -561,7 +785,7 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
             </>
           )}
 
-          {step === 2 && (
+          {!isPotentialMode && step === 2 && (
             <>
               <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:14, lineHeight:1.5 }}>
                 {t("patients.detailsHint")}
@@ -720,7 +944,16 @@ export function NewPatientSheet({ onClose, onSubmit, mutating, patients, session
           )}
 
           <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
-            {step === 1 ? (
+            {isPotentialMode ? (
+              /* Potential mode — single rose-tinted submit button to
+                  match the lane's visual identity. No back button
+                  (single-step). */
+              <button className="btn" type="submit"
+                disabled={mutating || !name.trim() || rate === ""}
+                style={{ background:"var(--rose)", color:"var(--white)", boxShadow:"none", width:"100%" }}>
+                {mutating ? t("saving") : t("patients.newPotential")}
+              </button>
+            ) : step === 1 ? (
               <button className="btn btn-primary-teal" type="submit">
                 {t("next")}
               </button>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
-import { NewPotentialSheet } from "./sheets/NewPotentialSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { NoteEditor } from "./NoteEditor";
@@ -80,16 +79,22 @@ export function QuickActions() {
         <IconPlus size={26} strokeWidth={2.2} />
       </button>
 
-      {activeSheet === "patient" && (
-        <NewPatientSheet onClose={closeSheet} onSubmit={createPatient} mutating={mutating} patients={patients} sessions={upcomingSessions} />
-      )}
-      {/* "potential" doesn't appear in the FAB menu — it's triggered
-          contextually via requestFabAction("potential") from the
-          Patients screen when the Potenciales filter is active. Same
-          pendingFabAction → handleAction → setActiveSheet pipeline as
-          the menu actions. */}
-      {activeSheet === "potential" && (
-        <NewPotentialSheet onClose={closeSheet} onSubmit={createPotential} mutating={mutating} />
+      {/* + Paciente in the FAB menu opens NewPatientSheet in patient
+          mode; the Potenciales chip's contextual CTA fires
+          requestFabAction("potential") which routes to the same
+          sheet pre-set to potential mode. The mode toggle at the
+          top of the sheet lets the user flip either way without
+          backing out. */}
+      {(activeSheet === "patient" || activeSheet === "potential") && (
+        <NewPatientSheet
+          onClose={closeSheet}
+          onSubmit={createPatient}
+          onPotentialSubmit={createPotential}
+          initialMode={activeSheet === "potential" ? "potential" : "patient"}
+          mutating={mutating}
+          patients={patients}
+          sessions={upcomingSessions}
+        />
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} sessions={upcomingSessions} mutating={mutating} />

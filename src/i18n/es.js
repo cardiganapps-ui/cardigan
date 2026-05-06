@@ -206,6 +206,13 @@ export default {
     statusDiscarded: "Descartado",
     newPotential: "Nuevo {prospect.s}",
     addPotentialFirst: "Agrega un {prospect.s} para registrar una {intake.s} antes de comprometerte con el horario completo.",
+    // Mode toggle inside NewPatientSheet — same FAB action handles both
+    // regular patients and potentials; the toggle lets the user pick.
+    recordTypeLabel: "¿Cómo lo registramos?",
+    recordTypePatient: "{client.S}",
+    recordTypePotential: "Potencial",
+    recordTypePatientHint: "Perfil completo y horario recurrente.",
+    recordTypePotentialHint: "Solo {intake.s}, sin horario aún.",
     noPotentials: "Sin {prospect.p}",
     noArchived: "Sin {prospect.p} descartados",
     convertToPatient: "Convertir en {client.s}",
