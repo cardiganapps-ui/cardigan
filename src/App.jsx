@@ -467,6 +467,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isTablet } = useViewport();
   const [viewAsUserId, setViewAsUserId] = useState(null);
+  // Where the admin came from when they entered "view as user" mode.
+  // Captured as the full hash so the exit path can drop them BACK on
+  // the exact admin page (Usuarios, the user's detail tab, etc.) they
+  // launched from — instead of the previous behavior that always
+  // dumped them on Home regardless of origin.
+  const viewAsOriginHashRef = useRef(null);
   // `localHideFab` is controlled by non-tutorial callers (e.g. the Patients
   // expediente drawer). The tutorial contributes its own reason to hide
   // the FAB, derived synchronously from `tutorial` state below — that way
@@ -1259,7 +1265,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     admin: admin && !readOnly ? (
       <AdminLayout
         currentAdminId={user?.id}
-        onViewAs={(uid) => { setViewAsUserId(uid); navigate("home"); }}
+        onViewAs={(uid) => {
+          // Snapshot the admin hash so the read-only banner's exit
+          // path can restore it (e.g. #admin/users/<uid>).
+          viewAsOriginHashRef.current = typeof window !== "undefined"
+            ? window.location.hash
+            : null;
+          setViewAsUserId(uid);
+          navigate("home");
+        }}
         onLeaveAdmin={() => navigate("home")}
       />
     ) : <Home setScreen={setScreen} userName={userName} />,
@@ -1410,7 +1424,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {viewAsUserId && !demo && (
           <div className="app-banner app-banner--readonly">
             <span className="app-banner-text app-banner-text--muted">{t("admin.readOnly")}</span>
-            <button onClick={() => { setViewAsUserId(null); setScreen("home"); }}
+            <button onClick={() => {
+              setViewAsUserId(null);
+              // Return to the exact admin page the action was launched
+              // from — typically #admin/users/<uid>, the user's
+              // detail. Falls back to Home if there's no captured
+              // origin (defensive against an admin hash that was
+              // cleared mid-session).
+              const origin = viewAsOriginHashRef.current;
+              viewAsOriginHashRef.current = null;
+              if (origin && origin.startsWith("#admin")) {
+                if (typeof window !== "undefined") window.location.hash = origin;
+                setScreen("admin");
+              } else {
+                setScreen("home");
+              }
+            }}
               className="app-banner-action app-banner-action--readonly">
               {t("admin.exit")}
             </button>

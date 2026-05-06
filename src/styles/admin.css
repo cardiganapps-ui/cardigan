@@ -15,7 +15,11 @@
   position: fixed;
   inset: 0;
   display: flex;
-  background: var(--cream);
+  /* The rest of Cardigan paints screens on a white body. The previous
+     cream page bg made the admin feel like a different app — now it
+     reads as the same surface family, with the cards' subtle border +
+     shadow doing the elevation work instead. */
+  background: var(--white);
   overflow: hidden;
   z-index: var(--z-expediente);
 }
@@ -89,7 +93,7 @@
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
-.admin-rail-item:hover { background: var(--cream); color: var(--charcoal); }
+.admin-rail-item:hover { background: var(--teal-mist); color: var(--charcoal); }
 .admin-rail-item--active { background: var(--teal-pale); color: var(--teal-dark); }
 .admin-rail-item--active:hover { background: var(--teal-pale); color: var(--teal-dark); }
 .admin-rail-icon {
@@ -201,32 +205,33 @@
 }
 .admin-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-/* Quick exit button in the header — always visible so leaving admin
-   doesn't require opening the drawer on mobile. The "Salir" copy
-   matches the drawer-footer button so the two paths read as the
-   same action. Label collapses to icon-only on narrow viewports. */
+/* Quick exit — round icon-only button pinned top-right of the header.
+   Always visible so leaving admin is one tap from anywhere. Round
+   shape signals "close / exit" the way the X on a sheet does, and
+   matches the round 36px FAB / sheet-close family elsewhere in
+   Cardigan. The "Salir" label is in aria-label only. */
 .admin-exit-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
+  justify-content: center;
+  width: 36px; height: 36px;
+  padding: 0;
   background: var(--white);
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 50%;
   color: var(--charcoal-md);
   cursor: pointer;
+  flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring);
 }
-.admin-exit-btn:hover { background: var(--cream); color: var(--charcoal); }
-@media (max-width: 600px) {
-  .admin-exit-btn { padding: 0; width: 32px; justify-content: center; }
-  .admin-exit-btn-label { display: none; }
+.admin-exit-btn:hover {
+  background: var(--teal-mist);
+  border-color: var(--teal-light);
+  color: var(--teal-dark);
+  transform: translateY(-1px);
 }
+.admin-exit-btn:active { transform: translateY(0); }
 
 .admin-content {
   flex: 1;
@@ -245,14 +250,15 @@
 }
 
 /* Card surface — same vocabulary as .card but tuned for admin density.
-   Subtle dual shadow so the card lifts off the cream page bg without
-   feeling heavy in light mode or muddy in dark mode. */
+   With the white page bg the elevation comes from a soft border + a
+   barely-there shadow; cards still read as distinct surfaces without
+   feeling like a 2008 admin theme. */
 .admin-card {
   background: var(--white);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-lt);
   padding: 20px 22px;
-  box-shadow: 0 1px 2px rgba(46,46,46,0.04), 0 4px 12px rgba(46,46,46,0.03);
+  box-shadow: 0 1px 2px rgba(46,46,46,0.03), 0 6px 18px rgba(46,46,46,0.04);
 }
 .admin-card-title {
   font-family: var(--font-d);
@@ -292,6 +298,9 @@
 }
 .admin-table thead th {
   position: sticky; top: 0;
+  /* Soft cream tint so the header still reads as a header against the
+     white card bg, but doesn't shout. Picks up the same tone as
+     teal-mist on the row hover so the family feels coherent. */
   background: var(--cream);
   border-bottom: 1px solid var(--border-lt);
   text-align: left;
@@ -358,17 +367,38 @@
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
-.admin-filter-pill:hover { background: var(--cream); }
+.admin-filter-pill:hover { background: var(--teal-mist); }
 .admin-filter-pill--active { background: var(--teal-pale); border-color: var(--teal); color: var(--teal-dark); }
 .admin-filter-pill--active:hover { background: var(--teal-pale); }
 
-/* Empty / loading / error blocks. */
+/* Empty / loading / error blocks. Centered, breathing padding so a
+   one-line message reads as intentional negative space rather than
+   a layout hole. The .admin-empty-title + .admin-empty-body sub-
+   classes lift it into a real two-line empty state when the surface
+   warrants extra context. */
 .admin-empty {
   text-align: center;
   padding: 40px 20px;
   color: var(--charcoal-xl);
   font-size: 13px;
   line-height: 1.5;
+}
+.admin-empty-title {
+  display: block;
+  font-family: var(--font-d);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin-bottom: 4px;
+  letter-spacing: -0.2px;
+}
+.admin-empty-body {
+  display: block;
+  font-size: 12px;
+  color: var(--charcoal-xl);
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0 auto;
 }
 
 /* Hamburger button visible on mobile. */
@@ -382,7 +412,7 @@
   border-radius: var(--radius);
   -webkit-tap-highlight-color: transparent;
 }
-.admin-hamburger:hover { background: var(--cream); }
+.admin-hamburger:hover { background: var(--teal-mist); }
 
 /* Mobile collapse: rail becomes a slide-in drawer at <900px.
    Width / duration / easing match the main app's .drawer-panel
@@ -487,7 +517,7 @@
   padding: 14px 16px;
   border-radius: var(--radius);
   border: 1px solid var(--border-lt);
-  background: var(--cream);
+  background: var(--white);
   text-decoration: none;
   color: var(--charcoal);
   transition:
@@ -498,7 +528,7 @@
 }
 @media (hover: hover) {
   .admin-link-tile:hover {
-    background: var(--white);
+    background: var(--teal-mist);
     border-color: var(--teal-light);
     transform: translateY(-1px);
   }

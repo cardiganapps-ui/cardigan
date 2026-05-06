@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { fetchUserDetail, fetchAuditLog, logAdminViewAs } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
 import { UserActionsMenu } from "./parts/UserActionsMenu";
+import { TierBadge } from "./parts/TierBadge";
 import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
 
 function fmtDate(iso) {
@@ -11,6 +12,21 @@ function fmtDate(iso) {
 function fmtDateTime(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
+}
+/* Relative time — same flavor as the Overview activity feed so the
+   admin reads time-since-X consistently across pages. */
+function fmtRelativeShort(iso) {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const days = Math.floor((Date.now() - t) / 86_400_000);
+  if (days < 1) return "hoy";
+  if (days === 1) return "ayer";
+  if (days < 30) return `hace ${days} d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `hace ${months} ${months === 1 ? "mes" : "meses"}`;
+  const years = Math.floor(days / 365);
+  return `hace ${years} ${years === 1 ? "año" : "años"}`;
 }
 function fmtMoneyCents(cents, currency = "MXN") {
   const amount = (Number(cents) || 0) / 100;
@@ -147,41 +163,62 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
       <div className="admin-card">
         <div className="admin-user-header">
           <div className="admin-user-avatar">{initialsFor(profile.full_name, profile.email)}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* Name row — name + tier + blocked badge inline. The
+                tier sits next to the name where the eye reads it
+                first, replacing the old "naked text after a dot"
+                style. */}
             <div className="admin-user-name">
-              <span>{profile.full_name || profile.email || "—"}</span>
+              <span>{profile.full_name || <span style={{ color: "var(--charcoal-xl)", fontStyle: "italic", fontWeight: 600 }}>{t("admin.noName")}</span>}</span>
+              <TierBadge account={account} />
               {account.blocked && <span className="badge badge-red">Bloqueado</span>}
             </div>
-            <div className="admin-user-meta">
-              <span style={{ wordBreak: "break-all" }}>{profile.email}</span>
+            {/* Email on its own line so a long address doesn't
+                push everything else around, and so it's the one
+                copy-pasteable thing on the row. */}
+            {profile.email && (
+              <div style={{ fontSize: 13, color: "var(--charcoal-md)", overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.4 }}>
+                {profile.email}
+              </div>
+            )}
+            {/* Structured chips replace the dot-separated meta line.
+                Each fact is its own pill, scannable at a glance.
+                Last-access (technical detail) moves to the Profile
+                tab where it belongs. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
               {profile.profession && (
-                <span style={{ color: "var(--teal-dark)", fontWeight: 600 }}>
-                  · {t(`onboarding.professions.${profile.profession}.label`)}
+                <span className="badge badge-teal">
+                  {t(`onboarding.professions.${profile.profession}.label`)}
                 </span>
               )}
-              <span>· Alta {fmtDate(profile.created_at)}</span>
-              <span>· Último acceso {fmtDateTime(profile.last_sign_in_at)}</span>
+              {profile.created_at && (
+                <span className="badge badge-gray" title={fmtDate(profile.created_at)}>
+                  Alta {fmtRelativeShort(profile.created_at)}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="admin-user-actions">
-          <UserActionsMenu
-            account={account}
-            currentAdminId={currentAdminId}
-            onViewAs={handleViewAs}
-            onAction={(meta) => {
-              // Mutations (block / comp / profession / delete) make
-              // the Users list and the audit trail stale — drop both
-              // cache slices and refetch the current detail page.
-              invalidateAdminCache("users:all");
-              invalidateAdminCache("audit");
-              invalidateAdminCache("overview");
-              if (meta?.deleted) onBack?.();
-              else load();
-            }}
-          />
-        </div>
+        {/* Action bar — primary "Ver como" + compact "Más" disclosure
+            that expands the secondary admin actions inline. Saves the
+            ~150px of vertical space the previous always-expanded
+            three-row layout consumed. */}
+        <UserActionsMenu
+          account={account}
+          currentAdminId={currentAdminId}
+          onViewAs={handleViewAs}
+          onAction={(meta) => {
+            // Mutations (block / comp / profession / delete) make
+            // the Users list and the audit trail stale — drop both
+            // cache slices and refetch the current detail page.
+            invalidateAdminCache("users:all");
+            invalidateAdminCache("audit");
+            invalidateAdminCache("overview");
+            if (meta?.deleted) onBack?.();
+            else load();
+          }}
+        />
       </div>
 
       <div className="admin-card" style={{ padding: 0 }}>
@@ -231,7 +268,10 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
           {tab === "subscription" && (
             <>
               {!subscription && (
-                <div className="admin-empty">Sin suscripción registrada.</div>
+                <div className="admin-empty">
+                  <span className="admin-empty-title">Aún en periodo de prueba</span>
+                  <span className="admin-empty-body">Este usuario no ha iniciado un checkout. Cuando se suscriba aparecerán aquí los detalles del plan, las facturas y la fecha de renovación.</span>
+                </div>
               )}
               {subscription && (
                 <>
@@ -319,7 +359,10 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                 Push subscriptions ({devices.push_subscriptions.length})
               </h3>
               {devices.push_subscriptions.length === 0 ? (
-                <div className="admin-empty">Sin dispositivos registrados.</div>
+                <div className="admin-empty">
+                  <span className="admin-empty-title">Sin dispositivos con notificaciones</span>
+                  <span className="admin-empty-body">El usuario no ha activado los recordatorios push. No recibirá avisos antes de sus sesiones hasta que lo haga desde Ajustes.</span>
+                </div>
               ) : (
                 <div className="admin-table-wrap">
                 <table className="admin-table">
@@ -349,7 +392,9 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                   ["Último uso", fmtDateTime(devices.calendar_token.last_accessed_at)],
                 ]} />
               ) : (
-                <div className="admin-empty" style={{ padding: 20 }}>Sin token activo.</div>
+                <div className="admin-empty" style={{ padding: 20 }}>
+                  <span className="admin-empty-body">El usuario no ha generado un enlace de calendario. Puede crearlo desde Ajustes → Calendario.</span>
+                </div>
               )}
             </>
           )}
@@ -357,7 +402,10 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
           {tab === "audit" && (
             <>
               {audit.length === 0 ? (
-                <div className="admin-empty">Sin eventos registrados para este usuario.</div>
+                <div className="admin-empty">
+                  <span className="admin-empty-title">Cuenta sin intervenciones</span>
+                  <span className="admin-empty-body">No hemos bloqueado, otorgado comp ni cambiado nada en esta cuenta. Cualquier acción administrativa se registrará aquí.</span>
+                </div>
               ) : (
                 <div className="admin-table-wrap">
                 <table className="admin-table">

@@ -61,17 +61,26 @@ export function AdminOverview({ onJump }) {
 
   return (
     <>
+      {/* Each KPI is a portal to the detail page that owns it.
+          Drilling in is one tap from the dashboard rather than a
+          two-step "Overview → side rail → page". Cards without a
+          clear destination (Pacientes / Pagos counts) stay
+          informational. */}
       <div className="admin-kpi-grid">
         <StatCard label="Usuarios" value={ov.users_total ?? 0}
-          sub={`${ov.users_active_30d ?? 0} activos · ${ov.users_blocked ?? 0} bloqueados`} />
+          sub={`${ov.users_active_30d ?? 0} activos · ${ov.users_blocked ?? 0} bloqueados`}
+          onClick={() => onJump?.("users")} />
         <StatCard label="Suscripciones Pro" value={activeSubs}
-          sub={fmtMoney(mrrCents / 100) + " MRR"} accent="teal-dark" />
+          sub={fmtMoney(mrrCents / 100) + " MRR"} accent="teal-dark"
+          onClick={() => onJump?.("revenue")} />
         <StatCard label="Activos 30d" value={ov.users_active_30d ?? 0}
-          sub={`${ov.users_signups_30d ?? 0} altas en 30d`} />
+          sub={`${ov.users_signups_30d ?? 0} altas en 30d`}
+          onClick={() => onJump?.("acquisition")} />
         <StatCard label="Sesiones" value={ov.sessions_total ?? 0}
           sub={`${ov.sessions_30d ?? 0} en 30 días`} />
         <StatCard label="Pagos" value={ov.payments_total ?? 0}
-          sub={`${ov.payments_30d ?? 0} en 30 días`} />
+          sub={`${ov.payments_30d ?? 0} en 30 días`}
+          onClick={() => onJump?.("revenue")} />
         <StatCard label="Pacientes" value={ov.patients_total ?? 0}
           sub={`${ov.push_subscriptions ?? 0} con push`} />
       </div>
@@ -95,7 +104,10 @@ export function AdminOverview({ onJump }) {
           </button>
         </div>
         {recent.length === 0 ? (
-          <div className="admin-empty">Sin eventos registrados.</div>
+          <div className="admin-empty">
+            <span className="admin-empty-title">Aún no hay actividad</span>
+            <span className="admin-empty-body">Las acciones administrativas (bloqueos, cambios de profesión, comp) aparecerán aquí cuando ocurran.</span>
+          </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column" }}>
             {recent.slice(0, 12).map((r) => (

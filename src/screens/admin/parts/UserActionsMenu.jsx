@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconTrash } from "../../../components/Icons";
+import { IconTrash, IconChevron } from "../../../components/Icons";
 import { useT } from "../../../i18n/index";
 import { haptic } from "../../../utils/haptics";
 import { PROFESSIONS } from "../../../data/constants";
@@ -12,24 +12,38 @@ import {
 } from "../../../hooks/useCardiganData";
 
 /* ── UserActionsMenu ──
-   The shared admin-action surface used by both the Users list (inline
-   expansion) and the User Detail page (header card). Wraps:
-     - View as user
+   The admin-action surface for User Detail. Wraps:
+     - View as user (primary)
      - Block / Unblock (with confirmation)
      - Delete (with type-to-confirm)
      - Change profession (two-step)
      - Toggle comp (always-free) access
-   Errors and busy state are kept local; success calls onAction() so
-   the parent can refetch.
 
-   Layout — set `compact` to render as a 3-button grid (legacy
-   AccountRow look). Default is a vertical action stack better suited
-   to the User Detail page.
+   Default layout:
+     [ Ver como ]    [ Más opciones ▾ ]
+     ▼ when expanded:
+       Profession  [select]
+       Acceso      [comp toggle]
+       [Bloquear / Desbloquear]   [Eliminar]
+
+   The expandable disclosure replaces the previous always-expanded
+   three-row stack that ate ~150px of vertical real estate. The
+   primary "Ver como" remains one tap away; secondary actions are
+   one tap behind a clear affordance.
+
+   `compact` prop is a legacy escape hatch (was used by an inline
+   AccountRow that no longer exists) and now does nothing — left in
+   the signature to avoid breaking any caller that still passes it.
 */
+// eslint-disable-next-line no-unused-vars
 export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, compact = false }) {
   const { t } = useT();
   const { setProfessionLocal } = useCardigan();
   const [mode, setMode] = useState("default"); // default | confirmBlock | confirmDelete
+  // Disclosure state for the secondary action panel. Collapsed by
+  // default — the admin sees only "Ver como" + "Más opciones ▾"
+  // until they explicitly need a destructive or configuration action.
+  const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -175,104 +189,138 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
     );
   }
 
-  // Default mode — three primary actions + inline profession & comp toggles.
+  // Default mode — compact action bar with disclosure for secondary actions.
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: compact ? "1fr 1fr 1fr" : "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: 8,
-      }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* Primary action bar — Ver como (one tap) + a single Más
+          opciones disclosure for everything else. Single horizontal
+          row at any viewport. */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button className="btn"
-          style={{ height: 36, fontSize: "var(--text-sm)", background: "var(--teal-pale)", color: "var(--teal-dark)", boxShadow: "none" }}
+          style={{ flex: "1 1 160px", height: 36, fontSize: "var(--text-sm)", background: "var(--teal)", color: "var(--white)", boxShadow: "none", minWidth: 0 }}
           onClick={() => onViewAs?.(account.userId)}>
           {t("admin.view")}
         </button>
-        <button className="btn"
+        <button type="button"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((v) => !v)}
           style={{
-            height: 36, fontSize: "var(--text-sm)", boxShadow: "none",
-            background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)",
-            color: account.blocked ? "var(--green)" : "var(--amber)",
-            opacity: isSelf ? 0.5 : 1,
-          }}
-          disabled={isSelf}
-          onClick={() => { setErr(""); haptic.warn(); setMode("confirmBlock"); }}>
-          {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
-        </button>
-        <button className="btn"
-          style={{ height: 36, fontSize: "var(--text-sm)", boxShadow: "none", background: "var(--red-bg)", color: "var(--red)", opacity: isSelf ? 0.5 : 1 }}
-          disabled={isSelf}
-          onClick={() => { setErr(""); setDeleteConfirmText(""); haptic.warn(); setMode("confirmDelete"); }}>
-          {t("admin.accountDelete")}
+            height: 36, padding: "0 14px", fontSize: "var(--text-sm)", fontWeight: 600,
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "var(--white)", border: "1px solid var(--border)",
+            borderRadius: "var(--radius-pill)", color: "var(--charcoal-md)",
+            cursor: "pointer", fontFamily: "inherit",
+            transition: "background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease",
+          }}>
+          {t("admin.moreOptions")}
+          <span aria-hidden style={{ display: "inline-flex", transform: moreOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform var(--dur-fast) ease" }}>
+            <IconChevron size={12} />
+          </span>
         </button>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--charcoal-xl)", fontWeight: 700 }}>
-          {t("adminProfession.label")}:
-        </span>
-        <select
-          className="input"
-          value={pendingProfession ?? account.profession ?? "psychologist"}
-          disabled={professionBusy}
-          onChange={(e) => {
-            setProfessionErr("");
-            setPendingProfession(e.target.value === account.profession ? null : e.target.value);
-          }}
-          style={{ flex: 1, height: 32, fontSize: "var(--text-sm)", padding: "0 8px" }}>
-          {PROFESSIONS.map((p) => (
-            <option key={p} value={p}>{t(`onboarding.professions.${p}.label`)}</option>
-          ))}
-        </select>
-      </div>
-      {pendingProfession && (
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <button
-            className="btn"
-            style={{ flex: 1, height: 32, fontSize: "var(--text-sm)", background: "var(--teal)", color: "var(--white)", boxShadow: "none" }}
-            disabled={professionBusy}
-            onClick={() => doChangeProfession(pendingProfession)}>
-            {professionBusy ? t("adminProfession.saving") : t("adminProfession.confirm")}
-          </button>
-          <button
-            className="btn btn-secondary"
-            style={{ height: 32, fontSize: "var(--text-sm)", padding: "0 12px" }}
-            disabled={professionBusy}
-            onClick={() => { setPendingProfession(null); setProfessionErr(""); }}>
-            {t("cancel")}
-          </button>
+      {/* Disclosure panel — collapsed by default. Holds profession,
+          comp, block, delete in a single tidy stack. */}
+      {moreOpen && (
+        <div style={{
+          marginTop: 14, paddingTop: 14,
+          borderTop: "1px solid var(--border-lt)",
+          display: "flex", flexDirection: "column", gap: 12,
+          animation: "fadeIn 0.18s ease",
+        }}>
+          {/* Profession row */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 140px) 1fr", gap: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--charcoal-xl)", fontWeight: 700 }}>
+              {t("adminProfession.label")}
+            </span>
+            <select
+              className="input"
+              value={pendingProfession ?? account.profession ?? "psychologist"}
+              disabled={professionBusy}
+              onChange={(e) => {
+                setProfessionErr("");
+                setPendingProfession(e.target.value === account.profession ? null : e.target.value);
+              }}
+              style={{ height: 34, fontSize: "var(--text-sm)", padding: "0 10px" }}>
+              {PROFESSIONS.map((p) => (
+                <option key={p} value={p}>{t(`onboarding.professions.${p}.label`)}</option>
+              ))}
+            </select>
+          </div>
+          {pendingProfession && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn"
+                style={{ flex: 1, height: 32, fontSize: "var(--text-sm)", background: "var(--teal)", color: "var(--white)", boxShadow: "none" }}
+                disabled={professionBusy}
+                onClick={() => doChangeProfession(pendingProfession)}>
+                {professionBusy ? t("adminProfession.saving") : t("adminProfession.confirm")}
+              </button>
+              <button className="btn btn-secondary"
+                style={{ height: 32, fontSize: "var(--text-sm)", padding: "0 14px" }}
+                disabled={professionBusy}
+                onClick={() => { setPendingProfession(null); setProfessionErr(""); }}>
+                {t("cancel")}
+              </button>
+            </div>
+          )}
+          {professionErr && <div className="form-error" style={{ marginTop: 0 }}>{professionErr}</div>}
+
+          {/* Comp row — same grid as profession so labels align */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 140px) 1fr", gap: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--charcoal-xl)", fontWeight: 700 }}>
+              {t("admin.compAccessLabel")}
+            </span>
+            <button
+              className="btn"
+              style={{
+                height: 34, fontSize: "var(--text-sm)", padding: "0 14px", boxShadow: "none",
+                background: account.compGranted ? "var(--green-bg)" : "var(--cream)",
+                color: account.compGranted ? "var(--green)" : "var(--charcoal-md)",
+                justifySelf: "start",
+              }}
+              disabled={compBusy}
+              onClick={async () => {
+                setCompBusy(true); setCompErr("");
+                try {
+                  await adminGrantComp(account.userId, !account.compGranted);
+                  haptic.tap();
+                  onAction?.();
+                } catch (e) {
+                  setCompErr(e.message || "Error");
+                } finally {
+                  setCompBusy(false);
+                }
+              }}>
+              {compBusy ? "…" : account.compGranted ? t("admin.compRevoke") : t("admin.compGrant")}
+            </button>
+          </div>
+          {compErr && <div className="form-error" style={{ marginTop: 0 }}>{compErr}</div>}
+
+          {/* Destructive actions — visually grouped at the bottom of
+              the panel so they read as "consequence-bearing" rather
+              than "primary actions". Self-protection guards keep the
+              admin from blocking/deleting their own account. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+            <button className="btn"
+              style={{
+                height: 36, fontSize: "var(--text-sm)", boxShadow: "none",
+                background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)",
+                color: account.blocked ? "var(--green)" : "var(--amber)",
+                opacity: isSelf ? 0.5 : 1,
+              }}
+              disabled={isSelf}
+              onClick={() => { setErr(""); haptic.warn(); setMode("confirmBlock"); }}>
+              {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
+            </button>
+            <button className="btn"
+              style={{ height: 36, fontSize: "var(--text-sm)", boxShadow: "none", background: "var(--red-bg)", color: "var(--red)", opacity: isSelf ? 0.5 : 1, gap: 6 }}
+              disabled={isSelf}
+              onClick={() => { setErr(""); setDeleteConfirmText(""); haptic.warn(); setMode("confirmDelete"); }}>
+              <IconTrash size={13} /> {t("admin.accountDelete")}
+            </button>
+          </div>
         </div>
       )}
-      {professionErr && <div className="form-error" style={{ marginTop: 0 }}>{professionErr}</div>}
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--charcoal-xl)", fontWeight: 700 }}>
-          Acceso gratuito ilimitado:
-        </span>
-        <button
-          className="btn"
-          style={{
-            height: 32, fontSize: "var(--text-sm)", padding: "0 12px", boxShadow: "none",
-            background: account.compGranted ? "var(--green-bg)" : "var(--cream)",
-            color: account.compGranted ? "var(--green)" : "var(--charcoal-md)",
-          }}
-          disabled={compBusy}
-          onClick={async () => {
-            setCompBusy(true); setCompErr("");
-            try {
-              await adminGrantComp(account.userId, !account.compGranted);
-              haptic.tap();
-              onAction?.();
-            } catch (e) {
-              setCompErr(e.message || "Error");
-            } finally {
-              setCompBusy(false);
-            }
-          }}>
-          {compBusy ? "…" : account.compGranted ? "Activo (revocar)" : "Otorgar"}
-        </button>
-      </div>
-      {compErr && <div className="form-error" style={{ marginTop: 0 }}>{compErr}</div>}
     </div>
   );
 }

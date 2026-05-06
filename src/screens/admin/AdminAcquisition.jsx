@@ -31,7 +31,10 @@ export function AdminAcquisition() {
           {codes.length} códigos · {totalAttribSignups} altas · {totalAttribPaid} conversiones a pago.
         </div>
         {codes.length === 0 ? (
-          <div className="admin-empty">Sin códigos creados.</div>
+          <div className="admin-empty">
+            <span className="admin-empty-title">Aún no hay códigos</span>
+            <span className="admin-empty-body">Cuando crees códigos de descuento desde la sección Códigos, podrás ver aquí cuántas altas y conversiones aporta cada uno.</span>
+          </div>
         ) : (
           <div className="admin-table-wrap">
           <table className="admin-table">

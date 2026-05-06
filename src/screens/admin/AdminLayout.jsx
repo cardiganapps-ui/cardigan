@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAdminRoute } from "./useAdminRoute";
 import {
   IconHome, IconUsers, IconDollar, IconTrendingUp, IconTag, IconBug, IconShield,
@@ -67,6 +67,96 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
 
+  /* ── Edge-swipe gestures for the mobile drawer ──
+     Mirrors the pattern in App.jsx for the main drawer:
+     • Swipe-from-left-edge opens the drawer.
+     • Swipe-left while open closes it.
+     Uses native addEventListener with passive:false so we can
+     preventDefault iOS Safari's edge-swipe-back gesture once we've
+     committed to a horizontal drag. Skipped on viewports >900px
+     where the rail is persistent (matches the CSS @media query). */
+  const shellRef = useRef(null);
+  const dragRef = useRef(null);
+  const drawerOpenRef = useRef(drawerOpen);
+  useEffect(() => { drawerOpenRef.current = drawerOpen; }, [drawerOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shell = shellRef.current;
+    if (!shell) return;
+    // Don't wire gestures when the rail is persistent — at >=900px
+    // the drawer is always visible, so edge-swipe is meaningless and
+    // would only fight in-page horizontal scrolling (e.g. tables).
+    const isWide = () => window.innerWidth >= 900;
+
+    const EDGE_BAND = 26;       // touchstart x must be ≤ this to engage
+    const ENGAGE_PX = 10;       // horizontal travel before we claim the gesture
+    const DISMISS_THRESHOLD = 60;
+    const OPEN_THRESHOLD = 60;
+
+    const onTouchStart = (e) => {
+      if (isWide()) return;
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (drawerOpenRef.current) {
+        // Swipe-to-close from anywhere on the panel/scrim while open.
+        dragRef.current = { mode: "close", startX: t.clientX, startY: t.clientY, active: false };
+      } else if (t.clientX <= EDGE_BAND) {
+        // Swipe-to-open only from the left edge band so we don't
+        // race in-page horizontal scrolling (tables, code blocks).
+        dragRef.current = { mode: "open", startX: t.clientX, startY: t.clientY, active: false };
+      } else {
+        dragRef.current = null;
+      }
+    };
+
+    const onTouchMove = (e) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const t = e.touches[0];
+      const dx = t.clientX - drag.startX;
+      const dy = t.clientY - drag.startY;
+      if (!drag.active) {
+        if (Math.abs(dx) > ENGAGE_PX && Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal commit. Suppress iOS Safari's native
+          // edge-swipe-back peek for the OPEN gesture by
+          // preventDefault'ing every subsequent move.
+          drag.active = true;
+        } else if (Math.abs(dy) > ENGAGE_PX) {
+          dragRef.current = null;
+          return;
+        }
+      }
+      if (drag.active) {
+        if (drag.mode === "open" && dx > 0 && e.cancelable) e.preventDefault();
+        if (drag.mode === "close" && dx < 0 && e.cancelable) e.preventDefault();
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      const drag = dragRef.current;
+      dragRef.current = null;
+      if (!drag || !drag.active) return;
+      const t = (e.changedTouches && e.changedTouches[0]) || null;
+      if (!t) return;
+      const dx = t.clientX - drag.startX;
+      if (drag.mode === "open" && dx > OPEN_THRESHOLD) setDrawerOpen(true);
+      else if (drag.mode === "close" && dx < -DISMISS_THRESHOLD) setDrawerOpen(false);
+    };
+
+    const opts = { passive: false };
+    shell.addEventListener("touchstart", onTouchStart, opts);
+    shell.addEventListener("touchmove", onTouchMove, opts);
+    shell.addEventListener("touchend", onTouchEnd, opts);
+    shell.addEventListener("touchcancel", onTouchEnd, opts);
+    return () => {
+      shell.removeEventListener("touchstart", onTouchStart, opts);
+      shell.removeEventListener("touchmove", onTouchMove, opts);
+      shell.removeEventListener("touchend", onTouchEnd, opts);
+      shell.removeEventListener("touchcancel", onTouchEnd, opts);
+    };
+  }, []);
+
   const goSection = useCallback((section) => {
     route.navigate(section);
   }, [route]);
@@ -110,7 +200,7 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
   }
 
   return (
-    <div className="admin-shell">
+    <div className="admin-shell" ref={shellRef}>
       {drawerOpen && (
         <div className="admin-rail-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
       )}
@@ -203,9 +293,8 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
                   inside each page rather than plumbed through here — keeps
                   pages self-contained and the layout stable. */}
               <button type="button" className="admin-exit-btn" onClick={() => onLeaveAdmin?.()}
-                aria-label="Salir de admin" title="Salir">
-                <IconLogOut size={16} />
-                <span className="admin-exit-btn-label">Salir</span>
+                aria-label="Salir de admin" title="Salir de admin">
+                <IconX size={16} />
               </button>
             </div>
           </div>
