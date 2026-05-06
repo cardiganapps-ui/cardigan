@@ -1001,6 +1001,13 @@ button.kpi-card:active {
   color: var(--charcoal);
   width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
+  /* Defensive lock — same reason as .week-day-num above. The parent
+     .cal-day is column-flex with no fixed height (so it usually grows
+     to fit), but the responsive narrow-screen rule sets min-height:
+     40px which combined with padding can squeeze the indicator on
+     specific viewports. flex-shrink: 0 guarantees the circle stays
+     a circle regardless. */
+  flex-shrink: 0;
   transition: background var(--dur-slow), color var(--dur-slow);
 }
 .cal-day.active .cal-day-num { background: var(--teal); color: #FFFFFF; }

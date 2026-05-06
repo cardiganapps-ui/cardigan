@@ -148,8 +148,15 @@ html[data-theme="dark"] .agenda-calendar-link {
 /* WEEK GRID */
 .week-time-col { width: 44px; flex-shrink: 0; }
 .week-header-row { display: grid; grid-template-columns: 44px repeat(7, 1fr); padding: 0 16px; margin-bottom: 2px; }
-.week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; height: 50px; box-sizing: border-box; }
-.week-header-spacer { height: 50px; margin-bottom: 2px; }
+/* Day-head height fits the natural stack of: name (~13px) + gap 2px +
+   round num indicator (28px) + 6px+6px vertical padding = ~55px.
+   The header was 50px before, which compressed the round indicator
+   into a horizontal capsule on devices where the name rendered
+   slightly larger than expected. Bumping to 56px and locking the
+   children with flex-shrink:0 (see .week-day-num below) keeps the
+   indicator a perfect circle across viewports. */
+.week-day-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; height: 56px; box-sizing: border-box; }
+.week-header-spacer { height: 56px; margin-bottom: 2px; }
 .week-time-label-static {
   min-height: var(--week-row-h);
   font-size: 10px; color: var(--charcoal-xl); font-weight: 600;
@@ -184,11 +191,17 @@ html[data-theme="dark"] .agenda-calendar-link {
   width: 8px; height: 8px;
   border-radius: 50%; background: var(--red);
 }
-.week-day-name { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--charcoal-xl); }
+.week-day-name { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--charcoal-xl); flex-shrink: 0; }
 .week-day-num {
   font-family: var(--font-d); font-size: 14px; font-weight: 800; color: var(--charcoal);
   width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
+  /* Lock the indicator to its declared size in column flex parents.
+     The parent .week-day-head has a fixed height: 50px, and without
+     flex-shrink: 0 the children would compress in the main axis when
+     their natural total (name + gap + num + padding) exceeds 50px,
+     producing a horizontal capsule instead of a circle. */
+  flex-shrink: 0;
 }
 .week-day-num.active { background: var(--teal); color: white; }
 .week-day-num.today:not(.active) { background: var(--teal-pale); color: var(--teal-dark); }
