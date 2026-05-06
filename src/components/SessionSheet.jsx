@@ -2,7 +2,7 @@ import { useState } from "react";
 import { getClientColor } from "../data/seedData";
 import { isCancelledStatus, isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
-import { IconX, IconTrash } from "./Icons";
+import { IconX, IconTrash, IconCheck, IconRefresh } from "./Icons";
 import { Avatar } from "./Avatar";
 import { haptic } from "../utils/haptics";
 import { useT } from "../i18n/index";
@@ -10,10 +10,10 @@ import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
-import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, SESSION_STATUS } from "../data/constants";
 import { formatMXN } from "../utils/format";
 
-export function SessionSheet({ session, patients, onClose, onCancelSession, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
+export function SessionSheet({ session, patients, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
   const { t } = useT();
   const { openExpediente, profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -297,20 +297,87 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
               )}
             </div>
           ) : (
-            <div style={{ display:"flex", gap:10 }}>
-              <button className="btn btn-secondary" style={{ flex:1, height:44 }} onClick={startReschedule}>
-                {t("sessions.reschedule")}
-              </button>
-              {!isCancelled && (
+            /* ── Primary action hierarchy by status ──
+               The most-frequent action a therapist takes after opening
+               a session is "I'm done with this one — mark it
+               completed." It used to live ONLY in the desktop right-
+               click menu, leaving touch users with no path. The
+               primary button is now status-aware:
+                 SCHEDULED   → "Marcar completada" (teal, primary)
+                 COMPLETED   → "Revertir a agendada" (subtle ghost)
+                 CANCELLED   → "Revertir a agendada" (charcoal, primary)
+                 CHARGED     → "Revertir a agendada" (charcoal, primary)
+               Reschedule + Cancel stay as secondary actions when they
+               make sense. */
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {session.status === SESSION_STATUS.SCHEDULED && onMarkCompleted && (
                 <button
-                  className="btn btn-secondary"
-                  style={{ flex:1, height:44, color:"var(--red)", borderColor:"var(--red-bg)" }}
-                  onClick={startCancel}
+                  className="btn btn-primary-teal"
+                  style={{ width:"100%", height:48, gap:8 }}
                   disabled={mutating}
-                >
-                  {t("sessions.cancelSession")}
+                  onClick={async () => {
+                    haptic.success();
+                    const ok = await onMarkCompleted(session);
+                    if (ok) onClose();
+                  }}>
+                  <IconCheck size={16} /> {t("sessions.markCompleted")}
                 </button>
               )}
+
+              {(session.status === SESSION_STATUS.CANCELLED
+                || session.status === SESSION_STATUS.CHARGED) && onMarkCompleted && (
+                <button
+                  className="btn"
+                  style={{
+                    width:"100%", height:48, gap:8,
+                    background:"var(--charcoal)", color:"var(--white)", boxShadow:"none",
+                  }}
+                  disabled={mutating}
+                  onClick={async () => {
+                    haptic.tap();
+                    const ok = await onMarkCompleted(session, SESSION_STATUS.SCHEDULED);
+                    if (ok) onClose();
+                  }}>
+                  <IconRefresh size={15} /> {t("sessions.revertScheduled")}
+                </button>
+              )}
+
+              {/* Revert-to-scheduled is hidden for auto-completed
+                  sessions (past DB-scheduled rows the UI promotes to
+                  "completed" via the auto-complete affordance). The
+                  DB row is already 'scheduled' there, so the button
+                  would be a visual no-op the moment the auto-complete
+                  re-fires. The user's escape hatches in that state
+                  are Cancel (didn't happen) or Reschedule (moved). */}
+              {session.status === SESSION_STATUS.COMPLETED && !session._autoCompleted && onMarkCompleted && (
+                <button
+                  className="btn btn-secondary"
+                  style={{ width:"100%", height:44, gap:8 }}
+                  disabled={mutating}
+                  onClick={async () => {
+                    haptic.tap();
+                    const ok = await onMarkCompleted(session, SESSION_STATUS.SCHEDULED);
+                    if (ok) onClose();
+                  }}>
+                  <IconRefresh size={14} /> {t("sessions.revertScheduled")}
+                </button>
+              )}
+
+              <div style={{ display:"flex", gap:10 }}>
+                <button className="btn btn-secondary" style={{ flex:1, height:44 }} onClick={startReschedule}>
+                  {t("sessions.reschedule")}
+                </button>
+                {!isCancelled && session.status !== SESSION_STATUS.COMPLETED && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex:1, height:44, color:"var(--red)", borderColor:"var(--red-bg)" }}
+                    onClick={startCancel}
+                    disabled={mutating}
+                  >
+                    {t("sessions.cancelSession")}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
