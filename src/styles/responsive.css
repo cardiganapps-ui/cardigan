@@ -279,8 +279,26 @@
 
 /* ── CURSOR + TRANSITIONS (pointer devices) ── */
 .row-item, .settings-row, .kpi-card, .month-cell, .week-cell, .chip { cursor: pointer; }
+
+/* Specific-property transitions instead of `transition: all`. The
+   blanket version animated EVERY changeable property at 400ms —
+   including taps (where :active changes background) and React
+   inline-style updates (where the element jumped through the spring
+   animation between frames). On iPad/touch this read as a sluggish
+   ~400ms delay between tap and visible feedback. Switching to
+   --dur-base (250ms) and listing only the visual properties keeps
+   the polished hover/leave fade on desktop while making touch feel
+   immediate. */
 .row-item, .settings-row, .drawer-item, .kpi-card, .month-cell, .week-cell, .chip,
-.btn, .fab, .fab-action { transition: all var(--dur-slow) var(--ease-spring); }
+.btn, .fab, .fab-action {
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-spring),
+    opacity var(--dur-base) var(--ease-out);
+}
 
 /* ── HOVER STATES (pointer devices only) ── */
 @media (hover: hover) {
@@ -570,6 +588,37 @@
   .page {
     padding-left: max(32px, env(safe-area-inset-left));
     padding-right: max(32px, env(safe-area-inset-right));
+  }
+}
+
+/* ── iPad-mini / iPad-standard PORTRAIT (768–819): expediente squeeze fix ──
+   In this band the persistent sidebar (240px) plus the desktop
+   expediente side-panel (50vw ≈ 384px) leaves only ~140px of visible
+   content between them, which reads as overlapping graphics — the
+   issue users reported on iPad portrait. Revert the expediente to its
+   mobile full-screen overlay shape for this band so the document
+   gets the full content area. The sidebar still navigates the rest
+   of the app; only the per-patient expediente goes full-screen. */
+@media (min-width: 768px) and (max-width: 819px) {
+  .expediente-desktop-panel {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 24px 24px 0 0 !important;
+  }
+  /* Re-enable the drag handle so the user can swipe-down to close
+     the full-screen expediente — it was hidden by the 768+ desktop
+     rule on the assumption the side panel had a clear close button. */
+  .expediente-desktop-panel .expediente-drag-handle { display: block !important; }
+  /* Note-editor centered panel was sized for the 820+ tier — at this
+     band it overflows the cramped content area too. Revert to a
+     full-width sheet so the editor is usable. */
+  .note-editor-desktop {
+    left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
   }
 }
 

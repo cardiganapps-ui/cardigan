@@ -307,7 +307,9 @@ button.stat-tile { cursor: pointer; min-height: 0; }
               opacity var(--dur-fast) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.chip-pill:hover { opacity: 0.88; }
+@media (hover: hover) {
+  .chip-pill:hover { opacity: 0.88; }
+}
 .chip-pill:active { transform: scale(0.93); }
 .chip-pill:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 

@@ -177,7 +177,9 @@
 .mde-line--task[data-indent="2"] .mde-check { left: 36px; }
 .mde-line--task[data-indent="3"] .mde-check { left: 52px; }
 
-.mde-check:hover { border-color: var(--teal-dark); }
+@media (hover: hover) {
+  .mde-check:hover { border-color: var(--teal-dark); }
+}
 .mde-check:active { transform: scale(0.88); }
 .mde-check.is-checked {
   background: var(--teal);
@@ -262,7 +264,9 @@
   -webkit-tap-highlight-color: transparent;
   font-family: var(--font);
 }
-.mde-tool:hover:not(:disabled) { background: rgba(255, 255, 255, 0.6); color: var(--charcoal); }
+@media (hover: hover) {
+  .mde-tool:hover:not(:disabled) { background: rgba(255, 255, 255, 0.6); color: var(--charcoal); }
+}
 .mde-tool:active:not(:disabled) { transform: scale(0.92); }
 .mde-tool:disabled { opacity: 0.35; cursor: default; }
 
@@ -388,7 +392,9 @@
   transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.mde-icon-btn:hover { background: var(--cream); }
+@media (hover: hover) {
+  .mde-icon-btn:hover { background: var(--cream); }
+}
 .mde-icon-btn:active { transform: scale(0.92); }
 .mde-icon-btn.is-pinned { color: var(--amber); }
 .mde-icon-btn.is-danger { color: var(--red); }
@@ -411,7 +417,9 @@
   -webkit-tap-highlight-color: transparent;
   font-family: var(--font);
 }
-.mde-context-chip:hover { background: var(--white); border-color: var(--teal-light); }
+@media (hover: hover) {
+  .mde-context-chip:hover { background: var(--white); border-color: var(--teal-light); }
+}
 .mde-context-chip:active { transform: scale(0.97); }
 .mde-context-chip.is-linked { color: var(--teal-dark); border-color: var(--teal-light); background: var(--teal-mist); }
 .mde-context-chip.is-linked .mde-context-sep { color: var(--teal-light); }
@@ -512,7 +520,9 @@
   gap: 6px;
   -webkit-tap-highlight-color: transparent;
 }
-.mde-template-pill:hover { border-color: var(--teal-light); background: var(--teal-mist); color: var(--teal-dark); }
+@media (hover: hover) {
+  .mde-template-pill:hover { border-color: var(--teal-light); background: var(--teal-mist); color: var(--teal-dark); }
+}
 .mde-template-pill:active { transform: scale(0.96); }
 
 /* ── Context sheet (patient/session editor) ────────────────────────── */
@@ -551,9 +561,11 @@
   font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
 }
-.mde-menu-item:hover { background: var(--cream); }
 .mde-menu-item.is-danger { color: var(--red); }
-.mde-menu-item.is-danger:hover { background: var(--red-bg); }
+@media (hover: hover) {
+  .mde-menu-item:hover { background: var(--cream); }
+  .mde-menu-item.is-danger:hover { background: var(--red-bg); }
+}
 .mde-menu-sep {
   height: 1px;
   background: var(--border-lt);
@@ -628,7 +640,9 @@
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
 }
-.mde-find-btn:hover:not(:disabled) { background: var(--white); color: var(--charcoal); }
+@media (hover: hover) {
+  .mde-find-btn:hover:not(:disabled) { background: var(--white); color: var(--charcoal); }
+}
 .mde-find-btn:active:not(:disabled) { transform: scale(0.9); }
 .mde-find-btn:disabled { opacity: 0.3; cursor: default; }
 
@@ -673,7 +687,9 @@
   font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
 }
-.mde-outline-item:hover { background: var(--cream); }
+@media (hover: hover) {
+  .mde-outline-item:hover { background: var(--cream); }
+}
 .mde-outline-item:active { transform: scale(0.99); }
 .mde-outline-dot {
   width: 6px;

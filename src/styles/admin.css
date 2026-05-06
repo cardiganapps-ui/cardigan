@@ -93,9 +93,16 @@
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
-.admin-rail-item:hover { background: var(--teal-mist); color: var(--charcoal); }
 .admin-rail-item--active { background: var(--teal-pale); color: var(--teal-dark); }
-.admin-rail-item--active:hover { background: var(--teal-pale); color: var(--teal-dark); }
+/* Hover-only states gated so iPad/touch doesn't get stuck-on
+   hover after a tap (Safari's "sticky :hover" — the hover
+   state persists on touch devices until the user taps somewhere
+   else, making rail items appear permanently selected).
+   Pattern repeated across every interactive admin surface. */
+@media (hover: hover) {
+  .admin-rail-item:hover { background: var(--teal-mist); color: var(--charcoal); }
+  .admin-rail-item--active:hover { background: var(--teal-pale); color: var(--teal-dark); }
+}
 .admin-rail-icon {
   width: 16px;
   height: 16px;
@@ -190,7 +197,9 @@
   cursor: pointer; text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
-.admin-breadcrumbs a:hover, .admin-breadcrumbs button:hover { color: var(--charcoal-md); }
+@media (hover: hover) {
+  .admin-breadcrumbs a:hover, .admin-breadcrumbs button:hover { color: var(--charcoal-md); }
+}
 .admin-breadcrumb-sep { color: var(--charcoal-xl); display: inline-flex; align-items: center; opacity: 0.6; }
 .admin-page-title {
   font-family: var(--font-d);
@@ -225,13 +234,15 @@
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring);
 }
-.admin-exit-btn:hover {
-  background: var(--teal-mist);
-  border-color: var(--teal-light);
-  color: var(--teal-dark);
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .admin-exit-btn:hover {
+    background: var(--teal-mist);
+    border-color: var(--teal-light);
+    color: var(--teal-dark);
+    transform: translateY(-1px);
+  }
 }
-.admin-exit-btn:active { transform: translateY(0); }
+.admin-exit-btn:active { transform: translateY(0) scale(0.97); }
 
 .admin-content {
   flex: 1;
@@ -318,11 +329,13 @@
 }
 .admin-table tbody tr:last-child td { border-bottom: none; }
 .admin-table tbody tr { transition: background-color var(--dur-fast) ease; }
-/* --teal-mist matches .row-item hover so tables and lists feel like
-   the same family of interactive surfaces. --cream would blend the
-   row into the page background. */
-.admin-table tbody tr:hover { background: var(--teal-mist); }
 .admin-table tbody tr.admin-table-row--clickable { cursor: pointer; }
+/* --teal-mist matches .row-item hover so tables and lists feel like
+   the same family of interactive surfaces. Hover-only so iPad/touch
+   doesn't get stuck on a row after a tap. */
+@media (hover: hover) {
+  .admin-table tbody tr:hover { background: var(--teal-mist); }
+}
 
 /* Filter row above tables */
 .admin-filters {
@@ -367,9 +380,11 @@
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
-.admin-filter-pill:hover { background: var(--teal-mist); }
 .admin-filter-pill--active { background: var(--teal-pale); border-color: var(--teal); color: var(--teal-dark); }
-.admin-filter-pill--active:hover { background: var(--teal-pale); }
+@media (hover: hover) {
+  .admin-filter-pill:hover { background: var(--teal-mist); }
+  .admin-filter-pill--active:hover { background: var(--teal-pale); }
+}
 
 /* Empty / loading / error blocks. Centered, breathing padding so a
    one-line message reads as intentional negative space rather than
@@ -412,7 +427,9 @@
   border-radius: var(--radius);
   -webkit-tap-highlight-color: transparent;
 }
-.admin-hamburger:hover { background: var(--teal-mist); }
+@media (hover: hover) {
+  .admin-hamburger:hover { background: var(--teal-mist); }
+}
 
 /* Mobile collapse: rail becomes a slide-in drawer at <900px.
    Width / duration / easing match the main app's .drawer-panel
