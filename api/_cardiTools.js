@@ -341,9 +341,16 @@ async function getFinanceSummary(svc, userId, input) {
   const dateFrom = isoToDate(input.date_from);
   const dateTo = isoToDate(input.date_to);
 
+  // Cardi's finance summary belongs to the regular-patient lane.
+  // Potentials and discarded leads stay out of total_outstanding_mxn /
+  // total_credit_mxn so a free-trial interview that auto-completed
+  // doesn't surface as a phantom debt when the user asks "¿cuánto se
+  // me debe?". We still pull all sessions (interviews on potentials
+  // skip the loop below via the patient filter) so range-scoped session
+  // counters stay consistent with what the user sees on Agenda.
   const [{ data: patients, error: pe }, { data: sessions, error: se }, { data: payments, error: paye }] = await Promise.all([
-    svc.from("patients").select("id,rate,paid").eq("user_id", userId),
-    svc.from("sessions").select("patient_id,date,time,status,rate,modality").eq("user_id", userId),
+    svc.from("patients").select("id,rate,paid,status").eq("user_id", userId).in("status", ["active", "ended"]),
+    svc.from("sessions").select("patient_id,date,time,status,rate,modality,session_type").eq("user_id", userId),
     svc.from("payments").select("date,amount,method").eq("user_id", userId),
   ]);
   if (pe) throw new Error(pe.message);

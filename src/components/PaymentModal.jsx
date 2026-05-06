@@ -131,7 +131,9 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
             </label>
             <select className="input" required value={patientName} onChange={(e) => handlePatientChange(e.target.value)}>
               <option value="">{t("finances.selectPatient")}</option>
-              {patients.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              {patients
+                .filter(p => p.status === "active" || p.status === "potential")
+                .map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div className="input-group">

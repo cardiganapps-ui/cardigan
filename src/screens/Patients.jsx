@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
@@ -16,7 +16,9 @@ import { PatientExpediente } from "./PatientExpediente";
 import { EmptyState } from "../components/EmptyState";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
-import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic, isPotentialOrDiscarded, PATIENT_STATUS, SESSION_TYPE, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../data/constants";
+import { PotentialProfileSheet } from "../components/sheets/PotentialProfileSheet";
+import { ConvertPotentialSheet } from "../components/sheets/ConvertPotentialSheet";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { formatMXN } from "../utils/format";
 
@@ -67,14 +69,24 @@ function deriveSlotFrequency(p, sessions) {
 }
 
 export function Patients() {
-  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate, profession } = useCardigan();
+  const { patients, upcomingSessions, notes, payments, documents, openRecordPaymentModal, updatePatient, deletePatient, createSession, createNote, updateNote, deleteNote, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, applyScheduleChange, finalizePatient, discardPotential, convertPotentialToActive, mutating, setHideFab, consumeExpediente, requestFabAction, showSuccess, readOnly, navigate, profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
   const { isTabletSplit } = useViewport();
   const ctxMenu = useContextMenu();
   const { t } = useT();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("all");
+  // Sub-filter for the Potenciales view: active = currently
+  // 'potential' rows (default), archived = 'discarded'. Only renders
+  // when filter === 'potential'.
+  const [potentialSubFilter, setPotentialSubFilter] = useState("active");
   const [selected, setSelected] = useState(null);
+  // Slim profile sheet for a single potential. Distinct from
+  // `expediente` (the full PatientExpediente) — potentials never
+  // open the full record.
+  const [potentialProfile, setPotentialProfile] = useState(null);
+  // Standalone Convertir sheet, opened from PotentialProfileSheet.
+  const [converting, setConverting] = useState(null);
   const [editing, setEditing]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -309,12 +321,32 @@ export function Patients() {
     setEditStatus("ended");
   };
 
+  // Count of currently-active potentials (used for the chip badge so
+  // the practitioner sees at a glance there are pending interviews).
+  const potentialCount = useMemo(
+    () => patients.filter(p => p.status === PATIENT_STATUS.POTENTIAL).length,
+    [patients]
+  );
+
   const filters = [
     {k:"owes",l:t("patients.withDebt")},{k:"paid",l:t("patients.upToDate")},
     {k:"active",l:t("patients.active")},{k:"ended",l:t("patients.ended")},
+    // Potenciales is its own lane (rose-accent rows, slim profile
+    // sheet, separate FAB action). Sits at the end of the chip row
+    // so the regular filters stay where users learned them.
+    {k:"potential",l:t("patients.potentialFilter"), badge: potentialCount},
   ];
 
+  // Filter rules. Every non-potential filter explicitly excludes
+  // potentials/discarded — they never appear in the regular lanes.
+  // The 'potential' filter switches to its sub-filter (Activos /
+  // Archivados) for active vs. discarded potentials.
   const applyFilter = (p) => {
+    if (filter==="potential") {
+      if (potentialSubFilter === "archived") return p.status === PATIENT_STATUS.DISCARDED;
+      return p.status === PATIENT_STATUS.POTENTIAL;
+    }
+    if (isPotentialOrDiscarded(p)) return false;
     if (filter==="active") return p.status==="active";
     if (filter==="ended")  return p.status==="ended";
     if (filter==="owes")   return p.amountDue>0;
@@ -329,6 +361,7 @@ export function Patients() {
     return a.name.localeCompare(b.name);
   };
   const filtered = patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort);
+  const isPotentialView = filter === "potential";
 
   // Empty state
   if (patients.length === 0) {
@@ -339,13 +372,36 @@ export function Patients() {
           title={t("patients.noPatients")}
           body={t("patients.addFirst")}
           cta={!readOnly && (
-            <button
-              type="button"
-              onClick={() => requestFabAction?.("patient")}
-              className="btn btn-primary"
-              style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
-              <IconPlus size={16} /> {t("patients.addFirstCta")}
-            </button>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:10 }}>
+              <button
+                type="button"
+                onClick={() => requestFabAction?.("patient")}
+                className="btn btn-primary"
+                style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+                <IconPlus size={16} /> {t("patients.addFirstCta")}
+              </button>
+              {/* Discreet secondary affordance — surfaces the
+                  Potenciales lane on day one without competing with
+                  the primary CTA. Cardigan's "billion-dollar"
+                  cold-start lets users find both paths from the
+                  same screen without an extra navigation hop. */}
+              <button
+                type="button"
+                onClick={() => requestFabAction?.("potential")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--rose)",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "var(--font)",
+                  padding: "4px 8px",
+                  letterSpacing: 0.2,
+                }}>
+                {t("patients.newPotential")} →
+              </button>
+            </div>
           )}
         />
       </div>
@@ -359,46 +415,170 @@ export function Patients() {
       <div style={{ padding:"16px 16px 10px" }}>
         <div className="search-bar">
           <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
-          <input placeholder={t("patients.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
+          {/* Search placeholder follows the active lane — "Buscar
+              paciente…" on the regular views, "Buscar potencial…"
+              when Potenciales is active. Cheap polish that signals
+              the mode shift without an extra title bar. */}
+          <input
+            placeholder={isPotentialView
+              ? `Buscar ${t("patients.statusPotential").toLowerCase()}…`
+              : t("patients.searchPlaceholder")}
+            value={search}
+            onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
       <div className="filter-chips">
-        {filters.map(f => <button key={f.k} className={`chip ${filter===f.k?"active":""}`} onClick={() => setFilter(prev => prev === f.k ? "all" : f.k)}>{f.l}</button>)}
+        {filters.map(f => (
+          <button key={f.k}
+            className={`chip ${filter===f.k?"active":""}`}
+            onClick={() => setFilter(prev => prev === f.k ? "all" : f.k)}>
+            {f.l}
+            {/* Show a non-zero count next to "Potenciales" so the
+                practitioner sees pending interviews at a glance
+                without having to enter the lane. */}
+            {f.k === "potential" && f.badge > 0 && (
+              <span style={{ marginLeft:6, padding:"1px 6px", borderRadius:"var(--radius-pill)", background:"var(--rose)", color:"var(--white)", fontSize:10, fontWeight:800 }}>{f.badge}</span>
+            )}
+          </button>
+        ))}
       </div>
-      <div className="sort-row">
+      {/* Potenciales sub-filter — Activos / Archivados. Only renders
+          while the Potenciales chip is active so the row doesn't
+          confuse the regular-patient lanes. */}
+      {isPotentialView && (
+        <div className="filter-chips" style={{ paddingTop:0 }}>
+          <button className={`chip ${potentialSubFilter==="active"?"active":""}`}
+            onClick={() => setPotentialSubFilter("active")}>
+            {t("patients.onlyActive")}
+          </button>
+          <button className={`chip ${potentialSubFilter==="archived"?"active":""}`}
+            onClick={() => setPotentialSubFilter("archived")}>
+            {t("patients.archived")}
+          </button>
+        </div>
+      )}
+      <div className="sort-row" style={isPotentialView && potentialSubFilter === "active" && !readOnly ? { display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 } : undefined}>
         <span style={{ fontSize:12, color:"var(--charcoal-xl)", fontWeight:600 }}>{t("patients.count", { count: filtered.length })}</span>
+        {/* "Nuevo potencial" CTA — bordered rose pill that reads as
+            the lane's primary action without crowding the global
+            FAB. Hidden under the Archivados sub-filter (no point
+            adding new ones from there) and in readOnly demo mode. */}
+        {isPotentialView && potentialSubFilter === "active" && !readOnly && (
+          <button type="button"
+            onClick={() => requestFabAction?.("potential")}
+            aria-label={t("patients.newPotential")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "5px 11px 5px 9px",
+              borderRadius: "var(--radius-pill)",
+              border: "1px solid var(--rose)",
+              background: "var(--rose-bg)",
+              color: "var(--rose)",
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "var(--font)",
+              cursor: "pointer",
+              letterSpacing: 0.2,
+              WebkitTapHighlightColor: "transparent",
+              transition: "transform 0.18s var(--ease-cardi, ease), background 0.18s ease",
+            }}
+            onMouseDown={e => { e.currentTarget.style.transform = "scale(0.97)"; }}
+            onMouseUp={e => { e.currentTarget.style.transform = ""; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; }}>
+            <IconPlus size={12} strokeWidth={2.4} /> {t("patients.newPotential")}
+          </button>
+        )}
       </div>
       <div style={{ padding:"0 16px 12px" }}>
         <div className="card">
           {filtered.length === 0
-            ? <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>{t("patients.noResults")}</div>
-            : filtered.map((p,i) => (
-              <div
-                className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""}`}
-                style={{ "--stagger-i": Math.min(i, 12) }}
-                key={p.id} onClick={() => openDetail(p)} onContextMenu={(e) => openPatientContextMenu(e, p)}>
-                <Avatar initials={p.initials} color={getClientColor(i)} size="md" />
-                <div className="row-content">
-                  <div className="row-title">{p.name}</div>
-                  <div className="row-sub">
-                    {p.parent && (
-                      <>
-                        <span style={{ color:"var(--purple)", fontWeight:700 }}>{t("sessions.tutor")}: {p.parent}</span>
-                        {" · "}
-                      </>
+            ? (search || !isPotentialView ? (
+                /* Search miss in any lane, or "no results" in the
+                   regular lanes — terse one-liner inside the card so
+                   it doesn't dominate the layout. */
+                <div style={{ padding:"28px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
+                  {t("patients.noResults")}
+                </div>
+              ) : (
+                /* Cold-start in the Potenciales lane gets the full
+                    EmptyState treatment — illustration, title, body,
+                    inline CTA. Same polish as the other empty surfaces
+                    (Notes, Documents, Mediciones) so the lane reads
+                    as a first-class part of the app rather than a
+                    bolted-on filter. */
+                <div style={{ padding:"6px 8px 12px" }}>
+                  <EmptyState
+                    kind={potentialSubFilter === "archived" ? "patients" : "potentials"}
+                    compact
+                    title={potentialSubFilter === "archived"
+                      ? t("patients.noArchived")
+                      : t("patients.noPotentials")}
+                    body={potentialSubFilter === "archived"
+                      ? null
+                      : t("patients.addPotentialFirst")}
+                    cta={potentialSubFilter === "active" && !readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => requestFabAction?.("potential")}
+                        className="btn"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          width: "auto",
+                          padding: "10px 22px",
+                          height: "auto",
+                          minHeight: 0,
+                          background: "var(--rose)",
+                          color: "var(--white)",
+                          boxShadow: "none",
+                        }}>
+                        <IconPlus size={16} /> {t("patients.newPotential")}
+                      </button>
                     )}
-                    {formatMXN(p.rate)} {t("expediente.perSession")}
+                  />
+                </div>
+              ))
+            : filtered.map((p,i) => {
+              const isPotential = p.status === PATIENT_STATUS.POTENTIAL;
+              const isDiscarded = p.status === PATIENT_STATUS.DISCARDED;
+              const isInterviewLane = isPotential || isDiscarded;
+              return (
+                <div
+                  className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
+                  style={{ "--stagger-i": Math.min(i, 12) }}
+                  key={p.id}
+                  onClick={() => isInterviewLane ? setPotentialProfile(p) : openDetail(p)}
+                  onContextMenu={(e) => isInterviewLane ? null : openPatientContextMenu(e, p)}>
+                  <Avatar initials={p.initials} color={isInterviewLane ? "var(--rose)" : getClientColor(i)} size="md" />
+                  <div className="row-content">
+                    <div className="row-title">{p.name}</div>
+                    <div className="row-sub">
+                      {p.parent && (
+                        <>
+                          <span style={{ color:"var(--purple)", fontWeight:700 }}>{t("sessions.tutor")}: {p.parent}</span>
+                          {" · "}
+                        </>
+                      )}
+                      {formatMXN(p.rate)} {t("expediente.perSession")}
+                    </div>
                   </div>
+                  <div style={{ flexShrink:0 }}>
+                    {filter === "owes"
+                      ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>{formatMXN(p.amountDue)}</span>
+                      : isPotential
+                        ? <span className="badge badge-rose">{t("patients.statusPotential")}</span>
+                        : isDiscarded
+                          ? <span className="badge badge-gray">{t("patients.statusDiscarded")}</span>
+                          : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
+                    }
+                  </div>
+                  <span className="row-chevron">›</span>
                 </div>
-                <div style={{ flexShrink:0 }}>
-                  {filter === "owes"
-                    ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>{formatMXN(p.amountDue)}</span>
-                    : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
-                  }
-                </div>
-                <span className="row-chevron">›</span>
-              </div>
-            ))
+              );
+            })
           }
         </div>
       </div>
@@ -879,6 +1059,56 @@ export function Patients() {
         />,
         document.body
       )}
+      {/* Slim potential profile — renders for any 'potential' or
+          'discarded' row tap. Bypasses the split-view inline
+          expediente entirely; potentials are too lightweight for
+          that surface. The interview session within the sheet
+          opens via setPotentialProfile(...) -> we surface it as a
+          row that just navigates to Agenda for the date (cheaper
+          than nesting a SessionSheet inside the profile sheet). */}
+      {potentialProfile && (
+        <PotentialProfileSheet
+          patient={patients.find(p => p.id === potentialProfile.id) || potentialProfile}
+          interviewSession={upcomingSessions.find(s =>
+            s.patient_id === potentialProfile.id
+            && s.session_type === SESSION_TYPE.INTERVIEW
+          )}
+          readOnly={readOnly}
+          onClose={() => setPotentialProfile(null)}
+          onOpenSession={() => {
+            // Lightweight handoff — drop the user on Agenda so they
+            // can use the existing SessionSheet for status / reschedule
+            // / etc. without re-implementing those controls inside
+            // the slim sheet.
+            setPotentialProfile(null);
+            navigate?.("agenda");
+          }}
+          onConvert={(p) => {
+            setPotentialProfile(null);
+            setConverting(p);
+          }}
+          onDiscard={async (id) => {
+            const ok = await discardPotential?.(id);
+            if (ok) showSuccess?.(t("patients.discardingToast", { name: potentialProfile.name }));
+            return ok;
+          }}
+          mutating={mutating}
+        />
+      )}
+
+      {converting && (
+        <ConvertPotentialSheet
+          potential={patients.find(p => p.id === converting.id) || converting}
+          onClose={() => setConverting(null)}
+          onSubmit={async (id, payload) => {
+            const ok = await convertPotentialToActive?.(id, payload);
+            if (ok) showSuccess?.(t("patients.convertedToast", { name: converting.name }));
+            return ok;
+          }}
+          mutating={mutating}
+        />
+      )}
+
       <ContextMenu {...ctxMenu.state} onClose={ctxMenu.close} />
     </div>
   );

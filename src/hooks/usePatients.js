@@ -2,6 +2,7 @@ import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import { getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
+import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
@@ -201,7 +202,357 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  return { createPatient, updatePatient, deletePatient };
+  /* ── Interview-stage flows (migration 047) ────────────────────────
+     Three coordinated mutations so the Potenciales surface stays
+     correct end-to-end:
+
+       createPotential — inserts a slim patient row (status='potential',
+                          scheduling_mode='episodic') AND a single
+                          interview session (session_type='interview',
+                          is_recurring=false). billed and sessions are
+                          stamped at insert time so the row is
+                          accounting-correct from the moment the form
+                          submits — no second round-trip needed.
+
+       discardPotential — soft-archive. Flips the patient to 'discarded'
+                          and marks any still-scheduled interview as
+                          cancelled (with cancel_reason set so the row
+                          is auditable). Cancelling the interview row
+                          drops it from /api/calendar (which selects
+                          status IN scheduled/completed) and from the
+                          send-session-reminders cron, no separate fix
+                          needed.
+
+       convertPotentialToActive — promotes a potential to a real
+                          patient in place. We update (not insert) so
+                          payments / notes / documents / the interview
+                          session itself stay linked via patient_id.
+                          The interview's `rate` column is intentionally
+                          left untouched: per the prime directive,
+                          per-session rate preserves historical
+                          accuracy across rate changes. */
+
+  // Insert a potential + their single interview session in two
+  // sequential queries (patient first to mint id, then the session).
+  // Optimistic local-state updates mirror createPatient's pattern.
+  async function createPotential({
+    name, parent, rate, phone, email, whatsappEnabled,
+    interview, // { date, time, duration, modality } — required
+  }) {
+    if (!name?.trim()) return false;
+    // Dedupe only against active + potential — discarded names can be
+    // re-used (someone returns months later).
+    const dupe = patients.some(p =>
+      (p.status === PATIENT_STATUS.ACTIVE || p.status === PATIENT_STATUS.POTENTIAL)
+      && p.name.toLowerCase() === name.trim().toLowerCase()
+    );
+    if (dupe) {
+      setMutationError("Ya existe un registro con ese nombre.");
+      return false;
+    }
+    if (!interview?.date || !interview?.time) return false;
+
+    const patientRate = Math.max(0, Number(rate) || 0);
+    const colorIdx = patients.length % 7;
+    const dur = Number(interview.duration) > 0 ? Number(interview.duration) : 60;
+    const modality = interview.modality || "presencial";
+    const day = dayNameFromISO(interview.date);
+    const sessionDate = formatShortDate(new Date(interview.date + "T12:00:00"));
+
+    setMutating(true);
+    setMutationError("");
+    const { data: patientRow, error } = await supabase.from("patients").insert({
+      user_id: userId,
+      name: name.trim(),
+      parent: parent?.trim() || "",
+      phone: phone?.trim() || "",
+      email: email?.trim() || "",
+      initials: getInitials(name),
+      rate: patientRate,
+      // Episodic + null day/time so the rest of the app reads
+      // "no perpetual slot" cleanly. Conversion fills these in.
+      day: null,
+      time: null,
+      color_idx: colorIdx,
+      // start_date is intentionally null at potential-stage — the
+      // engagement hasn't started yet. Conversion stamps today.
+      start_date: null,
+      scheduling_mode: "episodic",
+      status: PATIENT_STATUS.POTENTIAL,
+      // sessions=1, billed=rate so amountDue reflects the interview
+      // tariff immediately. recalcPatientCounters reconciles if the
+      // session insert fails.
+      sessions: 1,
+      billed: patientRate,
+      whatsapp_enabled: !!whatsappEnabled,
+      whatsapp_consent_at: whatsappEnabled ? new Date().toISOString() : null,
+    }).select().single();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    const newPatient = { ...patientRow, colorIdx: patientRow.color_idx };
+    let updatedPatient = newPatient;
+
+    const { data: sessRow, error: sessErr } = await supabase.from("sessions").insert({
+      user_id: userId,
+      patient_id: patientRow.id,
+      patient: name.trim(),
+      initials: getInitials(name),
+      time: interview.time,
+      day,
+      date: sessionDate,
+      duration: dur,
+      rate: patientRate,
+      modality,
+      session_type: SESSION_TYPE.INTERVIEW,
+      // Critical: interview rows are one-offs forever. Even after
+      // conversion, computeAutoExtendRows must never derive a
+      // recurring slot from this row. The defensive
+      // isInterviewSession() filter in recurrence.js is a second
+      // line of defense; this is the primary.
+      is_recurring: false,
+      visit_type: null,
+      color_idx: colorIdx,
+    }).select().single();
+
+    if (!sessErr && sessRow) {
+      setUpcomingSessions(prev => [...prev, { ...sessRow, colorIdx: sessRow.color_idx, modality: sessRow.modality || "presencial" }]);
+    } else {
+      // Session insert failed — bring patient counters back in line
+      // with truth so amountDue doesn't show a phantom interview.
+      const fixed = await recalcPatientCounters(patientRow.id);
+      if (fixed) updatedPatient = { ...newPatient, ...fixed };
+    }
+
+    setPatients(prev => [...prev, updatedPatient].sort((a, b) => a.name.localeCompare(b.name)));
+    setMutating(false);
+    return true;
+  }
+
+  // Soft-archive. Two-query: flip patient status, then mark any still-
+  // scheduled interview cancelled. The second query's WHERE is
+  // intentionally narrow (status='scheduled' AND session_type='interview')
+  // so a previously-completed/charged interview keeps its audit trail.
+  async function discardPotential(id) {
+    setMutating(true);
+    setMutationError("");
+    const { error } = await supabase.from("patients")
+      .update({ status: PATIENT_STATUS.DISCARDED })
+      .eq("id", id).eq("user_id", userId);
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    // Cancel any pending interview session attached to this potential.
+    // i18n string lives in es.js (sessions.discardReason) so the value
+    // here is the English-style audit constant — therapists never see
+    // it raw, only the translated "Potencial descartado" surfaced
+    // elsewhere when listing cancelled sessions.
+    const { error: sErr } = await supabase.from("sessions")
+      .update({ status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial descartado" })
+      .eq("user_id", userId)
+      .eq("patient_id", id)
+      .eq("session_type", SESSION_TYPE.INTERVIEW)
+      .eq("status", SESSION_STATUS.SCHEDULED);
+    setMutating(false);
+    if (sErr) { setMutationError(sErr.message); return false; }
+
+    setUpcomingSessions(prev => prev.map(s =>
+      s.patient_id === id && s.session_type === SESSION_TYPE.INTERVIEW && s.status === SESSION_STATUS.SCHEDULED
+        ? { ...s, status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial descartado" }
+        : s
+    ));
+
+    // The interview row was previously contributing to patient.billed
+    // (createPotential stamped billed=rate). Cancelling it without
+    // adjusting the denormalized counter leaves billed > 0 forever
+    // for a discarded potential, which audit-accounting.mjs flags as
+    // drift. Recalc from truth — cheap, idempotent, and keeps the
+    // potential's row consistent if it ever gets re-converted.
+    const fixed = await recalcPatientCounters(id);
+    setPatients(prev => prev.map(p => p.id === id
+      ? { ...p, status: PATIENT_STATUS.DISCARDED, ...(fixed || {}) }
+      : p
+    ));
+    return true;
+  }
+
+  // Promote a potential to active in place. Updates the existing row
+  // (patient_id continuity preserves payments / notes / documents /
+  // the interview session itself), then seeds the new schedule.
+  // Counters are INCREMENTED (not overwritten) so the interview's
+  // contribution stays in billed/sessions.
+  async function convertPotentialToActive(id, {
+    rate, parent, phone, email, birthdate, tutorFrequency,
+    schedulingMode, schedules, startDate, endDate,
+    heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg,
+    allergies, medicalConditions,
+    firstConsult, // optional — episodic patients can include the next visit here
+  }) {
+    const patient = patients.find(p => p.id === id);
+    if (!patient || patient.status !== PATIENT_STATUS.POTENTIAL) return false;
+
+    const mode = schedulingMode === "episodic" ? "episodic" : "recurring";
+    const sched = schedules?.length ? schedules : [{ day: "Lunes", time: "16:00" }];
+    const newRate = Math.max(0, Number(rate) || 0);
+    // Pick a fresh slot in the active-patient color rotation.
+    const activeCount = patients.filter(p => p.status === PATIENT_STATUS.ACTIVE).length;
+    const newColorIdx = activeCount % 7;
+
+    // Pre-compute the new session seeds so we can stamp final counters
+    // on the patient UPDATE in one round-trip.
+    //
+    // Critical dedup: the existing interview session occupies a
+    // (date, time) slot and the DB unique index
+    // uniq_sessions_patient_date_time treats (patient_id, date, time)
+    // as the conflict key — session_type doesn't disambiguate. So a
+    // recurring schedule whose startDate falls on the interview's
+    // day/time would 23505 on insert, partially-fail the conversion
+    // (patient flipped to active, no recurring rows landed), and
+    // recalcPatientCounters would silently swallow the mismatch.
+    // Skipping the colliding seed lets the conversion succeed and
+    // preserves the interview session intact at its original rate.
+    const existingSlots = new Set(
+      (upcomingSessions || [])
+        .filter(s => s.patient_id === id)
+        .map(s => `${s.date}|${s.time}`)
+    );
+    const sessionSeeds = [];
+    if (mode === "recurring" && startDate) {
+      for (const s of sched) {
+        const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
+        const mod = s.modality || "presencial";
+        const freq = s.frequency || "weekly";
+        getRecurringDates(s.day, startDate, endDate, freq).forEach(d => {
+          const date = formatShortDate(d);
+          const slot = `${date}|${s.time}`;
+          if (existingSlots.has(slot)) return;
+          existingSlots.add(slot);
+          sessionSeeds.push({ day: s.day, time: s.time, duration: dur, modality: mod, frequency: freq, date, is_recurring: true });
+        });
+      }
+    } else if (mode === "episodic" && firstConsult?.date) {
+      const dur = Number(firstConsult.duration) > 0 ? Number(firstConsult.duration) : 60;
+      const mod = firstConsult.modality || "presencial";
+      const day = dayNameFromISO(firstConsult.date);
+      const date = formatShortDate(new Date(firstConsult.date + "T12:00:00"));
+      const time = firstConsult.time || "10:00";
+      const slot = `${date}|${time}`;
+      // Same dedup safeguard for the episodic first-consult — if the
+      // practitioner picks the same date/time as the interview (e.g.
+      // the interview itself is being repurposed as the intake), skip.
+      if (!existingSlots.has(slot)) {
+        existingSlots.add(slot);
+        sessionSeeds.push({
+          day,
+          time,
+          duration: dur,
+          modality: mod,
+          date,
+          is_recurring: false,
+          visit_type: "intake",
+        });
+      }
+    }
+    const seedCount = sessionSeeds.length;
+
+    setMutating(true);
+    setMutationError("");
+
+    const todayISO = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    })();
+
+    const patch = {
+      status: PATIENT_STATUS.ACTIVE,
+      scheduling_mode: mode,
+      day:  mode === "recurring" ? sched[0].day  : null,
+      time: mode === "recurring" ? sched[0].time : null,
+      // start_date stamps the conversion moment — that's when the
+      // engagement actually starts. The interview lives in the past
+      // sessions list; start_date is for "first day under this
+      // engagement" which everywhere else in the app means active.
+      start_date: mode === "recurring" && startDate ? startDate : todayISO,
+      rate: newRate,
+      parent: parent?.trim() ?? patient.parent ?? "",
+      phone: phone?.trim() ?? patient.phone ?? "",
+      email: email?.trim() ?? patient.email ?? "",
+      birthdate: birthdate || patient.birthdate || null,
+      tutor_frequency: tutorFrequency || null,
+      // Per-profession nutritionist/trainer fields. Caller passes
+      // null for professions that don't surface them.
+      height_cm: heightCm || null,
+      goal_weight_kg: goalWeightKg || null,
+      goal_body_fat_pct: goalBodyFatPct || null,
+      goal_skeletal_muscle_kg: goalSkeletalMuscleKg || null,
+      allergies: allergies || patient.allergies || "",
+      medical_conditions: medicalConditions || patient.medical_conditions || "",
+      // Counters: ADD the new session count + their billed total.
+      // Interview's contribution stays untouched.
+      sessions: (patient.sessions || 0) + seedCount,
+      billed:   (patient.billed   || 0) + newRate * seedCount,
+      color_idx: newColorIdx,
+    };
+
+    const { data: updated, error } = await supabase.from("patients")
+      .update(patch).eq("id", id).eq("user_id", userId).select().single();
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    // Insert the new session rows.
+    if (sessionSeeds.length > 0) {
+      const allRows = sessionSeeds.map(s => ({
+        user_id: userId, patient_id: id, patient: updated.name,
+        initials: updated.initials, time: s.time, day: s.day,
+        date: s.date, duration: s.duration, rate: newRate,
+        modality: s.modality, color_idx: newColorIdx,
+        is_recurring: s.is_recurring !== false,
+        recurrence_frequency: s.frequency || "weekly",
+        visit_type: s.visit_type || null,
+        session_type: SESSION_TYPE.REGULAR,
+      }));
+      const { data: sessData, error: sessErr } = await supabase.from("sessions").insert(allRows).select();
+      if (!sessErr && sessData) {
+        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
+        if (sessData.length !== seedCount) {
+          const fixed = await recalcPatientCounters(id);
+          if (fixed) {
+            setPatients(prev => prev.map(p => p.id === id ? { ...updated, colorIdx: updated.color_idx, ...fixed } : p));
+            setMutating(false);
+            return true;
+          }
+        }
+      } else {
+        const fixed = await recalcPatientCounters(id);
+        if (fixed) {
+          setPatients(prev => prev.map(p => p.id === id ? { ...updated, colorIdx: updated.color_idx, ...fixed } : p));
+          setMutating(false);
+          return true;
+        }
+      }
+    }
+
+    // Bump the interview session's color so it renders alongside the
+    // active patient's other sessions cleanly. The session_type stays
+    // 'interview' (and rose-rail) so it's still distinguishable in
+    // the patient's history; only the avatar color updates.
+    await supabase.from("sessions")
+      .update({ color_idx: newColorIdx })
+      .eq("user_id", userId)
+      .eq("patient_id", id)
+      .eq("session_type", SESSION_TYPE.INTERVIEW);
+    setUpcomingSessions(prev => prev.map(s =>
+      s.patient_id === id && s.session_type === SESSION_TYPE.INTERVIEW
+        ? { ...s, color_idx: newColorIdx, colorIdx: newColorIdx }
+        : s
+    ));
+
+    setPatients(prev => prev.map(p => p.id === id
+      ? { ...updated, colorIdx: updated.color_idx }
+      : p
+    ));
+    setMutating(false);
+    return true;
+  }
+
+  return { createPatient, updatePatient, deletePatient, createPotential, discardPotential, convertPotentialToActive };
 }
 
 /* "2026-05-12" → "Martes". Anchored at noon to dodge timezone edge

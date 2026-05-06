@@ -84,6 +84,13 @@ export const VOCAB = {
     record:       noun("expediente",   "expedientes",   "el", "los"),
     rate:         noun("Honorarios",   "Honorarios",    "los","los"),
     minorContact: noun("tutor",        "tutores",       "el", "los"),
+    // Interview-stage nouns (migration 047).
+    //   prospect = the person under evaluation
+    //   intake   = the first-contact session itself
+    // Kept profession-specific so the rose-accent UI reads naturally
+    // for each practitioner's vocabulary.
+    prospect:     noun("paciente potencial", "pacientes potenciales", "el", "los"),
+    intake:       noun("entrevista",   "entrevistas",   "la", "las"),
   },
   nutritionist: {
     client:       noun("paciente",     "pacientes",     "el", "los"),
@@ -91,6 +98,8 @@ export const VOCAB = {
     record:       noun("historial",    "historiales",   "el", "los"),
     rate:         noun("Honorarios",   "Honorarios",    "los","los"),
     minorContact: noun("tutor",        "tutores",       "el", "los"),
+    prospect:     noun("paciente potencial", "pacientes potenciales", "el", "los"),
+    intake:       noun("consulta inicial", "consultas iniciales", "la", "las"),
   },
   tutor: {
     client:       noun("alumno",       "alumnos",       "el", "los"),
@@ -98,6 +107,8 @@ export const VOCAB = {
     record:       noun("bitácora","bitácoras","la", "las"),
     rate:         noun("Colegiatura",  "Colegiatura",   "la", "las"),
     minorContact: noun("padre/madre",  "padres",        "el", "los"),
+    prospect:     noun("alumno prospecto", "alumnos prospectos", "el", "los"),
+    intake:       noun("clase de prueba", "clases de prueba", "la", "las"),
   },
   music_teacher: {
     client:       noun("alumno",       "alumnos",       "el", "los"),
@@ -105,6 +116,8 @@ export const VOCAB = {
     record:       noun("bitácora","bitácoras","la", "las"),
     rate:         noun("Colegiatura",  "Colegiatura",   "la", "las"),
     minorContact: noun("padre/madre",  "padres",        "el", "los"),
+    prospect:     noun("alumno prospecto", "alumnos prospectos", "el", "los"),
+    intake:       noun("clase de prueba", "clases de prueba", "la", "las"),
   },
   trainer: {
     client:       noun("cliente",      "clientes",      "el", "los"),
@@ -112,6 +125,8 @@ export const VOCAB = {
     record:       noun("historial",    "historiales",   "el", "los"),
     rate:         noun("Tarifa",       "Tarifas",       "la", "las"),
     minorContact: noun("tutor",        "tutores",       "el", "los"),
+    prospect:     noun("cliente prospecto", "clientes prospectos", "el", "los"),
+    intake:       noun("evaluación inicial", "evaluaciones iniciales", "la", "las"),
   },
 };
 

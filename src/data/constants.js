@@ -10,10 +10,51 @@ export const SESSION_STATUS = Object.freeze({
   CHARGED:   "charged",
 });
 
-// Patient lifecycle status.
+// Patient lifecycle status. 'active' / 'ended' are the regular
+// patient lifecycle. 'potential' / 'discarded' are the interview
+// stage (migration 047): a potential is an interviewee under
+// evaluation, never counted in active-patient KPIs and never picked
+// up by recurring auto-extend; discarded is a soft-archive for
+// potentials that didn't convert. See isPotentialOrDiscarded() below
+// for the canonical filter every KPI surface uses to keep the two
+// lanes from contaminating each other's totals.
 export const PATIENT_STATUS = Object.freeze({
-  ACTIVE: "active",
-  ENDED:  "ended",
+  ACTIVE:    "active",
+  ENDED:     "ended",
+  POTENTIAL: "potential",
+  DISCARDED: "discarded",
+});
+
+// "Regular" patient statuses — those that should appear in the main
+// KPIs, lists, and accounting derivations. The Patients-screen filter
+// chips for 'all' / 'active' / 'ended' / 'owes' / 'paid' all restrict
+// to this set; only the dedicated 'potential' chip surfaces potentials
+// + (under "Archivados") discarded.
+export const REGULAR_PATIENT_STATUSES = Object.freeze([
+  PATIENT_STATUS.ACTIVE,
+  PATIENT_STATUS.ENDED,
+]);
+
+// True if the patient is in the interview lane and should be excluded
+// from any therapist-facing total / list / picker that's about real
+// active patients (Home outstanding KPI, Finances Balances, Cardi
+// finance summary, etc.). Centralized so the filter doesn't drift
+// across surfaces.
+export function isPotentialOrDiscarded(p) {
+  return p?.status === PATIENT_STATUS.POTENTIAL
+      || p?.status === PATIENT_STATUS.DISCARDED;
+}
+
+// Per-session type. Mirrors the sessions.session_type CHECK in
+// supabase/schema.sql / migrations 023 + 047. The original
+// 'regular' / 'tutor' split lives in src/utils/sessions.js
+// (isTutorSession, with a legacy "T·" initials-prefix fallback);
+// 'interview' is the first-contact session created against a
+// 'potential' patient and surfaces with a rose accent.
+export const SESSION_TYPE = Object.freeze({
+  REGULAR:   "regular",
+  TUTOR:     "tutor",
+  INTERVIEW: "interview",
 });
 
 // Payment methods. Values double as DB strings and display labels (Spanish-only app).

@@ -21,18 +21,25 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const dateObj = parseShortDate(date);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
 
-    // Auto-detect visit type: a patient's very first non-tutor session
-    // is the intake; everything else defaults to 'followup'. The caller
-    // can override via the explicit `visitType` param (e.g. when
-    // editing or when the practitioner picks 'maintenance' for a
-    // post-goal patient). Tutor sessions stay null — the taxonomy is
-    // about the patient's clinical journey, not the parent's
-    // operational visits.
+    // Auto-detect visit type: a patient's very first non-tutor,
+    // non-interview session is the intake; everything else defaults
+    // to 'followup'. The caller can override via the explicit
+    // `visitType` param (e.g. when editing or when the practitioner
+    // picks 'maintenance' for a post-goal patient).
+    //   • Tutor sessions stay null — the taxonomy is about the
+    //     patient's clinical journey, not the parent's operational
+    //     visits.
+    //   • Interview sessions (potential → active conversion) are
+    //     pre-conversion records and don't count as "prior regular"
+    //     for the post-conversion intake, so a converted patient's
+    //     first scheduled regular session correctly tags as 'intake'.
     const sessionVisitType = (() => {
       if (visitType) return visitType;
       if (isTutor) return null;
       const hasPriorRegular = (upcomingSessions || []).some(
-        (s) => s.patient_id === patient.id && s.session_type !== "tutor",
+        (s) => s.patient_id === patient.id
+          && s.session_type !== "tutor"
+          && s.session_type !== "interview",
       );
       return hasPriorRegular ? "followup" : "intake";
     })();

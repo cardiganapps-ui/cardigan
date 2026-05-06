@@ -534,6 +534,49 @@ describe("computeAutoExtendRows — recurrence frequency", () => {
   });
 });
 
+/* ── Interview-stage / potential patients (migration 047) ──
+   These guard the load-bearing invariant that recurring auto-extend
+   never picks up an interview row, even if a later code change
+   accidentally relaxes one of the upstream filters. */
+describe("computeAutoExtendRows — interview rows", () => {
+  it("returns [] for a 'potential' patient regardless of inputs", () => {
+    const ctx = buildContext(new Date());
+    // Even with multiple future scheduled sessions on a slot — the
+    // shape that would normally trigger extension — a potential's
+    // recurring schedule is NEVER auto-extended.
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient({ status: PATIENT_STATUS.POTENTIAL }),
+      allPSess: [
+        scheduledMon10(7, ctx.today),
+        scheduledMon10(14, ctx.today),
+      ],
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it("does NOT mint recurring rows from an interview session on a converted patient", () => {
+    // Scenario: the potential has been converted to active, and the
+    // pre-conversion interview session is still in the table. The
+    // auto-extend filter must skip it (defensive isInterviewSession
+    // check + the is_recurring=false primary guard) so no phantom
+    // weekly slot gets minted on the interview's day/time.
+    const ctx = buildContext(new Date());
+    const rows = computeAutoExtendRows({
+      ...ctx,
+      patient: activePatient(),
+      allPSess: [
+        // The original interview — Lunes 10:00, one-off, scheduled.
+        { ...scheduledMon10(3, ctx.today), session_type: "interview", is_recurring: false },
+        // Plus a single regular Mon 10:00 future row — alone,
+        // wouldn't be enough to qualify as recurring (need ≥2).
+        { ...scheduledMon10(7, ctx.today), session_type: "regular", is_recurring: true, recurrence_frequency: "weekly" },
+      ],
+    });
+    expect(rows).toEqual([]);
+  });
+});
+
 // Local helper: convert a "D-MMM" short date (Spanish) to ISO using the
 // year of `referenceDate`. Tests only — production parsers handle this.
 function isoFromShortDate(short, referenceDate) {

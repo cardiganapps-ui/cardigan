@@ -600,7 +600,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
 
   /* ── DOMAIN ACTIONS (delegated to focused modules) ── */
   const helpers = { formatShortDate, getRecurringDates };
-  const { createPatient, updatePatient, deletePatient } =
+  const { createPatient, updatePatient, deletePatient, createPotential, discardPotential, convertPotentialToActive } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
   const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
@@ -660,6 +660,21 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     if (ok) refresh().catch(() => {});
     return ok;
   };
+  // Same closing-the-gap rationale as createPatientWithRefresh above —
+  // a fresh potential ships an interview session row alongside the
+  // patient, and the optimistic setters can race the next pull. The
+  // post-create refresh ensures the new row reflects in any open
+  // detail sheet without forcing the user to pull-to-refresh.
+  const createPotentialWithRefresh = async (args) => {
+    const ok = await createPotential(args);
+    if (ok) refresh().catch(() => {});
+    return ok;
+  };
+  const convertPotentialWithRefresh = async (id, args) => {
+    const ok = await convertPotentialToActive(id, args);
+    if (ok) refresh().catch(() => {});
+    return ok;
+  };
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
@@ -667,6 +682,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
     createPatient: guard(createPatientWithRefresh), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
+    createPotential: guard(createPotentialWithRefresh), discardPotential: guard(discardPotential), convertPotentialToActive: guard(convertPotentialWithRefresh),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
     deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),

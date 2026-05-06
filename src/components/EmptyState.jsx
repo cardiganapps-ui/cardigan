@@ -200,6 +200,34 @@ function EmptyIllustration({ kind, size = 160 }) {
     );
   }
 
+  if (kind === "potentials") {
+    // Interview-stage / potential patients illustration. Rose palette
+    // distinguishes the lane from the regular patients SVG (teal).
+    // A single outlined figure sits inside a soft rose halo, with a
+    // small upward chevron above the head — the "potential to grow
+    // into a real patient" signal that the rest of the app's rose
+    // accent reinforces. Local palette override; the rest of the
+    // illustrations keep the teal family.
+    const rStroke = "var(--rose)";
+    const rTint = "var(--rose-bg)";
+    return (
+      <svg width={size} height={size * 0.7} viewBox="0 0 200 140" aria-hidden="true">
+        <circle cx="100" cy="78" r="56" fill={rTint} opacity="0.55" />
+        <ellipse cx="100" cy="124" rx="72" ry="6" fill={rTint} opacity="0.7" />
+        <g stroke={rStroke} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" fill="var(--white)">
+          <circle cx="100" cy="64" r="18" />
+          <path d="M68 118 Q68 86 100 86 Q132 86 132 118 Z" />
+        </g>
+        {/* Upward chevron above the figure — "potential" signal that
+            mirrors the rose CTA polish elsewhere. Stroke-only so it
+            doesn't fight the figure for visual weight. */}
+        <g stroke={rStroke} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" fill="none">
+          <path d="M86 38 L100 24 L114 38" />
+        </g>
+      </svg>
+    );
+  }
+
   if (kind === "finances") {
     // Outlined receipt with a teal $-emblem. Line-art (no opaque
     // fills) so the shape reads on both light and dark backgrounds

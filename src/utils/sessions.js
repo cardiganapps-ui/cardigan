@@ -1,6 +1,6 @@
 /* ── Session display helpers used across Cardigan ── */
 
-import { SESSION_STATUS, PATIENT_STATUS } from "../data/constants";
+import { SESSION_STATUS, SESSION_TYPE, PATIENT_STATUS } from "../data/constants";
 import { shortDateToISO, todayISO } from "./dates";
 
 /* `session_type === "tutor"` is the source of truth post-migration 023.
@@ -10,8 +10,17 @@ import { shortDateToISO, todayISO } from "./dates";
    migrated, the fallback can be retired. */
 export function isTutorSession(s) {
   if (!s) return false;
-  if (s.session_type === "tutor") return true;
+  if (s.session_type === SESSION_TYPE.TUTOR) return true;
   return s.initials?.startsWith("T·") || false;
+}
+
+/* The first-contact session a therapist runs against a 'potential'
+   patient (migration 047). Always created with is_recurring=false so
+   it never feeds the recurring-slot derivation in computeAutoExtendRows
+   — even after the patient is converted to active+recurring, the
+   interview row stays one-off and keeps its original rate. */
+export function isInterviewSession(s) {
+  return s?.session_type === SESSION_TYPE.INTERVIEW;
 }
 
 /* Returns the initials to render in a session avatar. Post-migration

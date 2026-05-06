@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getClientColor } from "../data/seedData";
-import { isCancelledStatus, isTutorSession, tutorDisplayInitials, statusClass } from "../utils/sessions";
+import { isCancelledStatus, isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconTrash } from "./Icons";
 import { Avatar } from "./Avatar";
@@ -51,6 +51,7 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
   const isCancelled = isCancelledStatus(session.status);
   const statusLbl = t(`sessions.${session.status}`);
   const isTutor = isTutorSession(session);
+  const isInterview = isInterviewSession(session);
   const displayInitials = isTutor ? tutorDisplayInitials(session) : session.initials;
 
   const dur = session.duration || 60;
@@ -118,11 +119,12 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onDe
             <div style={{ display:"flex", alignItems:"center", gap:"inherit", flex:1, minWidth:0, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
               onClick={() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { onClose(); openExpediente(p); } }}>
               <Avatar initials={displayInitials}
-                color={isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
+                color={isInterview ? "var(--rose)" : isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
                   {session.patient}
                   {isTutor && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
+                  {isInterview && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--rose)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.interview")}</span>}
                 </div>
                 <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
               </div>

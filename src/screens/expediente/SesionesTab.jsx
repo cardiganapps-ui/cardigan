@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IconClipboard } from "../../components/Icons";
-import { isTutorSession, statusClass } from "../../utils/sessions";
+import { isTutorSession, isInterviewSession, statusClass } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
@@ -215,15 +215,17 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
       <div className="card">
         {visible.map(s => {
           const tutor = isTutorSession(s);
+          const interview = isInterviewSession(s);
           const hasNote = pNotes.some(n => n.session_id === s.id);
           // Manual one-off — `is_recurring=false` is the explicit
           // signal. Migrations 027 + 028 cleaned up legacy rows so
           // this flag is now reliable across the entire dataset.
-          // Tutor sessions are excluded — they get their own purple
-          // eyebrow regardless.
-          const oneOff = !tutor && s.is_recurring === false;
-          const showVisitChip = showVisitTypes && !tutor;
-          const hasSecondLine = tutor || oneOff || hasNote || showVisitChip;
+          // Tutor + interview sessions are excluded from the "Única"
+          // chip — they get their own eyebrow regardless. (Interview
+          // is always one-off by design.)
+          const oneOff = !tutor && !interview && s.is_recurring === false;
+          const showVisitChip = showVisitTypes && !tutor && !interview;
+          const hasSecondLine = tutor || interview || oneOff || hasNote || showVisitChip;
           return (
             <div className="row-item" key={s.id} onClick={() => onSelect(s)}>
               <div className="row-content">
@@ -243,6 +245,11 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
                     {tutor && (
                       <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
                         {t("sessions.tutor")}
+                      </span>
+                    )}
+                    {interview && (
+                      <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color:"var(--rose)", textTransform:"uppercase" }}>
+                        {t("sessions.interview")}
                       </span>
                     )}
                     {oneOff && (
