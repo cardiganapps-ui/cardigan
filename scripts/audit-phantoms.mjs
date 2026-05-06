@@ -83,10 +83,15 @@ const sessions = (await q(`
 
 // Group by patient. For each patient, separate past (date < today)
 // from future (date >= today), excluding tutor-of-minor sessions
-// (those don't follow weekly recurrence — they're one-offs).
+// (those don't follow weekly recurrence — they're one-offs) and
+// interview sessions (migration 047 — also one-offs by design,
+// even after a potential is converted to an active patient; a
+// forgotten-to-mark-completed interview would otherwise look
+// exactly like a phantom slot).
 const byPatient = new Map();
 for (const s of sessions) {
   if (s.session_type === "tutor") continue;
+  if (s.session_type === "interview") continue;
   const e = byPatient.get(s.patient_id) || { futureSlots: new Set(), past: [] };
   const iso = shortDateToISO(s.date, today);
   if (iso >= todayISO) {
