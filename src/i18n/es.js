@@ -1526,12 +1526,16 @@ export default {
     skipFirstConsult:    "Agendar más tarde",
     skipFirstConsultHint:"Crea el paciente y agenda su primera {session.s} más adelante desde el {record.s}.",
     // Mode-switch (recurring → episodic only in v1; the reverse needs
-    // a slot picker which is its own follow-on).
-    switchToEpisodic:        "Cambiar a modo a demanda",
-    switchToEpisodicTitle:   "¿Cambiar a modo a demanda?",
-    switchToEpisodicBody:    "Las {session.p} ya agendadas no se pierden. Dejamos de crear las semanales automáticamente — agendarás cada una al terminar la anterior.",
-    switchToEpisodicConfirm: "Cambiar",
-    switchToRecurring:        "Cambiar a modo recurrente",
+    // a slot picker which is its own follow-on). Copy uses the same
+    // "horario recurrente" vocabulary the rest of the app already
+    // shows on the schedule fields, instead of the abstract "modo a
+    // demanda" — therapists know what a recurring slot is, they don't
+    // think in scheduling-mode terms.
+    switchToEpisodic:        "Quitar horario recurrente",
+    switchToEpisodicTitle:   "¿Quitar el horario recurrente?",
+    switchToEpisodicBody:    "Las {session.p} ya agendadas se conservan. Cardigan dejará de generar las semanales automáticamente y agendarás cada {session.s} al terminar la anterior.",
+    switchToEpisodicConfirm: "Sí, quitar",
+    switchToRecurring:        "Definir horario recurrente",
     switchToRecurringTitle:   "Definir horario recurrente",
     switchToRecurringIntro:   "Elige el día y la hora semanal. Cardigan agenda las próximas 15 semanas y se va renovando mientras el paciente siga activo.",
     switchToRecurringConfirm: "Activar recurrencia",
@@ -1539,7 +1543,7 @@ export default {
     modeChanged:              "Modo actualizado",
     modeChangedRecurring:     "Horario recurrente activado",
     endOfVisitPrompt:         "{session.S} completada",
-    episodicEditHint:         "Este paciente está en modo \"a demanda\" — cada {session.s} se agenda al terminar la anterior. Si quieres un horario semanal fijo, usa \"Cambiar a modo recurrente\" en el resumen.",
+    episodicEditHint:         "Este paciente no tiene un horario recurrente — cada {session.s} se agenda al terminar la anterior. Si quieres un horario semanal fijo, usa \"Definir horario recurrente\" en el resumen.",
     quickPickAria:    "Cadencia rápida",
     quickPick: {
       in2w:   "En 2 semanas",
