@@ -791,17 +791,19 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
   // Admin owns its own chrome (sidebar + header) and covers the
   // topbar / FAB / BottomTabs via the fixed `.admin-shell` overlay.
-  // Hide the global affordances on screens where they're not useful:
-  // - admin shell handles its own actions
-  // - settings + privacy are info/preferences pages with no creation
-  //   intent; the FAB just gets in the way of long lists
-  // The FAB also auto-hides over any open sheet / drawer / modal
-  // via the body:has(...) CSS rules in base.css.
+  // Settings + privacy hide ONLY the FAB (creation affordance has no
+  // place on info/preferences pages and floated over long lists) —
+  // the BottomTabs MUST stay visible on those screens, otherwise
+  // the user has no way to navigate away. Two flags, distinct
+  // concerns. The CSS-level body:has(...) rules in base.css handle
+  // the "any sheet / drawer is open" case for both at once.
   const hideFab = localHideFab
     || tutorialHidesFab
     || screen === "admin"
     || screen === "settings"
     || screen === "privacy";
+  const hideBottomTabs = tutorialHidesFab
+    || screen === "admin";
   const notifications = useNotifications(demo ? null : user);
 
   // Welcome-to-Pro prompt: fires once, after the user has finished or
@@ -1671,7 +1673,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
         )}
         {!readOnly && !hideFab && <QuickActions />}
-        {!hideFab && <BottomTabs />}
+        {!hideBottomTabs && <BottomTabs />}
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
         {user && !demo && !readOnly && (
