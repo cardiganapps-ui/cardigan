@@ -303,6 +303,16 @@ button.stat-tile { cursor: pointer; min-height: 0; }
 }
 .filter-chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 12px; scrollbar-width: none; }
 .filter-chips::-webkit-scrollbar { display: none; }
+/* Hint that the row scrolls horizontally — fade-mask on the right
+   edge of the scroll container. Uses mask-image so the cue only
+   shows when content actually overflows (when chips fit, the
+   transparent slice has nothing to fade). Opt-in via the variant
+   class so the cue doesn't attach to short rows like the 2-chip
+   Potenciales sub-filter. */
+.filter-chips--fade {
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+}
 .chip {
   padding: 5px 13px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600;
   border: 1.5px solid var(--border); background: var(--white); color: var(--charcoal-lt);
