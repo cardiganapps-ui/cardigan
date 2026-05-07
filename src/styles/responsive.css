@@ -388,11 +388,14 @@
   .drawer-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
 }
 
-/* ── NOTES SPLIT VIEW (≥820px) ──
-   List on the left, inline NoteEditor on the right. Same pattern as
-   patients master-detail. Activates at 820px so iPad portrait (≥iPad
-   non-mini) and every iPad landscape get the split layout. */
-@media (min-width: 820px) {
+/* ── NOTES SPLIT VIEW (≥1024px) ──
+   List on the left, inline NoteEditor on the right. Activates at
+   1024px so the editor pane has enough room — the previous 820
+   threshold left only ~280px for the editor at iPad Air portrait,
+   which is too narrow to type comfortably. iPad portrait now uses
+   the centered desktop note editor overlay; iPad landscape (1024+)
+   gets the split layout. */
+@media (min-width: 1024px) {
   .notes-page--split {
     display: flex !important;
     flex-direction: row;
@@ -444,10 +447,18 @@
   .notes-page--split .notes-list-col { width: 360px; padding: 16px; }
 }
 
-/* ── PATIENTS SPLIT VIEW (≥820px) ──
+/* ── PATIENTS SPLIT VIEW (≥1024px) ──
    Left-side list + inline expediente on the right. Replaces the
-   .expediente-desktop-panel overlay at the tablet-split tier. */
-@media (min-width: 820px) {
+   .expediente-desktop-panel overlay at the desktop tier. The
+   threshold was 820 — that left iPad Air portrait (820) and iPad
+   Pro 11 portrait (834) with only ~92–110 px of content inside the
+   inline expediente's vertical tab rail (sidebar 240 + list 320 +
+   rail 168 swallowed nearly the entire viewport). Bumped to 1024
+   so iPad portrait at those widths uses the cleaner desktop side-
+   panel overlay; split-view kicks in at iPad Pro 12.9 portrait /
+   iPad mini landscape and bigger. The matching JS isTabletSplit
+   query in useViewport.js moved to 1024 in the same change. */
+@media (min-width: 1024px) {
   .patients-split-view {
     display: flex; flex: 1; min-height: 0;
     width: 100%; max-width: none;
@@ -506,66 +517,70 @@
   .patients-split-view .patients-list-pane { width: 380px; }
 }
 
-/* ── EXPEDIENTE BODY — rail vs single-column ──
-   The overlay body stays as a single flex column so the scroll area
-   fills remaining height. Inline mode (≥820px) switches to a flex row
-   with a left rail for vertical tabs. */
-.expediente-overlay-body {
+/* ── EXPEDIENTE BODY — horizontal tabs vs vertical rail ──
+   The overlay body is always a single flex column so the scroll area
+   fills remaining height. Inline mode (rendered when isTabletSplit)
+   defaults to a column layout with a horizontal tab strip on top —
+   the previous "vertical rail at 820+" was crushing the detail
+   pane's content area into ~90-200px of usable width on iPad
+   portrait/standard landscape, which is what users were reporting
+   as squished/overflowing patient tabs. The vertical rail is now
+   reserved for ≥1200px viewports (iPad Pro 12.9 landscape and
+   bigger) where there's actually room for a sidebar-within-the-
+   detail-pane. */
+.expediente-overlay-body,
+.expediente-inline-body {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
 }
-@media (min-width: 820px) {
-  .expediente-inline-body {
-    display: flex;
-    flex-direction: row;
-    flex: 1;
-    min-height: 0;
-  }
-  .expediente-inline-tabs {
-    flex-shrink: 0;
-    width: 168px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 14px 10px;
-    border-right: 1px solid var(--border-lt);
-    background: var(--cream);
-    overflow-y: auto;
-  }
-  .expediente-inline-tab {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: none;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-family: var(--font);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--charcoal-lt);
-    text-align: left;
-    transition: background var(--dur-base), color var(--dur-base);
-    -webkit-tap-highlight-color: transparent;
-    min-height: 40px;
-  }
-  .expediente-inline-tab:active { opacity: 0.75; }
-  .expediente-inline-tab--active {
-    background: var(--white);
-    color: var(--charcoal);
-    font-weight: 700;
-    box-shadow: var(--shadow-sm);
-  }
-  /* Focus ring sits inside the pill so it doesn't clip against the
-     rail's right border. outline-offset: -2px keeps it readable on
-     both active (white bg) and inactive (cream bg) states. */
-  .expediente-inline-tab:focus-visible {
-    outline: 2px solid var(--teal);
-    outline-offset: -2px;
-  }
+.expediente-inline-tabs {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-lt);
+  background: var(--cream);
+  overflow-x: auto;
+  /* Hide the horizontal scrollbar — the tabs always fit on iPad+
+     (the detail pane is at least 380px wide post-isTabletSplit
+     bump) so no scrollbar should ever actually paint. The rule is
+     defensive against an unusually long localised label. */
+  scrollbar-width: none;
+}
+.expediente-inline-tabs::-webkit-scrollbar { display: none; }
+.expediente-inline-tab {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--charcoal-lt);
+  text-align: left;
+  transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 36px;
+  white-space: nowrap;
+}
+.expediente-inline-tab:active { opacity: 0.75; }
+.expediente-inline-tab--active {
+  background: var(--white);
+  color: var(--charcoal);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+.expediente-inline-tab:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
 }
 @media (hover: hover) {
   .expediente-inline-tab:not(.expediente-inline-tab--active):hover {
@@ -573,9 +588,34 @@
     color: var(--teal-dark);
   }
 }
-@media (min-width: 1024px) {
-  .expediente-inline-tabs { width: 188px; padding: 16px 12px; }
-  .expediente-inline-tab { font-size: var(--text-md); padding: 11px 14px; gap: 12px; }
+
+/* ≥1200px: switch to a vertical rail so the tabs read like a sidebar
+   within the expediente. iPad Pro 12.9 landscape (1366) gets this;
+   iPad Pro 12.9 portrait (1024), iPad mini landscape (1024), iPad
+   standard landscape (1080), iPad Air landscape (1180), and iPad
+   Pro 11 landscape (1194) keep the horizontal strip so the detail
+   pane content can fill the full width. */
+@media (min-width: 1200px) {
+  .expediente-inline-body {
+    flex-direction: row;
+  }
+  .expediente-inline-tabs {
+    flex-direction: column;
+    width: 188px;
+    gap: 2px;
+    padding: 16px 12px;
+    border-right: 1px solid var(--border-lt);
+    border-bottom: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .expediente-inline-tab {
+    padding: 11px 14px;
+    font-size: var(--text-md);
+    gap: 12px;
+    min-height: 40px;
+    width: 100%;
+  }
 }
 
 /* ── iPad LANDSCAPE: respect device safe-area-inset on left/right ──
