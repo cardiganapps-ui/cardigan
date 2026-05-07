@@ -10,6 +10,10 @@
     {
       "source": "/c/:code",
       "destination": "/index.html"
+    },
+    {
+      "source": "/i/:token",
+      "destination": "/index.html"
     }
   ],
   "headers": [

@@ -66,6 +66,10 @@ const Archivo = lazy(() => import("./screens/Archivo").then(m => ({ default: m.A
 const Settings = lazy(() => import("./screens/Settings").then(m => ({ default: m.Settings })));
 const PrivacyPolicy = lazy(() => import("./screens/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 import { AuthScreen } from "./screens/AuthScreen";
+import { PatientClaimScreen } from "./screens/patient/PatientClaimScreen";
+import { PatientClaimGate } from "./screens/patient/PatientClaimGate";
+import { PatientApp } from "./screens/patient/PatientApp";
+import { useRoleDetection } from "./hooks/useRoleDetection";
 // Admin dashboard is gated by isAdmin(user) and lives on its own
 // `#admin/...` route family. Lazy so the chunk only ships when the
 // admin (one user platform-wide) actually opens it.
@@ -161,6 +165,21 @@ function CardiganApp() {
         params.delete("ic");
       }
 
+      // Patient invite link via /i/<token> pathname. Vercel rewrites
+      // /i/:token → /index.html (vercel.json), preserving the source
+      // URL. Pull the token out, stash it, and route the URL back to
+      // / so a refresh / screenshot doesn't leak the credential.
+      const inviteMatch = window.location.pathname.match(/^\/i\/([A-Za-z0-9_-]+)\/?$/);
+      if (inviteMatch) {
+        const inviteToken = inviteMatch[1];
+        if (inviteToken) {
+          try { sessionStorage.setItem("cardigan.patientInviteToken", inviteToken); }
+          catch { /* ignore */ }
+          captured = true;
+          pathRewrite = "/";
+        }
+      }
+
       if (!captured) return null;
       const newUrl = (pathRewrite || window.location.pathname)
         + (params.toString() ? `?${params.toString()}` : "")
@@ -175,6 +194,20 @@ function CardiganApp() {
   // determines no challenge is needed OR a challenge succeeds. Reset
   // whenever the user changes (sign-out / sign-in) so we re-check.
   const [mfaResolved, setMfaResolved] = useState(false);
+  // Bumps every time a patient-invite claim succeeds. Forces the
+  // role-detection hook to re-fire so the freshly-linked patient
+  // gets routed into PatientApp without a manual reload.
+  const [roleVersion, setRoleVersion] = useState(0);
+  // Tracks whether a patient-invite token is currently in
+  // sessionStorage. We re-read on every render — sessionStorage is
+  // a synchronous global, so this is effectively free, and the
+  // PatientClaimGate clears it after success / failure.
+  const inviteToken = (() => {
+    if (typeof window === "undefined") return null;
+    try { return sessionStorage.getItem("cardigan.patientInviteToken"); }
+    catch { return null; }
+  })();
+  const role = useRoleDetection(user, roleVersion);
   const theme = useTheme();
   // Reset the gate when the user identity changes (sign-out → sign-in,
   // or a different account). Synchronous setState in this effect is
@@ -215,6 +248,20 @@ function CardiganApp() {
   }
 
   if (!user) {
+    // Patient-invite landing — unauthenticated user clicked the
+    // /i/<token> URL. Show the welcome card with the therapist's
+    // name + profession and route to AuthScreen on CTA tap. The
+    // token persists in sessionStorage through the auth round-trip
+    // so PatientClaimGate can fire the claim once they're signed in.
+    if (inviteToken) {
+      return (
+        <PatientClaimScreen
+          token={inviteToken}
+          onCreateAccount={() => setAuthIntent("signup")}
+          onSignIn={() => setAuthIntent("signin")}
+        />
+      );
+    }
     return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
   }
 
@@ -224,6 +271,49 @@ function CardiganApp() {
     return <MfaChallengeGate onResolved={() => setMfaResolved(true)} onSignOut={signOut} />;
   }
 
+  // Authenticated user just came back from clicking an invite link.
+  // Fire the claim, show a brief "Vinculando…" spinner, then bump
+  // the role version so role-detection re-runs and routes them
+  // into PatientApp.
+  if (inviteToken) {
+    return (
+      <PatientClaimGate
+        token={inviteToken}
+        user={user}
+        onComplete={() => setRoleVersion(v => v + 1)}
+        onSignOut={signOut}
+      />
+    );
+  }
+
+  // Role detection: which shell does this user belong in? Loading
+  // state is brief (one parallel pair of queries); reusing the
+  // splash visual the auth gate above also uses.
+  if (role.role === "loading") {
+    return (
+      <div className="shell" style={{ justifyContent: "center", alignItems: "center", gap: 12 }}>
+        <span className="cardigan-splash-logo" aria-hidden="true">
+          <LogoIcon size={48} color="var(--teal)" />
+        </span>
+        <div style={{ fontFamily: "var(--font-d)", fontSize: 22, fontWeight: 800, color: "var(--charcoal)", letterSpacing: "-0.3px" }}>cardigan</div>
+      </div>
+    );
+  }
+
+  // Patient shell — completely separate surface from the therapist
+  // app. Mounts its own data hook, its own (minimal) context.
+  if (role.role === "patient") {
+    return <PatientApp user={user} signOut={signOut} />;
+  }
+
+  // Orphan — signed in but no profession + no linked patient row.
+  // Brand-new account where profession-onboarding hasn't completed
+  // yet falls through to the existing AppShell flow which surfaces
+  // the onboarding sheet. (The therapist app handles its own
+  // first-run profession picker.) For genuine orphans (deleted
+  // therapist account, etc) the AppShell shows the existing empty
+  // state. Future iteration could surface a "you've been signed
+  // out by your therapist" message; v1 reuses what's there.
   return <AppShell user={user} signOut={signOut} refreshUser={refreshUser} theme={theme} />;
 }
 

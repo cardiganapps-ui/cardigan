@@ -41,6 +41,12 @@ create table if not exists patients (
   -- — the link is just text. NULL = no folder linked.
   external_folder_url text
     check (external_folder_url is null or length(external_folder_url) <= 2048),
+  -- Patient-as-user link (migration 050). Nullable FK to auth.users
+  -- — when set, the patient owning that auth row can SELECT this
+  -- patients row + its sessions/payments via the patient-side RLS
+  -- policies. A single auth.users.id can appear on N patient rows
+  -- across N therapists (multi-therapist support).
+  patient_user_id uuid references auth.users(id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -422,3 +428,86 @@ create policy "Users read own ratings"
 create policy "Admin reads all ratings"
   on user_ratings for select
   using (is_admin());
+
+-- Patient portal — patient-side RLS (migration 050).
+-- Therapist-side policies above are unchanged; these grant SELECT
+-- to a patient on the rows linked to their auth.uid() via
+-- patient_user_id.
+create policy "Patients read own patient row"
+  on patients for select
+  using (patient_user_id = auth.uid());
+create policy "Patients read own sessions"
+  on sessions for select
+  using (
+    patient_id in (
+      select id from patients where patient_user_id = auth.uid()
+    )
+  );
+create policy "Patients read own payments"
+  on payments for select
+  using (
+    patient_id in (
+      select id from patients where patient_user_id = auth.uid()
+    )
+  );
+create policy "Linked patients read therapist profile"
+  on user_profiles for select
+  using (
+    user_id in (
+      select user_id from patients where patient_user_id = auth.uid()
+    )
+  );
+
+-- Single-call data fetcher for the patient shell (migration 050).
+-- Returns one row per linked-patients-row, joined with auth.users
+-- + user_profiles. security definer because auth.users is normally
+-- service-role only; the WHERE clause is the security boundary.
+create or replace function get_therapists_for_patient()
+returns table (
+  patient_id uuid,
+  therapist_user_id uuid,
+  therapist_email text,
+  therapist_full_name text,
+  therapist_profession text,
+  therapist_avatar text
+) as $$
+  select
+    p.id,
+    p.user_id,
+    au.email::text,
+    coalesce(au.raw_user_meta_data->>'full_name', '')::text,
+    coalesce(up.profession, 'psychologist')::text,
+    coalesce(au.raw_user_meta_data->>'avatar', '')::text
+  from patients p
+  join auth.users au on au.id = p.user_id
+  left join user_profiles up on up.user_id = p.user_id
+  where p.patient_user_id = auth.uid();
+$$ language sql security definer;
+
+-- Single-use invite tokens that the therapist generates and shares
+-- (migration 051). Plaintext stored only in the URL — DB holds the
+-- SHA-256 hash. Therapist reads/writes their own; service-role
+-- handles the claim-time updates.
+create table if not exists patient_invites (
+  id uuid primary key default gen_random_uuid(),
+  token_hash text not null unique,
+  token_prefix text not null,
+  patient_id uuid not null references patients(id) on delete cascade,
+  therapist_id uuid not null references auth.users(id) on delete cascade,
+  expires_at timestamptz not null default (now() + interval '30 days'),
+  used_at timestamptz,
+  used_by_user_id uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_patient_invites_patient
+  on patient_invites(patient_id);
+alter table patient_invites enable row level security;
+create policy "Therapists read own invites"
+  on patient_invites for select
+  using (therapist_id = auth.uid());
+create policy "Therapists create invites for their patients"
+  on patient_invites for insert
+  with check (
+    therapist_id = auth.uid()
+    and patient_id in (select id from patients where user_id = auth.uid())
+  );

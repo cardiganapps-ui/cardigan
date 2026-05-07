@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { phoneHref, emailHref } from "../utils/contact";
-import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp } from "../components/Icons";
+import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconUserPlus } from "../components/Icons";
+import { InvitePatientSheet } from "../components/sheets/InvitePatientSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
 import { isTutorSession } from "../utils/sessions";
@@ -107,6 +108,9 @@ export function PatientExpediente({
   const [editingNote, setEditingNote] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
   const [pendingDocSessionId, setPendingDocSessionId] = useState(null);
+  // Patient-portal invite sheet — opened from the header action.
+  // Only meaningful when the patient is not already linked.
+  const [inviteSheetPatient, setInviteSheetPatient] = useState(null);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() - 3);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -564,6 +568,41 @@ export function PatientExpediente({
               style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
               <IconClipboard size={18} />
             </button>
+            {/* Patient-portal invite trigger. Only when the patient
+                isn't already linked — a successful claim flips
+                patient_user_id and the icon swaps to the "Vinculado"
+                pill below. */}
+            {!patient.patient_user_id ? (
+              <button
+                type="button"
+                onClick={() => setInviteSheetPatient(patient)}
+                aria-label={t("patientInvite.action")}
+                title={t("patientInvite.action")}
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}
+              >
+                <IconUserPlus size={18} />
+              </button>
+            ) : (
+              <span
+                aria-label={t("patientInvite.linkedBadge")}
+                title={t("patientInvite.linkedBadge")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  minWidth: 44,
+                  minHeight: 44,
+                  borderRadius: "50%",
+                  background: "var(--green-pale, #E5F1E1)",
+                  color: "var(--green)",
+                  flexShrink: 0,
+                }}
+              >
+                <IconUserPlus size={18} />
+              </span>
+            )}
             <div style={{ flex:1 }} />
             <button onClick={() => onEdit(patient)}
               style={{ padding:"6px 14px", fontSize:"var(--text-sm)", fontWeight:600, borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"transparent", color:"var(--charcoal-md)", cursor:"pointer", fontFamily:"var(--font)", flexShrink:0 }}>
@@ -773,6 +812,12 @@ export function PatientExpediente({
         onSave={handleSaveNote}
         onDelete={editingNote.id ? handleDeleteNote : undefined}
         onClose={() => setEditingNote(null)}
+      />
+    )}
+    {inviteSheetPatient && (
+      <InvitePatientSheet
+        patient={inviteSheetPatient}
+        onClose={() => setInviteSheetPatient(null)}
       />
     )}
     </>
