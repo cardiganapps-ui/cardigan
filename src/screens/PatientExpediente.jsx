@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
-import { shortDateToISO, todayISO } from "../utils/dates";
+import { shortDateToISO, todayISO, isoToShortDateWithYear } from "../utils/dates";
 import { phoneHref, emailHref } from "../utils/contact";
-import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconUserPlus } from "../components/Icons";
+import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconUserPlus, IconCheck } from "../components/Icons";
 import { InvitePatientSheet } from "../components/sheets/InvitePatientSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
@@ -542,8 +542,29 @@ export function PatientExpediente({
               style={{ width:48, height:48, fontSize:"var(--text-lg)" }} />
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", wordBreak:"break-word", lineHeight:1.15 }}>{patient.name}</div>
-              <div style={{ marginTop:3 }}>
+              <div style={{ marginTop:3, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                 <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
+                {patient.patient_intake_completed_at && (
+                  <span
+                    title={t("patientIntake.completedHint", { date: isoToShortDateWithYear(patient.patient_intake_completed_at.slice(0, 10)) })}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                      fontSize: "var(--text-eyebrow)",
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      padding: "2px 7px",
+                      borderRadius: "var(--radius-pill)",
+                      background: "var(--green-bg, var(--teal-pale))",
+                      color: "var(--green, var(--teal-dark))",
+                    }}
+                  >
+                    <IconCheck size={10} />
+                    {t("patientIntake.completedBadge")}
+                  </span>
+                )}
               </div>
             </div>
           </div>

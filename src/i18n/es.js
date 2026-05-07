@@ -662,6 +662,7 @@ export default {
     uploadFailedMany: "No se pudieron subir los documentos. Intenta de nuevo.",
     uploadPartial: "Se subieron {ok} de {total} documentos. {failed} no se pudo subir.",
     uploadPartialMany: "Se subieron {ok} de {total} documentos. {failed} no se pudieron subir.",
+    uploadedByPatient: "Subido por {client.s}",
   },
 
   // ── Settings ──
@@ -1892,5 +1893,54 @@ export default {
     cancelKeepCta: "Mantener cita",
     cancelSuccess: "Cita cancelada. Tu profesionista ya fue avisada.",
     cancelError: "No pudimos cancelar la cita. Intenta de nuevo en un momento.",
+  },
+
+  // ── Patient intake form (patient-side first-session prep) ──
+  // Surfaced as a CTA card on the patient's home until they
+  // complete it; opens IntakeFormSheet. The form writes to a safe
+  // subset of the patients row server-side.
+  intake: {
+    cardTitle: "Prepárate para tu primera sesión",
+    cardBody: "Comparte algunos datos básicos antes de tu sesión para aprovecharla al máximo.",
+    title: "Antes de tu primera sesión",
+    intro: "Esto ayuda a tu {profession} {name} a preparar mejor tu sesión. Toda la información es privada y se comparte solo con quien te atiende.",
+    birthdateLabel: "Fecha de nacimiento (opcional)",
+    allergiesLabel: "Alergias",
+    allergiesPlaceholder: "Por ejemplo: penicilina, mariscos, polen...",
+    medicalConditionsLabel: "Condiciones médicas o medicamentos",
+    medicalConditionsPlaceholder: "Cualquier diagnóstico o tratamiento que tu profesionista deba conocer.",
+    heightLabel: "Estatura (cm)",
+    heightPlaceholder: "Ejemplo: 168",
+    goalWeightLabel: "Peso objetivo (kg)",
+    goalWeightPlaceholder: "Si tienes uno en mente",
+    consentLabel: "Acepto que esta información se comparta con mi profesionista y se trate según el",
+    consentLink: "aviso de privacidad",
+    submit: "Enviar",
+    submitting: "Enviando...",
+    success: "¡Listo! Tu profesionista ya ve tu información.",
+    error: "No pudimos guardar tu información. Intenta de nuevo en un momento.",
+  },
+
+  // Patient-side documents card on the home screen.
+  patientDocs: {
+    label: "Mis archivos",
+    emptyBody: "Sube credenciales, exámenes o cualquier documento que quieras compartir con tu profesionista.",
+    uploadCta: "Subir archivo",
+    uploading: "Subiendo...",
+    uploadSuccess: "Archivo subido",
+    uploadError: "No se pudo subir el archivo. Intenta de nuevo.",
+    openError: "No se pudo abrir el archivo. Intenta de nuevo.",
+    removeAria: "Eliminar {name}",
+    removeSuccess: "Archivo eliminado",
+    removeError: "No se pudo eliminar el archivo. Intenta de nuevo.",
+    removeConfirmTitle: "¿Eliminar este archivo?",
+    removeConfirmBody: "“{name}” se eliminará permanentemente. Tu profesionista ya no podrá verlo.",
+    removeConfirmCta: "Eliminar",
+  },
+
+  // Therapist-side hint that the patient self-served their intake.
+  patientIntake: {
+    completedBadge: "Intake completado",
+    completedHint: "Información completada por {client.s} el {date}",
   },
 };

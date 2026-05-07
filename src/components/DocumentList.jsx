@@ -100,6 +100,26 @@ export function DocumentList({
                         onClick={onPatientClick ? (e) => { e.stopPropagation(); onPatientClick(p); } : undefined}>{p.name} · </span>}
                       {formatFileSize(doc.file_size)}
                       {doc.created_at && ` · ${formatDate(doc.created_at, "shortYear")}`}
+                      {/* Patient-uploaded marker — when uploaded_by_user_id
+                          differs from the therapist's id (the row's user_id)
+                          OR is set at all, the patient sourced this file
+                          themselves. Subtle inline pill so the therapist
+                          knows where the document came from. */}
+                      {doc.uploaded_by_user_id && doc.uploaded_by_user_id !== doc.user_id && (
+                        <span style={{
+                          marginLeft: 6,
+                          padding: "1px 6px",
+                          borderRadius: "var(--radius-pill)",
+                          background: "var(--teal-pale)",
+                          color: "var(--teal-dark)",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                        }}>
+                          {t("docs.uploadedByPatient")}
+                        </span>
+                      )}
                     </div>
                   </>
                 )}
