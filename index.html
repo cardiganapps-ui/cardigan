@@ -35,9 +35,11 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "Cardigan",
-      "operatingSystem": "Web",
+      "operatingSystem": "Web, iOS, Android, iPadOS",
       "applicationCategory": "BusinessApplication",
       "url": "https://cardigan.mx/",
+      "image": "https://cardigan.mx/og-image.png",
+      "screenshot": "https://cardigan.mx/og-image.png",
       "offers": {
         "@type": "Offer",
         "price": "299",
@@ -46,7 +48,38 @@
         "availability": "https://schema.org/InStock"
       },
       "description": "App para terapeutas, nutriólogos, entrenadores y profesores particulares en México. Lleva el control de pacientes, agenda, pagos y notas.",
-      "inLanguage": "es-MX"
+      "inLanguage": "es-MX",
+      "featureList": [
+        "Agenda recurrente con extensión automática",
+        "Expediente por paciente con notas, documentos y mediciones",
+        "Notas cifradas de extremo a extremo",
+        "Recordatorios push antes de cada sesión",
+        "Sincronización con Apple Calendar y Google Calendar",
+        "Cálculo automático de saldos y honorarios",
+        "Cumple LFPDPPP: cifrado en reposo y en tránsito"
+      ]
+    }
+    </script>
+    <!-- WebSite + SearchAction lets Google surface a sitelinks search
+         box on branded queries ("cardigan"). The handler redirects to
+         the marketing search results page; the SPA itself doesn't need
+         a real search endpoint, the schema just declares intent. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Cardigan",
+      "alternateName": "Cardigan App",
+      "url": "https://cardigan.mx/",
+      "inLanguage": "es-MX",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://cardigan.mx/blog/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
     }
     </script>
     <script type="application/ld+json">
@@ -56,13 +89,25 @@
       "name": "Cardigan",
       "url": "https://cardigan.mx/",
       "logo": "https://cardigan.mx/icon-192.png",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "email": "privacy@cardigan.mx",
-        "contactType": "Customer service",
-        "areaServed": "MX",
-        "availableLanguage": "Spanish"
-      }
+      "description": "Cardigan es la app para psicólogos, nutriólogos, entrenadores y profesores particulares en México.",
+      "foundingDate": "2025",
+      "areaServed": { "@type": "Country", "name": "Mexico" },
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "email": "hola@cardigan.mx",
+          "contactType": "Customer support",
+          "areaServed": "MX",
+          "availableLanguage": "Spanish"
+        },
+        {
+          "@type": "ContactPoint",
+          "email": "privacy@cardigan.mx",
+          "contactType": "Privacy",
+          "areaServed": "MX",
+          "availableLanguage": "Spanish"
+        }
+      ]
     }
     </script>
     <!-- Preconnect + preload Turnstile so the captcha verification on
