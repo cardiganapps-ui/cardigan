@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getClientColor } from "../../data/seedData";
 import { Avatar } from "../Avatar";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { IconX, IconSearch } from "../Icons";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
@@ -88,12 +89,22 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
     return eligible.filter((p) => (p.name || "").toLowerCase().includes(q));
   }, [eligible, search]);
 
-  const handlePick = async (patient) => {
+  // Held while we wait for the user to confirm overwriting an
+  // existing folder link. Capturing the patient (not just the id)
+  // so the confirm dialog can show the name without re-finding it.
+  const [pendingOverwrite, setPendingOverwrite] = useState(null);
+  // Tracked so a setState after an unmount no-ops cleanly.
+  const isMountedRef = useRef(true);
+  useEffect(() => () => { isMountedRef.current = false; }, []);
+
+  // Internal commit — the actual write. Used by both the
+  // tap-without-existing-link path and the post-confirm path.
+  const commitPick = async (patient) => {
     if (!parsed.valid || saving) return;
     setSaving(true);
     haptic.tap();
     const ok = await updatePatient?.(patient.id, { external_folder_url: parsed.url });
-    setSaving(false);
+    if (isMountedRef.current) setSaving(false);
     if (ok) {
       showToast(t("expediente.folder.shareLinkedToast", { name: patient.name }), "success");
       onLinked?.(patient);
@@ -106,6 +117,19 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
     } else {
       showToast(t("expediente.folder.saveError"), "error");
     }
+  };
+
+  const handlePick = (patient) => {
+    if (!parsed.valid || saving) return;
+    // If the picked patient already has a folder linked, surface a
+    // ConfirmDialog before clobbering it. The audit flagged this as
+    // P1 because a user who shares to the wrong patient by accident
+    // would silently lose their original link.
+    if (patient.external_folder_url) {
+      setPendingOverwrite(patient);
+      return;
+    }
+    commitPick(patient);
   };
 
   if (!open) return null;
@@ -407,6 +431,21 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!pendingOverwrite}
+        title={t("expediente.folder.shareReplaceTitle", { name: pendingOverwrite?.name || "" })}
+        body={t("expediente.folder.shareReplaceBody")}
+        confirmLabel={t("expediente.folder.shareReplaceCta")}
+        cancelLabel={t("cancel")}
+        destructive
+        busy={saving}
+        onConfirm={() => {
+          const target = pendingOverwrite;
+          setPendingOverwrite(null);
+          if (target) commitPick(target);
+        }}
+        onCancel={() => setPendingOverwrite(null)}
+      />
     </div>
   );
 }

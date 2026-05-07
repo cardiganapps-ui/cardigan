@@ -743,33 +743,74 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // Different platforms bundle the shared content into different
   // params (Android: url; iOS: text/title; macOS: title+url) — we
   // pull whichever is present and open the picker.
+  //
+  // The handler is wrapped in a callable so it can also fire on
+  // popstate / focus / pageshow events. Without that, a SECOND
+  // share-target invocation while the SPA is already running
+  // (browser changes the URL but doesn't remount React) wouldn't
+  // re-trigger the sheet.
   useEffect(() => {
-    if (demo || readOnly) return;
-    if (!user) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("share_folder") !== "1") return;
-    // Pick the first param that looks URL-ish. parseFolderLink runs
-    // inside the sheet and decides validity; here we just pick the
-    // best candidate.
-    const candidate = params.get("url")
-      || params.get("text")
-      || params.get("title")
-      || "";
-    // Strip the share_folder bookkeeping from the URL so a refresh
-    // doesn't re-open the picker. Preserve the hash for in-app
-    // routing continuity.
-    params.delete("share_folder");
-    params.delete("url");
-    params.delete("text");
-    params.delete("title");
-    const newUrl = window.location.pathname
-      + (params.toString() ? `?${params.toString()}` : "")
-      + window.location.hash;
-    window.history.replaceState({}, "", newUrl);
-    if (candidate) setShareFolderUrl(candidate);
-  // First-mount-only — same pattern as the billing handler above.
+    if (typeof window === "undefined") return;
+    const handleShareIntent = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("share_folder") !== "1") return;
+      const candidate = params.get("url")
+        || params.get("text")
+        || params.get("title")
+        || "";
+      // Strip the share_folder bookkeeping from the URL FIRST,
+      // unconditionally. Demo / read-only / unauthenticated users
+      // should never have stale share params clinging to the URL —
+      // a later toggle of those flags would re-fire on a clean
+      // mount and surprise the user.
+      params.delete("share_folder");
+      params.delete("url");
+      params.delete("text");
+      params.delete("title");
+      const newUrl = window.location.pathname
+        + (params.toString() ? `?${params.toString()}` : "")
+        + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+      // Now decide what to do with the candidate:
+      //   - demo / read-only: a friendly toast; can't link in those
+      //     states, but the user deserves an explanation.
+      //   - not signed in: nothing to do; the auth flow takes over
+      //     and the share intent is dropped (rare — the OS share
+      //     sheet only routes to Cardigan for authenticated users
+      //     who installed the PWA).
+      //   - empty candidate (rare; user shared a non-URL like a
+      //     plain note via the OS share sheet): friendly toast.
+      //   - everything else: open the picker.
+      if (!user) return;
+      if (demo || readOnly) {
+        showToast(t("expediente.folder.shareUnavailable"), "info");
+        return;
+      }
+      if (!candidate.trim()) {
+        showToast(t("expediente.folder.shareEmpty"), "warning");
+        return;
+      }
+      setShareFolderUrl(candidate);
+    };
+
+    // Run on mount.
+    handleShareIntent();
+    // Re-run when the URL changes within the same SPA instance
+    // (Android Chrome reuses the running tab on a second share).
+    window.addEventListener("popstate", handleShareIntent);
+    // pageshow fires when the PWA is foregrounded (incl. cold
+    // restart on iOS) — covers the case where iOS suspends the
+    // app and a new share lands while it was backgrounded.
+    window.addEventListener("pageshow", handleShareIntent);
+    return () => {
+      window.removeEventListener("popstate", handleShareIntent);
+      window.removeEventListener("pageshow", handleShareIntent);
+    };
+  // demo / readOnly / user can change at runtime; re-bind the
+  // listener so the latest values are captured in the closure.
+  // showToast / t are stable.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, demo, readOnly]);
 
   // ── Referral-code URL handler (?ref=<CODE>) ──
   // The capture happens earlier in CardiganApp (before the auth
