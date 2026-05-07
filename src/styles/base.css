@@ -491,14 +491,21 @@ body:has(.expediente-open) .fab-overlay,
 body:has(.expediente-open) .fab-menu,
 body:has(.expediente-open) .bottom-tabs,
 /* Hide FAB + bottom-tabs whenever a sheet, note-editor full-takeover,
-   confirm dialog, or mobile drawer is open. Even with the modal's
-   higher z-index, the FAB was bleeding through on top of sheet
-   content in production (Saldo sheet user report) — likely a Safari
-   stacking-context quirk with the overlay's backdrop-filter. The
-   safest fix: explicitly hide the FAB + tabs while any blocking
-   surface is in the body. The doc-viewer is z=501 (above z-fab=52)
-   and uses inline styles instead of a class, so its z-index already
-   wins; no rule needed for it. */
+   or confirm dialog is open. Even with the modal's higher z-index,
+   the FAB was bleeding through on top of sheet content (Saldo sheet
+   user report) — likely a Safari stacking-context quirk with the
+   overlay's backdrop-filter. The safe fix: explicitly hide the FAB
+   + tabs while any blocking surface is in the body.
+
+   IMPORTANT — only list classes that are CONDITIONALLY rendered.
+   The drawer-overlay element is always in the DOM (its visibility
+   is controlled by opacity, not by mounting), so a body:has rule
+   on it would hide the FAB at all times. The drawer's scrim
+   already covers the FAB visually when the drawer opens, so no
+   rule is needed there.
+
+   Doc-viewer uses inline z-index 501 + position:fixed inset:0
+   without a stable class hook, but its z-index already wins. */
 body:has(.sheet-overlay) .fab,
 body:has(.sheet-overlay) .fab-overlay,
 body:has(.sheet-overlay) .fab-menu,
@@ -510,10 +517,7 @@ body:has(.note-editor-desktop) .bottom-tabs,
 body:has(.confirm-dialog-overlay) .fab,
 body:has(.confirm-dialog-overlay) .fab-overlay,
 body:has(.confirm-dialog-overlay) .fab-menu,
-body:has(.confirm-dialog-overlay) .bottom-tabs,
-body:has(.drawer-overlay) .fab,
-body:has(.drawer-overlay) .fab-overlay,
-body:has(.drawer-overlay) .fab-menu { display: none !important; }
+body:has(.confirm-dialog-overlay) .bottom-tabs { display: none !important; }
 
 /* DRAWER PANEL */
 .drawer {
