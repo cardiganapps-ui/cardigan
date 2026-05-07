@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
-import { getInitials } from "../utils/dates";
+import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
@@ -328,10 +328,15 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  // Soft-archive. Two-query: flip patient status, then mark any still-
-  // scheduled interview cancelled. The second query's WHERE is
-  // intentionally narrow (status='scheduled' AND session_type='interview')
-  // so a previously-completed/charged interview keeps its audit trail.
+  // Soft-archive ("cold storage"). Flip the patient to 'discarded'
+  // and cancel ONLY interviews that haven't happened yet. A past
+  // scheduled interview has — by the prime directive's auto-complete
+  // rule — visually rendered as "completed" since the slot passed,
+  // and the consultation actually took place; cancelling it would
+  // erase a real event from the patient's history. We narrow the
+  // cancel to (status='scheduled' AND date >= today AND session_type
+  // ='interview'), matching the user's mental model: "they came in,
+  // we decided not to engage, file them away."
   async function discardPotential(id) {
     setMutating(true);
     setMutationError("");
@@ -340,32 +345,44 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       .eq("id", id).eq("user_id", userId);
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
-    // Cancel any pending interview session attached to this potential.
-    // i18n string lives in es.js (sessions.discardReason) so the value
-    // here is the English-style audit constant — therapists never see
-    // it raw, only the translated "Potencial descartado" surfaced
-    // elsewhere when listing cancelled sessions.
-    const { error: sErr } = await supabase.from("sessions")
-      .update({ status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial descartado" })
-      .eq("user_id", userId)
-      .eq("patient_id", id)
-      .eq("session_type", SESSION_TYPE.INTERVIEW)
-      .eq("status", SESSION_STATUS.SCHEDULED);
+    // Find scheduled interview rows for this patient via local state,
+    // then filter to FUTURE only. Doing the date math client-side
+    // sidesteps the "D-MMM" date format which doesn't sort
+    // lexicographically through Postgres.
+    const today = todayISO();
+    const futureScheduledInterviewIds = (upcomingSessions || [])
+      .filter(s =>
+        s.patient_id === id
+        && s.session_type === SESSION_TYPE.INTERVIEW
+        && s.status === SESSION_STATUS.SCHEDULED
+        && shortDateToISO(s.date) >= today
+      )
+      .map(s => s.id);
+
+    if (futureScheduledInterviewIds.length > 0) {
+      // i18n string lives in es.js (sessions.discardReason) so the
+      // value here is the English-style audit constant — therapists
+      // never see it raw, only the translated string surfaced when
+      // listing cancelled sessions.
+      const { error: sErr } = await supabase.from("sessions")
+        .update({ status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial archivado" })
+        .eq("user_id", userId)
+        .in("id", futureScheduledInterviewIds);
+      if (sErr) { setMutating(false); setMutationError(sErr.message); return false; }
+
+      setUpcomingSessions(prev => prev.map(s =>
+        futureScheduledInterviewIds.includes(s.id)
+          ? { ...s, status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial archivado" }
+          : s
+      ));
+    }
+
     setMutating(false);
-    if (sErr) { setMutationError(sErr.message); return false; }
 
-    setUpcomingSessions(prev => prev.map(s =>
-      s.patient_id === id && s.session_type === SESSION_TYPE.INTERVIEW && s.status === SESSION_STATUS.SCHEDULED
-        ? { ...s, status: SESSION_STATUS.CANCELLED, cancel_reason: "Potencial descartado" }
-        : s
-    ));
-
-    // The interview row was previously contributing to patient.billed
-    // (createPotential stamped billed=rate). Cancelling it without
-    // adjusting the denormalized counter leaves billed > 0 forever
-    // for a discarded potential, which audit-accounting.mjs flags as
-    // drift. Recalc from truth — cheap, idempotent, and keeps the
-    // potential's row consistent if it ever gets re-converted.
+    // recalcPatientCounters keeps billed/paid/sessions in sync with
+    // the new truth. Past completed interviews continue to count
+    // toward billed (the consultation actually happened); only the
+    // newly-cancelled future rows drop out.
     const fixed = await recalcPatientCounters(id);
     setPatients(prev => prev.map(p => p.id === id
       ? { ...p, status: PATIENT_STATUS.DISCARDED, ...(fixed || {}) }

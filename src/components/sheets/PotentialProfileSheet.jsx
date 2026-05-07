@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconX, IconPhone, IconMail, IconTrash, IconCheck, IconChevronRight } from "../Icons";
+import { IconX, IconPhone, IconMail, IconArchive, IconCheck, IconChevronRight } from "../Icons";
 import { Avatar } from "../Avatar";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
@@ -99,14 +99,14 @@ export function PotentialProfileSheet({
             <div>
               <div style={{ textAlign:"center", marginBottom:14 }}>
                 <div style={{ width:56, height:56, borderRadius:"50%", background:"var(--rose-bg)", color:"var(--rose)", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
-                  <IconTrash size={24} />
+                  <IconArchive size={24} />
                 </div>
               </div>
               <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", textAlign:"center", marginBottom:8, letterSpacing:"-0.2px" }}>
                 {t("patients.discardConfirmTitle", { name: patient.name })}
               </div>
               <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-md)", lineHeight:1.5, textAlign:"center", marginBottom:18 }}>
-                {t("patients.discardConfirmBody")}
+                {t("patients.discardConfirmBody", { name: patient.name })}
               </div>
               <button className="btn" type="button"
                 onClick={handleDiscard}
@@ -273,7 +273,7 @@ export function PotentialProfileSheet({
                       onClick={() => setConfirmDiscard(true)}
                       disabled={mutating}
                       style={{ width:"100%", height:44, fontSize:"var(--text-sm)", background:"var(--rose-bg)", color:"var(--rose)", boxShadow:"none", gap:8 }}>
-                      <IconTrash size={14} /> {t("patients.discardPotential")}
+                      <IconArchive size={14} /> {t("patients.discardPotential")}
                     </button>
                   )}
                 </>

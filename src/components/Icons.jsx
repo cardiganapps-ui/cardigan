@@ -180,6 +180,18 @@ export const IconTrash = (p) => (
   <I {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></I>
 );
 
+// Archive box — storage bin with a lid + a notched handle. Used for
+// "soft-archive, can come back" actions (e.g. discarding a potential
+// patient). Visually distinct from IconTrash so the user reads
+// "putting away" instead of "deleting."
+export const IconArchive = (p) => (
+  <I {...p}>
+    <rect x="2" y="3" width="20" height="5" rx="1"/>
+    <path d="M4 8v11a2 2 0 002 2h12a2 2 0 002-2V8"/>
+    <path d="M10 12h4"/>
+  </I>
+);
+
 export const IconFilter = (p) => (
   <I {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></I>
 );
