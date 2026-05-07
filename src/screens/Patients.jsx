@@ -426,9 +426,12 @@ export function Patients() {
       </div>
       {/* Potenciales sub-filter — Activos / Archivados. Only renders
           while the Potenciales chip is active so the row doesn't
-          confuse the regular-patient lanes. */}
+          confuse the regular-patient lanes. Right-aligned + rose-
+          accented active state so the visual signals "this is a
+          sub-filter inside the Potenciales lane" rather than
+          competing with the primary teal filters above. */}
       {isPotentialView && (
-        <div className="filter-chips" style={{ paddingTop:0 }}>
+        <div className="filter-chips filter-chips--rose" style={{ paddingTop:0 }}>
           <button className={`chip ${potentialSubFilter==="active"?"active":""}`}
             onClick={() => setPotentialSubFilter("active")}>
             {t("patients.onlyActive")}

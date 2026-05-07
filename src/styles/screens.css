@@ -316,6 +316,18 @@ button.stat-tile { cursor: pointer; min-height: 0; }
   scrollbar-width: none;
 }
 .filter-chips::-webkit-scrollbar { display: none; }
+/* Rose-accent variant for sub-filter rows nested inside the
+   Potenciales lane (Activos / Archivados). Right-aligned so the
+   row reads as a refinement of the primary chip above, and the
+   active state uses a soft rose fill instead of teal so the user
+   sees at a glance that these toggles only affect potentials —
+   not the main patient list. */
+.filter-chips--rose { justify-content: flex-end; }
+.filter-chips--rose .chip.active {
+  background: var(--rose-bg);
+  border-color: var(--rose);
+  color: var(--rose);
+}
 .chip {
   /* Five Spanish filter chips ("Con deuda", "Al corriente",
      "Activos", "Finalizados", "Potenciales") need to fit a 360px

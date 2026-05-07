@@ -201,7 +201,7 @@ export default {
     potential: "{prospect.P}",
     potentialFilter: "Potenciales",
     archived: "Archivados",
-    onlyActive: "Solo activos",
+    onlyActive: "Activos",
     statusPotential: "Potencial",
     statusDiscarded: "Descartado",
     newPotential: "Nuevo {prospect.s}",
