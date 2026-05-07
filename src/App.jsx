@@ -731,9 +731,17 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
   // Admin owns its own chrome (sidebar + header) and covers the
   // topbar / FAB / BottomTabs via the fixed `.admin-shell` overlay.
-  // Hide the global affordances while in admin so they don't render
-  // behind it (no leak, but wasted layout).
-  const hideFab = localHideFab || tutorialHidesFab || screen === "admin";
+  // Hide the global affordances on screens where they're not useful:
+  // - admin shell handles its own actions
+  // - settings + privacy are info/preferences pages with no creation
+  //   intent; the FAB just gets in the way of long lists
+  // The FAB also auto-hides over any open sheet / drawer / modal
+  // via the body:has(...) CSS rules in base.css.
+  const hideFab = localHideFab
+    || tutorialHidesFab
+    || screen === "admin"
+    || screen === "settings"
+    || screen === "privacy";
   const notifications = useNotifications(demo ? null : user);
 
   // Welcome-to-Pro prompt: fires once, after the user has finished or
