@@ -955,6 +955,7 @@ export default {
       emptyTitle: "Vincula una carpeta de archivos",
       emptyBody: "Drive, OneDrive, Dropbox — cualquier carpeta con un enlace para compartir.",
       emptyCta: "Vincular carpeta",
+      dismiss: "Ocultar esta sugerencia",
       privacy: "Cardigan no accede al contenido — el enlace abre tu carpeta en la app correspondiente.",
       inputPlaceholder: "https://drive.google.com/drive/folders/…",
       inputLabel: "Enlace de la carpeta",

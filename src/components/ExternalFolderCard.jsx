@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { IconDocument } from "./Icons";
+import { IconDocument, IconX } from "./Icons";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useT } from "../i18n/index";
@@ -127,9 +127,27 @@ function KebabIcon({ size = 16 }) {
   );
 }
 
+// localStorage key — account-wide so users who never use cloud
+// folders see the small affordance just once across all patients,
+// and a single dismiss declutters everywhere. Scoped per userId so
+// admin "view as user" doesn't leak preferences across accounts.
+function minimizedKey(userId) {
+  return `cardigan.folderCard.minimized.${userId || "anon"}`;
+}
+function isMinimized(userId) {
+  try { return localStorage.getItem(minimizedKey(userId)) === "1"; }
+  catch { return false; }
+}
+function setMinimizedFlag(userId, value) {
+  try {
+    if (value) localStorage.setItem(minimizedKey(userId), "1");
+    else localStorage.removeItem(minimizedKey(userId));
+  } catch { /* private mode — fine */ }
+}
+
 export function ExternalFolderCard({ url, onSave, readOnly = false }) {
   const { t } = useT();
-  const { showToast } = useCardigan();
+  const { showToast, user } = useCardigan();
   const ctxMenu = useContextMenu();
 
   // editing = true → render the input form. When false, the card
@@ -138,6 +156,12 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
   // optimistic save fails) flows back into the UI without manual
   // sync.
   const [editing, setEditing] = useState(false);
+  // Account-wide minimized flag. When true AND no url, render the
+  // small inline "+ Vincular carpeta" affordance instead of the full
+  // empty-state card. Dismiss persists across patients + reloads.
+  // Linked state is unaffected — patients with a folder always
+  // render the linked card.
+  const [minimized, setMinimized] = useState(() => isMinimized(user?.id));
   // Local input state. Initialized lazily when entering edit mode.
   const [draft, setDraft] = useState("");
   // Track the value the user STARTED with so we can detect "dirty"
@@ -166,6 +190,25 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
     initialDraftRef.current = url || "";
     setDraft(url || "");
     setEditing(true);
+  };
+
+  // Dismiss the empty-state card account-wide. Persists in
+  // localStorage so the user doesn't see the full card on any
+  // patient anymore — only the compact "+ Vincular carpeta"
+  // button. Linked patients still show the linked card.
+  const dismissEmptyState = () => {
+    setMinimizedFlag(user?.id, true);
+    setMinimized(true);
+    haptic.tap();
+  };
+
+  // When the user taps the small button on a minimized empty
+  // state, jump straight into edit mode for THIS patient. We don't
+  // un-minimize globally — they're adding a link to one patient,
+  // not signing up to see the promotional card again.
+  const enterEditFromMinimized = () => {
+    if (readOnly) return;
+    enterEditMode();
   };
 
   // Auto-focus the input + select-all so paste-to-replace is one
@@ -437,7 +480,60 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
     );
   }
 
-  // ── Empty state ──
+  // ── Minimized empty state ──
+  // Once the user has dismissed the full empty card, we render a
+  // single-line, low-key affordance in its place. Discrete enough to
+  // ignore on every patient, but always present so the user can
+  // still link a folder later in one tap (which jumps straight into
+  // edit mode for that specific patient).
+  if (!linked && minimized) {
+    if (readOnly) return null;
+    return (
+      <button
+        type="button"
+        onClick={enterEditFromMinimized}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 14,
+          padding: "8px 10px",
+          background: "transparent",
+          border: "none",
+          borderRadius: "var(--radius)",
+          cursor: "pointer",
+          fontFamily: "var(--font)",
+          fontSize: 12,
+          fontWeight: 600,
+          color: "var(--charcoal-md)",
+          width: "auto",
+          alignSelf: "flex-start",
+          WebkitTapHighlightColor: "transparent",
+        }}
+        aria-label={t("expediente.folder.emptyCta")}
+      >
+        <span
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            background: "var(--cream)",
+            color: "var(--charcoal-xl)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+          aria-hidden="true"
+        >
+          <IconDocument size={12} />
+        </span>
+        <span>+ {t("expediente.folder.emptyCta")}</span>
+      </button>
+    );
+  }
+
+  // ── Empty state (full card, first visit) ──
   if (!linked) {
     if (readOnly) return null; // nothing to show; nothing to do
     return (
@@ -451,6 +547,7 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
           display: "flex",
           gap: 12,
           alignItems: "flex-start",
+          position: "relative",
         }}
       >
         <div
@@ -470,7 +567,7 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
         >
           <IconDocument size={18} />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 24 }}>
           <div
             style={{
               fontFamily: "var(--font-d)",
@@ -522,6 +619,34 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
             {t("expediente.folder.privacy")}
           </div>
         </div>
+        {/* Dismiss the full empty card account-wide. From this point
+            onward the user sees a single-line "+ Vincular carpeta"
+            affordance instead — same functional path, far less
+            visual weight. */}
+        <button
+          type="button"
+          onClick={dismissEmptyState}
+          aria-label={t("expediente.folder.dismiss")}
+          title={t("expediente.folder.dismiss")}
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--charcoal-xl)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "50%",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <IconX size={12} />
+        </button>
       </div>
     );
   }
