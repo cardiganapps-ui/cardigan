@@ -21,13 +21,25 @@ import { supabase } from "../supabaseClient";
 export function useRoleDetection(user, version = 0) {
   const [state, setState] = useState({ role: "loading", therapists: [], profession: null });
 
-  // Reset to "loading" when the user changes via the adjust-during-
-  // render pattern (setState-in-effect would trip the lint rule and
-  // is unnecessary here — there's no external system to sync with,
-  // we're just deriving local state from the user prop).
+  // Reset to "loading" when the user changes OR the version bumps
+  // via the adjust-during-render pattern (setState-in-effect would
+  // trip the lint rule and is unnecessary here — there's no
+  // external system to sync with, we're just deriving local state
+  // from the user prop).
+  //
+  // Version-bump reset matters: a successful patient-invite claim
+  // bumps version to force a re-detect. WITHOUT resetting to
+  // loading, the hook briefly retains the previous role (typically
+  // "orphan", because the claim happened against an unlinked user)
+  // — and App.jsx would render AppShell for one frame, flashing
+  // therapist chrome before the patient shell takes over.
   const [prevUserId, setPrevUserId] = useState(user?.id || null);
+  const [prevVersion, setPrevVersion] = useState(version);
   if ((user?.id || null) !== prevUserId) {
     setPrevUserId(user?.id || null);
+    setState({ role: "loading", therapists: [], profession: null });
+  } else if (version !== prevVersion) {
+    setPrevVersion(version);
     setState({ role: "loading", therapists: [], profession: null });
   }
 

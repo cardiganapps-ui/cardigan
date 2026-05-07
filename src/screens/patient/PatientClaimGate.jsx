@@ -50,6 +50,19 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
         catch { /* ignore */ }
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
+          // already_used / race_lost: the token was claimed (probably
+          // by THIS user in another tab — sessionStorage is shared
+          // across same-origin tabs). The right move isn't to show
+          // "ya se usó" — we don't know if this caller is the
+          // legit claimer or a separate user. Hand off to the parent;
+          // role detection will route correctly: if they're the
+          // linked user they land on PatientHome, otherwise on the
+          // orphan fallback. Either way, no scary error for the
+          // common multi-tab case.
+          if (res.status === 409 && (j.code === "already_used" || j.code === "race_lost")) {
+            onComplete?.();
+            return;
+          }
           if (res.status === 410)         setError("expired");
           else if (res.status === 409)    setError(j.code === "patient_linked" ? "patient_linked" : "already_used");
           else if (res.status === 404)    setError(j.code === "patient_gone" ? "patient_gone" : "not_found");

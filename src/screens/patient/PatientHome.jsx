@@ -128,6 +128,16 @@ export function PatientHome({ data }) {
     || "—";
   const professionWord = PROFESSION_LABEL[primaryTherapist.therapist_profession]
     || PROFESSION_LABEL.psychologist;
+  // Greeting uses the patient's first name from the patients row.
+  // Trim falsy / blank to avoid an awkward "Hola, " with nothing after.
+  const patientFirstName = (primaryPatient.name || "").trim().split(/\s+/)[0] || "";
+
+  // First-experience case: patient has just claimed an invite, no
+  // sessions scheduled yet, no history. Two cards full of "nothing
+  // here" copy felt cold; a single welcome card sets warmer
+  // expectations and reads like a designed first-run, not an
+  // empty database.
+  const isFirstExperience = !nextSession && pastSorted.length === 0;
 
   return (
     <div
@@ -142,31 +152,102 @@ export function PatientHome({ data }) {
         gap: 14,
       }}
     >
-      {/* ── Próxima sesión hero ── */}
-      <div className="card" style={{ padding: 16, background: "var(--white)" }}>
+      {patientFirstName && (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.07em",
-            color: "var(--charcoal-xl)",
-            marginBottom: 6,
+            fontFamily: "var(--font-d)",
+            fontSize: 22,
+            fontWeight: 800,
+            color: "var(--charcoal)",
+            letterSpacing: "-0.4px",
+            lineHeight: 1.15,
+            marginTop: 4,
+            marginBottom: -2,
           }}
         >
-          <IconCalendar size={12} /> {t("patientHome.nextSessionLabel")}
+          {t("patientHome.greeting", { name: patientFirstName })}
         </div>
-        {nextSession ? (
-          <NextSessionCard session={nextSession} />
-        ) : (
-          <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginTop: 4 }}>
-            {t("patientHome.noNextSession")}
+      )}
+      {isFirstExperience ? (
+        // Combined first-experience welcome card. Replaces the
+        // back-to-back empty próxima sesión + empty pasadas pair
+        // with a single warm "welcome / wait" message.
+        <div
+          className="card"
+          style={{
+            padding: 20,
+            background: "var(--teal-pale)",
+            border: "1px solid var(--teal-mist)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              color: "var(--teal-dark)",
+              marginBottom: 8,
+            }}
+          >
+            <IconCalendar size={12} /> {t("patientHome.welcomeEyebrow")}
           </div>
-        )}
-      </div>
+          <div
+            style={{
+              fontFamily: "var(--font-d)",
+              fontWeight: 800,
+              fontSize: 18,
+              color: "var(--charcoal)",
+              letterSpacing: "-0.2px",
+              marginBottom: 6,
+              lineHeight: 1.2,
+            }}
+          >
+            {t("patientHome.welcomeTitle")}
+          </div>
+          <div
+            style={{
+              fontSize: 14,
+              color: "var(--charcoal-md)",
+              lineHeight: 1.55,
+            }}
+          >
+            {t("patientHome.welcomeBody", {
+              profession: professionWord,
+              name: therapistDisplayName,
+            })}
+          </div>
+        </div>
+      ) : (
+        // ── Próxima sesión hero ──
+        <div className="card" style={{ padding: 16, background: "var(--white)" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              color: "var(--charcoal-xl)",
+              marginBottom: 6,
+            }}
+          >
+            <IconCalendar size={12} /> {t("patientHome.nextSessionLabel")}
+          </div>
+          {nextSession ? (
+            <NextSessionCard session={nextSession} />
+          ) : (
+            <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginTop: 4 }}>
+              {t("patientHome.noNextSession")}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Saldo card ── */}
       <BalanceCard

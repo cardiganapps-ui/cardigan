@@ -32,6 +32,12 @@ export function InvitePatientSheet({ patient, onClose }) {
   const [inviteUrl, setInviteUrl] = useState("");
   const [expiresAt, setExpiresAt] = useState(null);
   const [copied, setCopied] = useState(false);
+  // The API returns `already_linked: true` when this patient is
+  // already paired with a Cardigan account. We still let the
+  // therapist generate + share an invite URL (they might want to
+  // re-share for any reason) but we surface a banner so they know
+  // it'll be a no-op until/unless the existing link is broken.
+  const [alreadyLinked, setAlreadyLinked] = useState(false);
 
   const panelRef = useFocusTrap(!!patient);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: !!patient });
@@ -56,6 +62,7 @@ export function InvitePatientSheet({ patient, onClose }) {
       setInviteUrl("");
       setExpiresAt(null);
       setCopied(false);
+      setAlreadyLinked(false);
     }
   }, [patient?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -84,6 +91,7 @@ export function InvitePatientSheet({ patient, onClose }) {
       const j = await res.json();
       setInviteUrl(j.url);
       setExpiresAt(j.expires_at);
+      setAlreadyLinked(!!j.already_linked);
       haptic.success();
     } catch {
       showToast(t("patientInvite.error"), "error");
@@ -183,38 +191,60 @@ export function InvitePatientSheet({ patient, onClose }) {
           ) : (
             // ── Post-generation: URL + share row ──
             <>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 12px",
-                  background: "var(--green-pale, #E5F1E1)",
-                  border: "1px solid var(--green-mist, #C6E1BE)",
-                  borderRadius: "var(--radius)",
-                  fontSize: "var(--text-sm)",
-                  color: "var(--charcoal)",
-                  marginBottom: 14,
-                }}
-              >
-                <span
+              {alreadyLinked ? (
+                // Patient already has a Cardigan account linked. The
+                // URL is still valid for sharing, but won't change
+                // anything when redeemed (the claim will 409). Be
+                // transparent about that so the therapist doesn't
+                // wonder why "nothing happened" after sending.
+                <div
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: "var(--green)",
-                    color: "var(--white)",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
+                    padding: "10px 12px",
+                    background: "var(--amber-pale, #FBF1DE)",
+                    border: "1px solid var(--amber-mist, #F0DDB4)",
+                    borderRadius: "var(--radius)",
+                    fontSize: "var(--text-sm)",
+                    color: "var(--charcoal)",
+                    lineHeight: 1.45,
+                    marginBottom: 14,
                   }}
-                  aria-hidden="true"
                 >
-                  <IconCheck size={12} />
-                </span>
-                <span style={{ flex: 1 }}>{t("patientInvite.generatedHint")}</span>
-              </div>
+                  {t("patientInvite.alreadyLinkedNotice", { name: patient.name })}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 12px",
+                    background: "var(--green-pale, #E5F1E1)",
+                    border: "1px solid var(--green-mist, #C6E1BE)",
+                    borderRadius: "var(--radius)",
+                    fontSize: "var(--text-sm)",
+                    color: "var(--charcoal)",
+                    marginBottom: 14,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: "var(--green)",
+                      color: "var(--white)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <IconCheck size={12} />
+                  </span>
+                  <span style={{ flex: 1 }}>{t("patientInvite.generatedHint")}</span>
+                </div>
+              )}
 
               <div
                 style={{

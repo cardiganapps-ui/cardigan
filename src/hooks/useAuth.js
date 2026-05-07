@@ -184,6 +184,14 @@ export function useAuth() {
     // safe default rather than blowing up the gesture.
     const safeScope = (scope === "local" || scope === "global" || scope === "others")
       ? scope : "local";
+    // Clear any pending patient-invite token before signing out. A
+    // patient who just signed out shouldn't land back on the claim
+    // screen with the same token sitting in sessionStorage —
+    // they'd see "este enlace ya se usó" because they themselves
+    // already redeemed it. Cleanup keeps the post-signout state
+    // identical to a fresh visitor.
+    try { sessionStorage.removeItem("cardigan.patientInviteToken"); }
+    catch { /* ignore */ }
     try { await supabase.auth.signOut({ scope: safeScope }); }
     catch (err) {
       // Network / Supabase-side error — log but proceed to wipe local

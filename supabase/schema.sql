@@ -429,39 +429,49 @@ create policy "Admin reads all ratings"
   on user_ratings for select
   using (is_admin());
 
--- Patient portal — patient-side RLS (migration 050).
+-- Patient portal — patient-side RLS (migrations 050 + 052).
 -- Therapist-side policies above are unchanged; these grant SELECT
 -- to a patient on the rows linked to their auth.uid() via
--- patient_user_id.
+-- patient_user_id, AND only while the relationship is active
+-- (status in 'active' or 'potential'). Discarded / ended
+-- patients lose portal access automatically — archiving in the
+-- therapist app is the kill-switch.
+--
+-- user_profiles intentionally has NO patient policy. The patient
+-- reads therapist info exclusively through the security-definer
+-- get_therapists_for_patient() RPC, which returns only safe
+-- columns (no signup_source / acquisition metadata).
 create policy "Patients read own patient row"
   on patients for select
-  using (patient_user_id = auth.uid());
+  using (
+    patient_user_id = auth.uid()
+    and status in ('active', 'potential')
+  );
 create policy "Patients read own sessions"
   on sessions for select
   using (
     patient_id in (
-      select id from patients where patient_user_id = auth.uid()
+      select id from patients
+      where patient_user_id = auth.uid()
+        and status in ('active', 'potential')
     )
   );
 create policy "Patients read own payments"
   on payments for select
   using (
     patient_id in (
-      select id from patients where patient_user_id = auth.uid()
-    )
-  );
-create policy "Linked patients read therapist profile"
-  on user_profiles for select
-  using (
-    user_id in (
-      select user_id from patients where patient_user_id = auth.uid()
+      select id from patients
+      where patient_user_id = auth.uid()
+        and status in ('active', 'potential')
     )
   );
 
--- Single-call data fetcher for the patient shell (migration 050).
--- Returns one row per linked-patients-row, joined with auth.users
--- + user_profiles. security definer because auth.users is normally
--- service-role only; the WHERE clause is the security boundary.
+-- Single-call data fetcher for the patient shell (migration 050,
+-- hardened in 052). Returns one row per linked-patients-row,
+-- joined with auth.users + user_profiles. security definer because
+-- auth.users is normally service-role only; the WHERE clause
+-- (patient_user_id = auth.uid() + status in active/potential) is
+-- the security boundary.
 create or replace function get_therapists_for_patient()
 returns table (
   patient_id uuid,
@@ -481,7 +491,8 @@ returns table (
   from patients p
   join auth.users au on au.id = p.user_id
   left join user_profiles up on up.user_id = p.user_id
-  where p.patient_user_id = auth.uid();
+  where p.patient_user_id = auth.uid()
+    and p.status in ('active', 'potential');
 $$ language sql security definer;
 
 -- Single-use invite tokens that the therapist generates and shares

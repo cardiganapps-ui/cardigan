@@ -258,7 +258,7 @@ function CardiganApp() {
         <PatientClaimScreen
           token={inviteToken}
           onCreateAccount={() => setAuthIntent("signup")}
-          onSignIn={() => setAuthIntent("signin")}
+          onSignIn={() => setAuthIntent("login")}
         />
       );
     }

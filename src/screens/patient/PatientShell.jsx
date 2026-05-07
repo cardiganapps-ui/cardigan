@@ -25,12 +25,20 @@ export function PatientShell({ user, signOut, data }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
-  // The patient's display name doesn't currently exist in our model —
-  // we'd surface it via Supabase user_metadata.full_name in the
-  // future if the signup flow collected it. For v1 the avatar is
-  // initials-only.
+  // Patient display name — sourced in priority order:
+  //   1. The therapist's record of the patient (patients.name) —
+  //      most reliable since the therapist knew them by that name
+  //      before they ever touched Cardigan.
+  //   2. Supabase user_metadata.full_name (if the auth signup
+  //      collected it; today it doesn't, but future flows might).
+  //   3. The email local part.
+  // The avatar uses initials from the same priority chain.
+  const patientName = data.primaryPatient?.name
+    || user?.user_metadata?.full_name
+    || user?.email?.split("@")[0]
+    || "";
   const patientInitials = (
-    user?.user_metadata?.full_name?.split(" ").map(s => s[0] || "").join("").slice(0, 2)
+    patientName.split(/\s+/).map(s => s[0] || "").join("").slice(0, 2)
     || user?.email?.slice(0, 2)
     || "?"
   ).toUpperCase();

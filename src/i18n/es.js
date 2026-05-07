@@ -1825,6 +1825,7 @@ export default {
     expires30d: "El enlace caduca en 30 d\u00edas.",
     expiresAt: "Caduca el {date}.",
     error: "No pudimos generar el enlace. Intenta de nuevo en un momento.",
+    alreadyLinkedNotice: "{name} ya tiene su cuenta vinculada. Este enlace no la cambiar\u00e1 \u2014 s\u00f3lo \u00fasalo si quieren reenlazar manualmente.",
   },
 
   // Patient-side: claim screen (welcome + error states).
@@ -1856,6 +1857,10 @@ export default {
     menu: "Abrir men\u00fa",
   },
   patientHome: {
+    greeting: "Hola, {name}",
+    welcomeEyebrow: "Tu cuenta est\u00e1 lista",
+    welcomeTitle: "Bienvenido a Cardigan",
+    welcomeBody: "Cuando {name} agende tu pr\u00f3xima sesi\u00f3n, la ver\u00e1s aqu\u00ed. Mientras tanto, este es tu espacio para consultar tu historial y tu saldo.",
     nextSessionLabel: "Pr\u00f3xima sesi\u00f3n",
     noNextSession: "No tienes pr\u00f3ximas sesiones agendadas. Tu profesionista te avisar\u00e1 cuando programe la siguiente.",
     interview: "Entrevista",
