@@ -96,7 +96,12 @@
     cursor: pointer; color: var(--charcoal-xl);
     transition: all var(--dur-slow); min-height: unset;
   }
-  .topbar-refresh-btn:hover { background: var(--teal-pale); color: var(--teal-dark); border-color: var(--teal-light); }
+  /* Hover-gated so iPad touch doesn't get a sticky :hover after a
+     tap. Same pattern repeated for every topbar :hover in this
+     block. Nested @media works on iPadOS Safari 16.5+. */
+  @media (hover: hover) {
+    .topbar-refresh-btn:hover { background: var(--teal-pale); color: var(--teal-dark); border-color: var(--teal-light); }
+  }
   /* On desktop the settings avatar uses solid teal. Target the ::before
      since the button version of .avatar-sm draws its circle via a
      pseudo-element to keep the hit area at 44×44. */
@@ -111,11 +116,17 @@
     border-color: var(--border);
     color: var(--charcoal-xl);
   }
-  .topbar .help-icon-btn--dark:hover,
   .topbar .help-icon-btn--dark[aria-expanded="true"] {
     background: var(--teal-pale);
     color: var(--teal-dark);
     border-color: var(--teal-light);
+  }
+  @media (hover: hover) {
+    .topbar .help-icon-btn--dark:hover {
+      background: var(--teal-pale);
+      color: var(--teal-dark);
+      border-color: var(--teal-light);
+    }
   }
 
   /* Desktop "+ Nuevo" button lives in the topbar; FAB softens to a
@@ -139,7 +150,9 @@
     font-family: var(--font); cursor: pointer;
     transition: background var(--dur-slow) ease, border-color var(--dur-slow) ease, color var(--dur-slow) ease, transform var(--dur-base) ease;
   }
-  .topbar-search-btn:hover { background: var(--teal-mist); border-color: var(--teal-light); color: var(--teal-dark); }
+  @media (hover: hover) {
+    .topbar-search-btn:hover { background: var(--teal-mist); border-color: var(--teal-light); color: var(--teal-dark); }
+  }
   .topbar-search-btn:active { transform: scale(0.94); }
   .topbar-new-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -151,7 +164,9 @@
     box-shadow: var(--shadow-sm);
     transition: background var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring), box-shadow var(--dur-slow) ease;
   }
-  .topbar-new-btn:hover { background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.18); transform: translateY(-1px); }
+  @media (hover: hover) {
+    .topbar-new-btn:hover { background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.18); transform: translateY(-1px); }
+  }
   .topbar-new-btn:active { transform: translateY(0) scale(0.97); }
   .topbar-new-btn--open { background: #000; }
   .topbar-new-menu {
@@ -174,14 +189,16 @@
     animation: fabActionIn var(--dur-slow) var(--ease-spring) both;
     transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
   }
-  .topbar-new-item:hover { background: var(--teal-mist); color: var(--teal-dark); }
   .topbar-new-item-icon {
     width: 28px; height: 28px; border-radius: 50%;
     background: var(--teal-pale); color: var(--teal-dark);
     display: inline-flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
-  .topbar-new-item:hover .topbar-new-item-icon { background: var(--teal); color: var(--white); }
+  @media (hover: hover) {
+    .topbar-new-item:hover { background: var(--teal-mist); color: var(--teal-dark); }
+    .topbar-new-item:hover .topbar-new-item-icon { background: var(--teal); color: var(--white); }
+  }
   .topbar-new-item-label { flex: 1; white-space: nowrap; }
   @keyframes topbarNewMenuIn {
     0%   { opacity: 0; transform: translateY(-6px) scale(0.98); }

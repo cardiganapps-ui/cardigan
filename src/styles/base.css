@@ -607,7 +607,9 @@ body:has(.expediente-open) .bottom-tabs { display: none !important; }
   font-family: inherit; color: inherit; text-align: left;
   transition: background var(--dur-fast) ease, transform 0.16s ease;
 }
-.drawer-plan:hover { background: rgba(255,255,255,0.10); }
+@media (hover: hover) {
+  .drawer-plan:hover { background: rgba(255,255,255,0.10); }
+}
 .drawer-plan:active { transform: scale(0.985); background: rgba(255,255,255,0.13); }
 /* Trial / expired variants nudge the icon color so the chip doubles
    as a status indicator at a glance. */
