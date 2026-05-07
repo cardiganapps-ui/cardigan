@@ -301,18 +301,21 @@ button.stat-tile { cursor: pointer; min-height: 0; }
   background: var(--teal-pale); border: none; border-radius: var(--radius-pill);
   padding: 5px 10px; cursor: pointer; outline: none; -webkit-appearance: none;
 }
-.filter-chips { display: flex; gap: 4px; overflow-x: auto; padding: 0 16px 12px; scrollbar-width: none; }
-.filter-chips::-webkit-scrollbar { display: none; }
-/* Hint that the row scrolls horizontally — fade-mask on the right
-   edge of the scroll container. Uses mask-image so the cue only
-   shows when content actually overflows (when chips fit, the
-   transparent slice has nothing to fade). Opt-in via the variant
-   class so the cue doesn't attach to short rows like the 2-chip
-   Potenciales sub-filter. */
-.filter-chips--fade {
-  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+.filter-chips {
+  display: flex;
+  /* space-between distributes the leftover horizontal space as gaps
+     between chips, so the row spans edge-to-edge instead of
+     clustering on the left. `gap` still acts as a minimum — when
+     content overflows (rare at the new chip size, but possible on
+     iPhone SE 320px) the row scrolls horizontally as before, with
+     each chip separated by the minimum gap. */
+  justify-content: space-between;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 0 16px 12px;
+  scrollbar-width: none;
 }
+.filter-chips::-webkit-scrollbar { display: none; }
 .chip {
   /* Five Spanish filter chips ("Con deuda", "Al corriente",
      "Activos", "Finalizados", "Potenciales") need to fit a 360px

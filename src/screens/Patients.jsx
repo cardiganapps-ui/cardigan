@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
@@ -80,18 +80,6 @@ export function Patients() {
   // 'potential' rows (default), archived = 'discarded'. Only renders
   // when filter === 'potential'.
   const [potentialSubFilter, setPotentialSubFilter] = useState("active");
-  // Five chips overflow on narrow iPhones. Auto-scroll the active
-  // chip into view so a tap on a partially-clipped chip pulls it
-  // fully into the visible window. Mirrors the iOS segmented-
-  // control pattern.
-  const activeChipRef = useRef(null);
-  useEffect(() => {
-    activeChipRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  }, [filter]);
   const [selected, setSelected] = useState(null);
   // Slim profile sheet for a single potential. Distinct from
   // `expediente` (the full PatientExpediente) — potentials never
@@ -420,10 +408,9 @@ export function Patients() {
             onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
-      <div className="filter-chips filter-chips--fade">
+      <div className="filter-chips">
         {filters.map(f => (
           <button key={f.k}
-            ref={filter === f.k ? activeChipRef : null}
             className={`chip ${filter===f.k?"active":""}`}
             onClick={() => setFilter(prev => prev === f.k ? "all" : f.k)}>
             {f.l}
