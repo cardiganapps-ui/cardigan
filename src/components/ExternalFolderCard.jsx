@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { IconDocument, IconX } from "./Icons";
+import { IconDocument, IconX, IconClipboard } from "./Icons";
 import ContextMenu, { useContextMenu } from "./ContextMenu";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useT } from "../i18n/index";
@@ -211,6 +211,47 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
     enterEditMode();
   };
 
+  // Clipboard API is available on every modern browser inside a
+  // secure context (Cardigan is HTTPS). Hide the "Pegar" affordance
+  // when it's not available so the UI doesn't promise something it
+  // can't deliver — the manual paste path still works.
+  const clipboardApiAvailable =
+    typeof navigator !== "undefined" &&
+    !!navigator.clipboard &&
+    typeof navigator.clipboard.readText === "function";
+
+  const handlePasteFromClipboard = async () => {
+    if (!clipboardApiAvailable) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        showToast(t("expediente.folder.pasteEmpty"), "info");
+        return;
+      }
+      // Drop whatever's there into the draft; the existing parser +
+      // inline error handle the "not actually a URL" path. The user
+      // sees the validation outcome immediately + can edit.
+      setDraft(text);
+      // Refocus + position caret at end so a follow-up edit is one
+      // tap away. requestAnimationFrame waits for React to paint.
+      requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (el) {
+          el.focus();
+          const len = el.value.length;
+          try { el.setSelectionRange(len, len); } catch { /* ignore */ }
+        }
+      });
+      haptic.tap();
+    } catch {
+      // Permission denied (user declined the iOS popup) or some
+      // other browser-level refusal. Tell them how to recover
+      // without burying the next-best path (manual paste in the
+      // input above).
+      showToast(t("expediente.folder.pasteDenied"), "warning");
+    }
+  };
+
   // Auto-focus the input + select-all so paste-to-replace is one
   // gesture for the user editing an existing link.
   useEffect(() => {
@@ -373,6 +414,36 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
             aria-describedby={errorKey ? "external-folder-url-error" : undefined}
             style={{ width: "100%", fontSize: "var(--text-md)" }}
           />
+          {/* One-tap paste — skips the "switch app → copy → switch
+              back → tap input → paste" dance. Hidden when the
+              browser's Clipboard API isn't available (rare; HTTPS
+              + modern browsers cover everyone we care about) so the
+              affordance never lies about what it can do. */}
+          {clipboardApiAvailable && (
+            <button
+              type="button"
+              onClick={handlePasteFromClipboard}
+              style={{
+                marginTop: 8,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 10px",
+                background: "var(--teal-pale)",
+                color: "var(--teal-dark)",
+                border: "1px solid var(--teal-mist)",
+                borderRadius: "var(--radius-pill)",
+                fontFamily: "var(--font)",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <IconClipboard size={12} />
+              {t("expediente.folder.pasteCta")}
+            </button>
+          )}
           {errorKey && (
             <div
               id="external-folder-url-error"
@@ -465,6 +536,43 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
               {t("expediente.folder.cancel")}
             </button>
           </div>
+          {/* "How do I get the link?" — collapsed by default. Power
+              users skip it; new users tap once to get a 4-line
+              cheat sheet. <details> is native, accessible, and
+              animates the open/close on iOS Safari for free. */}
+          <details
+            style={{
+              marginTop: 12,
+              fontSize: 12,
+              color: "var(--charcoal-md)",
+            }}
+          >
+            <summary
+              style={{
+                cursor: "pointer",
+                listStyle: "revert",
+                padding: "4px 0",
+                fontWeight: 600,
+              }}
+            >
+              {t("expediente.folder.helpSummary")}
+            </summary>
+            <ul
+              style={{
+                margin: "8px 0 0",
+                paddingLeft: 18,
+                lineHeight: 1.55,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <li>{t("expediente.folder.helpDrive")}</li>
+              <li>{t("expediente.folder.helpOneDrive")}</li>
+              <li>{t("expediente.folder.helpDropbox")}</li>
+              <li>{t("expediente.folder.helpIcloud")}</li>
+            </ul>
+          </details>
         </div>
         <ConfirmDialog
           open={discardOpen}

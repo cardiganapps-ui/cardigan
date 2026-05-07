@@ -976,6 +976,25 @@ export default {
       discardChangesTitle: "¿Descartar cambios?",
       discardChangesBody: "El enlace que escribiste no se ha guardado.",
       discardChangesCta: "Descartar",
+      // Smart paste — single-tap clipboard fill
+      pasteCta: "Pegar enlace copiado",
+      pasteEmpty: "No hay nada copiado. Copia el enlace primero desde tu app de Drive / OneDrive.",
+      pasteDenied: "No pudimos leer el portapapeles. Pega el enlace en el campo de arriba.",
+      // "How do I get the link?" — collapsed by default, 4 short
+      // recipes that match what each provider's share menu actually
+      // says in Spanish on iOS / Android.
+      helpSummary: "¿Cómo obtengo el enlace?",
+      helpDrive: "Google Drive: abre la carpeta → Compartir → Copiar enlace.",
+      helpOneDrive: "OneDrive: abre la carpeta → Compartir → Copiar enlace.",
+      helpDropbox: "Dropbox: abre la carpeta → Compartir → Copiar enlace.",
+      helpIcloud: "iCloud: en Archivos abre la carpeta → Compartir → Copiar enlace.",
+      // Share Target receiver (PWA, system share sheet)
+      shareSheetTitle: "Vincular carpeta",
+      sharePickPatient: "¿A qué {client.s} la vinculamos?",
+      shareReplaceHint: "Ya tiene una carpeta vinculada — esto la reemplazará.",
+      shareNoPatients: "Aún no tienes {client.p}. Crea uno primero para vincular esta carpeta.",
+      shareInvalidBody: "No pudimos leer el enlace que compartiste. Intenta de nuevo desde tu app, asegurándote de elegir un enlace para compartir.",
+      shareLinkedToast: "Carpeta vinculada a {name}",
     },
     period: "Per\u00edodo",
     periodFilterSub: "Filtra finanzas y asistencia {client.del}",

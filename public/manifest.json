@@ -32,5 +32,14 @@
       "type": "image/svg+xml",
       "purpose": "monochrome"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/?share_folder=1",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

@@ -6,6 +6,7 @@ import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
 import { MilestoneCelebration } from "./components/MilestoneCelebration.jsx";
 import { ActivationCompleteShareSheet } from "./components/ActivationCompleteShareSheet.jsx";
 import { RatingSheet } from "./components/RatingSheet.jsx";
+import { ShareFolderSheet } from "./components/sheets/ShareFolderSheet.jsx";
 import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
@@ -493,6 +494,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // the day-14 lifecycle email's deep link (#rating hash) or by the
   // organic shouldShowDay14Prompt eligibility check below.
   const [ratingSheetOpen, setRatingSheetOpen] = useState(false);
+  // Web Share Target receiver state. When the user shares a folder
+  // URL into Cardigan from the OS share sheet, the browser routes
+  // to /?share_folder=1&url=…&text=…&title=… — we capture the URL
+  // here and open the ShareFolderSheet patient picker.
+  const [shareFolderUrl, setShareFolderUrl] = useState(null);
   // The encryption unlock prompt is dismissable for the current
   // session — closing the tab re-prompts on next visit. Until then,
   // encrypted notes still render as "[cifrado]" since noteCrypto.canEncrypt
@@ -729,6 +735,41 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // first mount when the URL still has the billing param.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── PWA Web Share Target receiver ──
+  // The manifest registers /?share_folder=1 as the action for shared
+  // folder URLs. iOS / Android route the OS share sheet here when
+  // the user picks Cardigan from a Drive/OneDrive/etc folder share.
+  // Different platforms bundle the shared content into different
+  // params (Android: url; iOS: text/title; macOS: title+url) — we
+  // pull whichever is present and open the picker.
+  useEffect(() => {
+    if (demo || readOnly) return;
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share_folder") !== "1") return;
+    // Pick the first param that looks URL-ish. parseFolderLink runs
+    // inside the sheet and decides validity; here we just pick the
+    // best candidate.
+    const candidate = params.get("url")
+      || params.get("text")
+      || params.get("title")
+      || "";
+    // Strip the share_folder bookkeeping from the URL so a refresh
+    // doesn't re-open the picker. Preserve the hash for in-app
+    // routing continuity.
+    params.delete("share_folder");
+    params.delete("url");
+    params.delete("text");
+    params.delete("title");
+    const newUrl = window.location.pathname
+      + (params.toString() ? `?${params.toString()}` : "")
+      + window.location.hash;
+    window.history.replaceState({}, "", newUrl);
+    if (candidate) setShareFolderUrl(candidate);
+  // First-mount-only — same pattern as the billing handler above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // ── Referral-code URL handler (?ref=<CODE>) ──
   // The capture happens earlier in CardiganApp (before the auth
@@ -1496,6 +1537,17 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           onClose={() => setRatingSheetOpen(false)}
           promptKind="day14_v1"
           userId={user.id}
+        />
+      )}
+      {/* PWA Web Share Target receiver — only mounts when a share
+          arrived (shareFolderUrl set by the URL-param effect). The
+          sheet itself handles the "URL didn't parse" case so we
+          don't need to validate here. */}
+      {!demo && !readOnly && user && shareFolderUrl && (
+        <ShareFolderSheet
+          open={!!shareFolderUrl}
+          url={shareFolderUrl}
+          onClose={() => setShareFolderUrl(null)}
         />
       )}
       <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
