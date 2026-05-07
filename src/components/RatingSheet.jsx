@@ -33,6 +33,9 @@ const STARS = [1, 2, 3, 4, 5];
 function dismissKey(promptKind, userId) {
   return `cardigan.rating.${promptKind}.dismissed.${userId || "anon"}`;
 }
+function submittedKey(promptKind, userId) {
+  return `cardigan.rating.${promptKind}.submitted.${userId || "anon"}`;
+}
 
 export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) {
   const { t } = useT();
@@ -120,6 +123,12 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) 
       }
       track("rating_submitted", { prompt_kind: promptKind, stars });
       haptic.success();
+      // Stamp a localStorage flag so the parent's organic-eligibility
+      // effect (App.jsx) won't re-open the sheet on the next mount.
+      // The DB has the row via the upsert PK; this is the client-side
+      // mirror so the eligibility predicate has something to read
+      // without a server round-trip on every Home mount.
+      try { localStorage.setItem(submittedKey(promptKind, userId), "1"); } catch { /* ignore */ }
       setSubmitted(true);
       // Keep the sheet up for ~2.5s on success so the thank-you
       // copy registers; promoter (5★) variant gets a longer window

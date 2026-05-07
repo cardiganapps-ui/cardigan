@@ -63,8 +63,11 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
     catch { /* fall through */ }
     if (claimed) return;
     grantedRef.current = true;
+    let shareTimerId = null;
+    let cancelled = false;
     (async () => {
       const res = await subscription?.grantTrialExtension?.("activation_complete");
+      if (cancelled) return;
       try { localStorage.setItem(`cardigan.activation.bonusGranted.${userId}`, "1"); }
       catch { /* private mode — fine */ }
       if (res?.ok && res.granted) {
@@ -81,9 +84,13 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
         // the bonus celebration registers first. The setTimeout also
         // sidesteps a same-tick double-paint where the sheet would
         // animate in the same frame as the toast and visually merge.
-        setTimeout(() => openActivationShareSheet?.(), 600);
+        shareTimerId = setTimeout(() => openActivationShareSheet?.(), 600);
       }
     })();
+    return () => {
+      cancelled = true;
+      if (shareTimerId != null) clearTimeout(shareTimerId);
+    };
   }, [userId, accessState, allDone, subscription, showSuccess, t, openActivationShareSheet]);
 
   // Per-step transitions — track once per (user, step) via

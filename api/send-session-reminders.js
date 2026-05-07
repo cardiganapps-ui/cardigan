@@ -720,14 +720,21 @@ async function maybeRunReferralPushes(supabase) {
         continue;
       }
 
-      // Pull push subscriptions for this user. Empty list = no rollback;
-      // we still keep the dedupe row so we don't try again next tick
-      // (consistency with how the email path treats unreachable users).
+      // Pull push subscriptions for this user. Empty list rolls back
+      // the dedupe claim so a later subscribe (e.g., user installs the
+      // PWA on a new device) gets a chance to receive this nudge on a
+      // future cron tick.
       const { data: pushSubs } = await supabase
         .from("push_subscriptions")
         .select("endpoint, p256dh, auth")
         .eq("user_id", u.id);
-      if (!pushSubs || pushSubs.length === 0) continue;
+      if (!pushSubs || pushSubs.length === 0) {
+        await supabase.from("lifecycle_emails")
+          .delete()
+          .eq("user_id", u.id)
+          .eq("kind", cohort.kind);
+        continue;
+      }
 
       const payload = {
         title: "Recomienda Cardigan",
@@ -753,7 +760,19 @@ async function maybeRunReferralPushes(supabase) {
           }
         }
       }
-      if (sent) totalSent += 1;
+      // Mirror sendLifecycleEmail's failure-rollback. If every push
+      // attempt failed (transient FCM/APNs hiccup, no terminal codes),
+      // drop the dedupe row so the next cron tick retries. A genuinely
+      // bad endpoint set fails forever — same accepted behavior as the
+      // email path: cron burns one cycle per day on it.
+      if (!sent) {
+        await supabase.from("lifecycle_emails")
+          .delete()
+          .eq("user_id", u.id)
+          .eq("kind", cohort.kind);
+        continue;
+      }
+      totalSent += 1;
     }
   }
 

@@ -43,6 +43,11 @@ export function CalendarLinkPromptCard() {
   const { hasToken, url, loaded } = useCalendarToken();
   const [hidden, setHidden] = useState(() => isDismissed(user?.id));
   const [busy, setBusy] = useState(false);
+  // Synchronous guard against rapid double-clicks. React state lags
+  // a render cycle behind, so the closure that fires from a quick
+  // second tap may still see busy=false. The ref is updated in the
+  // same tick so the second handler exits immediately.
+  const inFlightRef = useRef(false);
   // True only during the brief window after the user just enabled
   // — the Calendar panel's "state 3" copy applies until they reload
   // (the plaintext URL only lives in memory, never on the server).
@@ -74,7 +79,8 @@ export function CalendarLinkPromptCard() {
   if (!visible) return null;
 
   const enable = async () => {
-    if (busy) return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setBusy(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -99,6 +105,7 @@ export function CalendarLinkPromptCard() {
     } catch {
       showToast(t("settings.calendarError"), "error");
     } finally {
+      inFlightRef.current = false;
       setBusy(false);
     }
   };

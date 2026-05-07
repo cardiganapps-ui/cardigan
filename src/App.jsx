@@ -764,8 +764,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     if (ratingSheetOpen) return;
     const promptKind = "day14_v1";
     let hasDismissed = false;
+    let hasSubmitted = false;
     try {
       hasDismissed = localStorage.getItem(`cardigan.rating.${promptKind}.dismissed.${user.id}`) === "1";
+      hasSubmitted = localStorage.getItem(`cardigan.rating.${promptKind}.submitted.${user.id}`) === "1";
     } catch { /* ignore */ }
     // Compute days since signup from auth.users.created_at — same
     // signal the cron uses on the email side. NaN-safe.
@@ -778,7 +780,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       daysSinceSignup,
       sessionsCount: (upcomingSessions || []).length,
       patientsCount: (patients || []).length,
-      hasSubmitted: false, // server-side dedupe via PK; sheet handles re-submit gracefully
+      hasSubmitted,
       hasDismissed,
     });
     if (eligible) setRatingSheetOpen(true);
