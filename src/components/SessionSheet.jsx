@@ -121,12 +121,27 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onMa
               <Avatar initials={displayInitials}
                 color={isInterview ? "var(--rose)" : isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
-                  {session.patient}
-                  {isTutor && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--purple)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.tutor")}</span>}
-                  {isInterview && <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--rose)", marginLeft:6, textTransform:"uppercase" }}>{t("sessions.interview")}</span>}
+                {/* Name + optional subtype badge in one row.
+                    The name truncates instead of wrapping a long
+                    patient name onto two lines (which used to push
+                    the badge below or off-screen). The badge stays
+                    fully visible via flex-shrink: 0. */}
+                <div style={{ display:"flex", alignItems:"baseline", gap:6, minWidth:0 }}>
+                  <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0, flex:"1 1 auto" }}>
+                    {session.patient}
+                  </span>
+                  {isTutor && (
+                    <span style={{ flexShrink:0, fontSize:"var(--text-xs)", fontWeight:700, color:"var(--purple)", textTransform:"uppercase" }}>
+                      {t("sessions.tutor")}
+                    </span>
+                  )}
+                  {isInterview && (
+                    <span style={{ flexShrink:0, fontSize:"var(--text-xs)", fontWeight:700, color:"var(--rose)", textTransform:"uppercase" }}>
+                      {t("sessions.interview")}
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>{session.day} {session.date} · {session.time} - {endTime}</div>
+                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{session.day} {session.date} · {session.time} - {endTime}</div>
               </div>
             </div>
             <button aria-label={t("delete")} onClick={() => setConfirmDelete(true)}

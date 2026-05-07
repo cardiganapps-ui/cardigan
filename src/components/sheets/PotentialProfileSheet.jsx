@@ -126,9 +126,13 @@ export function PotentialProfileSheet({
               <div style={{ display:"flex", alignItems:"center", gap:12, padding:"6px 0 14px", borderBottom:"1px solid var(--border-lt)", marginBottom:14 }}>
                 <Avatar initials={patient.initials} color="var(--rose)" size="lg" />
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:2 }}>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>{patient.name}</div>
-                    <span className="badge badge-rose" style={{ fontSize:"var(--text-eyebrow)", textTransform:"uppercase", letterSpacing:0.3 }}>
+                  {/* Name truncates instead of wrapping next to the
+                      Potencial badge — keeps the header height
+                      predictable for long names. The badge keeps its
+                      full width via flex-shrink: 0. */}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2, minWidth:0 }}>
+                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0, flex:"1 1 auto" }}>{patient.name}</div>
+                    <span className="badge badge-rose" style={{ flexShrink:0, fontSize:"var(--text-eyebrow)", textTransform:"uppercase", letterSpacing:0.3 }}>
                       {t("patients.statusPotential")}
                     </span>
                   </div>

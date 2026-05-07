@@ -582,12 +582,30 @@
 }
 .admin-user-name {
   font-family: var(--font-d);
-  font-size: 22px;
+  /* Clamps slightly downward on narrow viewports so a long full
+     name fits at full size before truncation kicks in. iPad+
+     stays at 22px. */
+  font-size: clamp(18px, 4.6vw, 22px);
   font-weight: 800;
   color: var(--charcoal);
   letter-spacing: -0.3px;
-  display: flex; align-items: center; gap: 10px;
-  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* No flex-wrap — long names truncate (via the rule below) so the
+     tier and Bloqueado badges always stay on the same row as the
+     name. The previous flex-wrap: wrap pushed them to a second
+     line, breaking the "name | tier | blocked" header rhythm. */
+  min-width: 0;
+}
+/* First child = the name span. Takes the available row width and
+   truncates instead of wrapping. */
+.admin-user-name > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .admin-user-meta {
   font-size: 12px;

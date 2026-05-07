@@ -59,8 +59,24 @@
 }
 @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .sheet-handle { width: 40px; height: 5px; background: var(--cream-deeper); border-radius: 3px; margin: 12px auto 4px; }
-.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; }
-.sheet-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; gap: 10px; }
+/* The title takes the available row width and truncates rather than
+   wrapping to a second line — keeps the sheet header height
+   predictable when the title carries a long patient name (e.g.
+   PotentialProfileSheet shows {patient.name} as the title). The
+   font-size also clamps slightly downward on narrow viewports so a
+   modestly-long title fits at full size before truncation kicks in. */
+.sheet-title {
+  font-family: var(--font-d);
+  font-size: clamp(15px, 4.4vw, 17px);
+  font-weight: 800;
+  color: var(--charcoal);
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .sheet-close { width: 30px; height: 30px; border-radius: 50%; background: var(--cream-dark); border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; position: relative; }
 .sheet-close::after { content: ""; position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
