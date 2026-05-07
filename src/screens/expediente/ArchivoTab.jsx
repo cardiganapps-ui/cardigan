@@ -2,18 +2,26 @@ import { useState, useMemo } from "react";
 import { IconUpload } from "../../components/Icons";
 import { NoteCard } from "../../components/NoteEditor";
 import { DocumentList } from "../../components/DocumentList";
+import { ExternalFolderCard } from "../../components/ExternalFolderCard";
 import { isWordDoc } from "../../utils/files";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
 
 export function ArchivoTab({
-  pNotes, pSessions, pDocuments,
+  patient, pNotes, pSessions, pDocuments,
   onNewNote, onEditNote,
   uploading, triggerUpload, onOpenDoc,
   renameDocument, tagDocumentSession, deleteDocument,
 }) {
   const { t } = useT();
+  const { updatePatient, readOnly } = useCardigan();
   const [docSort, setDocSort] = useState("newest");
   const [docFilter, setDocFilter] = useState("all");
+
+  const handleSaveFolderUrl = async (newUrl) => {
+    if (!patient) return false;
+    return updatePatient?.(patient.id, { external_folder_url: newUrl });
+  };
 
   const sortedFilteredDocs = useMemo(() => {
     let docs = [...pDocuments];
@@ -27,6 +35,18 @@ export function ArchivoTab({
 
   return (
     <div style={{ padding:16 }}>
+      {/* External folder link — top of the tab so it surfaces as
+          the discovery point. Empty state shows a dashed card with
+          a "Vincular carpeta" CTA; once linked, becomes a tap-to-
+          open card with the provider icon + label. Cardigan never
+          accesses the contents — see ExternalFolderCard.jsx for
+          the full security/UX story. */}
+      <ExternalFolderCard
+        url={patient?.external_folder_url}
+        onSave={handleSaveFolderUrl}
+        readOnly={readOnly}
+      />
+
       {/* ── Notas section ── */}
       <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:10 }}>
         <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"var(--charcoal-xl)" }}>

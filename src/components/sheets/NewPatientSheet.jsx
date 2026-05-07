@@ -12,6 +12,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
+import { parseFolderLink } from "../../utils/folderLinks";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
 
 // Weekdays + hours to search through when picking a sensible default
@@ -92,6 +93,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [externalFolderUrl, setExternalFolderUrl] = useState("");
   // Birthdate defaults to today so the control renders a filled-in
   // date picker; we track "untouched" so the placeholder-ish styling
   // doesn't lock us into saving today's date as birthdate.
@@ -269,6 +271,12 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     // Step 2: re-check the gate in case the user bounced back to step 1
     // and introduced a conflict before coming back.
     if (!canAdvance) { setStep(1); flash(t("patients.resolveConflicts")); return; }
+    // Folder URL: only validate when non-empty. Empty = user opted
+    // out of the optional field; that's fine and submits as null.
+    if (externalFolderUrl.trim() !== "" && !parseFolderLink(externalFolderUrl).valid) {
+      flash(t("expediente.folder.errorBadUrl"));
+      return;
+    }
     setFeedback(null);
     setSubmitting(true);
     try {
@@ -277,6 +285,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
         tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
         phone: phoneDigits(phone), email: email.trim(),
         whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
+        externalFolderUrl: externalFolderUrl.trim() || null,
         birthdate: (birthdate && !birthdateUntouched) ? birthdate : null,
         // Health fields. Server-side they're always present as columns;
         // we just don't surface the form section unless the profession
@@ -882,6 +891,39 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                 <div className="input-group">
                   <label className="input-label">{t("settings.email")}</label>
                   <input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                </div>
+              </div>
+              {/* Optional cloud-folder link. Uncluttered for the 80%
+                  of users who don't paste one — single line, only
+                  shows the inline error when invalid. The
+                  parseFolderLink result also drives the Save gate
+                  in the parent: an invalid URL blocks submission
+                  via canAdvance. */}
+              <div className="input-group" style={{ marginTop: 12 }}>
+                <label className="input-label">{t("patients.newPatientFolderLabel")}</label>
+                <input
+                  className="input"
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={externalFolderUrl}
+                  onChange={e => setExternalFolderUrl(e.target.value)}
+                  placeholder={t("expediente.folder.inputPlaceholder")}
+                />
+                {externalFolderUrl.trim() !== "" && !parseFolderLink(externalFolderUrl).valid && (
+                  <div role="alert" style={{ fontSize: 12, color: "var(--red)", marginTop: 6, lineHeight: 1.4 }}>
+                    {(() => {
+                      const r = parseFolderLink(externalFolderUrl).reason;
+                      if (r === "bad_scheme") return t("expediente.folder.errorBadScheme");
+                      if (r === "too_long") return t("expediente.folder.errorTooLong");
+                      return t("expediente.folder.errorBadUrl");
+                    })()}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: "var(--charcoal-xl)", marginTop: 4, lineHeight: 1.4 }}>
+                  {t("patients.newPatientFolderHint")}
                 </div>
               </div>
               {/* WhatsApp opt-in — gated until Meta setup is live. Flip

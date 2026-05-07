@@ -35,6 +35,12 @@ create table if not exists patients (
   goal_weight_kg numeric(5,2),
   allergies text default '',
   medical_conditions text default '',
+  -- Per-patient external folder link (migration 049). User pastes a
+  -- Drive/OneDrive/Dropbox/iCloud/etc URL; UI renders a tap-to-open
+  -- card in the Documentos tab. Cardigan never accesses the contents
+  -- — the link is just text. NULL = no folder linked.
+  external_folder_url text
+    check (external_folder_url is null or length(external_folder_url) <= 2048),
   created_at timestamptz default now()
 );
 

@@ -6,7 +6,7 @@ import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants"
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un registro con ese nombre.");
@@ -90,6 +90,9 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       // Stamp consent at creation only when the toggle was flipped on
       // — gives us a clean audit row tying opt-in to a moment.
       whatsapp_consent_at: whatsappEnabled ? new Date().toISOString() : null,
+      // Optional cloud-folder link. Stored as null when blank so the
+      // empty-state branch in ExternalFolderCard renders cleanly.
+      external_folder_url: externalFolderUrl || null,
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
