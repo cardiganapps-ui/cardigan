@@ -109,18 +109,45 @@ async function handler(req, res) {
       const todayShort = formatShortDate(userNow);
       const todayShortLegacy = formatShortDateLegacy(userNow);
 
-      // 3. Fetch today's scheduled sessions for this user. Match both the
-      // new "D-MMM" and legacy "D MMM" forms so the cron keeps firing
-      // for accounts whose historical rows haven't been migrated yet.
-      // patient_id and modality are pulled in here so the WhatsApp
-      // branch below can resolve the recipient + template variables
-      // without re-querying.
-      const { data: sessions, error: sessError } = await supabase
-        .from("sessions")
-        .select("id, patient_id, patient, time, initials, modality")
-        .eq("user_id", user_id)
-        .in("date", [todayShort, todayShortLegacy])
-        .eq("status", "scheduled");
+      // Resolve the user's role for this loop. A user_id is either:
+      //   - therapist  → sessions match by sessions.user_id
+      //   - patient    → sessions match by patient_id IN (linked
+      //                  patient rows where patient_user_id = user_id
+      //                  AND status IN active/potential — same gate
+      //                  the patient-side RLS uses, so a discarded
+      //                  patient stops getting reminders too)
+      // The dual-role edge case (therapist also linked to a patient
+      // row in their own tenant) is exceedingly rare and falls into
+      // the "patient" branch by precedence; that's fine — they'd
+      // still see the right sessions because the patient row's
+      // therapist IS them.
+      const { data: linkedPatients } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("patient_user_id", user_id)
+        .in("status", ["active", "potential"]);
+      const isPatient = (linkedPatients?.length || 0) > 0;
+      const linkedPatientIds = (linkedPatients || []).map((p) => p.id);
+
+      // 3. Fetch today's scheduled sessions. Branch by role; the
+      // WhatsApp branch below applies only to therapists (the patient
+      // already gets a direct push, so we skip the patient-→-patient
+      // WhatsApp loop to avoid double-buzzing).
+      const baseSelect = "id, patient_id, patient, time, initials, modality, user_id, session_type";
+      const sessionsQuery = isPatient
+        ? supabase
+            .from("sessions")
+            .select(baseSelect)
+            .in("patient_id", linkedPatientIds)
+            .in("date", [todayShort, todayShortLegacy])
+            .eq("status", "scheduled")
+        : supabase
+            .from("sessions")
+            .select(baseSelect)
+            .eq("user_id", user_id)
+            .in("date", [todayShort, todayShortLegacy])
+            .eq("status", "scheduled");
+      const { data: sessions, error: sessError } = await sessionsQuery;
 
       if (sessError || !sessions || sessions.length === 0) continue;
 
@@ -185,15 +212,26 @@ async function handler(req, res) {
         const [sh, sm] = String(session.time || "").split(":").map(Number);
         const sessionMinutes = (sh || 0) * 60 + (sm || 0);
         const minutesUntil = Math.max(1, sessionMinutes - nowMinutes);
-        const payload = {
-          title: "Recordatorio de sesión",
-          body: `${session.patient} a las ${session.time} — en ${minutesUntil} min`,
-          url: "/#agenda",
-          // Collapse repeat reminders for the same session into a single
-          // system banner rather than stacking.
-          tag: `session-${session.id}`,
-          actions: [{ action: "open", title: "Ver agenda" }],
-        };
+        // Patient-side copy speaks first-person ("tu sesión...") and
+        // routes to the patient home rather than the therapist's
+        // agenda. Therapist-side copy stays as-is.
+        const payload = isPatient
+          ? {
+              title: "Recordatorio de sesión",
+              body: `Tu sesión es a las ${session.time} — en ${minutesUntil} min`,
+              url: "/",
+              tag: `session-${session.id}`,
+              actions: [{ action: "open", title: "Ver detalles" }],
+            }
+          : {
+              title: "Recordatorio de sesión",
+              body: `${session.patient} a las ${session.time} — en ${minutesUntil} min`,
+              url: "/#agenda",
+              // Collapse repeat reminders for the same session into a single
+              // system banner rather than stacking.
+              tag: `session-${session.id}`,
+              actions: [{ action: "open", title: "Ver agenda" }],
+            };
 
         for (const sub of subs) {
           try {
@@ -228,10 +266,18 @@ async function handler(req, res) {
       }
 
       // ── WhatsApp branch ────────────────────────────────────────
-      // Runs for every user, regardless of push outcome. Patients opt
-      // in per-row via patients.whatsapp_enabled. Each (session, 'whatsapp')
-      // is deduped via sent_reminders. A failed Meta send does NOT write
-      // a sent_reminders row — the next cron tick retries.
+      // Runs for every THERAPIST user, regardless of push outcome.
+      // Patients opt in per-row via patients.whatsapp_enabled. Each
+      // (session, 'whatsapp') is deduped via sent_reminders. A
+      // failed Meta send does NOT write a sent_reminders row —
+      // the next cron tick retries.
+      //
+      // Skipped entirely for patient-side cron iterations: the
+      // patient already got a direct push above; sending a
+      // WhatsApp message to themselves on top would be a double-
+      // buzz. The therapist-side branch still fires WhatsApp for
+      // all THEIR opted-in patients (this is the original flow).
+      if (isPatient) continue;
       const whatsappPaused = await getFlag("whatsapp_paused");
       if (whatsappPaused || sessionsToNotify.length === 0) continue;
 

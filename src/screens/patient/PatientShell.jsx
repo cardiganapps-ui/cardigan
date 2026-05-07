@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
 import { AvatarContent } from "../../components/Avatar";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { IconLogOut, IconChevron } from "../../components/Icons";
+import { IconSettings } from "../../components/Icons";
 import { PatientHome } from "./PatientHome";
+import { PatientSettingsSheet } from "./PatientSettingsSheet";
 
 /* ── PatientShell ─────────────────────────────────────────────────
    Patient-side app shell. Dramatically smaller than the therapist
@@ -22,8 +22,7 @@ import { PatientHome } from "./PatientHome";
 
 export function PatientShell({ user, signOut, data }) {
   const { t } = useT();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Patient display name — sourced in priority order:
   //   1. The therapist's record of the patient (patients.name) —
@@ -79,10 +78,14 @@ export function PatientShell({ user, signOut, data }) {
           cardigan
         </span>
         <div style={{ flex: 1 }} />
+        {/* Avatar tap → opens the settings sheet directly. The
+            old dropdown menu had a single item (sign out); after
+            the settings sheet absorbed sign out + notifications +
+            calendar, the dropdown stopped earning its keep. */}
         <button
           type="button"
-          onClick={() => setMenuOpen(v => !v)}
-          aria-label={t("patientShell.menu")}
+          onClick={() => setSettingsOpen(true)}
+          aria-label={t("patientShell.openSettings")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -112,81 +115,18 @@ export function PatientShell({ user, signOut, data }) {
           >
             <AvatarContent initials={patientInitials} />
           </div>
-          <IconChevron size={12} />
+          <IconSettings size={14} style={{ color: "var(--charcoal-xl)" }} />
         </button>
       </div>
-
-      {/* ── Tiny dropdown menu — sign out only in v1 ── */}
-      {menuOpen && (
-        <>
-          <div
-            onClick={() => setMenuOpen(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 9,
-              background: "transparent",
-            }}
-          />
-          <div
-            role="menu"
-            style={{
-              position: "fixed",
-              top: 60,
-              right: 16,
-              zIndex: 10,
-              background: "var(--white)",
-              border: "1px solid var(--border-lt)",
-              borderRadius: "var(--radius)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-              padding: 4,
-              minWidth: 180,
-            }}
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false);
-                setConfirmSignOut(true);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                width: "100%",
-                padding: "10px 12px",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "var(--font)",
-                fontSize: 14,
-                color: "var(--charcoal)",
-                textAlign: "left",
-                borderRadius: "var(--radius)",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              <IconLogOut size={16} /> {t("nav.signOut")}
-            </button>
-          </div>
-        </>
-      )}
 
       {/* ── Body ── */}
       <PatientHome data={data} user={user} />
 
-      <ConfirmDialog
-        open={confirmSignOut}
-        title={t("nav.signOut")}
-        body={t("nav.signOutConfirm")}
-        confirmLabel={t("nav.signOut")}
-        destructive
-        onConfirm={() => {
-          setConfirmSignOut(false);
-          signOut?.();
-        }}
-        onCancel={() => setConfirmSignOut(false)}
+      <PatientSettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        user={user}
+        signOut={signOut}
       />
     </div>
   );

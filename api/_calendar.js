@@ -140,7 +140,13 @@ function vtimezoneBlock(tz) {
  * @param {string} options.timezone - IANA TZ name. Defaults to America/Mexico_City.
  * @param {string} options.calendarName - Title shown in the subscriber's UI.
  */
-export function generateICS({ sessions, timezone = "America/Mexico_City", calendarName = "Cardigan" } = {}) {
+export function generateICS({ sessions, timezone = "America/Mexico_City", calendarName = "Cardigan", subjectOverride = null } = {}) {
+  // subjectOverride: when set, every SUMMARY uses this string as the
+  // event subject instead of the patient's name. Used by patient-side
+  // feeds where the "patient" of the row IS the viewer themselves —
+  // greeting the patient with their own name in their calendar would
+  // be redundant. Pass the therapist's display name; the SUMMARY
+  // becomes "Sesión con {therapist}" / "Entrevista con {therapist}".
   const now = new Date();
   const ref = new Date(); // year inference reference
   const dtstamp = formatUTCStamp(now);
@@ -197,7 +203,12 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
     // which matters for the unusual times interviews tend to land at.
     const interviewSession = s.session_type === "interview";
     const summaryPrefix = interviewSession ? "Entrevista" : "Sesión";
-    const summary = `${summaryPrefix} - ${escapeText(s.patient || s.initials || "?")}`;
+    // subjectOverride: patient-side feed uses "con {therapist}";
+    // therapist-side feed retains the patient's name as today.
+    const summarySubject = subjectOverride
+      ? `con ${escapeText(subjectOverride)}`
+      : `- ${escapeText(s.patient || s.initials || "?")}`;
+    const summary = `${summaryPrefix} ${summarySubject}`;
     const descParts = [];
     if (s.modality) descParts.push(`Modalidad: ${s.modality}`);
     if (s.status === "charged") descParts.push("Cancelada con cargo.");

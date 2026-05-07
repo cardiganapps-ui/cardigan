@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
+import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
 import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
 import { classifySessions } from "../../hooks/usePatientPortalData";
 import { IconCalendar, IconDollar, IconCheck, IconMail } from "../../components/Icons";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { haptic } from "../../utils/haptics";
 
 /* ── PatientHome ──────────────────────────────────────────────────
    The single-screen patient view. Top to bottom:
@@ -57,9 +61,68 @@ const STATUS_COLOR = {
 
 export function PatientHome({ data }) {
   const { t } = useT();
+  const { showToast } = useCardigan();
   const [showAllPast, setShowAllPast] = useState(false);
+  // Cancel flow state. `cancelTarget` is the session about to be
+  // cancelled (the dialog shows it for context). `cancelNote` is
+  // the optional reason the patient types into the dialog.
+  // `cancelling` blocks double-fire while the API is in flight.
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelNote, setCancelNote] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
-  const { loading, error, primaryPatient, primaryTherapist, sessions, totalAmountDue, totalCredit } = data;
+  const { loading, error, primaryPatient, primaryTherapist, sessions, totalAmountDue, totalCredit, refresh } = data;
+
+  const requestCancel = (session) => {
+    setCancelTarget(session);
+    setCancelNote("");
+  };
+
+  const dismissCancel = () => {
+    if (cancelling) return;
+    setCancelTarget(null);
+    setCancelNote("");
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget || cancelling) return;
+    setCancelling(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const access = authSession?.access_token;
+      if (!access) {
+        showToast(t("patientHome.cancelError"), "error");
+        return;
+      }
+      const res = await fetch("/api/patient-cancel-session", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${access}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          session_id: cancelTarget.id,
+          note: cancelNote.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        showToast(t("patientHome.cancelError"), "error");
+        return;
+      }
+      haptic.success();
+      showToast(t("patientHome.cancelSuccess"), "success");
+      // Pull fresh data so the cancelled session moves from "future"
+      // to "past" without a manual reload. The next-session hero
+      // re-renders with whatever's next (or the empty state).
+      refresh?.();
+      setCancelTarget(null);
+      setCancelNote("");
+    } catch {
+      showToast(t("patientHome.cancelError"), "error");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   // Classify sessions for THIS patient row only (multi-therapist
   // future will iterate; v1 is single).
@@ -240,7 +303,7 @@ export function PatientHome({ data }) {
             <IconCalendar size={12} /> {t("patientHome.nextSessionLabel")}
           </div>
           {nextSession ? (
-            <NextSessionCard session={nextSession} />
+            <NextSessionCard session={nextSession} onRequestCancel={requestCancel} />
           ) : (
             <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginTop: 4 }}>
               {t("patientHome.noNextSession")}
@@ -356,11 +419,47 @@ export function PatientHome({ data }) {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!cancelTarget}
+        title={cancelTarget
+          ? t("patientHome.cancelDialogTitle", {
+              date: formatShortDateWithYear(new Date(shortDateToISO(cancelTarget.date) + "T12:00:00")),
+            })
+          : ""}
+        body={t("patientHome.cancelDialogBody", { name: therapistDisplayName })}
+        bodyExtra={
+          <textarea
+            value={cancelNote}
+            onChange={(e) => setCancelNote(e.target.value)}
+            placeholder={t("patientHome.cancelNotePlaceholder")}
+            rows={2}
+            maxLength={500}
+            style={{
+              width: "100%",
+              padding: 10,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius)",
+              fontFamily: "var(--font)",
+              fontSize: "var(--text-md)",
+              color: "var(--charcoal)",
+              background: "var(--white)",
+              resize: "vertical",
+              boxSizing: "border-box",
+            }}
+          />
+        }
+        confirmLabel={t("patientHome.cancelConfirmCta")}
+        cancelLabel={t("patientHome.cancelKeepCta")}
+        destructive
+        busy={cancelling}
+        onConfirm={confirmCancel}
+        onCancel={dismissCancel}
+      />
     </div>
   );
 }
 
-function NextSessionCard({ session }) {
+function NextSessionCard({ session, onRequestCancel }) {
   const { t } = useT();
   const iso = shortDateToISO(session.date);
   const dateLabel = formatShortDateWithYear(new Date(iso + "T12:00:00"));
@@ -418,6 +517,37 @@ function NextSessionCard({ session }) {
         >
           {t("patientHome.interview")}
         </span>
+      )}
+      {/* Cancel link — quiet treatment so it doesn't compete with
+          the date/time hierarchy. The full confirm flow lives in
+          the parent (PatientHome) so the dialog state can survive
+          re-renders of the card. */}
+      {onRequestCancel && (
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: "1px solid var(--border-lt)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => onRequestCancel(session)}
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: "4px 0",
+              cursor: "pointer",
+              fontFamily: "var(--font)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--charcoal-md)",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {t("patientHome.cancelCta")}
+          </button>
+        </div>
       )}
     </div>
   );

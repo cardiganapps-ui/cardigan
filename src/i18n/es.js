@@ -1855,6 +1855,14 @@ export default {
   // Patient-side: shell + home view.
   patientShell: {
     menu: "Abrir men\u00fa",
+    openSettings: "Abrir configuraci\u00f3n",
+  },
+
+  // Patient settings sheet (notifications + calendar + sign out).
+  patientSettings: {
+    title: "Configuraci\u00f3n",
+    notificationsTitle: "Recordatorios de sesi\u00f3n",
+    notificationsBody: "Te avisaremos antes de cada sesi\u00f3n.",
   },
   patientHome: {
     greeting: "Hola, {name}",
@@ -1876,5 +1884,13 @@ export default {
     therapistLabel: "Tu {profession}",
     orphanTitle: "Tu vinculaci\u00f3n ya no est\u00e1 activa",
     orphanBody: "Tu profesionista podr\u00eda haber desvinculado tu cuenta o eliminado tu registro. Si esto fue un error, p\u00eddele un nuevo enlace de invitaci\u00f3n.",
+    cancelCta: "Cancelar esta cita",
+    cancelDialogTitle: "\u00bfCancelar tu cita del {date}?",
+    cancelDialogBody: "{name} recibir\u00e1 una notificaci\u00f3n al instante.",
+    cancelNotePlaceholder: "Motivo (opcional, lo ver\u00e1 tu profesionista)",
+    cancelConfirmCta: "S\u00ed, cancelar",
+    cancelKeepCta: "Mantener cita",
+    cancelSuccess: "Cita cancelada. Tu profesionista ya fue avisada.",
+    cancelError: "No pudimos cancelar la cita. Intenta de nuevo en un momento.",
   },
 };

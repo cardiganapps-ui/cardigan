@@ -65,7 +65,7 @@ async function handler(req, res) {
 
   // Pull the user's sessions + their preferred timezone in parallel.
   // Cancelled / charged rows are EXCLUDED — when a session is cancelled
-  // the therapist wants it gone from their phone calendar entirely, not
+  // the user wants it gone from their phone calendar entirely, not
   // shown with a strikethrough. Calendar clients (Apple Calendar, Google,
   // Outlook) diff each refresh against the previous fetch and remove
   // events that disappeared from the feed, so once a session moves to
@@ -76,14 +76,38 @@ async function handler(req, res) {
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
+  // Determine if the token's owner is a therapist (sessions match by
+  // sessions.user_id — the original flow) or a patient (sessions
+  // match by patient_id IN (linked patient rows)). Patient feeds
+  // are scoped to their OWN sessions only — they never see the
+  // therapist's other patients' calendars.
+  const { data: linkedPatients } = await svc
+    .from("patients")
+    .select("id")
+    .eq("patient_user_id", row.user_id)
+    .in("status", ["active", "potential"]);
+  const isPatient = (linkedPatients?.length || 0) > 0;
+  const linkedPatientIds = (linkedPatients || []).map((p) => p.id);
+
+  const sessionsBaseSelect = "id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type";
+  const sessionsQuery = isPatient
+    ? svc
+        .from("sessions")
+        .select(sessionsBaseSelect)
+        .in("patient_id", linkedPatientIds)
+        .in("status", ["scheduled", "completed"])
+        .gte("created_at", oneYearAgo.toISOString())
+        .limit(5000)
+    : svc
+        .from("sessions")
+        .select(sessionsBaseSelect)
+        .eq("user_id", row.user_id)
+        .in("status", ["scheduled", "completed"])
+        .gte("created_at", oneYearAgo.toISOString())
+        .limit(5000);
+
   const [sessionsRes, prefsRes] = await Promise.all([
-    svc
-      .from("sessions")
-      .select("id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type")
-      .eq("user_id", row.user_id)
-      .in("status", ["scheduled", "completed"])
-      .gte("created_at", oneYearAgo.toISOString())
-      .limit(5000),
+    sessionsQuery,
     svc
       .from("notification_preferences")
       .select("timezone")
@@ -96,10 +120,39 @@ async function handler(req, res) {
   }
 
   const timezone = prefsRes?.data?.timezone || "America/Mexico_City";
+
+  // Patient feeds get a subject override so SUMMARY reads "Sesión
+  // con {therapist}" instead of "Sesión - {patient}". Resolve the
+  // therapist's display name from auth.users.user_metadata —
+  // service-role client can read this. Falls back to "tu
+  // profesionista" if user_metadata is empty.
+  let subjectOverride = null;
+  if (isPatient) {
+    // The patient might be linked to multiple therapists. v1 UI
+    // only shows one at a time and the iCal feed mirrors that — we
+    // pull the therapist of the FIRST linked patient row. (When
+    // multi-therapist UI ships, we'd switch to per-row VEVENTs
+    // with distinct SUMMARY subjects.)
+    const firstLinked = linkedPatients[0];
+    const { data: linkedRow } = await svc
+      .from("patients")
+      .select("user_id")
+      .eq("id", firstLinked.id)
+      .maybeSingle();
+    if (linkedRow?.user_id) {
+      const { data: therapistRow } = await svc.auth.admin.getUserById(linkedRow.user_id);
+      const meta = therapistRow?.user?.user_metadata || {};
+      subjectOverride = meta.full_name
+        || therapistRow?.user?.email?.split("@")[0]
+        || "tu profesionista";
+    }
+  }
+
   const body = generateICS({
     sessions: sessionsRes.data || [],
     timezone,
-    calendarName: "Cardigan",
+    calendarName: isPatient ? "Cardigan" : "Cardigan",
+    subjectOverride,
   });
 
   // Best-effort touch — failure here doesn't hurt the response.
