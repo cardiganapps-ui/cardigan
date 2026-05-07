@@ -1023,10 +1023,31 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     const EDGE_OWNER_ID = "drawer-edge";
 
     const onTouchStart = (e) => {
-      if (drawerOpenRef.current) return;
       // DRAWER_EDGE_BAND is shared with useSwipe's IN_SCREEN_SWIPE_DEAD_ZONE
       // so the two gesture owners never race at start.
-      if (e.touches[0].clientX < DRAWER_EDGE_BAND) {
+      const inEdgeBand = e.touches[0].clientX < DRAWER_EDGE_BAND;
+      if (drawerOpenRef.current) {
+        // Drawer is already open. We must NOT kick off a second open
+        // animation — but we DO need to claim left-edge horizontal
+        // touches so iOS Safari's native "edge-swipe-back" peel-the-
+        // previous-page gesture doesn't fire under the drawer panel.
+        // Without this, swiping right from the left edge while the
+        // drawer is open shows the previous browser-history page
+        // peeking out behind the drawer (the "weird thing" reported).
+        if (inEdgeBand) {
+          edgeRef.current = {
+            startX: e.touches[0].clientX,
+            startY: e.touches[0].clientY,
+            time: Date.now(),
+            active: false,
+            suppressOnly: true, // block iOS gesture, no app-side animation
+          };
+        } else {
+          edgeRef.current = null;
+        }
+        return;
+      }
+      if (inEdgeBand) {
         edgeRef.current = {
           startX: e.touches[0].clientX,
           startY: e.touches[0].clientY,
@@ -1047,9 +1068,24 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     };
 
     const onTouchMove = (e) => {
-      if (!edgeRef.current || drawerOpenRef.current) return;
+      if (!edgeRef.current) return;
       const dx = e.touches[0].clientX - edgeRef.current.startX;
       const dy = e.touches[0].clientY - edgeRef.current.startY;
+      // suppressOnly path (drawer already open): block iOS's native
+      // edge-swipe-back as soon as motion is clearly horizontal, but
+      // never claim the swipe coordinator and never update drawer
+      // state — the drawer is already open; there's nothing to do.
+      if (edgeRef.current.suppressOnly) {
+        if (Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy)) {
+          if (e.cancelable) e.preventDefault();
+        } else if (Math.abs(dy) > 10) {
+          // Vertical scroll — release the gesture so the drawer
+          // panel's own scroll handler can take over.
+          edgeRef.current = null;
+        }
+        return;
+      }
+      if (drawerOpenRef.current) return;
       // Suppress iOS Safari's native edge-swipe-back AS EARLY AS
       // possible. iOS makes its mind up about back-peek within the
       // first ~5px of horizontal motion — calling preventDefault
