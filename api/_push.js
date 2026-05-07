@@ -130,3 +130,29 @@ export function verifyCronSecret(req) {
   const auth = req.headers.authorization;
   return auth === `Bearer ${secret}`;
 }
+
+// Non-session pushes (referral nudges, lifecycle prompts) MUST respect
+// the user's local hour. 10:00–19:00 is the polite window across MX —
+// avoids buzzing a phone at 6am or during therapy hours later in the
+// evening. Session reminders are intentionally NOT gated by this:
+// they're tied to a session the user themselves scheduled, so the
+// hour-of-day is meaningful.
+//
+// Returns true if `now` (defaulting to current time) is OUTSIDE the
+// 10:00–19:00 local window for the given IANA zone. Defaults to
+// America/Mexico_City when zone is missing/invalid (matches the
+// app-wide default in notification_preferences).
+export function isInQuietHours(tz, now = new Date()) {
+  const zone = tz || "America/Mexico_City";
+  let hour;
+  try {
+    const local = new Date(now.toLocaleString("en-US", { timeZone: zone }));
+    hour = local.getHours();
+  } catch {
+    // Bad TZ value — fall back to MX as if the user had no preference
+    // set. Better than emitting at a random UTC hour.
+    const local = new Date(now.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+    hour = local.getHours();
+  }
+  return hour < 10 || hour >= 19;
+}

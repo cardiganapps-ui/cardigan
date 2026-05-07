@@ -4,6 +4,9 @@ import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
 import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
 import { MilestoneCelebration } from "./components/MilestoneCelebration.jsx";
+import { ActivationCompleteShareSheet } from "./components/ActivationCompleteShareSheet.jsx";
+import { RatingSheet } from "./components/RatingSheet.jsx";
+import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
@@ -481,6 +484,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // to show as dark bands on the safe areas in dark mode).
   const [localHideFab, setHideFab] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  // Activation-complete share sheet — opens when ActivationChecklist
+  // crosses 0→all-done. Reuses the user's referral code so the user
+  // can share with a colleague at the moment they feel best about
+  // having finished setup.
+  const [activationShareOpen, setActivationShareOpen] = useState(false);
+  // In-app rating sheet (day14_v1 / day30_v1). Triggered either by
+  // the day-14 lifecycle email's deep link (#rating hash) or by the
+  // organic shouldShowDay14Prompt eligibility check below.
+  const [ratingSheetOpen, setRatingSheetOpen] = useState(false);
   // The encryption unlock prompt is dismissable for the current
   // session — closing the tab re-prompts on next visit. Until then,
   // encrypted notes still render as "[cifrado]" since noteCrypto.canEncrypt
@@ -725,6 +737,52 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // already been stripped and the code is in sessionStorage —
   // Settings → plan reads from there at checkout time. No further
   // work needed at this layer.
+
+  // ── Rating sheet deep-link (#rating) ──
+  // The day-14 lifecycle email's CTA links here — opening the
+  // rating sheet directly. Strip the hash so a refresh doesn't
+  // re-open it. Skipped in demo + read-only flows.
+  useEffect(() => {
+    if (demo || readOnly) return;
+    if (!user) return;
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#rating") return;
+    history.replaceState({}, "", window.location.pathname + window.location.search);
+    setRatingSheetOpen(true);
+  // run only on mount; the early returns gate non-eligible states.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Organic day-14 trigger: when the user has hit the eligibility
+  // bar (≥14d signup, ≥1 session OR ≥2 patients), open the sheet
+  // automatically the first time the user lands on Home in that
+  // window. Dedupe via the same dismiss-key the sheet writes when
+  // closed without submission.
+  useEffect(() => {
+    if (demo || readOnly) return;
+    if (!user) return;
+    if (ratingSheetOpen) return;
+    const promptKind = "day14_v1";
+    let hasDismissed = false;
+    try {
+      hasDismissed = localStorage.getItem(`cardigan.rating.${promptKind}.dismissed.${user.id}`) === "1";
+    } catch { /* ignore */ }
+    // Compute days since signup from auth.users.created_at — same
+    // signal the cron uses on the email side. NaN-safe.
+    const created = user?.created_at ? new Date(user.created_at).getTime() : NaN;
+    const daysSinceSignup = Number.isFinite(created)
+      ? Math.floor((Date.now() - created) / 86_400_000)
+      : 0;
+    const eligible = shouldShowDay14Prompt({
+      accessState: subscription.accessState,
+      daysSinceSignup,
+      sessionsCount: (upcomingSessions || []).length,
+      patientsCount: (patients || []).length,
+      hasSubmitted: false, // server-side dedupe via PK; sheet handles re-submit gracefully
+      hasDismissed,
+    });
+    if (eligible) setRatingSheetOpen(true);
+  }, [demo, readOnly, user, subscription.accessState, upcomingSessions, patients, ratingSheetOpen]);
 
   const tutorial = useTutorial({ user, demo, readOnly });
   const tutorialHidesFab = tutorial?.isActive
@@ -1127,6 +1185,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     pendingFabAction,
     requestFabAction: setPendingFabAction,
     consumeFabAction: () => setPendingFabAction(null),
+    openActivationShareSheet: () => setActivationShareOpen(true),
     setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
     openExpediente: (patient) => {
@@ -1374,6 +1433,29 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         <MilestoneCelebration
           userId={user.id}
           accessState={subscription.accessState}
+        />
+      )}
+      {/* Opens after the user crosses all 4 activation steps (the
+          ActivationChecklist fires this via openActivationShareSheet
+          on its own bonus-grant path). The sheet is lazy in the
+          sense that the state stays false until that single
+          transition — no rendering cost on the steady state. */}
+      {!demo && !readOnly && user && (
+        <ActivationCompleteShareSheet
+          open={activationShareOpen}
+          onClose={() => setActivationShareOpen(false)}
+          code={subscription?.referralInfo?.code || null}
+        />
+      )}
+      {/* In-app rating sheet — driven either by the #rating hash
+          (email deep-link) or the organic day-14 eligibility check
+          above. Hidden in demo + read-only modes. */}
+      {!demo && !readOnly && user && (
+        <RatingSheet
+          open={ratingSheetOpen}
+          onClose={() => setRatingSheetOpen(false)}
+          promptKind="day14_v1"
+          userId={user.id}
         />
       )}
       <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}

@@ -35,7 +35,13 @@
                                 "pausado" banner. Use during an
                                 Anthropic outage, a runaway-cost
                                 incident, or to pull the feature
-                                instantly without a redeploy. */
+                                instantly without a redeploy.
+     lifecycle_extra_paused   — when true, the engagement-program
+                                cohorts (referral_nudge_*, rating_*)
+                                are skipped. Existing trial cohorts
+                                (trial_day_*, trial_winback_*) keep
+                                running. Lets us silence the new
+                                program independently in an incident. */
 
 import { get as edgeGet } from "@vercel/edge-config";
 
@@ -45,6 +51,7 @@ const DEFAULTS = {
   signups_paused: false,
   whatsapp_paused: false,
   cardi_paused: false,
+  lifecycle_extra_paused: false,
 };
 
 export async function getFlag(name) {

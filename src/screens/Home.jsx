@@ -10,6 +10,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { NotificationsPrompt } from "../components/NotificationsPrompt";
+import { CalendarLinkPromptCard } from "../components/CalendarLinkPromptCard";
 import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
@@ -283,7 +284,16 @@ export function Home({ setScreen, userName }) {
         </div>
       )}
 
-      <NotificationsPrompt />
+      <NotificationsPrompt variant="initial" />
+      {/* Second-chance nudge: once the user has added their first
+          patient, the highest-intent moment to ask for push perm.
+          The component itself is gated on its own dismiss key + the
+          existing eligibility checks (already enabled, permission
+          denied, etc.), so this mount is a no-op when the user has
+          already opted in. */}
+      {(patients?.length || 0) >= 1 && (
+        <NotificationsPrompt variant="post_patient" />
+      )}
 
       {/* Activation checklist — only visible during the trial, hides
           itself once all four steps complete. Self-derives state from
@@ -296,6 +306,14 @@ export function Home({ setScreen, userName }) {
             onNavigate={setScreen}
           />
         </div>
+      )}
+
+      {/* Calendar feed discovery card — surfaces only after the user
+          has at least one patient or session, and only when they
+          haven't already linked a calendar. The card itself handles
+          its own dismiss + read-only gates. */}
+      {!readOnly && ((patients?.length || 0) >= 1 || (upcomingSessions?.length || 0) >= 1) && (
+        <CalendarLinkPromptCard />
       )}
 
       <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>

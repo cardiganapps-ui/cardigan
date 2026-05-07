@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { IconBell, IconX } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
+import { track } from "../lib/analytics";
 
 /* ── First-run notifications prompt ──
    Gentle card that appears on Home when a user is eligible for push
@@ -16,20 +17,24 @@ import { useT } from "../i18n/index";
    when we diagnosed — burying the control in Settings means most
    users never find it. */
 
-const DISMISS_KEY = "cardigan.notifications.promptDismissed";
+const DISMISS_KEY_INITIAL      = "cardigan.notifications.promptDismissed";
+const DISMISS_KEY_POST_PATIENT = "cardigan.notifications.promptDismissed.postPatient";
 
-function isDismissed() {
-  try { return localStorage.getItem(DISMISS_KEY) === "1"; }
+function dismissKey(variant) {
+  return variant === "post_patient" ? DISMISS_KEY_POST_PATIENT : DISMISS_KEY_INITIAL;
+}
+function isDismissed(variant) {
+  try { return localStorage.getItem(dismissKey(variant)) === "1"; }
   catch { return false; }
 }
-function markDismissed() {
-  try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ }
+function markDismissed(variant) {
+  try { localStorage.setItem(dismissKey(variant), "1"); } catch { /* ignore */ }
 }
 
-export function NotificationsPrompt() {
+export function NotificationsPrompt({ variant = "initial" } = {}) {
   const { t } = useT();
-  const { notifications, showToast } = useCardigan();
-  const [hidden, setHidden] = useState(() => isDismissed());
+  const { notifications, showToast, readOnly } = useCardigan();
+  const [hidden, setHidden] = useState(() => isDismissed(variant));
   const [busy, setBusy] = useState(false);
 
   // Keep the banner hidden once the user enables push, regardless of
@@ -43,13 +48,33 @@ export function NotificationsPrompt() {
     if (enabled) setHidden(true);
   }
 
-  if (!notifications) return null;
-  if (hidden) return null;
-  if (notifications.loading) return null;
-  if (!notifications.supported) return null;
-  if (notifications.needsInstall) return null;          // iOS Safari tab
-  if (notifications.enabled) return null;
-  if (notifications.permission === "denied") return null; // can't recover via UI
+  // Trial-expired (read-only) users can't act on reminders without a
+  // paid sub — hiding the prompt avoids inviting them into a flow
+  // that ends in a paywall pop-up.
+  const visible =
+       !readOnly
+    && !!notifications
+    && !hidden
+    && !notifications.loading
+    && !!notifications.supported
+    && !notifications.needsInstall
+    && !notifications.enabled
+    && notifications.permission !== "denied";
+
+  // Fire `notification_prompt_shown` once per (variant, mount transition).
+  // The ref guard prevents repeated fires during re-renders while the
+  // card stays mounted.
+  const trackedRef = useRef(false);
+  useEffect(() => {
+    if (visible && !trackedRef.current) {
+      trackedRef.current = true;
+      track("notification_prompt_shown", { variant });
+    } else if (!visible) {
+      trackedRef.current = false;
+    }
+  }, [visible, variant]);
+
+  if (!visible) return null;
 
   const handleEnable = async () => {
     if (busy) return;
@@ -58,13 +83,13 @@ export function NotificationsPrompt() {
     setBusy(false);
     if (res?.ok) {
       showToast(t("notifications.toastEnabled"), "success");
-      markDismissed();
+      markDismissed(variant);
       setHidden(true);
     } else if (res?.code === "permission-denied") {
       showToast(t("notifications.toastPermissionDenied"), "warning");
       // Hide the banner — user actively chose "Block", no point
       // offering the prompt again on every Home visit.
-      markDismissed();
+      markDismissed(variant);
       setHidden(true);
     } else {
       showToast(t("notifications.toastSubscribeFailed"), "error");
@@ -73,14 +98,21 @@ export function NotificationsPrompt() {
   };
 
   const handleDismiss = () => {
-    markDismissed();
+    markDismissed(variant);
     setHidden(true);
   };
+
+  const promptTitle = variant === "post_patient"
+    ? t("notifications.promptTitlePostPatient")
+    : t("notifications.promptTitle");
+  const promptBody = variant === "post_patient"
+    ? t("notifications.promptBodyPostPatient")
+    : t("notifications.promptBody");
 
   return (
     <div
       role="region"
-      aria-label={t("notifications.promptTitle")}
+      aria-label={promptTitle}
       style={{
         margin: "12px 16px 0",
         padding: "14px 14px 14px 14px",
@@ -104,10 +136,10 @@ export function NotificationsPrompt() {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "var(--font-d)", fontWeight: 800, fontSize: "var(--text-md)", color: "var(--charcoal)" }}>
-          {t("notifications.promptTitle")}
+          {promptTitle}
         </div>
         <div style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", marginTop: 3, lineHeight: 1.35 }}>
-          {t("notifications.promptBody")}
+          {promptBody}
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <button

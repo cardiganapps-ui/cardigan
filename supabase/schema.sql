@@ -391,3 +391,28 @@ create table if not exists admin_audit_log (
 -- Revenue overview RPC (migration 046). Single-snapshot JSON for the
 -- /admin/revenue page. is_admin() gated. Mirrors useSubscription.js
 -- isPro semantics for the active-sub count.
+
+-- User ratings (migration 048). 1-5 star + optional comment captured
+-- via the in-app sheet at structured prompts (day_14_v1 today;
+-- day_30_v1 fallback). prompt_kind is free-text so new prompt
+-- occasions don't require migrations.
+create table if not exists user_ratings (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  prompt_kind text not null,
+  stars smallint not null check (stars between 1 and 5),
+  comment text,
+  created_at timestamptz not null default now(),
+  primary key (user_id, prompt_kind)
+);
+create index if not exists idx_user_ratings_kind_created
+  on user_ratings(prompt_kind, created_at desc);
+alter table user_ratings enable row level security;
+create policy "Users insert own ratings"
+  on user_ratings for insert
+  with check (auth.uid() = user_id);
+create policy "Users read own ratings"
+  on user_ratings for select
+  using (auth.uid() = user_id);
+create policy "Admin reads all ratings"
+  on user_ratings for select
+  using (is_admin());

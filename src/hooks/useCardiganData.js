@@ -391,6 +391,20 @@ export async function fetchRecentInvoices({ limit = 50 } = {}) {
   return data || [];
 }
 
+/* Admin-only read of a user's rating history. RLS lets is_admin()
+   SELECT all rows from user_ratings, so this is a direct query —
+   no /api hop needed. Returns the most recent first. */
+export async function fetchUserRatings(uid, { limit = 20 } = {}) {
+  const { data, error } = await supabase
+    .from("user_ratings")
+    .select("prompt_kind, stars, comment, created_at")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
 /* Client-initiated audit log entry. Used by "Ver como" since the
    impersonation flow is a state flip in the React app, not a server
    round-trip — without this the audit log would have a gap on every

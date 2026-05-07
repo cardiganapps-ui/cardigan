@@ -4,6 +4,7 @@ import {
   verifyCronSecret,
   formatShortDate,
   formatShortDateLegacy,
+  isInQuietHours,
   TERMINAL_PUSH_STATUSES,
 } from "./_push.js";
 import { withSentry } from "./_sentry.js";
@@ -11,16 +12,45 @@ import { getFlag } from "./_flags.js";
 import { sendTemplate, toE164MX } from "./_whatsapp.js";
 import { sendLifecycleEmail } from "./_lifecycle.js";
 
-// Lifecycle email cohorts. Each is "exactly N days after sign-up,
-// with a one-day grace window so a cron tick that misses the window
-// still catches the user the next day." The cron writes a dedupe
-// row per (user, kind), so a user whose tick lands on day 4 still
-// only gets the day-3 email once.
+// Lifecycle email cohorts. Each is "exactly N days after the anchor
+// event, with a one-day grace window so a cron tick that misses the
+// window still catches the user the next day." The cron writes a
+// dedupe row per (user, kind), so a user whose tick lands on day 4
+// still only gets the day-3 email once.
+//
+// `anchor` selects the timestamp the cohort measures from:
+//   "signup" — auth.users.created_at (default — original behaviour)
+//   "paid"   — MIN(stripe_invoices.paid_at) for that user. Skipped
+//              for users without a paid invoice yet, so trial users
+//              never receive paid-anchored cohorts.
 const LIFECYCLE_COHORTS = [
-  { kind: "trial_day_3",          daysSinceSignup: 3,  windowDays: 2 },
-  { kind: "trial_day_25",         daysSinceSignup: 25, windowDays: 2 },
-  { kind: "trial_winback_day_37", daysSinceSignup: 37, windowDays: 2 },
+  { kind: "trial_day_3",          anchor: "signup", daysSince: 3,   windowDays: 2 },
+  { kind: "trial_day_25",         anchor: "signup", daysSince: 25,  windowDays: 2 },
+  { kind: "trial_winback_day_37", anchor: "signup", daysSince: 37,  windowDays: 2 },
+  { kind: "rating_request_day14", anchor: "signup", daysSince: 14,  windowDays: 2 },
+  { kind: "referral_nudge_v1",    anchor: "paid",   daysSince: 14,  windowDays: 2 },
+  { kind: "referral_nudge_v2",    anchor: "paid",   daysSince: 59,  windowDays: 2 },
+  { kind: "referral_nudge_v3",    anchor: "paid",   daysSince: 104, windowDays: 2 },
 ];
+
+// Push-only cohorts that fire 2 days BEFORE each referral email so the
+// pair lands as a "lighter touch first, follow-up email" sequence.
+// Dedupe re-uses the lifecycle_emails table (the `kind` column is
+// free-text per migration 033), so a single source of truth governs
+// "did we already nudge this user via this channel at this stage".
+const REFERRAL_PUSH_COHORTS = [
+  { kind: "referral_push_v1", daysSince: 12,  windowDays: 2 },
+  { kind: "referral_push_v2", daysSince: 57,  windowDays: 2 },
+  { kind: "referral_push_v3", daysSince: 102, windowDays: 2 },
+];
+
+// Cohort kinds that are part of the "engagement program" — silenced
+// by the lifecycle_extra_paused Edge Config flag without affecting the
+// trial-stage cohorts.
+const EXTRA_PROGRAM_PREFIXES = ["referral_nudge_", "referral_push_", "rating_request_"];
+function isExtraProgram(kind) {
+  return EXTRA_PROGRAM_PREFIXES.some((p) => kind.startsWith(p));
+}
 
 const WHATSAPP_TEMPLATE = "cardigan_session_reminder";
 const WHATSAPP_LANGUAGE = "es_MX";
@@ -344,6 +374,11 @@ async function handler(req, res) {
     } catch (err) {
       console.warn("send-session-reminders: lifecycle emails skipped:", err.message);
     }
+    try {
+      await maybeRunReferralPushes(supabase);
+    } catch (err) {
+      console.warn("send-session-reminders: referral pushes skipped:", err.message);
+    }
 
     logRun({
       usersScanned: prefs.length,
@@ -452,47 +487,28 @@ async function maybeRunLifecycleEmails(supabase) {
     .maybeSingle();
   if (!gate) return;
 
-  // For each cohort, find users whose created_at falls in the window
-  // [now - (daysSinceSignup + windowDays)d, now - daysSinceSignup·d]
-  // who don't yet have a lifecycle_emails row for this kind.
+  // Edge Config kill switch for the new engagement-program cohorts.
+  // When true, only the original trial cohorts (signup-anchored,
+  // pre-existing kinds) run — referral + rating program goes silent.
+  const extraPaused = await getFlag("lifecycle_extra_paused");
+
   let totalSent = 0;
   for (const cohort of LIFECYCLE_COHORTS) {
-    const upper = new Date(Date.now() - cohort.daysSinceSignup * 86_400_000).toISOString();
-    const lower = new Date(Date.now() - (cohort.daysSinceSignup + cohort.windowDays) * 86_400_000).toISOString();
+    if (extraPaused && isExtraProgram(cohort.kind)) continue;
 
-    // Pull eligible users in batches. supabase.auth.admin.listUsers
-    // returns the auth.users page; we filter by created_at after the
-    // fact since list params don't accept a range. 100/page, max two
-    // pages — past 200 we've drifted from the cohort and the cron is
-    // worth optimizing.
-    let page = 1;
-    const eligible = [];
-    while (page <= 2) {
-      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
-      if (error) { console.warn("listUsers:", error.message); break; }
-      for (const u of (data?.users || [])) {
-        if (!u.created_at) continue;
-        if (u.created_at >= upper) continue;
-        if (u.created_at < lower) continue;
-        eligible.push(u);
-      }
-      if (!data?.users?.length || data.users.length < 100) break;
-      page += 1;
-    }
+    const eligible = await loadEligibleForCohort(supabase, cohort);
     if (eligible.length === 0) continue;
 
-    // Drop users with active subs OR comp. They've already converted
-    // (or been gifted access) and don't need the trial-stage email.
-    // The winback cohort wants the OPPOSITE: users WITHOUT an active
-    // sub get the email; everyone else is skipped.
-    const userIds = eligible.map((u) => u.id);
+    // Hydrate sub state in one call so the per-user filter below is
+    // fast even for the bigger paid-anchored cohorts.
+    const userIds = eligible.map((e) => e.user.id);
     const { data: subs } = await supabase
       .from("user_subscriptions")
-      .select("user_id, status, comp_granted, default_payment_method")
+      .select("user_id, status, comp_granted, default_payment_method, referral_rewards_count")
       .in("user_id", userIds);
     const subByUser = new Map((subs || []).map((s) => [s.user_id, s]));
 
-    for (const u of eligible) {
+    for (const { user: u } of eligible) {
       const s = subByUser.get(u.id);
       const hasActive = s && (
         s.comp_granted
@@ -500,12 +516,29 @@ async function maybeRunLifecycleEmails(supabase) {
         || s.status === "past_due"
         || (s.status === "trialing" && !!s.default_payment_method)
       );
-      // Trial nudges (day-3, day-25): skip already-active users.
-      // Winback (day-37): also skip already-active — winback is for
-      // people who LET the trial lapse without converting. (A user
-      // who subscribed late still gets the day-25 if their timer
-      // matches but is in the active set; we skip them here.)
-      if (hasActive) continue;
+
+      if (cohort.anchor === "paid") {
+        // Paid-anchored cohorts (referral nudges) require an active
+        // sub by definition — `loadEligibleForCohort` already filtered
+        // on stripe_invoices, but a user who lapsed since their first
+        // payment would still match. Belt-and-suspenders.
+        if (!hasActive) continue;
+        if (s?.comp_granted) continue;
+        // Cap referral nudges at 3 lifetime sends — power-advocates
+        // don't need yet another reminder.
+        if ((s?.referral_rewards_count || 0) >= 3) continue;
+      } else {
+        // signup-anchored:
+        // Trial nudges (day-3, day-25): skip already-active users.
+        // Winback (day-37): also skip already-active — winback is for
+        // people who LET the trial lapse without converting.
+        // Rating (day-14): we WANT both trial and active users —
+        // active users are the most-credible raters.
+        if (cohort.kind !== "rating_request_day14" && hasActive) continue;
+        // Rating: don't include comp users (admins) — they're not the
+        // target audience for a 1-5 user-feedback prompt.
+        if (cohort.kind === "rating_request_day14" && s?.comp_granted) continue;
+      }
 
       const firstName = (u.user_metadata?.full_name || u.email?.split("@")[0] || "Hola").split(" ")[0];
       const result = await sendLifecycleEmail(supabase, {
@@ -520,6 +553,212 @@ async function maybeRunLifecycleEmails(supabase) {
 
   console.log(JSON.stringify({
     evt: "cron.lifecycle_emails",
+    ts: new Date().toISOString(),
+    sent: totalSent,
+  }));
+}
+
+/* Resolve users eligible for a cohort by anchor type. Returns
+   [{ user, anchorAt }] so callers can inspect both the auth row
+   and the timestamp the daysSince math was applied to. */
+async function loadEligibleForCohort(supabase, cohort) {
+  const upper = new Date(Date.now() - cohort.daysSince * 86_400_000).toISOString();
+  const lower = new Date(Date.now() - (cohort.daysSince + cohort.windowDays) * 86_400_000).toISOString();
+
+  if (cohort.anchor === "paid") {
+    // First-paid timestamp comes from stripe_invoices. We aggregate
+    // client-side to keep the SQL boring (no GROUP BY through PostgREST).
+    // Rows are ordered cheap by paid_at and we take the earliest per
+    // user. Bound the read to recent windows so the table doesn't grow
+    // into the query — a year of room past the latest cohort.
+    const oldest = new Date(Date.now() - 366 * 86_400_000).toISOString();
+    const { data: invoices, error } = await supabase
+      .from("stripe_invoices")
+      .select("user_id, paid_at")
+      .gte("paid_at", oldest)
+      .order("paid_at", { ascending: true });
+    if (error) {
+      console.warn("loadEligibleForCohort(paid):", error.message);
+      return [];
+    }
+    const firstPaidByUser = new Map();
+    for (const inv of invoices || []) {
+      if (!firstPaidByUser.has(inv.user_id)) {
+        firstPaidByUser.set(inv.user_id, inv.paid_at);
+      }
+    }
+    const matchedUserIds = [];
+    for (const [uid, paidAt] of firstPaidByUser) {
+      if (paidAt >= upper) continue;
+      if (paidAt < lower) continue;
+      matchedUserIds.push({ uid, paidAt });
+    }
+    if (matchedUserIds.length === 0) return [];
+
+    // Resolve auth.users for the matched ids — paid cohorts can be
+    // small enough to fetch by listing then filtering. The 200-row
+    // ceiling matches the signup-anchored path; if we ever exceed it,
+    // switch to a focused getUserById loop.
+    const usersById = await listUsersIndexed(supabase);
+    const out = [];
+    for (const { uid, paidAt } of matchedUserIds) {
+      const u = usersById.get(uid);
+      if (!u) continue;
+      out.push({ user: u, anchorAt: paidAt });
+    }
+    return out;
+  }
+
+  // signup anchor: list auth.users and filter by created_at window.
+  const usersById = await listUsersIndexed(supabase);
+  const out = [];
+  for (const u of usersById.values()) {
+    if (!u.created_at) continue;
+    if (u.created_at >= upper) continue;
+    if (u.created_at < lower) continue;
+    out.push({ user: u, anchorAt: u.created_at });
+  }
+  return out;
+}
+
+/* Cache the auth.users listing for the duration of one cron tick.
+   The cron processes multiple cohorts and we don't want to hammer
+   listUsers once per cohort. 200 rows is the working cap — past that
+   the cron's worth optimizing into a paged scan. */
+let _usersCache = null;
+let _usersCacheAt = 0;
+async function listUsersIndexed(supabase) {
+  // 60s window = a single cron tick. Past that we re-query so a fresh
+  // signup mid-deploy still surfaces in the next tick.
+  if (_usersCache && Date.now() - _usersCacheAt < 60_000) return _usersCache;
+  const out = new Map();
+  let page = 1;
+  while (page <= 2) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
+    if (error) { console.warn("listUsers:", error.message); break; }
+    for (const u of (data?.users || [])) out.set(u.id, u);
+    if (!data?.users?.length || data.users.length < 100) break;
+    page += 1;
+  }
+  _usersCache = out;
+  _usersCacheAt = Date.now();
+  return out;
+}
+
+/* Push the "share Cardigan with a colleague" reminder. Mirror of the
+   email cohort logic but on the push channel — fires 2 days before
+   each email so the pair lands as a light-then-formal sequence.
+   Reuses lifecycle_emails for dedupe (kind is free-text). */
+async function maybeRunReferralPushes(supabase) {
+  if (await getFlag("lifecycle_extra_paused")) return;
+
+  // Reuse the same once-per-day gate as the email path. The job name
+  // is distinct so the email and push paths can't starve each other
+  // on a tick where one wins the race.
+  await supabase.from("cron_state")
+    .insert({ job: "referral_pushes", last_run_at: null })
+    .select("job")
+    .maybeSingle()
+    .then(() => null, () => null);
+
+  const gateCutoff = new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString();
+  const { data: gate } = await supabase
+    .from("cron_state")
+    .update({ last_run_at: new Date().toISOString() })
+    .eq("job", "referral_pushes")
+    .or("last_run_at.is.null,last_run_at.lt." + gateCutoff)
+    .select("job")
+    .maybeSingle();
+  if (!gate) return;
+
+  let totalSent = 0;
+  for (const cohort of REFERRAL_PUSH_COHORTS) {
+    const eligible = await loadEligibleForCohort(supabase, { ...cohort, anchor: "paid" });
+    if (eligible.length === 0) continue;
+
+    const userIds = eligible.map((e) => e.user.id);
+    const { data: subs } = await supabase
+      .from("user_subscriptions")
+      .select("user_id, status, comp_granted, default_payment_method, referral_rewards_count")
+      .in("user_id", userIds);
+    const subByUser = new Map((subs || []).map((s) => [s.user_id, s]));
+
+    // Pull tz preferences in one call so the quiet-hours filter doesn't
+    // round-trip per user. Users without prefs default to MX.
+    const { data: prefs } = await supabase
+      .from("notification_preferences")
+      .select("user_id, timezone")
+      .in("user_id", userIds);
+    const tzByUser = new Map((prefs || []).map((p) => [p.user_id, p.timezone]));
+
+    for (const { user: u } of eligible) {
+      const s = subByUser.get(u.id);
+      const hasActive = s && (
+        s.comp_granted
+        || s.status === "active"
+        || s.status === "past_due"
+        || (s.status === "trialing" && !!s.default_payment_method)
+      );
+      if (!hasActive) continue;
+      if (s?.comp_granted) continue;
+      if ((s?.referral_rewards_count || 0) >= 3) continue;
+
+      // Quiet hours: defer this user to a future tick when they're
+      // back in the 10:00–19:00 local window. The dedupe slot stays
+      // unclaimed; the next eligible tick picks them up.
+      if (isInQuietHours(tzByUser.get(u.id))) continue;
+
+      // Claim the dedupe slot before sending — same pattern as
+      // sendLifecycleEmail. A 23505 unique-violation means we already
+      // pushed this user at this stage; skip.
+      const { error: claimError } = await supabase
+        .from("lifecycle_emails")
+        .insert({ user_id: u.id, kind: cohort.kind });
+      if (claimError) {
+        if (claimError.code === "23505") continue;
+        console.warn("referral_push claim failed:", claimError.message);
+        continue;
+      }
+
+      // Pull push subscriptions for this user. Empty list = no rollback;
+      // we still keep the dedupe row so we don't try again next tick
+      // (consistency with how the email path treats unreachable users).
+      const { data: pushSubs } = await supabase
+        .from("push_subscriptions")
+        .select("endpoint, p256dh, auth")
+        .eq("user_id", u.id);
+      if (!pushSubs || pushSubs.length === 0) continue;
+
+      const payload = {
+        title: "Recomienda Cardigan",
+        body: "Comparte tu código con una colega y ambos ganan un mes gratis.",
+        url: "/#settings/referral",
+        tag: cohort.kind,
+        actions: [{ action: "open", title: "Compartir" }],
+      };
+
+      let sent = false;
+      for (const sub of pushSubs) {
+        try {
+          await sendPush(sub, payload);
+          sent = true;
+        } catch (err) {
+          if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
+            await supabase
+              .from("push_subscriptions")
+              .delete()
+              .eq("endpoint", sub.endpoint);
+          } else {
+            console.warn("referral_push send error:", err.message);
+          }
+        }
+      }
+      if (sent) totalSent += 1;
+    }
+  }
+
+  console.log(JSON.stringify({
+    evt: "cron.referral_pushes",
     ts: new Date().toISOString(),
     sent: totalSent,
   }));

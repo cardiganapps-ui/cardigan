@@ -52,6 +52,7 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
   // a refresh + re-render here can't stack the bonus. Fired at most
   // once per browser via a localStorage flag too — belt and braces.
   const grantedRef = useRef(false);
+  const { openActivationShareSheet } = ctx;
   useEffect(() => {
     if (!userId) return;
     if (accessState !== "trial") return;
@@ -70,9 +71,20 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
         haptic.success();
         showSuccess?.(t("activation.bonusToast"));
         analyticsTrack("activation_complete", { bonus_days: res.totalDays });
+        // Pre-fetch the referral code so the sheet's share buttons
+        // are ready when it opens. The hook lazily fetches on first
+        // call; a no-op if it's already cached.
+        if (!subscription?.referralInfo) {
+          subscription?.fetchReferralInfo?.();
+        }
+        // Open the activation-share sheet a beat after the toast so
+        // the bonus celebration registers first. The setTimeout also
+        // sidesteps a same-tick double-paint where the sheet would
+        // animate in the same frame as the toast and visually merge.
+        setTimeout(() => openActivationShareSheet?.(), 600);
       }
     })();
-  }, [userId, accessState, allDone, subscription, showSuccess, t]);
+  }, [userId, accessState, allDone, subscription, showSuccess, t, openActivationShareSheet]);
 
   // Per-step transitions — track once per (user, step) via
   // localStorage so a re-render doesn't re-fire. Events feed the

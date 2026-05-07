@@ -890,8 +890,54 @@ export default {
     // for that device.
     promptTitle: "No pierdas ninguna {session.s}",
     promptBody: "Activa los recordatorios para recibir un aviso unos minutos antes de cada {session.s}.",
+    // Second-chance prompt that appears once the user has added their
+    // first {client.s} — highest-intent moment to ask for permission.
+    // Shown only if the initial card was dismissed without enabling.
+    promptTitlePostPatient: "Activa los recordatorios",
+    promptBodyPostPatient: "Acabas de agregar a tu primer {client.s}. Activa los recordatorios para que Cardigan te avise antes de cada {session.s}.",
     promptEnable: "Activar",
     promptDismiss: "Ahora no",
+  },
+
+  // ── Calendar prompt (Home discovery card for the iCal feed) ──
+  calendarPrompt: {
+    title: "Sincroniza con tu calendario",
+    body: "Verás tus {session.p} de Cardigan en Apple Calendar o Google Calendar — un toque y listo.",
+    cta: "Activar",
+    dismiss: "Ahora no",
+    titleSubscribe: "Listo. Suscríbete con un toque",
+    bodySubscribe: "Elige tu calendario para añadir el enlace. Solo se mostrará esta vez.",
+  },
+
+  // ── Activation-complete share sheet ──
+  // Shown the moment the user crosses all 4 activation milestones.
+  // High-conversion moment for asking for a referral.
+  activationShare: {
+    title: "Tu cuenta está lista",
+    celebration: "Configuración completa",
+    bonus: "Ganaste 5 días extra de prueba.",
+    body: "Si Cardigan te está ayudando, comparte con una colega — gana un mes gratis cuando se suscriba.",
+    dismiss: "Más tarde",
+    codeUnavailable: "Tu código de referidos estará disponible en Ajustes → Suscripción.",
+  },
+
+  // ── Rating sheet (in-app NPS) ──
+  rating: {
+    title: "Califica Cardigan",
+    body: "Llevas un par de semanas con Cardigan. ¿Cómo te ha ido?",
+    detractorPrompt: "Lamentamos que no haya cumplido tus expectativas. ¿Qué nos faltó?",
+    starsLabel: "Calificación de 1 a 5 estrellas",
+    starAria: "{n} estrellas",
+    commentPlaceholder: "Comentarios (opcional)",
+    commentPlaceholderRequired: "Cuéntanos qué te gustaría que mejoráramos…",
+    commentRequired: "Cuéntanos qué te faltó para enviar tu calificación.",
+    submit: "Enviar",
+    dismiss: "Ahora no",
+    sendError: "No pudimos guardar tu calificación. Intenta de nuevo en un momento.",
+    thanksTitle: "Gracias",
+    thanksBody: "Tu opinión nos ayuda a decidir qué construir después.",
+    thanksPromoter: "Si crees que otra colega podría disfrutarlo, comparte tu código — gana un mes gratis por cada referido.",
+    shareReferralCta: "Compartir mi código",
   },
 
   // ── Expediente ──

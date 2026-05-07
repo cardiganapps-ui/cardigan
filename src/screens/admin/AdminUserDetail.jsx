@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { fetchUserDetail, fetchAuditLog, logAdminViewAs } from "../../hooks/useCardiganData";
+import { fetchUserDetail, fetchAuditLog, fetchUserRatings, logAdminViewAs } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
 import { UserActionsMenu } from "./parts/UserActionsMenu";
 import { TierBadge } from "./parts/TierBadge";
@@ -86,7 +86,8 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
   const fetcher = useCallback(() => Promise.all([
     fetchUserDetail(uid),
     fetchAuditLog({ targetUserId: uid, limit: 100 }).catch(() => []),
-  ]).then(([detail, log]) => ({ detail, log })), [uid]);
+    fetchUserRatings(uid, { limit: 20 }).catch(() => []),
+  ]).then(([detail, log, ratings]) => ({ detail, log, ratings })), [uid]);
   const { data: bundle, loading, error, refetch } = useAdminQuery(`user:${uid}`, fetcher);
   const load = refetch;
   const profile = bundle?.detail?.profile || null;
@@ -152,6 +153,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
 
   const { invoices, usage, devices, privacy } = bundle.detail;
   const audit = bundle.log;
+  const ratings = bundle.ratings || [];
 
   const handleViewAs = async (id) => {
     await logAdminViewAs(id);
@@ -247,22 +249,27 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
         </div>
         <div style={{ padding: "16px 20px" }}>
           {tab === "profile" && (
-            <DefList rows={[
-              ["User ID", profile.user_id],
-              ["Email", profile.email],
-              ["Nombre", profile.full_name || "—"],
-              ["Profesión", profile.profession ? t(`onboarding.professions.${profile.profession}.label`) : "—"],
-              ["Origen de alta", profile.signup_source || "—"],
-              profile.signup_source === "other" ? ["Origen detalle", profile.signup_source_detail || "—"] : null,
-              ["Origen registrado", fmtDateTime(profile.signup_source_recorded_at)],
-              ["Bloqueado hasta", profile.banned_until ? fmtDateTime(profile.banned_until) : "no"],
-              ["Último acceso", fmtDateTime(profile.last_sign_in_at)],
-              ["Cuenta creada", fmtDateTime(profile.created_at)],
-              ["Cifrado de notas", privacy.encryption_enabled ? `activo (kid: ${privacy.encryption_recovery_kid || "—"})` : "no"],
-              ["Aviso de privacidad", privacy.latest_consent_version
-                ? `${privacy.latest_consent_version} · ${fmtDateTime(privacy.latest_consent_at)}`
-                : "—"],
-            ].filter(Boolean)} />
+            <>
+              <DefList rows={[
+                ["User ID", profile.user_id],
+                ["Email", profile.email],
+                ["Nombre", profile.full_name || "—"],
+                ["Profesión", profile.profession ? t(`onboarding.professions.${profile.profession}.label`) : "—"],
+                ["Origen de alta", profile.signup_source || "—"],
+                profile.signup_source === "other" ? ["Origen detalle", profile.signup_source_detail || "—"] : null,
+                ["Origen registrado", fmtDateTime(profile.signup_source_recorded_at)],
+                ["Bloqueado hasta", profile.banned_until ? fmtDateTime(profile.banned_until) : "no"],
+                ["Último acceso", fmtDateTime(profile.last_sign_in_at)],
+                ["Cuenta creada", fmtDateTime(profile.created_at)],
+                ["Cifrado de notas", privacy.encryption_enabled ? `activo (kid: ${privacy.encryption_recovery_kid || "—"})` : "no"],
+                ["Aviso de privacidad", privacy.latest_consent_version
+                  ? `${privacy.latest_consent_version} · ${fmtDateTime(privacy.latest_consent_at)}`
+                  : "—"],
+              ].filter(Boolean)} />
+              {ratings.length > 0 && (
+                <RatingsBlock ratings={ratings} />
+              )}
+            </>
           )}
 
           {tab === "subscription" && (
@@ -452,5 +459,49 @@ function DefList({ rows }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/* User-rating history block. Rendered inline at the bottom of the
+   Profile tab when at least one row exists. Each row: prompt kind,
+   N stars (rendered as ★ characters for compactness — admin tool,
+   no need for the full SVG icon), optional comment, timestamp. */
+function RatingsBlock({ ratings }) {
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--charcoal-md)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+        Calificaciones
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {ratings.map((r) => (
+          <div
+            key={`${r.prompt_kind}-${r.created_at}`}
+            style={{
+              padding: "10px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius)",
+              background: "var(--white)",
+            }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+              <span style={{ color: "var(--amber, #E8B86C)", letterSpacing: 1 }}>
+                {"★".repeat(r.stars)}
+                <span style={{ color: "var(--charcoal-xl)" }}>{"★".repeat(5 - r.stars)}</span>
+              </span>
+              <span style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--charcoal-md)" }}>
+                {r.prompt_kind}
+              </span>
+              <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--charcoal-xl)" }}>
+                {fmtDateTime(r.created_at)}
+              </span>
+            </div>
+            {r.comment && (
+              <div style={{ marginTop: 6, fontSize: 13, color: "var(--charcoal)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
+                {r.comment}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

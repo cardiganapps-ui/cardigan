@@ -17,6 +17,16 @@
                               cancel_at=<future-ts>). Cleared from
                               lifecycle_emails on reactivation so a
                               future cancellation re-fires.
+     referral_nudge_v1/v2/v3 — paid-anchored referral nudges at days
+                              14 / 59 / 104 after first paid invoice.
+                              Skipped for users with referral_rewards_count
+                              >= 3 (already power-advocates).
+     rating_request_day14   — drives users into the in-app rating sheet
+                              at /#rating. Anchor: signup. Skipped for
+                              users with no logged session yet (low
+                              signal) — the in-app sheet has its own
+                              activity gate; the email is the
+                              announcement.
 
    Each call is dedupe-write into `lifecycle_emails(user_id, kind)`
    FIRST — a unique-violation means we already sent this kind to this
@@ -113,6 +123,36 @@ function compose(kind, ctx) {
           <p>Tus pacientes, sesiones y notas se quedan intactos. Si decides regresar — sea en una semana o en un año — todo sigue exactamente como lo dejaste.</p>
           <p style="margin:24px 0;"><a href="${APP_URL}" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">Reactivar suscripción</a></p>
           <p>Si cancelaste por algo que podemos mejorar, contesta este correo — nos importa entender qué te llevó a la decisión.</p>
+          <p>— El equipo de Cardigan</p>
+        `),
+      };
+
+    // ── Referral nudges (paid-anchored) ──
+    // Three identical-shape sends spaced ~45d apart; the version
+    // suffix is the dedupe lever, so the same user can receive at
+    // most three of these over the lifetime of their subscription.
+    case "referral_nudge_v1":
+    case "referral_nudge_v2":
+    case "referral_nudge_v3":
+      return {
+        subject: "¿Conoces a alguien que disfrutaría Cardigan?",
+        html: htmlWrap(`
+          <p>Hola ${escapeHtml(firstName)},</p>
+          <p>Sabemos que las recomendaciones entre colegas son las que más pesan. Si Cardigan te está ayudando, compártelo con quien creas que podría sacarle provecho.</p>
+          <p>Por cada colega que se suscriba con tu código, ambos ganan un mes gratis de Cardigan Pro.</p>
+          <p style="margin:24px 0;"><a href="${APP_URL}/#settings/referral" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">Compartir mi código</a></p>
+          <p>— El equipo de Cardigan</p>
+        `),
+      };
+
+    case "rating_request_day14":
+      return {
+        subject: "Llevas dos semanas con Cardigan. ¿Te está ayudando?",
+        html: htmlWrap(`
+          <p>Hola ${escapeHtml(firstName)},</p>
+          <p>Llevas un par de semanas usando Cardigan — tiempo suficiente para tener una primera impresión.</p>
+          <p>¿Te tomarías un momento para calificarlo? Tres toques, sin formulario largo. Tu opinión nos guía para decidir qué construir después.</p>
+          <p style="margin:24px 0;"><a href="${APP_URL}/#rating" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">Calificar Cardigan</a></p>
           <p>— El equipo de Cardigan</p>
         `),
       };

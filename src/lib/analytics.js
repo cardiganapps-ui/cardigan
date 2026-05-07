@@ -28,11 +28,22 @@
      - trial_started
      - activation_step_completed
      - activation_complete
+     - activation_share_opened
      - plan_sheet_opened
      - checkout_started
      - subscribe_success
      - checkout_cancelled
      - referral_share_initiated
+     - referral_share              (channel: native|whatsapp|email|copy_link)
+     - notification_prompt_shown   (variant: initial|post_patient)
+     - calendar_prompt_shown
+     - calendar_prompt_enabled
+     - calendar_prompt_dismissed
+     - calendar_prompt_subscribe   (channel: apple|google)
+     - rating_sheet_shown          (prompt_kind)
+     - rating_submitted            (prompt_kind, stars)
+     - rating_dismissed            (prompt_kind, stars)
+     - rating_promoter_referral_clicked
      - pdf_summary_downloaded */
 
 import { track as vercelTrack } from "@vercel/analytics";
