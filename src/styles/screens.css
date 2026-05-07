@@ -301,7 +301,7 @@ button.stat-tile { cursor: pointer; min-height: 0; }
   background: var(--teal-pale); border: none; border-radius: var(--radius-pill);
   padding: 5px 10px; cursor: pointer; outline: none; -webkit-appearance: none;
 }
-.filter-chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 12px; scrollbar-width: none; }
+.filter-chips { display: flex; gap: 4px; overflow-x: auto; padding: 0 16px 12px; scrollbar-width: none; }
 .filter-chips::-webkit-scrollbar { display: none; }
 /* Hint that the row scrolls horizontally — fade-mask on the right
    edge of the scroll container. Uses mask-image so the cue only
@@ -314,8 +314,16 @@ button.stat-tile { cursor: pointer; min-height: 0; }
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
 }
 .chip {
-  padding: 5px 13px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600;
-  border: 1.5px solid var(--border); background: var(--white); color: var(--charcoal-lt);
+  /* Five Spanish filter chips ("Con deuda", "Al corriente",
+     "Activos", "Finalizados", "Potenciales") need to fit a 360px
+     iPhone width. clamp() scales the font down to ~10px on the
+     narrowest phones and back up to 12px on iPad+ so we don't pay
+     the readability tax on wide screens. Padding kept tight on
+     all sizes — the visual rhythm is consistent across breakpoints,
+     only the type rescales. */
+  padding: 4px 8px; border-radius: var(--radius-pill);
+  font-size: clamp(10px, 2.9vw, 12px); font-weight: 600;
+  border: 1px solid var(--border); background: var(--white); color: var(--charcoal-lt);
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
   -webkit-tap-highlight-color: transparent; transition: all var(--dur-slow), transform var(--dur-slow) var(--ease-spring); font-family: var(--font);
 }

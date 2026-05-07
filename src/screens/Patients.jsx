@@ -429,9 +429,10 @@ export function Patients() {
             {f.l}
             {/* Show a non-zero count next to "Potenciales" so the
                 practitioner sees pending interviews at a glance
-                without having to enter the lane. */}
+                without having to enter the lane. Tight padding so
+                the chip doesn't blow the row past iPhone width. */}
             {f.k === "potential" && f.badge > 0 && (
-              <span style={{ marginLeft:6, padding:"1px 6px", borderRadius:"var(--radius-pill)", background:"var(--rose)", color:"var(--white)", fontSize:10, fontWeight:800 }}>{f.badge}</span>
+              <span style={{ marginLeft:4, padding:"0 4px", borderRadius:"var(--radius-pill)", background:"var(--rose)", color:"var(--white)", fontSize:9, fontWeight:800 }}>{f.badge}</span>
             )}
           </button>
         ))}
