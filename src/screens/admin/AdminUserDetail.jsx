@@ -116,9 +116,15 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
     // the trial cutoff, which is fine for an admin tool.
     // eslint-disable-next-line react-hooks/purity
     const now = Date.now();
+    const isPatient = !!profile.is_patient;
     let tier = "expired";
     let daysLeftInTrial = null;
-    if (compGranted) {
+    // Patient users don't carry a subscription (the therapist pays);
+    // collapse tier to null so TierBadge renders nothing rather than
+    // an inaccurate "Vencida" or "Prueba" pill.
+    if (isPatient) {
+      tier = null;
+    } else if (compGranted) {
       tier = "comp";
     } else if (paid) {
       tier = "pro";
@@ -132,11 +138,14 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
         else { tier = "expired"; daysLeftInTrial = 0; }
       }
     }
+    const accountType = profile.profession ? "therapist" : (isPatient ? "patient" : "orphan");
     return {
       userId: profile.user_id,
       fullName: profile.full_name || "",
       email: profile.email || "",
-      profession: profile.profession || "psychologist",
+      profession: profile.profession || null,
+      isPatient,
+      accountType,
       blocked: !!profile.banned_until && new Date(profile.banned_until).getTime() > now,
       compGranted,
       tier,
@@ -172,7 +181,8 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                 style. */}
             <div className="admin-user-name">
               <span>{profile.full_name || <span style={{ color: "var(--charcoal-xl)", fontStyle: "italic", fontWeight: 600 }}>{t("admin.noName")}</span>}</span>
-              <TierBadge account={account} />
+              {account.isPatient && <span className="badge badge-rose">Paciente</span>}
+              {!account.isPatient && <TierBadge account={account} />}
               {account.blocked && <span className="badge badge-red">Bloqueado</span>}
             </div>
             {/* Email on its own line so a long address doesn't
@@ -254,6 +264,11 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                 ["User ID", profile.user_id],
                 ["Email", profile.email],
                 ["Nombre", profile.full_name || "—"],
+                ["Tipo", account.accountType === "patient"
+                  ? "Paciente"
+                  : account.accountType === "therapist"
+                    ? "Terapeuta"
+                    : "Sin perfil"],
                 ["Profesión", profile.profession ? t(`onboarding.professions.${profile.profession}.label`) : "—"],
                 ["Origen de alta", profile.signup_source || "—"],
                 profile.signup_source === "other" ? ["Origen detalle", profile.signup_source_detail || "—"] : null,
@@ -274,7 +289,13 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
 
           {tab === "subscription" && (
             <>
-              {!subscription && (
+              {!subscription && account.isPatient && (
+                <div className="admin-empty">
+                  <span className="admin-empty-title">Cuenta de paciente</span>
+                  <span className="admin-empty-body">Los pacientes no se suscriben a Cardigan — el terapeuta paga el plan. Aquí no habrá facturas ni renovaciones.</span>
+                </div>
+              )}
+              {!subscription && !account.isPatient && (
                 <div className="admin-empty">
                   <span className="admin-empty-title">Aún en periodo de prueba</span>
                   <span className="admin-empty-body">Este usuario no ha iniciado un checkout. Cuando se suscriba aparecerán aquí los detalles del plan, las facturas y la fecha de renovación.</span>

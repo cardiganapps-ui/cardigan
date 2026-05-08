@@ -6,9 +6,10 @@
    no patient names / note bodies / payment line items / filenames):
 
      {
-       profile: { user_id, email, full_name, profession, signup_source,
-                  signup_source_detail, signup_source_recorded_at,
-                  banned_until, last_sign_in_at, created_at },
+       profile: { user_id, email, full_name, profession, is_patient,
+                  signup_source, signup_source_detail,
+                  signup_source_recorded_at, banned_until,
+                  last_sign_in_at, created_at },
        subscription: { stripe_customer_id, stripe_subscription_id,
                        stripe_price_id, status, current_period_end,
                        cancel_at, cancel_at_period_end, trial_end,
@@ -62,6 +63,7 @@ async function handler(req, res) {
     docsStats,
     measurementsCount,
     patientsCount,
+    linkedAsPatientCount,
     pushSubs,
     calendarToken,
     encKey,
@@ -88,6 +90,10 @@ async function handler(req, res) {
     svc.from("documents").select("file_size", { count: "exact" }).eq("user_id", uid),
     svc.from("measurements").select("id", { count: "exact", head: true }).eq("user_id", uid),
     svc.from("patients").select("id", { count: "exact", head: true }).eq("user_id", uid),
+    // Linked-as-patient probe: any `patients` row whose
+    // `patient_user_id` matches this auth user means they signed up
+    // through a therapist's invite link and act as a patient.
+    svc.from("patients").select("id", { count: "exact", head: true }).eq("patient_user_id", uid),
     svc.from("push_subscriptions").select("id, endpoint, created_at").eq("user_id", uid),
     svc.from("user_calendar_tokens").select("created_at, last_accessed_at").eq("user_id", uid).maybeSingle(),
     svc.from("user_encryption_keys").select("created_at, recovery_kid").eq("user_id", uid).maybeSingle(),
@@ -135,6 +141,10 @@ async function handler(req, res) {
       email: user.email,
       full_name: user.user_metadata?.full_name || null,
       profession: profile.data?.profession || null,
+      // is_patient flips when the user signed up through a therapist
+      // invite (/i/<token>) and got linked via patients.patient_user_id.
+      // Mirrors the role split in src/hooks/useRoleDetection.js.
+      is_patient: (linkedAsPatientCount.count || 0) > 0,
       signup_source: profile.data?.signup_source || null,
       signup_source_detail: profile.data?.signup_source_detail || null,
       signup_source_recorded_at: profile.data?.signup_source_recorded_at || null,

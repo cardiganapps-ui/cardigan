@@ -62,10 +62,22 @@ export async function fetchAllAccounts() {
   // Start from auth.users so accounts with zero patients still appear —
   // otherwise the admin can't block/delete a freshly-created empty
   // account. Patient counts are joined in afterwards.
+  //
+  // accountType is the role-detection result the admin sees:
+  //   - "therapist" — has a user_profiles.profession
+  //   - "patient"   — no profession, but is_patient=true (linked via
+  //                   patients.patient_user_id; mirrors the patient
+  //                   shell in useRoleDetection)
+  //   - "orphan"    — neither (rare; usually a stale signup)
+  // Profession defaulting was removed in migration 058 so a missing
+  // profile row no longer masquerades as a "psychologist" therapist.
   const now = Date.now();
   const accounts = new Map();
   profileData.forEach(prof => {
     const bannedUntilMs = prof.banned_until ? new Date(prof.banned_until).getTime() : 0;
+    const isPatient = !!prof.is_patient;
+    const profession = prof.profession || null;
+    const accountType = profession ? "therapist" : (isPatient ? "patient" : "orphan");
     accounts.set(prof.id, {
       userId: prof.id,
       fullName: prof.full_name || "",
@@ -74,13 +86,18 @@ export async function fetchAllAccounts() {
       firstSeen: prof.created_at || null,
       blocked: bannedUntilMs > now,
       bannedUntil: prof.banned_until || null,
-      profession: prof.profession || "psychologist",
+      profession,
+      isPatient,
+      accountType,
     });
   });
   pData.forEach(p => {
     if (!accounts.has(p.user_id)) {
       // Profile fetch failed (e.g. RLS blocked) but we still see the
-      // user via their patient rows. Render with what we have.
+      // user via their patient rows. Render with what we have. Treat
+      // as a therapist by default — they own a patients row, which is
+      // the therapist-side relationship — but flag accountType
+      // "unknown" so the UI doesn't make claims it can't back up.
       accounts.set(p.user_id, {
         userId: p.user_id,
         fullName: "",
@@ -89,7 +106,9 @@ export async function fetchAllAccounts() {
         firstSeen: p.created_at,
         blocked: false,
         bannedUntil: null,
-        profession: "psychologist",
+        profession: null,
+        isPatient: false,
+        accountType: "therapist",
       });
     }
     accounts.get(p.user_id).patientCount++;
@@ -120,6 +139,15 @@ export async function fetchAllAccounts() {
   const TRIAL_DAYS = 30;
   const PAID = new Set(["active", "past_due"]);
   for (const acct of accounts.values()) {
+    // Patient users don't subscribe (the therapist pays). Skip the
+    // tier computation entirely so the admin Users list renders no
+    // tier badge for them — a "Vencida"/"Prueba" pill on a patient
+    // account would be wrong.
+    if (acct.accountType === "patient") {
+      acct.tier = null;
+      acct.daysLeftInTrial = null;
+      continue;
+    }
     if (acct.compGranted) {
       acct.tier = "comp";
       acct.daysLeftInTrial = null;

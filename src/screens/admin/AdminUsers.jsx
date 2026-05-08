@@ -36,6 +36,8 @@ function fmtDate(iso) {
 
 const TIER_FILTERS = [
   { k: "all", l: "Todos" },
+  { k: "therapist", l: "Terapeutas" },
+  { k: "patient", l: "Pacientes" },
   { k: "pro", l: "Pro" },
   { k: "trial", l: "Prueba" },
   { k: "comp", l: "Comp" },
@@ -73,6 +75,9 @@ export function AdminUsers({ onSelect }) {
     const q = search.trim().toLowerCase();
     let rows = accounts.filter((a) => {
       if (tier === "blocked") { if (!a.blocked) return false; }
+      else if (tier === "therapist" || tier === "patient") {
+        if (a.accountType !== tier) return false;
+      }
       else if (tier !== "all" && a.tier !== tier) return false;
       if (q) {
         const hay = `${a.fullName || ""} ${a.email || ""}`.toLowerCase();
@@ -94,6 +99,7 @@ export function AdminUsers({ onSelect }) {
     downloadCsv("cardigan-users-{date}.csv", filtered, [
       { label: "Nombre", get: (a) => a.fullName || "" },
       { label: "Email", get: (a) => a.email || "" },
+      { label: "Tipo", get: (a) => a.accountType || "" },
       { label: "Profesión", get: (a) => a.profession || "" },
       { label: "Tier", get: (a) => a.tier || "" },
       { label: "Pacientes", get: (a) => a.patientCount },
@@ -161,40 +167,48 @@ export function AdminUsers({ onSelect }) {
       )}
       {!loading && !error && filtered.length > 0 && (
         <div className="card admin-user-list">
-          {filtered.map((a) => (
-            <div key={a.userId}
-              className="row-item"
-              style={{ cursor: "pointer" }}
-              onClick={() => onSelect?.(a.userId)}>
-              <Avatar initials={initialsFor(a.fullName, a.email)} size="md" />
-              <div className="row-content">
-                <div className="row-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "0 1 auto" }}>
-                    {a.fullName || <span style={{ color: "var(--charcoal-xl)", fontWeight: 500, fontStyle: "italic" }}>{t("admin.noName")}</span>}
-                  </span>
-                  {a.blocked && <span className="badge badge-red">Bloqueado</span>}
+          {filtered.map((a) => {
+            const isPatient = a.accountType === "patient";
+            return (
+              <div key={a.userId}
+                className="row-item"
+                style={{ cursor: "pointer" }}
+                onClick={() => onSelect?.(a.userId)}>
+                <Avatar initials={initialsFor(a.fullName, a.email)} size="md" />
+                <div className="row-content">
+                  <div className="row-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "0 1 auto" }}>
+                      {a.fullName || <span style={{ color: "var(--charcoal-xl)", fontWeight: 500, fontStyle: "italic" }}>{t("admin.noName")}</span>}
+                    </span>
+                    {isPatient && <span className="badge badge-rose">Paciente</span>}
+                    {a.blocked && <span className="badge badge-red">Bloqueado</span>}
+                  </div>
+                  <div className="row-sub admin-user-sub">
+                    <span className="admin-user-email">{a.email || "—"}</span>
+                    <span className="admin-user-meta-line">
+                      {!isPatient && a.profession && (
+                        <span style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
+                          {t(`onboarding.professions.${a.profession}.label`)}
+                        </span>
+                      )}
+                      {!isPatient && a.profession && " · "}
+                      {!isPatient && (
+                        <>
+                          {a.patientCount} {a.patientCount === 1 ? "paciente" : "pacientes"}
+                          {" · "}
+                        </>
+                      )}
+                      <span style={{ fontVariantNumeric: "tabular-nums" }}>alta {fmtDate(a.firstSeen)}</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="row-sub admin-user-sub">
-                  <span className="admin-user-email">{a.email || "—"}</span>
-                  <span className="admin-user-meta-line">
-                    {a.profession && (
-                      <span style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
-                        {t(`onboarding.professions.${a.profession}.label`)}
-                      </span>
-                    )}
-                    {a.profession && " · "}
-                    {a.patientCount} {a.patientCount === 1 ? "paciente" : "pacientes"}
-                    {" · "}
-                    <span style={{ fontVariantNumeric: "tabular-nums" }}>alta {fmtDate(a.firstSeen)}</span>
-                  </span>
+                <div className="admin-user-tier" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  {!isPatient && <TierBadge account={a} />}
                 </div>
+                <span className="row-chevron">›</span>
               </div>
-              <div className="admin-user-tier" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <TierBadge account={a} />
-              </div>
-              <span className="row-chevron">›</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>
