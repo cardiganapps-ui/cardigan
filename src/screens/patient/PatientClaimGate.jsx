@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
+import { clearInviteToken } from "../../utils/inviteTokenStorage";
 
 /* ── PatientClaimGate ─────────────────────────────────────────────
    Bridges a signed-in user with a pending invite token. Fires
@@ -45,9 +46,8 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
         if (cancelled) return;
         // Always clear the token — even on error — so a refresh
         // doesn't re-fire and we don't leave a dangling credential
-        // in sessionStorage.
-        try { sessionStorage.removeItem("cardigan.patientInviteToken"); }
-        catch { /* ignore */ }
+        // in localStorage.
+        clearInviteToken();
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           // already_used / race_lost: the token was claimed (probably
@@ -75,8 +75,7 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
         onComplete?.();
       } catch {
         if (!cancelled) {
-          try { sessionStorage.removeItem("cardigan.patientInviteToken"); }
-          catch { /* ignore */ }
+          clearInviteToken();
           setError("network");
         }
       }

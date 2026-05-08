@@ -70,6 +70,7 @@ import { PatientClaimScreen } from "./screens/patient/PatientClaimScreen";
 import { PatientClaimGate } from "./screens/patient/PatientClaimGate";
 import { PatientApp } from "./screens/patient/PatientApp";
 import { useRoleDetection } from "./hooks/useRoleDetection";
+import { setInviteToken, getInviteToken } from "./utils/inviteTokenStorage";
 // Admin dashboard is gated by isAdmin(user) and lives on its own
 // `#admin/...` route family. Lazy so the chunk only ships when the
 // admin (one user platform-wide) actually opens it.
@@ -167,8 +168,11 @@ function CardiganApp() {
 
       // Patient invite link via /i/<token> pathname. Vercel rewrites
       // /i/:token → /index.html (vercel.json), preserving the source
-      // URL. Pull the token out, stash it, and route the URL back to
-      // / so a refresh / screenshot doesn't leak the credential.
+      // URL. Pull the token out, stash it (localStorage, not session
+      // — see inviteTokenStorage.js for why: the email-verification
+      // round-trip opens a NEW tab, and sessionStorage is per-tab),
+      // and route the URL back to / so a refresh / screenshot doesn't
+      // leak the credential.
       // Unlike the other capture paths, an invite link does NOT seed
       // authIntent — the patient should land on the claim screen
       // (with the therapist's name + a friendly intro) BEFORE
@@ -181,8 +185,7 @@ function CardiganApp() {
       if (inviteMatch) {
         const inviteToken = inviteMatch[1];
         if (inviteToken) {
-          try { sessionStorage.setItem("cardigan.patientInviteToken", inviteToken); }
-          catch { /* ignore */ }
+          setInviteToken(inviteToken);
           inviteCaptured = true;
           captured = true;
           pathRewrite = "/";
@@ -208,15 +211,12 @@ function CardiganApp() {
   // role-detection hook to re-fire so the freshly-linked patient
   // gets routed into PatientApp without a manual reload.
   const [roleVersion, setRoleVersion] = useState(0);
-  // Tracks whether a patient-invite token is currently in
-  // sessionStorage. We re-read on every render — sessionStorage is
-  // a synchronous global, so this is effectively free, and the
-  // PatientClaimGate clears it after success / failure.
-  const inviteToken = (() => {
-    if (typeof window === "undefined") return null;
-    try { return sessionStorage.getItem("cardigan.patientInviteToken"); }
-    catch { return null; }
-  })();
+  // Tracks whether a patient-invite token is in storage. Re-read on
+  // every render — localStorage access is a synchronous global, so
+  // this is effectively free, and PatientClaimGate clears it after
+  // success / failure. getInviteToken() also evicts entries past
+  // the 30-day TTL on the way out.
+  const inviteToken = getInviteToken();
   const role = useRoleDetection(user, roleVersion);
   const theme = useTheme();
   // Reset the gate when the user identity changes (sign-out → sign-in,

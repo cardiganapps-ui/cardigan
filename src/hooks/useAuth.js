@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { clearInviteToken } from "../utils/inviteTokenStorage";
 
 // Supabase returns this exact message when a user tries to sign in with
 // an email that hasn't been verified yet. Detected so the UI can surface
@@ -106,10 +107,44 @@ export function useAuth() {
   // current behaviour. Once Supabase's captcha enforcement is on, an
   // unchallenged call returns a 400 and the UI must surface the widget.
   async function signUp({ email, password, name, captchaToken }) {
+    // If a patient-invite token is in storage, the user signed up
+    // FROM /i/<token> — route the email-verification redirect back
+    // to the same invite URL so post-verification we re-stash the
+    // token (defense-in-depth on top of the localStorage fix in
+    // inviteTokenStorage.js) AND PatientClaimGate fires
+    // automatically when the user lands on the URL signed in.
+    // Without this override, Supabase's redirect goes to whatever
+    // is configured in the project's Auth → Site URL (typically
+    // https://cardigan.mx/) — which works thanks to localStorage,
+    // but the explicit redirectTo makes the round-trip robust even
+    // when the patient verifies on a different device or after
+    // localStorage was wiped.
+    let emailRedirectTo;
+    try {
+      const inviteToken = localStorage.getItem("cardigan.patientInviteToken");
+      // Tolerate both legacy plain-string and JSON-shaped values.
+      let rawToken = null;
+      if (inviteToken) {
+        if (inviteToken.startsWith("{")) {
+          try { rawToken = JSON.parse(inviteToken)?.token || null; }
+          catch { rawToken = null; }
+        } else {
+          rawToken = inviteToken;
+        }
+      }
+      if (rawToken && typeof window !== "undefined") {
+        emailRedirectTo = `${window.location.origin}/i/${encodeURIComponent(rawToken)}`;
+      }
+    } catch { /* ignore — fall back to project default */ }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name }, captchaToken },
+      options: {
+        data: { full_name: name },
+        captchaToken,
+        ...(emailRedirectTo ? { emailRedirectTo } : {}),
+      },
     });
     if (error) {
       // Supabase blocks duplicate-email signups itself, but the error
@@ -186,12 +221,11 @@ export function useAuth() {
       ? scope : "local";
     // Clear any pending patient-invite token before signing out. A
     // patient who just signed out shouldn't land back on the claim
-    // screen with the same token sitting in sessionStorage —
-    // they'd see "este enlace ya se usó" because they themselves
-    // already redeemed it. Cleanup keeps the post-signout state
-    // identical to a fresh visitor.
-    try { sessionStorage.removeItem("cardigan.patientInviteToken"); }
-    catch { /* ignore */ }
+    // screen with the same token still in storage — they'd see
+    // "este enlace ya se usó" because they themselves already
+    // redeemed it. Cleanup keeps the post-signout state identical
+    // to a fresh visitor.
+    clearInviteToken();
     try { await supabase.auth.signOut({ scope: safeScope }); }
     catch (err) {
       // Network / Supabase-side error — log but proceed to wipe local
