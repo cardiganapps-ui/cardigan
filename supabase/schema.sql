@@ -535,7 +535,12 @@ create table if not exists patient_payment_intents (
   id uuid primary key default gen_random_uuid(),
   patient_id uuid not null references patients(id) on delete cascade,
   therapist_user_id uuid not null references auth.users(id) on delete cascade,
-  paid_by_user_id uuid not null references auth.users(id),
+  -- ON DELETE CASCADE so a deleted patient's PI rows go with them
+  -- (the canonical payments-table record on the therapist side
+  -- survives via its own user_id = therapist). Without an explicit
+  -- ON DELETE rule, the default NO ACTION blocks user deletion as
+  -- soon as a patient ever paid (migration 056).
+  paid_by_user_id uuid not null references auth.users(id) on delete cascade,
   stripe_payment_intent_id text not null unique,
   stripe_account_id text not null,
   amount_cents int not null check (amount_cents > 0),
@@ -574,7 +579,11 @@ create table if not exists patient_invites (
   therapist_id uuid not null references auth.users(id) on delete cascade,
   expires_at timestamptz not null default (now() + interval '30 days'),
   used_at timestamptz,
-  used_by_user_id uuid references auth.users(id),
+  -- ON DELETE SET NULL preserves the audit trail (was-the-invite-used)
+  -- when the claiming user is deleted. Without the explicit rule, the
+  -- default NO ACTION blocked auth.users deletes for any patient that
+  -- ever claimed an invite (migration 056).
+  used_by_user_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 create index if not exists idx_patient_invites_patient
