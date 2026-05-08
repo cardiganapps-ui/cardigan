@@ -23,8 +23,8 @@
    Section bodies may contain `\n\n` to render as multiple paragraphs
    in PrivacyPolicy.jsx. */
 
-export const POLICY_VERSION = "2026-05-v6";
-export const POLICY_PUBLISHED = "4 de mayo de 2026 (rev. Cardi)";
+export const POLICY_VERSION = "2026-05-v7";
+export const POLICY_PUBLISHED = "8 de mayo de 2026 (rev. pagos en línea)";
 
 export const POLICY_SECTIONS = [
   {
@@ -136,6 +136,13 @@ export const POLICY_SECTIONS = [
       "recurrentes. NO se envían: notas clínicas (cifradas o no), teléfonos, correos electrónicos, fechas " +
       "de nacimiento, alergias, condiciones médicas, ni datos antropométricos. Anthropic procesa la " +
       "información únicamente para generar la respuesta y no la utiliza para entrenar modelos.\n" +
+      "• Stripe Payments Mexico, S. de R.L. de C.V. y Stripe, Inc. (Estados Unidos de América) — " +
+      "procesamiento de pagos en línea, tanto para tu suscripción a Cardigan Pro como para los pagos que " +
+      "tus {client.p} te realicen a través de la aplicación. Cuando un {client.s} paga su saldo en la " +
+      "aplicación, Stripe recibe: monto del pago, moneda, correo electrónico y datos de tarjeta del " +
+      "{client.s}, identificadores anónimos de tu cuenta y de la {client.s}. Los datos de tarjeta nunca " +
+      "tocan los servidores de Cardigan; se envían directamente a Stripe a través de su SDK seguro. Los " +
+      "fondos se depositan directamente en tu cuenta Stripe Connect Express (no en Cardigan).\n" +
       "• Google LLC y Apple Inc. — entrega de notificaciones push, únicamente cuando hayas habilitado los " +
       "recordatorios y a través de los servicios estándar de tu sistema operativo.\n\n" +
       "Algunas de estas transferencias implican el envío de datos personales fuera de los Estados Unidos " +

@@ -450,6 +450,158 @@ async function maybeCreditReferralReward(svc, invoice, customerId) {
   return { ok: true };
 }
 
+// Mexican short-month names for short-date strings on the payments
+// row. `payments.date` is a "D-MMM" string (Spanish). We keep this
+// inline rather than reaching into src/utils/dates.js because the
+// api/ surface must not import from src/.
+const SHORT_MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function todayShortDateES() {
+  const d = new Date();
+  return `${d.getDate()}-${SHORT_MONTHS_ES[d.getMonth()]}`;
+}
+
+/* Reconcile a successful Stripe PaymentIntent against the canonical
+   `payments` ledger. Idempotent on three levels:
+     1. Webhook event-id dedupe via stripe_webhook_events (handler-
+        level, applies to every event).
+     2. patient_payment_intents.status / payment_id read — if we
+        already advanced this row to 'succeeded', skip.
+     3. Optimistic match on stripe_payment_intent_id — the unique
+        constraint on patient_payment_intents.stripe_payment_intent_id
+        means the lookup is keyed.
+
+   Writes:
+     - payments row (method=Tarjeta — patient paid with card).
+     - patient.paid bumped by amount.
+     - patient_payment_intents row stamped to 'succeeded' + payment_id. */
+async function reconcilePatientPaymentSuccess(svc, pi) {
+  const piId = pi.id;
+  if (!piId) return { ok: false, error: "no PI id" };
+
+  const { data: row, error: lookupErr } = await svc
+    .from("patient_payment_intents")
+    .select("id, patient_id, therapist_user_id, paid_by_user_id, amount_cents, status, payment_id")
+    .eq("stripe_payment_intent_id", piId)
+    .maybeSingle();
+  if (lookupErr) return { ok: false, error: lookupErr.message };
+  if (!row) {
+    // No matching row — could be a stray PI on a connected account
+    // that didn't go through Cardigan's Checkout flow (the therapist
+    // could in theory create payments directly in their Stripe
+    // dashboard). 200 + log so Stripe doesn't retry forever.
+    return { ok: true, note: `no patient_payment_intents row for ${piId}` };
+  }
+  if (row.status === "succeeded" && row.payment_id) {
+    return { ok: true, note: "already reconciled" };
+  }
+
+  // Resolve the patient row so we can stamp the payments ledger
+  // with the right `patient` + `initials`. Failure to find means
+  // the patient row was deleted between checkout and webhook —
+  // rare but the webhook should still mark the PI status so the
+  // therapist's UI doesn't show a phantom pending payment.
+  const { data: patient } = await svc
+    .from("patients")
+    .select("id, name, initials, color_idx, paid")
+    .eq("id", row.patient_id)
+    .maybeSingle();
+
+  // Convert Stripe cents → whole MXN pesos. payments.amount is an
+  // integer in pesos, NOT cents (see schema.sql). We round-half-up
+  // to match the patient's expectation; sub-peso amounts shouldn't
+  // happen in v1 (we cap at 20 MXN minimum).
+  const amountPesos = Math.round(row.amount_cents / 100);
+
+  let paymentId = row.payment_id || null;
+
+  if (patient && !paymentId) {
+    // Insert the canonical payments row. method=Tarjeta — Stripe
+    // Checkout v1 only supports cards. The note threads the Stripe
+    // PI id so a therapist debugging a discrepancy can reconcile
+    // against Stripe directly.
+    const { data: pmt, error: insertErr } = await svc
+      .from("payments")
+      .insert({
+        user_id: row.therapist_user_id,
+        patient_id: patient.id,
+        patient: patient.name,
+        initials: patient.initials,
+        amount: amountPesos,
+        date: todayShortDateES(),
+        method: "Tarjeta",
+        note: `Pago en línea (Stripe ${piId})`,
+        color_idx: patient.color_idx || 0,
+      })
+      .select("id")
+      .maybeSingle();
+    if (insertErr) return { ok: false, error: `payment insert: ${insertErr.message}` };
+    paymentId = pmt?.id || null;
+
+    // Bump the denormalized patient.paid counter. Source-of-truth
+    // is the predicate in utils/patients.js::recalcPatientCounters,
+    // but we apply the delta inline here to keep the therapist's UI
+    // consistent on the next refetch. A scheduled audit run reconciles
+    // any drift.
+    if (paymentId) {
+      const { error: bumpErr } = await svc
+        .from("patients")
+        .update({ paid: (patient.paid || 0) + amountPesos })
+        .eq("id", patient.id);
+      if (bumpErr) {
+        // Don't fail the webhook for this — the audit script catches
+        // drift, and the next manual recalc fixes it. But surface to
+        // Sentry so we know if it's a recurring problem.
+        console.warn("stripe-webhook: patient.paid bump failed:", bumpErr.message);
+      }
+    }
+  }
+
+  // Advance the PI row.
+  const { error: stampErr } = await svc
+    .from("patient_payment_intents")
+    .update({
+      status: "succeeded",
+      succeeded_at: new Date().toISOString(),
+      payment_id: paymentId,
+    })
+    .eq("id", row.id);
+  if (stampErr) return { ok: false, error: `pi stamp: ${stampErr.message}` };
+
+  return { ok: true };
+}
+
+async function reconcilePatientPaymentFailed(svc, pi, terminalStatus) {
+  const piId = pi.id;
+  if (!piId) return { ok: false, error: "no PI id" };
+  const { error } = await svc
+    .from("patient_payment_intents")
+    .update({ status: terminalStatus })
+    .eq("stripe_payment_intent_id", piId)
+    // Don't clobber an already-succeeded row if events arrive out
+    // of order (Stripe's at-least-once delivery is not strictly
+    // ordered, and a late `payment_failed` after a `succeeded`
+    // would otherwise mark a real payment as failed).
+    .neq("status", "succeeded");
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+async function applyConnectAccountUpdate(svc, account) {
+  const accountId = account.id;
+  if (!accountId) return { ok: false, error: "no account id" };
+  const { error } = await svc
+    .from("therapist_connect_accounts")
+    .update({
+      charges_enabled: !!account.charges_enabled,
+      payouts_enabled: !!account.payouts_enabled,
+      details_submitted: !!account.details_submitted,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("stripe_account_id", accountId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 async function handleEvent(svc, event) {
   // Unix-second timestamp from Stripe's signed payload — used by the
   // ordering guard inside applySubscriptionSnapshot. Always present
@@ -631,6 +783,46 @@ async function handleEvent(svc, event) {
       }
 
       return { ok: true };
+    }
+
+    /* ── Stripe Connect (Stage 3 patient portal) ─────────────────
+       Direct charges to a connected account fire payment_intent.*
+       events on BOTH the platform and the connected account; we
+       subscribe both endpoints to catch all deliveries. The handler
+       is keyed on stripe_payment_intent_id (unique), so duplicate
+       deliveries from platform + connect are safely deduped via the
+       reconcile path's "already succeeded" guard. */
+
+    case "payment_intent.succeeded": {
+      const pi = event.data.object;
+      // Cardigan's PI metadata sets `cardigan_kind: 'patient_payment'`
+      // — this lets us ignore PIs from any other Stripe activity that
+      // happens to flow through the platform key (test mode quirks,
+      // dashboard-created charges, etc).
+      const kind = pi?.metadata?.cardigan_kind;
+      if (kind !== "patient_payment") {
+        return { ok: true, note: `non-patient PI succeeded: ${pi.id}` };
+      }
+      return reconcilePatientPaymentSuccess(svc, pi);
+    }
+
+    case "payment_intent.payment_failed":
+    case "payment_intent.canceled": {
+      const pi = event.data.object;
+      const kind = pi?.metadata?.cardigan_kind;
+      if (kind !== "patient_payment") {
+        return { ok: true, note: `non-patient PI failed: ${pi.id}` };
+      }
+      const terminal = event.type === "payment_intent.canceled" ? "canceled" : "failed";
+      return reconcilePatientPaymentFailed(svc, pi, terminal);
+    }
+
+    case "account.updated": {
+      // Connect onboarding state change. We only care about accounts
+      // we actually created — silently ignore unknown ones (test-mode
+      // accounts, accounts from other platforms if our key was ever
+      // misused, etc).
+      return applyConnectAccountUpdate(svc, event.data.object);
     }
 
     default:

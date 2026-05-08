@@ -472,14 +472,17 @@ create policy "Patients read own payments"
 -- auth.users is normally service-role only; the WHERE clause
 -- (patient_user_id = auth.uid() + status in active/potential) is
 -- the security boundary.
-create or replace function get_therapists_for_patient()
+drop function if exists get_therapists_for_patient();
+
+create function get_therapists_for_patient()
 returns table (
   patient_id uuid,
   therapist_user_id uuid,
   therapist_email text,
   therapist_full_name text,
   therapist_profession text,
-  therapist_avatar text
+  therapist_avatar text,
+  therapist_accepts_online_payments boolean
 ) as $$
   select
     p.id,
@@ -487,13 +490,72 @@ returns table (
     au.email::text,
     coalesce(au.raw_user_meta_data->>'full_name', '')::text,
     coalesce(up.profession, 'psychologist')::text,
-    coalesce(au.raw_user_meta_data->>'avatar', '')::text
+    coalesce(au.raw_user_meta_data->>'avatar', '')::text,
+    coalesce(tca.charges_enabled, false)
   from patients p
   join auth.users au on au.id = p.user_id
   left join user_profiles up on up.user_id = p.user_id
+  left join therapist_connect_accounts tca on tca.user_id = p.user_id
   where p.patient_user_id = auth.uid()
     and p.status in ('active', 'potential');
 $$ language sql security definer;
+
+-- ── Stripe Connect (migration 054) ──
+-- Therapist's Connect Express account state, populated by the
+-- /api/stripe-connect-onboard endpoint and refreshed by the
+-- account.updated webhook. RLS scopes SELECT to the owning therapist;
+-- writes are service-role only.
+create table if not exists therapist_connect_accounts (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  stripe_account_id text not null unique,
+  charges_enabled boolean not null default false,
+  payouts_enabled boolean not null default false,
+  details_submitted boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table therapist_connect_accounts enable row level security;
+
+create policy "Therapist reads own connect account"
+  on therapist_connect_accounts for select
+  using (user_id = auth.uid());
+
+-- Per-attempt ledger of patient-initiated payments. The Stripe
+-- webhook is the source of truth for status — clients never write.
+-- payment_id links the row back to the canonical `payments` row that
+-- the webhook inserts on success, so the therapist's finanzas tab
+-- can show online-payment provenance without scattering money math.
+create table if not exists patient_payment_intents (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients(id) on delete cascade,
+  therapist_user_id uuid not null references auth.users(id) on delete cascade,
+  paid_by_user_id uuid not null references auth.users(id),
+  stripe_payment_intent_id text not null unique,
+  stripe_account_id text not null,
+  amount_cents int not null check (amount_cents > 0),
+  currency text not null default 'mxn',
+  status text not null default 'pending'
+    check (status in ('pending','processing','succeeded','failed','canceled')),
+  payment_id uuid references payments(id) on delete set null,
+  created_at timestamptz not null default now(),
+  succeeded_at timestamptz
+);
+
+create index if not exists idx_ppi_patient on patient_payment_intents(patient_id);
+create index if not exists idx_ppi_therapist on patient_payment_intents(therapist_user_id);
+create index if not exists idx_ppi_paid_by on patient_payment_intents(paid_by_user_id);
+create index if not exists idx_ppi_stripe_id on patient_payment_intents(stripe_payment_intent_id);
+
+alter table patient_payment_intents enable row level security;
+
+create policy "Patient reads own payment intents"
+  on patient_payment_intents for select
+  using (paid_by_user_id = auth.uid());
+
+create policy "Therapist reads incoming payments"
+  on patient_payment_intents for select
+  using (therapist_user_id = auth.uid());
 
 -- Single-use invite tokens that the therapist generates and shares
 -- (migration 051). Plaintext stored only in the URL — DB holds the

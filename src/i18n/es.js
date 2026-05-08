@@ -710,6 +710,8 @@ export default {
       steel:    "Lluvia",
     },
     notificationsSection: "Notificaciones",
+    onlinePaymentsLabel: "Pagos en línea",
+    onlinePaymentsSub: "Cobra a tus {client.p} desde la aplicación",
     calendarLabel: "Calendario",
     calendarTitle: "Sincroniza con tu calendario",
     calendarDescription: "Genera un enlace privado para suscribirte a tus {session.p} desde Google Calendar, iCloud u Outlook.",
@@ -1893,6 +1895,7 @@ export default {
     cancelKeepCta: "Mantener cita",
     cancelSuccess: "Cita cancelada. Tu profesionista ya fue avisada.",
     cancelError: "No pudimos cancelar la cita. Intenta de nuevo en un momento.",
+    payCta: "Pagar {amount}",
   },
 
   // ── Patient intake form (patient-side first-session prep) ──
@@ -1942,5 +1945,52 @@ export default {
   patientIntake: {
     completedBadge: "Intake completado",
     completedHint: "Información completada por {client.s} el {date}",
+  },
+
+  // ── Patient pays in-app via Stripe (stage 3) ──
+  // Sheet copy + balance-card CTA + post-redirect toasts.
+  patientPay: {
+    title: "Pagar a tu profesionista",
+    intro: "Estás a punto de pagarle a {name}. El pago se procesa de forma segura con Stripe; tu tarjeta nunca pasa por Cardigan.",
+    balanceLabel: "Saldo por pagar",
+    amountLabel: "Cantidad",
+    minAmountHint: "Mínimo {min}.",
+    maxAmountHint: "Máximo {max}.",
+    overBalanceHint: "No puedes pagar más de tu saldo.",
+    trustNote: "Pagas directamente a tu profesionista. Cardigan no maneja tu dinero — Stripe encripta tu tarjeta y los fondos llegan a la cuenta de tu profesionista.",
+    continueCta: "Continuar a Stripe · {amount}",
+    busy: "Conectando con Stripe...",
+    successToast: "¡Pago recibido! Tu saldo se actualizará en unos segundos.",
+    canceledToast: "Cancelaste el pago. Puedes intentarlo de nuevo cuando quieras.",
+    notEnabledError: "Tu profesionista todavía no acepta pagos en línea.",
+    amountError: "Esa cantidad no es válida. Revisa el monto e intenta de nuevo.",
+    genericError: "No pudimos iniciar el pago. Intenta de nuevo en un momento.",
+  },
+
+  // ── Therapist's "Pagos en línea" sheet (Stripe Connect onboarding) ──
+  onlinePayments: {
+    loading: "Cargando estado de pagos en línea...",
+    statusAbsentTitle: "Acepta pagos en línea",
+    statusAbsentBody: "Permite que tus {client.p} te paguen su saldo desde la aplicación. Recibes el dinero directamente — Cardigan no toca tus fondos.",
+    statusPendingTitle: "Termina de configurar tu cuenta",
+    statusPendingBody: "Empezaste el registro con Stripe pero falta completarlo. Continúa para poder recibir pagos.",
+    statusRestrictedTitle: "Stripe está revisando tu cuenta",
+    statusRestrictedBody: "Ya enviaste tus datos a Stripe; en cuanto termine la verificación podrás recibir pagos.",
+    statusActiveTitle: "Aceptando pagos en línea",
+    statusActiveBody: "Tus {client.p} ya pueden pagarte desde la aplicación con tarjeta. Los pagos llegan directo a tu cuenta de Stripe.",
+    startCta: "Empezar con Stripe",
+    continueCta: "Continuar configuración",
+    openDashboard: "Abrir panel de Stripe",
+    refresh: "Actualizar estado",
+    refreshing: "Actualizando...",
+    busy: "Conectando con Stripe...",
+    startError: "No pudimos iniciar el registro con Stripe. Intenta de nuevo en un momento.",
+    dashboardError: "No pudimos abrir tu panel de Stripe.",
+    dashboardIncomplete: "Termina de configurar tu cuenta antes de abrir el panel.",
+    howItWorks: "¿Cómo funciona?",
+    bullet1: "Tus {client.p} pagan con tarjeta desde la aplicación.",
+    bullet2: "Stripe procesa la tarjeta de forma segura — tú recibes el pago directamente, sin intermediarios.",
+    bullet3: "Cardigan no cobra comisión sobre los pagos. Solo aplica la comisión estándar de Stripe.",
+    bullet4: "Puedes administrar payouts y reembolsos desde el panel de Stripe en cualquier momento.",
   },
 };

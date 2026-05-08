@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
-import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument } from "../components/Icons";
+import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument, IconCreditCard } from "../components/Icons";
 import { ProValueWidget } from "../components/ProValueWidget";
 
 // Spanish "hace X" relative time for the referral leaderboard. Days
@@ -27,6 +27,7 @@ function relativeTime(iso) {
 }
 import { useCalendarToken } from "../hooks/useCalendarToken";
 import { CalendarLinkPanel } from "../components/CalendarLinkPanel";
+import { OnlinePaymentsPanel } from "../components/OnlinePaymentsPanel";
 import { PasswordInput } from "../components/PasswordInput";
 import { Toggle } from "../components/Toggle";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -842,6 +843,22 @@ export function Settings({ user, signOut, refreshUser }) {
                 <IconChevron />
               </div>
             )}
+            {!readOnly && (
+              <div
+                className="settings-row"
+                onClick={() => isPro ? setActiveSheet("onlinePayments") : requirePro?.("onlinePayments")}
+              >
+                <div className="settings-row-icon" style={{ color: isPro ? "var(--teal-dark)" : "var(--charcoal-xl)" }}><IconCreditCard size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    {t("settings.onlinePaymentsLabel")}
+                    {!isPro && <ProBadge />}
+                  </div>
+                  <div className="settings-row-sub">{isPro ? t("settings.onlinePaymentsSub") : t("settings.proRowLockedSub")}</div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
           </div>
         </>
       )}
@@ -1192,6 +1209,22 @@ export function Settings({ user, signOut, refreshUser }) {
             </div>
             <div style={{ padding:"0 20px 22px" }}>
               <CalendarLinkPanel readOnly={readOnly} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ONLINE PAYMENTS (STRIPE CONNECT) SHEET ── */}
+      {activeSheet === "onlinePayments" && (
+        <div className="sheet-overlay" onClick={() => setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.onlinePaymentsLabel")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setActiveSheet(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <OnlinePaymentsPanel user={user} />
             </div>
           </div>
         </div>

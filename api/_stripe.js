@@ -105,13 +105,19 @@ function encodeBody(obj) {
   return params.toString();
 }
 
-async function stripeFetch(path, { method = "POST", body, idempotencyKey } = {}) {
+async function stripeFetch(path, { method = "POST", body, idempotencyKey, stripeAccount } = {}) {
   const headers = {
     "Authorization": `Bearer ${getSecret()}`,
     "Content-Type": "application/x-www-form-urlencoded",
     "Stripe-Version": STRIPE_API_VERSION,
   };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+  // Connect: sending `Stripe-Account: acct_...` makes the call act ON
+  // BEHALF of that connected account (direct charges pattern). The
+  // platform key still authenticates; the header just scopes the
+  // operation. Used for /payment_intents, /checkout/sessions, etc.
+  // when the merchant of record is the therapist, not Cardigan.
+  if (stripeAccount) headers["Stripe-Account"] = stripeAccount;
   const res = await fetch(`${STRIPE_API_BASE}${path}`, {
     method,
     headers,
@@ -366,6 +372,115 @@ export function verifyStripeSignature({ rawBody, header, secret, tolerance = DEF
     } catch {
       return false;
     }
+  });
+}
+
+/* ── Stripe Connect (Express) ──────────────────────────────────────
+   Used by Stage 3 of the patient portal. The therapist becomes a
+   Connect Express account on Cardigan's platform; patients pay via
+   direct charges (Stripe-Account header) so the funds settle
+   directly into the therapist's account. Cardigan never holds the
+   money — no application_fee_amount in v1, so the therapist keeps
+   every peso minus Stripe's processing fee.
+
+   Expressly NOT here: `transfer_data.destination` (destination charges)
+   and any application-fee logic. We can layer those on later if the
+   business model changes; today it's the simplest possible path. */
+
+// Create a fresh Express-controlled Connect account. Country is locked
+// to MX (we're Mexico-only). Capabilities = card_payments + transfers
+// is the minimum for accepting card payments + receiving payouts.
+// Idempotency-keyed by user_id so a double-tap on "Empezar" can't
+// mint two accounts for the same therapist.
+export function createConnectAccount({ email, userId, fullName }) {
+  const body = {
+    type: "express",
+    country: "MX",
+    email,
+    "capabilities[card_payments][requested]": "true",
+    "capabilities[transfers][requested]": "true",
+    "business_type": "individual",
+    "settings[payouts][schedule][interval]": "manual",
+    "metadata[user_id]": userId || "",
+  };
+  if (fullName) body["business_profile[name]"] = String(fullName).slice(0, 64);
+  return stripeFetch("/accounts", {
+    body,
+    idempotencyKey: userId ? `cardigan-connect-${userId}` : undefined,
+  });
+}
+
+// Account Link = the URL Stripe hosts that walks the therapist
+// through onboarding (identity, bank, etc). Single-use, expires in 5
+// minutes. We pass return + refresh URLs so Stripe sends the user
+// back to Cardigan when they're done OR if the link expires.
+export function createAccountLink({ accountId, returnUrl, refreshUrl, type = "account_onboarding" }) {
+  return stripeFetch("/account_links", {
+    body: {
+      account: accountId,
+      return_url: returnUrl,
+      refresh_url: refreshUrl,
+      type,
+    },
+  });
+}
+
+// One-time login link to the Express dashboard so the therapist can
+// see their balance, payouts, transactions, etc. Stripe handles the
+// full UI; we just hand them the front door.
+export function createLoginLink(accountId) {
+  return stripeFetch(`/accounts/${accountId}/login_links`);
+}
+
+// Read the current state of a Connect account. We use the `retrieve`
+// shape (no body, GET) so the webhook + status endpoint can refresh
+// charges_enabled / payouts_enabled / details_submitted on demand.
+export function getConnectAccount(accountId) {
+  return stripeFetch(`/accounts/${accountId}`, { method: "GET" });
+}
+
+/* Create a Checkout Session ON BEHALF OF a connected account (direct
+   charges). The patient pays the therapist directly; Cardigan only
+   facilitates. Returns { id, url } — the URL is what we redirect the
+   patient to.
+
+   `mode: "payment"` (one-shot, not a subscription).
+   `payment_method_types: ['card']` — cards only in v1; OXXO can be
+   added later by widening this list and toggling on the Connect
+   account's payment-methods.
+   `customer_email` pre-fills Stripe Checkout's email field so the
+   patient doesn't retype it. */
+export function createPatientCheckoutSession({
+  accountId,
+  amountCents,
+  currency = "mxn",
+  customerEmail,
+  successUrl,
+  cancelUrl,
+  metadata,
+  idempotencyKey,
+}) {
+  const body = {
+    mode: "payment",
+    "payment_method_types[0]": "card",
+    "line_items[0][price_data][currency]": currency,
+    "line_items[0][price_data][unit_amount]": String(amountCents),
+    "line_items[0][price_data][product_data][name]": "Pago a profesionista",
+    "line_items[0][quantity]": "1",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    locale: "es",
+  };
+  if (customerEmail) body.customer_email = customerEmail;
+  for (const [k, v] of Object.entries(metadata || {})) {
+    if (v == null) continue;
+    body[`metadata[${k}]`] = String(v);
+    body[`payment_intent_data[metadata][${k}]`] = String(v);
+  }
+  return stripeFetch("/checkout/sessions", {
+    body,
+    stripeAccount: accountId,
+    idempotencyKey,
   });
 }
 

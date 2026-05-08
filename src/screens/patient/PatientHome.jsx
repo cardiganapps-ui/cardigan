@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
@@ -6,10 +6,11 @@ import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
 import { classifySessions } from "../../hooks/usePatientPortalData";
 import { usePatientDocuments } from "../../hooks/usePatientDocuments";
-import { IconCalendar, IconDollar, IconCheck, IconMail, IconUpload, IconDocument, IconTrash, IconChevronRight } from "../../components/Icons";
+import { IconCalendar, IconDollar, IconCheck, IconMail, IconUpload, IconDocument, IconTrash, IconChevronRight, IconCreditCard } from "../../components/Icons";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { haptic } from "../../utils/haptics";
 import { IntakeFormSheet } from "./IntakeFormSheet";
+import { PayBalanceSheet } from "./PayBalanceSheet";
 
 /* ── PatientHome ──────────────────────────────────────────────────
    The single-screen patient view. Top to bottom:
@@ -79,6 +80,35 @@ export function PatientHome({ data }) {
   const { documents: patientDocs, uploading: docUploading, upload: uploadDoc, remove: removeDoc, getUrl: getDocUrl } = usePatientDocuments(primaryPatient?.id);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const intakeCompleted = !!primaryPatient?.patient_intake_completed_at;
+  const [payOpen, setPayOpen] = useState(false);
+  // Therapist's Stripe Connect status flows through the
+  // get_therapists_for_patient RPC (migration 054). Only show the
+  // "Pagar saldo" CTA when the therapist has charges_enabled — every
+  // other state would land the patient on a 409 from the create-
+  // checkout endpoint.
+  const therapistAcceptsOnlinePayments = !!primaryTherapist?.therapist_accepts_online_payments;
+
+  // Post-payment return handling. Stripe redirects the patient back
+  // to /?pago=exito or /?pago=cancelado after Checkout. Surface a
+  // toast (success uses friendly "tu saldo se actualizará en unos
+  // segundos" copy because the webhook is async — patient.paid
+  // may not yet reflect the payment), refresh, and scrub the URL
+  // so a refresh doesn't re-fire the toast.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const status = url.searchParams.get("pago");
+    if (!status) return;
+    url.searchParams.delete("pago");
+    url.searchParams.delete("p");
+    window.history.replaceState({}, "", url.toString());
+    if (status === "exito") {
+      haptic.success();
+      showToast(t("patientPay.successToast"), "success");
+      refresh?.();
+    } else if (status === "cancelado") {
+      showToast(t("patientPay.canceledToast"), "info");
+    }
+  }, [showToast, refresh, t]);
 
   const requestCancel = (session) => {
     setCancelTarget(session);
@@ -382,6 +412,7 @@ export function PatientHome({ data }) {
         amountDue={totalAmountDue}
         credit={totalCredit}
         rate={primaryPatient.rate || 0}
+        onPay={therapistAcceptsOnlinePayments && totalAmountDue > 0 ? () => setPayOpen(true) : null}
       />
 
       {/* ── Sesiones anteriores ── */}
@@ -525,6 +556,13 @@ export function PatientHome({ data }) {
           refresh?.();
         }}
       />
+      <PayBalanceSheet
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+        patient={primaryPatient}
+        amountDue={totalAmountDue}
+        therapistName={therapistDisplayName}
+      />
       <ConfirmDialog
         open={!!cancelTarget}
         title={cancelTarget
@@ -659,7 +697,7 @@ function NextSessionCard({ session, onRequestCancel }) {
   );
 }
 
-function BalanceCard({ amountDue, credit, rate }) {
+function BalanceCard({ amountDue, credit, rate, onPay }) {
   const { t } = useT();
   // Three states. Mutually exclusive by construction (the
   // accounting helper only ever sets one of amountDue / credit
@@ -747,6 +785,24 @@ function BalanceCard({ amountDue, credit, rate }) {
         >
           {t("patientHome.ratePerSession", { rate: formatMXN(rate) })}
         </div>
+      )}
+      {onPay && (
+        <button
+          type="button"
+          onClick={onPay}
+          className="btn btn-primary"
+          style={{
+            marginTop: 14,
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <IconCreditCard size={14} />
+          {t("patientHome.payCta", { amount: formatMXN(amountDue) })}
+        </button>
       )}
     </div>
   );
