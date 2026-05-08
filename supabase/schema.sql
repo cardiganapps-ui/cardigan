@@ -375,7 +375,8 @@ returns table(
   full_name text,
   banned_until timestamptz,
   created_at timestamptz,
-  profession text
+  profession text,
+  is_patient boolean
 )
 as $$
 begin
@@ -389,7 +390,11 @@ begin
       coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name,
       au.banned_until,
       au.created_at,
-      coalesce(up.profession, 'psychologist')::text as profession
+      up.profession::text,
+      exists(
+        select 1 from patients p
+        where p.patient_user_id = au.id
+      ) as is_patient
     from auth.users au
     left join user_profiles up on up.user_id = au.id;
 end;
