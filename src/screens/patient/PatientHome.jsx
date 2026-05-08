@@ -26,12 +26,17 @@ import { PayBalanceSheet } from "./PayBalanceSheet";
    when the patient owes money; the three-state balance card is
    strict about owe vs. even vs. credit. */
 
+// Field/discipline nouns — gender-neutral. Mirrors PROVIDER_LABELS
+// in PatientClaimScreen / IntakeFormSheet / useAuth. Practitioner
+// nouns ("psicóloga", "nutrióloga") would force a gender assumption
+// the patient may not even know is wrong; the field name is what's
+// relevant for the relationship.
 const PROFESSION_LABEL = {
-  psychologist: "psicóloga",
-  nutritionist: "nutrióloga",
-  trainer: "entrenadora personal",
-  music_teacher: "maestra de música",
-  tutor: "tutora",
+  psychologist:  "psicología",
+  nutritionist:  "nutrición",
+  trainer:       "entrenamiento personal",
+  music_teacher: "clases de música",
+  tutor:         "tutoría",
 };
 
 const MODALITY_LABEL = {

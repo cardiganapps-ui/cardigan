@@ -29,12 +29,15 @@ import { todayISO } from "../../utils/dates";
    re-open the sheet to revise. The original completed_at sticks; the
    columns update with whatever they re-submit. */
 
+// Field nouns rather than practitioner nouns so the form copy
+// doesn't force a gender assumption on the therapist. Mirrors the
+// same map in PatientClaimScreen / PatientHome / useAuth.
 const PROFESSION_LABEL = {
-  psychologist: "psicóloga",
-  nutritionist: "nutrióloga",
-  trainer: "entrenadora personal",
-  music_teacher: "maestra de música",
-  tutor: "tutora",
+  psychologist:  "psicología",
+  nutritionist:  "nutrición",
+  trainer:       "entrenamiento personal",
+  music_teacher: "clases de música",
+  tutor:         "tutoría",
 };
 
 export function IntakeFormSheet({ open, onClose, patient, therapistProfession, therapistDisplayName, onSubmitted }) {

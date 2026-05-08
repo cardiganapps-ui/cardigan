@@ -1887,7 +1887,12 @@ export default {
     pastSessionsLabel: "Sesiones anteriores",
     seeAll: "Ver todas",
     collapse: "Mostrar menos",
-    therapistLabel: "Tu {profession}",
+    // Field-noun ({profession} = "psicología" / "nutrición" / etc.)
+    // so the section heading reads neutrally ("Atención: Psicología")
+    // regardless of the therapist's gender. The previous "Tu {profession}"
+    // baked in feminine practitioner nouns and assumed a gender the
+    // patient may not even know.
+    therapistLabel: "Atención · {profession}",
     orphanTitle: "Tu vinculaci\u00f3n ya no est\u00e1 activa",
     orphanBody: "Tu profesionista podr\u00eda haber desvinculado tu cuenta o eliminado tu registro. Si esto fue un error, p\u00eddele un nuevo enlace de invitaci\u00f3n.",
     cancelCta: "Cancelar esta cita",
@@ -1896,7 +1901,7 @@ export default {
     cancelNotePlaceholder: "Motivo (opcional, lo ver\u00e1 tu profesionista)",
     cancelConfirmCta: "S\u00ed, cancelar",
     cancelKeepCta: "Mantener cita",
-    cancelSuccess: "Cita cancelada. Tu profesionista ya fue avisada.",
+    cancelSuccess: "Cita cancelada. Tu profesionista ya recibió el aviso.",
     cancelError: "No pudimos cancelar la cita. Intenta de nuevo en un momento.",
     payCta: "Pagar {amount}",
   },
@@ -1909,7 +1914,11 @@ export default {
     cardTitle: "Prepárate para tu primera sesión",
     cardBody: "Comparte algunos datos básicos antes de tu sesión para aprovecharla al máximo.",
     title: "Antes de tu primera sesión",
-    intro: "Esto ayuda a tu {profession} {name} a preparar mejor tu sesión. Toda la información es privada y se comparte solo con quien te atiende.",
+    // Drops the previous "tu {profession} {name}" phrasing because
+    // {profession} now resolves to a field noun ("psicología") which
+    // doesn't read naturally as a possessive. The therapist's name
+    // alone carries the relationship.
+    intro: "Esto ayuda a {name} a preparar mejor tu sesión. Toda la información es privada y se comparte solo con quien te atiende.",
     birthdateLabel: "Fecha de nacimiento (opcional)",
     allergiesLabel: "Alergias",
     allergiesPlaceholder: "Por ejemplo: penicilina, mariscos, polen...",

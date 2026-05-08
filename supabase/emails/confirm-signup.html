@@ -61,9 +61,9 @@
     <tr>
       <td class="card-inner" style="padding:34px 44px 0;">
         {{ if .Data.therapist_name }}
-        <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:12px;">Tu {{ if .Data.therapist_profession }}{{ .Data.therapist_profession }}{{ else }}profesionista{{ end }} te invitó</div>
+        <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:12px;">Tu profesionista te invitó</div>
         <h1 class="ink headline" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:30px; font-weight:900; color:#2E2E2E; line-height:1.12; letter-spacing:-0.03em;">{{ .Data.therapist_name }} te espera en Cardigan.</h1>
-        <p class="ink-soft" style="margin:14px 0 0; font-size:16px; line-height:1.55; color:#4A4A4A;">Verifica tu correo y entra a ver tus próximas sesiones, tu saldo y la información que {{ .Data.therapist_name }} comparte contigo.</p>
+        <p class="ink-soft" style="margin:14px 0 0; font-size:16px; line-height:1.55; color:#4A4A4A;">Verifica tu correo y entra a ver tus próximas sesiones, tu saldo y la información que {{ .Data.therapist_name }} comparte contigo{{ if .Data.therapist_profession }} en {{ .Data.therapist_profession }}{{ end }}.</p>
         {{ else }}
         <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:12px;">Bienvenida</div>
         <h1 class="ink headline" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:30px; font-weight:900; color:#2E2E2E; line-height:1.12; letter-spacing:-0.03em;">Qué gusto tenerte.</h1>

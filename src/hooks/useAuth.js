@@ -2,19 +2,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
 
-// Spanish gendered profession labels for the patient-side email
-// template ("Tu psicóloga te invitó", "Tu nutrióloga te invitó",
-// etc). Mirrors PROVIDER_LABELS in PatientClaimScreen so the email
-// matches the welcome card byte-for-byte. Default to feminine —
-// the demo data and the majority of MX professionals using
-// Cardigan are women, and the fallback isn't visible to therapists
-// the email never reaches.
-const PROFESSION_GENDERED_ES = {
-  psychologist:  "psicóloga",
-  nutritionist:  "nutrióloga",
-  trainer:       "entrenadora personal",
-  music_teacher: "maestra de música",
-  tutor:         "tutora",
+// Field/discipline nouns (gender-neutral). The verification email
+// template uses .Data.therapist_profession to render copy like
+// "Atención: Psicología" — neutral and accurate regardless of the
+// practitioner's gender. Mirrors PROVIDER_LABELS in
+// PatientClaimScreen / PatientHome / IntakeFormSheet.
+const PROFESSION_FIELD_ES = {
+  psychologist:  "psicología",
+  nutritionist:  "nutrición",
+  trainer:       "entrenamiento personal",
+  music_teacher: "clases de música",
+  tutor:         "tutoría",
 };
 
 // Supabase returns this exact message when a user tries to sign in with
@@ -144,7 +142,7 @@ export function useAuth() {
         extraData.is_patient = "1";
         if (ctx.therapistName) extraData.therapist_name = ctx.therapistName;
         const profKey = ctx.therapistProfession || "psychologist";
-        extraData.therapist_profession = PROFESSION_GENDERED_ES[profKey] || PROFESSION_GENDERED_ES.psychologist;
+        extraData.therapist_profession = PROFESSION_FIELD_ES[profKey] || PROFESSION_FIELD_ES.psychologist;
       }
     } catch { /* ignore — fall back to project default */ }
 

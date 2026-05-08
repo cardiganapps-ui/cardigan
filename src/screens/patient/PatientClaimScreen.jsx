@@ -24,12 +24,21 @@ import { attachTherapistContext } from "../../utils/inviteTokenStorage";
    is handled by App.jsx, which fires the claim directly — this
    component never renders for an authenticated user. */
 
+// Spanish gender is built into practitioner nouns (psicóloga vs.
+// psicólogo, etc.) and the patient doesn't always know their
+// professional's gender — defaulting to feminine across the flow
+// reads weird half the time. Using the FIELD/DISCIPLINE noun
+// instead ("psicología", "nutrición", "tutoría") sidesteps the
+// problem entirely: the role is what's relevant, not the
+// practitioner's gender. This map is mirrored in PatientHome,
+// IntakeFormSheet, and useAuth — keep them in sync if a profession
+// is added.
 const PROVIDER_LABELS = {
-  psychologist: "psicóloga",
-  nutritionist: "nutrióloga",
-  trainer: "entrenadora personal",
-  music_teacher: "maestra de música",
-  tutor: "tutora",
+  psychologist:  "psicología",
+  nutritionist:  "nutrición",
+  trainer:       "entrenamiento personal",
+  music_teacher: "clases de música",
+  tutor:         "tutoría",
 };
 
 export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {

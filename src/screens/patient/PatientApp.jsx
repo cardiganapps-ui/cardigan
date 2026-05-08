@@ -7,8 +7,9 @@ import { usePatientPortalData } from "../../hooks/usePatientPortalData";
 import { PatientShell } from "./PatientShell";
 
 /* Sync the I18nProvider's `profession` with the linked therapist's
-   profession so vocab keys ("tu psicóloga" / "tu nutrióloga") render
-   correctly. setProfession is only available inside the provider, so
+   profession so the vocabulary engine resolves field-noun labels
+   ("psicología", "nutrición") consistently across the patient
+   shell. setProfession is only available inside the provider, so
    this lives as a child component. */
 function PatientI18nSync({ profession, children }) {
   const i18n = useT();
@@ -31,9 +32,9 @@ function PatientI18nSync({ profession, children }) {
    none of which apply to a read-only patient surface.
 
    The vocabulary engine is fed the THERAPIST'S profession (read
-   from the data hook's primary therapist) so labels render as
-   "tu psicóloga" / "tu nutrióloga" matching the linked
-   professional. */
+   from the data hook's primary therapist) so the patient-side
+   labels resolve to the right field nouns ("psicología",
+   "nutrición") for the linked professional. */
 
 export function PatientApp({ user, signOut }) {
   const data = usePatientPortalData(user);

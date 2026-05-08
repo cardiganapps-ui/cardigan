@@ -77,8 +77,8 @@ export function getInviteToken() {
 /* Therapist context — captured by PatientClaimScreen after the
    /api/patient-invite-preview fetch resolves. The signup flow reads
    these to personalize the verification email (template branches on
-   .Data.therapist_name presence; the profession drives the gendered
-   "tu psicóloga / tu nutrióloga / tu maestro de música" label). */
+   .Data.therapist_name presence; the profession resolves to a
+   gender-neutral field noun like "psicología" or "tutoría"). */
 export function attachTherapistContext({ therapistName, therapistProfession }) {
   const cur = readPayload();
   if (!cur?.token) return;
