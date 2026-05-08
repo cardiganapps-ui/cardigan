@@ -47,27 +47,42 @@
     {
       "@type": "Question",
       "name": "¿Mis notas están seguras?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Las notas se cifran de extremo a extremo con una contraseña que solo tú conoces. Ni Cardigan ni nadie en nuestro equipo puede leerlas. Cumplimos con la LFPDPPP." }
-    },
-    {
-      "@type": "Question",
-      "name": "¿Funciona en mi celular?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Cardigan funciona en iPhone, iPad y Android — se instala como una app desde tu navegador en 10 segundos. También tiene una versión completa para escritorio." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Las notas se cifran de extremo a extremo con una contraseña que solo tú conoces. Ni Cardigan ni nadie en nuestro equipo puede leerlas. Cumplimos con la LFPDPPP."
+      }
     },
     {
       "@type": "Question",
       "name": "¿Puedo exportar a mis pacientes?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Desde Ajustes → Privacidad puedes descargar todos tus datos en formato JSON. Sin candados — son tus datos." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Desde Ajustes → Privacidad puedes descargar todos tus datos en formato JSON. Sin candados — son tus datos."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Funciona en mi celular?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí. Cardigan funciona en iPhone, iPad y Android — se instala como una app desde tu navegador en 10 segundos. También tiene una versión completa para escritorio."
+      }
     },
     {
       "@type": "Question",
       "name": "¿Hay contrato?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. Es una suscripción mensual ($299 MXN) que puedes cancelar desde la app cuando quieras. Sin penalizaciones." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Es una suscripción mensual ($299 MXN) que puedes cancelar desde la app cuando quieras. Sin penalizaciones."
+      }
     },
     {
       "@type": "Question",
       "name": "¿Qué pasa si decido cancelar?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Tus datos se quedan intactos. Si vuelves al mes siguiente, todo sigue donde lo dejaste — pacientes, notas, sesiones, pagos." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tus datos se quedan intactos. Si vuelves al mes siguiente, todo sigue donde lo dejaste — pacientes, notas, sesiones, pagos."
+      }
     }
   ]
 }
@@ -77,8 +92,18 @@
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://cardigan.mx/" },
-    { "@type": "ListItem", "position": 2, "name": "Para psicólogos", "item": "https://cardigan.mx/psicologos/" }
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Inicio",
+      "item": "https://cardigan.mx/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Para psicólogos",
+      "item": "https://cardigan.mx/psicologos/"
+    }
   ]
 }
 </script>
@@ -86,7 +111,7 @@
 </head>
 <body>
 <div class="mkt-page">
-  <header class="mkt-nav">
+  <header class="mkt-nav" id="mkt-nav">
     <div class="mkt-nav-inner">
       <a href="/" class="mkt-brand"><img src="/icon-mono.svg" alt="" /> cardigan</a>
       <nav class="mkt-nav-actions">
@@ -98,55 +123,164 @@
   </header>
 
   <main>
-    <section class="mkt-hero">
-      <div class="mkt-container">
-        <span class="mkt-hero-eyebrow">Cardigan para psicólogos</span>
-        <h1>Tu consultorio, en un solo lugar.</h1>
-        <p class="lead">Cardigan reúne agenda, expediente, pagos y notas cifradas para psicólogos en México. Pensado para que dediques menos tiempo a la administración y más a tus pacientes.</p>
-        <div class="mkt-hero-cta-row">
-          <a href="/" class="mkt-btn-primary">Comenzar gratis</a>
-          <a href="#precios" class="mkt-btn-secondary">Ver precios</a>
+    <!-- Hero — text on the left, phone preview on the right. -->
+    <section class="mkt-hero" id="mkt-hero">
+      <div class="mkt-container mkt-hero-grid">
+        <div class="mkt-hero-copy">
+          <span class="mkt-hero-eyebrow">Cardigan para psicólogos</span>
+          <h1>Tu consultorio, en un solo lugar.</h1>
+          <p class="lead">Cardigan reúne agenda, expediente, pagos y notas clínicas cifradas para psicólogos en México. Pensado para que dediques menos tiempo a la administración y más a tus pacientes.</p>
+          <div class="mkt-hero-cta-row">
+            <a href="/" class="mkt-btn-primary">Comenzar gratis</a>
+            <a href="#precios" class="mkt-btn-secondary">Ver precios</a>
+          </div>
+          <div class="mkt-trust">
+            <span class="mkt-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> 30 días gratis, sin tarjeta</span>
+            <span class="mkt-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Cumple LFPDPPP</span>
+            <span class="mkt-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Cancela cuando quieras</span>
+          </div>
         </div>
-        <div class="mkt-trust">
-          <span class="mkt-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> 30 días gratis, sin tarjeta</span>
-          <span class="mkt-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Cumple LFPDPPP</span>
-          <span class="mkt-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Cancela cuando quieras</span>
+        <div class="mkt-hero-visual">
+          
+        <div class="mkt-phone-wrap" aria-hidden="true">
+          <div class="mkt-float-card">
+            <div class="mkt-float-row">
+              <span class="mkt-float-av" style="background:#8B6FB5;color:#fff">E</span>
+              <div class="mkt-float-main">
+                <div class="mkt-float-name">Emiliano M.</div>
+                <div class="mkt-float-sub">Mañana 10:00 · Próxima</div>
+              </div>
+              <span class="mkt-float-badge">Al día</span>
+            </div>
+          </div>
+          <div class="mkt-phone">
+            <div class="mkt-phone-notch"></div>
+            <div class="mkt-phone-screen">
+              <div class="mkt-phone-status">
+                <span>9:41</span>
+                <span class="mkt-phone-status-right">
+                  <span class="mkt-phone-bar"></span>
+                  <span class="mkt-phone-bar mkt-phone-bar--tall"></span>
+                  <span class="mkt-phone-bar"></span>
+                </span>
+              </div>
+              <div class="mkt-phone-topbar">
+                <div class="mkt-phone-hamburger"><span></span><span></span><span></span></div>
+                <div class="mkt-phone-brand">
+                  <img src="/icon-mono.svg" alt="" />
+                  <span>cardigan</span>
+                </div>
+                <div class="mkt-phone-topbar-right">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="mkt-phone-content">
+                <div class="mkt-phone-kpis">
+                  
+                    <div class="mkt-phone-kpi">
+                      <div class="mkt-phone-kpi-label">Sesiones hoy</div>
+                      <div class="mkt-phone-kpi-value">3</div>
+                      <div class="mkt-phone-kpi-meta">Hoy</div>
+                    </div>
+                    <div class="mkt-phone-kpi">
+                      <div class="mkt-phone-kpi-label">Pacientes</div>
+                      <div class="mkt-phone-kpi-value">27</div>
+                      <div class="mkt-phone-kpi-meta">21 activos</div>
+                    </div>
+                    <div class="mkt-phone-kpi">
+                      <div class="mkt-phone-kpi-label">Cobrado (Mes)</div>
+                      <div class="mkt-phone-kpi-value">$24,800</div>
+                      <div class="mkt-phone-kpi-meta">Mes en curso</div>
+                    </div>
+                    <div class="mkt-phone-kpi">
+                      <div class="mkt-phone-kpi-label">No cobrado</div>
+                      <div class="mkt-phone-kpi-value mkt-phone-kpi-value--red">$3,200</div>
+                      <div class="mkt-phone-kpi-meta">2 con saldo</div>
+                    </div>
+                </div>
+                <div class="mkt-phone-section-title">Hoy</div>
+                <div class="mkt-phone-list">
+                  
+                    <div class="mkt-phone-row mkt-phone-row--scheduled">
+                      <div class="mkt-phone-av" style="background:#4A8AB5">A</div>
+                      <div class="mkt-phone-row-main">
+                        <div class="mkt-phone-row-title">Andrea M.</div>
+                        <div class="mkt-phone-row-sub">
+                          <span>10:00 - 11:00</span>
+                          <span class="mkt-phone-eyebrow mkt-phone-eyebrow--presencial">PRESENCIAL</span>
+                        </div>
+                      </div>
+                      <span class="mkt-phone-badge mkt-phone-badge--scheduled">Agendada</span>
+                    </div>
+                    <div class="mkt-phone-row mkt-phone-row--scheduled">
+                      <div class="mkt-phone-av" style="background:#3DAB74">D</div>
+                      <div class="mkt-phone-row-main">
+                        <div class="mkt-phone-row-title">Daniel R.</div>
+                        <div class="mkt-phone-row-sub">
+                          <span>12:00 - 13:00</span>
+                          <span class="mkt-phone-eyebrow mkt-phone-eyebrow--virtual">VIRTUAL</span>
+                        </div>
+                      </div>
+                      <span class="mkt-phone-badge mkt-phone-badge--scheduled">Agendada</span>
+                    </div>
+                    <div class="mkt-phone-row mkt-phone-row--scheduled">
+                      <div class="mkt-phone-av" style="background:#4A8AB5">S</div>
+                      <div class="mkt-phone-row-main">
+                        <div class="mkt-phone-row-title">Sofía P.</div>
+                        <div class="mkt-phone-row-sub">
+                          <span>16:00 - 17:00</span>
+                          <span class="mkt-phone-eyebrow mkt-phone-eyebrow--presencial">PRESENCIAL</span>
+                        </div>
+                      </div>
+                      <span class="mkt-phone-badge mkt-phone-badge--scheduled">Agendada</span>
+                    </div>
+                </div>
+              </div>
+              <div class="mkt-phone-fab">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
     </section>
 
+    <!-- Feature deck -->
     <section class="mkt-features">
       <div class="mkt-container">
         <h2 class="mkt-features-h">Lo necesario, nada más.</h2>
         <p class="mkt-features-sub">Diseñado para psicólogos. Sin las complicaciones de un sistema hospitalario.</p>
         <div class="mkt-features-grid">
           
-          <div class="mkt-feature">
-            <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><path d="M5 11h14v10H5V11zM7 11V7a5 5 0 0110 0v4"/></svg></div>
+          <div class="mkt-feature mkt-reveal" style="--i:0">
+            <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
             <h3>Notas cifradas de extremo a extremo</h3>
             <p>Tus apuntes clínicos viajan cifrados con tu propia contraseña — ni siquiera nosotros podemos leerlos.</p>
           </div>
-          <div class="mkt-feature">
+          <div class="mkt-feature mkt-reveal" style="--i:1">
             <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg></div>
             <h3>Agenda recurrente</h3>
             <p>Sesiones semanales, quincenales o personalizadas. Cardigan extiende tu agenda solita y te avisa antes de cada cita.</p>
           </div>
-          <div class="mkt-feature">
-            <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><path d="M3 7h18v12H3z"/><path d="M3 7v10a2 2 0 002 2h16V9H5a2 2 0 01-2-2zM17 13h.01"/></svg></div>
+          <div class="mkt-feature mkt-reveal" style="--i:2">
+            <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 7H10a3 3 0 000 6h4a3 3 0 010 6H6"/></svg></div>
             <h3>Honorarios sin esfuerzo</h3>
             <p>Cardigan calcula automáticamente lo que cada paciente debe en base a las sesiones tomadas y los pagos recibidos.</p>
           </div>
-          <div class="mkt-feature">
+          <div class="mkt-feature mkt-reveal" style="--i:3">
             <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><path d="M14 3v5h5M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/></svg></div>
             <h3>Expediente por paciente</h3>
             <p>Documentos, notas, evaluaciones y antecedentes — todo organizado en una sola ficha.</p>
           </div>
-          <div class="mkt-feature">
+          <div class="mkt-feature mkt-reveal" style="--i:4">
             <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9z"/><path d="M10 21a2 2 0 004 0"/></svg></div>
             <h3>Recordatorios automáticos</h3>
             <p>Notificaciones push antes de cada sesión. Tú no faltas y tus pacientes tampoco.</p>
           </div>
-          <div class="mkt-feature">
+          <div class="mkt-feature mkt-reveal" style="--i:5">
             <div class="mkt-feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden><path d="M12 3l8 4v6c0 5-4 8-8 8s-8-3-8-8V7l8-4z"/></svg></div>
             <h3>Cumple LFPDPPP</h3>
             <p>Cifrado en reposo + en tránsito, política de privacidad clara, exportación de datos a un toque.</p>
@@ -155,6 +289,101 @@
       </div>
     </section>
 
+    <!-- Mini-mocks strip — three small slices of the live app. -->
+    <section>
+      <div class="mkt-container">
+        <h2 class="mkt-features-h">Tu trabajo, en tres pantallas.</h2>
+        <p class="mkt-features-sub">Lo más usado, siempre a un toque.</p>
+        <div class="mkt-minis">
+          
+          <article class="mkt-mini-card mkt-reveal" style="--i:0">
+            <div class="mkt-mini" aria-hidden="true">
+            <div class="mkt-mini-row mkt-mini-row--scheduled">
+              <span class="mkt-mini-av" style="background:#4A8AB5">A</span>
+              <div class="mkt-mini-row-main">
+                <div class="mkt-mini-row-title">Andrea M.</div>
+                <div class="mkt-mini-row-sub">
+                  <span>10:00 - 11:00</span>
+                  <span class="mkt-mini-eyebrow mkt-mini-eyebrow--presencial">PRESENCIAL</span>
+                </div>
+              </div>
+              <span class="mkt-mini-badge mkt-mini-badge--scheduled">Agendada</span>
+            </div>
+            <div class="mkt-mini-row mkt-mini-row--scheduled">
+              <span class="mkt-mini-av" style="background:#3DAB74">D</span>
+              <div class="mkt-mini-row-main">
+                <div class="mkt-mini-row-title">Daniel R.</div>
+                <div class="mkt-mini-row-sub">
+                  <span>12:00 - 13:00</span>
+                  <span class="mkt-mini-eyebrow mkt-mini-eyebrow--virtual">VIRTUAL</span>
+                </div>
+              </div>
+              <span class="mkt-mini-badge mkt-mini-badge--scheduled">Agendada</span>
+            </div></div>
+            <div class="mkt-mini-label">Tu día. De un vistazo.</div>
+          </article>
+          <article class="mkt-mini-card mkt-reveal" style="--i:1">
+            <div class="mkt-mini" aria-hidden="true">
+            <div class="mkt-mini-row">
+              <span class="mkt-mini-av" style="background:#4A8AB5">A</span>
+              <div class="mkt-mini-row-main">
+                <div class="mkt-mini-row-title">Andrea Méndez</div>
+                <div class="mkt-mini-row-sub">$1,200 por sesión</div>
+              </div>
+              <span class="mkt-mini-badge mkt-mini-badge--active">Activo</span>
+            </div>
+            <div class="mkt-mini-row">
+              <span class="mkt-mini-av" style="background:#D96B6B">L</span>
+              <div class="mkt-mini-row-main">
+                <div class="mkt-mini-row-title">Lucía Morales</div>
+                <div class="mkt-mini-row-sub">$1,000 por sesión</div>
+              </div>
+              <span class="mkt-mini-badge mkt-mini-badge--active">Activo</span>
+            </div></div>
+            <div class="mkt-mini-label">Cada paciente, un toque.</div>
+          </article>
+          <article class="mkt-mini-card mkt-reveal" style="--i:2">
+            <div class="mkt-mini mkt-mini--finances" aria-hidden="true">
+            <div class="mkt-mini-kpi">
+              <div class="mkt-mini-kpi-label">Cobrado (Mes)</div>
+              <div class="mkt-mini-kpi-value">$24,800</div>
+              <div class="mkt-mini-kpi-meta">Mes en curso</div>
+            </div>
+            <div class="mkt-mini-kpi">
+              <div class="mkt-mini-kpi-label">No cobrado</div>
+              <div class="mkt-mini-kpi-value mkt-mini-kpi-value--red">$3,200</div>
+              <div class="mkt-mini-kpi-meta">2 con saldo</div>
+            </div></div>
+            <div class="mkt-mini-label">Tu mes, en limpio.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cómo empezar — 3 steps. -->
+    <section class="mkt-start">
+      <div class="mkt-container">
+        <h2 class="mkt-features-h">Listo en 3 pasos.</h2>
+        <p class="mkt-features-sub">Sin instalar nada, sin tarjeta.</p>
+        <ol class="mkt-steps">
+          
+          <li class="mkt-step mkt-reveal" style="--i:0">
+            <span class="mkt-step-num">1</span>
+            <span class="mkt-step-label">Crea tu cuenta</span>
+          </li>
+          <li class="mkt-step mkt-reveal" style="--i:1">
+            <span class="mkt-step-num">2</span>
+            <span class="mkt-step-label">Agrega tu primer paciente</span>
+          </li>
+          <li class="mkt-step mkt-reveal" style="--i:2">
+            <span class="mkt-step-num">3</span>
+            <span class="mkt-step-label">Agenda tu primera sesión</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Pricing -->
     <section class="mkt-pricing" id="precios">
       <div class="mkt-container">
         <h2 class="mkt-features-h">Un solo precio. Sin sorpresas.</h2>
@@ -164,19 +393,14 @@
           <div class="mkt-pricing-amount"><strong>$299</strong><span>MXN / mes</span></div>
           <div class="mkt-pricing-note">o $2,990 MXN al año (ahorra 17%)</div>
           <ul class="mkt-pricing-list">
-            <li>Acceso completo a todas las funciones</li>
-            <li>Pacientes ilimitados</li>
-            <li>Sesiones ilimitadas</li>
-            <li>Notas y documentos por paciente</li>
-            <li>Recordatorios automáticos</li>
-            <li>Sincronización con tu calendario</li>
-            <li>Cancela cuando quieras</li>
+            <li>Acceso completo a todas las funciones</li><li>Pacientes ilimitados</li><li>Sesiones ilimitadas</li><li>Notas y documentos por paciente</li><li>Recordatorios automáticos</li><li>Sincronización con tu calendario</li><li>Cancela cuando quieras</li>
           </ul>
           <a href="/" class="mkt-btn-primary" style="display:block">Comenzar gratis</a>
         </div>
       </div>
     </section>
 
+    <!-- FAQ -->
     <section>
       <div class="mkt-container">
         <h2 class="mkt-features-h">Preguntas frecuentes</h2>
@@ -188,12 +412,12 @@
             <div class="mkt-faq-body">Sí. Las notas se cifran de extremo a extremo con una contraseña que solo tú conoces. Ni Cardigan ni nadie en nuestro equipo puede leerlas. Cumplimos con la LFPDPPP.</div>
           </details>
           <details class="mkt-faq">
-            <summary>¿Funciona en mi celular?</summary>
-            <div class="mkt-faq-body">Sí. Cardigan funciona en iPhone, iPad y Android — se instala como una app desde tu navegador en 10 segundos. También tiene una versión completa para escritorio.</div>
-          </details>
-          <details class="mkt-faq">
             <summary>¿Puedo exportar a mis pacientes?</summary>
             <div class="mkt-faq-body">Sí. Desde Ajustes → Privacidad puedes descargar todos tus datos en formato JSON. Sin candados — son tus datos.</div>
+          </details>
+          <details class="mkt-faq">
+            <summary>¿Funciona en mi celular?</summary>
+            <div class="mkt-faq-body">Sí. Cardigan funciona en iPhone, iPad y Android — se instala como una app desde tu navegador en 10 segundos. También tiene una versión completa para escritorio.</div>
           </details>
           <details class="mkt-faq">
             <summary>¿Hay contrato?</summary>
@@ -207,6 +431,7 @@
       </div>
     </section>
 
+    <!-- Closing CTA -->
     <section class="mkt-cta">
       <div class="mkt-container">
         <h2>Empieza hoy. Sin tarjeta.</h2>
@@ -223,15 +448,17 @@
         <div class="mkt-footer-tag">Hecho en México · 2026</div>
       </div>
       <div class="mkt-footer-cluster">
-        <div class="mkt-footer-cluster-h">Producto</div>
+        <div class="mkt-footer-cluster-h">Cardigan</div>
         <ul>
           <li><a href="/">Inicio</a></li>
-          <li><a href="/psicologos/">Para psicólogos</a></li>
-          <li><a href="/nutriologos/">Para nutriólogos</a></li>
-          <li><a href="/entrenadores/">Para entrenadores</a></li>
-          <li><a href="/maestros-de-musica/">Para maestros de música</a></li>
-          <li><a href="/tutores/">Para tutores</a></li>
+          <li><a href="/pacientes/">Para pacientes</a></li>
           <li><a href="/blog/">Blog</a></li>
+        </ul>
+      </div>
+      <div class="mkt-footer-cluster">
+        <div class="mkt-footer-cluster-h">Por profesión</div>
+        <ul>
+          <li><a href="/nutriologos/">Para nutriólogos</a></li><li><a href="/entrenadores/">Para entrenadores</a></li><li><a href="/maestros-de-musica/">Para maestros de música</a></li><li><a href="/tutores/">Para tutores</a></li>
         </ul>
       </div>
       <div class="mkt-footer-cluster">
@@ -246,5 +473,38 @@
     <div class="mkt-footer-bottom">© 2026 Cardigan. Hecho en México con cuidado.</div>
   </footer>
 </div>
+
+<!-- Sticky-nav scroll-state + scroll-triggered reveals. Vanilla JS,
+     no external dependency. Respects prefers-reduced-motion via the
+     CSS guard at the bottom of marketing.css. -->
+<script>
+(function() {
+  var nav = document.getElementById("mkt-nav");
+  var hero = document.getElementById("mkt-hero");
+  if (nav && hero && "IntersectionObserver" in window) {
+    var ioNav = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        nav.classList.toggle("mkt-nav--scrolled", !e.isIntersecting);
+      });
+    }, { threshold: 0, rootMargin: "-60px 0px 0px 0px" });
+    ioNav.observe(hero);
+  }
+  var reveals = document.querySelectorAll(".mkt-reveal");
+  if (reveals.length && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) {
+          e.target.classList.add("mkt-in");
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.18, rootMargin: "0px 0px -40px 0px" });
+    reveals.forEach(function(el) { io.observe(el); });
+  } else {
+    // No IntersectionObserver — show everything immediately.
+    reveals.forEach(function(el) { el.classList.add("mkt-in"); });
+  }
+})();
+</script>
 </body>
 </html>
