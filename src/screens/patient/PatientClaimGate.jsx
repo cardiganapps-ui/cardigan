@@ -86,13 +86,24 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // Outer = scroll owner (body has overflow:hidden globally — see
+  // PatientClaimScreen for the same pattern). Inner centers the
+  // card; if the card is taller than the viewport it falls back to
+  // top-aligned and the outer scrolls.
   const wrapperStyle = {
-    minHeight: "100dvh",
+    height: "100dvh",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+    overscrollBehaviorY: "contain",
+    background: "var(--cream)",
+  };
+  const innerStyle = {
+    minHeight: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "24px 16px",
-    background: "var(--cream)",
+    padding: "max(24px, calc(var(--sat, 0px) + 16px)) 16px max(24px, env(safe-area-inset-bottom))",
+    boxSizing: "border-box",
   };
   const cardStyle = {
     background: "var(--white)",
@@ -109,24 +120,26 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
   if (!error) {
     return (
       <div style={wrapperStyle}>
-        <div style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-            <span className="cardigan-splash-logo" aria-hidden="true">
-              <LogoIcon size={36} color="var(--teal)" />
-            </span>
-          </div>
-          <div style={{
-            fontFamily: "var(--font-d)",
-            fontWeight: 800,
-            fontSize: 18,
-            color: "var(--charcoal)",
-            marginBottom: 8,
-            letterSpacing: "-0.2px",
-          }}>
-            {t("patientClaim.linkingTitle")}
-          </div>
-          <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.5 }}>
-            {t("patientClaim.linkingBody")}
+        <div style={innerStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+              <span className="cardigan-splash-logo" aria-hidden="true">
+                <LogoIcon size={36} color="var(--teal)" />
+              </span>
+            </div>
+            <div style={{
+              fontFamily: "var(--font-d)",
+              fontWeight: 800,
+              fontSize: 18,
+              color: "var(--charcoal)",
+              marginBottom: 8,
+              letterSpacing: "-0.2px",
+            }}>
+              {t("patientClaim.linkingTitle")}
+            </div>
+            <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.5 }}>
+              {t("patientClaim.linkingBody")}
+            </div>
           </div>
         </div>
       </div>
@@ -149,56 +162,58 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
 
   return (
     <div style={wrapperStyle}>
-      <div style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-          <LogoIcon size={36} color="var(--teal)" />
-        </div>
-        <div style={{
-          fontFamily: "var(--font-d)",
-          fontWeight: 800,
-          fontSize: 18,
-          color: "var(--charcoal)",
-          marginBottom: 8,
-          letterSpacing: "-0.2px",
-        }}>
-          {errorTitle}
-        </div>
-        <div style={{
-          fontSize: 14,
-          color: "var(--charcoal-md)",
-          lineHeight: 1.55,
-          marginBottom: 22,
-        }}>
-          {errorBody}
-        </div>
-        {/* "Continuar" advances to whatever the parent renders next
-            — typically the orphan screen since this user has no
-            link to anyone. */}
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={onComplete}
-          style={{ width: "100%", marginBottom: 8 }}
-        >
-          {t("patientClaim.continueAnyway")}
-        </button>
-        <button
-          type="button"
-          onClick={onSignOut}
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: "8px 0",
+      <div style={innerStyle}>
+        <div style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+            <LogoIcon size={36} color="var(--teal)" />
+          </div>
+          <div style={{
+            fontFamily: "var(--font-d)",
+            fontWeight: 800,
+            fontSize: 18,
+            color: "var(--charcoal)",
+            marginBottom: 8,
+            letterSpacing: "-0.2px",
+          }}>
+            {errorTitle}
+          </div>
+          <div style={{
+            fontSize: 14,
             color: "var(--charcoal-md)",
-            fontFamily: "var(--font)",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          {t("nav.signOut")}
-        </button>
+            lineHeight: 1.55,
+            marginBottom: 22,
+          }}>
+            {errorBody}
+          </div>
+          {/* "Continuar" advances to whatever the parent renders next
+              — typically the orphan screen since this user has no
+              link to anyone. */}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onComplete}
+            style={{ width: "100%", marginBottom: 8 }}
+          >
+            {t("patientClaim.continueAnyway")}
+          </button>
+          <button
+            type="button"
+            onClick={onSignOut}
+            style={{
+              width: "100%",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px 0",
+              color: "var(--charcoal-md)",
+              fontFamily: "var(--font)",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {t("nav.signOut")}
+          </button>
+        </div>
       </div>
     </div>
   );

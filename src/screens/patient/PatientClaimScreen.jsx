@@ -95,21 +95,37 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
     boxSizing: "border-box",
   };
 
+  // Outer = scroll owner. Body has `overflow: hidden` globally
+  // (base.css), so any full-viewport patient surface has to mint
+  // its own scroll container or content past the fold gets clipped.
+  // Inner = centering frame: minHeight 100% so it grows to at least
+  // viewport height (centers vertically when content fits), but
+  // expands further when the card is taller than the screen — at
+  // which point the OUTER scrolls.
   const wrapperStyle = {
-    minHeight: "100dvh",
+    height: "100dvh",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+    overscrollBehaviorY: "contain",
+    background: "var(--cream)",
+  };
+  const innerStyle = {
+    minHeight: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "24px 16px",
-    background: "var(--cream)",
+    padding: "max(24px, calc(var(--sat, 0px) + 16px)) 16px max(24px, env(safe-area-inset-bottom))",
+    boxSizing: "border-box",
   };
 
   if (loading) {
     return (
       <div style={wrapperStyle}>
-        <div style={cardStyle}>
-          <div style={{ textAlign: "center", color: "var(--charcoal-md)", fontSize: 14 }}>
-            {t("loading")}
+        <div style={innerStyle}>
+          <div style={cardStyle}>
+            <div style={{ textAlign: "center", color: "var(--charcoal-md)", fontSize: 14 }}>
+              {t("loading")}
+            </div>
           </div>
         </div>
       </div>
@@ -128,38 +144,40 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
 
     return (
       <div style={wrapperStyle}>
-        <div style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-            <LogoIcon size={36} color="var(--teal)" />
+        <div style={innerStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+              <LogoIcon size={36} color="var(--teal)" />
+            </div>
+            <div style={{
+              fontFamily: "var(--font-d)",
+              fontWeight: 800,
+              fontSize: 20,
+              color: "var(--charcoal)",
+              textAlign: "center",
+              marginBottom: 10,
+              letterSpacing: "-0.3px",
+            }}>
+              {errorTitle}
+            </div>
+            <div style={{
+              fontSize: 14,
+              color: "var(--charcoal-md)",
+              textAlign: "center",
+              lineHeight: 1.55,
+              marginBottom: 22,
+            }}>
+              {errorBody}
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onSignIn}
+              style={{ width: "100%" }}
+            >
+              {t("patientClaim.haveAccount")}
+            </button>
           </div>
-          <div style={{
-            fontFamily: "var(--font-d)",
-            fontWeight: 800,
-            fontSize: 20,
-            color: "var(--charcoal)",
-            textAlign: "center",
-            marginBottom: 10,
-            letterSpacing: "-0.3px",
-          }}>
-            {errorTitle}
-          </div>
-          <div style={{
-            fontSize: 14,
-            color: "var(--charcoal-md)",
-            textAlign: "center",
-            lineHeight: 1.55,
-            marginBottom: 22,
-          }}>
-            {errorBody}
-          </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onSignIn}
-            style={{ width: "100%" }}
-          >
-            {t("patientClaim.haveAccount")}
-          </button>
         </div>
       </div>
     );
@@ -170,74 +188,76 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
 
   return (
     <div style={wrapperStyle}>
-      <div style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-          <LogoIcon size={36} color="var(--teal)" />
-        </div>
-        <div style={{
-          fontSize: 13,
-          color: "var(--charcoal-md)",
-          textAlign: "center",
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          fontWeight: 700,
-          marginBottom: 4,
-        }}>
-          {t("patientClaim.eyebrow")}
-        </div>
-        <div style={{
-          fontFamily: "var(--font-d)",
-          fontWeight: 800,
-          fontSize: 22,
-          color: "var(--charcoal)",
-          textAlign: "center",
-          marginBottom: 8,
-          letterSpacing: "-0.3px",
-          lineHeight: 1.2,
-        }}>
-          {therapistName}
-        </div>
-        <div style={{
-          fontSize: 14,
-          color: "var(--charcoal-md)",
-          textAlign: "center",
-          marginBottom: 24,
-        }}>
-          {t("patientClaim.therapistSub", { profession: professionLabel })}
-        </div>
-        <div style={{
-          fontSize: 14,
-          color: "var(--charcoal)",
-          textAlign: "center",
-          lineHeight: 1.55,
-          marginBottom: 22,
-        }}>
-          {t("patientClaim.welcomeBody")}
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={onCreateAccount}
-          style={{ width: "100%", marginBottom: 10 }}
-        >
-          {t("patientClaim.createAccount")}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onSignIn}
-          style={{ width: "100%" }}
-        >
-          {t("patientClaim.haveAccount")}
-        </button>
-        <div style={{
-          marginTop: 20,
-          fontSize: 11,
-          color: "var(--charcoal-xl)",
-          textAlign: "center",
-          lineHeight: 1.55,
-        }}>
-          {t("patientClaim.privacy")}
+      <div style={innerStyle}>
+        <div style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+            <LogoIcon size={36} color="var(--teal)" />
+          </div>
+          <div style={{
+            fontSize: 13,
+            color: "var(--charcoal-md)",
+            textAlign: "center",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontWeight: 700,
+            marginBottom: 4,
+          }}>
+            {t("patientClaim.eyebrow")}
+          </div>
+          <div style={{
+            fontFamily: "var(--font-d)",
+            fontWeight: 800,
+            fontSize: 22,
+            color: "var(--charcoal)",
+            textAlign: "center",
+            marginBottom: 8,
+            letterSpacing: "-0.3px",
+            lineHeight: 1.2,
+          }}>
+            {therapistName}
+          </div>
+          <div style={{
+            fontSize: 14,
+            color: "var(--charcoal-md)",
+            textAlign: "center",
+            marginBottom: 24,
+          }}>
+            {t("patientClaim.therapistSub", { profession: professionLabel })}
+          </div>
+          <div style={{
+            fontSize: 14,
+            color: "var(--charcoal)",
+            textAlign: "center",
+            lineHeight: 1.55,
+            marginBottom: 22,
+          }}>
+            {t("patientClaim.welcomeBody")}
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onCreateAccount}
+            style={{ width: "100%", marginBottom: 10 }}
+          >
+            {t("patientClaim.createAccount")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onSignIn}
+            style={{ width: "100%" }}
+          >
+            {t("patientClaim.haveAccount")}
+          </button>
+          <div style={{
+            marginTop: 20,
+            fontSize: 11,
+            color: "var(--charcoal-xl)",
+            textAlign: "center",
+            lineHeight: 1.55,
+          }}>
+            {t("patientClaim.privacy")}
+          </div>
         </div>
       </div>
     </div>

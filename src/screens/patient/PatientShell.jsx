@@ -45,10 +45,16 @@ export function PatientShell({ user, signOut, data }) {
   return (
     <div
       style={{
-        minHeight: "100dvh",
+        // Fixed height (not minHeight) so the inner scroll region
+        // owns overflow. Global `html, body { overflow: hidden }`
+        // means the page itself never scrolls — every screen has to
+        // manage its own scrollable container, same pattern the
+        // therapist .shell + .main-content classes use.
+        height: "100dvh",
         background: "var(--cream)",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       {/* ── Top bar ── */}
@@ -56,13 +62,11 @@ export function PatientShell({ user, signOut, data }) {
         style={{
           background: "var(--white)",
           borderBottom: "1px solid var(--border-lt)",
-          padding: "14px 16px",
+          padding: "calc(var(--sat, 0px) + 14px) 16px 14px",
           display: "flex",
           alignItems: "center",
           gap: 10,
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
+          flexShrink: 0,
         }}
       >
         <LogoIcon size={22} color="var(--teal)" />
@@ -119,8 +123,26 @@ export function PatientShell({ user, signOut, data }) {
         </button>
       </div>
 
-      {/* ── Body ── */}
-      <PatientHome data={data} user={user} />
+      {/* ── Body — scroll-owner. flex:1 fills the remaining height
+            below the top bar; overflow-y:auto lets content scroll
+            inside this container while the rest of the page stays
+            put. Bottom padding accounts for the iOS home indicator
+            (env(safe-area-inset-bottom)) so the last card never sits
+            under the gesture area. -webkit-overflow-scrolling=touch
+            and overscroll-behavior=contain match the therapist-side
+            scrollable surfaces. */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehaviorY: "contain",
+          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+        }}
+      >
+        <PatientHome data={data} user={user} />
+      </div>
 
       <PatientSettingsSheet
         open={settingsOpen}
