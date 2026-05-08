@@ -253,7 +253,14 @@ function CardiganApp() {
     // name + profession and route to AuthScreen on CTA tap. The
     // token persists in sessionStorage through the auth round-trip
     // so PatientClaimGate can fire the claim once they're signed in.
-    if (inviteToken) {
+    //
+    // The !authIntent guard matters: tapping "Crear cuenta" /
+    // "Ya tengo cuenta" calls setAuthIntent(...) to advance to
+    // AuthScreen below. Without the guard, we'd stay parked on
+    // PatientClaimScreen forever (the inviteToken remains in
+    // sessionStorage by design — it's needed for the post-auth
+    // claim) and the buttons would appear to do nothing.
+    if (inviteToken && !authIntent) {
       return (
         <PatientClaimScreen
           token={inviteToken}
