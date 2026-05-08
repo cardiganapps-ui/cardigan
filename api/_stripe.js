@@ -83,6 +83,24 @@ export function getWebhookSecret() {
   return secret.trim();
 }
 
+/* Connect webhook secret. Stripe webhook endpoints are EITHER
+   platform-mode (connect=false, default) OR connect-mode
+   (connect=true) — there's no "both" toggle on a single endpoint.
+   So Cardigan registers TWO endpoints pointing at /api/stripe-webhook:
+     1. The platform endpoint (existing) signs with STRIPE_WEBHOOK_SECRET
+        and delivers subscription / invoice / account.updated events.
+     2. The Connect endpoint (added in stage 3 patient-portal payments)
+        signs with STRIPE_CONNECT_WEBHOOK_SECRET and delivers
+        payment_intent.* events from connected accounts.
+   The handler verifies the incoming signature against EITHER secret —
+   if the Connect secret isn't configured (older deploy, test
+   environment), we just fall back to platform-only verification. */
+export function getConnectWebhookSecret() {
+  const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  if (!secret || !secret.trim()) return null;
+  return secret.trim();
+}
+
 /* Stripe expects application/x-www-form-urlencoded with bracketed keys
    for nested objects. URLSearchParams handles flat key/value pairs;
    for nested ones we stringify keys ourselves so e.g.

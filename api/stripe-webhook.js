@@ -45,6 +45,7 @@ import {
   verifyStripeSignature,
   readRawBody,
   getWebhookSecret,
+  getConnectWebhookSecret,
   getSubscription,
   creditCustomerBalance,
 } from "./_stripe.js";
@@ -835,12 +836,19 @@ async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  let secret;
-  try { secret = getWebhookSecret(); }
+  // Two webhook endpoints share this URL — one platform-mode, one
+  // Connect-mode. They sign with different secrets. We verify against
+  // the platform secret first (most events come from there), then fall
+  // back to the Connect secret if configured. The Connect secret is
+  // optional so older deploys / test-only environments still work
+  // with just the platform endpoint configured.
+  let platformSecret;
+  try { platformSecret = getWebhookSecret(); }
   catch (err) {
     console.error("stripe-webhook:", err.message);
     return res.status(500).json({ error: "Webhook secret not configured" });
   }
+  const connectSecret = getConnectWebhookSecret();
 
   const sigHeader = req.headers["stripe-signature"];
   if (!sigHeader) {
@@ -848,11 +856,12 @@ async function handler(req, res) {
   }
 
   const rawBody = await readRawBody(req);
+  const headerStr = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
   const ok = verifyStripeSignature({
-    rawBody,
-    header: Array.isArray(sigHeader) ? sigHeader[0] : sigHeader,
-    secret,
-  });
+    rawBody, header: headerStr, secret: platformSecret,
+  }) || (connectSecret && verifyStripeSignature({
+    rawBody, header: headerStr, secret: connectSecret,
+  }));
   if (!ok) {
     console.warn("stripe-webhook: signature verification failed");
     return res.status(401).json({ error: "Invalid signature" });
