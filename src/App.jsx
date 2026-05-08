@@ -963,16 +963,20 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
   // Admin owns its own chrome (sidebar + header) and covers the
   // topbar / FAB / BottomTabs via the fixed `.admin-shell` overlay.
-  // Settings + privacy hide ONLY the FAB (creation affordance has no
-  // place on info/preferences pages and floated over long lists) —
-  // the BottomTabs MUST stay visible on those screens, otherwise
-  // the user has no way to navigate away. Two flags, distinct
-  // concerns. The CSS-level body:has(...) rules in base.css handle
-  // the "any sheet / drawer is open" case for both at once.
+  // Privacy hides the FAB because the page is text-only and a
+  // floating "create" action over a legal document is jarring.
+  // Settings keeps the FAB — quick access to creating a patient /
+  // session / payment from any screen is more convenient than the
+  // theoretical noise of a floating button on a preferences page,
+  // and the absence used to read as "this screen is broken" rather
+  // than as a deliberate UX call. The BottomTabs MUST stay visible
+  // on those screens, otherwise the user has no way to navigate
+  // away. Two flags, distinct concerns. The CSS-level body:has(...)
+  // rules in base.css handle the "any sheet / drawer is open" case
+  // for both at once.
   const hideFab = localHideFab
     || tutorialHidesFab
     || screen === "admin"
-    || screen === "settings"
     || screen === "privacy";
   const hideBottomTabs = tutorialHidesFab
     || screen === "admin";
