@@ -116,6 +116,15 @@
 }
 </script>
 <link rel="stylesheet" href="/marketing.css" />
+<!-- /marketing.js adds a "js" class to <html>, drives the reveal-on-
+     scroll fade-ins, and toggles the sticky-nav scroll state.
+     External (not inline) so the strict script-src 'self' CSP
+     accepts it without a per-script SHA. Loaded synchronously
+     (no defer/async) so the .js class lands before first paint —
+     otherwise above-the-fold elements would briefly render visible
+     then snap to opacity:0 when the script finally executes. The
+     IO setup waits for DOMContentLoaded internally. -->
+<script src="/marketing.js"></script>
 </head>
 <body>
 <div class="mkt-page">
@@ -476,38 +485,5 @@
     <div class="mkt-footer-bottom">© 2026 Cardigan. Hecho en México con cuidado.</div>
   </footer>
 </div>
-
-<!-- Sticky-nav scroll-state + scroll-triggered reveals. Vanilla JS,
-     no external dependency. Respects prefers-reduced-motion via the
-     CSS guard at the bottom of marketing.css. -->
-<script>
-(function() {
-  var nav = document.getElementById("mkt-nav");
-  var hero = document.getElementById("mkt-hero");
-  if (nav && hero && "IntersectionObserver" in window) {
-    var ioNav = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) {
-        nav.classList.toggle("mkt-nav--scrolled", !e.isIntersecting);
-      });
-    }, { threshold: 0, rootMargin: "-60px 0px 0px 0px" });
-    ioNav.observe(hero);
-  }
-  var reveals = document.querySelectorAll(".mkt-reveal");
-  if (reveals.length && "IntersectionObserver" in window) {
-    var io = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) {
-        if (e.isIntersecting) {
-          e.target.classList.add("mkt-in");
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.18, rootMargin: "0px 0px -40px 0px" });
-    reveals.forEach(function(el) { io.observe(el); });
-  } else {
-    // No IntersectionObserver — show everything immediately.
-    reveals.forEach(function(el) { el.classList.add("mkt-in"); });
-  }
-})();
-</script>
 </body>
 </html>

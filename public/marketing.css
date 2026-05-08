@@ -195,15 +195,22 @@ section { padding: 64px 0; }
 
 /* Reveal-on-scroll: items start hidden + offset, JS adds .mkt-in
    when they intersect the viewport. Stagger via --i. Respects
-   prefers-reduced-motion (handled at the bottom of this file). */
-.mkt-reveal {
+   prefers-reduced-motion (handled at the bottom of this file).
+
+   IMPORTANT — no-js fallback. The hidden initial state is gated on
+   the `js` class added to <html> by the inline head-script. If JS
+   never runs (slow connection, aggressive content blocker, browser
+   bug), the elements stay visible and the page degrades gracefully
+   to plain content. The animation only runs when JS confirms it's
+   ready to drive it. */
+.js .mkt-reveal {
   opacity: 0;
   transform: translateY(16px);
   transition: opacity 600ms var(--ease-out),
               transform 700ms var(--ease-spring);
   transition-delay: calc(var(--i, 0) * 80ms);
 }
-.mkt-reveal.mkt-in {
+.js .mkt-reveal.mkt-in {
   opacity: 1;
   transform: translateY(0);
 }
@@ -787,11 +794,10 @@ section { padding: 64px 0; }
 }
 
 /* Reduced motion — disable reveal/lift transitions for accessibility.
-   The existing .mkt-reveal initial state already shows the content
-   (just with opacity 0); the reduced-motion override forces it
-   visible immediately, matching the page's natural paint. */
+   Forces visibility on every animated primitive, matching the no-js
+   fallback. */
 @media (prefers-reduced-motion: reduce) {
-  .mkt-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .js .mkt-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .mkt-phone-wrap { animation: none !important; }
   .mkt-float-card { animation: none !important; }
 }
