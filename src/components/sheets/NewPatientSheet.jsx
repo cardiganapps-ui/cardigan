@@ -399,7 +399,13 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
 
   return (
     <div className="sheet-overlay" onClick={submitting ? undefined : onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh", position:"relative" }}>
+      {/* maxHeight clamps to leave the status bar / Dynamic Island
+          uncovered. The previous 92vh value didn't subtract the safe-
+          area-inset-top, so on notched iPhones the sheet pushed up
+          into the system clock. var(--sat) is env(safe-area-inset-
+          top) (with 0 fallback for non-notch devices) plus a 16px
+          gap so the sheet handle stays comfortably reachable. */}
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))", position:"relative" }}>
         {submitting && (
           <div role="status" aria-live="polite"
             style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,

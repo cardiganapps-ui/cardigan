@@ -194,7 +194,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
         aria-label={t("expediente.folder.shareSheetTitle")}
         onClick={(e) => e.stopPropagation()}
         {...panelHandlers}
-        style={{ maxHeight: "92vh" }}
+        style={{ maxHeight: "min(92dvh, calc(100dvh - var(--sat) - 16px))" }}
       >
         <div className="sheet-handle" />
         <div className="sheet-header">

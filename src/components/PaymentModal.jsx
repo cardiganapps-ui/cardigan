@@ -116,7 +116,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"92vh" }}>
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
