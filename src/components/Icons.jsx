@@ -128,6 +128,18 @@ export const IconUserPlus = (p) => (
   <I {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></I>
 );
 
+// Chain link — two interlocking halves. Used as the "invite this
+// patient to link their account" affordance on the expediente
+// header (and the matching success state once the patient claims
+// the invite). Reads as "link" universally — the previous person
+// glyph was easy to confuse with the patient avatar next to it.
+export const IconLink = (p) => (
+  <I {...p}>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </I>
+);
+
 export const IconCalendarPlus = (p) => (
   <I {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></I>
 );

@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO, isoToShortDateWithYear } from "../utils/dates";
 import { phoneHref, emailHref } from "../utils/contact";
-import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconUserPlus, IconCheck } from "../components/Icons";
+import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconLink, IconCheck } from "../components/Icons";
 import { InvitePatientSheet } from "../components/sheets/InvitePatientSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
@@ -601,7 +601,7 @@ export function PatientExpediente({
                 title={t("patientInvite.action")}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}
               >
-                <IconUserPlus size={18} />
+                <IconLink size={18} />
               </button>
             ) : (
               <span
@@ -621,7 +621,7 @@ export function PatientExpediente({
                   flexShrink: 0,
                 }}
               >
-                <IconUserPlus size={18} />
+                <IconLink size={18} />
               </span>
             )}
             <div style={{ flex:1 }} />
