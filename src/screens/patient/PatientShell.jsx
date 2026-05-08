@@ -51,7 +51,7 @@ export function PatientShell({ user, signOut, data }) {
         // manage its own scrollable container, same pattern the
         // therapist .shell + .main-content classes use.
         height: "100dvh",
-        background: "var(--cream)",
+        background: "var(--white)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",

@@ -95,7 +95,7 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
     overflowY: "auto",
     WebkitOverflowScrolling: "touch",
     overscrollBehaviorY: "contain",
-    background: "var(--cream)",
+    background: "var(--white)",
   };
   const innerStyle = {
     minHeight: "100%",

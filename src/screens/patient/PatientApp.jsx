@@ -69,7 +69,7 @@ export function PatientApp({ user, signOut }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--cream)",
+        background: "var(--white)",
         gap: 12,
         flexDirection: "column",
       }}>
