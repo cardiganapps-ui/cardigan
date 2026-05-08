@@ -1084,7 +1084,9 @@ function DocumentRow({ document: doc, onOpen, onRemove }) {
 }
 
 function formatBytes(bytes) {
-  if (!bytes || bytes <= 0) return "—";
+  // Render "—" for missing data (null/undefined/non-numeric); show
+  // "0 B" for actual empty files (rare but valid — empty .txt etc).
+  if (bytes == null || !Number.isFinite(Number(bytes)) || bytes < 0) return "—";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;

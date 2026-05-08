@@ -25,6 +25,7 @@ import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { rateLimit } from "./_ratelimit.js";
 import { createCustomer, createCheckoutSession, getPriceId, creditCustomerBalance, resolvePlan } from "./_stripe.js";
+import { safeAppOrigin } from "./_origin.js";
 
 const MXN = "mxn";
 
@@ -53,14 +54,11 @@ function parseInfluencerCode(body) {
 }
 
 function appOrigin(req) {
-  // Prefer the explicit origin header (sent by browsers on same-site
-  // POSTs) over host headers — that way returning to the same host
-  // the user is currently on doesn't accidentally cross to the apex
-  // when the user's tab is on a preview deployment.
-  const origin = req.headers.origin;
-  if (origin) return origin;
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "cardigan.mx";
-  return `https://${host}`;
+  // Origin / Referer are attacker-controllable; safeAppOrigin
+  // allowlists production + preview + localhost and falls back to the
+  // canonical domain otherwise so a forged header can't bounce the
+  // user to attacker.com after Stripe redirects them.
+  return safeAppOrigin(req);
 }
 
 async function handler(req, res) {

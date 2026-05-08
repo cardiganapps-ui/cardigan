@@ -511,6 +511,11 @@ create table if not exists therapist_connect_accounts (
   charges_enabled boolean not null default false,
   payouts_enabled boolean not null default false,
   details_submitted boolean not null default false,
+  -- Stale-write guard for the live-refresh path in
+  -- /api/stripe-connect-status. The webhook stamps this column on
+  -- every account.updated; the status endpoint only overwrites when
+  -- its fetch timestamp is strictly newer.
+  last_event_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

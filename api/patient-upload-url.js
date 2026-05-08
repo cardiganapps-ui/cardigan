@@ -53,6 +53,13 @@ const ALLOWED_UPLOAD_TYPES = new Set([
 
 const MAX_FILENAME_LEN = 200;
 
+// Mirrors the cap enforced on the confirm step (patient-document-
+// confirm.js::MAX_FILE_SIZE). Without a content-length on the
+// presigned URL, R2 would happily accept multi-GB uploads — the
+// confirm step would reject the row, but the bytes are already in
+// our bucket. Cap defensively at the byte level too.
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
 // MIME → file extension. Used for path construction so the suffix
 // matches the content the user uploaded. Without this we'd either
 // trust the client's filename (path traversal risk) or strip the
@@ -131,12 +138,29 @@ async function handler(req, res) {
 
   try {
     const r2 = await getR2();
+    // Layered size-enforcement strategy:
+    //   1. Client-side: usePatientDocuments rejects > MAX_FILE_SIZE
+    //      before requesting a presigned URL. Stops 99% of cases at
+    //      the source — no network round-trip.
+    //   2. Confirm step (patient-document-confirm.js): file_size on
+    //      the request body is server-validated; an oversized upload
+    //      that skipped step 1 still gets rejected before the row is
+    //      ledgered. The R2 object is orphaned in this path; an R2
+    //      lifecycle rule sweeps unconfirmed objects (TODO).
+    //   3. R2 PUT: Cloudflare R2 enforces a per-object 5 GB cap by
+    //      default; well above our MAX. We don't rely on this.
+    //
+    // The presigned URL itself can't carry a max-size constraint
+    // without switching to createPresignedPost (S3 v2 policy form),
+    // which would require a different client-side flow. Keep the
+    // PUT presign for simplicity; the layered checks above are
+    // sufficient.
     const url = await getSignedUrl(r2, new PutObjectCommand({
       Bucket: BUCKET,
       Key: path,
       ContentType: content_type,
     }), { expiresIn: 300 });
-    return res.status(200).json({ url, path });
+    return res.status(200).json({ url, path, max_size: MAX_FILE_SIZE });
   } catch (err) {
     console.error("[patient-upload-url] failed:", err?.message);
     return res.status(500).json({ error: "Upload URL generation failed" });

@@ -56,7 +56,14 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
     setPanelEl(el);
   };
 
+  // Defense in depth: caller (PatientHome) gates the CTA on
+  // amountDue > 0, but the sheet might still mount with a 0 / null
+  // / negative balance if a webhook landed mid-render or the data
+  // hook returns a credit. Showing a "$0" balance with a "Pagar
+  // $20" form would be confusing — bail out cleanly instead.
   if (!open || !patient) return null;
+  const amountDueNum = Math.round(Number(amountDue) || 0);
+  if (amountDueNum <= 0) return null;
 
   const amountNum = Math.round(Number(amount) || 0);
   const overBalance = amountNum > Math.round(Number(amountDue) || 0);

@@ -26,7 +26,7 @@ async function handler(req, res) {
   const svc = getServiceClient();
   const { data: row, error: lookupErr } = await svc
     .from("therapist_connect_accounts")
-    .select("stripe_account_id, charges_enabled, payouts_enabled, details_submitted")
+    .select("stripe_account_id, charges_enabled, payouts_enabled, details_submitted, last_event_at")
     .eq("user_id", user.id)
     .maybeSingle();
   if (lookupErr) return res.status(500).json({ error: lookupErr.message });
@@ -35,7 +35,9 @@ async function handler(req, res) {
   // Live-refresh against Stripe so the UI has the freshest possible
   // state. If Stripe's API is briefly slow we fall back to the cached
   // row — better to render slightly stale state than show a spinner
-  // forever.
+  // forever. Snapshot fetch time BEFORE the call so the stale-write
+  // guard below uses a conservative timestamp.
+  const fetchStartedIso = new Date().toISOString();
   let live = null;
   try {
     live = await getConnectAccount(row.stripe_account_id);
@@ -52,14 +54,21 @@ async function handler(req, res) {
     };
     // Only persist when the live state actually differs — avoids a
     // write on every status poll.
-    if (
+    const stateChanged =
       update.charges_enabled !== row.charges_enabled
       || update.payouts_enabled !== row.payouts_enabled
-      || update.details_submitted !== row.details_submitted
-    ) {
-      await svc.from("therapist_connect_accounts")
-        .update(update)
+      || update.details_submitted !== row.details_submitted;
+    if (stateChanged) {
+      // Stale-write guard: a webhook (account.updated) with a newer
+      // timestamp may have updated the row while our Stripe fetch
+      // was in flight. Conditional UPDATE writes only when our
+      // fetchStartedIso is strictly newer than what's there. Mirrors
+      // the webhook's own guard so they cooperate cleanly.
+      let upd = svc.from("therapist_connect_accounts")
+        .update({ ...update, last_event_at: fetchStartedIso })
         .eq("user_id", user.id);
+      upd = upd.or(`last_event_at.is.null,last_event_at.lt.${fetchStartedIso}`);
+      await upd;
     }
     const reqs = live.requirements || {};
     const requirementsCount =

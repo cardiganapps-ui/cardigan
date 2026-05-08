@@ -587,18 +587,50 @@ async function reconcilePatientPaymentFailed(svc, pi, terminalStatus) {
   return { ok: true };
 }
 
-async function applyConnectAccountUpdate(svc, account) {
+async function applyConnectAccountUpdate(svc, account, eventCreatedUnix) {
   const accountId = account.id;
   if (!accountId) return { ok: false, error: "no account id" };
-  const { error } = await svc
+  const eventCreatedIso = isoOrNull(eventCreatedUnix);
+  // Pre-check for ownership so we can log unknown accounts. A
+  // Stripe webhook misconfiguration (or test/live key bleed) could
+  // deliver events for accounts that don't belong to our platform;
+  // silently no-oping made these invisible.
+  const { data: row } = await svc
     .from("therapist_connect_accounts")
-    .update({
-      charges_enabled: !!account.charges_enabled,
-      payouts_enabled: !!account.payouts_enabled,
-      details_submitted: !!account.details_submitted,
-      updated_at: new Date().toISOString(),
-    })
+    .select("user_id, last_event_at")
+    .eq("stripe_account_id", accountId)
+    .maybeSingle();
+  if (!row) {
+    try {
+      Sentry.captureMessage("stripe-webhook: account.updated for unknown account", {
+        level: "warning",
+        extra: { accountId },
+      });
+    } catch { /* Sentry best-effort */ }
+    return { ok: true, note: `unknown account ${accountId}` };
+  }
+  // Stale-event guard. Mirrors shouldSkipStaleEvent for subscriptions.
+  if (row.last_event_at && eventCreatedIso && eventCreatedIso < row.last_event_at) {
+    return { ok: true, note: `stale account.updated (${eventCreatedIso} < ${row.last_event_at})` };
+  }
+  const update = {
+    charges_enabled: !!account.charges_enabled,
+    payouts_enabled: !!account.payouts_enabled,
+    details_submitted: !!account.details_submitted,
+    updated_at: new Date().toISOString(),
+    ...(eventCreatedIso ? { last_event_at: eventCreatedIso } : {}),
+  };
+  // Conditional UPDATE: only write when the row's last_event_at is
+  // null OR strictly older than this event. Prevents a concurrent
+  // newer webhook (delivered to a different Vercel instance) from
+  // being clobbered.
+  let upd = svc.from("therapist_connect_accounts")
+    .update(update)
     .eq("stripe_account_id", accountId);
+  if (eventCreatedIso) {
+    upd = upd.or(`last_event_at.is.null,last_event_at.lt.${eventCreatedIso}`);
+  }
+  const { error } = await upd;
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
@@ -819,11 +851,11 @@ async function handleEvent(svc, event) {
     }
 
     case "account.updated": {
-      // Connect onboarding state change. We only care about accounts
-      // we actually created — silently ignore unknown ones (test-mode
-      // accounts, accounts from other platforms if our key was ever
-      // misused, etc).
-      return applyConnectAccountUpdate(svc, event.data.object);
+      // Connect onboarding state change. The handler logs (Sentry
+      // warning) when the account isn't in our DB and gates the
+      // write on the event timestamp so a stale delivery can't
+      // clobber a newer state.
+      return applyConnectAccountUpdate(svc, event.data.object, eventCreatedUnix);
     }
 
     default:
@@ -857,11 +889,13 @@ async function handler(req, res) {
 
   const rawBody = await readRawBody(req);
   const headerStr = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
-  const ok = verifyStripeSignature({
-    rawBody, header: headerStr, secret: platformSecret,
-  }) || (connectSecret && verifyStripeSignature({
-    rawBody, header: headerStr, secret: connectSecret,
-  }));
+  // Iterate over the (one or two) configured secrets and accept if
+  // any verifies. Cleaner than nested ||'s and easy to extend if a
+  // third endpoint ever shares this URL.
+  const secrets = [platformSecret, connectSecret].filter(Boolean);
+  const ok = secrets.some((secret) =>
+    verifyStripeSignature({ rawBody, header: headerStr, secret })
+  );
   if (!ok) {
     console.warn("stripe-webhook: signature verification failed");
     return res.status(401).json({ error: "Invalid signature" });

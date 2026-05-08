@@ -19,15 +19,14 @@
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { createConnectAccount, createAccountLink } from "./_stripe.js";
+import { safeAppOrigin } from "./_origin.js";
 
 function getReturnUrls(req) {
-  // Build the URLs from the incoming Origin so test/preview/prod
-  // each return to themselves. Fallback to the canonical domain when
-  // Origin is missing (server-side direct call, etc).
-  const origin = req.headers.origin || req.headers.referer || "https://cardigan.mx";
-  // Strip any path off the referer.
-  const url = new URL(origin);
-  const base = `${url.protocol}//${url.host}`;
+  // Origin is allowlisted in safeAppOrigin — production / preview /
+  // localhost survive, anything else collapses to the canonical
+  // domain so a forged header can't bounce the therapist to
+  // attacker.com after Stripe's hosted onboarding return.
+  const base = safeAppOrigin(req);
   return {
     returnUrl: `${base}/?stripe_connect=return`,
     refreshUrl: `${base}/?stripe_connect=refresh`,

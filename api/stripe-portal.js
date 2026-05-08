@@ -17,12 +17,12 @@ import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { createBillingPortalSession } from "./_stripe.js";
+import { safeAppOrigin } from "./_origin.js";
 
 function appOrigin(req) {
-  const origin = req.headers.origin;
-  if (origin) return origin;
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "cardigan.mx";
-  return `https://${host}`;
+  // Origin/Referer can be forged by non-browser clients; allowlisted
+  // helper falls back to https://cardigan.mx for unknown hosts.
+  return safeAppOrigin(req);
 }
 
 async function handler(req, res) {

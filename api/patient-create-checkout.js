@@ -25,6 +25,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 import { createPatientCheckoutSession } from "./_stripe.js";
+import { safeAppOrigin } from "./_origin.js";
 
 // Stripe minimum charge for MXN cards is 10 MXN (Stripe docs).
 // We pad to 20 MXN so a tap-fingered $1 entry doesn't get a confusing
@@ -35,9 +36,10 @@ const MIN_AMOUNT_CENTS = 2000;
 const MAX_AMOUNT_CENTS = 50_000_00;
 
 function getReturnUrls(req, patientId) {
-  const origin = req.headers.origin || req.headers.referer || "https://cardigan.mx";
-  const url = new URL(origin);
-  const base = `${url.protocol}//${url.host}`;
+  // Origin is allowlisted in safeAppOrigin — anything off-domain
+  // collapses to the canonical https://cardigan.mx so a forged
+  // header can't bounce the patient to attacker.com after Checkout.
+  const base = safeAppOrigin(req);
   return {
     successUrl: `${base}/?pago=exito&p=${encodeURIComponent(patientId)}`,
     cancelUrl: `${base}/?pago=cancelado&p=${encodeURIComponent(patientId)}`,

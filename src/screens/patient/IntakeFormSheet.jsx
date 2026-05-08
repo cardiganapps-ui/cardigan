@@ -60,12 +60,21 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
     setMedicalConditions(patient?.medical_conditions || "");
     setHeightCm(patient?.height_cm ? String(patient.height_cm) : "");
     setGoalWeightKg(patient?.goal_weight_kg ? String(patient.goal_weight_kg) : "");
-    // If they already completed once, we still want them to re-tick
-    // consent on each submit — covers the edge where the privacy
-    // policy version changes between visits.
-    setConsent(false);
+    // Don't reset consent on every open — preserving it across mid-
+    // session retries (submit fails, patient adjusts a field,
+    // re-submits) saves them from re-ticking every attempt. Reset
+    // happens on the close transition below, so a fresh open starts
+    // unchecked.
     setSubmitting(false);
   }, [open, patient?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset consent on CLOSE so the next open starts unchecked.
+  // Covers the edge where the privacy policy version changes
+  // between visits — fresh acceptance per session.
+  useEffect(() => {
+    if (open) return;
+    setConsent(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
