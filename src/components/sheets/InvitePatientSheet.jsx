@@ -225,11 +225,16 @@ export function InvitePatientSheet({ patient, onClose }) {
             // notice the therapist needs before they share.
             <>
               {alreadyLinked ? (
+                // Stay loud here — this is a state-of-the-world warning
+                // the therapist needs to register before sharing. amber-bg
+                // is the alpha-tinted token defined in BOTH light + dark
+                // themes (vs amber-pale which is light-only and rendered
+                // as a bright pastel against the dark page).
                 <div
                   style={{
                     padding: "12px 14px",
-                    background: "var(--amber-pale, #FBF1DE)",
-                    border: "1px solid var(--amber-mist, #F0DDB4)",
+                    background: "var(--amber-bg, rgba(212,160,64,0.12))",
+                    border: "1px solid var(--amber-mist, rgba(212,160,64,0.35))",
                     borderRadius: "var(--radius)",
                     fontSize: "var(--text-sm)",
                     color: "var(--charcoal)",
@@ -240,24 +245,28 @@ export function InvitePatientSheet({ patient, onClose }) {
                   {t("patientInvite.alreadyLinkedNotice", { name: patient.name })}
                 </div>
               ) : (
+                // Inline confirmation, no colored card. The previous
+                // green-tinted band relied on --green-pale (light-mode
+                // token) which fell through to a literal pastel hex in
+                // dark mode — bright background + bright charcoal text =
+                // unreadable. The check disc alone carries enough visual
+                // weight; the row sits flush in the sheet's neutral
+                // typography.
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "12px 14px",
-                    background: "var(--green-pale, #E5F1E1)",
-                    border: "1px solid var(--green-mist, #C6E1BE)",
-                    borderRadius: "var(--radius)",
+                    padding: "2px 0 14px",
                     fontSize: "var(--text-sm)",
-                    color: "var(--charcoal)",
-                    marginBottom: 16,
+                    color: "var(--charcoal-md)",
+                    lineHeight: 1.45,
                   }}
                 >
                   <span
                     style={{
-                      width: 24,
-                      height: 24,
+                      width: 22,
+                      height: 22,
                       borderRadius: "50%",
                       background: "var(--green)",
                       color: "var(--white)",
@@ -268,9 +277,9 @@ export function InvitePatientSheet({ patient, onClose }) {
                     }}
                     aria-hidden="true"
                   >
-                    <IconCheck size={14} />
+                    <IconCheck size={12} />
                   </span>
-                  <span style={{ flex: 1, lineHeight: 1.45 }}>
+                  <span style={{ flex: 1 }}>
                     {t("patientInvite.generatedHint", { name: patient.name })}
                   </span>
                 </div>
