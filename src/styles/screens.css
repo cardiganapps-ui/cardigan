@@ -31,6 +31,18 @@
   overscroll-behavior: contain;
   animation: fadeIn var(--dur-slow) ease;
 }
+/* iOS Safari has to re-blur the entire backdrop on every paint of
+   the sheet content. When the backdrop is heavy (the marketing
+   LandingPage with IntersectionObservers, gradients, and images)
+   typing in an input causes severe keyboard lag because each
+   keystroke triggers a full re-blur. The --no-blur modifier drops
+   backdrop-filter entirely so the scrim alone provides contrast.
+   Use this on overlays that sit over expensive surfaces (AuthScreen
+   over LandingPage, patient sheets over PatientShell). */
+.sheet-overlay--no-blur {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 .sheet-panel {
   background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%;

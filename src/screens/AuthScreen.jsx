@@ -626,14 +626,29 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
 
   return (
     <>
-      <LandingPage
-        onPrimary={() => openAuth("signup")}
-        onSecondary={onDemo}
-        onLogin={() => openAuth("login")}
-      />
+      {/* LandingPage stays mounted across renders so the close
+          animation can fade back into the same scroll position, but
+          we hide it via display:none while the auth sheet is open.
+          Two wins: (a) iOS Safari stops repainting the marketing
+          page on every keystroke inside the sheet form, eliminating
+          the keyboard-input lag the backdrop-filter was magnifying;
+          (b) the IntersectionObservers attached to landing reveals
+          stop firing on offscreen elements. The sheet itself slides
+          over a clean white body during the open transition, which
+          reads cleanly. */}
+      <div style={showAuth ? { display: "none" } : undefined}>
+        <LandingPage
+          onPrimary={() => openAuth("signup")}
+          onSecondary={onDemo}
+          onLogin={() => openAuth("login")}
+        />
+      </div>
 
       {showAuth && (
-        <div className="sheet-overlay" onClick={() => setShowAuth(false)}>
+        <div
+          className="sheet-overlay sheet-overlay--no-blur"
+          onClick={() => setShowAuth(false)}
+        >
           <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...authPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
