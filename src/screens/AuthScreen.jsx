@@ -483,8 +483,16 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
    "See how it works" secondary CTA). */
 export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen }) {
   const { t } = useT();
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState("signup");
+  // Honor autoOpen on FIRST mount as well — not just on subsequent
+  // changes. The previous adjust-during-render pattern initialized
+  // prevAutoOpen=autoOpen, so on first render the comparison was
+  // always false → the signup/login sheet never opened. That broke
+  // the path from PatientClaimScreen's "Crear cuenta" button (and
+  // any other flow that mounts AuthScreen with autoOpen pre-set):
+  // user landed on the marketing page instead of the signup form.
+  const initialAutoOpened = autoOpen === "signup" || autoOpen === "login";
+  const [showAuth, setShowAuth] = useState(initialAutoOpened);
+  const [authMode, setAuthMode] = useState(autoOpen === "login" ? "login" : "signup");
   useEscape(showAuth ? () => setShowAuth(false) : null);
   const closeAuth = () => setShowAuth(false);
   const { scrollRef: authScrollRef, setPanelEl: setAuthPanelEl, panelHandlers: authPanelHandlers } = useSheetDrag(closeAuth, { isOpen: showAuth });
@@ -492,9 +500,11 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen })
 
   const openAuth = (mode) => { setAuthMode(mode); setShowAuth(true); };
 
-  // When we mount because the user clicked "Crear cuenta" from the demo
-  // banner, jump straight into the signup sheet instead of the marketing
-  // page. Adjust-state-during-render on the autoOpen transition.
+  // For subsequent autoOpen changes (rare — would require parent to
+  // remount us with a new prop), still react via adjust-during-render.
+  // Initialized to the same value as autoOpen so the FIRST render's
+  // change-detection is no-op (the initial-mount opening above
+  // already handled it).
   const [prevAutoOpen, setPrevAutoOpen] = useState(autoOpen);
   if (autoOpen !== prevAutoOpen) {
     setPrevAutoOpen(autoOpen);

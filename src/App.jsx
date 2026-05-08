@@ -169,12 +169,21 @@ function CardiganApp() {
       // /i/:token → /index.html (vercel.json), preserving the source
       // URL. Pull the token out, stash it, and route the URL back to
       // / so a refresh / screenshot doesn't leak the credential.
+      // Unlike the other capture paths, an invite link does NOT seed
+      // authIntent — the patient should land on the claim screen
+      // (with the therapist's name + a friendly intro) BEFORE
+      // choosing signup vs. sign-in. Pre-seeding authIntent="signup"
+      // would short-circuit the claim screen and drop them straight
+      // on AuthScreen, which is exactly what the prior "click the
+      // link → land on the marketing page" bug looked like.
+      let inviteCaptured = false;
       const inviteMatch = window.location.pathname.match(/^\/i\/([A-Za-z0-9_-]+)\/?$/);
       if (inviteMatch) {
         const inviteToken = inviteMatch[1];
         if (inviteToken) {
           try { sessionStorage.setItem("cardigan.patientInviteToken", inviteToken); }
           catch { /* ignore */ }
+          inviteCaptured = true;
           captured = true;
           pathRewrite = "/";
         }
@@ -185,9 +194,10 @@ function CardiganApp() {
         + (params.toString() ? `?${params.toString()}` : "")
         + window.location.hash;
       window.history.replaceState({}, "", newUrl);
-      // Auto-jump to signup. Returning "signup" here seeds authIntent
-      // so AuthScreen renders the signup sheet on its first render.
-      return "signup";
+      // Auto-jump to signup ONLY for the marketing-funnel captures
+      // (referral / influencer code). For invite captures, return
+      // null so the claim screen renders first.
+      return inviteCaptured ? null : "signup";
     } catch { return null; }
   });
   // MFA gate state — `mfaResolved` flips true once MfaChallengeGate
