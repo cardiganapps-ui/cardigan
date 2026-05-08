@@ -139,14 +139,19 @@
          focus and (more importantly) failing to restore the original zoom
          level on blur. Modern iOS still honors user pinch-zoom for
          accessibility regardless of this setting. -->
-    <!-- interactive-widget=resizes-content: when the iOS / Android virtual
-         keyboard appears, the layout viewport ALSO shrinks (not just the
-         visual viewport). Without this, sticky-bottom buttons end up hidden
-         under the keyboard on patient sheets — date/time pickers, intake
-         forms, reschedule, etc. Default behavior (resizes-visual) keeps
-         layout the same, which is the wrong tradeoff for our bottom-anchored
-         sheet pattern. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- We deliberately DO NOT set interactive-widget here. Briefly
+         tried `resizes-content` to push sticky-bottom sheet buttons
+         above the on-screen keyboard, but that opt-in causes iOS Safari
+         to re-flow the layout viewport every time the keyboard's
+         autocomplete / autofill suggestion bar updates — i.e. on every
+         keystroke. Net result was severe input lag in form fields
+         (AuthScreen signup, IntakeFormSheet, reschedule). Reverting to
+         the default `resizes-visual` keeps the layout viewport stable;
+         iOS pins position:fixed elements to the *visual* viewport, so
+         sticky-bottom buttons in our sheets remain reachable above the
+         keyboard anyway. Don't add interactive-widget back without
+         paying the input-lag cost. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cardigan" />
