@@ -272,6 +272,31 @@ export function useAuth() {
      we deliberately sign out so they re-login with the freshly-set
      credential — leaves no ambient "signed via emailed link" session
      behind. */
+  /* Passwordless sign-in. Supabase's signInWithOtp emails a one-tap
+     magic link and (when type=email) also a 6-digit code as fallback.
+     The redirect honors any pending invite token so a patient who
+     clicks "Entrar con un enlace" after landing on /i/<token> still
+     ends up at the claim flow on return. */
+  async function signInWithMagicLink({ email, captchaToken }) {
+    const { token: inviteToken } = getInviteContext() || {};
+    const redirectTo = inviteToken
+      ? `${window.location.origin}/i/${inviteToken}`
+      : window.location.origin;
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        captchaToken,
+        emailRedirectTo: redirectTo,
+        // Don't auto-create accounts via magic link. Sign-up flows
+        // through the explicit signup form so consent + name capture
+        // happen first; magic link is sign-in only.
+        shouldCreateUser: false,
+      },
+    });
+    if (error) return { error: error.message };
+    return { sent: true, email };
+  }
+
   async function setNewPassword(password) {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { error: error.message };
@@ -281,5 +306,5 @@ export function useAuth() {
     return { ok: true };
   }
 
-  return { user, loading, recoveryMode, inviteMode, signUp, signIn, signOut, signInWithProvider, refreshUser, setNewPassword };
+  return { user, loading, recoveryMode, inviteMode, signUp, signIn, signOut, signInWithProvider, signInWithMagicLink, refreshUser, setNewPassword };
 }

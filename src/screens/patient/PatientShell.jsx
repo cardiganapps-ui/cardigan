@@ -3,6 +3,7 @@ import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
 import { AvatarContent } from "../../components/Avatar";
 import { IconSettings } from "../../components/Icons";
+import { PullToRefresh } from "../../components/PullToRefresh";
 import { PatientHome } from "./PatientHome";
 import { PatientSettingsSheet } from "./PatientSettingsSheet";
 
@@ -128,17 +129,22 @@ export function PatientShell({ user, signOut, data }) {
             below the top bar; .scroll-bounce gives this surface the
             same iOS rubber-band guarantee the therapist .page class
             has, so even single-card content (patient with no upcoming
-            session) bounces and feels native. */}
-      <div
-        className="scroll-bounce"
-        style={{
-          flex: 1,
-          minHeight: 0,
-          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
-        }}
-      >
-        <PatientHome data={data} user={user} />
-      </div>
+            session) bounces and feels native. PullToRefresh wraps
+            the scroll surface and looks for .scroll-bounce to detect
+            scrollTop, so the swipe-down gesture re-fetches data
+            (sessions / balance / docs) without leaving the screen. */}
+      <PullToRefresh onRefresh={data.refresh}>
+        <div
+          className="scroll-bounce"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+          }}
+        >
+          <PatientHome data={data} user={user} />
+        </div>
+      </PullToRefresh>
 
       <PatientSettingsSheet
         open={settingsOpen}

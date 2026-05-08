@@ -161,7 +161,7 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
 /* ── Auth form (reused inside sheet) ──
    The landing page is English; the auth form stays in Spanish to match
    the rest of the app, which is Spanish-only per CLAUDE.md. */
-function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
+function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, t }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -205,8 +205,13 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
   // already registered. Renders an inline recovery prompt so the user
   // can switch to login or password reset without retyping.
   const [duplicateEmail, setDuplicateEmail] = useState(null);
+  // When non-null, the user requested a magic link and we're waiting
+  // for them to tap it. Replaces the form with a "check your inbox"
+  // panel until they navigate away.
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState(null);
+  const [magicLinkBusy, setMagicLinkBusy] = useState(false);
 
-  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); setDuplicateEmail(null); };
+  const switchMode = (m) => { setMode(m); setError(""); setMessage(""); setPendingEmail(null); setDuplicateEmail(null); setMagicLinkSentTo(null); };
 
   const handleProvider = async (provider) => {
     if (!onProvider || providerBusy) return;
@@ -217,6 +222,40 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
     if (result?.error) {
       setError(result.error || t("auth.providerError"));
       setProviderBusy(null);
+    }
+  };
+
+  // Magic-link sign-in. Shares the captcha gate + email validation
+  // with the regular handleSubmit; we just skip the password step.
+  // Defers when captchaToken hasn't landed yet, same as handleSubmit's
+  // pendingSubmit branch — without this the cold-load fast-click
+  // path would error on the captcha widget.
+  const handleMagicLink = async () => {
+    if (!onMagicLink) return;
+    if (magicLinkBusy) return;
+    setError("");
+    setMessage("");
+    if (!email) { setError(t("auth.emailRequired")); return; }
+    if (captchaRequired && !captchaToken) {
+      setPendingSubmit(true); // reuse the deferred-submit indicator
+      return;
+    }
+    setMagicLinkBusy(true);
+    try {
+      const result = await onMagicLink({ email, captchaToken });
+      if (captchaRequired) {
+        setCaptchaToken(null);
+        turnstileRef.current?.reset?.();
+      }
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      if (result?.sent) {
+        setMagicLinkSentTo(result.email || email);
+      }
+    } finally {
+      setMagicLinkBusy(false);
     }
   };
 
@@ -315,6 +354,30 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
         }}
         t={t}
       />
+    );
+  }
+
+  if (magicLinkSentTo) {
+    return (
+      <div style={{ paddingTop: 4 }}>
+        <div style={{ width: 32, height: 3, background: "var(--teal)", borderRadius: 100, marginBottom: 18 }} />
+        <div style={{ fontFamily: "var(--font-d)", fontSize: 24, fontWeight: 900, color: "var(--charcoal)", letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 12 }}>
+          {t("auth.magicLinkSentTitle")}
+        </div>
+        <div style={{ fontSize: 15, color: "var(--charcoal-md)", lineHeight: 1.6 }}>
+          {t("auth.magicLinkSentBefore")}
+          <strong style={{ color: "var(--charcoal)", fontWeight: 700, wordBreak: "break-all" }}>{magicLinkSentTo}</strong>
+          {t("auth.magicLinkSentAfter")}
+        </div>
+        <div style={{ marginTop: 14, padding: "10px 14px", background: "var(--teal-pale)", borderRadius: "var(--radius)", fontSize: 13, color: "var(--teal-dark)", lineHeight: 1.5 }}>
+          {t("auth.magicLinkTip")}
+        </div>
+        <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8 }}>
+          <button className="btn btn-ghost" type="button" onClick={() => setMagicLinkSentTo(null)}>
+            {t("auth.magicLinkBack")}
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -489,7 +552,18 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
         )}
         {error && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{error}</div>}
         {mode === "login" && (
-          <div style={{ textAlign: "right", marginBottom: 14, marginTop: -6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 14, marginTop: -6 }}>
+            {onMagicLink ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-tap"
+                style={{ height: 36, fontSize: 13, color: "var(--teal-dark)" }}
+                onClick={handleMagicLink}
+                disabled={magicLinkBusy}
+              >
+                {magicLinkBusy ? t("loading") : t("auth.magicLinkCta")}
+              </button>
+            ) : <span />}
             <button type="button" className="btn btn-ghost" style={{ height: 36, fontSize: 13, color: "var(--teal-dark)" }} onClick={() => switchMode("reset")}>{t("auth.resetPassword")}</button>
           </div>
         )}
@@ -520,7 +594,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
    Thin shell: renders the marketing landing page, and wires the landing
    CTAs to either the auth sheet (signup / sign in) or demo mode (the
    "See how it works" secondary CTA). */
-export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen }) {
+export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo, autoOpen }) {
   const { t } = useT();
   // Honor autoOpen on FIRST mount as well — not just on subsequent
   // changes. The previous adjust-during-render pattern initialized
@@ -571,7 +645,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onDemo, autoOpen })
               </button>
             </div>
             <div style={{ padding: "0 20px 22px" }}>
-              <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} t={t} />
+              <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} onMagicLink={onMagicLink} t={t} />
             </div>
           </div>
         </div>

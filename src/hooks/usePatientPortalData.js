@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { enrichPatientsWithBalance } from "../utils/accounting";
 // Re-exported below for backwards compatibility — components that
@@ -35,8 +35,19 @@ export function usePatientPortalData(user) {
   const [sessions, setSessions] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [reloadKey, setReloadKey] = useState(0);
+  // PullToRefresh awaits the refresh promise to drive its spinner —
+  // we capture the next load's resolve fn here so the gesture's
+  // success-check only appears AFTER the data round-trip lands. The
+  // ref-then-resolve pattern means a redundant refresh during an
+  // in-flight one collapses cleanly into the same promise.
+  const pendingResolverRef = useRef(null);
 
-  const refresh = () => setReloadKey(k => k + 1);
+  const refresh = () => {
+    setReloadKey(k => k + 1);
+    return new Promise((resolve) => {
+      pendingResolverRef.current = resolve;
+    });
+  };
 
   useEffect(() => {
     if (!user?.id) {
@@ -78,6 +89,13 @@ export function usePatientPortalData(user) {
         setError(err?.message || "No pudimos cargar tus datos.");
       } finally {
         if (!cancelled) setLoading(false);
+        // Resolve any pending refresh promise — fires on first
+        // mount AND on every refresh() call so PullToRefresh
+        // gets the right "done" timing every time.
+        if (pendingResolverRef.current) {
+          pendingResolverRef.current();
+          pendingResolverRef.current = null;
+        }
       }
     })();
     return () => { cancelled = true; };

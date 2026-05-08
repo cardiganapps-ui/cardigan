@@ -55,6 +55,10 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
   const [goalWeightKg, setGoalWeightKg] = useState("");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Inline error hint — survives the toast auto-dismiss so the user
+  // can read why a submit failed even after the toast fades. Cleared
+  // on every new submit attempt + on form-field changes downstream.
+  const [errorHint, setErrorHint] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -98,11 +102,13 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
 
   const submit = async () => {
     if (submitting || !consent) return;
+    setErrorHint(null);
     setSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const access = session?.access_token;
       if (!access) {
+        setErrorHint("auth");
         showToast(t("intake.error"), "error");
         return;
       }
@@ -128,6 +134,7 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
+        setErrorHint("server");
         showToast(t("intake.error"), "error");
         return;
       }
@@ -136,6 +143,7 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
       onSubmitted?.();
       onClose?.();
     } catch {
+      setErrorHint("network");
       showToast(t("intake.error"), "error");
     } finally {
       setSubmitting(false);
@@ -300,6 +308,22 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
               .
             </span>
           </label>
+
+          {errorHint && (
+            <div
+              role="alert"
+              style={{
+                fontSize: "var(--text-sm)",
+                color: "var(--red)",
+                lineHeight: 1.45,
+                marginBottom: 14,
+              }}
+            >
+              {errorHint === "network"   ? t("intake.errorNetwork")
+                : errorHint === "auth"   ? t("intake.errorAuth")
+                : t("intake.error")}
+            </div>
+          )}
 
           <button
             type="button"

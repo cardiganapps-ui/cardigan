@@ -12,9 +12,17 @@ export function PullToRefresh({ onRefresh, children }) {
   const THRESHOLD = 64;
   const MAX_PULL = 130;
 
+  // .page is the therapist-side scroll container; .scroll-bounce is
+  // the equivalent on patient surfaces (and any new screens — see
+  // CLAUDE.md design system). Either one is treated as the scroll
+  // owner. If neither exists we fall back to "yes, we're at top" so
+  // the wrapper still triggers — useful for short content with no
+  // explicit scroll layer.
   const isAtTop = () => {
-    const page = wrapRef.current?.querySelector(".page");
-    return !page || page.scrollTop <= 0;
+    const scroller =
+      wrapRef.current?.querySelector(".page") ||
+      wrapRef.current?.querySelector(".scroll-bounce");
+    return !scroller || scroller.scrollTop <= 0;
   };
 
   // Skip the gesture entirely when an overlay (expediente, sheet, doc

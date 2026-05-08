@@ -180,6 +180,14 @@ export default {
     verifyResendCooldown: "Espera {seconds}s para volver a enviar",
     notConfirmedError: "Debes verificar tu correo antes de iniciar sesión.",
     captchaPending: "Espera a que se complete la verificación de seguridad.",
+    emailRequired: "Escribe tu correo electrónico.",
+    // Magic-link (passwordless) sign-in path
+    magicLinkCta: "Entrar con un enlace",
+    magicLinkSentTitle: "Revisa tu correo",
+    magicLinkSentBefore: "Te enviamos un enlace de acceso a ",
+    magicLinkSentAfter: ". Toca el enlace en tu correo para entrar — no necesitas contraseña.",
+    magicLinkTip: "El enlace expira en una hora. Si no llega, revisa tu carpeta de spam.",
+    magicLinkBack: "Volver",
   },
 
   // ── Patients ──
@@ -874,6 +882,11 @@ export default {
     // Next-reminder hint
     nextReminderNone: "Sin {session.p} próximas en las siguientes 24 horas.",
     nextReminderLabel: "Tu próximo recordatorio",
+    // 24h preview list (shown under the time chooser).
+    previewToday: "Hoy",
+    previewTomorrow: "Mañana",
+    previewLine: "{patient} · {sessionTime}",
+    previewNone: "No tienes {session.p} en las próximas 24 horas — los recordatorios reaparecerán cuando tengas {session.s} agendada.",
     // Permission-denied card
     blockedTitle: "Permiso bloqueado",
     blockedBody: "Para reactivar los recordatorios, ve a Ajustes del iPhone → Cardigan → Notificaciones y permite “Permitir notificaciones”.",
@@ -1954,6 +1967,8 @@ export default {
     submitting: "Enviando...",
     success: "¡Listo! Tu profesionista ya ve tu información.",
     error: "No pudimos guardar tu información. Intenta de nuevo en un momento.",
+    errorNetwork: "Sin conexión. Verifica tu internet y vuelve a intentar.",
+    errorAuth: "Tu sesión expiró. Cierra y vuelve a abrir la app para continuar.",
   },
 
   // Patient-side documents card on the home screen.
@@ -1997,6 +2012,7 @@ export default {
     notEnabledError: "Tu profesionista todavía no acepta pagos en línea.",
     amountError: "Esa cantidad no es válida. Revisa el monto e intenta de nuevo.",
     genericError: "No pudimos iniciar el pago. Intenta de nuevo en un momento.",
+    networkError: "Sin conexión. Verifica tu internet y vuelve a intentar.",
   },
 
   // ── Therapist's "Pagos en línea" sheet (Stripe Connect onboarding) ──

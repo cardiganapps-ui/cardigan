@@ -107,7 +107,7 @@ const TRIAL_REMINDER_THRESHOLDS = [15, 7, 1];
 const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button AND by the ?ref=<code> referral-link
@@ -279,7 +279,7 @@ function CardiganApp() {
         />
       );
     }
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onMagicLink={signInWithMagicLink} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
   }
 
   // Block the main shell behind the MFA gate. Self-resolves to no-op

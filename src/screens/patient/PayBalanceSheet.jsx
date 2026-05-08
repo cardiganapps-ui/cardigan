@@ -28,6 +28,10 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
   const { pay, busy } = usePatientPay();
   const initialAmount = Math.max(MIN_AMOUNT, Math.min(MAX_AMOUNT, Math.round(Number(amountDue) || 0)));
   const [amount, setAmount] = useState(String(initialAmount));
+  // Inline error hint — survives the toast auto-dismiss so the user
+  // can read why "Continuar" failed (Stripe Connect missing on
+  // therapist's side, network blip, etc.) without re-tapping Pay.
+  const [errorHint, setErrorHint] = useState(null);
   // Track when the sheet last opened so we can reset the amount in
   // the adjust-during-render pattern instead of a setState-in-effect.
   // Each open clears the previous amount and seeds the input with
@@ -73,11 +77,15 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
 
   const submit = async () => {
     if (!valid || busy) return;
+    setErrorHint(null);
     const r = await pay({ patientId: patient.id, amountPesos: amountNum });
     // On ok, the hook has already redirected. On fail, we surface a
-    // friendly toast — the most likely reasons (network, therapist
-    // disabled Connect mid-flow, amount out of range) all map cleanly.
+    // friendly toast AND set an inline hint — the most likely reasons
+    // (network, therapist disabled Connect mid-flow, amount out of
+    // range) all map cleanly to a code, and the inline hint persists
+    // after the toast fades so the user knows what to adjust.
     if (!r.ok) {
+      setErrorHint(r.code || "generic");
       const msg = r.code === "not_enabled"
         ? t("patientPay.notEnabledError")
         : r.code === "out_of_range"
@@ -204,6 +212,24 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
             <IconLock size={14} style={{ marginTop: 2, flexShrink: 0 }} />
             <span>{t("patientPay.trustNote")}</span>
           </div>
+
+          {errorHint && (
+            <div
+              role="alert"
+              style={{
+                fontSize: "var(--text-sm)",
+                color: "var(--red)",
+                lineHeight: 1.45,
+                marginTop: 12,
+                marginBottom: 4,
+              }}
+            >
+              {errorHint === "not_enabled"   ? t("patientPay.notEnabledError")
+                : errorHint === "out_of_range" ? t("patientPay.amountError")
+                : errorHint === "network"      ? t("patientPay.networkError")
+                : t("patientPay.genericError")}
+            </div>
+          )}
 
           {/* Submit */}
           <button
