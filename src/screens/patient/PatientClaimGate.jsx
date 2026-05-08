@@ -87,14 +87,11 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
   }, [token]);
 
   // Outer = scroll owner (body has overflow:hidden globally — see
-  // PatientClaimScreen for the same pattern). Inner centers the
-  // card; if the card is taller than the viewport it falls back to
-  // top-aligned and the outer scrolls.
+  // PatientClaimScreen for the same pattern). .scroll-bounce wires
+  // overflow + iOS rubber-band; inner centers the card; if the card
+  // outgrows the viewport it falls back to top-aligned and scrolls.
   const wrapperStyle = {
     height: "100dvh",
-    overflowY: "auto",
-    WebkitOverflowScrolling: "touch",
-    overscrollBehaviorY: "contain",
     background: "var(--white)",
   };
   const innerStyle = {
@@ -109,7 +106,7 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
     background: "var(--white)",
     borderRadius: "var(--radius-lg, 16px)",
     border: "1px solid var(--border-lt)",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
+    boxShadow: "var(--shadow-lg)",
     padding: "28px 24px",
     width: "100%",
     maxWidth: 420,
@@ -119,7 +116,7 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
 
   if (!error) {
     return (
-      <div style={wrapperStyle}>
+      <div className="scroll-bounce" style={wrapperStyle}>
         <div style={innerStyle}>
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
@@ -161,7 +158,7 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
     : t("patientClaim.errorGenericBody");
 
   return (
-    <div style={wrapperStyle}>
+    <div className="scroll-bounce" style={wrapperStyle}>
       <div style={innerStyle}>
         <div style={cardStyle}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>

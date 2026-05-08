@@ -90,6 +90,7 @@ export function PatientShell({ user, signOut, data }) {
           type="button"
           onClick={() => setSettingsOpen(true)}
           aria-label={t("patientShell.openSettings")}
+          className="btn-tap"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -124,20 +125,15 @@ export function PatientShell({ user, signOut, data }) {
       </div>
 
       {/* ── Body — scroll-owner. flex:1 fills the remaining height
-            below the top bar; overflow-y:auto lets content scroll
-            inside this container while the rest of the page stays
-            put. Bottom padding accounts for the iOS home indicator
-            (env(safe-area-inset-bottom)) so the last card never sits
-            under the gesture area. -webkit-overflow-scrolling=touch
-            and overscroll-behavior=contain match the therapist-side
-            scrollable surfaces. */}
+            below the top bar; .scroll-bounce gives this surface the
+            same iOS rubber-band guarantee the therapist .page class
+            has, so even single-card content (patient with no upcoming
+            session) bounces and feels native. */}
       <div
+        className="scroll-bounce"
         style={{
           flex: 1,
           minHeight: 0,
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          overscrollBehaviorY: "contain",
           paddingBottom: "max(16px, env(safe-area-inset-bottom))",
         }}
       >

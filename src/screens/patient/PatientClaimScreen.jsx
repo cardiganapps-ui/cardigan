@@ -88,7 +88,9 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
     background: "var(--white)",
     borderRadius: "var(--radius-lg, 16px)",
     border: "1px solid var(--border-lt)",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
+    // Soft drop shadow that survives dark mode — base.css's
+    // --shadow-lg already darkens the alpha in the dark palette.
+    boxShadow: "var(--shadow-lg)",
     padding: "28px 24px",
     width: "100%",
     maxWidth: 420,
@@ -101,12 +103,11 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
   // Inner = centering frame: minHeight 100% so it grows to at least
   // viewport height (centers vertically when content fits), but
   // expands further when the card is taller than the screen — at
-  // which point the OUTER scrolls.
+  // which point the OUTER scrolls. .scroll-bounce wires in the iOS
+  // rubber-band sentinel so the screen feels native even when the
+  // card fits the viewport.
   const wrapperStyle = {
     height: "100dvh",
-    overflowY: "auto",
-    WebkitOverflowScrolling: "touch",
-    overscrollBehaviorY: "contain",
     background: "var(--white)",
   };
   const innerStyle = {
@@ -120,7 +121,7 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
 
   if (loading) {
     return (
-      <div style={wrapperStyle}>
+      <div className="scroll-bounce" style={wrapperStyle}>
         <div style={innerStyle}>
           <div style={cardStyle}>
             <div style={{ textAlign: "center", color: "var(--charcoal-md)", fontSize: 14 }}>
@@ -143,7 +144,7 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
       : t("patientClaim.errorGenericBody");
 
     return (
-      <div style={wrapperStyle}>
+      <div className="scroll-bounce" style={wrapperStyle}>
         <div style={innerStyle}>
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
@@ -187,7 +188,7 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
   const professionLabel = PROVIDER_LABELS[preview?.therapist_profession] || PROVIDER_LABELS.psychologist;
 
   return (
-    <div style={wrapperStyle}>
+    <div className="scroll-bounce" style={wrapperStyle}>
       <div style={innerStyle}>
         <div style={cardStyle}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>

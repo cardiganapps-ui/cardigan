@@ -1427,3 +1427,70 @@ html[data-theme="dark"] .update-prompt-spinner--inline {
   border-top-color: #FFFFFF;
 }
 @keyframes update-prompt-spin { to { transform: rotate(360deg); } }
+
+/* ── .scroll-bounce ──
+   iOS rubber-band-on-any-content scroll surface, mirroring the
+   .page pattern. Use on full-viewport scroll containers (Patient
+   shell body, claim screens) so even short content gets the
+   elastic give that makes iOS apps feel alive. The absolute ::after
+   sentinel sits 1px past the bottom of the visible area; it never
+   shows up but contributes to scrollHeight, so iOS always has
+   something to bounce against.
+   Apply with: <div className="scroll-bounce">…</div>
+   Pair with `position: relative` on the parent if needed (it's set
+   here so the ::after anchors to this element). */
+.scroll-bounce {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  position: relative;
+}
+.scroll-bounce::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* ── .empty-state ──
+   Canonical empty / orphan / "nothing here yet" surface. Centered
+   column with a 44×44 token-cream-dark icon circle, font-d title,
+   and muted body. Used by the Patient orphan view, claim error
+   states, and any future "no data" affordance. Variants tweak the
+   max-width for narrower hero copy. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 20px;
+  gap: 10px;
+}
+.empty-state-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--cream-dark);
+  color: var(--charcoal-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.empty-state-title {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: var(--text-lg);
+  color: var(--charcoal);
+  letter-spacing: -0.2px;
+}
+.empty-state-body {
+  font-size: 13px;
+  color: var(--charcoal-md);
+  line-height: 1.55;
+  max-width: 320px;
+}

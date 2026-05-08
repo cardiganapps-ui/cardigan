@@ -1895,6 +1895,7 @@ export default {
     therapistLabel: "Atención · {profession}",
     orphanTitle: "Tu vinculaci\u00f3n ya no est\u00e1 activa",
     orphanBody: "Tu profesionista podr\u00eda haber desvinculado tu cuenta o eliminado tu registro. Si esto fue un error, p\u00eddele un nuevo enlace de invitaci\u00f3n.",
+    errorTitle: "No pudimos cargar tu informaci\u00f3n",
     cancelCta: "Cancelar esta cita",
     cancelDialogTitle: "\u00bfCancelar tu cita del {date}?",
     cancelDialogBody: "{name} recibir\u00e1 una notificaci\u00f3n al instante.",

@@ -6,7 +6,7 @@ import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
 import { classifySessions } from "../../hooks/usePatientPortalData";
 import { usePatientDocuments } from "../../hooks/usePatientDocuments";
-import { IconCalendar, IconDollar, IconCheck, IconMail, IconUpload, IconDocument, IconTrash, IconChevronRight, IconCreditCard } from "../../components/Icons";
+import { IconCalendar, IconDollar, IconCheck, IconMail, IconUpload, IconDocument, IconTrash, IconChevronRight, IconCreditCard, IconUser, IconX } from "../../components/Icons";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { haptic } from "../../utils/haptics";
 import { IntakeFormSheet } from "./IntakeFormSheet";
@@ -204,17 +204,17 @@ export function PatientHome({ data }) {
   const visiblePast = showAllPast ? pastSorted : pastSorted.slice(0, 12);
 
   if (loading) {
-    return (
-      <div style={{ padding: 32, textAlign: "center", color: "var(--charcoal-md)", fontSize: 14 }}>
-        {t("loading")}
-      </div>
-    );
+    return <PatientHomeSkeleton />;
   }
 
   if (error) {
     return (
-      <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--red)", fontSize: 14, lineHeight: 1.5 }}>
-        {error}
+      <div className="empty-state" role="alert">
+        <div className="empty-state-icon" style={{ background: "var(--red-bg)", color: "var(--red)" }}>
+          <IconX size={20} />
+        </div>
+        <div className="empty-state-title">{t("patientHome.errorTitle")}</div>
+        <div className="empty-state-body">{error}</div>
       </div>
     );
   }
@@ -222,15 +222,15 @@ export function PatientHome({ data }) {
   if (!primaryPatient || !primaryTherapist) {
     // Orphan state — user is signed in but no patient row links
     // to them. Could happen if the therapist deleted the row after
-    // the patient claimed an invite. Friendly fallback.
+    // the patient claimed an invite. Uses the canonical .empty-state
+    // pattern (44×44 icon circle + title + muted body).
     return (
-      <div style={{ padding: "40px 20px", textAlign: "center" }}>
-        <div style={{ fontFamily: "var(--font-d)", fontWeight: 800, fontSize: 18, color: "var(--charcoal)", marginBottom: 8 }}>
-          {t("patientHome.orphanTitle")}
+      <div className="empty-state">
+        <div className="empty-state-icon">
+          <IconUser size={20} />
         </div>
-        <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55 }}>
-          {t("patientHome.orphanBody")}
-        </div>
+        <div className="empty-state-title">{t("patientHome.orphanTitle")}</div>
+        <div className="empty-state-body">{t("patientHome.orphanBody")}</div>
       </div>
     );
   }
@@ -288,7 +288,7 @@ export function PatientHome({ data }) {
         <button
           type="button"
           onClick={() => setIntakeOpen(true)}
-          className="card"
+          className="card btn-tap"
           style={{
             display: "flex",
             alignItems: "center",
@@ -457,6 +457,7 @@ export function PatientHome({ data }) {
               <button
                 type="button"
                 onClick={() => setShowAllPast(v => !v)}
+                className="btn-tap"
                 style={{
                   background: "transparent",
                   border: "none",
@@ -704,6 +705,7 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
             <button
               type="button"
               onClick={() => onRequestReschedule(session)}
+              className="btn-tap"
               style={{
                 background: "transparent",
                 border: "none",
@@ -723,6 +725,7 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
             <button
               type="button"
               onClick={() => onRequestCancel(session)}
+              className="btn-tap"
               style={{
                 background: "transparent",
                 border: "none",
@@ -954,6 +957,7 @@ function DocumentsCard({ documents, uploading, onUpload, onOpen, onRemove }) {
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
+            className="btn-tap"
             style={{
               background: "transparent",
               border: "none",
@@ -1055,6 +1059,7 @@ function DocumentRow({ document: doc, onOpen, onRemove }) {
       <button
         type="button"
         onClick={onOpen}
+        className="btn-tap"
         style={{
           display: "flex",
           alignItems: "center",
@@ -1109,6 +1114,7 @@ function DocumentRow({ document: doc, onOpen, onRemove }) {
         type="button"
         onClick={onRemove}
         aria-label={t("patientDocs.removeAria", { name: doc.name })}
+        className="btn-tap"
         style={{
           width: 32,
           height: 32,
@@ -1137,4 +1143,39 @@ function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/* Skeleton mirrors PatientHome's first-paint structure: hero card
+   (next session), balance row, "tu profesionista" card. Same widths
+   + heights as the real cards so the swap-in feels continuous. The
+   .sk-bar / .sk-circle classes already animate the cream shimmer. */
+function PatientHomeSkeleton() {
+  return (
+    <div aria-hidden style={{ padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Próxima sesión hero */}
+      <div className="card" style={{ padding: 16 }}>
+        <div className="sk-bar sk-bar-xs" style={{ width: "30%", marginBottom: 10 }} />
+        <div className="sk-bar sk-bar-lg" style={{ width: "70%", marginBottom: 8 }} />
+        <div className="sk-bar sk-bar-sm" style={{ width: "50%", marginBottom: 16 }} />
+        <div style={{ display: "flex", gap: 12 }}>
+          <div className="sk-bar sk-bar-md" style={{ width: 96, borderRadius: 100 }} />
+          <div className="sk-bar sk-bar-md" style={{ width: 96, borderRadius: 100 }} />
+        </div>
+      </div>
+      {/* Saldo */}
+      <div className="card" style={{ padding: 16 }}>
+        <div className="sk-bar sk-bar-xs" style={{ width: "20%", marginBottom: 10 }} />
+        <div className="sk-bar sk-bar-lg" style={{ width: "55%", marginBottom: 6 }} />
+        <div className="sk-bar sk-bar-sm" style={{ width: "35%" }} />
+      </div>
+      {/* Tu profesionista */}
+      <div className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="sk-circle" />
+        <div style={{ flex: 1 }}>
+          <div className="sk-bar sk-bar-md" style={{ width: "55%", marginBottom: 6 }} />
+          <div className="sk-bar sk-bar-xs" style={{ width: "35%" }} />
+        </div>
+      </div>
+    </div>
+  );
 }
