@@ -569,13 +569,16 @@ export function ResumenTab({
         );
       })()}
 
-      {/* Financials — all-time totals */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10, alignItems:"stretch" }}>
-        <div className="stat-tile" style={{ textAlign:"center" }}>
+      {/* Financials — all-time totals. Tighter padding (10px 14px vs
+          the default 14px 16px) and one-step-down font size keep the
+          two tiles in the visible viewport on iPhone-sized screens.
+          The numbers stay legible; the breathing room is what shrinks. */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8, alignItems:"stretch" }}>
+        <div className="stat-tile" style={{ textAlign:"center", padding:"10px 14px" }}>
           <div className="stat-tile-label">{t("finances.collected")}</div>
-          <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>{formatMXN(patient.paid)}</div>
+          <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-lg)" }}>{formatMXN(patient.paid)}</div>
         </div>
-        <div className="stat-tile" style={{ textAlign:"center" }}>
+        <div className="stat-tile" style={{ textAlign:"center", padding:"10px 14px" }}>
           {/* When a patient has overpaid (credit > 0), the tile flips
               from "No Cobrado $0" (which read as "nothing owed, nothing
               special") to "Saldo a favor +$X" so you can tell at a
@@ -585,20 +588,21 @@ export function ResumenTab({
           {patient.credit > 0 ? (
             <>
               <div className="stat-tile-label">{t("finances.credit")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-xl)" }}>+{formatMXN(patient.credit)}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-lg)" }}>+{formatMXN(patient.credit)}</div>
             </>
           ) : (
             <>
               <div className="stat-tile-label">{t("finances.balance")}</div>
-              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-xl)" }}>{formatMXN(patient.amountDue)}</div>
+              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-lg)" }}>{formatMXN(patient.amountDue)}</div>
             </>
           )}
         </div>
       </div>
 
-      {/* Attendance — with time filter */}
-      <div className="card" style={{ padding:"10px 12px", marginBottom:10 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+      {/* Attendance — with time filter. Tighter padding so the entire
+          Resumen tab fits without scroll on iPhone. */}
+      <div className="card" style={{ padding:"8px 10px", marginBottom:8 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
           <div style={SECTION_LABEL_STYLE}>{t("expediente.attendance")}</div>
         </div>
         {(() => {
@@ -616,7 +620,7 @@ export function ResumenTab({
           };
           const activeKey = periods.find(p => dateFrom === periodFromKey(p) && dateTo === todayISO())?.k;
           return (
-            <div style={{ marginBottom:10 }}>
+            <div style={{ marginBottom:8 }}>
               <SegmentedControl
                 value={activeKey || ""}
                 onChange={(k) => {
@@ -633,10 +637,10 @@ export function ResumenTab({
         })()}
         {(() => {
           const showTutor = !!patient.parent && fTutor > 0;
-          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"8px 6px", textAlign:"center", border:"none", fontFamily:"inherit", width:"100%", minHeight:0 };
-          const tileStyleSmall = { ...tileStyle, padding:"6px 6px" };
-          const valStyle = { fontFamily:"var(--font-d)", fontSize:"var(--text-xl)", fontWeight:800 };
-          const valStyleSmall = { ...valStyle, fontSize:"var(--text-lg)" };
+          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"6px 6px", textAlign:"center", border:"none", fontFamily:"inherit", width:"100%", minHeight:0 };
+          const tileStyleSmall = { ...tileStyle, padding:"5px 6px" };
+          const valStyle = { fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800 };
+          const valStyleSmall = { ...valStyle, fontSize:"var(--text-md)" };
           const labelStyle = { fontSize:"var(--text-eyebrow)", color:"var(--charcoal-xl)", marginTop:1 };
           return (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>

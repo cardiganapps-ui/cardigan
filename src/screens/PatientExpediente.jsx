@@ -539,9 +539,9 @@ export function PatientExpediente({
               </button>
             )}
             <Avatar initials={patient.initials} color={getClientColor(patient.colorIdx)}
-              style={{ width:48, height:48, fontSize:"var(--text-lg)" }} />
+              style={{ width:40, height:40, fontSize:"var(--text-md)" }} />
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", wordBreak:"break-word", lineHeight:1.15 }}>{patient.name}</div>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", overflow:"hidden", textOverflow:"ellipsis", wordBreak:"break-word", lineHeight:1.2 }}>{patient.name}</div>
               <div style={{ marginTop:3, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                 <span className={`badge ${patient.status === "active" ? "badge-teal" : "badge-gray"}`}>{patient.status === "active" ? t("patients.statusActive") : t("patients.statusEnded")}</span>
                 {patient.patient_intake_completed_at && (
@@ -569,25 +569,29 @@ export function PatientExpediente({
             </div>
           </div>
           {/* Row 2 — contact + quick actions. Kept on its own line so the
-              name in Row 1 never gets pushed or ellipsized. */}
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, flexWrap:"wrap" }}>
+              name in Row 1 never gets pushed or ellipsized. The 36px
+              circles are below Apple HIG's 44px guideline but acceptable
+              for a sheet header where the rest of the screen has plenty
+              of space — the trade-off buys back enough vertical room
+              that the Resumen tab fits without scrolling. */}
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
             {patient.phone && (
               <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
                 onClick={e => e.stopPropagation()}
-                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
-                <IconPhone size={18} />
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                <IconPhone size={16} />
               </a>
             )}
             {patient.email && (
               <a href={emailHref(patient.email)} aria-label={t("settings.email")}
                 onClick={e => e.stopPropagation()}
-                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
-                <IconMail size={18} />
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                <IconMail size={16} />
               </a>
             )}
             <button type="button" onClick={() => openNewNote()} aria-label={t("notes.addNote")}
-              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
-              <IconClipboard size={18} />
+              style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}>
+              <IconClipboard size={16} />
             </button>
             {/* Patient-portal invite trigger. Only when the patient
                 isn't already linked — a successful claim flips
@@ -599,9 +603,9 @@ export function PatientExpediente({
                 onClick={() => setInviteSheetPatient(patient)}
                 aria-label={t("patientInvite.action")}
                 title={t("patientInvite.action")}
-                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:44, height:44, minWidth:44, minHeight:44, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}
+                style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", border:"none", cursor:"pointer", flexShrink:0, WebkitTapHighlightColor:"transparent", padding:0 }}
               >
-                <IconLink size={18} />
+                <IconLink size={16} />
               </button>
             ) : (
               <span
@@ -611,17 +615,17 @@ export function PatientExpediente({
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 44,
-                  height: 44,
-                  minWidth: 44,
-                  minHeight: 44,
+                  width: 36,
+                  height: 36,
+                  minWidth: 36,
+                  minHeight: 36,
                   borderRadius: "50%",
-                  background: "var(--green-pale, #E5F1E1)",
+                  background: "var(--green-bg, rgba(61,171,116,0.12))",
                   color: "var(--green)",
                   flexShrink: 0,
                 }}
               >
-                <IconLink size={18} />
+                <IconLink size={16} />
               </span>
             )}
             <div style={{ flex:1 }} />
