@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { clearInviteToken } from "../utils/inviteTokenStorage";
+import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
+
+// Spanish gendered profession labels for the patient-side email
+// template ("Tu psicóloga te invitó", "Tu nutrióloga te invitó",
+// etc). Mirrors PROVIDER_LABELS in PatientClaimScreen so the email
+// matches the welcome card byte-for-byte. Default to feminine —
+// the demo data and the majority of MX professionals using
+// Cardigan are women, and the fallback isn't visible to therapists
+// the email never reaches.
+const PROFESSION_GENDERED_ES = {
+  psychologist:  "psicóloga",
+  nutritionist:  "nutrióloga",
+  trainer:       "entrenadora personal",
+  music_teacher: "maestra de música",
+  tutor:         "tutora",
+};
 
 // Supabase returns this exact message when a user tries to sign in with
 // an email that hasn't been verified yet. Detected so the UI can surface
@@ -108,32 +123,28 @@ export function useAuth() {
   // unchallenged call returns a 400 and the UI must surface the widget.
   async function signUp({ email, password, name, captchaToken }) {
     // If a patient-invite token is in storage, the user signed up
-    // FROM /i/<token> — route the email-verification redirect back
-    // to the same invite URL so post-verification we re-stash the
-    // token (defense-in-depth on top of the localStorage fix in
-    // inviteTokenStorage.js) AND PatientClaimGate fires
-    // automatically when the user lands on the URL signed in.
-    // Without this override, Supabase's redirect goes to whatever
-    // is configured in the project's Auth → Site URL (typically
-    // https://cardigan.mx/) — which works thanks to localStorage,
-    // but the explicit redirectTo makes the round-trip robust even
-    // when the patient verifies on a different device or after
-    // localStorage was wiped.
+    // FROM /i/<token>. Three things change when that's the case:
+    //   1. emailRedirectTo points back at /i/<token> so the
+    //      verification email's link re-stashes the token (defense
+    //      in depth on top of localStorage) AND fires the claim
+    //      automatically when the user lands signed-in.
+    //   2. options.data carries `is_patient: "1"` and the
+    //      therapist's name/gendered-profession so the Supabase
+    //      auth email template branches on .Data.therapist_name and
+    //      sends a patient-tailored verification email instead of
+    //      the therapist "tu consultorio en orden" copy.
+    //   3. full_name still flows through so the email greets the
+    //      patient by name.
     let emailRedirectTo;
+    const extraData = {};
     try {
-      const inviteToken = localStorage.getItem("cardigan.patientInviteToken");
-      // Tolerate both legacy plain-string and JSON-shaped values.
-      let rawToken = null;
-      if (inviteToken) {
-        if (inviteToken.startsWith("{")) {
-          try { rawToken = JSON.parse(inviteToken)?.token || null; }
-          catch { rawToken = null; }
-        } else {
-          rawToken = inviteToken;
-        }
-      }
-      if (rawToken && typeof window !== "undefined") {
-        emailRedirectTo = `${window.location.origin}/i/${encodeURIComponent(rawToken)}`;
+      const ctx = getInviteContext();
+      if (ctx?.token && typeof window !== "undefined") {
+        emailRedirectTo = `${window.location.origin}/i/${encodeURIComponent(ctx.token)}`;
+        extraData.is_patient = "1";
+        if (ctx.therapistName) extraData.therapist_name = ctx.therapistName;
+        const profKey = ctx.therapistProfession || "psychologist";
+        extraData.therapist_profession = PROFESSION_GENDERED_ES[profKey] || PROFESSION_GENDERED_ES.psychologist;
       }
     } catch { /* ignore — fall back to project default */ }
 
@@ -141,7 +152,7 @@ export function useAuth() {
       email,
       password,
       options: {
-        data: { full_name: name },
+        data: { full_name: name, ...extraData },
         captchaToken,
         ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },

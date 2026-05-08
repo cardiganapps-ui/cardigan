@@ -38,7 +38,7 @@
 </head>
 <body style="margin:0; padding:0; background-color:#FFFFFF;">
 
-<div style="display:none; font-size:1px; color:#FFFFFF; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">Te damos la bienvenida. Confirma tu correo y empecemos a poner tu consultorio en orden.</div>
+<div style="display:none; font-size:1px; color:#FFFFFF; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">{{ if .Data.therapist_name }}Verifica tu correo para unirte a {{ .Data.therapist_name }} en Cardigan.{{ else }}Te damos la bienvenida. Confirma tu correo y empecemos a poner tu consultorio en orden.{{ end }}</div>
 
 <table role="presentation" class="shell" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;">
 <tr><td align="center" style="padding:28px 20px 28px;">
@@ -60,9 +60,15 @@
 
     <tr>
       <td class="card-inner" style="padding:34px 44px 0;">
+        {{ if .Data.therapist_name }}
+        <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:12px;">Tu {{ if .Data.therapist_profession }}{{ .Data.therapist_profession }}{{ else }}profesionista{{ end }} te invitó</div>
+        <h1 class="ink headline" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:30px; font-weight:900; color:#2E2E2E; line-height:1.12; letter-spacing:-0.03em;">{{ .Data.therapist_name }} te espera en Cardigan.</h1>
+        <p class="ink-soft" style="margin:14px 0 0; font-size:16px; line-height:1.55; color:#4A4A4A;">Verifica tu correo y entra a ver tus próximas sesiones, tu saldo y la información que {{ .Data.therapist_name }} comparte contigo.</p>
+        {{ else }}
         <div class="eyebrow" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:800; color:#5B9BAF; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:12px;">Bienvenida</div>
         <h1 class="ink headline" style="margin:0; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:30px; font-weight:900; color:#2E2E2E; line-height:1.12; letter-spacing:-0.03em;">Qué gusto tenerte.</h1>
         <p class="ink-soft" style="margin:14px 0 0; font-size:16px; line-height:1.55; color:#4A4A4A;">Confirma tu correo y empecemos. En un momento, tu consultorio quedará en orden.</p>
+        {{ end }}
       </td>
     </tr>
 
@@ -73,7 +79,7 @@
         <table role="presentation" class="cta" cellpadding="0" cellspacing="0" border="0" width="100%">
           <tr>
             <td align="center" style="border-radius:100px; background-color:#2E2E2E; box-shadow: 0 6px 18px rgba(46,46,46,0.18);">
-              <a href="{{ .ConfirmationURL }}" target="_blank" style="display:block; padding:15px 40px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:15px; font-weight:800; color:#FFFFFF; text-decoration:none; border-radius:100px; letter-spacing:0.01em;">Verificar mi correo →</a>
+              <a href="{{ .ConfirmationURL }}" target="_blank" style="display:block; padding:15px 40px; font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:15px; font-weight:800; color:#FFFFFF; text-decoration:none; border-radius:100px; letter-spacing:0.01em;">{{ if .Data.therapist_name }}Verificar y unirme →{{ else }}Verificar mi correo →{{ end }}</a>
             </td>
           </tr>
         </table>
@@ -107,7 +113,7 @@
 
     <tr>
       <td class="card-inner" align="center" style="padding:20px 44px 28px;">
-        <div class="ink-muted" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:10px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:#A1A1A1;">Tu consultorio, en orden.</div>
+        <div class="ink-muted" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:10px; font-weight:800; letter-spacing:0.22em; text-transform:uppercase; color:#A1A1A1;">{{ if .Data.therapist_name }}Tu portal de paciente — gratis.{{ else }}Tu consultorio, en orden.{{ end }}</div>
       </td>
     </tr>
 
@@ -117,7 +123,7 @@
     <tr>
       <td align="center">
         <a class="footer-link" href="https://cardigan.mx" style="font-family:'Nunito','Nunito Sans',-apple-system,sans-serif; font-size:11px; font-weight:700; color:#A1A1A1; text-decoration:none; letter-spacing:-0.01em;">cardigan.mx</a>
-        <p class="ink-muted" style="margin:4px 0 0; font-size:11px; line-height:1.5; color:#A1A1A1;">© 2026 Cardigan · Gestión de consultorio para terapeutas</p>
+        <p class="ink-muted" style="margin:4px 0 0; font-size:11px; line-height:1.5; color:#A1A1A1;">© 2026 Cardigan · {{ if .Data.therapist_name }}Tu profesionista, organizada{{ else }}Gestión de consultorio para terapeutas{{ end }}</p>
       </td>
     </tr>
   </table>

@@ -28,33 +28,75 @@
 const KEY = "cardigan.patientInviteToken";
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-export function setInviteToken(token) {
-  if (typeof window === "undefined" || !token) return;
-  try {
-    const payload = JSON.stringify({ token, savedAt: Date.now() });
-    localStorage.setItem(KEY, payload);
-  } catch { /* private mode etc — caller falls back gracefully */ }
-}
-
-export function getInviteToken() {
+function readPayload() {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    // Plain-string legacy shape (sessionStorage migration). Trust
-    // the server expiry on these — they have no savedAt to check
-    // against client-side.
-    if (!raw.startsWith("{")) return raw;
+    // Plain-string legacy shape (sessionStorage migration). Wrap into
+    // the modern object form on the way out — caller code expects
+    // an object.
+    if (!raw.startsWith("{")) return { token: raw, savedAt: 0 };
     const obj = JSON.parse(raw);
     if (!obj || typeof obj.token !== "string") return null;
     if (typeof obj.savedAt === "number" && Date.now() - obj.savedAt > TTL_MS) {
       localStorage.removeItem(KEY);
       return null;
     }
-    return obj.token;
+    return obj;
   } catch {
     return null;
   }
+}
+
+function writePayload(obj) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...obj, savedAt: Date.now() }));
+  } catch { /* private mode etc — caller falls back gracefully */ }
+}
+
+export function setInviteToken(token) {
+  if (!token) return;
+  // Preserve any therapist context already attached from a prior
+  // PatientClaimScreen preview. This handles the order-of-operations
+  // where the URL capture (App.jsx) runs first and the preview
+  // attachment (PatientClaimScreen) lands a moment later.
+  const existing = readPayload();
+  writePayload({
+    token,
+    therapistName: existing?.token === token ? existing.therapistName : undefined,
+    therapistProfession: existing?.token === token ? existing.therapistProfession : undefined,
+  });
+}
+
+export function getInviteToken() {
+  return readPayload()?.token || null;
+}
+
+/* Therapist context — captured by PatientClaimScreen after the
+   /api/patient-invite-preview fetch resolves. The signup flow reads
+   these to personalize the verification email (template branches on
+   .Data.therapist_name presence; the profession drives the gendered
+   "tu psicóloga / tu nutrióloga / tu maestro de música" label). */
+export function attachTherapistContext({ therapistName, therapistProfession }) {
+  const cur = readPayload();
+  if (!cur?.token) return;
+  writePayload({
+    token: cur.token,
+    therapistName: therapistName || cur.therapistName,
+    therapistProfession: therapistProfession || cur.therapistProfession,
+  });
+}
+
+export function getInviteContext() {
+  const p = readPayload();
+  if (!p) return null;
+  return {
+    token: p.token,
+    therapistName: p.therapistName || null,
+    therapistProfession: p.therapistProfession || null,
+  };
 }
 
 export function clearInviteToken() {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
+import { attachTherapistContext } from "../../utils/inviteTokenStorage";
 
 /* ── PatientClaimScreen ───────────────────────────────────────────
    The "Únete a Cardigan" welcome view shown when an unauthenticated
@@ -56,6 +57,13 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
         if (j.expired) { setError("expired"); return; }
         if (j.used)    { setError("used");    return; }
         setPreview(j);
+        // Attach therapist context to the stored invite payload so
+        // the signup flow can personalize the verification email
+        // (template branches on .Data.therapist_name).
+        attachTherapistContext({
+          therapistName: j.therapist_full_name || null,
+          therapistProfession: j.therapist_profession || null,
+        });
       } catch {
         if (!cancelled) setError("network");
       } finally {
