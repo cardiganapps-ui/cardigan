@@ -47,7 +47,17 @@
   background: var(--white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%;
   padding-bottom: var(--sab);
-  max-height: 85dvh; overflow-y: scroll;
+  /* Use svh (small-viewport-height) — stable across keyboard state.
+     dvh (dynamic) recomputes every time the visual viewport changes,
+     which on iOS Safari fires on every keystroke as the keyboard's
+     autocomplete bar grows/shrinks with predictions. That recompute
+     forces a relayout of the panel + everything inside it (form
+     inputs included), causing severe input lag. svh is computed
+     against the smallest viewport (keyboard up + browser UI showing)
+     and stays fixed, eliminating the per-keystroke reflow. The trade-
+     off is a slightly shorter panel when the keyboard is down, which
+     reads as "lots of breathing room" rather than wasted space. */
+  max-height: 85svh; overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   animation: slideUp var(--dur-slower) var(--ease-spring);
 }
