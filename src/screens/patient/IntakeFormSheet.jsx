@@ -287,7 +287,7 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
               {t("intake.consentLabel")}
               {" "}
               <a
-                href="/privacidad"
+                href="/#privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ color: "var(--teal-dark)", fontWeight: 600 }}

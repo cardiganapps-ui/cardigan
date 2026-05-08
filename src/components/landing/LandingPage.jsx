@@ -327,6 +327,11 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
                 Probar demo
               </button>
               <a href="/blog/" className="lp-footer-link">Blog</a>
+              {/* Patient explainer page — surfaced for patients who
+                  Google the brand after a therapist mentions it; the
+                  page is informational only (no signup CTA) since
+                  patients onboard via /i/<token> invite links. */}
+              <a href="/pacientes/" className="lp-footer-link">Para pacientes</a>
             </div>
             {/* Profession-specific landing pages — internal links so
                 Google indexes them and so a visitor coming via a
