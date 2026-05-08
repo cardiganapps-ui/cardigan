@@ -57,8 +57,20 @@
      and stays fixed, eliminating the per-keystroke reflow. The trade-
      off is a slightly shorter panel when the keyboard is down, which
      reads as "lots of breathing room" rather than wasted space. */
-  max-height: 85svh; overflow-y: scroll;
+  max-height: 85svh;
+  /* `overflow-y: auto` (not `scroll`) — when the form fits within the
+     panel (typical for short sheets), iOS Safari skips its scroll-
+     into-view computation on input focus. With `scroll` the panel is
+     always scrollable in the browser's eyes and iOS runs the scroll
+     pass even when nothing overflows, contributing to first-keystroke
+     freeze. */
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Layout/style/paint containment isolates the panel's reflows from
+     the document. When iOS recomputes layout for the AutoFill bar or
+     a focus-induced scroll, the work stops at the panel boundary
+     instead of rippling out. Free perf win on every sheet. */
+  contain: layout style paint;
   animation: slideUp var(--dur-slower) var(--ease-spring);
 }
 /* Focus trap parks focus on the panel itself (tabindex=-1) so no inner
