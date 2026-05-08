@@ -175,6 +175,7 @@ export default {
     verifyResendSent: "Correo reenviado",
     verifyResending: "Enviando\u2026",
     verifyGoToLogin: "Ya verifiqué, iniciar sesión",
+    verifyChangeEmail: "¿Te equivocaste de correo? Cámbialo",
     verifyResendError: "No pudimos reenviar el correo. Intenta de nuevo en un momento.",
     verifyResendCooldown: "Espera {seconds}s para volver a enviar",
     notConfirmedError: "Debes verificar tu correo antes de iniciar sesión.",

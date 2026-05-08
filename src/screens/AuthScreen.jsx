@@ -20,7 +20,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
    requests and burn their Supabase/Resend quota. */
 const RESEND_COOLDOWN_MS = 90_000;
 
-function VerifyPendingPanel({ email, onGoToLogin, t }) {
+function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
   const [resending, setResending] = useState(false);
   const [resentAt, setResentAt] = useState(0);
   const [resendError, setResendError] = useState("");
@@ -129,6 +129,30 @@ function VerifyPendingPanel({ email, onGoToLogin, t }) {
                 ? t("auth.verifyResendCooldown", { seconds: remaining })
                 : t("auth.verifyResend")}
         </button>
+        {/* Escape hatch for the common typo case ("diegagax@me.com"
+            instead of "diegoagax@gmail.com"). Returns the user to the
+            signup form with the typo'd email pre-filled — they can
+            correct it and re-submit without losing the name +
+            password they already typed. */}
+        {onCorrectEmail && (
+          <button
+            type="button"
+            onClick={onCorrectEmail}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--charcoal-md)",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "var(--font)",
+              padding: "8px 0 4px",
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            {t("auth.verifyChangeEmail")}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -274,6 +298,21 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, t }) {
       <VerifyPendingPanel
         email={pendingEmail}
         onGoToLogin={() => { setPendingEmail(null); switchMode("login"); }}
+        // Returning to the signup form clears the verify-pending
+        // panel without touching name/password/consent — the user's
+        // typo'd email is already in the email state, so they
+        // re-render straight onto a focused, pre-filled signup form
+        // and just need to fix the typo and submit again. We force
+        // mode to "signup" in case the panel was reached via the
+        // "tried-to-log-in-with-unverified-account" path (mode would
+        // be "login" there); a typo correction always lands them
+        // back in signup. Also clear any previous error/feedback.
+        onCorrectEmail={() => {
+          setPendingEmail(null);
+          setError("");
+          setMessage("");
+          if (mode !== "signup") setMode("signup");
+        }}
         t={t}
       />
     );
