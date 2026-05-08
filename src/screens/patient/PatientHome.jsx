@@ -11,6 +11,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { haptic } from "../../utils/haptics";
 import { IntakeFormSheet } from "./IntakeFormSheet";
 import { PayBalanceSheet } from "./PayBalanceSheet";
+import { RescheduleSessionSheet } from "./RescheduleSessionSheet";
 
 /* ── PatientHome ──────────────────────────────────────────────────
    The single-screen patient view. Top to bottom:
@@ -83,6 +84,12 @@ export function PatientHome({ data }) {
   // Patient's own uploads — separate from the therapist-uploaded
   // documents (which the patient can't see in v1).
   const { documents: patientDocs, uploading: docUploading, upload: uploadDoc, remove: removeDoc, getUrl: getDocUrl } = usePatientDocuments(primaryPatient?.id);
+  // Reschedule sheet target. When non-null, the sheet is open and
+  // operating on this session. Submit posts to the new endpoint and
+  // refreshes data on success; the sheet handles its own form state
+  // and surfaces server-mapped error hints internally.
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const requestReschedule = (session) => setRescheduleTarget(session);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const intakeCompleted = !!primaryPatient?.patient_intake_completed_at;
   const [payOpen, setPayOpen] = useState(false);
@@ -403,7 +410,11 @@ export function PatientHome({ data }) {
             <IconCalendar size={12} /> {t("patientHome.nextSessionLabel")}
           </div>
           {nextSession ? (
-            <NextSessionCard session={nextSession} onRequestCancel={requestCancel} />
+            <NextSessionCard
+              session={nextSession}
+              onRequestCancel={requestCancel}
+              onRequestReschedule={requestReschedule}
+            />
           ) : (
             <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginTop: 4 }}>
               {t("patientHome.noNextSession")}
@@ -568,6 +579,12 @@ export function PatientHome({ data }) {
         amountDue={totalAmountDue}
         therapistName={therapistDisplayName}
       />
+      <RescheduleSessionSheet
+        open={!!rescheduleTarget}
+        session={rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onRescheduled={() => { refresh?.(); }}
+      />
       <ConfirmDialog
         open={!!cancelTarget}
         title={cancelTarget
@@ -608,7 +625,7 @@ export function PatientHome({ data }) {
   );
 }
 
-function NextSessionCard({ session, onRequestCancel }) {
+function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
   const { t } = useT();
   const iso = shortDateToISO(session.date);
   const dateLabel = formatShortDateWithYear(new Date(iso + "T12:00:00"));
@@ -667,35 +684,60 @@ function NextSessionCard({ session, onRequestCancel }) {
           {t("patientHome.interview")}
         </span>
       )}
-      {/* Cancel link — quiet treatment so it doesn't compete with
-          the date/time hierarchy. The full confirm flow lives in
-          the parent (PatientHome) so the dialog state can survive
-          re-renders of the card. */}
-      {onRequestCancel && (
+      {/* Action row — Reprogramar (primary action, teal-tinted)
+          + Cancelar (tertiary). Quiet treatment so it doesn't
+          compete with the date/time hierarchy. The full flow for
+          each lives in the parent (PatientHome) so its state can
+          survive re-renders of this card. */}
+      {(onRequestReschedule || onRequestCancel) && (
         <div
           style={{
             marginTop: 14,
             paddingTop: 12,
             borderTop: "1px solid var(--border-lt)",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
           }}
         >
-          <button
-            type="button"
-            onClick={() => onRequestCancel(session)}
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: "4px 0",
-              cursor: "pointer",
-              fontFamily: "var(--font)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--charcoal-md)",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            {t("patientHome.cancelCta")}
-          </button>
+          {onRequestReschedule && (
+            <button
+              type="button"
+              onClick={() => onRequestReschedule(session)}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "4px 0",
+                cursor: "pointer",
+                fontFamily: "var(--font)",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "var(--teal-dark)",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              {t("patientHome.rescheduleCta")}
+            </button>
+          )}
+          {onRequestCancel && (
+            <button
+              type="button"
+              onClick={() => onRequestCancel(session)}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "4px 0",
+                cursor: "pointer",
+                fontFamily: "var(--font)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--charcoal-md)",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              {t("patientHome.cancelCta")}
+            </button>
+          )}
         </div>
       )}
     </div>

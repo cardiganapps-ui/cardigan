@@ -92,6 +92,15 @@ create table if not exists sessions (
   recurrence_frequency text not null default 'weekly'
     check (recurrence_frequency in ('weekly', 'biweekly', 'monthly')),
   color_idx integer default 0,
+  -- Reschedule audit (migration 057). Updated in place by both the
+  -- therapist-side rescheduleSession helper and the patient-side
+  -- /api/patient-reschedule-session endpoint so a single row stays
+  -- attached to the underlying engagement (notes, cancellation
+  -- history, pending push reminders). last_rescheduled_from is JSON
+  -- so future fields (duration, modality) can be captured without
+  -- another migration.
+  last_rescheduled_at timestamptz,
+  last_rescheduled_from jsonb,
   created_at timestamptz default now()
 );
 

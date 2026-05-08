@@ -1904,6 +1904,24 @@ export default {
     cancelSuccess: "Cita cancelada. Tu profesionista ya recibió el aviso.",
     cancelError: "No pudimos cancelar la cita. Intenta de nuevo en un momento.",
     payCta: "Pagar {amount}",
+    // ── Reprogramar (patient self-serve reschedule) ──
+    rescheduleCta: "Reprogramar",
+    rescheduleSheetTitle: "Reprogramar tu cita",
+    rescheduleIntro: "Tu cita está programada para el {date} a las {time}. Elige una nueva fecha y hora.",
+    rescheduleDateLabel: "Nueva fecha",
+    rescheduleTimeLabel: "Nueva hora",
+    rescheduleSubmit: "Reprogramar",
+    rescheduleSubmitting: "Reprogramando…",
+    rescheduleSuccess: "Cita reagendada. Tu profesionista ya recibió el aviso.",
+    rescheduleError: "No pudimos reprogramar la cita. Intenta de nuevo en un momento.",
+    // Server-mapped error hints, surfaced inline in the sheet so the
+    // user knows what to adjust without losing what they typed.
+    rescheduleConflictHint: "Tu profesionista ya tiene otra cita en ese horario. Elige otra hora.",
+    rescheduleSameSlotHint: "Esa es la fecha y hora actual de tu cita. Elige una distinta.",
+    reschedulePastHint: "La nueva fecha y hora ya pasó. Elige un horario futuro.",
+    reschedulePastSourceHint: "Esta cita ya empezó. Si necesitas algo, contacta a tu profesionista.",
+    rescheduleRaceHint: "El estado de la cita cambió. Recarga e intenta de nuevo.",
+    rescheduleNotScheduledHint: "Esta cita ya no está activa. Recarga e intenta de nuevo.",
   },
 
   // ── Patient intake form (patient-side first-session prep) ──
