@@ -120,6 +120,20 @@ Both flows rely on a single `readOnly` flag branching — don't split the render
 
 The tokens in `.env.local` give you direct access to the live DB and Vercel project. Prefer small one-off `.mjs` scripts at the repo root (so `@supabase/supabase-js` resolves), run with `node --env-file=.env.local <file>`, then delete when done — they shouldn't accumulate under `scripts/`.
 
+### Git push reliability + GitHub MCP fallback
+
+The local git remote points at a session-scoped proxy (`http://local_proxy@127.0.0.1:<port>/git/cardiganapps-ui/cardigan`). Fetches consistently work; **pushes have intermittently failed with HTTP 403 / "send-pack: unexpected disconnect"** for entire sessions at a time. Don't loop on retries — once it fails three times, treat the proxy as broken for the rest of the session.
+
+Workarounds, in order of preference:
+
+1. **GitHub MCP for small writes** — `mcp__github__create_or_update_file` and `mcp__github__push_files` write directly to GitHub (bypassing the proxy). Good for files up to ~30K tokens. The original commit author shows as the GitHub account associated with the MCP, not "Claude," but the change still triggers the normal Vercel auto-deploy.
+2. **Stage but don't push** — for changes that don't urgently need to ship, leave the commit local with a clear message and tell the user. They can push from a fresh session where the proxy works.
+3. **Don't push large files via MCP** — the MCP tool requires the full file content as a string parameter, which goes through the assistant's context window. Files larger than ~30K tokens (roughly 100KB of text) burn too much context to be practical. If the change involves a large file (e.g. `src/i18n/es.js`, `CLAUDE.md`), prefer option 2 over forcing it through MCP.
+
+**Don't:** chain `sleep`s waiting for the proxy to recover — it's a session-level state, not a transient. **Don't:** spend more than a few attempts diagnosing — the proxy doesn't expose useful errors.
+
+**Inline fallback for i18n:** when a feature needs new copy strings AND `es.js` is too large to push, you can ship the strings as inline JSX template literals (`{`Pagar ${formatMXN(amount)}`}`) with a TODO comment, then convert to `t()` calls in a follow-up commit when the proxy works. The deployed UX is identical; the code-quality drift is small and reversible. Prefer i18n keys when push works.
+
 ### Supabase Management API (for DDL / arbitrary SQL)
 `POST https://api.supabase.com/v1/projects/{ref}/database/query` with `Authorization: Bearer $SUPABASE_PAT` and JSON body `{ "query": "<sql>" }`. Extract `{ref}` from `SUPABASE_URL` hostname (`<ref>.supabase.co`). This is the only way to run DDL or any statement that PostgREST won't accept.
 
