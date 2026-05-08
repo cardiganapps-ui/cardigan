@@ -5,7 +5,8 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
-import { IconX, IconCheck } from "../Icons";
+import { IconX, IconCheck, IconMail, IconLink } from "../Icons";
+import { WhatsAppGlyph, ShareGlyph } from "../ReferralShareBlock";
 import { haptic } from "../../utils/haptics";
 
 /* ── InvitePatientSheet ───────────────────────────────────────────
@@ -116,12 +117,37 @@ export function InvitePatientSheet({ patient, onClose }) {
 
   // ReferralShareBlock takes a `code` and builds its own URL +
   // shareable text. We're sharing a full URL, not a code, so we
-  // skip ReferralShareBlock and build our own minimal share row
-  // (WhatsApp / Email / Copy) using the same visual language.
+  // build our own share row using the same visual language —
+  // glyphs, button shape, and three-tier hierarchy (native →
+  // direct channels → URL + Copy).
   const shareText = t("patientInvite.shareText", {
     name: patient.name,
     url: inviteUrl,
   });
+
+  // Native-share availability — the iOS Safari share sheet (and
+  // Android Chrome's equivalent) covers every app the user has
+  // installed. Hidden on browsers without the Web Share API
+  // (mostly older desktop builds).
+  const canNativeShare =
+    typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  const handleNativeShare = async () => {
+    if (!inviteUrl) return;
+    haptic.tap();
+    try {
+      await navigator.share({
+        title: t("patientInvite.title", { name: patient.name }),
+        text: shareText,
+        url: inviteUrl,
+      });
+    } catch (err) {
+      // AbortError = user dismissed the share sheet, expected.
+      if (err?.name !== "AbortError") {
+        console.warn("invite share:", err?.message || err);
+      }
+    }
+  };
 
   return (
     <div className="sheet-overlay" onClick={onClose}>
@@ -189,24 +215,26 @@ export function InvitePatientSheet({ patient, onClose }) {
               </button>
             </>
           ) : (
-            // ── Post-generation: URL + share row ──
+            // ── Post-generation: confirmation + share row ──
+            // Mirrors ReferralShareBlock's three-tier hierarchy:
+            //   1. Native share (primary, when navigator.share works)
+            //   2. WhatsApp + Email icon row (always present)
+            //   3. URL + Copy fallback below
+            // The pre-existing "share-but-already-linked" amber banner
+            // sits above everything since it's a state-of-the-world
+            // notice the therapist needs before they share.
             <>
               {alreadyLinked ? (
-                // Patient already has a Cardigan account linked. The
-                // URL is still valid for sharing, but won't change
-                // anything when redeemed (the claim will 409). Be
-                // transparent about that so the therapist doesn't
-                // wonder why "nothing happened" after sending.
                 <div
                   style={{
-                    padding: "10px 12px",
+                    padding: "12px 14px",
                     background: "var(--amber-pale, #FBF1DE)",
                     border: "1px solid var(--amber-mist, #F0DDB4)",
                     borderRadius: "var(--radius)",
                     fontSize: "var(--text-sm)",
                     color: "var(--charcoal)",
-                    lineHeight: 1.45,
-                    marginBottom: 14,
+                    lineHeight: 1.5,
+                    marginBottom: 16,
                   }}
                 >
                   {t("patientInvite.alreadyLinkedNotice", { name: patient.name })}
@@ -216,20 +244,20 @@ export function InvitePatientSheet({ patient, onClose }) {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
-                    padding: "10px 12px",
+                    gap: 10,
+                    padding: "12px 14px",
                     background: "var(--green-pale, #E5F1E1)",
                     border: "1px solid var(--green-mist, #C6E1BE)",
                     borderRadius: "var(--radius)",
                     fontSize: "var(--text-sm)",
                     color: "var(--charcoal)",
-                    marginBottom: 14,
+                    marginBottom: 16,
                   }}
                 >
                   <span
                     style={{
-                      width: 22,
-                      height: 22,
+                      width: 24,
+                      height: 24,
                       borderRadius: "50%",
                       background: "var(--green)",
                       color: "var(--white)",
@@ -240,36 +268,61 @@ export function InvitePatientSheet({ patient, onClose }) {
                     }}
                     aria-hidden="true"
                   >
-                    <IconCheck size={12} />
+                    <IconCheck size={14} />
                   </span>
-                  <span style={{ flex: 1 }}>{t("patientInvite.generatedHint")}</span>
+                  <span style={{ flex: 1, lineHeight: 1.45 }}>
+                    {t("patientInvite.generatedHint", { name: patient.name })}
+                  </span>
+                </div>
+              )}
+
+              {/* Tier 1 — native OS share. Hidden on browsers without
+                  navigator.share (mostly desktop). When available,
+                  this is the dominant CTA so iPhone users get the
+                  iOS share sheet (their muscle memory). */}
+              {canNativeShare && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleNativeShare}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    marginBottom: 14,
+                  }}
+                >
+                  <ShareGlyph size={16} />
+                  <span>{t("patientInvite.shareNative")}</span>
+                </button>
+              )}
+
+              {/* Tier 2 — direct channels. Eyebrow only when there's
+                  a primary above to separate from. */}
+              {canNativeShare && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--charcoal-md)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 10,
+                    textAlign: "center",
+                  }}
+                >
+                  {t("patientInvite.shareDirectEyebrow")}
                 </div>
               )}
 
               <div
                 style={{
-                  fontFamily: "var(--font-mono, monospace)",
-                  fontSize: 12,
-                  background: "var(--cream)",
-                  border: "1px solid var(--border-lt)",
-                  borderRadius: "var(--radius)",
-                  padding: "10px 12px",
-                  wordBreak: "break-all",
-                  color: "var(--charcoal-md)",
-                  marginBottom: 12,
-                  userSelect: "all",
-                }}
-                aria-label="Invite URL"
-              >
-                {inviteUrl}
-              </div>
-
-              <div
-                style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gap: 8,
-                  marginBottom: 10,
+                  gap: 10,
+                  marginBottom: 14,
                 }}
               >
                 <a
@@ -279,32 +332,95 @@ export function InvitePatientSheet({ patient, onClose }) {
                   className="referral-channel-btn"
                   style={{ background: "#25D366", color: "#fff" }}
                   onClick={() => haptic.tap()}
+                  aria-label="WhatsApp"
                 >
+                  <WhatsAppGlyph size={20} />
                   <span>WhatsApp</span>
                 </a>
+                <a
+                  href={`mailto:?subject=${encodeURIComponent(t("patientInvite.emailSubject"))}&body=${encodeURIComponent(shareText)}`}
+                  className="referral-channel-btn"
+                  // Hardcoded charcoal so the pill stays dark in both
+                  // themes — the var token inverts to light grey in
+                  // dark mode and the white label disappears.
+                  style={{ background: "#1A1A1A", color: "#fff" }}
+                  onClick={() => haptic.tap()}
+                  aria-label={t("patientInvite.email")}
+                >
+                  <IconMail size={18} />
+                  <span>{t("patientInvite.email")}</span>
+                </a>
+              </div>
+
+              {/* Tier 3 — URL display + Copy. The URL itself is no
+                  longer monospace-prominent; it sits in a calm cream
+                  card with the copy button on the right so the eye
+                  goes there instead of trying to read a 60-char
+                  hash. The link icon at the start anchors what the
+                  text is. */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "stretch",
+                  gap: 8,
+                  marginBottom: 14,
+                }}
+              >
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 12px",
+                    background: "var(--cream)",
+                    border: "1px solid var(--border-lt)",
+                    borderRadius: "var(--radius)",
+                    color: "var(--charcoal-md)",
+                  }}
+                  aria-label="Invite URL"
+                >
+                  <IconLink size={14} />
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: "var(--text-sm)",
+                      userSelect: "all",
+                      direction: "rtl",
+                      textAlign: "left",
+                    }}
+                    title={inviteUrl}
+                  >
+                    {/* RTL + LTR override keeps the slug visible (the
+                        right-most identifying part) when the URL is
+                        too long, while the rest ellipses at the left.
+                        ‎ forces the leading direction so Spanish
+                        screen readers still parse left-to-right. */}
+                    {"‎"}{inviteUrl}
+                  </span>
+                </div>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={copyUrl}
-                  style={{ width: "100%", height: 44 }}
+                  style={{
+                    flexShrink: 0,
+                    height: "auto",
+                    minHeight: 0,
+                    padding: "0 16px",
+                    fontSize: "var(--text-sm)",
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                  }}
                 >
                   {copied ? t("patientInvite.copied") : t("patientInvite.copy")}
                 </button>
               </div>
-
-              <a
-                href={`mailto:?subject=${encodeURIComponent(t("patientInvite.emailSubject"))}&body=${encodeURIComponent(shareText)}`}
-                className="referral-channel-btn"
-                style={{
-                  background: "#1A1A1A",
-                  color: "#fff",
-                  width: "100%",
-                  marginBottom: 14,
-                }}
-                onClick={() => haptic.tap()}
-              >
-                <span>{t("patientInvite.email")}</span>
-              </a>
 
               <div
                 style={{
