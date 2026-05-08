@@ -8,7 +8,14 @@
 <link rel="canonical" href="https://cardigan.mx/tutores/" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<!-- Browser chrome (iOS status bar / Android nav bar) follows the
+     OS-level color scheme. Falls back to the unscoped white tag for
+     browsers that don't support the media-scoped form. -->
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1A1A1A" media="(prefers-color-scheme: dark)" />
 <meta name="theme-color" content="#FFFFFF" />
+<!-- Tells form controls + scrollbars to render in either palette. -->
+<meta name="color-scheme" content="light dark" />
 <meta property="og:type" content="website" />
 <meta property="og:locale" content="es_MX" />
 <meta property="og:site_name" content="Cardigan" />
@@ -132,7 +139,7 @@
     <div class="mkt-nav-inner">
       <a href="/" class="mkt-brand"><img src="/icon-mono.svg" alt="" /> cardigan</a>
       <nav class="mkt-nav-actions">
-        <a href="/blog/" class="mkt-nav-link">Blog</a>
+        <a href="/blog/" class="mkt-nav-link mkt-nav-link--blog">Blog</a>
         <a href="/" class="mkt-nav-link">Iniciar sesión</a>
         <a href="/" class="mkt-nav-cta">Comenzar gratis</a>
       </nav>

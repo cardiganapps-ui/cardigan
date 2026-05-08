@@ -75,15 +75,29 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 section { padding: 64px 0; }
 @media (max-width: 720px) { section { padding: 44px 0; } }
 
-/* ── Top nav ── */
+/* ── Top nav ──
+   Sticky, blurred, tight on mobile. The flex children all
+   white-space:nowrap so "Iniciar sesión" / "Comenzar gratis" don't
+   wrap to two lines on narrow viewports. The Blog link is hidden
+   below 480px to free up horizontal space — the only mobile nav
+   that matters is brand-on-left + sign-in / start-free-trial. */
 .mkt-nav { position: sticky; top: 0; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); border-bottom: 1px solid var(--border-lt); z-index: 50; }
-.mkt-nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; }
-.mkt-brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-d); font-size: 18px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; }
+.mkt-nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; max-width: 1200px; margin: 0 auto; gap: 8px; }
+@media (min-width: 720px) { .mkt-nav-inner { padding: 14px 24px; } }
+.mkt-brand { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-d); font-size: 17px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; white-space: nowrap; flex-shrink: 0; }
 .mkt-brand img { width: 22px; height: 22px; }
-.mkt-nav-actions { display: flex; align-items: center; gap: 12px; }
-.mkt-nav-link { font-size: 14px; font-weight: 600; color: var(--charcoal-md); padding: 8px 12px; border-radius: var(--radius-pill); transition: background var(--dur-base) var(--ease-out); }
+.mkt-nav-actions { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+@media (min-width: 720px) { .mkt-nav-actions { gap: 12px; } }
+.mkt-nav-link { font-size: 14px; font-weight: 600; color: var(--charcoal-md); padding: 8px 10px; border-radius: var(--radius-pill); transition: background var(--dur-base) var(--ease-out); white-space: nowrap; }
+@media (max-width: 480px) {
+  /* Blog link is the most expendable on a tiny viewport. The sign-
+     in + "Comenzar gratis" CTA do the heavy lifting; Blog lives in
+     the footer and is one tap away. */
+  .mkt-nav-link.mkt-nav-link--blog { display: none; }
+}
 .mkt-nav-link:hover { background: var(--cream); text-decoration: none; }
-.mkt-nav-cta { background: var(--charcoal); color: var(--white); padding: 9px 18px; border-radius: var(--radius-pill); font-size: 14px; font-weight: 700; transition: transform var(--dur-fast) var(--ease-out); }
+.mkt-nav-cta { background: var(--charcoal); color: var(--white); padding: 9px 16px; border-radius: var(--radius-pill); font-size: 14px; font-weight: 700; transition: transform var(--dur-fast) var(--ease-out); white-space: nowrap; }
+@media (min-width: 720px) { .mkt-nav-cta { padding: 9px 18px; } }
 .mkt-nav-cta:hover { background: #000; text-decoration: none; transform: scale(0.98); }
 
 /* ── Hero ── */
@@ -801,3 +815,89 @@ section { padding: 64px 0; }
   .mkt-phone-wrap { animation: none !important; }
   .mkt-float-card { animation: none !important; }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   DARK MODE
+   Driven by `prefers-color-scheme: dark` so anonymous visitors get
+   the right palette without needing to log in. Mirrors the token
+   values from src/styles/dark.css (the SPA app's dark theme) so the
+   whole brand stays consistent — a visitor who flips their OS to
+   dark mode and pokes around between /pacientes/, /psicologos/, and
+   the live app sees one coherent palette.
+
+   Only token overrides — no per-component selectors needed. Every
+   .mkt-* primitive above already uses var(--*), so flipping the
+   tokens propagates automatically.
+   ───────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* Primary teal — slightly brighter on dark so it pops against
+       the deep neutrals without losing the brand identity. */
+    --teal:        #4A9BB0;
+    --teal-dark:   #5AADBE;
+    --teal-light:  #6DB8CC;
+    --teal-pale:   rgba(91,155,175,0.15);
+    --teal-mist:   rgba(91,155,175,0.08);
+
+    /* Neutrals: dark-cream surfaces (used by hero, pricing, "cómo
+       empezar" backgrounds). Deeper than --white so the layered
+       sections still read as raised. */
+    --cream:       #2A2A2A;
+    --cream-dark:  #333333;
+    --cream-deeper:#3D3D3D;
+
+    /* Text */
+    --charcoal:    #EAEAEA;
+    --charcoal-md: #BFBFBF;
+    --charcoal-lt: #999999;
+    --charcoal-xl: #888888;
+
+    /* Borders */
+    --border:      #3A3A3A;
+    --border-lt:   #2E2E2E;
+
+    /* Surfaces */
+    --white:       #1A1A1A;
+
+    /* Status — alpha-tinted so the contrast against #1A1A1A stays
+       readable. The SPA's dark.css uses identical values. */
+    --green:       #4EC98A;
+    --red:         #E57777;
+    --amber:       #E0B050;
+  }
+
+  /* Sticky-nav background uses an explicit RGB above (rgba(255,255,255,…))
+     because var(--white) doesn't compose into rgba(). Re-declare here for
+     the dark equivalent so the blur stays visible. */
+  .mkt-nav { background: rgba(26,26,26,0.86); }
+  .mkt-nav--scrolled { background: rgba(26,26,26,0.94); box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
+
+  /* The hero gradient + glow blob also use literal whites; re-tone
+     for the dark palette. */
+  .mkt-hero { background: linear-gradient(180deg, #222 0%, var(--white) 60%); }
+  .mkt-hero::before { background: radial-gradient(circle, rgba(91,155,175,0.20) 0%, transparent 70%); }
+  .mkt-hero::after  { background: radial-gradient(closest-side, rgba(91,155,175,0.18), rgba(91,155,175,0)); }
+
+  /* The pricing "Comenzar gratis" primary CTA is `background: var(--charcoal)`
+     in light mode (a near-black pill with white text). In dark mode that
+     would invert to a near-white pill with dark text — fine, but the
+     `:hover { background: #000 }` rule would flip it back to black. Override
+     the hover to keep the pill light when the user mouses over it. */
+  .mkt-nav-cta:hover { background: #fff; color: #000; }
+  .mkt-btn-primary:hover { background: #fff; color: #000; }
+
+  /* Phone frame — preserve the device-bezel charcoal regardless of
+     theme so the mockup looks like a phone and not a window into
+     the rest of the page. */
+  .mkt-phone { background: #0E0E0E; box-shadow: 0 44px 80px rgba(0,0,0,0.55), 0 14px 30px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.05); }
+  .mkt-phone-screen { background: var(--white); }
+  .mkt-phone-notch { background: #000; }
+
+  /* The chart bars in the inline measurements mockup use a literal
+     teal gradient — re-tone to match the dark palette so the bars
+     don't read as a bright neon strip on a dark background. */
+  .mkt-chart-bar { background: linear-gradient(180deg, #6DB8CC 0%, #4A9BB0 100%); }
+}
+
