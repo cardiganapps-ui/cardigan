@@ -119,6 +119,24 @@ async function handler(req, res) {
     return res.status(403).json({ error: "New slot is in the past", code: "past_target" });
   }
 
+  // Cap to 180 days out. Cardigan's `date` column stores "D-MMM"
+  // without a year — the read-time year-fuzz in shortDateToTime
+  // works inside a ±180-day window from "now" but flips wrong past
+  // that. A patient picking 8 months ahead would see the row read
+  // back as the SAME month next year (e.g. they intended 2027 but
+  // it'd resolve to 2026 on next-cron read). Capping client-side
+  // (the date input gets a max attribute) and server-side keeps
+  // the storage model honest. 180 days is also a reasonable UX
+  // boundary — patients shouldn't be rescheduling 6+ months out.
+  const HORIZON_MS = 180 * 86_400_000;
+  if (newSlotTime > Date.now() + HORIZON_MS) {
+    return res.status(400).json({
+      error: "New slot is too far in the future",
+      code: "too_far",
+      max_horizon_days: 180,
+    });
+  }
+
   // Verify ownership via the user's JWT'd client. RLS on sessions
   // gates SELECT to rows linked through patient_user_id (migration
   // 052), so a forged session_id from a different therapist returns

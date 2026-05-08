@@ -159,6 +159,15 @@ describe("POST /api/patient-reschedule-session", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("returns 400 too_far when new slot is more than 180 days out", async () => {
+    getAuthUser.mockResolvedValue({ id: "u-1" });
+    // 200 days from now — past the year-fuzz storage horizon.
+    const res = makeRes();
+    await handler(makeReq({ new_date: futureIso(200) }), res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe("too_far");
+  });
+
   it("returns 403 when new slot is in the past", async () => {
     getAuthUser.mockResolvedValue({ id: "u-1" });
     // Yesterday — should fail the past-target check before any DB hit.

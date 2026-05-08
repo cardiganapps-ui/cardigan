@@ -56,9 +56,16 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
     return () => setHideFab?.(false);
   }, [open, setHideFab]);
 
-  useEscape(open ? onClose : null);
+  // Block close while a POST is in flight — drag-to-dismiss,
+  // overlay click, and Escape all need to respect the same gate
+  // the X button does. Without this, the patient can swipe down
+  // mid-submit; the request still completes server-side but the
+  // UI loses track of the result and the user never sees the
+  // success/error toast.
+  const safeClose = submitting ? null : onClose;
+  useEscape(open ? safeClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: open });
   const setPanel = (el) => {
     panelRef.current = el;
     scrollRef.current = el;
@@ -100,6 +107,7 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
         else if (body.code === "same_slot")     setErrorHint("same_slot");
         else if (body.code === "past_target")   setErrorHint("past");
         else if (body.code === "past_source")   setErrorHint("past_source");
+        else if (body.code === "too_far")       setErrorHint("too_far");
         else if (body.code === "race_lost")     setErrorHint("race");
         else if (body.code === "not_scheduled") setErrorHint("not_scheduled");
         else                                    setErrorHint("generic");
@@ -116,10 +124,18 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
     }
   };
 
-  // Date picker minimum: today (locally — the server applies a
-  // stricter past-target check anyway, but no need to let the user
-  // pick something obviously wrong).
+  // Date picker bounds: today through ~6 months out. The server
+  // caps at 180 days to match the storage model's year-fuzz window
+  // — we mirror it client-side so the picker doesn't even let you
+  // try a date that the server will reject.
   const minDate = todayISO();
+  const maxDate = (() => {
+    const d = new Date(Date.now() + 180 * 86_400_000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
   const valid = !!newDate && !!newTime;
 
   // Map errorHint → translated copy. Keep the message textable on
@@ -129,13 +145,14 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
     : errorHint === "same_slot"   ? t("patientHome.rescheduleSameSlotHint")
     : errorHint === "past"        ? t("patientHome.reschedulePastHint")
     : errorHint === "past_source" ? t("patientHome.reschedulePastSourceHint")
+    : errorHint === "too_far"     ? t("patientHome.rescheduleTooFarHint")
     : errorHint === "race"        ? t("patientHome.rescheduleRaceHint")
     : errorHint === "not_scheduled" ? t("patientHome.rescheduleNotScheduledHint")
     : errorHint                   ? t("patientHome.rescheduleError")
     : null;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className="sheet-overlay" onClick={safeClose || undefined}>
       <div
         ref={setPanel}
         className="sheet-panel"
@@ -183,6 +200,7 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
               value={newDate}
               onChange={(e) => { setNewDate(e.target.value); setErrorHint(null); }}
               min={minDate}
+              max={maxDate}
               disabled={submitting}
             />
           </div>

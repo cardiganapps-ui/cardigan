@@ -1920,6 +1920,7 @@ export default {
     rescheduleSameSlotHint: "Esa es la fecha y hora actual de tu cita. Elige una distinta.",
     reschedulePastHint: "La nueva fecha y hora ya pasó. Elige un horario futuro.",
     reschedulePastSourceHint: "Esta cita ya empezó. Si necesitas algo, contacta a tu profesionista.",
+    rescheduleTooFarHint: "Solo puedes reprogramar hasta 6 meses adelante. Elige una fecha más cercana.",
     rescheduleRaceHint: "El estado de la cita cambió. Recarga e intenta de nuevo.",
     rescheduleNotScheduledHint: "Esta cita ya no está activa. Recarga e intenta de nuevo.",
   },
