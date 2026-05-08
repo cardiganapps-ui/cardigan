@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import { DAY_ORDER } from "../../data/seedData";
 import { todayISO } from "../../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../../utils/contact";
@@ -72,6 +72,71 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     initialMode === "potential" ? "potential" : "patient"
   );
   const isPotentialMode = recordType === "potential";
+
+  // ── Smooth height transition between Paciente ↔ Potencial ──
+  // The two record-type forms have very different vertical lengths
+  // (Paciente is a full recurring-schedule grid, Potencial is a
+  // slim single-interview form). Without a transition, switching
+  // the segmented control snaps the sheet panel to the new height
+  // — feels glitchy and unpolished on iPhone where the user's eye
+  // is on the toggle, not the bottom.
+  //
+  // Strategy: wrap the conditional form in a ref'd container.
+  // Before the type changes, snapshot the current rendered height
+  // (the OLD content). After React commits the swap, set the
+  // container to that old height, then on the next frame transition
+  // to the new content's natural height. After the transition, set
+  // height back to "auto" so dynamic content (keyboard pop-up,
+  // input growth, validation rows) flows naturally again.
+  const morphRef = useRef(null);
+  const morphFromHeight = useRef(null);
+  const handleRecordTypeChange = (v) => {
+    // Only snapshot when the value actually changes — otherwise a
+    // re-tap on the active segment would leave a stale height in
+    // morphFromHeight for the next genuine toggle to pick up.
+    if (v !== recordType && morphRef.current) {
+      morphFromHeight.current = morphRef.current.offsetHeight;
+    }
+    setRecordType(v);
+    setFeedback(null);
+    if (v === "potential") setStep(1);
+  };
+  useLayoutEffect(() => {
+    const el = morphRef.current;
+    if (!el || morphFromHeight.current == null) return;
+    const fromH = morphFromHeight.current;
+    morphFromHeight.current = null;
+    // Force the OLD height (which the new layout has just blown
+    // away), then transition to the new content's measured height.
+    const newH = el.scrollHeight;
+    el.style.height = fromH + "px";
+    // Force a reflow so the browser commits the OLD height before
+    // the next paint — without this, both the from and to heights
+    // get coalesced into a single style mutation and the transition
+    // is skipped. Reading offsetHeight forces layout; assign to a
+    // throwaway so the linter doesn't flag the standalone access.
+    void el.offsetHeight;
+    el.style.transition = "height 280ms cubic-bezier(0.32, 0.72, 0, 1)";
+    el.style.height = newH + "px";
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      el.style.height = "auto";
+      el.style.transition = "";
+      el.removeEventListener("transitionend", onEnd);
+    };
+    const onEnd = (e) => {
+      if (e.target !== el || e.propertyName !== "height") return;
+      cleanup();
+    };
+    el.addEventListener("transitionend", onEnd);
+    // Safety: transitionend can fail to fire on rapid retoggles or
+    // background tabs. Hard fallback after the transition's
+    // budget so the container doesn't get stuck at a fixed height.
+    const t = setTimeout(cleanup, 360);
+    return () => clearTimeout(t);
+  }, [recordType]);
 
   // Two-step flow (patient mode only): 1 = essentials + schedule,
   // 2 = contact + birthdate. Potential mode is single-step.
@@ -388,7 +453,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
             <SegmentedControl
               size="md"
               value={recordType}
-              onChange={(v) => { setRecordType(v); setFeedback(null); if (v === "potential") setStep(1); }}
+              onChange={handleRecordTypeChange}
               ariaLabel={t("patients.recordTypeLabel")}
               items={[
                 { k: "patient",   l: t("patients.recordTypePatient") },
@@ -399,6 +464,14 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
               {isPotentialMode ? t("patients.recordTypePotentialHint") : t("patients.recordTypePatientHint")}
             </div>
           </div>
+
+          {/* Animated-height container — see handleRecordTypeChange
+              + the useLayoutEffect that snapshots the old height,
+              transitions to the new one, then releases back to
+              `auto`. overflow:hidden prevents content from briefly
+              spilling past the animating boundary while the height
+              shrinks. */}
+          <div ref={morphRef} style={{ overflow: "hidden" }}>
 
           {/* ── POTENTIAL MODE — single-step slim form ──
               Reuses the existing first-consult inputs (date / time /
@@ -1010,6 +1083,8 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                 </button>
               </div>
             )}
+          </div>
+          {/* /morphRef container */}
           </div>
         </form>
       </div>
