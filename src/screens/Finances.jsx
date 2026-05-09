@@ -546,7 +546,11 @@ function GastosTab({
       const iso = shortDateToISO(e.date);
       return iso >= dateFrom && iso <= today;
     });
-    if (categoryFilter) list = list.filter(e => e.category === categoryFilter);
+    // Re-derive the effective filter inside the memo so the deps stay
+    // primitive (categoryFilter + expenses) and the lint passes.
+    const presentCats = new Set((expenses || []).map(e => e.category));
+    const eff = (categoryFilter && presentCats.has(categoryFilter)) ? categoryFilter : null;
+    if (eff) list = list.filter(e => e.category === eff);
     list.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
     const total = list.reduce((s, e) => s + e.amount, 0);
 
@@ -570,6 +574,25 @@ function GastosTab({
     const { pending } = computeRecurringExpenseRows(recurringExpenses, expenses, new Date(), null);
     return pending.length;
   }, [recurringExpenses, expenses]);
+
+  // Show chips ONLY for categories the user has actually used. The full
+  // 11-category list is enum-noise on a fresh account; once they've
+  // entered a few expenses the relevant 2-4 chips surface organically.
+  // Identity is the full expense set (not period-filtered) — chips
+  // shouldn't pop in and out as the user changes the date window.
+  const visibleCategories = useMemo(() => {
+    const present = new Set((expenses || []).map(e => e.category));
+    return EXPENSE_CATEGORIES.filter(c => present.has(c));
+  }, [expenses]);
+
+  // If the user had a category filter set and then deleted the last
+  // expense in that category, fall back to "all" without touching the
+  // stored filter — that way if they re-add an expense in the same
+  // category the chip + their selection both come back. Done as a
+  // derived value rather than a useEffect+setState (project lint rule).
+  const effectiveCategoryFilter = (categoryFilter && visibleCategories.includes(categoryFilter))
+    ? categoryFilter
+    : null;
 
   // IntersectionObserver lazy-load sentinel. Same pattern as PagosTab.
   useEffect(() => {
@@ -654,39 +677,44 @@ function GastosTab({
         />
       </div>
 
-      {/* Category chip row — opt-in second axis, hidden behind a "Más
-          filtros" affordance later if it gets noisy. v1 ships them
-          inline since 11 chips are fine on iPad and wrap on phone. */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-        <button type="button"
-          className="btn-tap"
-          onClick={() => setCategoryFilter(null)}
-          style={{
-            border: "1px solid var(--border-lt)",
-            background: categoryFilter == null ? "var(--teal-pale)" : "var(--white)",
-            color: categoryFilter == null ? "var(--teal-dark)" : "var(--charcoal-md)",
-            borderRadius: "var(--radius-pill)",
-            padding: "4px 12px", fontSize: 11, fontWeight: 700,
-            cursor: "pointer",
-          }}>
-          {t("finances.periodAll")}
-        </button>
-        {EXPENSE_CATEGORIES.map(c => (
-          <button key={c} type="button"
+      {/* Category chip row — only categories the user has actually
+          recorded show up, in canonical order. We don't render the row
+          at all until there are at least 2 distinct categories worth
+          choosing between (a "Todo" + single-category pair is just
+          noise). The full 11-category enum is the universe of choices,
+          but the chip set is the *user's* subset of it. */}
+      {visibleCategories.length >= 2 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          <button type="button"
             className="btn-tap"
-            onClick={() => setCategoryFilter(categoryFilter === c ? null : c)}
+            onClick={() => setCategoryFilter(null)}
             style={{
               border: "1px solid var(--border-lt)",
-              background: categoryFilter === c ? "var(--teal-pale)" : "var(--white)",
-              color: categoryFilter === c ? "var(--teal-dark)" : "var(--charcoal-md)",
+              background: effectiveCategoryFilter == null ? "var(--teal-pale)" : "var(--white)",
+              color: effectiveCategoryFilter == null ? "var(--teal-dark)" : "var(--charcoal-md)",
               borderRadius: "var(--radius-pill)",
               padding: "4px 12px", fontSize: 11, fontWeight: 700,
               cursor: "pointer",
             }}>
-            {t(`gastos.cat.${c}`)}
+            {t("finances.periodAll")}
           </button>
-        ))}
-      </div>
+          {visibleCategories.map(c => (
+            <button key={c} type="button"
+              className="btn-tap"
+              onClick={() => setCategoryFilter(effectiveCategoryFilter === c ? null : c)}
+              style={{
+                border: "1px solid var(--border-lt)",
+                background: effectiveCategoryFilter === c ? "var(--teal-pale)" : "var(--white)",
+                color: effectiveCategoryFilter === c ? "var(--teal-dark)" : "var(--charcoal-md)",
+                borderRadius: "var(--radius-pill)",
+                padding: "4px 12px", fontSize: 11, fontWeight: 700,
+                cursor: "pointer",
+              }}>
+              {t(`gastos.cat.${c}`)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button type="button" className="btn btn-primary btn-tap"
