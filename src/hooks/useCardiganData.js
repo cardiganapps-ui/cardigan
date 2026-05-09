@@ -414,11 +414,14 @@ export async function fetchRevenueOverview() {
 }
 
 /* Recent invoices for the Revenue page. Caps at 50 — admin can
-   drill into Stripe for the full ledger. */
+   drill into Stripe for the full ledger. Filters out $0 invoices
+   (trial-start, prorated price-change, etc.) since they're noise
+   for the admin who actually wants to see real money flowing. */
 export async function fetchRecentInvoices({ limit = 50 } = {}) {
   const { data, error } = await supabase
     .from("stripe_invoices")
     .select("id, user_id, amount_cents, currency, paid_at, hosted_invoice_url, created_at")
+    .gt("amount_cents", 0)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

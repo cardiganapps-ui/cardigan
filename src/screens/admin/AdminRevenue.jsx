@@ -80,7 +80,11 @@ export function AdminRevenue() {
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <div className="admin-card-title">Facturas recientes</div>
-            <div className="admin-card-sub">Últimas {invoices.length} facturas registradas.</div>
+            <div className="admin-card-sub">
+              {invoices.length === 0
+                ? "Aún no hay facturas con cobro."
+                : `Últimas ${invoices.length} facturas con cobro real (excluye $0 de prueba y proración).`}
+            </div>
           </div>
           <button type="button" className="admin-filter-pill" onClick={onExport}
             style={{ background: "var(--teal-pale)", borderColor: "var(--teal)", color: "var(--teal-dark)" }}>
@@ -88,7 +92,7 @@ export function AdminRevenue() {
           </button>
         </div>
         {invoices.length === 0 ? (
-          <div className="admin-empty">Sin facturas registradas.</div>
+          <div className="admin-empty">Sin facturas con cobro todavía.</div>
         ) : (
           <div className="admin-table-wrap">
           <table className="admin-table">
