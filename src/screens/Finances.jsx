@@ -9,6 +9,7 @@ import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
 import { SwipeableRow } from "../components/SwipeableRow";
 import { EmptyState } from "../components/EmptyState";
+import { DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../i18n/index";
 import { isPotentialOrDiscarded, SESSION_TYPE, EXPENSE_CATEGORIES, TAX_TREATMENT } from "../data/constants";
 import { computeRecurringExpenseRows, RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS } from "../utils/recurrence";
@@ -518,11 +519,28 @@ function GastosTab({
   generatePending, onManageRecurring, mutating,
 }) {
   const { t } = useT();
+  // Documents + presign helper come from context — receipt rows in
+  // this list need a document lookup-by-id to get the file_path
+  // before we can mint a presigned URL for the viewer.
+  const { documents = [], getDocumentUrl } = useCardigan();
   const [period, setPeriod] = useState("1m");
   const [categoryFilter, setCategoryFilter] = useState(null);
+  const [pendingOnly, setPendingOnly] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [visibleCount, setVisibleCount] = useState(EXPENSE_INITIAL_WINDOW);
+  const [viewingReceipt, setViewingReceipt] = useState(null);
   const sentinelRef = useRef(null);
+
+  // Tap a receipt indicator on a row → presign GET URL → open lightbox.
+  // Mirrors PatientExpediente's openDocViewer pattern verbatim.
+  const openReceipt = async (expense) => {
+    if (!expense?.receipt_document_id) return;
+    const doc = documents.find(d => d.id === expense.receipt_document_id);
+    if (!doc?.file_path) return;
+    const url = await getDocumentUrl(doc.file_path);
+    if (!url) return;
+    setViewingReceipt({ doc, url });
+  };
 
   const getDateFrom = (p) => {
     if (p === "all") return null;
@@ -536,7 +554,17 @@ function GastosTab({
   };
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setVisibleCount(EXPENSE_INITIAL_WINDOW); }, [period, categoryFilter, expenses.length]);
+  useEffect(() => { setVisibleCount(EXPENSE_INITIAL_WINDOW); }, [period, categoryFilter, pendingOnly, expenses.length]);
+
+  // Count of deductible-without-receipt rows across ALL expenses (not
+  // period-filtered) — drives the "Recibo pendiente" toggle's badge so
+  // a therapist can see at a glance how much cleanup is left before
+  // the contador deadline.
+  const totalReceiptsPending = useMemo(() => (
+    (expenses || []).filter(
+      e => e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id
+    ).length
+  ), [expenses]);
 
   const { filtered, totalFiltered, totalThisMonth, totalYTD } = useMemo(() => {
     const dateFrom = getDateFrom(period);
@@ -551,6 +579,9 @@ function GastosTab({
     const presentCats = new Set((expenses || []).map(e => e.category));
     const eff = (categoryFilter && presentCats.has(categoryFilter)) ? categoryFilter : null;
     if (eff) list = list.filter(e => e.category === eff);
+    if (pendingOnly) {
+      list = list.filter(e => e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id);
+    }
     list.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
     const total = list.reduce((s, e) => s + e.amount, 0);
 
@@ -566,7 +597,7 @@ function GastosTab({
       if (iso >= ymYearStart) yearSum += e.amount;
     }
     return { filtered: list, totalFiltered: total, totalThisMonth: monthSum, totalYTD: yearSum };
-  }, [expenses, period, categoryFilter]);
+  }, [expenses, period, categoryFilter, pendingOnly]);
 
   // Compute pending recurring backfill slots for the prompt at the top.
   const pendingCount = useMemo(() => {
@@ -677,6 +708,39 @@ function GastosTab({
         />
       </div>
 
+      {/* "Recibo pendiente" toggle — surfaces only when the user has
+          deductible-without-receipt rows somewhere. Single-tap pre-tax-
+          season cleanup affordance: tap → list filters to just the
+          stragglers, swipe through them, attach receipts, done. */}
+      {totalReceiptsPending > 0 && (
+        <button
+          type="button"
+          className="btn-tap"
+          onClick={() => setPendingOnly((p) => !p)}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            width: "100%",
+            background: pendingOnly ? "var(--amber-bg)" : "var(--white)",
+            border: `1px solid ${pendingOnly ? "var(--amber)" : "var(--border-lt)"}`,
+            borderRadius: "var(--radius)",
+            padding: "10px 14px",
+            cursor: "pointer",
+            marginBottom: 10,
+            color: "var(--charcoal)",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          <IconPaperclip size={14} style={{ color: "var(--amber)" }} />
+          <span style={{ flex: 1, textAlign: "left" }}>
+            {t("gastos.receiptPending")} · {totalReceiptsPending}
+          </span>
+          <span style={{ fontSize: 11, color: pendingOnly ? "var(--amber)" : "var(--charcoal-md)", fontWeight: 700 }}>
+            {pendingOnly ? t("gastos.pendingFilterOn") : t("gastos.pendingFilterOff")}
+          </span>
+        </button>
+      )}
+
       {/* Category chip row — only categories the user has actually
           recorded show up, in canonical order. We don't render the row
           at all until there are at least 2 distinct categories worth
@@ -778,7 +842,27 @@ function GastosTab({
                   display: "inline-flex", alignItems: "center", gap: 4,
                 }}>
                   −{formatMXN(e.amount)}
-                  {e.receipt_document_id && <IconPaperclip size={12} style={{ color: "var(--charcoal-xl)" }} />}
+                  {e.receipt_document_id && (
+                    <button
+                      type="button"
+                      onClick={(ev) => { ev.stopPropagation(); openReceipt(e); }}
+                      aria-label={t("gastos.receiptAttached")}
+                      className="btn-tap"
+                      style={{
+                        background: "var(--cream)",
+                        border: "1px solid var(--border-lt)",
+                        borderRadius: "var(--radius-pill)",
+                        padding: "3px 7px",
+                        cursor: "pointer",
+                        color: "var(--charcoal-md)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                      }}
+                    >
+                      <IconPaperclip size={11} />
+                    </button>
+                  )}
                 </div>
                 {isReceiptPending && (
                   <span style={{
@@ -822,6 +906,14 @@ function GastosTab({
 
       {visibleCount < filtered.length && (
         <div ref={sentinelRef} style={{ height: 1, marginTop: 4 }} aria-hidden="true" />
+      )}
+
+      {viewingReceipt && (
+        <DocumentViewer
+          doc={viewingReceipt.doc}
+          url={viewingReceipt.url}
+          onClose={() => setViewingReceipt(null)}
+        />
       )}
     </div>
   );
@@ -1027,7 +1119,10 @@ export function Finances() {
             { k: "pagos",    l: t("finances.payments") },
             { k: "gastos",   l: t("finances.expenses") },
             { k: "resumen",  l: t("finances.summary") },
-            { k: "proyeccion", l: t("finances.forecast") },
+            // Shorter "Proy." instead of "Proyección" so the 5-tab row
+            // fits on iPhone SE (360px) without ellipsis — the long
+            // label was the only one busting the budget.
+            { k: "proyeccion", l: t("finances.forecastShort") },
           ]}
         />
       </div>

@@ -32,7 +32,8 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   const {
     createExpense, updateExpense, deleteExpense,
     createRecurringTemplate, mutating, mutationError,
-    uploadDocument, deleteDocument, subscription,
+    uploadDocument, deleteDocument, getDocumentUrl,
+    documents = [], subscription,
   } = useCardigan();
   const { t } = useT();
   const isEditing = !!editingExpense;
@@ -119,10 +120,28 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         setCfdiUuid((u) => u || ocr.cfdiUuid);
         setShowCfdi(true);
       }
+      // Build a transparent narration of what Cardi actually filled
+      // in. "Cardi llenó los campos" is too generic — listing the
+      // specific values lets the user spot mistakes at a glance
+      // without having to scan every field. Skip the listing on low
+      // confidence (the warning is more important than the values).
       if (ocr.confidence === "low") {
         setOcrNotice(t("gastos.ocrLowConfidence"));
-      } else if (ocr.amount != null || ocr.date || ocr.category) {
-        setOcrNotice(t("gastos.ocrFilled"));
+      } else {
+        const filled = [];
+        if (ocr.amount != null) filled.push(formatMXN(ocr.amount));
+        if (ocr.category) filled.push(t(`gastos.cat.${ocr.category}`));
+        if (ocr.date) {
+          // Use Spanish short date so it matches the rest of the app.
+          const d = new Date(ocr.date + "T00:00:00");
+          if (!isNaN(d.getTime())) {
+            const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+            filled.push(`${d.getDate()}-${months[d.getMonth()]}`);
+          }
+        }
+        if (filled.length > 0) {
+          setOcrNotice(t("gastos.ocrFilledList", { values: filled.join(" · ") }));
+        }
       }
     } catch {
       // Network error — silent. Receipt is still attached.
@@ -170,14 +189,14 @@ export function ExpenseSheet({ editingExpense, onClose }) {
 
   const handleViewReceipt = async () => {
     if (!receiptDocId) return;
-    // Find the document via the documents collection isn't available
-    // here; getDocumentUrl needs the file path. We re-resolve via
-    // the document id by fetching from supabase indirectly: look it
-    // up through getDocumentUrl-by-id pattern. The PatientExpediente
-    // viewer pattern wants a path, so we keep this simple — surface
-    // the receipt only after the row has been saved (then the user
-    // can tap it from the GastosTab list which has the path).
-    setFormError(t("gastos.receiptAttached"));
+    // Look up the doc to get its file_path, presign a GET URL, and
+    // open in a new tab. We deliberately avoid mounting a lightbox
+    // inside the sheet — modal-on-modal is awkward, and the new-tab
+    // path works for both images and PDFs without z-index drama.
+    const doc = documents.find((d) => d.id === receiptDocId);
+    if (!doc?.file_path) return;
+    const url = await getDocumentUrl(doc.file_path);
+    if (url && typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const submit = async (e) => {
@@ -406,10 +425,19 @@ export function ExpenseSheet({ editingExpense, onClose }) {
                   borderRadius: "var(--radius)",
                 }}>
                   <IconCheck size={14} style={{ color: "var(--green)" }} />
-                  <span style={{ flex: 1, fontSize: 13, color: "var(--charcoal)" }}
-                    onClick={handleViewReceipt}>
+                  <button type="button" className="btn-tap"
+                    onClick={handleViewReceipt}
+                    style={{
+                      flex: 1, textAlign: "left",
+                      background: "transparent", border: "none", padding: 0,
+                      fontSize: 13, color: "var(--charcoal)", fontFamily: "inherit",
+                      cursor: receiptDocId ? "pointer" : "default",
+                      textDecoration: receiptDocId ? "underline" : "none",
+                      textUnderlineOffset: 2,
+                      textDecorationColor: "var(--charcoal-xl)",
+                    }}>
                     {receiptName || t("gastos.receiptAttached")}
-                  </span>
+                  </button>
                   <button type="button"
                     onClick={handleRemoveReceipt}
                     aria-label={t("gastos.receiptRemove")}

@@ -443,12 +443,18 @@ button.kpi-card:active {
   100% { transform: scaleX(1); }
 }
 .segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab {
-  flex: 1; padding: 7px 8px;
+  flex: 1 1 0; padding: 7px 8px;
   font-size: var(--text-sm); font-weight: 600;
   border-radius: var(--radius-pill); border: none; cursor: pointer;
   font-family: var(--font); color: var(--charcoal-lt); background: transparent;
   transition: color var(--dur-slow); -webkit-tap-highlight-color: transparent;
   min-height: 34px; white-space: nowrap;
+  /* min-width:0 + overflow:hidden + ellipsis lets a 5+ tab control
+     shrink gracefully on iPhone SE (360px) instead of overflowing
+     the page width and triggering horizontal scroll. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   position: relative; z-index: 1;
 }
 .segmented-btn.active, .seg-btn.active, .view-btn.active, .fin-tab.active {
