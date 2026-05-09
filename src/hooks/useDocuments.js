@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { maybeConvertHeic } from "../utils/heicConvert";
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -14,7 +15,13 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     if (!file) return null;
     setMutating(true);
     setMutationError("");
-    const ext = file.name.split(".").pop();
+    // iPhones default to HEIC, which Anthropic vision can't read and
+    // most non-Safari browsers can't render. Convert to JPEG up-front
+    // so every downstream surface (OCR, viewer, archive) gets a
+    // format it understands. No-op for non-HEIC files; falls back to
+    // the original file if conversion fails so upload still proceeds.
+    const uploadFile = await maybeConvertHeic(file);
+    const ext = uploadFile.name.split(".").pop();
     // kind=receipt → expense receipts live under _expenses/, never tied to
     // a patient. Default kind=patient preserves the prior signature.
     const docKind = kind === "receipt" ? "receipt" : "patient";
@@ -26,7 +33,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     const res = await fetch("/api/upload-url", {
       method: "POST",
       headers,
-      body: JSON.stringify({ path, contentType: file.type || "application/octet-stream" }),
+      body: JSON.stringify({ path, contentType: uploadFile.type || "application/octet-stream" }),
     });
     if (!res.ok) { setMutating(false); setMutationError("Error al generar URL de subida"); return null; }
     const { url } = await res.json();
@@ -40,7 +47,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     const ok = await new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", url, true);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("Content-Type", uploadFile.type || "application/octet-stream");
       if (onProgress) {
         xhr.upload.addEventListener("progress", (ev) => {
           if (ev.lengthComputable) onProgress(ev.loaded / ev.total);
@@ -49,7 +56,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
       xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
       xhr.onerror = () => resolve(false);
       xhr.onabort = () => resolve(false);
-      xhr.send(file);
+      xhr.send(uploadFile);
     });
     if (!ok) { setMutating(false); setMutationError("Error al subir archivo"); return null; }
     onProgress?.(1); // belt — guarantee the bar lands at 100% even if the
@@ -60,10 +67,10 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
       user_id: userId,
       patient_id: docKind === "receipt" ? null : (patientId || null),
       session_id: docKind === "receipt" ? null : (sessionId || null),
-      name: name || file.name,
+      name: name || uploadFile.name,
       file_path: path,
-      file_type: file.type || "application/octet-stream",
-      file_size: file.size,
+      file_type: uploadFile.type || "application/octet-stream",
+      file_size: uploadFile.size,
       kind: docKind,
     }).select().single();
     setMutating(false);

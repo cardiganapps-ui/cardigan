@@ -23,6 +23,13 @@ export default defineConfig({
       filename: 'sw.js',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // heic2any is a 1.3MB lazy chunk only used when a user uploads
+        // an iPhone-default HEIC photo. Most therapists never trigger
+        // it, so excluding it from precache keeps the PWA install
+        // payload lean. The dynamic import still works at runtime —
+        // the browser just fetches it on first HEIC upload instead
+        // of paying the cost for every user upfront.
+        globIgnores: ['**/heic2any-*.js'],
       },
     }),
   ],

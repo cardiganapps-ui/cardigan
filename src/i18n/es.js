@@ -549,7 +549,6 @@ export default {
     ocrFilled: "Cardi llenó los campos. Revisa antes de guardar.",
     ocrFilledList: "Detecté: {values}. Revisa antes de guardar.",
     ocrLowConfidence: "El recibo está borroso. Revisa los campos con cuidado.",
-    ocrHeicUnsupported: "Foto en formato HEIC. Adjunta como JPG si quieres que Cardi llene los campos por ti.",
     treatment: "Tratamiento fiscal",
     treatmentDeductible: "Deducible",
     treatmentNonDeductible: "No deducible",

@@ -94,14 +94,11 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         body: JSON.stringify({ documentId }),
       });
       if (!res.ok) {
-        // HEIC is the one error case worth surfacing — it's user-
-        // actionable (re-export the photo as JPG) and otherwise the
-        // user has no idea why OCR didn't fire. Other errors stay
-        // silent so the receipt-attached experience isn't disrupted.
-        const body = await res.json().catch(() => ({}));
-        if (body?.code === "heic_unsupported") {
-          setOcrNotice(t("gastos.ocrHeicUnsupported"));
-        }
+        // Soft-fail: receipt is still attached, the user fills the
+        // form manually. We don't surface a blocking error — HEIC
+        // (the historical 415 case) is now auto-converted at upload
+        // time by maybeConvertHeic, so this branch is mostly hit by
+        // genuine outages.
         return;
       }
       const ocr = await res.json();
