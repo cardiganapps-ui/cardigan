@@ -4,7 +4,7 @@ import {
   EXPENSE_CATEGORIES, EXPENSE_PAYMENT_METHODS,
   PAYMENT_METHOD, TAX_TREATMENT, TAX_TREATMENTS,
 } from "../../data/constants";
-import { IconX, IconPaperclip, IconCheck, IconTrash, IconRepeat } from "../Icons";
+import { IconX, IconPaperclip, IconCheck, IconTrash, IconRepeat, IconSparkle } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { useCardigan } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
@@ -13,6 +13,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { haptic } from "../../utils/haptics";
 import { formatMXN } from "../../utils/format";
+import { supabase } from "../../supabaseClient";
 
 const LAST_CATEGORY_KEY = "cardigan.lastExpenseCategory";
 
@@ -31,7 +32,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   const {
     createExpense, updateExpense, deleteExpense,
     createRecurringTemplate, mutating, mutationError,
-    uploadDocument, deleteDocument,
+    uploadDocument, deleteDocument, subscription,
   } = useCardigan();
   const { t } = useT();
   const isEditing = !!editingExpense;
@@ -67,7 +68,68 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     return Number.isFinite(d.getDate()) ? d.getDate() : 1;
   });
   const [formError, setFormError] = useState("");
+  const [ocring, setOcring] = useState(false);
+  const [ocrNotice, setOcrNotice] = useState("");
   const fileInputRef = useRef(null);
+
+  // OCR fires after a fresh receipt upload — never on edit (the
+  // existing row already has fields the user reviewed). Pre-fills
+  // ONLY empty fields so the user's typed input is sacred. Pro-only
+  // for cost control; non-Pro uploads still attach the receipt, just
+  // without auto-fill.
+  const runOcr = async (documentId) => {
+    if (isEditing) return; // never re-OCR an existing row
+    if (!subscription?.isPro) return;
+    setOcring(true);
+    setOcrNotice("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/ocr-receipt", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documentId }),
+      });
+      if (!res.ok) {
+        // Soft-fail: receipt is still attached, the user fills the
+        // form manually. We don't surface a blocking error.
+        return;
+      }
+      const ocr = await res.json();
+      // Pre-fill empty fields. Setter functions check the current
+      // state value via callback form so a fast typist who started
+      // typing during the OCR call doesn't get clobbered.
+      if (ocr.amount != null) setAmount((a) => a ? a : String(ocr.amount));
+      if (ocr.date) setDate((d) => (d && d !== todayISO()) ? d : ocr.date);
+      if (ocr.vendor || ocr.description) {
+        setDescription((cur) => {
+          if (cur && cur.trim()) return cur;
+          // Prefer description; fall back to vendor; concatenate if
+          // both look distinct enough to be useful.
+          if (ocr.vendor && ocr.description && !ocr.description.toLowerCase().includes(ocr.vendor.toLowerCase())) {
+            return `${ocr.vendor} · ${ocr.description}`.slice(0, 80);
+          }
+          return (ocr.description || ocr.vendor || "").slice(0, 80);
+        });
+      }
+      if (ocr.category) setCategory((c) => c && c !== EXPENSE_CATEGORIES[0] ? c : ocr.category);
+      if (ocr.cfdiUuid) {
+        setCfdiUuid((u) => u || ocr.cfdiUuid);
+        setShowCfdi(true);
+      }
+      if (ocr.confidence === "low") {
+        setOcrNotice(t("gastos.ocrLowConfidence"));
+      } else if (ocr.amount != null || ocr.date || ocr.category) {
+        setOcrNotice(t("gastos.ocrFilled"));
+      }
+    } catch {
+      // Network error — silent. Receipt is still attached.
+    } finally {
+      setOcring(false);
+    }
+  };
 
   // Display name for an existing receipt (best-effort — we don't refetch
   // the document name, just show "Recibo adjunto" in the editing case).
@@ -79,11 +141,16 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     if (!file) return;
     setUploading(true);
     setFormError("");
+    setOcrNotice("");
     try {
       const doc = await uploadDocument({ file, kind: "receipt" });
       if (doc?.id) {
         setReceiptDocId(doc.id);
         setReceiptName(doc.name || file.name);
+        // Fire OCR after the upload completes. The user sees the
+        // upload land first ("Recibo adjunto" pill), then a Sparkle
+        // pill while OCR runs, then the form fields populate.
+        runOcr(doc.id);
       } else {
         setFormError(t("docs.uploadFailed") || "Error al subir el recibo");
       }
@@ -355,9 +422,26 @@ export function ExpenseSheet({ editingExpense, onClose }) {
                   </button>
                 </div>
               )}
-              <span className="input-help" style={{ display: "block", marginTop: 4 }}>
-                {t("gastos.receiptHint")}
-              </span>
+              {/* OCR status pill. Three states:
+                    1. ocring=true        — sparkle + "Analizando recibo..."
+                    2. ocrNotice set      — sparkle + the notice (filled / low confidence)
+                    3. neither            — fall back to the static help line
+                  Pro-only OCR; for non-Pro the receipt still attaches but no pill appears. */}
+              {(ocring || ocrNotice) ? (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  marginTop: 6, fontSize: 12,
+                  color: ocrNotice && !ocring && ocring !== "low"
+                    ? "var(--teal-dark)" : "var(--charcoal-md)",
+                }}>
+                  <IconSparkle size={12} />
+                  <span>{ocring ? t("gastos.ocrAnalyzing") : ocrNotice}</span>
+                </div>
+              ) : (
+                <span className="input-help" style={{ display: "block", marginTop: 4 }}>
+                  {t("gastos.receiptHint")}
+                </span>
+              )}
             </div>
 
             {/* Note */}

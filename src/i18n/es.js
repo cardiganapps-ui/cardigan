@@ -542,6 +542,9 @@ export default {
     receiptRemove: "Quitar recibo",
     receiptPending: "Recibo pendiente",
     receiptHint: "Foto o PDF del comprobante. Se guarda de forma privada en tu cuenta.",
+    ocrAnalyzing: "Analizando recibo...",
+    ocrFilled: "Cardi llenó los campos. Revisa antes de guardar.",
+    ocrLowConfidence: "El recibo está borroso. Revisa los campos con cuidado.",
     treatment: "Tratamiento fiscal",
     treatmentDeductible: "Deducible",
     treatmentNonDeductible: "No deducible",
@@ -1877,6 +1880,7 @@ export default {
         "Nombres y estado de tus {client.p}",
         "Honorarios, balance pendiente y pagos",
         "Sesiones (fechas, horarios, asistencia, cancelaciones)",
+        "Gastos del negocio (categoría, monto, descripción, fecha)",
       ],
       doesNotSee: "Lo que NUNCA se comparte:",
       doesNotSeeItems: [

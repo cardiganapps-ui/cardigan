@@ -17,7 +17,7 @@ import { supabase } from "../supabaseClient";
    "not consented" (so a new device / cleared storage doesn't re-
    prompt a user who already accepted on another device). */
 
-export const CARDI_POLICY_VERSION = "cardi-data-v1";
+export const CARDI_POLICY_VERSION = "cardi-data-v2";
 const LS_KEY = "cardigan.cardi.consent.v";
 
 export function useCardiConsent({ user, enabled }) {

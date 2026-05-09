@@ -142,6 +142,42 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    name: "get_expense_summary",
+    description:
+      "Resumen de GASTOS (egresos / dinero saliente) para un rango de fechas. Regresa: total egresos, desglose por categoría, desglose por tratamiento fiscal (deducible/no deducible/personal), conteo de gastos sin recibo adjunto, y la utilidad neta del período (ingresos − egresos). Los gastos 'personal' se EXCLUYEN del total y de utilidad. Úsalo para preguntas como '¿cuánto gasté este mes?', '¿en qué categorías estoy gastando más?', '¿cuál fue mi utilidad neta en abril?', '¿cuántos recibos me faltan adjuntar?'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        date_from: {
+          type: "string",
+          description: "Fecha inicial (incluida) en formato ISO YYYY-MM-DD. Si se omite, no hay límite inferior.",
+        },
+        date_to: {
+          type: "string",
+          description: "Fecha final (incluida) en formato ISO YYYY-MM-DD. Si se omite, no hay límite superior.",
+        },
+        category: {
+          type: "string",
+          description: "Filtra a una sola categoría: consultorio, servicios, software, insumos, formacion, honorarios, transporte, marketing, comisiones, impuestos, otro. Omite para todas.",
+        },
+      },
+    },
+  },
+  {
+    name: "list_recurring_expenses",
+    description:
+      "Lista las plantillas de gastos recurrentes del usuario (rentas, suscripciones de software, etc. que se generan cada mes). Regresa: monto, categoría, día del mes, estado (activo/pausado), tratamiento fiscal, y el costo mensual total combinado de todas las plantillas activas. Úsalo para '¿cuánto pago en gastos recurrentes al mes?', '¿qué suscripciones tengo activas?'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        active_only: {
+          type: "boolean",
+          description: "Si es true, omite plantillas pausadas. Default: false.",
+        },
+      },
+    },
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────
@@ -158,6 +194,10 @@ export async function executeTool(name, input, userId) {
       return getPatientDetail(svc, userId, input || {});
     case "get_finance_summary":
       return getFinanceSummary(svc, userId, input || {});
+    case "get_expense_summary":
+      return getExpenseSummary(svc, userId, input || {});
+    case "list_recurring_expenses":
+      return listRecurringExpenses(svc, userId, input || {});
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -417,5 +457,133 @@ async function getFinanceSummary(svc, userId, input) {
     total_outstanding_mxn,
     total_credit_mxn,
     note: "balance/credit son al momento actual; ingresos y sesiones son del rango pedido.",
+  };
+}
+
+async function getExpenseSummary(svc, userId, input) {
+  const dateFrom = isoToDate(input.date_from);
+  const dateTo = isoToDate(input.date_to);
+  const categoryFilter = typeof input.category === "string" ? input.category : null;
+
+  // Pull both expenses and payments in the same range — Cardi's most
+  // valuable summary answers "what did I make minus what I spent" in
+  // one shot. Personal-treatment rows stay in the raw fetch so we can
+  // surface a separate "personal_total_mxn" for transparency, but
+  // they're EXCLUDED from total_expenses_mxn and net_profit_mxn (same
+  // rule the in-app Resumen tab uses).
+  const [{ data: expenses, error: ee }, { data: payments, error: pe }] = await Promise.all([
+    svc.from("expenses")
+      .select("amount,date,category,description,tax_treatment,recurring_id,receipt_document_id,cfdi_uuid")
+      .eq("user_id", userId),
+    svc.from("payments").select("date,amount").eq("user_id", userId),
+  ]);
+  if (ee) throw new Error(ee.message);
+  if (pe) throw new Error(pe.message);
+
+  const inRange = (d) => {
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  };
+
+  const expRows = (expenses || []).map((e) => ({ ...e, _d: parseShortDate(e.date) }));
+  let scoped = expRows.filter((e) => inRange(e._d));
+  if (categoryFilter) scoped = scoped.filter((e) => e.category === categoryFilter);
+
+  const businessRows = scoped.filter((e) => e.tax_treatment !== "personal");
+  const personalRows = scoped.filter((e) => e.tax_treatment === "personal");
+
+  const total_expenses_mxn = businessRows.reduce((s, e) => s + (e.amount || 0), 0);
+  const personal_total_mxn = personalRows.reduce((s, e) => s + (e.amount || 0), 0);
+
+  const by_category_mxn = {};
+  for (const e of businessRows) {
+    by_category_mxn[e.category] = (by_category_mxn[e.category] || 0) + (e.amount || 0);
+  }
+  const by_treatment_mxn = {
+    deductible: 0, non_deductible: 0,
+  };
+  for (const e of businessRows) {
+    if (e.tax_treatment === "deductible") by_treatment_mxn.deductible += e.amount || 0;
+    else if (e.tax_treatment === "non_deductible") by_treatment_mxn.non_deductible += e.amount || 0;
+  }
+
+  // Top 10 individual expenses by amount, filtered down to a small
+  // payload so Cardi can name the biggest ones if asked.
+  const top = [...businessRows]
+    .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+    .slice(0, 10)
+    .map((e) => ({
+      date: e.date,
+      amount_mxn: e.amount,
+      category: e.category,
+      description: e.description || null,
+      tax_treatment: e.tax_treatment,
+      has_receipt: !!e.receipt_document_id,
+    }));
+
+  // "Recibo pendiente" is a deductible row with no receipt attached —
+  // a real-world friction point the therapist needs reminding about
+  // before the contador deadline. Count it scoped to the same range.
+  const receipts_pending = businessRows.filter(
+    (e) => e.tax_treatment === "deductible" && !e.receipt_document_id
+  ).length;
+
+  // Income (revenue) in the same range, so we can surface net profit
+  // without forcing Cardi to call get_finance_summary too.
+  const payRows = (payments || []).map((p) => ({ ...p, _d: parseShortDate(p.date) }));
+  const total_income_mxn = payRows
+    .filter((p) => inRange(p._d))
+    .reduce((s, p) => s + (p.amount || 0), 0);
+
+  return {
+    date_from: input.date_from || null,
+    date_to: input.date_to || null,
+    category_filter: categoryFilter,
+    expense_count: scoped.length,
+    total_expenses_mxn,
+    personal_total_mxn,
+    total_income_mxn,
+    net_profit_mxn: total_income_mxn - total_expenses_mxn,
+    by_category_mxn,
+    by_treatment_mxn,
+    receipts_pending,
+    top_expenses: top,
+    note: "personal está excluido de total_expenses_mxn y net_profit_mxn pero se reporta en personal_total_mxn.",
+  };
+}
+
+async function listRecurringExpenses(svc, userId, input) {
+  const activeOnly = input.active_only === true;
+  let q = svc
+    .from("recurring_expenses")
+    .select("amount,category,description,day_of_month,active,tax_treatment,start_year,start_month,paused_at")
+    .eq("user_id", userId)
+    .order("active", { ascending: false })
+    .order("amount", { ascending: false });
+  if (activeOnly) q = q.eq("active", true);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+
+  const templates = (data || []).map((t) => ({
+    amount_mxn: t.amount,
+    category: t.category,
+    description: t.description || null,
+    day_of_month: t.day_of_month,
+    tax_treatment: t.tax_treatment,
+    active: t.active,
+    started: t.start_year && t.start_month ? `${t.start_year}-${String(t.start_month).padStart(2,"0")}` : null,
+    paused_at: t.paused_at || null,
+  }));
+
+  const monthly_total_active_mxn = templates
+    .filter((t) => t.active && t.tax_treatment !== "personal")
+    .reduce((s, t) => s + (t.amount_mxn || 0), 0);
+
+  return {
+    count: templates.length,
+    active_count: templates.filter((t) => t.active).length,
+    monthly_total_active_mxn,
+    templates,
   };
 }

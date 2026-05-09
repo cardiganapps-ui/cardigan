@@ -23,8 +23,8 @@
    Section bodies may contain `\n\n` to render as multiple paragraphs
    in PrivacyPolicy.jsx. */
 
-export const POLICY_VERSION = "2026-05-v7";
-export const POLICY_PUBLISHED = "8 de mayo de 2026 (rev. pagos en línea)";
+export const POLICY_VERSION = "2026-05-v8";
+export const POLICY_PUBLISHED = "9 de mayo de 2026 (rev. gastos + OCR de recibos)";
 
 export const POLICY_SECTIONS = [
   {
@@ -132,10 +132,13 @@ export const POLICY_SECTIONS = [
       "• Anthropic PBC (Estados Unidos de América) — procesamiento de las preguntas que envíes al asistente " +
       "Cardi (función Pro). Si autorizas a Cardi a consultar tus datos al abrirlo, se transmitirán: " +
       "nombre y estado de tus {client.p}, honorarios, balance pendiente y crédito a favor, montos y métodos " +
-      "de pagos recibidos, fechas y estados de sesiones (asistencia, cancelaciones, modalidad), y horarios " +
-      "recurrentes. NO se envían: notas clínicas (cifradas o no), teléfonos, correos electrónicos, fechas " +
-      "de nacimiento, alergias, condiciones médicas, ni datos antropométricos. Anthropic procesa la " +
-      "información únicamente para generar la respuesta y no la utiliza para entrenar modelos.\n" +
+      "de pagos recibidos, fechas y estados de sesiones (asistencia, cancelaciones, modalidad), horarios " +
+      "recurrentes, y los gastos de tu negocio (categoría, monto, descripción, fecha). NO se envían: notas " +
+      "clínicas (cifradas o no), teléfonos, correos electrónicos, fechas de nacimiento, alergias, " +
+      "condiciones médicas, ni datos antropométricos. Adicionalmente, cuando adjuntas una foto o PDF de un " +
+      "recibo de gasto, esa imagen se envía a Anthropic para extraer monto, fecha, vendedor y categoría " +
+      "(función OCR de recibos, Pro). Anthropic procesa la información únicamente para generar la respuesta " +
+      "y no la utiliza para entrenar modelos.\n" +
       "• Stripe Payments Mexico, S. de R.L. de C.V. y Stripe, Inc. (Estados Unidos de América) — " +
       "procesamiento de pagos en línea, tanto para tu suscripción a Cardigan Pro como para los pagos que " +
       "tus {client.p} te realicen a través de la aplicación. Cuando un {client.s} paga su saldo en la " +

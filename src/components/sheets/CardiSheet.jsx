@@ -28,7 +28,7 @@ const SUGGESTED_KEYS = ["balance", "summary", "schedule", "calendar"];
 
 export function CardiSheet({ open, onClose }) {
   const { t, strings } = useT();
-  const { profession, subscription, screen, patients = [], user } = useCardigan();
+  const { profession, subscription, screen, patients = [], expenses = [], recurringExpenses = [], user } = useCardigan();
   // Cardi-specific data-access consent (separate from the global
   // privacy-policy consent in ConsentBanner). Only checked while the
   // sheet is open so we don't fire the lookup on every drawer render.
@@ -51,7 +51,9 @@ export function CardiSheet({ open, onClose }) {
     accessState: subscription?.accessState,
     screen,
     patientCount: activePatientCount,
-  }), [profession, subscription?.accessState, screen, activePatientCount]);
+    expenseCount: expenses.length,
+    recurringExpenseCount: recurringExpenses.length,
+  }), [profession, subscription?.accessState, screen, activePatientCount, expenses.length, recurringExpenses.length]);
 
   const { messages, pending, streaming, send, retry, reset } = useCardiChat({ context });
 
