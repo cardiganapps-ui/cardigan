@@ -1300,31 +1300,35 @@ export function Agenda() {
             ]}
           />
         </div>
-        {/* Selection mode toggle — visible only on day view, hidden in
-            readOnly mode (admin "view as user" + expired trial). The
-            button stays subtle until the user enters selection mode,
-            at which point it disappears (the bulk bar takes over). */}
-        {view === "day" && !readOnly && !selectionMode && (
-          <div style={{ padding:"0 16px 10px", textAlign:"right" }}>
-            <button type="button" className="btn btn-ghost"
-              onClick={() => { haptic.tap(); setSelectionMode(true); }}
-              style={{ display:"inline-flex", alignItems:"center", gap:6, width:"auto", height:"auto", padding:"4px 10px", fontSize:12 }}>
-              {t("agenda.bulkSelectCta")}
-            </button>
-          </div>
-        )}
-        {patients.length > 0 && (
-          <div style={{ padding:"0 16px 10px" }}>
-            <select
-              value={filterPatientId}
-              onChange={e => setFilterPatientId(e.target.value)}
-              style={{ width:"100%", fontSize:"var(--text-sm)", fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
-            >
-              <option value="">{t("agenda.allPatients")}</option>
-              {patients.filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+        {/* Patient filter + "Seleccionar varias" share one row. The
+            select takes the available width; the button sits on the
+            right at the same height. Selection mode is day-view only
+            (the button hides on week/month, since bulk-edit operates
+            on the day list). When the user enters selection mode the
+            button disappears and the bulk bar takes over. Renders
+            only if either control has something to show — empty rows
+            would leave a phantom gap above the calendar grid. */}
+        {(patients.length > 0 || (view === "day" && !readOnly && !selectionMode)) && (
+          <div style={{ padding:"0 16px 10px", display:"flex", gap:8, alignItems:"center" }}>
+            {patients.length > 0 && (
+              <select
+                value={filterPatientId}
+                onChange={e => setFilterPatientId(e.target.value)}
+                style={{ flex:1, minWidth:0, fontSize:"var(--text-sm)", fontWeight:600, fontFamily:"var(--font)", padding:"8px 12px", borderRadius:"var(--radius-pill)", border:"1.5px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", appearance:"auto" }}
+              >
+                <option value="">{t("agenda.allPatients")}</option>
+                {patients.filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
+            {view === "day" && !readOnly && !selectionMode && (
+              <button type="button" className="btn btn-ghost"
+                onClick={() => { haptic.tap(); setSelectionMode(true); }}
+                style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:6, width:"auto", height:"auto", padding:"6px 12px", fontSize:12, whiteSpace:"nowrap" }}>
+                {t("agenda.bulkSelectCta")}
+              </button>
+            )}
           </div>
         )}
       </div>
