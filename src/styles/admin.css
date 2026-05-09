@@ -223,14 +223,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Pin both axes hard. Shorthand basis + min/max + aspect-ratio so a
+     flex parent can't shrink width on a narrow viewport (which would
+     turn `border-radius: 50%` into a vertical oval). `appearance: none`
+     also strips iOS Safari's UA padding that subtly broke the square. */
+  flex: 0 0 36px;
   width: 36px; height: 36px;
+  min-width: 36px; min-height: 36px;
+  max-width: 36px; max-height: 36px;
+  aspect-ratio: 1 / 1;
   padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: 50%;
   color: var(--charcoal-md);
   cursor: pointer;
-  flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring);
 }
