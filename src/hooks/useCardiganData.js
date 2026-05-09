@@ -13,14 +13,20 @@ import { createSessionActions, getRecurringDates } from "./useSessions";
 import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
 import { createDocumentActions } from "./useDocuments";
+import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
 import { recalcPatientCounters } from "../utils/patients";
 import { getTutorReminders } from "../utils/sessions";
-import { computeAutoExtendRows } from "../utils/recurrence";
+import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { enrichPatientsWithBalance } from "../utils/accounting";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
+// Sibling lock for recurring-expense generation. The DB-side partial unique
+// index `uniq_expenses_recurring_period` is the cross-device truth; this
+// flag just prevents within-tab races (e.g. fast re-renders or a refresh
+// triggered before the previous insert resolves).
+let _generatingExpenses = false;
 
 function mapRows(rows) {
   // Normalize `date` to the canonical "D-MMM" form so the UI doesn't have to
@@ -467,6 +473,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const [notes, setNotes] = useState(initialCache?.notes || []);
   const [documents, setDocuments] = useState(initialCache?.documents || []);
   const [measurements, setMeasurements] = useState(initialCache?.measurements || []);
+  const [expenses, setExpenses] = useState(initialCache?.expenses || []);
+  const [recurringExpenses, setRecurringExpenses] = useState(initialCache?.recurringExpenses || []);
   // Skeleton stays hidden when we hydrated from cache — the user
   // sees their data immediately. Skeleton fires only on a true cold
   // start (no cache, fresh login, or after the cache aged out).
@@ -500,9 +508,13 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // completed sessions would vanish from the "consumed" side and old
     // future-scheduled sessions would vanish from the "to-subtract" side,
     // both of which have been reported in the wild as inflated balances.
-    let pRes, sRes, pmRes, nRes, dRes, mRes;
+    // Expenses share the payments window — a 12-month rolling view is
+    // plenty for the Gastos / Resumen tabs. Older years are still
+    // queryable via the CSV export endpoint when the contador needs them.
+    const expensesSince = paymentsSince;
+    let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -511,6 +523,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // Measurements are tiny (one row per nutri/trainer visit) so we
         // pull a generous window. Most accounts won't have any.
         q("measurements", 2000).order("taken_at", { ascending: false }),
+        q("expenses", 2000).gte("created_at", expensesSince.toISOString()).order("date", { ascending: false }),
+        q("recurring_expenses", 200).order("created_at", { ascending: false }),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -519,7 +533,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     }
 
     // Surface individual table errors
-    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes].find(r => r.error);
+    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes].find(r => r?.error);
     if (tableErr) setFetchError(tableErr.error.message);
 
     let pData = mapRows(pRes.data);
@@ -595,6 +609,39 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       }
     }
 
+    // ── Recurring expense auto-generation ──
+    // Only the slots within RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS are
+    // inserted automatically. Older slots become a "Generar N gastos
+    // pendientes" prompt on the Gastos tab, surfaced via the `pending`
+    // count returned alongside the data. Per CLAUDE.md prime directive:
+    // never silently insert money rows beyond the documented cap.
+    let eData = eRes?.data || [];
+    const reData = reRes?.data || [];
+    if (userId && !readOnly && !_generatingExpenses && reData.length > 0) {
+      _generatingExpenses = true;
+      try {
+        const { auto } = computeRecurringExpenseRows(reData, eData, new Date(), userId);
+        if (auto.length > 0) {
+          const { data: insertedExpenses, error: insertErr } = await supabase
+            .from("expenses")
+            .upsert(auto, {
+              onConflict: "recurring_id,period_year,period_month",
+              ignoreDuplicates: true,
+            })
+            .select();
+          if (!insertErr && insertedExpenses) {
+            const known = new Set(eData.map(e => e.id));
+            eData = [...insertedExpenses.filter(r => !known.has(r.id)), ...eData];
+          }
+          // 23505 / other errors are non-fatal here — the user still
+          // sees the Gastos tab populate from existing rows; the next
+          // app load retries.
+        }
+      } finally {
+        _generatingExpenses = false;
+      }
+    }
+
     setPatients(pData);
     setUpcomingSessions(sData);
     setPayments(mapRows(pmRes.data));
@@ -613,6 +660,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     setNotes(notesData);
     setDocuments(dRes.data || []);
     setMeasurements(mRes.data || []);
+    setExpenses(eData);
+    setRecurringExpenses(reData);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -629,6 +678,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       notes: notesData,
       documents: dRes.data || [],
       measurements: mRes.data || [],
+      expenses: eData,
+      recurringExpenses: reData,
     });
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
@@ -654,6 +705,17 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
   const { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements } =
     createMeasurementActions(userId, measurements, setMeasurements, setMutating, setMutationError);
+  const {
+    createExpense, updateExpense, deleteExpense,
+    createRecurringTemplate, updateRecurringTemplate, deleteRecurringTemplate,
+    generateRecurringExpenses, generatePendingRecurringExpenses,
+  } = createExpenseActions({
+    userId,
+    expenses, setExpenses,
+    recurringExpenses, setRecurringExpenses,
+    deleteDocument,
+    setMutating, setMutationError,
+  });
 
   /* ── ENRICHMENT ── */
   // Auto-complete is display-only — shows past scheduled sessions as "completed"
@@ -720,6 +782,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
+    expenses, recurringExpenses,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
@@ -741,6 +804,12 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     updateMeasurement: guard(updateMeasurement),
     deleteMeasurement: guard(deleteMeasurement),
     bulkCreateMeasurements: guard(bulkCreateMeasurements),
+    createExpense: guard(createExpense), updateExpense: guard(updateExpense), deleteExpense: guard(deleteExpense),
+    createRecurringTemplate: guard(createRecurringTemplate),
+    updateRecurringTemplate: guard(updateRecurringTemplate),
+    deleteRecurringTemplate: guard(deleteRecurringTemplate),
+    generateRecurringExpenses: guard(generateRecurringExpenses),
+    generatePendingRecurringExpenses: guard(generatePendingRecurringExpenses),
     refresh,
   };
 }

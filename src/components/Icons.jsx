@@ -223,6 +223,29 @@ export const IconTrendingUp = (p) => (
   <I {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></I>
 );
 
+export const IconTrendingDown = (p) => (
+  <I {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></I>
+);
+
+export const IconArrowDown = (p) => (
+  <I {...p}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></I>
+);
+
+export const IconRepeat = (p) => (
+  <I {...p}>
+    <polyline points="17 1 21 5 17 9"/>
+    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+    <polyline points="7 23 3 19 7 15"/>
+    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+  </I>
+);
+
+export const IconPaperclip = (p) => (
+  <I {...p}>
+    <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
+  </I>
+);
+
 // Brand icons for OAuth buttons. Rendered with their real colors (not
 // currentColor) because the Google "G" is multi-color by guideline and
 // the Apple logo is a solid filled shape.

@@ -142,6 +142,59 @@ create table if not exists documents (
   file_path text not null unique,
   file_type text default 'application/octet-stream',
   file_size integer,
+  kind text not null default 'patient' check (kind in ('patient','receipt')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Recurring expense templates. Day-of-month is clamped to the last day of
+-- short months at generation time (28/29 Feb, 30 Apr/Jun/Sep/Nov). Pause
+-- via active=false; reactivation does NOT backfill the pause window.
+create table if not exists recurring_expenses (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null,
+  amount integer not null check (amount > 0),
+  category text not null,
+  description text,
+  day_of_month smallint not null check (day_of_month between 1 and 31),
+  payment_method text,
+  tax_treatment text not null default 'deductible'
+    check (tax_treatment in ('deductible','non_deductible','personal')),
+  active boolean not null default true,
+  start_year smallint not null,
+  start_month smallint not null check (start_month between 1 and 12),
+  paused_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Expenses (money-out ledger). Recurring-generated rows carry
+-- (recurring_id, period_year, period_month) and are deduplicated by the
+-- partial unique index uniq_expenses_recurring_period — same pattern as
+-- uniq_sessions_patient_date_time. Receipts are stored as documents rows
+-- with kind='receipt'; deletion is handled in the hook layer (delete the
+-- document + R2 object before deleting the expense).
+create table if not exists expenses (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null,
+  amount integer not null check (amount > 0),
+  date text not null,
+  category text not null check (category in (
+    'consultorio','servicios','software','insumos','formacion',
+    'honorarios','transporte','marketing','comisiones','impuestos','otro'
+  )),
+  description text,
+  payment_method text check (payment_method in ('Transferencia','Efectivo','Tarjeta','Otro')),
+  tax_treatment text not null default 'deductible'
+    check (tax_treatment in ('deductible','non_deductible','personal')),
+  cfdi_uuid text,
+  cfdi_url text,
+  recurring_id uuid references recurring_expenses(id) on delete set null,
+  period_year smallint,
+  period_month smallint check (period_month is null or period_month between 1 and 12),
+  receipt_document_id uuid references documents(id) on delete set null,
+  note text,
+  color_idx integer default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -272,6 +325,14 @@ create index if not exists idx_notes_user_id on notes(user_id);
 create index if not exists idx_notes_patient_id on notes(patient_id);
 create index if not exists idx_documents_user_id on documents(user_id);
 create index if not exists idx_documents_patient_id on documents(patient_id);
+create index if not exists idx_documents_user_kind on documents(user_id, kind);
+create unique index if not exists uniq_expenses_recurring_period
+  on expenses(recurring_id, period_year, period_month)
+  where recurring_id is not null;
+create index if not exists idx_expenses_user_id on expenses(user_id);
+create index if not exists idx_expenses_user_date on expenses(user_id, date);
+create index if not exists idx_expenses_category on expenses(user_id, category);
+create index if not exists idx_recurring_expenses_user_id on recurring_expenses(user_id);
 create index if not exists idx_bug_reports_created_at on bug_reports(created_at);
 create index if not exists idx_push_subscriptions_user_id on push_subscriptions(user_id);
 create index if not exists idx_notification_preferences_user_id on notification_preferences(user_id);
@@ -289,6 +350,8 @@ alter table sessions enable row level security;
 alter table payments enable row level security;
 alter table notes enable row level security;
 alter table documents enable row level security;
+alter table expenses enable row level security;
+alter table recurring_expenses enable row level security;
 alter table bug_reports enable row level security;
 alter table push_subscriptions enable row level security;
 alter table notification_preferences enable row level security;
@@ -301,6 +364,8 @@ create policy "Users manage own sessions" on sessions for all using (auth.uid() 
 create policy "Users manage own payments" on payments for all using (auth.uid() = user_id);
 create policy "Users manage own notes" on notes for all using (auth.uid() = user_id);
 create policy "Users manage own documents" on documents for all using (auth.uid() = user_id);
+create policy "Users manage own expenses" on expenses for all using (auth.uid() = user_id);
+create policy "Users manage own recurring expenses" on recurring_expenses for all using (auth.uid() = user_id);
 create policy "Users manage own push subscriptions" on push_subscriptions for all using (auth.uid() = user_id);
 create policy "Users manage own notification preferences" on notification_preferences for all using (auth.uid() = user_id);
 create policy "Users read own sent reminders" on sent_reminders for select using (auth.uid() = user_id);
@@ -325,6 +390,8 @@ create policy "Admin reads all sessions" on sessions for select using (is_admin(
 create policy "Admin reads all payments" on payments for select using (is_admin());
 create policy "Admin reads all notes" on notes for select using (is_admin());
 create policy "Admin reads all documents" on documents for select using (is_admin());
+create policy "Admin reads all expenses" on expenses for select using (is_admin());
+create policy "Admin reads all recurring expenses" on recurring_expenses for select using (is_admin());
 create policy "Admin manages all bug reports" on bug_reports for all using (is_admin());
 create policy "Admin reads all push subscriptions" on push_subscriptions for select using (is_admin());
 create policy "Admin reads all notification preferences" on notification_preferences for select using (is_admin());

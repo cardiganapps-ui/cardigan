@@ -860,5 +860,95 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
   // Sort notes newest first
   notes.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
-  return { patients, sessions, payments, notes, measurements };
+  // Demo expenses — a realistic spread across categories so the Gastos
+  // and Resumen tabs render with believable numbers in demo mode. All
+  // mutations are no-ops in useDemoData; this seed exists only to make
+  // the empty state rare on first impression.
+  const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const _today = new Date();
+  const _y = _today.getFullYear();
+  const _m = _today.getMonth() + 1;
+  const _prevYM = (offset) => {
+    const d = new Date(_y, _today.getMonth() - offset, 1);
+    return { y: d.getFullYear(), m: d.getMonth() + 1 };
+  };
+  const recurringExpenses = [
+    {
+      id: "demo-rec-1",
+      user_id: "demo",
+      amount: 18000, category: "consultorio",
+      description: "Renta consultorio Polanco",
+      day_of_month: 1, payment_method: "Transferencia",
+      tax_treatment: "deductible", active: true,
+      start_year: _prevYM(2).y, start_month: _prevYM(2).m,
+      created_at: new Date(_y, _today.getMonth() - 2, 1).toISOString(),
+    },
+  ];
+  const expenses = [
+    // Recurring rent rows for the last 3 months (auto-generated equivalent)
+    ...[2, 1, 0].map((off, i) => {
+      const { y, m } = _prevYM(off);
+      return {
+        id: `demo-exp-rent-${i}`,
+        user_id: "demo",
+        amount: 18000, category: "consultorio",
+        description: "Renta consultorio Polanco",
+        date: `1-${SHORT_MONTHS[m - 1]}`,
+        payment_method: "Transferencia",
+        tax_treatment: "deductible",
+        recurring_id: "demo-rec-1",
+        period_year: y, period_month: m,
+        receipt_document_id: null,
+        cfdi_uuid: null, cfdi_url: null, note: null, color_idx: 0,
+        created_at: new Date(y, m - 1, 1).toISOString(),
+      };
+    }),
+    {
+      id: "demo-exp-2", user_id: "demo",
+      amount: 1199, category: "software",
+      description: "Suscripción Cardigan Pro",
+      date: `5-${SHORT_MONTHS[_m - 1]}`,
+      payment_method: "Tarjeta", tax_treatment: "deductible",
+      recurring_id: null, receipt_document_id: null,
+      created_at: new Date(_y, _today.getMonth(), 5).toISOString(),
+    },
+    {
+      id: "demo-exp-3", user_id: "demo",
+      amount: 2500, category: "formacion",
+      description: "Supervisión clínica · Dr. Ramírez",
+      date: `10-${SHORT_MONTHS[_m - 1]}`,
+      payment_method: "Transferencia", tax_treatment: "deductible",
+      recurring_id: null, receipt_document_id: null,
+      created_at: new Date(_y, _today.getMonth(), 10).toISOString(),
+    },
+    {
+      id: "demo-exp-4", user_id: "demo",
+      amount: 800, category: "insumos",
+      description: "Tests psicométricos + papelería",
+      date: `12-${SHORT_MONTHS[_m - 1]}`,
+      payment_method: "Tarjeta", tax_treatment: "deductible",
+      recurring_id: null, receipt_document_id: null,
+      created_at: new Date(_y, _today.getMonth(), 12).toISOString(),
+    },
+    {
+      id: "demo-exp-5", user_id: "demo",
+      amount: 3500, category: "honorarios",
+      description: "Contador mensual",
+      date: `15-${SHORT_MONTHS[_m - 1]}`,
+      payment_method: "Transferencia", tax_treatment: "deductible",
+      recurring_id: null, receipt_document_id: null,
+      created_at: new Date(_y, _today.getMonth(), 15).toISOString(),
+    },
+    {
+      id: "demo-exp-6", user_id: "demo",
+      amount: 450, category: "transporte",
+      description: "Visita a domicilio",
+      date: `20-${SHORT_MONTHS[_m - 1]}`,
+      payment_method: "Efectivo", tax_treatment: "non_deductible",
+      recurring_id: null, receipt_document_id: null,
+      created_at: new Date(_y, _today.getMonth(), 20).toISOString(),
+    },
+  ];
+
+  return { patients, sessions, payments, notes, measurements, expenses, recurringExpenses };
 }

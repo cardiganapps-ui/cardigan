@@ -69,6 +69,13 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     measurements: data.measurements || [],
     createMeasurement: noopNote, updateMeasurement: noop, deleteMeasurement: noop,
     bulkCreateMeasurements: async () => ({ created: 0, skipped: 0 }),
+    expenses: data.expenses || [],
+    recurringExpenses: data.recurringExpenses || [],
+    createExpense: noop, updateExpense: noop, deleteExpense: noop,
+    createRecurringTemplate: noopNote,
+    updateRecurringTemplate: noop, deleteRecurringTemplate: noop,
+    generateRecurringExpenses: async () => ({ inserted: 0, pending: 0 }),
+    generatePendingRecurringExpenses: async () => ({ inserted: 0 }),
     refresh: async () => {},
   };
 }

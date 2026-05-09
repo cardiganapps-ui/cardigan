@@ -246,3 +246,116 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   }
   return rows;
 }
+
+/* ── Recurring expenses ──
+
+   Mirror of the recurring-sessions auto-extend logic but simpler:
+   expenses don't have a per-row time/duration/modality, just a monthly
+   slot keyed on (recurring_id, period_year, period_month). The DB-level
+   partial unique index `uniq_expenses_recurring_period` is the truth —
+   this helper only proposes rows; insert with `on conflict do nothing`
+   and the DB rejects duplicates. Backfill is intentionally CAPPED at
+   `RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS` so we never silently insert
+   money rows for months the user might have already paid in cash.
+   Anything older surfaces as a one-tap "Generar N gastos pendientes"
+   prompt on the Gastos tab.
+
+   Per CLAUDE.md prime directive: financial data integrity > convenience.
+*/
+
+export const RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS = 2;
+
+// Days in (year, month) — 1-indexed month, JS Date.getDate at end-of-month
+// trick. Pure function, no timezone surprises.
+export function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+// Build a "DD-MMM" Spanish short-date string for the day-of-month clamp.
+// Mirror of utils/dates.js::SHORT_MONTHS — duplicated here to keep this
+// file React-free and test-pure.
+const _GASTOS_SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function _formatGastoDate(year, month, day) {
+  return `${day}-${_GASTOS_SHORT_MONTHS[month - 1]}`;
+}
+
+// Compute (year, month) slots that should exist for a recurring template
+// between its start and `now`, as a sorted ascending array. Inactive or
+// paused-only-future templates produce []. The caller decides which slice
+// to auto-create vs. surface as a backfill prompt.
+export function expectedSlotsForTemplate(template, now = new Date()) {
+  if (!template?.active) return [];
+  const startY = template.start_year;
+  const startM = template.start_month;
+  if (!Number.isFinite(startY) || !Number.isFinite(startM)) return [];
+  const slots = [];
+  let y = startY, m = startM;
+  const nowY = now.getFullYear();
+  const nowM = now.getMonth() + 1;
+  while (y < nowY || (y === nowY && m <= nowM)) {
+    slots.push({ year: y, month: m });
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return slots;
+}
+
+// Given templates + already-generated expenses, return the rows that
+// SHOULD be inserted automatically (within the auto-backfill cap) and
+// the rows that should be surfaced as a backfill prompt. Idempotent:
+// any slot already represented in `existingExpenses` (by recurring_id +
+// period_year + period_month) is skipped.
+//
+// Returns:
+//   {
+//     auto: [...rows to insert now],
+//     pending: [...{recurring_id, year, month}] // older, awaiting user CTA
+//   }
+export function computeRecurringExpenseRows(templates, existingExpenses, now = new Date(), userId) {
+  const auto = [];
+  const pending = [];
+  if (!Array.isArray(templates) || templates.length === 0) return { auto, pending };
+
+  // Index existing slots for O(1) lookup.
+  const taken = new Set();
+  for (const e of (existingExpenses || [])) {
+    if (e.recurring_id && e.period_year != null && e.period_month != null) {
+      taken.add(`${e.recurring_id}::${e.period_year}::${e.period_month}`);
+    }
+  }
+
+  // The "auto" cutoff: the (year, month) `RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS`
+  // before "now" inclusive. Anything older becomes a pending prompt.
+  const autoCutoff = new Date(now.getFullYear(), now.getMonth() - RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS, 1);
+  const autoY = autoCutoff.getFullYear();
+  const autoM = autoCutoff.getMonth() + 1;
+  const isWithinAuto = (y, m) => (y > autoY) || (y === autoY && m >= autoM);
+
+  for (const t of templates) {
+    if (!t?.active) continue;
+    const slots = expectedSlotsForTemplate(t, now);
+    for (const { year, month } of slots) {
+      const key = `${t.id}::${year}::${month}`;
+      if (taken.has(key)) continue;
+      if (isWithinAuto(year, month)) {
+        const dom = Math.min(t.day_of_month, daysInMonth(year, month));
+        auto.push({
+          user_id: userId,
+          amount: t.amount,
+          date: _formatGastoDate(year, month, dom),
+          category: t.category,
+          description: t.description || null,
+          payment_method: t.payment_method || null,
+          tax_treatment: t.tax_treatment || "deductible",
+          recurring_id: t.id,
+          period_year: year,
+          period_month: month,
+          color_idx: 0,
+        });
+      } else {
+        pending.push({ recurring_id: t.id, year, month });
+      }
+    }
+  }
+  return { auto, pending };
+}

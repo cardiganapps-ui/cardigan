@@ -10,12 +10,15 @@ async function authHeaders() {
 
 export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
 
-  async function uploadDocument({ patientId, file, sessionId, name, onProgress }) {
+  async function uploadDocument({ patientId, file, sessionId, name, onProgress, kind }) {
     if (!file) return null;
     setMutating(true);
     setMutationError("");
     const ext = file.name.split(".").pop();
-    const folder = patientId || "_general";
+    // kind=receipt → expense receipts live under _expenses/, never tied to
+    // a patient. Default kind=patient preserves the prior signature.
+    const docKind = kind === "receipt" ? "receipt" : "patient";
+    const folder = docKind === "receipt" ? "_expenses" : (patientId || "_general");
     const path = `${userId}/${folder}/${Date.now()}.${ext}`;
 
     // Get presigned upload URL from API
@@ -55,12 +58,13 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     // Save metadata to Supabase
     const { data, error } = await supabase.from("documents").insert({
       user_id: userId,
-      patient_id: patientId || null,
-      session_id: sessionId || null,
+      patient_id: docKind === "receipt" ? null : (patientId || null),
+      session_id: docKind === "receipt" ? null : (sessionId || null),
       name: name || file.name,
       file_path: path,
       file_type: file.type || "application/octet-stream",
       file_size: file.size,
+      kind: docKind,
     }).select().single();
     setMutating(false);
     if (error) {

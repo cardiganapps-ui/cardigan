@@ -37,7 +37,9 @@ export function Documents() {
 
   // Filter & sort
   const filteredDocs = useMemo(() => {
-    let docs = [...(documents || [])];
+    // Receipts (kind='receipt') belong to expenses, not the patient
+    // Documents screen — surface them only via the Gastos tab.
+    let docs = (documents || []).filter(d => (d.kind || "patient") !== "receipt");
 
     // Search
     if (search.trim()) {

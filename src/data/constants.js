@@ -73,6 +73,63 @@ export const PAYMENT_METHODS = [
   PAYMENT_METHOD.OTHER,
 ];
 
+// Expense categories. Mexican mental-health context — "consultorio" is the
+// office/coworking line item, "formacion" covers supervisión clínica /
+// cursos / congresos, "honorarios" is the meta-deduction (paying your own
+// contador). The DB check constraint on expenses.category mirrors this list
+// (supabase/migrations/059_expenses.sql).
+export const EXPENSE_CATEGORY = Object.freeze({
+  CONSULTORIO: "consultorio",
+  SERVICIOS:   "servicios",
+  SOFTWARE:    "software",
+  INSUMOS:     "insumos",
+  FORMACION:   "formacion",
+  HONORARIOS:  "honorarios",
+  TRANSPORTE:  "transporte",
+  MARKETING:   "marketing",
+  COMISIONES:  "comisiones",
+  IMPUESTOS:   "impuestos",
+  OTRO:        "otro",
+});
+export const EXPENSE_CATEGORIES = [
+  EXPENSE_CATEGORY.CONSULTORIO,
+  EXPENSE_CATEGORY.SERVICIOS,
+  EXPENSE_CATEGORY.SOFTWARE,
+  EXPENSE_CATEGORY.INSUMOS,
+  EXPENSE_CATEGORY.FORMACION,
+  EXPENSE_CATEGORY.HONORARIOS,
+  EXPENSE_CATEGORY.TRANSPORTE,
+  EXPENSE_CATEGORY.MARKETING,
+  EXPENSE_CATEGORY.COMISIONES,
+  EXPENSE_CATEGORY.IMPUESTOS,
+  EXPENSE_CATEGORY.OTRO,
+];
+
+// Expense payment methods (smaller set than PAYMENT_METHOD — therapists pay
+// expenses via fewer rails than they receive payments through). DB check
+// constraint on expenses.payment_method mirrors this.
+export const EXPENSE_PAYMENT_METHODS = [
+  PAYMENT_METHOD.TRANSFER,
+  PAYMENT_METHOD.CASH,
+  PAYMENT_METHOD.CARD,
+  PAYMENT_METHOD.OTHER,
+];
+
+// Tax treatment for the SAT axis. `personal` is excluded from the P&L view
+// entirely — it lets the user keep one ledger without inflating their
+// "egresos" with a gym membership or a personal Uber. `non_deductible` IS
+// counted in egresos but flagged separately in the contador export.
+export const TAX_TREATMENT = Object.freeze({
+  DEDUCTIBLE:     "deductible",
+  NON_DEDUCTIBLE: "non_deductible",
+  PERSONAL:       "personal",
+});
+export const TAX_TREATMENTS = [
+  TAX_TREATMENT.DEDUCTIBLE,
+  TAX_TREATMENT.NON_DEDUCTIBLE,
+  TAX_TREATMENT.PERSONAL,
+];
+
 // Admin email — kept in sync with supabase/schema.sql is_admin().
 export const ADMIN_EMAIL = "gaxioladiego@gmail.com";
 

@@ -205,15 +205,50 @@ async function main() {
     console.log(`  user totals: owed=${fmt(uOwedTotal)}  credit=${fmt(uCreditTotal)}`);
   }
 
+  // ── Expenses audit ───────────────────────────────────────────────
+  // 1. Duplicate (recurring_id, period_year, period_month) — should be
+  //    impossible given the partial unique index, but verify anyway.
+  // 2. Orphaned receipt_document_id — pointer to a deleted document row.
+  // 3. Recurring templates with zero generated rows in the active period
+  //    (likely a generation bug or paused-and-forgotten template).
+  const dupRecur = await sql(`
+    SELECT recurring_id, period_year, period_month, count(*) as n
+    FROM expenses
+    WHERE recurring_id IS NOT NULL
+    GROUP BY 1, 2, 3 HAVING count(*) > 1
+  `);
+  const orphanReceipts = await sql(`
+    SELECT e.id, e.user_id, e.receipt_document_id
+    FROM expenses e
+    LEFT JOIN documents d ON d.id = e.receipt_document_id
+    WHERE e.receipt_document_id IS NOT NULL AND d.id IS NULL
+  `);
+  const expensesCount = await sql(`SELECT count(*)::int AS n FROM expenses ${where}`);
+  const recurCount = await sql(`SELECT count(*)::int AS n FROM recurring_expenses ${where}`);
+
   console.log("\n\n================ GLOBAL SUMMARY =================");
   console.log(`Patients:           ${patients.length}`);
   console.log(`Sessions:           ${sessions.length}`);
   console.log(`Payments:           ${payments.length}`);
+  console.log(`Expenses:           ${expensesCount[0]?.n ?? 0}`);
+  console.log(`Recurring tpls:     ${recurCount[0]?.n ?? 0}`);
   console.log(`Duplicate groups:   ${dupes.length} ${dupes.length ? "⚠" : "✓"}`);
+  console.log(`Dup. recur slots:   ${dupRecur.length} ${dupRecur.length ? "⚠" : "✓"}`);
+  console.log(`Orphaned receipts:  ${orphanReceipts.length} ${orphanReceipts.length ? "⚠" : "✓"}`);
   console.log(`paid counter drift: ${globalDriftCount} patient(s) ${globalDriftCount ? "⚠" : "✓"}`);
   console.log(`Patients owing:     ${globalOwedCount}`);
   console.log(`Total owed:         ${fmt(globalOwedTotal)}`);
   console.log(`Total credit:       ${fmt(globalCreditTotal)}`);
+
+  if (dupRecur.length > 0) {
+    console.log("\n--- Duplicate recurring slots (DB index breach!) ---");
+    for (const r of dupRecur) console.log(`  ${r.recurring_id}  ${r.period_year}-${r.period_month}  count=${r.n}`);
+  }
+  if (orphanReceipts.length > 0) {
+    console.log("\n--- Expenses with orphan receipt_document_id ---");
+    for (const r of orphanReceipts.slice(0, 20)) console.log(`  ${r.id}  receipt=${r.receipt_document_id}`);
+    if (orphanReceipts.length > 20) console.log(`  ... and ${orphanReceipts.length - 20} more`);
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

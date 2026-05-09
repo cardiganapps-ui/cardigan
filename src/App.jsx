@@ -28,6 +28,8 @@ import { CardiganProvider } from "./context/CardiganContext";
 import { I18nProvider, useT } from "./i18n/index";
 import { Drawer } from "./components/Drawer";
 import { PaymentModal } from "./components/PaymentModal";
+import { ExpenseSheet } from "./components/sheets/ExpenseSheet";
+import { RecurringExpenseSheet } from "./components/sheets/RecurringExpenseSheet";
 import { QuickActions } from "./components/QuickActions";
 import TopbarActions from "./components/TopbarActions";
 import CommandPalette from "./components/CommandPalette";
@@ -1177,6 +1179,27 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     setPaymentModalOpen(true);
   }, [readOnly]);
 
+  // Expense sheet — mirrors the payment-modal pattern so any screen
+  // (FAB, GastosTab list, ResumenTab CTA) can open record-mode or
+  // edit-mode through context.
+  const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const openRecordExpenseModal = useCallback(() => {
+    if (readOnly) return;
+    setEditingExpense(null);
+    setExpenseSheetOpen(true);
+  }, [readOnly]);
+  const openEditExpenseModal = useCallback((expense) => {
+    if (readOnly) return;
+    setEditingExpense(expense);
+    setExpenseSheetOpen(true);
+  }, [readOnly]);
+  const [recurringExpenseSheetOpen, setRecurringExpenseSheetOpen] = useState(false);
+  const openRecurringExpenseSheet = useCallback(() => {
+    if (readOnly) return;
+    setRecurringExpenseSheetOpen(true);
+  }, [readOnly]);
+
   /* ── Edge swipe to open drawer ──
      These handlers are attached via a native addEventListener with
      `passive: false` so that once we detect an intentional horizontal swipe
@@ -1406,12 +1429,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       : async () => { requirePro("documents"); return null; },
     deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
     deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
+    deleteExpense: withSuccess(data.deleteExpense, "Gasto eliminado"),
+    deleteRecurringTemplate: withSuccess(data.deleteRecurringTemplate, "Plantilla eliminada"),
     deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
     noteCrypto,
     profession,
     accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
-    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, setHideFab, setScreen,
+    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, setHideFab, setScreen,
     isAdminUser: admin, // surfaced to CommandPalette for admin-only commands
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,
@@ -1498,7 +1523,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       );
       return ok;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
 
   // First-time user gate: a 2-step onboarding wizard before mounting
   // the main shell. Demo mode and admin "view as user" mode bypass —
@@ -1911,6 +1936,21 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {!readOnly && (
           <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }}
             initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
+        )}
+        {!readOnly && expenseSheetOpen && (
+          <ExpenseSheet
+            editingExpense={editingExpense}
+            onClose={(msg) => {
+              setExpenseSheetOpen(false);
+              setEditingExpense(null);
+              if (typeof msg === "string" && msg) showSuccess(msg);
+            }}
+          />
+        )}
+        {!readOnly && recurringExpenseSheetOpen && (
+          <RecurringExpenseSheet
+            onClose={() => setRecurringExpenseSheetOpen(false)}
+          />
         )}
         {!readOnly && !hideFab && <QuickActions />}
         {!hideBottomTabs && <BottomTabs />}

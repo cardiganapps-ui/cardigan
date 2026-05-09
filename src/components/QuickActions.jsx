@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus, IconArrowDown } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
@@ -13,6 +13,7 @@ import { haptic } from "../utils/haptics";
 // eslint-disable-next-line react-refresh/only-export-components
 export const QUICK_ACTIONS = [
   { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
+  { key:"expense",  Icon: IconArrowDown,    tKey:"fab.expense" },
   { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },
   { key:"note",     Icon: IconClipboard,    tKey:"fab.note" },
   { key:"document", Icon: IconDocument,     tKey:"fab.document" },
@@ -22,7 +23,7 @@ const ACTIONS = QUICK_ACTIONS;
 
 export function QuickActions() {
   const { t } = useT();
-  const { patients, upcomingSessions, openRecordPaymentModal, createPatient, createPotential, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
+  const { patients, upcomingSessions, openRecordPaymentModal, openRecordExpenseModal, createPatient, createPotential, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
   const isPro = !!subscription?.isPro;
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
@@ -38,6 +39,7 @@ export function QuickActions() {
       return;
     }
     if (key === "payment") openRecordPaymentModal(null);
+    else if (key === "expense") openRecordExpenseModal();
     else if (key === "note") {
       // Quick-capture: skip the sheet, go straight to editor
       const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
