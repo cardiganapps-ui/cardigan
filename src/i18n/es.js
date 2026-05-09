@@ -1972,6 +1972,27 @@ export default {
   patientShell: {
     menu: "Abrir men\u00fa",
     openSettings: "Abrir configuraci\u00f3n",
+    nav: "Navegaci\u00f3n",
+    tabHome: "Inicio",
+    tabAgenda: "Agenda",
+  },
+
+  patientAgenda: {
+    day: "D\u00eda",
+    week: "Semana",
+    month: "Mes",
+    today: "Hoy",
+    previous: "Anterior",
+    next: "Siguiente",
+    jumpToday: "Ir a hoy",
+    noSessions: "Sin sesiones",
+    oneSession: "1 sesi\u00f3n",
+    nSessions: "{n} sesiones",
+    dayEmptyTitle: "D\u00eda libre",
+    dayEmptyBodyToday: "No tienes sesiones hoy.",
+    dayEmptyBodyOther: "No tienes sesiones este d\u00eda.",
+    cancelledTag: "Cancelada",
+    pastTag: "Pasada",
   },
 
   // Patient settings sheet (notifications + calendar + sign out).

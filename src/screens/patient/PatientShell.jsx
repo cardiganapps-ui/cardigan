@@ -2,28 +2,41 @@ import { useState } from "react";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
 import { AvatarContent } from "../../components/Avatar";
-import { IconSettings } from "../../components/Icons";
+import { IconSettings, IconHome, IconCalendar } from "../../components/Icons";
 import { PullToRefresh } from "../../components/PullToRefresh";
 import { PatientHome } from "./PatientHome";
+import { PatientAgenda } from "./PatientAgenda";
 import { PatientSettingsSheet } from "./PatientSettingsSheet";
+import { haptic } from "../../utils/haptics";
 
 /* ── PatientShell ─────────────────────────────────────────────────
-   Patient-side app shell. Dramatically smaller than the therapist
-   shell — no FAB, no bottom tabs, no admin chrome, no drawer with
-   five sections. The patient is here to glance at their schedule
-   + balance and leave.
+   Patient-side app shell. Smaller than the therapist shell — no
+   FAB, no admin chrome, no drawer with five sections. The patient
+   is here to glance at their next session, see their schedule, and
+   leave.
 
-   Top bar: logo + a small avatar that opens a tiny menu (Cerrar
-   sesión for v1; future iterations add Mi cuenta + Cambiar
-   profesionista). The body is a single scrollable column rendered
-   by PatientHome.
+   Two screens, both reached via bottom tabs:
+     - Inicio: hero (next session) + balance + therapist + docs
+     - Agenda: día / semana / mes views over the patient's sessions
+   Both share the same data prop (sessions + therapist + balance);
+   neither mutates anything except via the cancel/reschedule
+   endpoints which are scoped to the patient's own sessions.
 
-   Read-only by definition — patients can't write any data in v1.
-   No mutating calls anywhere downstream. */
+   Read-only by definition — patients can't write any data in v1
+   beyond the cancel/reschedule request flows.
+
+   Top bar: logo + a small avatar that opens the settings sheet
+   (notifications, calendar feed, sign out). */
+
+const TABS = [
+  { key: "home",   Icon: IconHome,     tKey: "patientShell.tabHome" },
+  { key: "agenda", Icon: IconCalendar, tKey: "patientShell.tabAgenda" },
+];
 
 export function PatientShell({ user, signOut, data }) {
   const { t } = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [screen, setScreen] = useState("home");
 
   // Patient display name — sourced in priority order:
   //   1. The therapist's record of the patient (patients.name) —
@@ -83,10 +96,6 @@ export function PatientShell({ user, signOut, data }) {
           cardigan
         </span>
         <div style={{ flex: 1 }} />
-        {/* Avatar tap → opens the settings sheet directly. The
-            old dropdown menu had a single item (sign out); after
-            the settings sheet absorbed sign out + notifications +
-            calendar, the dropdown stopped earning its keep. */}
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
@@ -126,25 +135,84 @@ export function PatientShell({ user, signOut, data }) {
       </div>
 
       {/* ── Body — scroll-owner. flex:1 fills the remaining height
-            below the top bar; .scroll-bounce gives this surface the
-            same iOS rubber-band guarantee the therapist .page class
-            has, so even single-card content (patient with no upcoming
-            session) bounces and feels native. PullToRefresh wraps
-            the scroll surface and looks for .scroll-bounce to detect
-            scrollTop, so the swipe-down gesture re-fetches data
-            (sessions / balance / docs) without leaving the screen. */}
+            below the top bar. PullToRefresh wraps the scroll surface
+            and looks for .scroll-bounce to detect scrollTop, so the
+            swipe-down gesture re-fetches data without leaving the
+            screen. The scroll container is keyed on `screen` so
+            switching tabs resets scroll-to-top — otherwise the user
+            would land halfway down the agenda's month view after
+            scrolling Home, which is disorienting. */}
       <PullToRefresh onRefresh={data.refresh}>
         <div
+          key={screen}
           className="scroll-bounce"
           style={{
             flex: 1,
             minHeight: 0,
-            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+            paddingBottom: "max(80px, calc(env(safe-area-inset-bottom) + 64px))",
           }}
         >
-          <PatientHome data={data} user={user} />
+          {screen === "home" && <PatientHome data={data} user={user} />}
+          {screen === "agenda" && <PatientAgenda data={data} />}
         </div>
       </PullToRefresh>
+
+      {/* ── Bottom tabs ──
+          Two-tab nav (Home, Agenda). Mirrors the therapist's
+          BottomTabs visually but doesn't share the component —
+          that one reads `screen` + `navigate` from CardiganContext,
+          which the patient ctxValue intentionally doesn't include
+          (the patient app uses its own local screen state since it
+          has only two destinations vs. the therapist's four).
+          Two tabs is small enough that inlining the markup is
+          cleaner than parameterizing the shared component. */}
+      <nav
+        aria-label={t("patientShell.nav")}
+        style={{
+          flexShrink: 0,
+          background: "var(--white)",
+          borderTop: "1px solid var(--border-lt)",
+          padding: "8px 16px calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          display: "flex",
+          gap: 8,
+        }}
+      >
+        {TABS.map(tab => {
+          const active = screen === tab.key;
+          const Icon = tab.Icon;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className="btn-tap"
+              onClick={() => {
+                if (!active) { haptic.tap(); setScreen(tab.key); }
+              }}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
+                padding: "8px 4px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: active ? "var(--teal-dark)" : "var(--charcoal-md)",
+                fontFamily: "var(--font)",
+                fontSize: 11,
+                fontWeight: active ? 700 : 600,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <Icon size={20} />
+              <span>{t(tab.tKey)}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       <PatientSettingsSheet
         open={settingsOpen}
