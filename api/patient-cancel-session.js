@@ -29,6 +29,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
+import { sendCancelNotificationEmails } from "./_sessionEmail.js";
 import { withSentry } from "./_sentry.js";
 
 const MAX_NOTE_LEN = 500;
@@ -173,6 +174,40 @@ async function handler(req, res) {
     }
   } catch (err) {
     console.warn("patient-cancel-session: therapist notify failed:", err?.message);
+  }
+
+  // ── Email both parties (best-effort) ──
+  // Pulls the patient row for greeting (parent if minor, falls back
+  // to name) + email, and the therapist email/name from auth.users.
+  // Both lookups go through service-role since the patient JWT can't
+  // see the therapist's auth row, and the patients table is already
+  // filtered by patient_user_id via RLS in the JWT'd path. Failure
+  // here doesn't roll back the cancel — same shape as the push above.
+  try {
+    const [{ data: patientRow }, { data: therapistAuth }] = await Promise.all([
+      svc
+        .from("patients")
+        .select("name, parent, email")
+        .eq("id", session.patient_id)
+        .maybeSingle(),
+      svc.auth.admin.getUserById(session.user_id),
+    ]);
+    const therapistUser = therapistAuth?.user || null;
+    await sendCancelNotificationEmails({
+      patientEmail: patientRow?.email?.trim() || null,
+      patientGreetingName: patientRow?.parent?.trim() || patientRow?.name || session.patient,
+      patientDisplayName: patientRow?.name || session.patient,
+      therapistEmail: therapistUser?.email || null,
+      therapistName:
+        therapistUser?.user_metadata?.full_name ||
+        therapistUser?.raw_user_meta_data?.full_name ||
+        "",
+      date: session.date,
+      time: session.time,
+      cancelNote: cleanNote,
+    });
+  } catch (err) {
+    console.warn("patient-cancel-session: email notify failed:", err?.message);
   }
 
   return res.status(200).json({

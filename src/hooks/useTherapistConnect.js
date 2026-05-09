@@ -113,15 +113,27 @@ export function useTherapistConnect(user) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const access = session?.access_token;
-      if (!access) return { ok: false };
-      const res = await fetch("/api/stripe-connect-onboard", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${access}` },
-      });
+      if (!access) return { ok: false, error: "no_session" };
+      let res;
+      try {
+        res = await fetch("/api/stripe-connect-onboard", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${access}` },
+        });
+      } catch (err) {
+        console.error("[useTherapistConnect] onboard fetch failed:", err);
+        return { ok: false, error: err?.message || "network_error" };
+      }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) return { ok: false, error: data.error };
+      if (!res.ok || !data.url) {
+        console.error("[useTherapistConnect] onboard server error:", res.status, data);
+        return { ok: false, error: data.error || `http_${res.status}` };
+      }
       window.location.href = data.url;
       return { ok: true };
+    } catch (err) {
+      console.error("[useTherapistConnect] onboard unexpected error:", err);
+      return { ok: false, error: err?.message || "unknown" };
     } finally {
       setBusy(false);
     }
@@ -132,18 +144,30 @@ export function useTherapistConnect(user) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const access = session?.access_token;
-      if (!access) return { ok: false };
-      const res = await fetch("/api/stripe-connect-dashboard", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${access}` },
-      });
+      if (!access) return { ok: false, error: "no_session" };
+      let res;
+      try {
+        res = await fetch("/api/stripe-connect-dashboard", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${access}` },
+        });
+      } catch (err) {
+        console.error("[useTherapistConnect] dashboard fetch failed:", err);
+        return { ok: false, error: err?.message || "network_error" };
+      }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) return { ok: false, error: data.error, code: data.code };
+      if (!res.ok || !data.url) {
+        console.error("[useTherapistConnect] dashboard server error:", res.status, data);
+        return { ok: false, error: data.error || `http_${res.status}`, code: data.code };
+      }
       // Open in a new tab so the therapist can flip back to Cardigan
       // — the Stripe dashboard is a multi-tab tool by nature (balance,
       // payouts, settings).
       window.open(data.url, "_blank", "noopener,noreferrer");
       return { ok: true };
+    } catch (err) {
+      console.error("[useTherapistConnect] dashboard unexpected error:", err);
+      return { ok: false, error: err?.message || "unknown" };
     } finally {
       setBusy(false);
     }

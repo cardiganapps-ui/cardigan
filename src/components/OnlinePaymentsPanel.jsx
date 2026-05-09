@@ -36,18 +36,37 @@ export function OnlinePaymentsPanel({ user }) {
   };
 
   const handleStart = async () => {
-    const r = await c.startOnboarding();
-    if (!r.ok) showToast(t("onlinePayments.startError"), "error");
+    let r;
+    try {
+      r = await c.startOnboarding();
+    } catch (err) {
+      // Defensive — the hook itself catches all failures, but if a
+      // future refactor breaks that, the click must still surface
+      // something to the user instead of looking dead.
+      console.error("[OnlinePaymentsPanel] handleStart threw:", err);
+      r = { ok: false, error: err?.message || "unknown" };
+    }
+    if (!r.ok) {
+      const detail = r.error ? ` (${r.error})` : "";
+      showToast(t("onlinePayments.startError") + detail, "error");
+    }
   };
 
   const handleDashboard = async () => {
-    const r = await c.openDashboard();
+    let r;
+    try {
+      r = await c.openDashboard();
+    } catch (err) {
+      console.error("[OnlinePaymentsPanel] handleDashboard threw:", err);
+      r = { ok: false, error: err?.message || "unknown" };
+    }
     if (!r.ok) {
       if (r.code === "incomplete") {
         showToast(t("onlinePayments.dashboardIncomplete"), "warning");
         return;
       }
-      showToast(t("onlinePayments.dashboardError"), "error");
+      const detail = r.error ? ` (${r.error})` : "";
+      showToast(t("onlinePayments.dashboardError") + detail, "error");
     }
   };
 

@@ -28,6 +28,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
+import { sendRescheduleNotificationEmails } from "./_sessionEmail.js";
 import { withSentry } from "./_sentry.js";
 
 // Shared with patient-cancel-session: parse "D-MMM" + "HH:MM" to
@@ -250,6 +251,38 @@ async function handler(req, res) {
     }
   } catch (err) {
     console.warn("patient-reschedule-session: therapist notify failed:", err?.message);
+  }
+
+  // ── Email both parties (best-effort) ──
+  // Same pattern as cancel: pull patient + therapist contact info via
+  // service-role (the patient JWT can't read the therapist's auth row)
+  // and fan out to Resend. Failure here doesn't roll back the move.
+  try {
+    const [{ data: patientRow }, { data: therapistAuth }] = await Promise.all([
+      svc
+        .from("patients")
+        .select("name, parent, email")
+        .eq("id", session.patient_id)
+        .maybeSingle(),
+      svc.auth.admin.getUserById(session.user_id),
+    ]);
+    const therapistUser = therapistAuth?.user || null;
+    await sendRescheduleNotificationEmails({
+      patientEmail: patientRow?.email?.trim() || null,
+      patientGreetingName: patientRow?.parent?.trim() || patientRow?.name || session.patient,
+      patientDisplayName: patientRow?.name || session.patient,
+      therapistEmail: therapistUser?.email || null,
+      therapistName:
+        therapistUser?.user_metadata?.full_name ||
+        therapistUser?.raw_user_meta_data?.full_name ||
+        "",
+      oldDate: oldSlot.date,
+      oldTime: oldSlot.time,
+      newDate: updated.date,
+      newTime: updated.time,
+    });
+  } catch (err) {
+    console.warn("patient-reschedule-session: email notify failed:", err?.message);
   }
 
   return res.status(200).json({
