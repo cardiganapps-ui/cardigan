@@ -105,6 +105,47 @@ describe("computeRecurringExpenseRows", () => {
     expect(second.pending).toEqual(first.pending);
   });
 
+  it("REGRESSION: a manually-created expense linked to its template prevents auto-extension from double-billing", () => {
+    // Reproduces the bug where toggling "Make recurring" in
+    // ExpenseSheet inserted a manual expense with recurring_id=null
+    // alongside a template, and the next app-load auto-extension
+    // generated a SECOND expense for the same month. The fix links
+    // the manual expense to (template, year, month) at creation
+    // time so its slot is taken when computeRecurringExpenseRows
+    // runs.
+    const now = new Date("2026-05-15");
+    // The template was created today and the user also created a
+    // manual expense on 2026-05-15 linked to it.
+    const userManual = {
+      recurring_id: TEMPLATE.id,
+      period_year: 2026,
+      period_month: 5,
+    };
+    const { auto } = computeRecurringExpenseRows([TEMPLATE], [userManual], now, "user-1");
+    // May should NOT be in auto — the user already has it.
+    expect(auto.some(r => r.period_year === 2026 && r.period_month === 5)).toBe(false);
+  });
+
+  it("ANTI-REGRESSION: unlinked manual expense does NOT block auto-extension (proves the fix is in linkage, not date-equality)", () => {
+    // Inverse of the regression test: if the fix accidentally
+    // hand-rolled a date-equality check (e.g. "skip slot if any
+    // expense exists on that month") instead of a recurring_id link
+    // check, an unlinked expense (recurring_id=null) would
+    // incorrectly suppress auto-extension. This test fails if the
+    // fix took that wrong path.
+    const now = new Date("2026-05-15");
+    const unlinkedManual = {
+      recurring_id: null,        // ← the bug condition
+      period_year: null,
+      period_month: null,
+      date: "15-May",
+    };
+    const { auto } = computeRecurringExpenseRows([TEMPLATE], [unlinkedManual], now, "user-1");
+    // May SHOULD still be in auto because the unlinked expense
+    // doesn't claim the (template, 2026, 5) slot.
+    expect(auto.some(r => r.period_year === 2026 && r.period_month === 5)).toBe(true);
+  });
+
   it("clamps day-of-month 31 to last day of short months", () => {
     const t = { ...TEMPLATE, day_of_month: 31, start_year: 2026, start_month: 1 };
     const now = new Date("2026-05-15");

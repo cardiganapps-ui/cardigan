@@ -234,22 +234,40 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         const ok = await updateExpense(editingExpense.id, payload);
         if (ok) { haptic.success(); onClose(`${t("gastos.updated")}: −${formatMXN(parsedAmount)}`); }
       } else {
-        const ok = await createExpense(payload);
-        if (!ok) {
-          setFormError(mutationError || "Error al guardar");
-          return;
-        }
-        // Recurring template — fire and forget so the toast lands
-        // immediately. The DB unique index protects against the race.
+        // When the user toggled "Make recurring", we MUST create the
+        // template FIRST and link the just-created expense to its
+        // (template, year, month) slot. Otherwise the next app-load
+        // auto-extension sees the slot as unclaimed (recurring_id is
+        // null on the manual row) and inserts a SECOND expense for
+        // the same month — a real double-billing bug.
+        let recurringLink = {};
         if (makeRecurring) {
-          createRecurringTemplate({
+          const tpl = await createRecurringTemplate({
             amount: parsedAmount,
             category,
             description: description.trim(),
             dayOfMonth,
             paymentMethod,
             taxTreatment,
-          }).catch(() => {});
+          });
+          if (tpl?.id) {
+            // Derive period from the user-picked date (ISO yyyy-mm-dd).
+            const [y, m] = date.split("-").map(Number);
+            recurringLink = {
+              recurringId: tpl.id,
+              periodYear: y || null,
+              periodMonth: m || null,
+            };
+          }
+          // If template creation failed, fall through and create a
+          // plain expense — the toggle was a nice-to-have, not load-
+          // bearing. The user keeps their data; we silently degrade
+          // to non-recurring.
+        }
+        const ok = await createExpense({ ...payload, ...recurringLink });
+        if (!ok) {
+          setFormError(mutationError || "Error al guardar");
+          return;
         }
         haptic.success();
         onClose(`${t("gastos.saved")}: −${formatMXN(parsedAmount)}`);

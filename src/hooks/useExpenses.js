@@ -32,10 +32,20 @@ export function createExpenseActions({
 
   // ── Single expense CRUD ────────────────────────────────────────────
 
+  // recurringId + periodYear + periodMonth are optional and used by
+  // the "Make this expense recurring" flow in ExpenseSheet: we
+  // create the template first, then call createExpense with the new
+  // template's id + the (year, month) of the user-picked date so the
+  // expense claims the (template, year, month) slot. Without that
+  // link, the next app-load auto-extension would generate a SECOND
+  // expense for the same month — double billing. The DB partial
+  // unique index on (recurring_id, period_year, period_month) is the
+  // ultimate safety net.
   async function createExpense({
     amount, category, date,
     description = "", paymentMethod = null, taxTreatment = "deductible",
     cfdiUuid = "", cfdiUrl = "", receiptDocumentId = null, note = "",
+    recurringId = null, periodYear = null, periodMonth = null,
   }) {
     const parsedAmount = Number(amount);
     if (!category || !date || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
@@ -51,9 +61,9 @@ export function createExpenseActions({
       tax_treatment: taxTreatment,
       cfdi_uuid: cfdiUuid || null,
       cfdi_url: cfdiUrl || null,
-      recurring_id: null,
-      period_year: null,
-      period_month: null,
+      recurring_id: recurringId,
+      period_year: periodYear,
+      period_month: periodMonth,
       receipt_document_id: receiptDocumentId || null,
       note: note || null,
       color_idx: 0,
@@ -75,6 +85,9 @@ export function createExpenseActions({
           cfdi_url: cfdiUrl || null,
           receipt_document_id: receiptDocumentId || null,
           note: note || null,
+          recurring_id: recurringId,
+          period_year: periodYear,
+          period_month: periodMonth,
         }).select().single();
         if (error) {
           setExpenses(prev => prev.filter(e => e.id !== tempId));
