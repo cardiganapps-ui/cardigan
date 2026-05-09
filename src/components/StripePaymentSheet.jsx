@@ -75,8 +75,8 @@ const elementsAppearance = {
 // Pricing constants kept in sync with the Stripe Prices behind
 // STRIPE_PRICE_ID and STRIPE_PRICE_ID_ANNUAL. If we ever change the
 // public price, update these alongside the Stripe dashboard.
-const PRICE_MONTHLY_MXN = 299;
-const PRICE_ANNUAL_MXN = 2990;
+const PRICE_MONTHLY_MXN = 149;
+const PRICE_ANNUAL_MXN = 1490;
 
 export default function StripePaymentSheet({
   open,

@@ -139,14 +139,14 @@ describe("endDateIso", () => {
 
 describe("planPriceCents", () => {
   it("infers monthly when price id is generic / unknown", () => {
-    expect(planPriceCents({ subscription: { stripe_price_id: "price_1abc" } })).toBe(29900);
-    expect(planPriceCents({ subscription: {} })).toBe(29900);
-    expect(planPriceCents(null)).toBe(29900);
+    expect(planPriceCents({ subscription: { stripe_price_id: "price_1abc" } })).toBe(14900);
+    expect(planPriceCents({ subscription: {} })).toBe(14900);
+    expect(planPriceCents(null)).toBe(14900);
   });
 
   it("infers annual when price id contains the keyword", () => {
-    expect(planPriceCents({ subscription: { stripe_price_id: "price_annual_2990" } })).toBe(299000);
-    expect(planPriceCents({ subscription: { stripe_price_id: "price_yearly_xx" } })).toBe(299000);
+    expect(planPriceCents({ subscription: { stripe_price_id: "price_annual_1490" } })).toBe(149000);
+    expect(planPriceCents({ subscription: { stripe_price_id: "price_yearly_xx" } })).toBe(149000);
   });
 });
 
@@ -204,7 +204,7 @@ describe("chargeLine", () => {
       subscription: { status: "active", current_period_end: "2026-06-15T00:00:00Z", stripe_price_id: "price_x" },
     }, t);
     expect(out).toMatch(/subscription\.chargeLineRenewing/);
-    expect(out).toContain("amount=$299");
+    expect(out).toContain("amount=$149");
     expect(out).toContain("15 de junio de 2026");
   });
 
@@ -231,7 +231,7 @@ describe("chargeLine", () => {
       },
     }, t);
     expect(out).toMatch(/subscription\.chargeLineTrialWithSub/);
-    expect(out).toContain("amount=$299");
+    expect(out).toContain("amount=$149");
   });
 
   it("comp user is told no charges, ever", () => {

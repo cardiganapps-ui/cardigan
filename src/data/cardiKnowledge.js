@@ -178,7 +178,7 @@ Las sesiones programadas pasadas se DISPLAY como completadas pero no cambian de 
 - Si tu prueba de 30 días vence sin suscribirte, la app entra en modo lectura: ves todo pero no puedes editar. Suscríbete desde la tarjeta del plan en el cajón para reactivar la edición.
 
 ### Suscripción "Cardigan Pro"
-- $299 MXN al mes (impuestos incluidos).
+- $149 MXN al mes (impuestos incluidos).
 - Incluye: cifrado de notas, sincronización con calendario, archivo de documentos, este chat (Cardi).
 - Prueba gratis de 30 días al registrarte. Sin tarjeta requerida hasta que decidas suscribirte.
 - Códigos de invitación: comparte tu código con otro profesional. Cuando se suscriba, ambos reciben crédito.

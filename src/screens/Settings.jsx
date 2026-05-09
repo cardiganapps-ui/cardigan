@@ -1572,7 +1572,7 @@ export function Settings({ user, signOut, refreshUser }) {
 
                       {/* Charge chip — the unambiguous "this is what's
                           happening to your money". Tone-colored pill so a
-                          glance separates "$299 every month" (positive)
+                          glance separates "$149 every month" (positive)
                           from "Sin cobros futuros" (warning). */}
                       {summary.chipText && !isAdminAccess && (() => {
                         const chipMap = {
@@ -1603,7 +1603,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.07)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
-                              ${selectedPlan === "annual" ? "2,990" : "299"}
+                              ${selectedPlan === "annual" ? "1,490" : "149"}
                             </span>
                             <span style={{ fontSize:13, color:"var(--charcoal-md)", fontWeight:600 }}>
                               {selectedPlan === "annual"

@@ -72,18 +72,18 @@ describe("invoiceIsRewardEligible", () => {
     // Defensive — a malformed payload shouldn't credit anyone.
     expect(invoiceIsRewardEligible({})).toBe(false);
     expect(invoiceIsRewardEligible({ amount_paid: null })).toBe(false);
-    expect(invoiceIsRewardEligible({ amount_paid: "299" })).toBe(false);
+    expect(invoiceIsRewardEligible({ amount_paid: "149" })).toBe(false);
   });
 
   it("rejects negative amounts (refund / credit-applied invoices)", () => {
     expect(invoiceIsRewardEligible({ amount_paid: -100 })).toBe(false);
   });
 
-  it("accepts the inaugural $299 paid invoice", () => {
-    expect(invoiceIsRewardEligible({ amount_paid: 29900 })).toBe(true);
+  it("accepts the inaugural $149 paid invoice", () => {
+    expect(invoiceIsRewardEligible({ amount_paid: 14900 })).toBe(true);
   });
 
-  it("accepts an annual $2,990 paid invoice", () => {
-    expect(invoiceIsRewardEligible({ amount_paid: 299000 })).toBe(true);
+  it("accepts an annual $1,490 paid invoice", () => {
+    expect(invoiceIsRewardEligible({ amount_paid: 149000 })).toBe(true);
   });
 });

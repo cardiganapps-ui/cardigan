@@ -10,8 +10,8 @@
 
    Pure helpers — tested. Format dates with Intl in es-MX. */
 
-const PRICE_MONTHLY_CENTS = 29900;
-const PRICE_ANNUAL_CENTS = 299000;
+const PRICE_MONTHLY_CENTS = 14900;
+const PRICE_ANNUAL_CENTS = 149000;
 
 // "30 de mayo" — short form for the row sub-line.
 function formatShort(iso) {
@@ -30,7 +30,7 @@ function formatLong(iso) {
   return d.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
-// "$299" — currency without decimals (we only deal in whole pesos for
+// "$149" — currency without decimals (we only deal in whole pesos for
 // Cardigan Pro). The "MXN" suffix lives in the surrounding sentence.
 function formatPriceMXN(cents) {
   if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) return null;
@@ -125,7 +125,7 @@ export function endDateIso(s) {
        endCaption,   // i18n key for the small line above the date
                      // e.g. "Próximo cobro" / "Termina" / null
        chipText,     // i18n key for the pill-shaped emphasis line
-                     // e.g. "$299 MXN" / "Sin cobros futuros" / null
+                     // e.g. "$149 MXN" / "Sin cobros futuros" / null
        chipTone,     // "neutral" | "positive" | "warning" | "danger"
        tone,         // overall card tone — drives accent color
                      // "teal" | "amber" | "green" | "red"

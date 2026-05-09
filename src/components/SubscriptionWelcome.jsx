@@ -209,7 +209,7 @@ export default function SubscriptionWelcome({
                 color: "var(--charcoal)", whiteSpace: "nowrap",
               }}
             >
-              $299 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--charcoal-md)" }}>MXN/mes</span>
+              $149 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--charcoal-md)" }}>MXN/mes</span>
             </div>
           </div>
 

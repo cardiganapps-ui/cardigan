@@ -185,7 +185,7 @@ export function ProUpgradeSheet({ open, feature, onClose }) {
                 fontFamily: "var(--font-d)", fontSize: 17, fontWeight: 800,
                 color: "var(--charcoal)", whiteSpace: "nowrap",
               }}>
-                $299 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--charcoal-md)" }}>MXN/mes</span>
+                $149 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--charcoal-md)" }}>MXN/mes</span>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

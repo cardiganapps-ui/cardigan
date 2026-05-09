@@ -47,7 +47,7 @@ const SHARED_FAQ_TAIL = [
   },
   {
     q: "¿Hay contrato?",
-    a: "No. Es una suscripción mensual ($299 MXN) que puedes cancelar desde la app cuando quieras. Sin penalizaciones.",
+    a: "No. Es una suscripción mensual ($149 MXN) que puedes cancelar desde la app cuando quieras. Sin penalizaciones.",
   },
   {
     q: "¿Qué pasa si decido cancelar?",
@@ -721,7 +721,7 @@ function renderSoftwareJSONLD(c) {
     inLanguage: "es-MX",
     offers: {
       "@type": "Offer",
-      price: "299",
+      price: "149",
       priceCurrency: "MXN",
       category: "Subscription",
       availability: "https://schema.org/InStock",
@@ -873,8 +873,8 @@ ${renderBreadcrumbJSONLD(c.breadcrumb, c.slug)}
         <p class="mkt-features-sub">30 días gratis. Después decides.</p>
         <div class="mkt-pricing-card">
           <div class="mkt-pricing-name">Cardigan Pro</div>
-          <div class="mkt-pricing-amount"><strong>$299</strong><span>MXN / mes</span></div>
-          <div class="mkt-pricing-note">o $2,990 MXN al año (ahorra 17%)</div>
+          <div class="mkt-pricing-amount"><strong>$149</strong><span>MXN / mes</span></div>
+          <div class="mkt-pricing-note">o $1,490 MXN al año (ahorra 17%)</div>
           <ul class="mkt-pricing-list">
             ${SHARED_PRICING_LIST.map(p => `<li>${p}</li>`).join("")}
           </ul>
@@ -902,7 +902,7 @@ ${renderBreadcrumbJSONLD(c.breadcrumb, c.slug)}
     <section class="mkt-cta">
       <div class="mkt-container">
         <h2>Empieza hoy. Sin tarjeta.</h2>
-        <p>30 días gratis. Después $299 MXN al mes o $2,990 al año.</p>
+        <p>30 días gratis. Después $149 MXN al mes o $1,490 al año.</p>
         <a href="/" class="mkt-btn-primary">Comenzar gratis</a>
       </div>
     </section>

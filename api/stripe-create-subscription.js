@@ -27,7 +27,7 @@
        charge. Client uses confirmSetup() with that client_secret.
 
    When trial_end is in the past or omitted:
-     - First invoice is $299 MXN
+     - First invoice is $149 MXN
      - latest_invoice.payment_intent has a client_secret
      - Client uses confirmPayment() with that client_secret. */
 

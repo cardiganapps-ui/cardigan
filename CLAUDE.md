@@ -227,7 +227,7 @@ Files under `api/*.js` become `/api/*` routes — but **files with names startin
 ### Stripe SaaS subscriptions (Cardigan Pro)
 The therapist-facing billing layer — entirely separate from patient `payments` / `sessions` (those are the therapist's own bookkeeping; this is the therapist paying us).
 
-- **Plan:** "Cardigan Pro" — $299 MXN / month, tax-inclusive, no Stripe-side trial. `STRIPE_PRICE_ID` env points at the right price (test in Preview/Dev, live in Production).
+- **Plan:** "Cardigan Pro" — $149 MXN / month, tax-inclusive, no Stripe-side trial. `STRIPE_PRICE_ID` env points at the right price (test in Preview/Dev, live in Production).
 - **Trial gate:** every new account gets a 30-day in-app trial starting at `auth.users.created_at`. After day 30 the user drops to `accessState: "expired"` (read-only — same `readOnly` flag the admin "view as user" mode uses, composed in `App.jsx`). The data is never deleted; subscribing reinstates writes immediately. Admins (`isAdmin(user)` via `ADMIN_EMAIL`) bypass the gate entirely.
 - **Tables (migration `030_stripe_subscriptions.sql`):**
   - `user_subscriptions` — one row per user. Created lazily at first checkout (or first referral-code visit). Fields: `stripe_customer_id` (unique), `stripe_subscription_id`, `status`, `current_period_end`, `cancel_at_period_end`, `comp_granted` (admin-granted always-free), `referral_code` (this user's code), `referred_by` (code they came in with), `referral_rewards_count`, `pending_credit_amount_cents`. RLS: user can SELECT their own row; only the service-role (webhook) can write.

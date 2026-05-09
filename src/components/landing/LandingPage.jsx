@@ -264,11 +264,11 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
         <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 }}>
           <div className="lp-pricing-eyebrow">Cardigan Pro</div>
           <h2 id="lp-pricing-title" className="lp-pricing-title">
-            <span className="lp-pricing-amount">$299</span>
+            <span className="lp-pricing-amount">$149</span>
             <span className="lp-pricing-period"> MXN al mes</span>
           </h2>
           <p className="lp-pricing-sub">
-            O $2,990 al año — ahorras 17%.
+            O $1,490 al año — ahorras 17%.
           </p>
           <ul className="lp-pricing-features">
             <li>30 días gratis. Sin tarjeta.</li>

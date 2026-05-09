@@ -9,7 +9,7 @@
                             in-app surface should use this).
    - formatMXNDecimal(n)  — "$1,234.50" (exactly 2 decimals; receipts
                             and invoice rows where cents matter).
-   - formatMXNCents(c)    — "$299" from 29900 (Stripe-style cents in
+   - formatMXNCents(c)    — "$149" from 14900 (Stripe-style cents in
                             → display amount out).
    - formatNumber(n)      — "1,234" (non-currency counts, no $).
    - formatPercent(n)     — "23%" (rounded; for KPIs).

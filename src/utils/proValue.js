@@ -11,7 +11,7 @@
 
 import { parseShortDate } from "./dates.js";
 
-const PRICE_MONTHLY_CENTS = 29900; // $299 MXN — mirrors Stripe price
+const PRICE_MONTHLY_CENTS = 14900; // $149 MXN — mirrors Stripe price
 
 /* Returns a Date or null. We rely on existing parsing utilities (the
    stored format is "D-MMM" / "D MMM" with optional year suffix) so any

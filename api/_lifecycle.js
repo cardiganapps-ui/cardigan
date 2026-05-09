@@ -70,7 +70,7 @@ function compose(kind, ctx) {
           <p>Hola ${escapeHtml(firstName)},</p>
           <p>Tu prueba de Cardigan termina en 5 días. Si quieres seguir usándolo sin interrupción, puedes suscribirte ahora — no se te cobrará hasta que termine la prueba.</p>
           <p style="margin:24px 0;"><a href="${APP_URL}" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">Activar Cardigan Pro</a></p>
-          <p>Cardigan Pro: $299 MXN al mes, o $2,990 MXN al año (ahorras 17%). Cancela cuando quieras.</p>
+          <p>Cardigan Pro: $149 MXN al mes, o $1,490 MXN al año (ahorras 17%). Cancela cuando quieras.</p>
           <p>— El equipo de Cardigan</p>
         `),
       };

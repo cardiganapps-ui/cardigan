@@ -43,9 +43,9 @@ describe("computeProValue", () => {
     ];
     const result = computeProValue(sessions, payments, APR_30);
     expect(result.earnedMxn).toBe(15000);
-    // 299 / 15000 ≈ 1.99%, rounded to one decimal.
-    expect(result.proSharePct).toBeCloseTo(2.0, 1);
-    expect(result.monthlyPriceMxn).toBe(299);
+    // 149 / 15000 ≈ 0.99%, rounded to one decimal.
+    expect(result.proSharePct).toBeCloseTo(1.0, 1);
+    expect(result.monthlyPriceMxn).toBe(149);
   });
 
   it("returns proSharePct=null when the user earned nothing this month", () => {
@@ -57,7 +57,7 @@ describe("computeProValue", () => {
 
   it("caps proSharePct at 100 when earnings are below the price", () => {
     const sessions = pad(12, () => ({ date: "5-Abr", status: "completed" }));
-    const payments = [{ date: "5-Abr", amount: 100 }]; // earned $100, price $299
+    const payments = [{ date: "5-Abr", amount: 100 }]; // earned $100, price $149
     const result = computeProValue(sessions, payments, APR_30);
     expect(result.proSharePct).toBe(100);
   });

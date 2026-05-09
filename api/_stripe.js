@@ -1,6 +1,6 @@
 /* ── Stripe helper (fetch-based, no SDK) ──────────────────────────────
    Cardigan uses Stripe for the SaaS-side subscription (therapist pays
-   Cardigan $299 MXN/month for "Cardigan Pro"). We deliberately keep
+   Cardigan $149 MXN/month for "Cardigan Pro"). We deliberately keep
    this layer thin and SDK-free for two reasons:
 
      1. The Stripe Node SDK is ~2 MB cold-start weight. We use about
@@ -45,7 +45,7 @@ function getSecret() {
 }
 
 // Pick the right Stripe Price for a given plan. Annual lives in
-// STRIPE_PRICE_ID_ANNUAL ($2,990 MXN/yr ≈ 17% off); monthly remains the
+// STRIPE_PRICE_ID_ANNUAL ($1,490 MXN/yr ≈ 17% off); monthly remains the
 // default at STRIPE_PRICE_ID. Both env vars flip atomically between
 // test and live mode (Preview/Development = test, Production = live).
 export function getPriceId(plan = "monthly") {

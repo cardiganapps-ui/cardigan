@@ -55,7 +55,7 @@ import { sendLifecycleEmail } from "./_lifecycle.js";
 // price (`STRIPE_PRICE_ID`). If we ever change the plan price we'll
 // want this to come from the price object directly — for now it's
 // simpler to keep a single source of truth in env.
-const REFERRAL_REWARD_CENTS = 29900;
+const REFERRAL_REWARD_CENTS = 14900;
 
 // Anti-abuse caps on referral rewards. Hit either ceiling and we
 // stop crediting the inviter (silently — the invitee still gets the

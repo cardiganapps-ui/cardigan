@@ -56,7 +56,7 @@ const PROFESSIONS = [
       { q: "¿Mis notas están seguras?", a: "Sí. Las notas se cifran de extremo a extremo con una contraseña que solo tú conoces. Ni Cardigan ni nadie en nuestro equipo puede leerlas. Cumplimos con la LFPDPPP." },
       { q: "¿Funciona en mi celular?", a: "Sí. Cardigan funciona en iPhone, iPad y Android — se instala como una app desde tu navegador en 10 segundos. También tiene una versión completa para escritorio." },
       { q: "¿Puedo exportar a mis pacientes?", a: "Sí. Desde Ajustes → Privacidad puedes descargar todos tus datos en formato JSON. Sin candados — son tus datos." },
-      { q: "¿Hay contrato?", a: "No. Es una suscripción mensual ($299 MXN) que puedes cancelar desde la app cuando quieras. Sin penalizaciones." },
+      { q: "¿Hay contrato?", a: "No. Es una suscripción mensual ($149 MXN) que puedes cancelar desde la app cuando quieras. Sin penalizaciones." },
       { q: "¿Qué pasa si decido cancelar?", a: "Tus datos se quedan intactos. Si vuelves al mes siguiente, todo sigue donde lo dejaste — pacientes, notas, sesiones, pagos." },
     ],
     keyword: "software psicólogos méxico",
@@ -90,7 +90,7 @@ const PROFESSIONS = [
       { q: "¿Puedo subir planes alimenticios y análisis?", a: "Sí. Sube PDFs, imágenes o Word a la ficha de cada paciente — quedan vinculados a su historial y se pueden consultar en cualquier momento." },
       { q: "¿Cardigan grafica el peso de mis pacientes?", a: "Sí. Captura las mediciones (peso, % grasa, músculo, perímetros) en cada consulta y verás el progreso en una gráfica automática, con deltas desde la primera medición. Si el paciente tiene escaneos InBody, la gráfica cambia entre métricas con un toque." },
       { q: "¿Funciona en mi celular?", a: "Sí. Se instala como app en iPhone, iPad y Android desde el navegador. También funciona perfecto en escritorio." },
-      { q: "¿Hay contrato?", a: "No. $299 MXN al mes, cancelas cuando quieras. Sin penalizaciones." },
+      { q: "¿Hay contrato?", a: "No. $149 MXN al mes, cancelas cuando quieras. Sin penalizaciones." },
       { q: "¿Mis pacientes pueden ver su información?", a: "No. Cardigan es para ti — tus pacientes no tienen acceso. Si quieres compartirles algo, exportas el documento o se los envías por correo." },
     ],
     keyword: "software nutriólogos méxico",
@@ -122,7 +122,7 @@ const PROFESSIONS = [
       { q: "¿Puedo registrar mediciones de cada cliente?", a: "Sí. Captura peso, % grasa, perímetros y fuerza en cada sesión. Cardigan grafica el progreso automáticamente y te dice cuánto ha cambiado desde la primera medición." },
       { q: "¿Manejo paquetes de varias sesiones?", a: "Sí. Puedes cobrar por sesión individual, por paquete (10 sesiones, 1 mes, etc.) o como suscripción mensual. Cardigan rastrea las sesiones consumidas vs. pagadas." },
       { q: "¿Funciona en el gimnasio sin internet?", a: "Sí. Cardigan guarda tu trabajo localmente y sincroniza cuando vuelves a tener señal." },
-      { q: "¿Hay contrato?", a: "No. $299 MXN al mes, cancelas cuando quieras." },
+      { q: "¿Hay contrato?", a: "No. $149 MXN al mes, cancelas cuando quieras." },
       { q: "¿Es solo para entrenadores con consultorio?", a: "No. Cardigan funciona para entrenadores que trabajan a domicilio, en parques, en gimnasios o en línea — la modalidad de cada sesión se configura por separado." },
     ],
     keyword: "app entrenador personal méxico",
@@ -155,7 +155,7 @@ const PROFESSIONS = [
       { q: "¿Cómo registro las faltas?", a: "Cuando el alumno no asiste, marcas la clase como cancelada (con o sin cobro). Cardigan ajusta el balance automáticamente." },
       { q: "¿Puedo guardar partituras o audios?", a: "Sí. Adjunta archivos (PDF, audio, video, imágenes) a la bitácora de cada alumno. Quedan organizados por fecha." },
       { q: "¿Los padres pueden ver el avance?", a: "No directamente — Cardigan es solo para ti. Pero puedes exportar la bitácora cuando quieras compartirla." },
-      { q: "¿Hay contrato?", a: "No. $299 MXN al mes, cancelas cuando quieras." },
+      { q: "¿Hay contrato?", a: "No. $149 MXN al mes, cancelas cuando quieras." },
     ],
     keyword: "app maestros música particulares",
   },
@@ -187,7 +187,7 @@ const PROFESSIONS = [
       { q: "¿Puedo manejar varios alumnos al mismo tiempo?", a: "Sí. Cardigan no tiene límite de alumnos. Cada uno tiene su propia bitácora, calendario y balance." },
       { q: "¿Cómo cobro a los padres?", a: "Cardigan rastrea quién pagó y quién no. Tú decides el método (efectivo, transferencia, etc.) — la app solo lleva la cuenta." },
       { q: "¿Puedo subir material a la bitácora?", a: "Sí. Adjunta PDFs, exámenes, fotos de la pizarra — todo organizado por fecha y alumno." },
-      { q: "¿Hay contrato?", a: "No. $299 MXN al mes, cancelas cuando quieras." },
+      { q: "¿Hay contrato?", a: "No. $149 MXN al mes, cancelas cuando quieras." },
     ],
     keyword: "app tutores profesores particulares",
   },
@@ -372,7 +372,7 @@ function professionPage(p) {
   "inLanguage": "es-MX",
   "offers": {
     "@type": "Offer",
-    "price": "299",
+    "price": "149",
     "priceCurrency": "MXN",
     "category": "Subscription",
     "availability": "https://schema.org/InStock"
@@ -444,8 +444,8 @@ function professionPage(p) {
         <p class="mkt-features-sub">30 días gratis. Después decides.</p>
         <div class="mkt-pricing-card">
           <div class="mkt-pricing-name">Cardigan Pro</div>
-          <div class="mkt-pricing-amount"><strong>$299</strong><span>MXN / mes</span></div>
-          <div class="mkt-pricing-note">o $2,990 MXN al año (ahorra 17%)</div>
+          <div class="mkt-pricing-amount"><strong>$149</strong><span>MXN / mes</span></div>
+          <div class="mkt-pricing-note">o $1,490 MXN al año (ahorra 17%)</div>
           <ul class="mkt-pricing-list">
             <li>Acceso completo a todas las funciones</li>
             <li>${escapeHtml(p.client[0].toUpperCase() + p.client.slice(1))} ilimitados</li>
@@ -477,7 +477,7 @@ function professionPage(p) {
     <section class="mkt-cta">
       <div class="mkt-container">
         <h2>Empieza hoy. Sin tarjeta.</h2>
-        <p>30 días gratis. Después $299 MXN al mes o $2,990 al año.</p>
+        <p>30 días gratis. Después $149 MXN al mes o $1,490 al año.</p>
         <a href="/" class="mkt-btn-primary">Comenzar gratis</a>
       </div>
     </section>
