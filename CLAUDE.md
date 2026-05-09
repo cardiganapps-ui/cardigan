@@ -70,6 +70,7 @@ The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_UR
 - `VERCEL_TOKEN` — Vercel API token (env vars, deploys, domains)
 - `CF_API_TOKEN` — Cloudflare API token with full zone + account access on `cardigan.mx` (DNS, SSL, pages, workers, SSL/TLS)
 - `RESEND_API_KEY` — Resend API key (domains, sending, logs)
+- `GITHUB_TOKEN` — Fine-grained GitHub PAT scoped to `cardiganapps-ui/cardigan` (Contents/Issues/PRs/Workflows/Administration r+w). Use this when the session-scoped local git proxy 403s on push/delete, or when the GitHub MCP exposed in the session lacks the operation you need (e.g. `delete_branch`). Pattern: `curl -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/...`. Bulk branch cleanup example: `curl -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/cardiganapps-ui/cardigan/git/refs/heads/<branch>`. Token expires every 90 days — when it stops working, ask for a fresh one rather than silently degrading.
 
 ## Architecture
 
