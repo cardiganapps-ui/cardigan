@@ -21,6 +21,7 @@
 
 import { supabase } from "../supabaseClient";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
+import { shortDateToISO } from "../utils/dates";
 
 export function createExpenseActions({
   userId,
@@ -123,12 +124,26 @@ export function createExpenseActions({
       receipt_document_id: fields.receiptDocumentId !== undefined ? fields.receiptDocumentId : prev.receipt_document_id,
       note: fields.note ?? prev.note,
     };
+    // If this is a recurring-linked row and the date moves to a
+    // different (year, month), re-derive period_year/period_month
+    // so the row claims the new month's slot. Without this, a user
+    // who edits the date of an auto-generated June row to "5-Jul"
+    // leaves June claimed but July free — auto-extension on next
+    // app load generates a second July row, double-billing the
+    // therapist. Date is canonical; period derives from it.
+    if (prev.recurring_id && next.date !== prev.date) {
+      const newIso = shortDateToISO(next.date);
+      if (newIso) {
+        const [y, m] = newIso.split("-").map(Number);
+        if (y && m) { next.period_year = y; next.period_month = m; }
+      }
+    }
     setExpenses(arr => arr.map(e => e.id === id ? next : e));
     setMutationError("");
 
     setMutating(true);
     try {
-      const { error } = await supabase.from("expenses").update({
+      const updatePayload = {
         amount: next.amount,
         category: next.category,
         date: next.date,
@@ -139,7 +154,16 @@ export function createExpenseActions({
         cfdi_url: next.cfdi_url,
         receipt_document_id: next.receipt_document_id,
         note: next.note,
-      }).eq("id", id).eq("user_id", userId);
+      };
+      // Push the recalc through to the DB too. Only when recurring,
+      // and only when the period actually changed — avoids needless
+      // writes for the common in-month edit case.
+      if (prev.recurring_id && (next.period_year !== prev.period_year || next.period_month !== prev.period_month)) {
+        updatePayload.period_year = next.period_year;
+        updatePayload.period_month = next.period_month;
+      }
+      const { error } = await supabase.from("expenses").update(updatePayload)
+        .eq("id", id).eq("user_id", userId);
       setMutating(false);
       if (error) {
         setExpenses(arr => arr.map(e => e.id === id ? prev : e));
