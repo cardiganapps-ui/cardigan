@@ -45,6 +45,7 @@ export function RecurringExpenseSheet({ onClose }) {
 
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
+  const [editError, setEditError] = useState("");
 
   // Sort: active first, then paused, then alpha by description.
   const sorted = [...(recurringExpenses || [])].sort((a, b) => {
@@ -54,6 +55,7 @@ export function RecurringExpenseSheet({ onClose }) {
 
   const startEdit = (tpl) => {
     setEditingId(tpl.id);
+    setEditError("");
     setDraft({
       amount: String(tpl.amount || ""),
       category: tpl.category,
@@ -63,15 +65,32 @@ export function RecurringExpenseSheet({ onClose }) {
       taxTreatment: tpl.tax_treatment || TAX_TREATMENT.DEDUCTIBLE,
     });
   };
-  const cancelEdit = () => { setEditingId(null); setDraft(null); };
+  const cancelEdit = () => { setEditingId(null); setDraft(null); setEditError(""); };
+  const updateDraft = (patch) => {
+    setDraft(d => ({ ...d, ...patch }));
+    if (editError) setEditError("");
+  };
 
   const saveEdit = async (tpl) => {
     if (!draft) return;
     const amount = Number(draft.amount);
     const dom = Number(draft.dayOfMonth);
-    if (!Number.isFinite(amount) || amount <= 0) return;
-    if (!draft.category) return;
-    if (!Number.isFinite(dom) || dom < 1 || dom > 31) return;
+    // Surface field-level errors instead of silent no-op so the user
+    // knows why the form didn't close. Order: amount > category > dom
+    // (most-likely-wrong first).
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setEditError(t("gastos.enterAmount"));
+      return;
+    }
+    if (!draft.category) {
+      setEditError(t("gastos.selectCategory"));
+      return;
+    }
+    if (!Number.isFinite(dom) || dom < 1 || dom > 31) {
+      setEditError(t("gastos.invalidDayOfMonth"));
+      return;
+    }
+    setEditError("");
     const ok = await updateRecurringTemplate(tpl.id, {
       amount,
       category: draft.category,
@@ -81,6 +100,7 @@ export function RecurringExpenseSheet({ onClose }) {
       taxTreatment: draft.taxTreatment,
     });
     if (ok) { haptic.success(); cancelEdit(); }
+    else setEditError(t("gastos.saveError"));
   };
 
   const handleToggle = async (tpl) => {
@@ -186,12 +206,12 @@ export function RecurringExpenseSheet({ onClose }) {
                     <div className="input-group">
                       <label className="input-label">{t("gastos.amount")}</label>
                       <MoneyInput min="1" step="1" value={draft.amount}
-                        onChange={(e) => setDraft(d => ({ ...d, amount: e.target.value }))} />
+                        onChange={(e) => updateDraft({ amount: e.target.value })} />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t("gastos.category")}</label>
                       <select className="input" value={draft.category}
-                        onChange={(e) => setDraft(d => ({ ...d, category: e.target.value }))}>
+                        onChange={(e) => updateDraft({ category: e.target.value })}>
                         {EXPENSE_CATEGORIES.map(c => (
                           <option key={c} value={c}>{t(`gastos.cat.${c}`)}</option>
                         ))}
@@ -200,13 +220,13 @@ export function RecurringExpenseSheet({ onClose }) {
                     <div className="input-group">
                       <label className="input-label">{t("gastos.description")}</label>
                       <input className="input" type="text" value={draft.description}
-                        onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))}
+                        onChange={(e) => updateDraft({ description: e.target.value })}
                         placeholder={t("gastos.descriptionPlaceholder")} />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t("gastos.recurringDay")}</label>
                       <input className="input" type="number" min="1" max="31" value={draft.dayOfMonth}
-                        onChange={(e) => setDraft(d => ({ ...d, dayOfMonth: Number(e.target.value) || 1 }))} />
+                        onChange={(e) => updateDraft({ dayOfMonth: Number(e.target.value) || 1 })} />
                       <span className="input-help" style={{ display: "block", marginTop: 4 }}>
                         {t("gastos.recurringDayHint")}
                       </span>
@@ -214,7 +234,7 @@ export function RecurringExpenseSheet({ onClose }) {
                     <div className="input-group">
                       <label className="input-label">{t("gastos.method")}</label>
                       <select className="input" value={draft.paymentMethod}
-                        onChange={(e) => setDraft(d => ({ ...d, paymentMethod: e.target.value }))}>
+                        onChange={(e) => updateDraft({ paymentMethod: e.target.value })}>
                         {EXPENSE_PAYMENT_METHODS.map(m => {
                           const key = (
                             m === PAYMENT_METHOD.TRANSFER ? "finances.transfer" :
@@ -244,7 +264,7 @@ export function RecurringExpenseSheet({ onClose }) {
                           return (
                             <button key={tt} type="button" role="radio" aria-checked={active}
                               className="btn-tap"
-                              onClick={() => setDraft(d => ({ ...d, taxTreatment: tt }))}
+                              onClick={() => updateDraft({ taxTreatment: tt })}
                               style={{
                                 flex: 1, height: 32,
                                 background: active ? "var(--white)" : "transparent",
@@ -261,6 +281,19 @@ export function RecurringExpenseSheet({ onClose }) {
                         })}
                       </div>
                     </div>
+                    {editError && (
+                      <div className="form-error" role="alert"
+                        style={{
+                          background: "var(--red-bg)",
+                          color: "var(--red)",
+                          padding: "8px 12px",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: 12,
+                          marginBottom: 8,
+                        }}>
+                        {editError}
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                       <button type="button" className="btn btn-ghost btn-tap"
                         onClick={cancelEdit} disabled={mutating}

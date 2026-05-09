@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   classifyBillingState,
   endDateIso,
@@ -144,10 +144,22 @@ describe("planPriceCents", () => {
     expect(planPriceCents(null)).toBe(14900);
   });
 
-  it("infers annual when price id contains the keyword", () => {
+  it("infers annual when price id contains the keyword (legacy fallback)", () => {
     expect(planPriceCents({ subscription: { stripe_price_id: "price_annual_1490" } })).toBe(149000);
     expect(planPriceCents({ subscription: { stripe_price_id: "price_yearly_xx" } })).toBe(149000);
   });
+
+  it("matches the configured Vite env IDs exactly when set", () => {
+    // Real Stripe IDs are random strings (e.g. price_1TVA7lFdtTYTXX5py4B5JY9c)
+    // and don't contain "annual"/"year". Stub the env vars to confirm
+    // the env-var match path resolves correctly even with opaque IDs.
+    vi.stubEnv("VITE_STRIPE_PRICE_ID", "price_synthetic_monthly_xyz");
+    vi.stubEnv("VITE_STRIPE_PRICE_ID_ANNUAL", "price_synthetic_annual_xyz");
+    expect(planPriceCents({ subscription: { stripe_price_id: "price_synthetic_monthly_xyz" } })).toBe(14900);
+    expect(planPriceCents({ subscription: { stripe_price_id: "price_synthetic_annual_xyz" } })).toBe(149000);
+  });
+
+  afterEach(() => { vi.unstubAllEnvs(); });
 });
 
 describe("rowSubLine", () => {

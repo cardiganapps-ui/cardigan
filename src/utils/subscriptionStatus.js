@@ -244,12 +244,20 @@ export function billingSummary(s) {
 }
 export function planPriceCents(s) {
   const priceId = s?.subscription?.stripe_price_id;
-  // We can't read env vars from the browser, so we infer plan by amount
-  // shape elsewhere. For now: assume monthly unless explicitly annual
-  // (priceId contains "annual" or matches our known annual).
-  // The actual price ids change between test/live, so a heuristic is
-  // safer than a hardcoded list — the magnitude is what matters for
-  // the user-facing sentence.
+  // Authoritative source: the public Vite env vars get the actual
+  // Stripe Price IDs at build time. Production gets the live IDs,
+  // Preview/Development gets the test IDs — same env partitioning
+  // as STRIPE_PRICE_ID server-side. If a sub's stripe_price_id
+  // matches the configured annual id, it's annual.
+  const annualId = import.meta.env.VITE_STRIPE_PRICE_ID_ANNUAL;
+  const monthlyId = import.meta.env.VITE_STRIPE_PRICE_ID;
+  if (priceId && annualId && priceId === annualId) return PRICE_ANNUAL_CENTS;
+  if (priceId && monthlyId && priceId === monthlyId) return PRICE_MONTHLY_CENTS;
+  // Legacy fallback (regex on slug) for backwards compatibility — covers
+  // the test fixture case and any subscriber on a price not present in
+  // env (e.g. a comp account, a one-off custom price). The default is
+  // monthly because that's the shipping plan; getting the legacy case
+  // wrong silently has been the behavior all along.
   if (priceId && /annual|year|yr/i.test(priceId)) return PRICE_ANNUAL_CENTS;
   return PRICE_MONTHLY_CENTS;
 }

@@ -131,8 +131,20 @@ async function handler(req, res) {
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
   if (doc.kind !== "receipt") return res.status(400).json({ error: "Documento no es un recibo" });
 
+  // Anthropic vision officially supports JPEG / PNG / GIF / WEBP, plus
+  // PDF via the document source type. iOS-default HEIC/HEIF photos
+  // would 4xx at Anthropic — we surface a useful Spanish hint instead
+  // so the user knows why OCR didn't fire (the receipt itself still
+  // attaches via the upload pipeline; OCR is a separate step).
+  const HEIC_TYPES = new Set(["image/heic", "image/heif"]);
+  if (HEIC_TYPES.has(doc.file_type)) {
+    return res.status(415).json({
+      error: "Foto en formato HEIC. Adjunta como JPG si quieres autocompletar con OCR.",
+      code: "heic_unsupported",
+    });
+  }
   const ALLOWED_TYPES = new Set([
-    "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif",
+    "image/jpeg", "image/png", "image/webp", "image/gif",
     "application/pdf",
   ]);
   if (!ALLOWED_TYPES.has(doc.file_type)) {
