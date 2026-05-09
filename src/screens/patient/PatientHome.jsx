@@ -1211,11 +1211,15 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
           </div>
         </div>
       </div>
-      {/* Action row — Reprogramar (primary action, teal-tinted)
-          + Cancelar (tertiary). Quiet treatment so it doesn't
-          compete with the date/time hierarchy. The full flow for
-          each lives in the parent (PatientHome) so its state can
-          survive re-renders of this card. */}
+      {/* Action row — Reprogramar + Cancelar as proper pill buttons.
+          Earlier iteration shipped these as quiet text links so they
+          wouldn't compete with the date/time hierarchy, but the
+          contrast was too low — patients couldn't find them. Pills
+          with border + tint surface the affordance without screaming.
+          Color signals function: teal=neutral action, red=destructive.
+          The hierarchy stays correct because the large outline
+          "Reprogramar" CTA above the card is still the primary path;
+          these are the in-context fallbacks. */}
       {(onRequestReschedule || onRequestCancel) && (
         <div
           style={{
@@ -1224,7 +1228,7 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
             borderTop: "1px solid var(--border-lt)",
             display: "flex",
             alignItems: "center",
-            gap: 14,
+            gap: 8,
           }}
         >
           {onRequestReschedule && (
@@ -1233,9 +1237,11 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
               onClick={() => onRequestReschedule(session)}
               className="btn-tap"
               style={{
+                flex: 1,
+                height: 38,
                 background: "transparent",
-                border: "none",
-                padding: "4px 0",
+                border: "1px solid var(--teal)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 fontFamily: "var(--font)",
                 fontSize: 13,
@@ -1253,14 +1259,16 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
               onClick={() => onRequestCancel(session)}
               className="btn-tap"
               style={{
+                flex: 1,
+                height: 38,
                 background: "transparent",
-                border: "none",
-                padding: "4px 0",
+                border: "1px solid var(--red)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 fontFamily: "var(--font)",
                 fontSize: 13,
-                fontWeight: 600,
-                color: "var(--charcoal-md)",
+                fontWeight: 700,
+                color: "var(--red)",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
