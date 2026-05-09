@@ -211,17 +211,27 @@ async function main() {
   // 2. Orphaned receipt_document_id — pointer to a deleted document row.
   // 3. Recurring templates with zero generated rows in the active period
   //    (likely a generation bug or paused-and-forgotten template).
+  // The user filter (--user=<id>) drops the WHERE clause keyword, so
+  // we splice it via AND when there's already a WHERE. Without this,
+  // an admin debugging a single user would get GLOBAL drift counts
+  // mixed with that user's per-user output below — misleading.
+  const userAnd = userFilter
+    ? ` AND user_id = '${userFilter.replace(/'/g, "''")}'`
+    : "";
+  const userAndExpense = userFilter
+    ? ` AND e.user_id = '${userFilter.replace(/'/g, "''")}'`
+    : "";
   const dupRecur = await sql(`
     SELECT recurring_id, period_year, period_month, count(*) as n
     FROM expenses
-    WHERE recurring_id IS NOT NULL
+    WHERE recurring_id IS NOT NULL${userAnd}
     GROUP BY 1, 2, 3 HAVING count(*) > 1
   `);
   const orphanReceipts = await sql(`
     SELECT e.id, e.user_id, e.receipt_document_id
     FROM expenses e
     LEFT JOIN documents d ON d.id = e.receipt_document_id
-    WHERE e.receipt_document_id IS NOT NULL AND d.id IS NULL
+    WHERE e.receipt_document_id IS NOT NULL AND d.id IS NULL${userAndExpense}
   `);
   const expensesCount = await sql(`SELECT count(*)::int AS n FROM expenses ${where}`);
   const recurCount = await sql(`SELECT count(*)::int AS n FROM recurring_expenses ${where}`);

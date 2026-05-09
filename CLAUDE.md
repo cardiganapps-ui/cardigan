@@ -259,6 +259,7 @@ Defined flags (see `_flags.js` for inline docs):
 - `encryption_setup_enabled` — when false, `POST /api/encryption` returns 503. Pauses new encryption sign-ups; existing users are unaffected. Default: true.
 - `signups_paused` — informational only for now (AuthScreen doesn't read it). Reserve for incident-response use; wire when you actually need it.
 - `whatsapp_paused` — when true, the WhatsApp branch of `/api/send-session-reminders` no-ops; web push reminders continue. Default: false. Use during a Meta Cloud API outage, after a template-approval issue, or while investigating a runaway send.
+- `ocr_paused` — when true, `/api/ocr-receipt` returns 503 and ExpenseSheet falls back to manual entry (receipt itself still attaches). Default: false. Use during an Anthropic outage or runaway-cost incident on receipt processing.
 
 To flip a flag (no redeploy needed):
 ```

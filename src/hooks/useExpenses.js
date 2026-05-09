@@ -232,7 +232,19 @@ export function createExpenseActions({
       // the audit log + a future "show me when this template paused" UI
       // has the timestamp without a separate event log.
       if (fields.active === false && prev.active) patch.paused_at = new Date().toISOString();
-      if (fields.active === true && !prev.active) patch.paused_at = null;
+      // Resume from "now" rather than from the original start month —
+      // a therapist who paused for 6 months and reactivates today
+      // expects October's expense to be the first one generated, not
+      // a 6-month backlog of pending rent rows. Without this, every
+      // reactivation surfaces the entire pause window as a "Generar
+      // N gastos pendientes" prompt — almost always undesirable
+      // (the therapist wasn't paying that expense during the pause).
+      if (fields.active === true && !prev.active) {
+        const now = new Date();
+        patch.paused_at = null;
+        patch.start_year = now.getFullYear();
+        patch.start_month = now.getMonth() + 1;
+      }
     }
     if (Object.keys(patch).length === 0) return true;
 

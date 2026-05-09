@@ -41,7 +41,14 @@
                                 are skipped. Existing trial cohorts
                                 (trial_day_*, trial_winback_*) keep
                                 running. Lets us silence the new
-                                program independently in an incident. */
+                                program independently in an incident.
+     ocr_paused               — when true, /api/ocr-receipt returns
+                                503 and the ExpenseSheet's auto-fill
+                                silently falls back to manual entry
+                                (the receipt itself still attaches).
+                                Use during an Anthropic outage or a
+                                runaway-cost incident on receipt
+                                processing. */
 
 import { get as edgeGet } from "@vercel/edge-config";
 
@@ -52,6 +59,7 @@ const DEFAULTS = {
   whatsapp_paused: false,
   cardi_paused: false,
   lifecycle_extra_paused: false,
+  ocr_paused: false,
 };
 
 export async function getFlag(name) {
