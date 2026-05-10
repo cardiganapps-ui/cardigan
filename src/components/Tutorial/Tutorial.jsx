@@ -11,14 +11,17 @@ import { STEP_IDS_REQUIRING_FAB, STEP_IDS_WITH_DRAWER, TUTORIAL_STEPS } from "./
 // Viewport padding around the tooltip so it never hugs the edge.
 const EDGE_PAD = 12;
 // Time for the drawer open/close animation to settle before measuring.
-// Trimmed from 800ms — the drawer panel transition is 600ms cubic-bezier;
-// 520ms is past the perceived settle point and keeps the tour feeling
-// snappy rather than dragging.
-const DRAWER_SETTLE_MS = 520;
-// Delay between nav and spotlight measurement (matches screenSlide animation).
-// Trimmed from 750ms for the same reason — the screen slide settles well
-// before the old timer fired.
-const NAV_SETTLE_MS = 460;
+// Drawer transition is 600ms cubic-bezier with spring overshoot; the
+// measure happens +60ms after settling=false (see useLayoutEffect).
+// We need settle + 60ms ≥ 600ms + cushion so the rect we capture
+// reflects the post-overshoot resting position. ResizeObserver only
+// fires on size changes (not transform-driven position drift), so a
+// stale rect would stay stale until the user resizes the window —
+// the cushion is what keeps the spotlight aligned on cardi/etc.
+const DRAWER_SETTLE_MS = 580;
+// Same logic for screen transitions: screenSlide is 0.5s with spring
+// overshoot; settle + 60ms ≥ 500ms + cushion.
+const NAV_SETTLE_MS = 480;
 
 function computeTooltipStyle(rect, placement, tooltipEl) {
   // Center fallback: place tooltip in the middle of the viewport.
