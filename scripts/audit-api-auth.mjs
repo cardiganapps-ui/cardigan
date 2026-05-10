@@ -37,6 +37,8 @@ const ALLOWED_NO_AUTH = new Set([
   "calendar/[token].js",        // token IS the credential; no JWT possible from cal clients
   "stripe-webhook.js",          // Stripe delivery callback; HMAC verified via STRIPE_WEBHOOK_SECRET
   "patient-invite-preview.js",  // anonymous invite metadata read; token IS the credential, leaks only therapist's name+profession (no patient PII)
+  "r/[token].js",               // email-link reschedule landing page; token IS the credential, single-use, cleared on apply
+  "session-request-respond-token.js", // confirm-page POST handler for the token landing; token IS the credential, single-use
 ]);
 
 const AUTH_PATTERNS = [

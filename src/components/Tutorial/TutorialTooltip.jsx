@@ -1,5 +1,7 @@
 import { forwardRef } from "react";
 import { useT } from "../../i18n/index";
+import { IconBarChart, IconCheck, IconLink, IconTrendingDown } from "../Icons";
+import { LogoIcon } from "../LogoMark";
 
 // Tooltip bubble with title, body, progress indicator and action buttons.
 // Positioning is handled by the orchestrator via the `style` prop; this
@@ -7,9 +9,9 @@ import { useT } from "../../i18n/index";
 //
 // Layout:
 //   ┌──────────────────────────────┐
-//   │  Title                    ×  │  ← skip is an icon button, top-right
+//   │       [icon]              ×  │  ← optional hero icon (centered cards)
+//   │  Title                       │
 //   │  Body text                   │
-//   │                              │
 //   │  ● ● ○ ○ ○ ○ ○ ○             │  ← dot progress (replaces "Paso X de Y")
 //   │  [ Atrás ]       [ Siguiente]│  ← navigation row
 //   └──────────────────────────────┘
@@ -18,9 +20,24 @@ import { useT } from "../../i18n/index";
 // element. A wrapper div won't work because `.tut-bubble` is `position: fixed`
 // and would report `offsetHeight: 0` on its parent.
 
+// Icon registry — keep tiny on purpose. Adding a new step icon means
+// adding one entry here.
+function HeroIcon({ name }) {
+  const size = 22;
+  switch (name) {
+    case "logo":         return <LogoIcon size={size} color="currentColor" />;
+    case "trendingDown": return <IconTrendingDown size={size} />;
+    case "barChart":     return <IconBarChart size={size} />;
+    case "link":         return <IconLink size={size} />;
+    case "check":        return <IconCheck size={size} />;
+    default:             return null;
+  }
+}
+
 export const TutorialTooltip = forwardRef(function TutorialTooltip({
   title,
   body,
+  iconName,
   stepIndex,
   totalSteps,
   isFirst,
@@ -38,6 +55,10 @@ export const TutorialTooltip = forwardRef(function TutorialTooltip({
     placement === "bottom" ? " tut-bubble--enter-from-above" :
     " tut-bubble--enter-center";
   const className = `tut-bubble${centered ? " tut-bubble--center" : ""}${enterClass}`;
+  // Hero icon only renders on centered card-style steps — pinning it on a
+  // tooltip that's anchored to a UI target would compete visually with the
+  // spotlight cutout.
+  const showIcon = !!iconName && centered;
 
   return (
     <div
@@ -61,6 +82,11 @@ export const TutorialTooltip = forwardRef(function TutorialTooltip({
             <line x1="6" y1="18" x2="18" y2="6" />
           </svg>
         </button>
+      )}
+      {showIcon && (
+        <div className="tut-bubble-icon" aria-hidden="true">
+          <HeroIcon name={iconName} />
+        </div>
       )}
       <div id="tut-title" className="tut-bubble-title">{title}</div>
       <div id="tut-body" className="tut-bubble-body">{body}</div>

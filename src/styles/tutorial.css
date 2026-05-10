@@ -1,27 +1,41 @@
-/* ── TUTORIAL / ONBOARDING TOUR ── */
+/* ── TUTORIAL / ONBOARDING TOUR ──
+   Designed to feel like a polished product tour: snappy entrance,
+   subtle backdrop blur, calm pulse on the spotlight ring, and a
+   tooltip that lands with spring-easing instead of dragging in. */
+
 .tut-dim {
   position: fixed; inset: 0;
-  background: rgba(20, 20, 20, 0.62);
+  background: rgba(15, 17, 22, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   z-index: var(--z-tutorial);
-  animation: fadeIn var(--dur-slower) ease;
+  animation: tutDimIn 380ms var(--ease-out);
   pointer-events: auto;
 }
+@keyframes tutDimIn {
+  from { opacity: 0; -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); }
+  to   { opacity: 1; }
+}
+
 .tut-spotlight {
   position: fixed;
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62);
+  box-shadow:
+    0 0 0 9999px rgba(15, 17, 22, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
   z-index: var(--z-tutorial);
   pointer-events: none;
-  transition: top 1.6s var(--ease-out),
-              left 1.6s var(--ease-out),
-              width 1.6s var(--ease-out),
-              height 1.6s var(--ease-out);
-  animation: tutSpotlightIn 1.6s var(--ease-out);
+  transition: top 520ms var(--ease-spring),
+              left 520ms var(--ease-spring),
+              width 520ms var(--ease-spring),
+              height 520ms var(--ease-spring);
+  animation: tutSpotlightIn 520ms var(--ease-spring);
 }
 @keyframes tutSpotlightIn {
-  from { opacity: 0; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0); }
-  to   { opacity: 1; box-shadow: 0 0 0 9999px rgba(20, 20, 20, 0.62); }
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
+
 /* Transparent click-blockers around the spotlight cutout. They intercept
    taps on everything except the highlighted element, so the user can only
    interact with the feature being showcased. */
@@ -31,16 +45,25 @@
   z-index: var(--z-tutorial);
   pointer-events: auto;
 }
+
+/* Calm, slow ring around the spotlight — enough to draw the eye but
+   not distracting. Lower amplitude than the previous pulse, slightly
+   slower cadence, fades in after the initial spotlight reveal. */
 .tut-spotlight::after {
-  content: ""; position: absolute; inset: -4px;
-  border-radius: calc(var(--radius-lg) + 4px);
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  content: ""; position: absolute; inset: -3px;
+  border-radius: calc(var(--radius-lg) + 3px);
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
   pointer-events: none;
-  animation: tutRingPulse 2.4s ease-in-out var(--dur-slow) infinite;
+  opacity: 0;
+  animation: tutRingFadeIn 320ms var(--ease-out) 420ms forwards,
+             tutRingPulse 2.6s ease-in-out 740ms infinite;
+}
+@keyframes tutRingFadeIn {
+  to { opacity: 0.55; }
 }
 @keyframes tutRingPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%      { opacity: 0.9; transform: scale(1.03); }
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.02); }
 }
 
 /* ── Tooltip bubble ── */
@@ -49,34 +72,39 @@
   z-index: calc(var(--z-tutorial) + 1);
   background: var(--white);
   border-radius: var(--radius-lg);
-  box-shadow: 0 10px 36px rgba(0,0,0,0.24);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 12px 38px rgba(15, 17, 22, 0.28),
+    0 2px 8px rgba(15, 17, 22, 0.12);
   padding: 18px 18px 14px;
   max-width: min(320px, calc(100vw - 24px));
   width: calc(100vw - 24px);
-  transition: top 1.4s var(--ease-out),
-              left 1.4s var(--ease-out);
+  transition: top 480ms var(--ease-spring),
+              left 480ms var(--ease-spring);
 }
+
 /* Directional entrance animations — the tooltip slides from the side of the
-   spotlight so the connection between element and tooltip feels deliberate. */
+   spotlight so the connection between element and tooltip feels deliberate.
+   Snappier than before (520ms vs 1.6s) so it never feels sluggish. */
 .tut-bubble--enter-from-above {
-  animation: tutBubbleFromAbove 1.6s var(--ease-out);
+  animation: tutBubbleFromAbove 520ms var(--ease-spring) both;
 }
 .tut-bubble--enter-from-below {
-  animation: tutBubbleFromBelow 1.6s var(--ease-out);
+  animation: tutBubbleFromBelow 520ms var(--ease-spring) both;
 }
 .tut-bubble--enter-center {
-  animation: tutBubbleCenter 1.7s var(--ease-out);
+  animation: tutBubbleCenter 520ms var(--ease-spring) both;
 }
 @keyframes tutBubbleFromAbove {
-  from { opacity: 0; transform: translateY(-14px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-10px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes tutBubbleFromBelow {
-  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes tutBubbleCenter {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 6px)) scale(0.96); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 /* Centered variant: the translate is part of the anchor, so override the
@@ -85,8 +113,28 @@
   left: 50% !important; top: 50% !important;
   transform: translate(-50%, -50%);
   max-width: min(340px, calc(100vw - 32px));
-  animation: tutBubbleCenter 1.2s var(--ease-out);
+  animation: tutBubbleCenter 520ms var(--ease-spring) both;
 }
+
+/* Optional hero icon at the top of card-style steps — a soft teal
+   badge containing the feature's icon. Used for "feature spotlight"
+   steps (Gastos, Resumen, Cardi, Portal) so the user gets a visual
+   anchor instead of a wall of text. */
+.tut-bubble-icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  display: flex; align-items: center; justify-content: center;
+  margin: 4px auto 12px;
+  animation: tutIconIn 560ms var(--ease-spring) 80ms both;
+}
+@keyframes tutIconIn {
+  from { opacity: 0; transform: scale(0.7) rotate(-6deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
+}
+.tut-bubble--center .tut-bubble-title { text-align: center; padding-right: 0; }
+.tut-bubble--center .tut-bubble-body  { text-align: center; }
 
 .tut-bubble-title {
   font-family: var(--font-d);
@@ -116,12 +164,13 @@
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--dur-slower) ease, color var(--dur-slower) ease;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease;
   padding: 0;
 }
 .tut-bubble-close:active {
   background: var(--cream-dark);
   color: var(--charcoal-md);
+  transform: scale(0.92);
 }
 @media (hover: hover) {
   .tut-bubble-close:hover {
@@ -143,7 +192,8 @@
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--cream-dark);
-  transition: width var(--dur-slower) ease, background var(--dur-slower) ease;
+  transition: width 320ms var(--ease-spring),
+              background 240ms ease;
 }
 .tut-dot--done {
   background: var(--teal-light);
@@ -166,15 +216,17 @@
   border: none; cursor: pointer;
   font-family: var(--font-d);
   font-size: 13px; font-weight: 700;
-  transition: transform var(--dur-slower) ease, background var(--dur-slower) ease, box-shadow var(--dur-slower) ease;
+  transition: transform var(--dur-fast) ease,
+              background var(--dur-fast) ease,
+              box-shadow var(--dur-fast) ease;
   -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
 }
 .tut-btn-primary {
   background: var(--teal); color: var(--white);
-  box-shadow: 0 2px 10px rgba(91,155,175,0.4);
+  box-shadow: 0 4px 14px rgba(91,155,175,0.38);
 }
-.tut-btn-primary:active { transform: scale(0.96); }
+.tut-btn-primary:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(91,155,175,0.32); }
 .tut-btn-ghost {
   background: var(--cream); color: var(--charcoal-md);
   padding: 0 16px;
@@ -185,46 +237,56 @@
   .tut-btn-ghost:hover   { background: var(--cream-dark); }
 }
 
-/* ── Screen-change chip ── */
-/* Fills the role of the "user tapped the hamburger" feedback. Shown
-   full-bleed-centered while the Tutorial orchestrator switches screens. */
+/* ── Screen-change chip ──
+   Shown full-bleed-centered while the Tutorial orchestrator switches
+   screens or opens the drawer. Slightly lighter dim than the active
+   step so the transition feels like a quick wipe rather than a full
+   blackout. */
 .tut-dim--transition {
-  background: rgba(20, 20, 20, 0.48);
-  animation: fadeIn var(--dur-slower) ease;
+  background: rgba(15, 17, 22, 0.42);
+  animation: tutDimIn 280ms var(--ease-out);
   pointer-events: auto;
 }
+
 .tut-welcome-overlay {
   position: fixed; inset: 0;
-  background: rgba(20, 20, 20, 0.55);
+  background: rgba(15, 17, 22, 0.5);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   z-index: var(--z-tutorial);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  animation: fadeIn var(--dur-slower) ease;
+  animation: tutDimIn 360ms var(--ease-out);
 }
 .tut-welcome-card {
   background: var(--white);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-  padding: 26px 22px 20px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 16px 48px rgba(15, 17, 22, 0.28),
+    0 4px 12px rgba(15, 17, 22, 0.12);
+  padding: 28px 22px 20px;
   max-width: 340px; width: 100%;
   text-align: center;
-  animation: tutWelcomeIn 1.1s var(--ease-out);
+  animation: tutWelcomeIn 600ms var(--ease-spring) both;
 }
 @keyframes tutWelcomeIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .tut-welcome-logo {
-  width: 56px; height: 56px;
+  width: 60px; height: 60px;
   border-radius: 50%;
   background: var(--teal-pale);
   color: var(--teal-dark);
   display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 14px;
+  margin: 0 auto 16px;
+  animation: tutIconIn 600ms var(--ease-spring) 120ms both;
+  box-shadow: 0 6px 18px rgba(91,155,175,0.22);
 }
 .tut-welcome-title {
   font-family: var(--font-d);
-  font-size: 19px; font-weight: 800;
+  font-size: 20px; font-weight: 800;
   color: var(--charcoal);
   margin-bottom: 8px;
   letter-spacing: -0.3px;
@@ -233,7 +295,7 @@
   font-size: var(--text-md);
   line-height: 1.55;
   color: var(--charcoal-md);
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 .tut-welcome-actions {
   display: flex; flex-direction: column; gap: 8px;
@@ -268,16 +330,35 @@ body.tut-drawer-active .drawer-overlay {
    items in JS-painted drawer chrome and brighten the matched one. */
 body.tut-drawer-active .drawer-item:not(.tut-target) {
   opacity: 0.32;
-  transition: opacity var(--dur-slow) ease;
+  transition: opacity 320ms ease;
 }
 body.tut-drawer-active .drawer-item.tut-target {
   opacity: 1;
   background: rgba(91, 155, 175, 0.22);
   box-shadow: inset 3px 0 0 var(--teal-light);
-  transition: background var(--dur-slow) ease, opacity var(--dur-slow) ease;
+  transition: background 320ms ease, opacity 320ms ease;
 }
 body.tut-drawer-active .drawer-section-label {
   opacity: 0.45;
+}
+
+/* Reduced-motion: keep entrance fades but kill scale + transform pulses
+   so the tour respects user preference. responsive.css already neutralizes
+   transition durations globally; this just makes sure the spotlight pulse
+   doesn't hammer the GPU under reduce-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .tut-spotlight::after { animation: none; opacity: 0.55; }
+  .tut-bubble--enter-from-above,
+  .tut-bubble--enter-from-below,
+  .tut-bubble--enter-center,
+  .tut-bubble--center {
+    animation: tutFadeOnly 200ms ease both;
+  }
+  @keyframes tutFadeOnly {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .tut-bubble-icon { animation: tutFadeOnly 200ms ease both; }
 }
 
 /* ── CONTEXTUAL HELP TIPS ── */

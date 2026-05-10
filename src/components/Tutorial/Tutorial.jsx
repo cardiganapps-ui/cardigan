@@ -11,9 +11,14 @@ import { STEP_IDS_REQUIRING_FAB, STEP_IDS_WITH_DRAWER, TUTORIAL_STEPS } from "./
 // Viewport padding around the tooltip so it never hugs the edge.
 const EDGE_PAD = 12;
 // Time for the drawer open/close animation to settle before measuring.
-const DRAWER_SETTLE_MS = 800;
+// Trimmed from 800ms — the drawer panel transition is 600ms cubic-bezier;
+// 520ms is past the perceived settle point and keeps the tour feeling
+// snappy rather than dragging.
+const DRAWER_SETTLE_MS = 520;
 // Delay between nav and spotlight measurement (matches screenSlide animation).
-const NAV_SETTLE_MS = 750;
+// Trimmed from 750ms for the same reason — the screen slide settles well
+// before the old timer fired.
+const NAV_SETTLE_MS = 460;
 
 function computeTooltipStyle(rect, placement, tooltipEl) {
   // Center fallback: place tooltip in the middle of the viewport.
@@ -136,12 +141,15 @@ export function Tutorial() {
         setSettling(true);
         if (needsClose) setDrawerOpenRef.current(false);
         // Navigate after drawer closes (or immediately if drawer wasn't open).
-        const navDelay = needsClose ? 500 : 0;
+        // Trimmed from 500ms to 320ms — same logic as the other settle
+        // constants: the drawer-close transform is well past its
+        // visible end before the old timer fired.
+        const navDelay = needsClose ? 320 : 0;
         if (needsNav) {
           timers.push(setTimeout(() => navigateRef.current(step.screen), navDelay));
         }
         // Wait for close + screen slide to settle.
-        const totalDelay = navDelay + (needsNav ? NAV_SETTLE_MS : needsClose ? 500 : 0);
+        const totalDelay = navDelay + (needsNav ? NAV_SETTLE_MS : needsClose ? 320 : 0);
         timers.push(setTimeout(() => setSettling(false), totalDelay));
       } else {
         setSettling(false);
@@ -380,6 +388,7 @@ export function Tutorial() {
         ref={tooltipRef}
         title={title}
         body={body}
+        iconName={step.icon}
         stepIndex={tutorial.stepIndex}
         totalSteps={tutorial.totalSteps}
         isFirst={tutorial.isFirst}
