@@ -30,6 +30,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 import { sendCancelNotificationEmails } from "./_sessionEmail.js";
+import { withdrawPendingForSession } from "./_rescheduleRequest.js";
 import { withSentry } from "./_sentry.js";
 
 const MAX_NOTE_LEN = 500;
@@ -151,6 +152,18 @@ async function handler(req, res) {
     // Lost the race against another writer (therapist clicking
     // cancel at the same time, etc).
     return res.status(409).json({ error: "Session state changed", code: "race_lost" });
+  }
+
+  // ── Withdraw any pending reschedule on this session ──
+  // The patient cancel takes precedence over any in-flight
+  // reschedule request — leaving the request pending would mean
+  // the therapist sees "Esperando confirmación" for a session that
+  // no longer exists, and accepting it would 409 with race_lost.
+  // Best-effort; failure here doesn't roll back the cancel.
+  try {
+    await withdrawPendingForSession(svc, session.id, "patient_withdraw");
+  } catch (err) {
+    console.warn("patient-cancel-session: withdraw pending reschedule failed:", err?.message);
   }
 
   // ── Therapist push notification (best-effort) ──

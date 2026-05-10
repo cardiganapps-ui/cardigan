@@ -1,87 +1,57 @@
 /* ── POST /api/patient-reschedule-session ─────────────────────────
-   Patient self-serve reschedule. Mirrors patient-cancel-session.js
-   (same ownership pattern, same atomic compare-and-set, same
-   best-effort therapist push) but instead of flipping status, it
-   updates date + time IN PLACE on the same row so the underlying
-   engagement (notes, cancellation history, queued reminders, the
-   row id itself) survives.
+   Patient-initiated reschedule REQUEST. The session row is NOT
+   modified here — that only happens once the therapist accepts
+   (in-app or via email link). This is a deliberate change from
+   the earlier self-serve behavior: therapists wanted approval
+   over moves, since their availability isn't visible to the
+   patient and a "free" slot in the patient's eyes might collide
+   with the therapist's own commitments.
 
-   Body: { session_id: string, new_date: ISO yyyy-mm-dd, new_time: HH:MM }
+   Body: { session_id: string, new_date: ISO yyyy-mm-dd,
+           new_time: HH:MM, note?: string }
    Auth: standard JWT (the patient's user).
    Response:
-     200 { session_id, date, time, last_rescheduled_at }
-     400 — bad input (invalid date / time format / missing fields)
+     200 { request_id, expires_at, status: "pending" }
+     400 — bad input (invalid date/time, missing fields)
      401 — not signed in
-     403 — RLS forge / past session
-     409 — session not scheduled, race-lost, OR slot conflict
+     403 — RLS forge / past session / past target
+     409 — session not scheduled, same slot, OR therapist already
+           booked at that slot (conflict)
      500 — DB error
 
-   Writes go through service-role: the patient-side RLS on `sessions`
-   is intentionally read-only. The endpoint is the bottleneck where
-   ownership + temporal validity + conflict-detection are enforced
-   in one place, the same as cancel.
+   Side effects on success:
+     - INSERT session_reschedule_requests (status=pending) with two
+       single-use tokens for the email-link path.
+     - Withdraw any prior pending request for the same session
+       (only one pending allowed by partial unique index).
+     - Push the therapist a notification.
+     - Email the therapist with [Aceptar] / [Rechazar] links and
+       email the patient a "we sent it, waiting for confirmation"
+       confirmation. Best-effort; failure doesn't roll back the
+       request itself.
 
-   Therapist notification: best-effort push. Failure doesn't roll
-   back the reschedule — the new slot stands either way and the
-   therapist sees it on next refresh. */
+   Auto-expire: the cron sweeps pending rows whose expires_at is
+   in the past (computed as 1h before the EARLIEST of original or
+   proposed start time). Both parties get an email when that
+   fires. */
 
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
-import { sendRescheduleNotificationEmails } from "./_sessionEmail.js";
+import { sendRescheduleRequestEmails } from "./_sessionEmail.js";
 import { withSentry } from "./_sentry.js";
+import {
+  isoToShort, shortToTimestampMs, computeExpiresAt, mintTokens,
+  withdrawPendingForSession,
+} from "./_rescheduleRequest.js";
 
-// Shared with patient-cancel-session: parse "D-MMM" + "HH:MM" to
-// an absolute ms timestamp so we can answer "is this in the past?"
-// reliably. Same year-inference fuzz the therapist app uses.
-const SHORT_MONTHS_BY_NAME = {
-  Ene: 0, Feb: 1, Mar: 2, Abr: 3, May: 4, Jun: 5,
-  Jul: 6, Ago: 7, Sep: 8, Oct: 9, Nov: 10, Dic: 11,
-};
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-const DAY_NAMES_ES = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-// `day` column on the sessions table uses Spanish weekday names
-// (matches DAY_ORDER in src/data/seedData.js). The therapist-side
-// rescheduleSession recomputes it from the new date so auto-extend
-// + recurrence-derivation continue to work after the move.
 const DAY_BY_INDEX = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
-
-function shortDateToTime(shortDate, time) {
-  if (!shortDate || typeof shortDate !== "string") return null;
-  const m = shortDate.match(/^(\d{1,2})[\s-](\w{3})$/);
-  if (!m) return null;
-  const day = Number(m[1]);
-  const month = SHORT_MONTHS_BY_NAME[m[2]];
-  if (month == null) return null;
-  const now = new Date();
-  let year = now.getFullYear();
-  const candidate = new Date(year, month, day, 0, 0, 0);
-  if (candidate.getTime() < now.getTime() - 180 * 86_400_000) year += 1;
-  const [h = 0, mi = 0] = (time || "00:00").split(":").map(Number);
-  return new Date(year, month, day, h || 0, mi || 0).getTime();
-}
-
-// Convert an ISO `yyyy-mm-dd` (the format <input type="date"> emits)
-// into the "D-MMM" Spanish short form the sessions table stores.
-function isoToShortDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
-  if (!m) return null;
-  const year = Number(m[1]);
-  const month = Number(m[2]) - 1;
-  const day = Number(m[3]);
-  if (month < 0 || month > 11 || day < 1 || day > 31) return null;
-  // Sanity: the constructed Date should round-trip to the same y/m/d
-  // (catches Feb 30 etc).
-  const d = new Date(year, month, day, 12, 0, 0);
-  if (d.getFullYear() !== year || d.getMonth() !== month || d.getDate() !== day) return null;
-  return `${day}-${SHORT_MONTHS[month]}`;
-}
 
 function isoToDayName(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
   if (!m) return null;
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
-  // JS Sunday=0; we want Lunes=0 for the DAY_BY_INDEX table.
   const idx = (d.getDay() + 6) % 7;
   return DAY_BY_INDEX[idx];
 }
@@ -90,47 +60,49 @@ function isValidTime(t) {
   return typeof t === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 }
 
+const APP_URL = "https://cardigan.mx";
+const MAX_NOTE_LEN = 500;
+
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  const { session_id, new_date, new_time } = req.body || {};
+  const { session_id, new_date, new_time, note } = req.body || {};
   if (typeof session_id !== "string" || !session_id) {
     return res.status(400).json({ error: "Invalid session_id" });
   }
   if (!isValidTime(new_time)) {
     return res.status(400).json({ error: "Invalid new_time", code: "bad_time" });
   }
-  const newShortDate = isoToShortDate(new_date);
+  const newShortDate = isoToShort(new_date);
   if (!newShortDate) {
     return res.status(400).json({ error: "Invalid new_date", code: "bad_date" });
   }
-  const newDayName = isoToDayName(new_date);
-  if (!newDayName) {
+  if (!isoToDayName(new_date)) {
     return res.status(400).json({ error: "Invalid new_date", code: "bad_date" });
   }
+  let cleanNote = "";
+  if (note != null) {
+    if (typeof note !== "string") return res.status(400).json({ error: "Note must be a string" });
+    cleanNote = note.trim().slice(0, MAX_NOTE_LEN);
+  }
 
-  // The new slot must be in the future. We use the same year-fuzz
-  // logic shortDateToTime applies to read paths, so the comparison
-  // is consistent with cancel.
-  const newSlotTime = shortDateToTime(newShortDate, new_time);
-  if (newSlotTime == null || newSlotTime <= Date.now()) {
+  // The proposed slot must be in the future. Same year-fuzz the
+  // cancel endpoint uses → consistent answers across the two paths
+  // that touch the same shape.
+  const newSlotMs = shortToTimestampMs(newShortDate, new_time);
+  if (newSlotMs == null || newSlotMs <= Date.now()) {
     return res.status(403).json({ error: "New slot is in the past", code: "past_target" });
   }
 
-  // Cap to 180 days out. Cardigan's `date` column stores "D-MMM"
-  // without a year — the read-time year-fuzz in shortDateToTime
-  // works inside a ±180-day window from "now" but flips wrong past
-  // that. A patient picking 8 months ahead would see the row read
-  // back as the SAME month next year (e.g. they intended 2027 but
-  // it'd resolve to 2026 on next-cron read). Capping client-side
-  // (the date input gets a max attribute) and server-side keeps
-  // the storage model honest. 180 days is also a reasonable UX
-  // boundary — patients shouldn't be rescheduling 6+ months out.
+  // Cap to 180 days out — the storage model stores "D-MMM" without
+  // a year, so the year-fuzz becomes ambiguous past that horizon.
+  // A patient picking 8 months ahead would round-trip read-back as
+  // the same month next year. Server-side cap is the durable guard.
   const HORIZON_MS = 180 * 86_400_000;
-  if (newSlotTime > Date.now() + HORIZON_MS) {
+  if (newSlotMs > Date.now() + HORIZON_MS) {
     return res.status(400).json({
       error: "New slot is too far in the future",
       code: "too_far",
@@ -138,10 +110,10 @@ async function handler(req, res) {
     });
   }
 
-  // Verify ownership via the user's JWT'd client. RLS on sessions
-  // gates SELECT to rows linked through patient_user_id (migration
-  // 052), so a forged session_id from a different therapist returns
-  // no row and we 403 without leaking existence.
+  // Verify session ownership via the user's JWT'd client. Sessions
+  // RLS gates SELECT to rows linked through patient_user_id, so a
+  // forged session_id from a different therapist returns no row
+  // and we 403 cleanly without leaking existence.
   const userClient = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_ANON_KEY,
@@ -152,7 +124,7 @@ async function handler(req, res) {
   );
   const { data: session, error: sErr } = await userClient
     .from("sessions")
-    .select("id, patient_id, patient, date, time, status, user_id, duration")
+    .select("id, patient_id, patient, date, time, status, user_id")
     .eq("id", session_id)
     .maybeSingle();
   if (sErr) return res.status(500).json({ error: sErr.message });
@@ -166,27 +138,24 @@ async function handler(req, res) {
     });
   }
 
-  // The CURRENT slot must also still be in the future — patients
-  // can't reschedule a session that already started.
-  const currentSlotTime = shortDateToTime(session.date, session.time);
-  if (currentSlotTime == null || currentSlotTime <= Date.now()) {
+  // The CURRENT slot must also be in the future — patients can't
+  // request to move a session that already started.
+  const currentSlotMs = shortToTimestampMs(session.date, session.time);
+  if (currentSlotMs == null || currentSlotMs <= Date.now()) {
     return res.status(403).json({ error: "Session has already started", code: "past_source" });
   }
 
-  // No-op: same slot. Tell the caller cleanly so the UI can route
-  // to a "ya está en ese horario" toast instead of looking like the
-  // reschedule succeeded (which would be a lie to the therapist
-  // since the push notification would fire too).
+  // No-op: same slot. Don't manufacture a request that asks the
+  // therapist to confirm what's already true.
   if (session.date === newShortDate && session.time === new_time) {
     return res.status(409).json({ error: "Same slot", code: "same_slot" });
   }
 
   const svc = getServiceClient();
 
-  // Conflict detection — does the THERAPIST already have another
-  // session at the new slot? The patient could otherwise reschedule
-  // into a colleague's appointment. Check via service-role since the
-  // patient doesn't have RLS visibility into other patients' rows.
+  // Conflict detection — therapist already has another scheduled
+  // session at that slot. Reject up-front rather than asking the
+  // therapist to approve a double-booking.
   const { data: conflict, error: cErr } = await svc
     .from("sessions")
     .select("id")
@@ -201,44 +170,62 @@ async function handler(req, res) {
     return res.status(409).json({ error: "Slot already booked", code: "conflict" });
   }
 
-  // Apply the move. Atomic compare-and-set on status='scheduled' so
-  // a race with the therapist (cancel / move) returns 409 cleanly.
-  // last_rescheduled_at + last_rescheduled_from preserve the audit
-  // trail that the row used to be at the old slot.
-  const oldSlot = { date: session.date, time: session.time };
-  const nowIso = new Date().toISOString();
-  const { data: updated, error: updErr } = await svc
-    .from("sessions")
-    .update({
-      date: newShortDate,
-      time: new_time,
-      day: newDayName,
-      last_rescheduled_at: nowIso,
-      last_rescheduled_from: oldSlot,
-    })
-    .eq("id", session.id)
-    .eq("status", "scheduled")
-    .select("id, date, time, day, patient")
-    .maybeSingle();
-  if (updErr) return res.status(500).json({ error: updErr.message });
-  if (!updated) {
-    return res.status(409).json({ error: "Session state changed", code: "race_lost" });
+  // Withdraw any prior pending request on this session — only one
+  // pending allowed (DB partial unique index uniq_one_pending_per_session
+  // would 23505 the insert otherwise). The withdrawal bumps the
+  // existing row to status=withdrawn so the audit trail keeps a
+  // record of the patient's prior intent.
+  try {
+    await withdrawPendingForSession(svc, session.id, "patient_withdraw");
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "Withdraw prior failed" });
   }
 
+  // Mint tokens + compute expiry. Tokens auth the email-link two-
+  // step page (no JWT needed). Expiry = 1h before earliest of
+  // original or proposed start time.
+  const tokens = mintTokens();
+  const expiresAt = computeExpiresAt(session.date, session.time, newShortDate, new_time);
+  if (!expiresAt) {
+    return res.status(500).json({ error: "Could not compute expiry" });
+  }
+
+  const { data: created, error: insErr } = await svc
+    .from("session_reschedule_requests")
+    .insert({
+      session_id: session.id,
+      user_id: session.user_id,
+      patient_id: session.patient_id,
+      submitted_by: user.id,
+      original_date: session.date,
+      original_time: session.time,
+      proposed_date: newShortDate,
+      proposed_time: new_time,
+      patient_note: cleanNote || null,
+      status: "pending",
+      expires_at: expiresAt,
+      approve_token: tokens.approve_token,
+      reject_token: tokens.reject_token,
+    })
+    .select("id, expires_at")
+    .single();
+  if (insErr) return res.status(500).json({ error: insErr.message });
+
   // ── Therapist push notification (best-effort) ──
-  // Same pattern as cancel: any failure here doesn't roll back the
-  // move. The therapist sees the new slot on next refresh either
-  // way; the push is just a heads-up.
+  // The push doesn't carry the tokens — it just deep-links to the
+  // app where the therapist will see the request in their pending
+  // banner and act on it through their JWT'd session. Tokens are
+  // for the email path only.
   try {
     const { data: subs } = await svc
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth")
       .eq("user_id", session.user_id);
     const payload = {
-      title: "Cita reagendada",
-      body: `${session.patient}: ${oldSlot.date} ${oldSlot.time} → ${updated.date} ${updated.time}.`,
+      title: "Solicitud de cambio de horario",
+      body: `${session.patient} pidió mover su sesión: ${session.date} ${session.time} → ${newShortDate} ${new_time}.`,
       url: "/#agenda",
-      tag: `reschedule-${session.id}`,
+      tag: `reschedule-req-${created.id}`,
     };
     for (const sub of (subs || [])) {
       try {
@@ -253,21 +240,20 @@ async function handler(req, res) {
     console.warn("patient-reschedule-session: therapist notify failed:", err?.message);
   }
 
-  // ── Email both parties (best-effort) ──
-  // Same pattern as cancel: pull patient + therapist contact info via
-  // service-role (the patient JWT can't read the therapist's auth row)
-  // and fan out to Resend. Failure here doesn't roll back the move.
+  // ── Emails to both parties (best-effort) ──
+  // Therapist gets [Aceptar] [Rechazar] buttons that link to the
+  // public token-based landing page. Patient gets a confirmation
+  // that the request was sent.
   try {
     const [{ data: patientRow }, { data: therapistAuth }] = await Promise.all([
-      svc
-        .from("patients")
+      svc.from("patients")
         .select("name, parent, email")
         .eq("id", session.patient_id)
         .maybeSingle(),
       svc.auth.admin.getUserById(session.user_id),
     ]);
     const therapistUser = therapistAuth?.user || null;
-    await sendRescheduleNotificationEmails({
+    await sendRescheduleRequestEmails({
       patientEmail: patientRow?.email?.trim() || null,
       patientGreetingName: patientRow?.parent?.trim() || patientRow?.name || session.patient,
       patientDisplayName: patientRow?.name || session.patient,
@@ -276,20 +262,22 @@ async function handler(req, res) {
         therapistUser?.user_metadata?.full_name ||
         therapistUser?.raw_user_meta_data?.full_name ||
         "",
-      oldDate: oldSlot.date,
-      oldTime: oldSlot.time,
-      newDate: updated.date,
-      newTime: updated.time,
+      oldDate: session.date,
+      oldTime: session.time,
+      newDate: newShortDate,
+      newTime: new_time,
+      patientNote: cleanNote || "",
+      approveUrl: `${APP_URL}/api/r/${tokens.approve_token}`,
+      rejectUrl: `${APP_URL}/api/r/${tokens.reject_token}`,
     });
   } catch (err) {
     console.warn("patient-reschedule-session: email notify failed:", err?.message);
   }
 
   return res.status(200).json({
-    session_id: session.id,
-    date: updated.date,
-    time: updated.time,
-    last_rescheduled_at: nowIso,
+    request_id: created.id,
+    expires_at: created.expires_at,
+    status: "pending",
   });
 }
 

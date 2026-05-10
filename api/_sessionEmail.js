@@ -97,7 +97,180 @@ export async function sendCancelNotificationEmails({
   );
 }
 
-export async function sendRescheduleNotificationEmails({
+// ── Reschedule REQUEST emails ─────────────────────────────────────
+// Sent when a patient submits a reschedule request. Therapist gets
+// the [Aceptar] / [Rechazar] action buttons that link to the public
+// token-based landing page; patient gets a confirmation that the
+// request was sent and what to expect next.
+
+export async function sendRescheduleRequestEmails({
+  patientEmail,
+  patientGreetingName,
+  patientDisplayName,
+  therapistEmail,
+  therapistName,
+  oldDate,
+  oldTime,
+  newDate,
+  newTime,
+  patientNote,
+  approveUrl,
+  rejectUrl,
+}) {
+  const tasks = [];
+  const movedLine = `${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)} → <strong>${escapeHtml(newDate)} a las ${escapeHtml(newTime)}</strong>`;
+
+  if (therapistEmail) {
+    const noteLine = patientNote
+      ? `<p style="background:#FAF7EE;border-radius:10px;padding:10px 12px;margin:14px 0;"><strong>Mensaje:</strong> ${escapeHtml(patientNote)}</p>`
+      : "";
+    // Two clearly-distinct buttons. Approve = filled teal, Reject =
+    // outlined red. Same color logic as the in-app pills.
+    const buttons = `
+      <p style="margin:24px 0 8px;">
+        <a href="${approveUrl}" style="background:#5B9BAF;color:#fff;padding:13px 22px;border-radius:100px;text-decoration:none;font-weight:700;display:inline-block;">Aceptar el cambio</a>
+      </p>
+      <p style="margin:0 0 24px;">
+        <a href="${rejectUrl}" style="background:#fff;color:#C95B5B;border:1px solid #C95B5B;padding:12px 22px;border-radius:100px;text-decoration:none;font-weight:700;display:inline-block;">Rechazar el cambio</a>
+      </p>`;
+    const html = htmlWrap(`
+      <p>Hola${therapistName ? ` ${escapeHtml(therapistName)}` : ""},</p>
+      <p><strong>${escapeHtml(patientDisplayName || "Un paciente")}</strong> pidió cambiar el horario de su sesión:</p>
+      <p>${movedLine}</p>
+      ${noteLine}
+      <p>Tú decides — toca el botón que corresponda. Hasta que tu acción quede registrada, la cita sigue en su horario original.</p>
+      ${buttons}
+      <p style="font-size:12px;color:#888;">¿Prefieres responder desde la app? Abre Cardigan y verás la solicitud en pantalla principal.</p>
+      <p>— Cardigan</p>
+    `);
+    tasks.push(
+      sendTransactionalEmail({
+        to: therapistEmail,
+        subject: `${patientDisplayName || "Un paciente"} pidió cambiar su horario`,
+        html,
+      })
+    );
+  }
+
+  if (patientEmail) {
+    const therapistLine = therapistName ? ` con ${escapeHtml(therapistName)}` : "";
+    const html = htmlWrap(`
+      <p>Hola ${escapeHtml(patientGreetingName || patientDisplayName || "")},</p>
+      <p>Recibimos tu solicitud para mover la cita${therapistLine}:</p>
+      <p>${movedLine}</p>
+      <p>${escapeHtml(therapistName || "Tu profesionista")} recibió la solicitud y te avisará cuando responda. La cita queda en el horario original hasta entonces.</p>
+      ${ctaButton(APP_URL, "Abrir Cardigan")}
+      <p>— Cardigan</p>
+    `);
+    tasks.push(
+      sendTransactionalEmail({
+        to: patientEmail,
+        subject: `Solicitud enviada — ${newDate} ${newTime}`,
+        html,
+      })
+    );
+  }
+
+  const results = await Promise.allSettled(tasks);
+  return results.map((r) =>
+    r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }
+  );
+}
+
+// ── Reschedule ACCEPTED emails ────────────────────────────────────
+// Sent when the therapist accepts (in-app or via email link). Patient
+// gets confirmation; therapist doesn't need a self-loop email.
+
+export async function sendRescheduleAcceptedEmails({
+  patientEmail,
+  patientGreetingName,
+  patientDisplayName,
+  therapistName,
+  oldDate,
+  oldTime,
+  newDate,
+  newTime,
+  therapistNote,
+}) {
+  const tasks = [];
+  if (patientEmail) {
+    const therapistLine = therapistName ? ` con ${escapeHtml(therapistName)}` : "";
+    const noteLine = therapistNote
+      ? `<p style="background:#E8F4EE;border-radius:10px;padding:10px 12px;margin:14px 0;"><strong>Mensaje:</strong> ${escapeHtml(therapistNote)}</p>`
+      : "";
+    const html = htmlWrap(`
+      <p>Hola ${escapeHtml(patientGreetingName || patientDisplayName || "")},</p>
+      <p>${escapeHtml(therapistName || "Tu profesionista")} aceptó tu solicitud${therapistLine}. La cita está confirmada en el nuevo horario:</p>
+      <p>${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)} → <strong>${escapeHtml(newDate)} a las ${escapeHtml(newTime)}</strong></p>
+      ${noteLine}
+      ${ctaButton(APP_URL, "Ver mi cita")}
+      <p>— Cardigan</p>
+    `);
+    tasks.push(
+      sendTransactionalEmail({
+        to: patientEmail,
+        subject: `Cita confirmada — ${newDate} ${newTime}`,
+        html,
+      })
+    );
+  }
+  const results = await Promise.allSettled(tasks);
+  return results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
+}
+
+// ── Reschedule REJECTED emails ────────────────────────────────────
+
+// `newDate` / `newTime` are accepted but unused — the rejection
+// email tells the patient the cita stays at oldDate/oldTime, so
+// surfacing the proposed slot would just confuse. Kept in the
+// signature so call sites can pass the same context bundle they
+// build for accepted/expired without per-variant trimming.
+export async function sendRescheduleRejectedEmails({
+  patientEmail,
+  patientGreetingName,
+  patientDisplayName,
+  therapistName,
+  oldDate,
+  oldTime,
+  newDate: _newDate,
+  newTime: _newTime,
+  therapistNote,
+}) {
+  const tasks = [];
+  if (patientEmail) {
+    const therapistLine = therapistName ? ` con ${escapeHtml(therapistName)}` : "";
+    const noteLine = therapistNote
+      ? `<p style="background:#FCEAEA;border-radius:10px;padding:10px 12px;margin:14px 0;"><strong>Mensaje:</strong> ${escapeHtml(therapistNote)}</p>`
+      : "";
+    const html = htmlWrap(`
+      <p>Hola ${escapeHtml(patientGreetingName || patientDisplayName || "")},</p>
+      <p>${escapeHtml(therapistName || "Tu profesionista")} no pudo confirmar el cambio que pediste${therapistLine}. La cita queda en su horario original:</p>
+      <p><strong>${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)}</strong></p>
+      ${noteLine}
+      <p>Si quieres proponer otro horario, puedes hacerlo desde la app. Si no es buen momento para reagendar, ${escapeHtml(therapistName || "tu profesionista")} se pondrá en contacto contigo.</p>
+      ${ctaButton(APP_URL, "Abrir Cardigan")}
+      <p>— Cardigan</p>
+    `);
+    tasks.push(
+      sendTransactionalEmail({
+        to: patientEmail,
+        subject: `Cambio de horario no confirmado — ${oldDate} ${oldTime} sigue en pie`,
+        html,
+      })
+    );
+  }
+  const results = await Promise.allSettled(tasks);
+  return results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
+}
+
+// ── Reschedule EXPIRED emails ─────────────────────────────────────
+// Fired by the cron when a pending request hasn't been answered by
+// 1h before the earlier of (original, proposed) start time. Both
+// parties are notified — therapist because they may have meant to
+// respond and lost track; patient because their session stays at
+// the original time and they need to know.
+
+export async function sendRescheduleExpiredEmails({
   patientEmail,
   patientGreetingName,
   patientDisplayName,
@@ -109,49 +282,40 @@ export async function sendRescheduleNotificationEmails({
   newTime,
 }) {
   const tasks = [];
-  const movedLine = `${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)} → <strong>${escapeHtml(newDate)} a las ${escapeHtml(newTime)}</strong>`;
-
   if (patientEmail) {
-    const therapistLine = therapistName
-      ? ` con ${escapeHtml(therapistName)}`
-      : "";
     const html = htmlWrap(`
       <p>Hola ${escapeHtml(patientGreetingName || patientDisplayName || "")},</p>
-      <p>Confirmamos el cambio de horario de tu sesión${therapistLine}:</p>
-      <p>${movedLine}</p>
+      <p>La solicitud para mover tu cita venció sin respuesta. La cita queda en su horario original:</p>
+      <p><strong>${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)}</strong></p>
+      <p>Si todavía necesitas otro horario, puedes enviar una nueva solicitud desde la app.</p>
       ${ctaButton(APP_URL, "Abrir Cardigan")}
       <p>— Cardigan</p>
     `);
     tasks.push(
       sendTransactionalEmail({
         to: patientEmail,
-        subject: `Sesión reagendada — ${newDate} ${newTime}`,
+        subject: `Solicitud vencida — tu cita sigue el ${oldDate} a las ${oldTime}`,
         html,
       })
     );
   }
-
   if (therapistEmail) {
     const html = htmlWrap(`
       <p>Hola${therapistName ? ` ${escapeHtml(therapistName)}` : ""},</p>
-      <p><strong>${escapeHtml(patientDisplayName || "Un paciente")}</strong> reagendó su sesión:</p>
-      <p>${movedLine}</p>
+      <p>Una solicitud de cambio de horario de <strong>${escapeHtml(patientDisplayName || "un paciente")}</strong> venció sin respuesta:</p>
+      <p>${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)} → ${escapeHtml(newDate)} a las ${escapeHtml(newTime)}</p>
+      <p>La cita queda en su horario original. Si quieres aceptar el cambio aún, abre Cardigan y mueve la cita manualmente.</p>
       ${ctaButton(`${APP_URL}/#agenda`, "Ver agenda")}
       <p>— Cardigan</p>
     `);
     tasks.push(
       sendTransactionalEmail({
         to: therapistEmail,
-        subject: `${patientDisplayName || "Un paciente"} reagendó su sesión`,
+        subject: `Solicitud vencida — ${patientDisplayName || "un paciente"}`,
         html,
       })
     );
   }
-
   const results = await Promise.allSettled(tasks);
-  return results.map((r) =>
-    r.status === "fulfilled"
-      ? r.value
-      : { ok: false, error: r.reason?.message || "rejected" }
-  );
+  return results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
 }

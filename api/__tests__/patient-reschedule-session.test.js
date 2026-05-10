@@ -72,13 +72,17 @@ function makeUserClient(sessionRow, error = null) {
   };
 }
 
-/* The service-role path makes up to three calls per request:
-   1. SELECT against sessions for the conflict check
-   2. UPDATE against sessions for the atomic move
-   3. SELECT against push_subscriptions (best-effort)
-   The stub returns canned responses for the conflict + update paths
-   (passed in by the test) and an empty push_subscriptions list. */
-function makeServiceClient({ conflict = null, updateResult, pushSubs = [] } = {}) {
+/* Service-role stub. The endpoint switched from "edit the session
+   row" to "create a session_reschedule_requests row", so the stub
+   needs to handle:
+     1. SELECT sessions (conflict check)
+     2. UPDATE session_reschedule_requests (withdraw any prior pending)
+     3. INSERT session_reschedule_requests (the new pending row)
+     4. SELECT push_subscriptions (best-effort therapist push)
+     5. SELECT patients + auth.admin.getUserById (for emails)
+   Tests pass canned responses for conflict + insert; everything else
+   returns harmless empty results. */
+function makeServiceClient({ conflict = null, insertResult, pushSubs = [] } = {}) {
   return {
     from: (table) => {
       if (table === "push_subscriptions") {
@@ -88,22 +92,48 @@ function makeServiceClient({ conflict = null, updateResult, pushSubs = [] } = {}
           }),
         };
       }
-      // sessions table — both select (conflict) and update.
+      if (table === "session_reschedule_requests") {
+        return {
+          // withdrawPendingForSession does .update(...).eq(...).eq(...).select(...)
+          update: () => ({
+            eq() { return this; },
+            select() { return Promise.resolve({ data: [], error: null }); },
+          }),
+          // The insert chain: .insert(row).select(...).single()
+          insert: () => ({
+            select: () => ({
+              single: async () => insertResult || {
+                data: { id: "req-new", expires_at: new Date(Date.now() + 86400000).toISOString() },
+                error: null,
+              },
+            }),
+          }),
+        };
+      }
+      if (table === "patients") {
+        return {
+          select: () => ({
+            eq() { return this; },
+            async maybeSingle() { return { data: { name: "Juana", email: null, parent: null }, error: null }; },
+          }),
+        };
+      }
+      // sessions table — used for the conflict select.
       return {
         select: () => ({
           eq() { return this; },
           neq() { return this; },
           async maybeSingle() { return { data: conflict, error: null }; },
         }),
-        update: () => ({
-          eq() { return this; },
-          select() { return this; },
-          async maybeSingle() { return updateResult || { data: null, error: null }; },
-        }),
         delete: () => ({
           eq() { return Promise.resolve({ error: null }); },
         }),
       };
+    },
+    auth: {
+      admin: {
+        getUserById: async () => ({ data: { user: { email: null } }, error: null }),
+      },
     },
   };
 }
@@ -250,31 +280,29 @@ describe("POST /api/patient-reschedule-session", () => {
     expect(res.body.code).toBe("conflict");
   });
 
-  it("returns 200 on happy path with audit fields populated", async () => {
+  it("returns 200 with a new pending request on the happy path", async () => {
     getAuthUser.mockResolvedValue({ id: "u-1" });
     createClient.mockReturnValue(makeUserClient({
       id: "s-1", patient_id: "p-1", patient: "Juana",
       date: futureShortDate(2), time: "09:00",
       status: "scheduled", user_id: "t-1", duration: 60,
     }));
-    const newDateIso = futureIso(7);
-    const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    const d = new Date(newDateIso + "T12:00:00");
-    const expectedShort = `${d.getDate()}-${months[d.getMonth()]}`;
     getServiceClient.mockReturnValue(makeServiceClient({
       conflict: null,
-      updateResult: { data: { id: "s-1", date: expectedShort, time: "10:00", day: "Lunes", patient: "Juana" }, error: null },
+      insertResult: {
+        data: { id: "req-1", expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString() },
+        error: null,
+      },
     }));
     const res = makeRes();
-    await handler(makeReq({ new_date: newDateIso, new_time: "10:00" }), res);
+    await handler(makeReq({ new_date: futureIso(7), new_time: "10:00" }), res);
     expect(res.statusCode).toBe(200);
-    expect(res.body.session_id).toBe("s-1");
-    expect(res.body.date).toBe(expectedShort);
-    expect(res.body.time).toBe("10:00");
-    expect(res.body.last_rescheduled_at).toBeTruthy();
+    expect(res.body.request_id).toBe("req-1");
+    expect(res.body.status).toBe("pending");
+    expect(res.body.expires_at).toBeTruthy();
   });
 
-  it("returns 409 race_lost when the atomic update finds no row", async () => {
+  it("returns 500 if the insert into session_reschedule_requests fails", async () => {
     getAuthUser.mockResolvedValue({ id: "u-1" });
     createClient.mockReturnValue(makeUserClient({
       id: "s-1", patient_id: "p-1", patient: "Juana",
@@ -283,11 +311,10 @@ describe("POST /api/patient-reschedule-session", () => {
     }));
     getServiceClient.mockReturnValue(makeServiceClient({
       conflict: null,
-      updateResult: { data: null, error: null }, // 0 rows → race lost
+      insertResult: { data: null, error: { message: "DB unavailable" } },
     }));
     const res = makeRes();
     await handler(makeReq(), res);
-    expect(res.statusCode).toBe(409);
-    expect(res.body.code).toBe("race_lost");
+    expect(res.statusCode).toBe(500);
   });
 });

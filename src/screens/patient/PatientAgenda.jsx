@@ -82,7 +82,39 @@ function relativeLabel(sessionDate, today, t) {
 export function PatientAgenda({ data }) {
   const { t } = useT();
   const { showToast } = useCardigan();
-  const { primaryPatient, primaryTherapist, sessions, refresh } = data;
+  const { primaryPatient, primaryTherapist, sessions, rescheduleRequests = [], refresh } = data;
+  // Index pending requests by session_id for O(1) lookup. Patient
+  // can only have one pending request per session (DB enforces it),
+  // so a Map keyed on session_id is safe.
+  const pendingBySessionId = useMemo(() => {
+    const m = new Map();
+    for (const r of rescheduleRequests || []) {
+      if (r.status === "pending") m.set(r.session_id, r);
+    }
+    return m;
+  }, [rescheduleRequests]);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const handleWithdraw = async (requestId) => {
+    if (!requestId || withdrawing) return;
+    setWithdrawing(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const access = authSession?.access_token;
+      if (!access) { showToast(t("patientHome.cancelError"), "error"); return; }
+      const res = await fetch("/api/patient-withdraw-reschedule", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${access}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: requestId }),
+      });
+      if (!res.ok) { showToast(t("patientHome.cancelError"), "error"); return; }
+      haptic.success();
+      showToast(t("patientAgenda.withdrawSuccess"), "success");
+      setActiveSession(null);
+      refresh?.();
+    } catch {
+      showToast(t("patientHome.cancelError"), "error");
+    } finally { setWithdrawing(false); }
+  };
   // Same fallback chain PatientHome uses — keeps the dialog/email
   // copy consistent across the two cancel entry points.
   const therapistDisplayName = primaryTherapist?.therapist_full_name
@@ -211,6 +243,7 @@ export function PatientAgenda({ data }) {
                   <SessionRow
                     key={s.id}
                     s={s}
+                    pending={pendingBySessionId.get(s.id) || null}
                     onTap={() => setActiveSession(s)}
                     t={t}
                   />
@@ -229,9 +262,12 @@ export function PatientAgenda({ data }) {
       {activeSession && (
         <SessionManageSheet
           session={activeSession}
+          pending={pendingBySessionId.get(activeSession.id) || null}
+          withdrawing={withdrawing}
           onClose={() => setActiveSession(null)}
           onReschedule={requestReschedule}
           onCancel={requestCancel}
+          onWithdraw={handleWithdraw}
         />
       )}
 
@@ -281,7 +317,7 @@ export function PatientAgenda({ data }) {
 
 // ── Session row ─────────────────────────────────────────────────────
 
-function SessionRow({ s, onTap, t }) {
+function SessionRow({ s, pending, onTap, t }) {
   const ModalityIcon = MODALITY_ICON[s.modality] || IconUsers;
   const modalityColor = MODALITY_COLOR[s.modality] || "var(--teal-dark)";
   const modalityLabel = MODALITY_LABEL[s.modality] || MODALITY_LABEL.presencial;
@@ -371,7 +407,7 @@ function SessionRow({ s, onTap, t }) {
             <ModalityIcon size={10} />
             {modalityLabel}
           </span>
-          {relative && (
+          {relative && !pending && (
             <span style={{
               fontSize: 11, fontWeight: 700,
               color: "var(--teal-dark)",
@@ -379,7 +415,30 @@ function SessionRow({ s, onTap, t }) {
               {relative}
             </span>
           )}
+          {pending && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "2px 8px", borderRadius: "var(--radius-pill)",
+              background: "var(--amber-bg)", color: "var(--amber)",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+            }}>
+              {t("patientAgenda.pendingBadge")}
+            </span>
+          )}
         </div>
+        {pending && (
+          <div style={{
+            marginTop: 6,
+            fontSize: 11,
+            color: "var(--charcoal-md)",
+            fontVariantNumeric: "tabular-nums",
+          }}>
+            {t("patientAgenda.pendingMoveTo", {
+              date: pending.proposed_date,
+              time: pending.proposed_time,
+            })}
+          </div>
+        )}
       </div>
 
       <IconChevronRight size={14} style={{ color: "var(--charcoal-xl)", flexShrink: 0 }} />
@@ -389,7 +448,7 @@ function SessionRow({ s, onTap, t }) {
 
 // ── Session management sheet ────────────────────────────────────────
 
-function SessionManageSheet({ session, onClose, onReschedule, onCancel }) {
+function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedule, onCancel, onWithdraw }) {
   const { t } = useT();
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
@@ -472,11 +531,60 @@ function SessionManageSheet({ session, onClose, onReschedule, onCancel }) {
             </div>
           </div>
 
-          {/* Action pills — only when the slot is actually still
-              cancellable (status=scheduled AND in the future). The
-              server enforces both anyway; hiding the buttons keeps us
-              from showing affordances we'd reject. */}
-          {session.status === "scheduled" && isFuture ? (
+          {/* If a reschedule request is pending, swap actions: show
+              the proposed move + a single "Cancelar solicitud" button.
+              The patient can't reschedule again or cancel the session
+              while a request is in flight — they have to withdraw
+              first or wait for the therapist to respond. */}
+          {pending ? (
+            <div>
+              <div style={{
+                background: "var(--amber-bg)",
+                border: "1px solid var(--amber)",
+                borderRadius: "var(--radius)",
+                padding: "12px 14px",
+                marginBottom: 14,
+                fontSize: 13, color: "var(--charcoal)", lineHeight: 1.5,
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                  {t("patientAgenda.pendingTitle")}
+                </div>
+                <div style={{ color: "var(--charcoal-md)", fontSize: 12 }}>
+                  {t("patientAgenda.pendingDetail", {
+                    date: pending.proposed_date,
+                    time: pending.proposed_time,
+                  })}
+                </div>
+              </div>
+              <button type="button"
+                onClick={() => onWithdraw(pending.id)}
+                disabled={withdrawing}
+                className="btn-tap"
+                style={{
+                  width: "100%", height: 44,
+                  background: "transparent",
+                  border: "1px solid var(--red)",
+                  borderRadius: "var(--radius-pill)",
+                  color: "var(--red)",
+                  fontFamily: "inherit", fontWeight: 700, fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                {withdrawing ? t("saving") : t("patientAgenda.withdrawCta")}
+              </button>
+              <button type="button" onClick={onClose} className="btn-tap"
+                style={{
+                  width: "100%", height: 44, marginTop: 4,
+                  background: "transparent", border: "none",
+                  color: "var(--charcoal-md)",
+                  fontFamily: "inherit", fontWeight: 600, fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {t("close")}
+              </button>
+            </div>
+          ) : session.status === "scheduled" && isFuture ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button type="button" onClick={() => onReschedule(session)} className="btn-tap"
                 style={{

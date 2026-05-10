@@ -66,6 +66,9 @@ export default {
     emptyPayments: "Los pagos aparecer\u00e1n aqu\u00ed.",
     atTime: "a las",
     tutorReminders: "Recordatorios de {minorContact.s}",
+    rescheduleRequestsTitle: "{count} solicitud(es) de cambio de horario",
+    rescheduleRequestsSub: "Tus pacientes pidieron mover sus citas. Acepta o rechaza desde aquí.",
+    rescheduleRequestsCta: "Ver",
     tutorRemindersEmpty: "Sin recordatorios pendientes.",
     lastTutorSession: "Última {session.s}",
     nextTutorSession: "Agendada",
@@ -1977,6 +1980,25 @@ export default {
     tabAgenda: "Agenda",
   },
 
+  // Therapist-side sheet listing pending reschedule requests from
+  // patients. Same accept/reject options as the email-link landing.
+  sessionRequests: {
+    title: "Solicitudes de cambio de horario",
+    subtitle: "Tus pacientes pidieron mover estas citas. Si aceptas, la cita se mueve al instante; si rechazas, queda en su horario original. La persona recibe un correo en cualquier caso.",
+    emptyTitle: "Todo al día",
+    emptyBody: "No tienes solicitudes pendientes.",
+    acceptCta: "Aceptar",
+    rejectCta: "Rechazar",
+    acceptedToast: "Solicitud aceptada. La cita se movió.",
+    rejectedToast: "Solicitud rechazada. La cita queda en su horario original.",
+    noteLabel: "Mensaje",
+    unknownPatient: "Paciente",
+    errorConflict: "Ya tienes otra cita en ese horario. Acepta moviendo la cita manualmente o pide a la persona otra opción.",
+    errorRaceLost: "El estado de la cita cambió antes de aplicar la respuesta. Vuelve a abrir la solicitud.",
+    errorAlreadyResolved: "Esta solicitud ya fue resuelta (otra ventana o el correo).",
+    errorGeneric: "No pudimos guardar la respuesta. Intenta de nuevo.",
+  },
+
   patientAgenda: {
     title: "Pr\u00f3ximas sesiones",
     subtitleEmpty: "No tienes sesiones pr\u00f3ximas.",
@@ -1989,6 +2011,12 @@ export default {
     noPatient: "No tienes un perfil vinculado todav\u00eda.",
     manageTitle: "Administrar sesi\u00f3n",
     manageReadOnly: "Esta sesi\u00f3n ya no se puede modificar.",
+    pendingBadge: "Esperando confirmaci\u00f3n",
+    pendingMoveTo: "Pediste mover a {date} \u00b7 {time}",
+    pendingTitle: "Solicitud pendiente",
+    pendingDetail: "Pediste mover esta cita a {date} a las {time}. Tu profesionista te avisar\u00e1 cuando responda.",
+    withdrawCta: "Cancelar solicitud",
+    withdrawSuccess: "Solicitud cancelada. La cita queda en su horario original.",
   },
 
   // Patient settings sheet (notifications + calendar + sign out).
@@ -2033,14 +2061,14 @@ export default {
     cancelError: "No pudimos cancelar la cita. Intenta de nuevo en un momento.",
     payCta: "Pagar {amount}",
     // ── Reprogramar (patient self-serve reschedule) ──
-    rescheduleCta: "Reprogramar",
-    rescheduleSheetTitle: "Reprogramar tu cita",
-    rescheduleIntro: "Tu cita está programada para el {date} a las {time}. Elige una nueva fecha y hora.",
+    rescheduleCta: "Pedir cambio de horario",
+    rescheduleSheetTitle: "Solicitar nuevo horario",
+    rescheduleIntro: "Tu cita está programada para el {date} a las {time}. Elige una nueva fecha y hora — tu profesionista debe aceptar el cambio antes de que se haga oficial.",
     rescheduleDateLabel: "Nueva fecha",
     rescheduleTimeLabel: "Nueva hora",
-    rescheduleSubmit: "Reprogramar",
-    rescheduleSubmitting: "Reprogramando…",
-    rescheduleSuccess: "Cita reagendada. Tu profesionista ya recibió el aviso.",
+    rescheduleSubmit: "Enviar solicitud",
+    rescheduleSubmitting: "Enviando…",
+    rescheduleSuccess: "Solicitud enviada. Tu profesionista te avisará cuando responda.",
     rescheduleError: "No pudimos reprogramar la cita. Intenta de nuevo en un momento.",
     // Server-mapped error hints, surfaced inline in the sheet so the
     // user knows what to adjust without losing what they typed.

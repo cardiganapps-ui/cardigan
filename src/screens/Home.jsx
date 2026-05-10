@@ -10,12 +10,14 @@ import { useCardigan } from "../context/CardiganContext";
 import { SessionSheet } from "../components/SessionSheet";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { NotificationsPrompt } from "../components/NotificationsPrompt";
+import { SessionRequestsSheet } from "../components/sheets/SessionRequestsSheet";
 import { CalendarLinkPromptCard } from "../components/CalendarLinkPromptCard";
 import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { formatMXN } from "../utils/format";
 import { isPotentialOrDiscarded } from "../data/constants";
+import { haptic } from "../utils/haptics";
 
 /* ── Compute next working day for the "Mañana" carousel panel ── */
 function getNextDay(today, sessions) {
@@ -51,7 +53,8 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
+  const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
   const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
@@ -285,6 +288,62 @@ export function Home({ setScreen, userName }) {
       )}
 
       <NotificationsPrompt variant="initial" />
+
+      {/* Reschedule requests banner — shown when patients have
+          submitted pending requests waiting on this therapist's
+          accept/reject. The banner is intentionally compact and
+          actionable: count + tap-to-open. The actual list lives in
+          a sheet so the home screen stays scannable. The same
+          requests are also reachable via the email links Cardigan
+          sent at submit time. */}
+      {!readOnly && rescheduleRequests.length > 0 && (
+        <button
+          type="button"
+          className="btn-tap"
+          onClick={() => { haptic.tap?.(); setRescheduleSheetOpen(true); }}
+          style={{
+            display: "flex", alignItems: "center", gap: 12,
+            margin: "0 16px 12px",
+            padding: "12px 14px",
+            width: "calc(100% - 32px)",
+            background: "var(--amber-bg)",
+            border: "1px solid var(--amber)",
+            borderRadius: "var(--radius)",
+            cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          }}
+        >
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 32, height: 32, borderRadius: "50%",
+            background: "var(--amber)", color: "var(--white)",
+            fontFamily: "var(--font-d)", fontWeight: 800, fontSize: 14,
+            flexShrink: 0,
+          }}>
+            {rescheduleRequests.length}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{
+              display: "block",
+              fontFamily: "var(--font-d)", fontWeight: 800, fontSize: 14,
+              color: "var(--charcoal)",
+            }}>
+              {t("home.rescheduleRequestsTitle", { count: rescheduleRequests.length })}
+            </span>
+            <span style={{
+              display: "block",
+              fontSize: 12, color: "var(--charcoal-md)", marginTop: 2,
+            }}>
+              {t("home.rescheduleRequestsSub")}
+            </span>
+          </span>
+          <span style={{
+            color: "var(--charcoal-xl)",
+            fontSize: 11, fontWeight: 700,
+          }}>
+            {t("home.rescheduleRequestsCta")}
+          </span>
+        </button>
+      )}
       {/* Second-chance nudge: once the user has added their first
           patient, the highest-intent moment to ask for push perm.
           The component itself is gated on its own dismiss key + the
@@ -637,6 +696,10 @@ export function Home({ setScreen, userName }) {
             </div>
           </div>
         </div>
+      )}
+
+      {rescheduleSheetOpen && (
+        <SessionRequestsSheet onClose={() => setRescheduleSheetOpen(false)} />
       )}
     </div>
   );

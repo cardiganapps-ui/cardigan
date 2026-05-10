@@ -34,6 +34,11 @@ export function usePatientPortalData(user) {
   const [patients, setPatients] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [therapists, setTherapists] = useState([]);
+  // Pending reschedule requests the patient has submitted (status=
+  // pending only). Drives the "Esperando confirmación" badge on the
+  // session card + swaps the Reprogramar pill for "Cancelar
+  // solicitud" when there's an in-flight request.
+  const [rescheduleRequests, setRescheduleRequests] = useState([]);
   const [reloadKey, setReloadKey] = useState(0);
   // PullToRefresh awaits the refresh promise to drive its spinner —
   // we capture the next load's resolve fn here so the gesture's
@@ -59,9 +64,9 @@ export function usePatientPortalData(user) {
       setLoading(true);
       setError(null);
       try {
-        // Three queries in parallel. Each is gated by RLS — the
+        // Four queries in parallel. Each is gated by RLS — the
         // patient sees only their own rows.
-        const [pRes, sRes, tRes] = await Promise.all([
+        const [pRes, sRes, tRes, rRes] = await Promise.all([
           supabase
             .from("patients")
             .select("id, name, rate, billed, paid, sessions, scheduling_mode, day, time, status, user_id, parent, birthdate, allergies, medical_conditions, height_cm, goal_weight_kg, patient_intake_completed_at")
@@ -72,11 +77,22 @@ export function usePatientPortalData(user) {
             .order("date", { ascending: false })
             .limit(500),
           supabase.rpc("get_therapists_for_patient"),
+          // Pending reschedule requests submitted by this user.
+          // Resolved rows (accepted/rejected/withdrawn/expired)
+          // aren't surfaced — they don't affect any UI affordance.
+          supabase
+            .from("session_reschedule_requests")
+            .select("id, session_id, original_date, original_time, proposed_date, proposed_time, status, expires_at, patient_note, created_at")
+            .eq("status", "pending"),
         ]);
         if (cancelled) return;
         if (pRes.error) throw pRes.error;
         if (sRes.error) throw sRes.error;
         if (tRes.error) throw tRes.error;
+        // Reschedule fetch is best-effort — RLS could legitimately
+        // return zero, and a transient 5xx shouldn't sink the whole
+        // portal load. Fall back to empty array on error.
+        if (rRes.error) console.warn("usePatientPortalData: reschedule fetch failed:", rRes.error.message);
         // Sessions are returned UN-ordered by date string ("D-MMM"
         // doesn't sort lexicographically). The home view re-sorts
         // them via shortDateToISO downstream. We just trust RLS
@@ -84,6 +100,7 @@ export function usePatientPortalData(user) {
         setPatients(pRes.data || []);
         setSessions(sRes.data || []);
         setTherapists(tRes.data || []);
+        setRescheduleRequests(rRes.error ? [] : (rRes.data || []));
       } catch (err) {
         if (cancelled) return;
         setError(err?.message || "No pudimos cargar tus datos.");
@@ -139,6 +156,7 @@ export function usePatientPortalData(user) {
     primaryPatient,
     totalAmountDue,
     totalCredit,
+    rescheduleRequests,
     refresh,
   };
 }

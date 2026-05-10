@@ -10,6 +10,8 @@ import { withSentry } from "./_sentry.js";
 import { getFlag } from "./_flags.js";
 import { sendTemplate, toE164MX } from "./_whatsapp.js";
 import { sendLifecycleEmail } from "./_lifecycle.js";
+import { fetchPartiesForRequest } from "./_rescheduleRequest.js";
+import { sendRescheduleExpiredEmails } from "./_sessionEmail.js";
 import {
   cohortWindow,
   isInCohortWindow,
@@ -422,6 +424,18 @@ async function handler(req, res) {
       console.warn("send-session-reminders: lifecycle emails skipped:", err.message);
     }
 
+    // ── Expire pending reschedule requests ──
+    // Sweeps rows where status='pending' AND expires_at < now(),
+    // marks them expired, fires emails to both parties so the
+    // patient's session stays at its original time without anyone
+    // wondering what happened. expires_at was set at creation to
+    // 1h before the earliest of (original, proposed) start time.
+    try {
+      await maybeExpireRescheduleRequests(supabase);
+    } catch (err) {
+      console.warn("send-session-reminders: reschedule expiry skipped:", err.message);
+    }
+
     logRun({
       usersScanned: prefs.length,
       sessionsMatched: totalSessionsMatched,
@@ -593,6 +607,85 @@ async function maybeRunLifecycleEmails(supabase) {
     ts: new Date().toISOString(),
     sent: totalSent,
   }));
+}
+
+/* Sweep pending reschedule requests whose expires_at is in the past
+   and mark them expired. Fires emails to both parties so they know
+   the session stays at its original time. Idempotent: a row that's
+   already non-pending won't be touched (the WHERE clause keeps the
+   transition single-shot).
+
+   Runs inside the 5-min reminders cron — the cadence is finer-
+   grained than the request lifecycle needs (expiry tolerance is
+   measured in minutes, not seconds), so reusing the existing tick
+   beats spinning up a separate job.
+
+   Per-row error handling: a single bad row (missing patient, deleted
+   therapist auth) doesn't sink the whole sweep — we log and move on.
+*/
+async function maybeExpireRescheduleRequests(supabase) {
+  const nowIso = new Date().toISOString();
+
+  // Pull the candidate set first so we can email parties BEFORE the
+  // status flip — the helper that fetches the patient + therapist
+  // contact info uses the request's user_id (therapist) and
+  // patient_id, which are still on the row regardless of status.
+  // Doing it after the update would also work; pulling first lets
+  // us include the original details cleanly in the email body.
+  const { data: rows, error: selErr } = await supabase
+    .from("session_reschedule_requests")
+    .select("*")
+    .eq("status", "pending")
+    .lt("expires_at", nowIso)
+    .limit(200);
+  if (selErr) {
+    console.warn("expireReschedule: select failed:", selErr.message);
+    return { expired: 0 };
+  }
+  if (!rows || rows.length === 0) return { expired: 0 };
+
+  let expired = 0;
+  for (const row of rows) {
+    // Compare-and-set on status='pending' → if the row was resolved
+    // through another path between SELECT and UPDATE, we no-op.
+    const { data: updated, error: updErr } = await supabase
+      .from("session_reschedule_requests")
+      .update({
+        status: "expired",
+        resolved_at: nowIso,
+        resolved_by: "auto_expire",
+        approve_token: null,
+        reject_token: null,
+      })
+      .eq("id", row.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (updErr || !updated) continue; // race-lost or db error → skip
+
+    try {
+      const parties = await fetchPartiesForRequest(supabase, row);
+      await sendRescheduleExpiredEmails({
+        ...parties,
+        oldDate: row.original_date,
+        oldTime: row.original_time,
+        newDate: row.proposed_date,
+        newTime: row.proposed_time,
+      });
+    } catch (err) {
+      console.warn(`expireReschedule: email for ${row.id} failed:`, err?.message);
+    }
+    expired += 1;
+  }
+
+  if (expired > 0) {
+    console.log(JSON.stringify({
+      evt: "cron.reschedule-expire",
+      ts: new Date().toISOString(),
+      expired,
+    }));
+  }
+  return { expired };
 }
 
 /* Resolve users eligible for a cohort by anchor type. Returns

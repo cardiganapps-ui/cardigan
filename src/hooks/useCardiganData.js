@@ -478,6 +478,10 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const [measurements, setMeasurements] = useState(initialCache?.measurements || []);
   const [expenses, setExpenses] = useState(initialCache?.expenses || []);
   const [recurringExpenses, setRecurringExpenses] = useState(initialCache?.recurringExpenses || []);
+  // Patient-submitted reschedule requests waiting on this therapist's
+  // accept/reject. Only `pending` rows hydrate into state — resolved
+  // history surfaces only when the admin / audit script asks for it.
+  const [rescheduleRequests, setRescheduleRequests] = useState(initialCache?.rescheduleRequests || []);
   // Skeleton stays hidden when we hydrated from cache — the user
   // sees their data immediately. Skeleton fires only on a true cold
   // start (no cache, fresh login, or after the cache aged out).
@@ -515,9 +519,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // plenty for the Gastos / Resumen tabs. Older years are still
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
-    let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes;
+    let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -528,6 +532,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         q("measurements", 2000).order("taken_at", { ascending: false }),
         q("expenses", 2000).gte("created_at", expensesSince.toISOString()).order("date", { ascending: false }),
         q("recurring_expenses", 200).order("created_at", { ascending: false }),
+        // Pending reschedule requests only — resolved history surfaces
+        // via the admin/audit paths, not the live UI.
+        q("session_reschedule_requests", 200).eq("status", "pending").order("created_at", { ascending: false }),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -536,7 +543,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     }
 
     // Surface individual table errors
-    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes].find(r => r?.error);
+    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes].find(r => r?.error);
     if (tableErr) setFetchError(tableErr.error.message);
 
     let pData = mapRows(pRes.data);
@@ -665,6 +672,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     setMeasurements(mRes.data || []);
     setExpenses(eData);
     setRecurringExpenses(reData);
+    setRescheduleRequests(rrRes?.data || []);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -683,6 +691,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       measurements: mRes.data || [],
       expenses: eData,
       recurringExpenses: reData,
+      rescheduleRequests: rrRes?.data || [],
     });
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
@@ -786,6 +795,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
     expenses, recurringExpenses,
+    rescheduleRequests, setRescheduleRequests,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),

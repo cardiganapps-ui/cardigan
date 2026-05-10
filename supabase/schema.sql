@@ -199,6 +199,35 @@ create table if not exists expenses (
   updated_at timestamptz default now()
 );
 
+-- Patient-initiated session reschedule requests. Until the therapist
+-- accepts (in-app or via email-link), the request lives here without
+-- touching the underlying sessions row. One pending per session
+-- enforced by uniq_one_pending_per_session below. Tokens auth the
+-- email-link two-step flow without requiring a JWT.
+create table if not exists session_reschedule_requests (
+  id uuid default gen_random_uuid() primary key,
+  session_id uuid not null references sessions(id) on delete cascade,
+  user_id uuid not null,
+  patient_id uuid not null references patients(id) on delete cascade,
+  submitted_by uuid not null,
+  original_date text not null,
+  original_time text not null,
+  proposed_date text not null,
+  proposed_time text not null,
+  patient_note text,
+  therapist_note text,
+  status text not null default 'pending'
+    check (status in ('pending','accepted','rejected','withdrawn','expired')),
+  resolved_at timestamptz,
+  resolved_by text
+    check (resolved_by is null
+      or resolved_by in ('therapist_app','therapist_email','patient_withdraw','auto_expire')),
+  expires_at timestamptz not null,
+  approve_token text,
+  reject_token text,
+  created_at timestamptz default now()
+);
+
 -- Bug reports (submitted from in-app bug reporter)
 create table if not exists bug_reports (
   id uuid default gen_random_uuid() primary key,
@@ -341,6 +370,14 @@ create index if not exists idx_sent_reminders_session_id on sent_reminders(sessi
 create index if not exists idx_user_profiles_profession on user_profiles(profession);
 create index if not exists idx_measurements_patient on measurements(patient_id, taken_at desc);
 create index if not exists idx_measurements_user_id on measurements(user_id);
+create unique index if not exists uniq_one_pending_per_session
+  on session_reschedule_requests(session_id) where status = 'pending';
+create unique index if not exists uniq_reschedule_approve_token
+  on session_reschedule_requests(approve_token) where approve_token is not null;
+create unique index if not exists uniq_reschedule_reject_token
+  on session_reschedule_requests(reject_token) where reject_token is not null;
+create index if not exists idx_reschedule_pending
+  on session_reschedule_requests(user_id, status, expires_at) where status = 'pending';
 
 -- ============================================================
 -- Row Level Security (each user only sees their own data)
@@ -352,6 +389,7 @@ alter table notes enable row level security;
 alter table documents enable row level security;
 alter table expenses enable row level security;
 alter table recurring_expenses enable row level security;
+alter table session_reschedule_requests enable row level security;
 alter table bug_reports enable row level security;
 alter table push_subscriptions enable row level security;
 alter table notification_preferences enable row level security;
@@ -392,6 +430,16 @@ create policy "Admin reads all notes" on notes for select using (is_admin());
 create policy "Admin reads all documents" on documents for select using (is_admin());
 create policy "Admin reads all expenses" on expenses for select using (is_admin());
 create policy "Admin reads all recurring expenses" on recurring_expenses for select using (is_admin());
+create policy "Therapist reads own reschedule requests"
+  on session_reschedule_requests for select using (auth.uid() = user_id);
+create policy "Patient reads requests for own patient row"
+  on session_reschedule_requests for select using (
+    exists (select 1 from patients p
+      where p.id = session_reschedule_requests.patient_id
+        and p.patient_user_id = auth.uid())
+  );
+create policy "Admin reads all reschedule requests"
+  on session_reschedule_requests for select using (is_admin());
 create policy "Admin manages all bug reports" on bug_reports for all using (is_admin());
 create policy "Admin reads all push subscriptions" on push_subscriptions for select using (is_admin());
 create policy "Admin reads all notification preferences" on notification_preferences for select using (is_admin());
