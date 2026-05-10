@@ -158,24 +158,18 @@ export function PatientShell({ user, signOut, data }) {
       </PullToRefresh>
 
       {/* ── Bottom tabs ──
-          Two-tab nav (Home, Agenda). Mirrors the therapist's
-          BottomTabs visually but doesn't share the component —
-          that one reads `screen` + `navigate` from CardiganContext,
-          which the patient ctxValue intentionally doesn't include
-          (the patient app uses its own local screen state since it
-          has only two destinations vs. the therapist's four).
-          Two tabs is small enough that inlining the markup is
-          cleaner than parameterizing the shared component. */}
+          Reuses the therapist's `.bottom-tabs` classes so we get the
+          same visual treatment AND inherit the body:has(.sheet-overlay)
+          auto-hide rule (sheets cover the entire viewport — when one
+          is open, the tab bar would otherwise bleed through over the
+          scrim). The therapist's BottomTabs component reads from
+          CardiganContext (screen + navigate); the patient's local
+          screen state means inlining the markup is cleaner than
+          parameterizing. */}
       <nav
+        className="bottom-tabs"
+        role="tablist"
         aria-label={t("patientShell.nav")}
-        style={{
-          flexShrink: 0,
-          background: "var(--white)",
-          borderTop: "1px solid var(--border-lt)",
-          padding: "8px 16px calc(env(safe-area-inset-bottom, 0px) + 8px)",
-          display: "flex",
-          gap: 8,
-        }}
       >
         {TABS.map(tab => {
           const active = screen === tab.key;
@@ -186,33 +180,20 @@ export function PatientShell({ user, signOut, data }) {
               type="button"
               role="tab"
               aria-selected={active}
-              className="btn-tap"
+              className={`bottom-tab ${active ? "bottom-tab--active" : ""}`}
               onClick={() => {
                 if (!active) { haptic.tap(); setScreen(tab.key); }
               }}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                padding: "8px 4px",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: active ? "var(--teal-dark)" : "var(--charcoal-md)",
-                fontFamily: "var(--font)",
-                fontSize: 11,
-                fontWeight: active ? 700 : 600,
-                WebkitTapHighlightColor: "transparent",
-              }}
             >
-              <Icon size={20} />
-              <span>{t(tab.tKey)}</span>
+              <span className="bottom-tab-icon"><Icon size={20} /></span>
+              <span className="bottom-tab-label">{t(tab.tKey)}</span>
             </button>
           );
         })}
       </nav>
+      {/* iOS PWA home-indicator safe-area fill — same trick the
+          therapist BottomTabs uses. */}
+      <div className="bottom-tabs-safezone" aria-hidden="true" />
 
       <PatientSettingsSheet
         open={settingsOpen}
