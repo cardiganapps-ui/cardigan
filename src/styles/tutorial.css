@@ -309,6 +309,21 @@ body.tut-fab-active .fab {
   z-index: calc(var(--z-tutorial) + 1) !important;
 }
 
+/* ── Dim the home-indicator strip while a tutorial step is active ──
+   `.bottom-tabs-safezone` is a white sliver fixed at the very bottom
+   of the viewport (see components.css) that fills the iOS home-indicator
+   region so page content can't bleed through during scroll bounce.
+   The tutorial dim's `bottom: 0` stops at the top of that region on
+   iOS PWA — the dim covers the bottom-tabs themselves but leaves the
+   safezone glowing white. Recolor it to match the dim color so the
+   strip reads as continuous instead of a bright break. */
+body:has(.tut-dim) .bottom-tabs-safezone,
+body:has(.tut-spotlight) .bottom-tabs-safezone,
+body:has(.tut-welcome-overlay) .bottom-tabs-safezone {
+  background: rgba(15, 17, 22, 0.55);
+  transition: background 280ms var(--ease-out);
+}
+
 /* ── Drawer z-index boost during tutorial drawer steps ──
    The drawer (z-index 201) sits below the tutorial overlay (700).
    During drawer navigation steps, boost both the drawer panel and its
