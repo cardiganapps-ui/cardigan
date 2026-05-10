@@ -456,19 +456,16 @@ export function PatientHome({ data }) {
           </button>
         )}
 
-        {/* Quick actions row — Pagar / Reagendar surfaced as pill
-            buttons so the highest-intent actions are one tap away
-            instead of buried inside their respective cards. Shows
-            only the actions that apply right now (no Pagar pill if
-            balance is even, no Reagendar if no upcoming session).
-            Hidden entirely if neither applies. */}
+        {/* Quick actions row — Pagar surfaced as a pill button so the
+            highest-intent action is one tap away instead of buried in
+            the balance card. Reagendar lives inside the next-session
+            card below, so we don't repeat it here. Hidden when there's
+            no balance to pay. */}
         <QuickActionsRow
           theme={theme}
           showPay={therapistAcceptsOnlinePayments && totalAmountDue > 0}
           payAmount={totalAmountDue}
           onPay={() => setPayOpen(true)}
-          showReschedule={!!nextSession}
-          onReschedule={() => nextSession && requestReschedule(nextSession)}
         />
 
         {/* ── Próxima sesión card ──
@@ -774,11 +771,13 @@ function PatientHero({ firstName, theme, nextSession, journey, therapistName, pr
 }
 
 /* ── QuickActionsRow ──────────────────────────────────────────────
-   Pill row sitting under the hero. Pagar (when balance owed) +
-   Reagendar (when there's a next session). Hidden entirely when
-   neither applies — empty rows look broken. */
-function QuickActionsRow({ theme, showPay, payAmount, onPay, showReschedule, onReschedule }) {
-  if (!showPay && !showReschedule) return null;
+   Pill row sitting under the hero. Pagar (when balance owed). The
+   reschedule action used to live here too, but it duplicated the
+   "Pedir cambio de horario" button inside the next-session card
+   below; reagendar is now only there. Hidden when there's no
+   balance to pay. */
+function QuickActionsRow({ theme, showPay, payAmount, onPay }) {
+  if (!showPay) return null;
   const pillBase = {
     flex: 1,
     minHeight: 44,
@@ -798,38 +797,20 @@ function QuickActionsRow({ theme, showPay, payAmount, onPay, showReschedule, onR
   };
   return (
     <div style={{ display: "flex", gap: 10 }}>
-      {showPay && (
-        <button
-          type="button"
-          onClick={onPay}
-          className="btn-tap"
-          style={{
-            ...pillBase,
-            background: theme.accent,
-            color: "var(--white)",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
-          <IconCreditCard size={14} />
-          {`Pagar ${formatMXN(payAmount)}`}
-        </button>
-      )}
-      {showReschedule && (
-        <button
-          type="button"
-          onClick={onReschedule}
-          className="btn-tap"
-          style={{
-            ...pillBase,
-            background: "var(--white)",
-            border: `1.5px solid ${theme.accent}`,
-            color: theme.accentDark,
-          }}
-        >
-          <IconCalendar size={14} />
-          Reprogramar
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onPay}
+        className="btn-tap"
+        style={{
+          ...pillBase,
+          background: theme.accent,
+          color: "var(--white)",
+          boxShadow: "var(--shadow-sm)",
+        }}
+      >
+        <IconCreditCard size={14} />
+        {`Pagar ${formatMXN(payAmount)}`}
+      </button>
     </div>
   );
 }
@@ -1217,9 +1198,8 @@ function NextSessionCard({ session, onRequestCancel, onRequestReschedule }) {
           contrast was too low — patients couldn't find them. Pills
           with border + tint surface the affordance without screaming.
           Color signals function: teal=neutral action, red=destructive.
-          The hierarchy stays correct because the large outline
-          "Reprogramar" CTA above the card is still the primary path;
-          these are the in-context fallbacks. */}
+          These now own the reschedule entry point fully (the duplicate
+          outline pill above the card was removed). */}
       {(onRequestReschedule || onRequestCancel) && (
         <div
           style={{
