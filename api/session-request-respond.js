@@ -87,6 +87,7 @@ async function handler(req, res) {
   if (!out.ok) {
     if (out.code === "conflict") return res.status(409).json({ error: "Slot already booked", code: "conflict" });
     if (out.code === "race_lost") return res.status(409).json({ error: "Session state changed", code: "race_lost" });
+    if (out.code === "stale") return res.status(409).json({ error: "Session was moved", code: "stale" });
     if (out.code === "not_pending") return res.status(409).json({ error: "Request not pending", code: "not_pending" });
     return res.status(500).json({ error: out.error || "Apply failed" });
   }

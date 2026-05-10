@@ -145,6 +145,22 @@ async function handler(req, res) {
     return res.status(403).json({ error: "Session has already started", code: "past_source" });
   }
 
+  // Too-close guard: the request's expires_at is set to 1h before
+  // the EARLIEST of (original, proposed). If either is < 2h away,
+  // expires_at lands in the past or near-past, the cron sweeps it
+  // within minutes, and the patient rapid-fires "Solicitud enviada"
+  // → "Solicitud vencida" with no real chance for the therapist to
+  // respond. Reject up-front with friendly copy pointing the
+  // patient at direct contact for last-minute changes.
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const horizonMs = Math.min(currentSlotMs, newSlotMs);
+  if (horizonMs - Date.now() < TWO_HOURS_MS) {
+    return res.status(403).json({
+      error: "Session is too close to send a reschedule request",
+      code: "too_close",
+    });
+  }
+
   // No-op: same slot. Don't manufacture a request that asks the
   // therapist to confirm what's already true.
   if (session.date === newShortDate && session.time === new_time) {

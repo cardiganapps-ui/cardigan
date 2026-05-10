@@ -160,9 +160,32 @@ export async function applyAccept(svc, request, { resolvedBy, therapistNote }) {
   const newDay = shortDateToDayName(request.proposed_date);
   const nowIso = new Date().toISOString();
 
+  // Stale-request detection. Between request creation and now, the
+  // therapist may have manually moved the session in their agenda
+  // — that drag updates `sessions.date` / `sessions.time` but
+  // doesn't touch this request. Accepting blindly would overwrite
+  // the therapist's manual move, which is the opposite of what they
+  // want. Verify the session is still where the request expected it.
+  const { data: currentSession, error: csErr } = await svc
+    .from("sessions")
+    .select("date, time, status")
+    .eq("id", request.session_id)
+    .maybeSingle();
+  if (csErr) return { ok: false, code: "db_error", error: csErr.message };
+  if (!currentSession) return { ok: false, code: "race_lost" };
+  if (currentSession.status !== "scheduled") return { ok: false, code: "race_lost" };
+  if (
+    currentSession.date !== request.original_date ||
+    currentSession.time !== request.original_time
+  ) {
+    // Session was manually moved out from under the request. Refuse;
+    // the therapist's drag is the more recent intent.
+    return { ok: false, code: "stale" };
+  }
+
   // Atomic compare-and-set on session status — if the patient
-  // cancelled or the therapist moved it manually in the meantime,
-  // we race-lose and tell the caller.
+  // cancelled or another writer moved the row in the meantime, we
+  // race-lose and tell the caller.
   const { data: updated, error: updErr } = await svc
     .from("sessions")
     .update({

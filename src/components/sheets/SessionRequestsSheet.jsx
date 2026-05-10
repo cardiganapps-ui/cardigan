@@ -62,6 +62,7 @@ export function SessionRequestsSheet({ onClose }) {
         const body = await res.json().catch(() => ({}));
         // The 409 codes are user-meaningful — surface a hint inline.
         const hint = body?.code === "conflict" ? t("sessionRequests.errorConflict")
+          : body?.code === "stale" ? t("sessionRequests.errorStale")
           : body?.code === "race_lost" ? t("sessionRequests.errorRaceLost")
           : body?.code === "not_pending" ? t("sessionRequests.errorAlreadyResolved")
           : t("sessionRequests.errorGeneric");

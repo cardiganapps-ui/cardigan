@@ -19,6 +19,9 @@
 
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { fetchPartiesForRequest } from "./_rescheduleRequest.js";
+import { sendRescheduleWithdrawnEmails } from "./_sessionEmail.js";
+import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -31,9 +34,11 @@ async function handler(req, res) {
   }
 
   const svc = getServiceClient();
+  // Pull the full row so the therapist-notify path has access to the
+  // proposed/original times + parties. Cheap — 200 bytes either way.
   const { data: request, error: rErr } = await svc
     .from("session_reschedule_requests")
-    .select("id, submitted_by, status")
+    .select("*")
     .eq("id", request_id)
     .maybeSingle();
   if (rErr) return res.status(500).json({ error: rErr.message });
@@ -68,6 +73,48 @@ async function handler(req, res) {
   if (updErr) return res.status(500).json({ error: updErr.message });
   if (!updated) {
     return res.status(409).json({ error: "Request state changed", code: "race_lost" });
+  }
+
+  // ── Best-effort therapist notify ──
+  // The banner just dropped from their view; without this, they'd
+  // wonder whether they missed something. Push + email are both
+  // non-blocking — never roll back the withdrawal.
+  try {
+    const parties = await fetchPartiesForRequest(svc, request);
+    await sendRescheduleWithdrawnEmails({
+      therapistEmail: parties.therapistEmail,
+      therapistName: parties.therapistName,
+      patientDisplayName: parties.patientDisplayName,
+      oldDate: request.original_date,
+      oldTime: request.original_time,
+      newDate: request.proposed_date,
+      newTime: request.proposed_time,
+    });
+  } catch (err) {
+    console.warn("patient-withdraw-reschedule: email failed:", err?.message);
+  }
+  try {
+    const { data: subs } = await svc
+      .from("push_subscriptions")
+      .select("endpoint, p256dh, auth")
+      .eq("user_id", request.user_id);
+    const payload = {
+      title: "Solicitud retirada",
+      body: `${(request.original_date)} ${(request.original_time)} → ${(request.proposed_date)} ${(request.proposed_time)}: la persona retiró su solicitud.`,
+      url: "/#agenda",
+      tag: `reschedule-withdraw-${request.id}`,
+    };
+    for (const sub of (subs || [])) {
+      try {
+        await sendPush(sub, payload);
+      } catch (err) {
+        if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
+          await svc.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("patient-withdraw-reschedule: push failed:", err?.message);
   }
 
   return res.status(200).json({ request_id, status: "withdrawn" });

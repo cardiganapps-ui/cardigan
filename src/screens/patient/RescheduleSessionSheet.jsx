@@ -108,6 +108,7 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
         else if (body.code === "past_target")   setErrorHint("past");
         else if (body.code === "past_source")   setErrorHint("past_source");
         else if (body.code === "too_far")       setErrorHint("too_far");
+        else if (body.code === "too_close")     setErrorHint("too_close");
         else if (body.code === "race_lost")     setErrorHint("race");
         else if (body.code === "not_scheduled") setErrorHint("not_scheduled");
         else                                    setErrorHint("generic");
@@ -146,6 +147,7 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
     : errorHint === "past"        ? t("patientHome.reschedulePastHint")
     : errorHint === "past_source" ? t("patientHome.reschedulePastSourceHint")
     : errorHint === "too_far"     ? t("patientHome.rescheduleTooFarHint")
+    : errorHint === "too_close"   ? t("patientHome.rescheduleTooCloseHint")
     : errorHint === "race"        ? t("patientHome.rescheduleRaceHint")
     : errorHint === "not_scheduled" ? t("patientHome.rescheduleNotScheduledHint")
     : errorHint                   ? t("patientHome.rescheduleError")

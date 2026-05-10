@@ -97,6 +97,40 @@ export async function sendCancelNotificationEmails({
   );
 }
 
+// ── Reschedule WITHDRAWN email ────────────────────────────────────
+// Sent to the therapist (only — no patient self-loop) when the
+// patient retracts their pending request before the therapist had a
+// chance to respond. Otherwise the therapist would see the banner
+// count drop with no context, leaving them wondering whether they
+// missed something. We fire and forget — failure doesn't block
+// the withdrawal itself.
+
+export async function sendRescheduleWithdrawnEmails({
+  therapistEmail,
+  therapistName,
+  patientDisplayName,
+  oldDate,
+  oldTime,
+  newDate,
+  newTime,
+}) {
+  if (!therapistEmail) return [];
+  const html = htmlWrap(`
+    <p>Hola${therapistName ? ` ${escapeHtml(therapistName)}` : ""},</p>
+    <p><strong>${escapeHtml(patientDisplayName || "Un paciente")}</strong> retiró su solicitud para mover la cita:</p>
+    <p>${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)} → ${escapeHtml(newDate)} a las ${escapeHtml(newTime)}</p>
+    <p>La cita queda en su horario original. No hace falta que respondas — la solicitud ya no aparece en tu pantalla principal.</p>
+    ${ctaButton(`${APP_URL}/#agenda`, "Ver agenda")}
+    <p>— Cardigan</p>
+  `);
+  const result = await sendTransactionalEmail({
+    to: therapistEmail,
+    subject: `${patientDisplayName || "Un paciente"} retiró su solicitud`,
+    html,
+  });
+  return [result];
+}
+
 // ── Reschedule REQUEST emails ─────────────────────────────────────
 // Sent when a patient submits a reschedule request. Therapist gets
 // the [Aceptar] / [Rechazar] action buttons that link to the public

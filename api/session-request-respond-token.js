@@ -150,6 +150,11 @@ async function handler(req, res) {
         <h1>Ese horario ya está ocupado</h1>
         <p>Mientras llegaba esta solicitud, otra cita ocupó ese horario. Abre Cardigan para mover esta cita a otro espacio o pídele a la persona que proponga un horario distinto.</p>
         <p><a href="${APP_URL}">Abrir Cardigan</a></p>`;
+    } else if (out.code === "stale") {
+      body = `<div class="icon icon-warn">!</div>
+        <h1>La cita ya fue movida</h1>
+        <p>Esta cita ya tiene otro horario distinto al que se pidió en la solicitud (probablemente la moviste manualmente desde tu agenda). La solicitud original ya no aplica. Abre Cardigan para revisar.</p>
+        <p><a href="${APP_URL}">Abrir Cardigan</a></p>`;
     } else if (out.code === "race_lost") {
       body = `<div class="icon icon-warn">!</div>
         <h1>El estado de la cita cambió</h1>
