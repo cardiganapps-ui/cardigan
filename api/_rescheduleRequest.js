@@ -183,9 +183,13 @@ export async function applyAccept(svc, request, { resolvedBy, therapistNote }) {
     return { ok: false, code: "stale" };
   }
 
-  // Atomic compare-and-set on session status — if the patient
-  // cancelled or another writer moved the row in the meantime, we
-  // race-lose and tell the caller.
+  // Atomic compare-and-set on session id + status + ORIGINAL slot.
+  // Including date/time in the WHERE closes the SELECT→UPDATE race:
+  // if the therapist drags the session between our currentSession
+  // SELECT and this UPDATE (no audit-trail acceptance can apply if
+  // the therapist already moved it manually), the UPDATE finds 0 rows
+  // and we surface race_lost cleanly. Without these eq() filters, the
+  // UPDATE would silently overwrite the therapist's manual move.
   const { data: updated, error: updErr } = await svc
     .from("sessions")
     .update({
@@ -197,6 +201,8 @@ export async function applyAccept(svc, request, { resolvedBy, therapistNote }) {
     })
     .eq("id", request.session_id)
     .eq("status", "scheduled")
+    .eq("date", request.original_date)
+    .eq("time", request.original_time)
     .select("id, date, time, day, patient, patient_id, user_id")
     .maybeSingle();
   if (updErr) return { ok: false, code: "db_error", error: updErr.message };
@@ -222,12 +228,19 @@ export async function applyAccept(svc, request, { resolvedBy, therapistNote }) {
 
 // Apply a "reject" decision. Session row is untouched; only the
 // request transitions. Same "trust the caller's auth" contract.
+//
+// .select("id") at the end of the chain is what makes the
+// compare-and-set actually load-bearing: without it, supabase-js
+// returns rErr=null on a 0-row update and we'd happily report success
+// even when the request was withdrawn / expired between the caller's
+// SELECT and our UPDATE. With .select(), we get the row back when
+// matched and an empty array when not — explicit race detection.
 export async function applyReject(svc, request, { resolvedBy, therapistNote }) {
   if (!request || request.status !== "pending") {
     return { ok: false, code: "not_pending", current_status: request?.status || null };
   }
   const nowIso = new Date().toISOString();
-  const { error: rErr } = await svc
+  const { data, error: rErr } = await svc
     .from("session_reschedule_requests")
     .update({
       status: "rejected",
@@ -238,8 +251,16 @@ export async function applyReject(svc, request, { resolvedBy, therapistNote }) {
       reject_token: null,
     })
     .eq("id", request.id)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id");
   if (rErr) return { ok: false, code: "db_error", error: rErr.message };
+  if (!data || data.length === 0) {
+    // Compare-and-set failed: another writer (cron expire, trigger
+    // withdraw, withdraw endpoint) moved the row out of pending
+    // between our caller's SELECT and our UPDATE. Surface as
+    // race_lost so the caller can show a meaningful message.
+    return { ok: false, code: "race_lost" };
+  }
   return { ok: true };
 }
 

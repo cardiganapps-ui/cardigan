@@ -752,7 +752,17 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if old.date is distinct from new.date or old.time is distinct from new.time then
+  -- Three transitions invalidate any pending request on this session:
+  --   1. date changed (slot moved)
+  --   2. time changed (slot moved)
+  --   3. status moved out of 'scheduled' (cancelled / completed / charged)
+  -- Any of those means the patient's "I want to move 16-May 11:00 →
+  -- 23-May 14:00" no longer maps to the session as it stands. Withdraw
+  -- so the therapist's banner clears and no one tries to act on a
+  -- stale request.
+  if (old.date is distinct from new.date)
+     or (old.time is distinct from new.time)
+     or (old.status = 'scheduled' and new.status is distinct from 'scheduled') then
     update session_reschedule_requests
        set status = 'withdrawn',
            resolved_at = now(),
@@ -768,6 +778,6 @@ $$;
 
 drop trigger if exists sessions_withdraw_reschedule_on_move on sessions;
 create trigger sessions_withdraw_reschedule_on_move
-after update of date, time on sessions
+after update on sessions
 for each row
 execute function withdraw_reschedule_requests_on_move();

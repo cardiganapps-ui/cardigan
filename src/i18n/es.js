@@ -2018,6 +2018,7 @@ export default {
     pendingDetail: "Pediste mover esta cita a {date} a las {time}. Tu profesionista te avisar\u00e1 cuando responda.",
     withdrawCta: "Cancelar solicitud",
     withdrawSuccess: "Solicitud cancelada. La cita queda en su horario original.",
+    withdrawAlreadyResolved: "Tu profesionista ya respondió la solicitud. Revisa el estado actualizado de tu cita.",
   },
 
   // Patient settings sheet (notifications + calendar + sign out).

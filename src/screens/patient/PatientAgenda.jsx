@@ -106,7 +106,22 @@ export function PatientAgenda({ data }) {
         headers: { "Authorization": `Bearer ${access}`, "Content-Type": "application/json" },
         body: JSON.stringify({ request_id: requestId }),
       });
-      if (!res.ok) { showToast(t("patientHome.cancelError"), "error"); return; }
+      if (!res.ok) {
+        // The most common non-ok case is the patient trying to
+        // withdraw a request that the therapist just resolved (or
+        // cron expired). Show a meaningful message rather than
+        // generic "no pudimos cancelar" + force a refresh so the
+        // patient sees the current state instead of staring at
+        // a stale pending pill.
+        const body = await res.json().catch(() => ({}));
+        const msg = body?.code === "not_pending" || body?.code === "race_lost"
+          ? t("patientAgenda.withdrawAlreadyResolved")
+          : t("patientHome.cancelError");
+        showToast(msg, "info");
+        setActiveSession(null);
+        refresh?.();
+        return;
+      }
       haptic.success();
       showToast(t("patientAgenda.withdrawSuccess"), "success");
       setActiveSession(null);
