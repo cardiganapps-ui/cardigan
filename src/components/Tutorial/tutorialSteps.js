@@ -1,23 +1,27 @@
 // Step definitions for the onboarding tour.
-// Each step either targets an element via a CSS selector, or is a centered
-// "card" step (no selector) shown in the middle of the screen.
 //
-// Flow (10 steps, ~60–90 s total):
-//   1. welcome           — friendly intro
-//   2. kpis              — Home, day-at-a-glance KPIs
-//   3. fab               — Home, primary "create" shortcut
-//   4. drawer            — Home, hamburger discovery
-//   5. finances          — Finances tab strip (Pagos / Gastos / Resumen / Proy.)
-//   6. gastos-detail     — feature card: expense tracking, OCR, recurrentes
-//   7. resumen-detail    — feature card: P&L + CSV export
-//   8. cardi             — drawer + nav-cardi spotlight, AI helper
-//   9. portal-detail     — feature card: patient portal sharing + reschedule
-//   10. done             — wrap, optional iOS install hint
+// Design: walk a brand-new user through the *general areas* of the app
+// in the order they'd encounter them on day one, then drill into a
+// specific sophisticated feature (Gastos) before introducing the
+// AI helper. No detail-step gets its own beat unless the surface is
+// genuinely new or distinctive — Resumen and patient-portal sharing
+// are folded into their parent area's body copy because they're
+// adjacent to (not separate from) the surface they belong to.
+//
+// Flow (10 steps, ~60 s):
+//   1. welcome      — "Tu nuevo espacio"
+//   2. kpis         — Home: day-at-a-glance KPIs
+//   3. fab          — Home: primary "create" shortcut
+//   4. drawer       — Home: hamburger discovery + name the areas
+//   5. agenda       — Agenda screen orientation
+//   6. patients     — Patients screen + brief mention of portal share
+//   7. finances     — Finances screen + brief mention of Resumen / CSV
+//   8. gastos       — feature card on finances: receipt OCR + recurrentes
+//   9. cardi        — drawer + nav-cardi spotlight: AI helper
+//   10. done        — wrap, optional iOS install hint
 //
 // Steps with `openDrawer: true` cause the Tutorial orchestrator to
 // programmatically open the side drawer before spotlighting the target.
-// The drawer item is highlighted inside the open drawer panel so the user
-// sees exactly which button takes them to each screen.
 //
 // Shape:
 //   id           — stable identifier
@@ -40,10 +44,6 @@ export const TUTORIAL_STEPS = [
     placement: "center",
     titleKey: "tutorial.steps.welcomeTitle",
     bodyKey: "tutorial.steps.welcomeBody",
-    // No hero icon here — the welcome modal already showed the logo
-    // badge two seconds ago, so a second logo on step 1 reads as a
-    // stutter. Keep it text-only and let the dot-progress signal that
-    // we're on step 1 of N.
     padding: 0,
   },
   {
@@ -73,12 +73,30 @@ export const TUTORIAL_STEPS = [
     bodyKey: "tutorial.steps.drawerBody",
     padding: 6,
   },
-  // ── Finances → Gastos / Resumen ──
-  // Skip the "highlight the drawer item" stop for Finances and jump
-  // straight to the Finances tab strip — the body copy below tells the
-  // user "abrimos Finanzas para enseñarte algo" so the navigation
-  // doesn't feel arbitrary. Saves two steps vs. the old per-screen
-  // pattern without losing the screen-level orientation.
+  // ── Walk through the main areas in left-to-right order ──
+  // Each step navigates to the area, frames the whole screen with the
+  // spotlight, and lands a centered tooltip explaining what lives
+  // there. The body copy folds in the standout sub-features (recurring
+  // sessions, portal sharing, P&L export) so the user gets the full
+  // mental model without an extra step per feature.
+  {
+    id: "agenda",
+    screen: "agenda",
+    selector: '[data-tour="agenda-section"]',
+    placement: "center",
+    titleKey: "tutorial.steps.agendaTitle",
+    bodyKey: "tutorial.steps.agendaBody",
+    padding: 0,
+  },
+  {
+    id: "patients",
+    screen: "patients",
+    selector: '[data-tour="patients-list"]',
+    placement: "center",
+    titleKey: "tutorial.steps.patientsTitle",
+    bodyKey: "tutorial.steps.patientsBody",
+    padding: 0,
+  },
   {
     id: "finances",
     screen: "finances",
@@ -88,6 +106,11 @@ export const TUTORIAL_STEPS = [
     bodyKey: "tutorial.steps.financesBody",
     padding: 8,
   },
+  // ── Specific feature drill-down: Gastos ──
+  // The only "drill into a detail" step in the tour, justified by it
+  // being the headline post-launch addition AND because the receipt-OCR
+  // / recurring-template behaviour wouldn't be discoverable from the
+  // tab label alone.
   {
     id: "gastos-detail",
     screen: "finances",
@@ -98,20 +121,11 @@ export const TUTORIAL_STEPS = [
     icon: "trendingDown",
     padding: 0,
   },
-  {
-    id: "resumen-detail",
-    screen: "finances",
-    selector: null,
-    placement: "center",
-    titleKey: "tutorial.steps.resumenTitle",
-    bodyKey: "tutorial.steps.resumenBody",
-    icon: "barChart",
-    padding: 0,
-  },
   // ── Cardi (AI helper) ──
-  // Drawer step with a brief explanation. We don't navigate to the
-  // Cardi screen — opening the sheet would conflict with tutorial
-  // overlay z-index and burn the moment.
+  // Drawer step rather than a screen visit — opening the Cardi sheet
+  // mid-tour would conflict with the tutorial overlay's z-index and
+  // burn the moment. Spotlighting the menu item is enough to plant
+  // "this is where I find Cardi later".
   {
     id: "cardi",
     screen: "home",
@@ -121,16 +135,6 @@ export const TUTORIAL_STEPS = [
     titleKey: "tutorial.steps.cardiTitle",
     bodyKey: "tutorial.steps.cardiBody",
     padding: 4,
-  },
-  {
-    id: "portal-detail",
-    screen: "home",
-    selector: null,
-    placement: "center",
-    titleKey: "tutorial.steps.portalTitle",
-    bodyKey: "tutorial.steps.portalBody",
-    icon: "link",
-    padding: 0,
   },
   {
     id: "done",
