@@ -14,9 +14,12 @@
 //   3. fab          — Home: primary "create" shortcut
 //   4. drawer       — Home: hamburger discovery + name the areas
 //   5. agenda       — Agenda screen orientation
-//   6. patients     — Patients screen + brief mention of portal share
-//   7. finances     — Finances screen + brief mention of Resumen / CSV
-//   8. gastos       — feature card on finances: receipt OCR + recurrentes
+//   6. patients     — Patients screen orientation
+//   7. invite       — feature card: each patient gets their own portal
+//                     (the standout, two-sided feature — therapists
+//                     don't know it exists, and a patient seeing their
+//                     own portal closes the "is this professional?" gap)
+//   8. finances     — Finances screen + brief mention of Gastos / Resumen
 //   9. cardi        — drawer + nav-cardi spotlight: AI helper
 //   10. done        — wrap, optional iOS install hint
 //
@@ -97,6 +100,24 @@ export const TUTORIAL_STEPS = [
     bodyKey: "tutorial.steps.patientsBody",
     padding: 0,
   },
+  // ── The one "drill into a detail" step in the tour ──
+  // Why patient invite (and not, say, Gastos): the value of the
+  // expense ledger is self-evident from the tab label "Gastos", but
+  // the patient-portal link icon lives inside an individual
+  // expediente's header — a brand-new user won't find it on day one
+  // unless we point at it. It's also the most strategically
+  // distinctive feature: every accepted invite delights the patient
+  // *and* widens Cardigan's footprint among other therapists.
+  {
+    id: "invite",
+    screen: "patients",
+    selector: null,
+    placement: "center",
+    titleKey: "tutorial.steps.inviteTitle",
+    bodyKey: "tutorial.steps.inviteBody",
+    icon: "link",
+    padding: 0,
+  },
   {
     id: "finances",
     screen: "finances",
@@ -105,21 +126,6 @@ export const TUTORIAL_STEPS = [
     titleKey: "tutorial.steps.financesTitle",
     bodyKey: "tutorial.steps.financesBody",
     padding: 8,
-  },
-  // ── Specific feature drill-down: Gastos ──
-  // The only "drill into a detail" step in the tour, justified by it
-  // being the headline post-launch addition AND because the receipt-OCR
-  // / recurring-template behaviour wouldn't be discoverable from the
-  // tab label alone.
-  {
-    id: "gastos-detail",
-    screen: "finances",
-    selector: null,
-    placement: "center",
-    titleKey: "tutorial.steps.gastosTitle",
-    bodyKey: "tutorial.steps.gastosBody",
-    icon: "trendingDown",
-    padding: 0,
   },
   // ── Cardi (AI helper) ──
   // Drawer step rather than a screen visit — opening the Cardi sheet
