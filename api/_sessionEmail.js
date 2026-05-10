@@ -54,6 +54,7 @@ export async function sendCancelNotificationEmails({
       <p>Hola ${escapeHtml(patientGreetingName || patientDisplayName || "")},</p>
       <p>Confirmamos la cancelación de tu sesión${therapistLine} programada para el <strong>${escapeHtml(date)}</strong> a las <strong>${escapeHtml(time)}</strong>.</p>
       ${noteLine}
+      <p>Esta cancelación se cobra como sesión completa por defecto. Si tu profesionista decide no cobrarla, te avisará.</p>
       <p>Si necesitas reagendar, puedes hacerlo desde la app.</p>
       ${ctaButton(APP_URL, "Abrir Cardigan")}
       <p>— Cardigan</p>
@@ -61,7 +62,7 @@ export async function sendCancelNotificationEmails({
     tasks.push(
       sendTransactionalEmail({
         to: patientEmail,
-        subject: `Sesión cancelada — ${date} ${time}`,
+        subject: `Sesión cancelada (con cargo) — ${date} ${time}`,
         html,
       })
     );
@@ -75,13 +76,14 @@ export async function sendCancelNotificationEmails({
       <p>Hola${therapistName ? ` ${escapeHtml(therapistName)}` : ""},</p>
       <p><strong>${escapeHtml(patientDisplayName || "Un paciente")}</strong> canceló su sesión del <strong>${escapeHtml(date)}</strong> a las <strong>${escapeHtml(time)}</strong>.</p>
       ${noteLine}
+      <p>La sesión se marcó automáticamente como <strong>cancelada con cargo</strong> (cuenta para el saldo del paciente). Si decides no cobrarla, abre la sesión en tu agenda y cámbiala a "Cancelada sin cargo".</p>
       ${ctaButton(`${APP_URL}/#agenda`, "Ver agenda")}
       <p>— Cardigan</p>
     `);
     tasks.push(
       sendTransactionalEmail({
         to: therapistEmail,
-        subject: `${patientDisplayName || "Un paciente"} canceló su sesión`,
+        subject: `${patientDisplayName || "Un paciente"} canceló su sesión (con cargo)`,
         html,
       })
     );

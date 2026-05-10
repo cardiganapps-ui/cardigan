@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { shortDateToISO } from "../../utils/dates";
+import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
 import { sessionCountsTowardBalance } from "../../utils/accounting";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import {
@@ -82,7 +82,12 @@ function relativeLabel(sessionDate, today, t) {
 export function PatientAgenda({ data }) {
   const { t } = useT();
   const { showToast } = useCardigan();
-  const { primaryPatient, sessions, refresh } = data;
+  const { primaryPatient, primaryTherapist, sessions, refresh } = data;
+  // Same fallback chain PatientHome uses — keeps the dialog/email
+  // copy consistent across the two cancel entry points.
+  const therapistDisplayName = primaryTherapist?.therapist_full_name
+    || primaryTherapist?.therapist_email?.split("@")[0]
+    || "Tu profesionista";
 
   const [activeSession, setActiveSession] = useState(null);     // tap-target → opens management sheet
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
@@ -237,38 +242,39 @@ export function PatientAgenda({ data }) {
         onRescheduled={() => { refresh?.(); }}
       />
 
-      {cancelTarget && (
-        <ConfirmDialog
-          open={true}
-          title={t("patientHome.cancelTitle")}
-          message={t("patientHome.cancelBody", {
-            day: cancelTarget.date,
-            time: cancelTarget.time || "",
-          })}
-          confirmLabel={t("patientHome.cancelConfirm")}
-          cancelLabel={t("cancel")}
-          danger={true}
-          working={cancelling}
-          onConfirm={confirmCancel}
-          onCancel={dismissCancel}
-        >
+      <ConfirmDialog
+        open={!!cancelTarget}
+        title={cancelTarget
+          ? t("patientHome.cancelDialogTitle", {
+              date: formatShortDateWithYear(new Date(shortDateToISO(cancelTarget.date) + "T12:00:00")),
+            })
+          : ""}
+        body={t("patientHome.cancelDialogBody", { name: therapistDisplayName })}
+        bodyExtra={
           <textarea
             value={cancelNote}
             onChange={(e) => setCancelNote(e.target.value)}
             placeholder={t("patientHome.cancelNotePlaceholder")}
+            rows={2}
             maxLength={500}
             disabled={cancelling}
             style={{
-              width: "100%", minHeight: 64, marginTop: 8,
-              padding: "8px 10px",
-              border: "1px solid var(--border-lt)",
+              width: "100%", padding: 10,
+              border: "1px solid var(--border)",
               borderRadius: "var(--radius)",
-              fontFamily: "inherit", fontSize: 13,
+              fontFamily: "var(--font)", fontSize: "var(--text-md)",
+              color: "var(--charcoal)", background: "var(--white)",
               resize: "vertical", boxSizing: "border-box",
             }}
           />
-        </ConfirmDialog>
-      )}
+        }
+        confirmLabel={t("patientHome.cancelConfirmCta")}
+        cancelLabel={t("patientHome.cancelKeepCta")}
+        destructive
+        busy={cancelling}
+        onConfirm={confirmCancel}
+        onCancel={dismissCancel}
+      />
     </div>
   );
 }

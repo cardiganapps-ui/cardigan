@@ -121,18 +121,25 @@ async function handler(req, res) {
   }
 
   // Apply the cancel. Service-role bypasses the read-only patient
-  // RLS we want to keep on sessions. cancel_reason is a free-text
-  // field; we record both the audit-style "patient" tag and the
-  // optional note.
+  // RLS we want to keep on sessions. cancel_reason records the
+  // patient-initiated tag and any optional note.
+  //
+  // Default behavior: mark as `charged` (the late-cancel-with-charge
+  // status). The therapist can downgrade to `cancelled` from their
+  // agenda if they decide not to charge. This matches the standard
+  // therapy-practice norm — the slot was reserved for the patient,
+  // the therapist's time was committed, the cancel still consumes
+  // the rate. The patient sees the disclosure in the cancel dialog
+  // before they confirm; the therapist can flip it case-by-case.
   const cancelReason = cleanNote
-    ? `Cancelada por paciente — ${cleanNote}`
-    : "Cancelada por paciente";
+    ? `Cancelada con cargo por paciente — ${cleanNote}`
+    : "Cancelada con cargo por paciente";
 
   const svc = getServiceClient();
   const { data: updated, error: updErr } = await svc
     .from("sessions")
     .update({
-      status: "cancelled",
+      status: "charged",
       cancel_reason: cancelReason,
     })
     .eq("id", session.id)
@@ -157,8 +164,8 @@ async function handler(req, res) {
       .select("endpoint, p256dh, auth")
       .eq("user_id", session.user_id);
     const payload = {
-      title: "Cita cancelada",
-      body: `${session.patient} canceló su sesión del ${session.date} a las ${session.time}.`,
+      title: "Cita cancelada (con cargo)",
+      body: `${session.patient} canceló la sesión del ${session.date} a las ${session.time}. Por defecto se marca con cargo — puedes cambiarla a "sin cargo" desde la sesión.`,
       url: "/#agenda",
       tag: `cancel-${session.id}`,
     };
