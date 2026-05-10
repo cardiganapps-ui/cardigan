@@ -221,7 +221,7 @@ create table if not exists session_reschedule_requests (
   resolved_at timestamptz,
   resolved_by text
     check (resolved_by is null
-      or resolved_by in ('therapist_app','therapist_email','patient_withdraw','auto_expire')),
+      or resolved_by in ('therapist_app','therapist_email','patient_withdraw','auto_expire','auto_session_moved')),
   expires_at timestamptz not null,
   approve_token text,
   reject_token text,
@@ -348,6 +348,13 @@ create index if not exists idx_sessions_session_type on sessions(session_type);
 -- Partial on patient_id NOT NULL because the column is nullable.
 create unique index if not exists uniq_sessions_patient_date_time
   on sessions (patient_id, date, time) where patient_id is not null;
+-- Slot uniqueness — two scheduled sessions can't share a therapist's
+-- exact slot. Closes the TOCTOU race in the patient-reschedule and
+-- therapist-agenda paths; cancelled / completed / charged rows are
+-- intentionally outside the partial WHERE clause so historical
+-- collisions stay legal.
+create unique index if not exists uniq_sessions_user_slot
+  on sessions(user_id, date, time) where status = 'scheduled';
 create index if not exists idx_payments_user_id on payments(user_id);
 create index if not exists idx_payments_patient_id on payments(patient_id);
 create index if not exists idx_notes_user_id on notes(user_id);
@@ -727,3 +734,40 @@ create policy "Therapists create invites for their patients"
     therapist_id = auth.uid()
     and patient_id in (select id from patients where user_id = auth.uid())
   );
+
+-- ============================================================
+-- Trigger: auto-withdraw pending reschedule requests when a
+-- session's date or time changes. The trigger fires on every
+-- mutation of those columns regardless of who initiated it (the
+-- therapist's drag-to-move action, applyAccept on a request, a
+-- future API endpoint, an admin script). Without this, a stale
+-- pending request would sit in the therapist's banner pointing at
+-- a session that's no longer where the request expected it.
+--
+-- Same code as migration 061; mirrored here so a fresh-clone build
+-- of the schema reproduces production behavior.
+-- ============================================================
+create or replace function withdraw_reschedule_requests_on_move()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.date is distinct from new.date or old.time is distinct from new.time then
+    update session_reschedule_requests
+       set status = 'withdrawn',
+           resolved_at = now(),
+           resolved_by = 'auto_session_moved',
+           approve_token = null,
+           reject_token = null
+     where session_id = new.id
+       and status = 'pending';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists sessions_withdraw_reschedule_on_move on sessions;
+create trigger sessions_withdraw_reschedule_on_move
+after update of date, time on sessions
+for each row
+execute function withdraw_reschedule_requests_on_move();
