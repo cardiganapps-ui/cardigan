@@ -993,12 +993,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // away. Two flags, distinct concerns. The CSS-level body:has(...)
   // rules in base.css handle the "any sheet / drawer is open" case
   // for both at once.
+  //
+  // Tutorial: hides the FAB on every step except the "fab" spotlight
+  // step (otherwise the FAB sits above the dim and competes with the
+  // step content). BottomTabs stay visible — the tut-blocker divs
+  // already disable taps on the dimmed chrome, and a sudden empty
+  // bottom strip during a centered card step reads like a broken
+  // screen. Keep them dimmed-but-present.
   const hideFab = localHideFab
     || tutorialHidesFab
     || screen === "admin"
     || screen === "privacy";
-  const hideBottomTabs = tutorialHidesFab
-    || screen === "admin";
+  const hideBottomTabs = screen === "admin";
   const notifications = useNotifications(demo ? null : user);
 
   // Welcome-to-Pro prompt: fires once, after the user has finished or
