@@ -1552,7 +1552,7 @@ export default {
       agendaTitle: "Tu agenda",
       agendaBody: "D\u00eda, semana o mes. Las {session.p} recurrentes se extienden solitas y las que ya pasaron se marcan completadas.",
       patientsTitle: "Tus {client.p}",
-      patientsBody: "Toca un {client.s} para abrir su {record.s}: notas, finanzas, archivos y todo lo que registras de su seguimiento.",
+      patientsBody: "Toca un {client.s} para abrir su {record.s}: notas, finanzas, archivos y todo el seguimiento. ¿Lista vacía? Crea el primero con el +.",
       inviteTitle: "Invita a tus {client.p}",
       inviteBody: "Cada {client.s} puede tener su propio acceso. Comparte un enlace privado desde su {record.s} y ver\u00e1 su pr\u00f3xima {session.s}, podr\u00e1 pagar en l\u00ednea y pedir reagendados \u2014 t\u00fa apruebas con un toque. Cero llamadas, cero correos sueltos.",
       financesTitle: "Tus finanzas",

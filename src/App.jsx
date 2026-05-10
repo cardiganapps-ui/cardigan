@@ -977,7 +977,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     if (eligible) setRatingSheetOpen(true);
   }, [demo, readOnly, user, subscription.accessState, upcomingSessions, patients, ratingSheetOpen]);
 
-  const tutorial = useTutorial({ user, demo, readOnly });
+  const tutorial = useTutorial({ user, demo, readOnly, screen });
   const tutorialHidesFab = tutorial?.isActive
     && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
   // Admin owns its own chrome (sidebar + header) and covers the

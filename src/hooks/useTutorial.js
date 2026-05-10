@@ -69,34 +69,38 @@ function reducer(s, a) {
  * The consumer (Tutorial orchestrator) is responsible for screen navigation
  * and spotlight measurement based on the `step` returned here.
  */
-export function useTutorial({ user, demo, readOnly } = {}) {
+export function useTutorial({ user, demo, readOnly, screen } = {}) {
   const [state, dispatch] = useReducer(reducer, initial);
   const userId = user?.id || null;
   const disabled = !!demo || !!readOnly || !user;
 
-  // Track whether we already checked the gate for the current user, so the
-  // welcome prompt is only scheduled once per session.
+  // Track whether we already dispatched the welcome prompt for this user
+  // session, so subsequent screen changes don't re-schedule it.
   const gateCheckedRef = useRef(null);
 
   // ── Initial gate check ──
   //
-  // Runs once per user session. If the user has never completed the
-  // tutorial, schedule the welcome modal after a short delay. The
-  // delay gives the shell / service worker / initial data fetch time
-  // to settle so the welcome doesn't pop mid-render. If the user
-  // navigates away before the modal shows we still want to show it
-  // next session — that's why we key gateCheckedRef on userId only,
-  // not on route.
+  // Schedule the welcome modal once per user session, but ONLY while the
+  // user is on Home. If they landed on a deep link (e.g. /p/<patientId>
+  // from a shared expediente URL), the modal would interrupt that flow —
+  // worse, dismissing it stamps `done` and the user loses the tour
+  // entirely. Wait until they navigate back to Home, then schedule.
+  //
+  // gateCheckedRef is set inside the timer callback (not at the top of
+  // the effect) so a navigation-away during the 800ms warmup doesn't
+  // burn the gate; the next return to Home gets a fresh attempt.
   useEffect(() => {
     if (disabled) return;
     if (gateCheckedRef.current === userId) return;
-    gateCheckedRef.current = userId;
+    if (screen !== "home") return;
 
     const localDone = readLocalDone(userId);
     const metaDone = !!user?.user_metadata?.tutorial_completed_at;
 
     if (localDone || metaDone) {
-      // Already completed — remain idle.
+      // Already completed — mark the gate so subsequent screen changes
+      // don't re-evaluate, and return.
+      gateCheckedRef.current = userId;
       return;
     }
 
@@ -106,6 +110,10 @@ export function useTutorial({ user, demo, readOnly } = {}) {
       // Re-check done status right before firing — avoids a race where
       // another tab / the auth metadata refreshed in the meantime.
       if (readLocalDone(userId)) return;
+      // Mark the gate AFTER the timer fires so a navigation-away during
+      // the 800ms warmup doesn't permanently disable the welcome for
+      // this session.
+      gateCheckedRef.current = userId;
       if (progress && progress.stepIndex > 0 && progress.stepIndex < TUTORIAL_STEPS.length) {
         dispatch({ type: "start", stepIndex: progress.stepIndex });
       } else {
@@ -114,7 +122,7 @@ export function useTutorial({ user, demo, readOnly } = {}) {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [disabled, userId, user?.user_metadata?.tutorial_completed_at]);
+  }, [disabled, userId, user?.user_metadata?.tutorial_completed_at, screen]);
 
   // ── Persist progress while running ──
   useEffect(() => {
