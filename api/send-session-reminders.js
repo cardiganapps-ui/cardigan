@@ -6,6 +6,7 @@ import {
   formatShortDateLegacy,
   TERMINAL_PUSH_STATUSES,
 } from "./_push.js";
+import { fcmConfigured, sendFCM } from "./_fcm.js";
 import { withSentry } from "./_sentry.js";
 import { getFlag } from "./_flags.js";
 import { sendTemplate, toE164MX } from "./_whatsapp.js";
@@ -176,48 +177,59 @@ async function handler(req, res) {
 
       if (sessionsToNotify.length === 0) continue;
 
-      // 5. Check which sessions already have sent reminders. The channel
-      // column was added in migration 019; existing rows defaulted to
-      // 'push' so this filter is backward-compatible.
+      // 5. Check which sessions already have sent reminders, per channel.
+      // The dedupe is (session_id, user_id, channel) so a user with both
+      // the PWA AND the native app gets exactly one reminder per channel.
       const sessionIds = sessionsToNotify.map((s) => s.id);
-      const { data: alreadySentPush } = await supabase
+      const { data: alreadySentRows } = await supabase
         .from("sent_reminders")
-        .select("session_id")
+        .select("session_id, channel")
         .eq("user_id", user_id)
-        .eq("channel", "push")
+        .in("channel", ["push", "ios", "android"])
         .in("session_id", sessionIds);
 
-      const sentSet = new Set((alreadySentPush || []).map((r) => r.session_id));
-      const newSessions = sessionsToNotify.filter((s) => !sentSet.has(s.id));
+      const sentByChannel = new Map();
+      for (const row of (alreadySentRows || [])) {
+        if (!sentByChannel.has(row.channel)) sentByChannel.set(row.channel, new Set());
+        sentByChannel.get(row.channel).add(row.session_id);
+      }
+      const newForChannel = (channel) =>
+        sessionsToNotify.filter((s) => !sentByChannel.get(channel)?.has(s.id));
 
-      // newSessions drives the push branch only. The WhatsApp branch
-      // below has its own dedup (channel='whatsapp') and runs even if
-      // every push has already been sent.
-      totalSessionsMatched += newSessions.length;
+      const newPushSessions = newForChannel("push");
+      const newIosSessions = newForChannel("ios");
+      const newAndroidSessions = newForChannel("android");
+
+      // Unique-session match count for the run log.
+      const matchedThisUser = new Set([
+        ...newPushSessions.map((s) => s.id),
+        ...newIosSessions.map((s) => s.id),
+        ...newAndroidSessions.map((s) => s.id),
+      ]).size;
+      totalSessionsMatched += matchedThisUser;
 
       // 6. Fetch push subscriptions for this user. Empty list is fine —
       // the push branch will be a no-op and the WhatsApp branch below
       // can still run for users who only opted into WhatsApp.
-      const { data: subsRaw } = newSessions.length > 0
+      const anyNew = newPushSessions.length || newIosSessions.length || newAndroidSessions.length;
+      const { data: subsRaw } = anyNew > 0
         ? await supabase
             .from("push_subscriptions")
-            .select("endpoint, p256dh, auth")
+            .select("endpoint, p256dh, auth, platform")
             .eq("user_id", user_id)
         : { data: [] };
       const subs = subsRaw || [];
+      const webSubs = subs.filter((s) => s.platform === "web");
+      const iosSubs = subs.filter((s) => s.platform === "ios");
+      const androidSubs = subs.filter((s) => s.platform === "android");
 
-      // 7. Send push notifications (skipped silently if no subs).
-      for (const session of (subs.length > 0 ? newSessions : [])) {
-        // Minutes-until is computed against the same userNow snapshot
-        // the window filter used, so the copy the user reads lines up
-        // with the decision to send.
+      // Build a payload for a given session — same shape for web + native
+      // so the cron has a single source of truth for copy.
+      const payloadFor = (session) => {
         const [sh, sm] = String(session.time || "").split(":").map(Number);
         const sessionMinutes = (sh || 0) * 60 + (sm || 0);
         const minutesUntil = Math.max(1, sessionMinutes - nowMinutes);
-        // Patient-side copy speaks first-person ("tu sesión...") and
-        // routes to the patient home rather than the therapist's
-        // agenda. Therapist-side copy stays as-is.
-        const payload = isPatient
+        return isPatient
           ? {
               title: "Recordatorio de sesión",
               body: `Tu sesión es a las ${session.time} — en ${minutesUntil} min`,
@@ -234,8 +246,12 @@ async function handler(req, res) {
               tag: `session-${session.id}`,
               actions: [{ action: "open", title: "Ver agenda" }],
             };
+      };
 
-        for (const sub of subs) {
+      // 7a. Web push.
+      for (const session of (webSubs.length > 0 ? newPushSessions : [])) {
+        const payload = payloadFor(session);
+        for (const sub of webSubs) {
           try {
             await sendPush(sub, payload);
           } catch (err) {
@@ -255,16 +271,45 @@ async function handler(req, res) {
             }
           }
         }
-
-        // 8. Mark session as notified on the push channel. The unique
-        // key is (session_id, user_id, channel) so push and WhatsApp
-        // dedupe independently.
         await supabase.from("sent_reminders").upsert(
           { session_id: session.id, user_id, channel: "push" },
           { onConflict: "session_id,user_id,channel" }
         );
-
         totalSent++;
+      }
+
+      // 7b. Native push (FCM for Android, FCM-via-APNs for iOS). Skipped
+      // entirely when FCM_SERVICE_ACCOUNT_JSON isn't configured so the
+      // cron keeps delivering web push even before Firebase is set up.
+      if (fcmConfigured()) {
+        for (const [platform, platformSubs, platformSessions] of [
+          ["ios", iosSubs, newIosSessions],
+          ["android", androidSubs, newAndroidSessions],
+        ]) {
+          if (platformSubs.length === 0 || platformSessions.length === 0) continue;
+          for (const session of platformSessions) {
+            const payload = payloadFor(session);
+            for (const sub of platformSubs) {
+              const result = await sendFCM({
+                token: sub.endpoint,
+                payload,
+                platform,
+              });
+              if (!result.ok && result.terminal) {
+                await supabase
+                  .from("push_subscriptions")
+                  .delete()
+                  .eq("endpoint", sub.endpoint);
+                staleRemoved++;
+              }
+            }
+            await supabase.from("sent_reminders").upsert(
+              { session_id: session.id, user_id, channel: platform },
+              { onConflict: "session_id,user_id,channel" }
+            );
+            totalSent++;
+          }
+        }
       }
 
       // ── WhatsApp branch ────────────────────────────────────────

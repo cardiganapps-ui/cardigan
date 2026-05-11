@@ -5,6 +5,7 @@
    (410 / 404 from the push provider) just like the cron endpoint. */
 
 import { getServiceClient, sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
+import { fcmConfigured, sendFCM } from "./_fcm.js";
 import { withSentry } from "./_sentry.js";
 
 async function handler(req, res) {
@@ -23,7 +24,7 @@ async function handler(req, res) {
 
     const { data: subs, error: subErr } = await supabase
       .from("push_subscriptions")
-      .select("endpoint, p256dh, auth")
+      .select("endpoint, p256dh, auth, platform")
       .eq("user_id", userId);
     if (subErr) {
       console.error("push-test fetch failed:", subErr.message);
@@ -47,6 +48,32 @@ async function handler(req, res) {
     let staleRemoved = 0;
     const results = [];
     for (const sub of subs) {
+      // Native rows: route through FCM when configured. Until
+      // FCM_SERVICE_ACCOUNT_JSON is set the native send fails fast with
+      // a clear error in the response, which is exactly what the user
+      // testing the wiring wants to see.
+      if (sub.platform === "ios" || sub.platform === "android") {
+        if (!fcmConfigured()) {
+          results.push({ host: sub.platform, ok: false, terminal: false, message: "fcm-not-configured" });
+          continue;
+        }
+        const r = await sendFCM({ token: sub.endpoint, payload, platform: sub.platform });
+        if (r.ok) {
+          sent++;
+          results.push({ host: sub.platform, ok: true });
+        } else if (r.terminal) {
+          await supabase
+            .from("push_subscriptions")
+            .delete()
+            .eq("endpoint", sub.endpoint);
+          staleRemoved++;
+          results.push({ host: sub.platform, ok: false, terminal: true, message: r.error });
+        } else {
+          results.push({ host: sub.platform, ok: false, terminal: false, message: r.error });
+        }
+        continue;
+      }
+
       const host = (() => { try { return new URL(sub.endpoint).host; } catch { return "?"; } })();
       try {
         await sendPush(sub, payload);
