@@ -112,6 +112,7 @@ export function AdminActivityDrawer({ open, onClose, onJumpToUser }) {
       <aside
         ref={trapRef}
         className="admin-activity-drawer"
+        data-mobile-sheet="true"
         role="dialog"
         aria-modal="true"
         aria-label="Actividad reciente"

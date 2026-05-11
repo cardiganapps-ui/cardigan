@@ -1596,6 +1596,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     admin: admin && !readOnly ? (
       <AdminLayout
         currentAdminId={user?.id}
+        onOpenPalette={() => setPaletteOpen(true)}
         onViewAs={(uid) => {
           // Snapshot the admin hash so the read-only banner's exit
           // path can restore it (e.g. #admin/users/<uid>).

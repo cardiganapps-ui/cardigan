@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   fetchAllAccounts,
   adminBlockUser,
@@ -70,6 +70,98 @@ export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, c
   const { sort: sortKey, setSort: setSortKey } = useAdminSort("users", { key: "name", dir: "asc" });
 
   const { data: accounts = [], loading, error, refetch } = useAdminQuery("users:all", fetchAllAccounts);
+
+  // Scroll restoration across the mobile list↔detail flip. At <1024px,
+  // both panes share `.admin-content`'s scroll context — so entering
+  // detail leaks the list's scrollTop into the detail view (and exiting
+  // leaks back). Snapshot+restore via useLayoutEffect on selectedId
+  // transitions. Desktop (≥1024px) keeps independent scroll on each
+  // pane, no capture needed.
+  const listScrollRef = useRef(0);
+  const prevSelectedRef = useRef(selectedId);
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    const scrollEl = document.querySelector(".admin-content");
+    if (!scrollEl) return;
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+      prevSelectedRef.current = selectedId;
+      return;
+    }
+    const prev = prevSelectedRef.current;
+    if (!prev && selectedId) {
+      // Entering detail from list: capture list scroll, jump detail to top.
+      listScrollRef.current = scrollEl.scrollTop;
+      scrollEl.scrollTop = 0;
+    } else if (prev && !selectedId) {
+      // Exiting detail back to list: restore captured scroll.
+      scrollEl.scrollTop = listScrollRef.current;
+    }
+    prevSelectedRef.current = selectedId;
+  }, [selectedId]);
+
+  // Right-from-left-edge swipe to pop the detail pane back to the list.
+  // Mirrors AdminLayout.jsx's drawer-swipe pattern (EDGE_BAND + ENGAGE_PX
+  // + preventDefault on horizontal commit to suppress iOS history-back).
+  // Only fires at <1024px and only when there's an active selection.
+  const splitRef = useRef(null);
+  const selectedIdRef = useRef(selectedId);
+  const onClearSelectionRef = useRef(onClearSelection);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  useEffect(() => { onClearSelectionRef.current = onClearSelection; }, [onClearSelection]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const el = splitRef.current;
+    if (!el) return;
+    const EDGE_BAND = 26;
+    const ENGAGE_PX = 10;
+    const POP_THRESHOLD = 60;
+    const isMobile = () => window.innerWidth < 1024;
+    let drag = null;
+
+    const onStart = (e) => {
+      if (!selectedIdRef.current || !isMobile() || e.touches.length !== 1) { drag = null; return; }
+      const t = e.touches[0];
+      if (t.clientX > EDGE_BAND) { drag = null; return; }
+      drag = { startX: t.clientX, startY: t.clientY, active: false };
+    };
+    const onMove = (e) => {
+      if (!drag) return;
+      const t = e.touches[0];
+      const dx = t.clientX - drag.startX;
+      const dy = t.clientY - drag.startY;
+      if (!drag.active) {
+        if (Math.abs(dx) > ENGAGE_PX && Math.abs(dx) > Math.abs(dy)) {
+          drag.active = true;
+        } else if (Math.abs(dy) > ENGAGE_PX) {
+          drag = null;
+          return;
+        }
+      }
+      // Suppress iOS Safari's history-back peek once we've committed.
+      if (drag.active && dx > 0 && e.cancelable) e.preventDefault();
+    };
+    const onEnd = (e) => {
+      const captured = drag;
+      drag = null;
+      if (!captured || !captured.active) return;
+      const t = (e.changedTouches && e.changedTouches[0]) || null;
+      if (!t) return;
+      const dx = t.clientX - captured.startX;
+      if (dx > POP_THRESHOLD) onClearSelectionRef.current?.();
+    };
+
+    const opts = { passive: false };
+    el.addEventListener("touchstart", onStart, opts);
+    el.addEventListener("touchmove", onMove, opts);
+    el.addEventListener("touchend", onEnd, opts);
+    el.addEventListener("touchcancel", onEnd, opts);
+    return () => {
+      el.removeEventListener("touchstart", onStart, opts);
+      el.removeEventListener("touchmove", onMove, opts);
+      el.removeEventListener("touchend", onEnd, opts);
+      el.removeEventListener("touchcancel", onEnd, opts);
+    };
+  }, []);
 
   const tierFilters = useMemo(() => [
     { k: "all",       l: t("admin.users.filter.all") },
@@ -310,7 +402,7 @@ export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, c
         </button>
       )}
     >
-      <div className="admin-split-view" data-mobile-pane={mobilePane}>
+      <div className="admin-split-view" data-mobile-pane={mobilePane} ref={splitRef}>
         {/* List pane */}
         <div className="admin-split-view-list">
           <AdminListHeader

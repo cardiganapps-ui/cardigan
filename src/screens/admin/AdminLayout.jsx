@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAdminRoute } from "./useAdminRoute";
 import {
   IconHome, IconUsers, IconDollar, IconTrendingUp, IconTag, IconBug, IconShield,
-  IconActivity, IconMenu, IconX, IconChevronRight, IconArrowLeft, IconLogOut, IconBell,
+  IconActivity, IconMenu, IconX, IconChevronRight, IconArrowLeft, IconLogOut, IconBell, IconSearch,
 } from "../../components/Icons";
 import { LogoIcon } from "../../components/LogoMark";
 import { AdminOverview } from "./AdminOverview";
@@ -16,6 +16,7 @@ import { AdminReports } from "./AdminReports";
 import { AdminAudit } from "./AdminAudit";
 import { AdminHealth } from "./AdminHealth";
 import { AdminActivityDrawer } from "./parts/AdminActivityDrawer";
+import { AdminBottomTabs } from "./parts/AdminBottomTabs";
 
 const SECTIONS = [
   { key: "overview",    label: "Resumen",     icon: IconHome,        group: "insights" },
@@ -49,7 +50,7 @@ const TITLE_BY_SECTION = {
 
    On mobile (<900px) the rail collapses to a slide-in drawer behind
    a hamburger; on desktop it's a fixed 224px column. */
-export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
+export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId, onOpenPalette }) {
   const route = useAdminRoute();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
@@ -168,14 +169,32 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
     onViewAs?.(uid);
   }, [onViewAs]);
 
-  // Build breadcrumbs. User Detail gets a parent crumb back to /users.
+  // Mobile breakpoint tracking — drives the bottom-tab strip + the
+  // breadcrumb DOM gate. matchMedia stays in sync with rotation /
+  // devtools width changes; first-render uses the synchronous query.
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 899.98px)").matches : false
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 899.98px)");
+    const onChange = (e) => setIsMobile(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  // Build breadcrumbs only on desktop (≥900px). CSS hides them at
+  // <900px today, so skipping the build also drops the hidden
+  // <button>s from the accessibility tree.
   const breadcrumbs = [];
-  breadcrumbs.push({ label: "Admin", onClick: () => goSection("overview") });
-  if (route.section === "users" && route.id) {
-    breadcrumbs.push({ label: "Usuarios", onClick: () => goSection("users") });
-    breadcrumbs.push({ label: "Detalle" });
-  } else {
-    breadcrumbs.push({ label: TITLE_BY_SECTION[route.section] || "Resumen" });
+  if (!isMobile) {
+    breadcrumbs.push({ label: "Admin", onClick: () => goSection("overview") });
+    if (route.section === "users" && route.id) {
+      breadcrumbs.push({ label: "Usuarios", onClick: () => goSection("users") });
+      breadcrumbs.push({ label: "Detalle" });
+    } else {
+      breadcrumbs.push({ label: TITLE_BY_SECTION[route.section] || "Resumen" });
+    }
   }
 
   const insightsSections = SECTIONS.filter(s => s.group === "insights");
@@ -302,6 +321,13 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
               {/* Page-specific actions (e.g. "Nuevo código") are rendered
                   inside each page rather than plumbed through here — keeps
                   pages self-contained and the layout stable. */}
+              {typeof onOpenPalette === "function" && (
+                <button type="button" className="admin-bell-btn"
+                  onClick={onOpenPalette}
+                  aria-label="Buscar y comandos" title="Buscar y comandos (⌘K)">
+                  <IconSearch size={16} />
+                </button>
+              )}
               <button type="button" className="admin-bell-btn"
                 onClick={() => setActivityOpen(true)}
                 aria-label="Actividad reciente" title="Actividad reciente">
@@ -325,6 +351,12 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
           </div>
         </div>
       </main>
+      <AdminBottomTabs
+        section={route.section}
+        onChange={goSection}
+        onMore={() => setDrawerOpen(true)}
+        moreActive={drawerOpen}
+      />
       <AdminActivityDrawer
         open={activityOpen}
         onClose={() => setActivityOpen(false)}

@@ -1384,3 +1384,201 @@ html[data-theme="dark"] .admin-shell {
     transition: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   iPhone navigation polish — adds the mobile bottom tab strip, makes
+   the bulk bar iOS-safe at <1024px, bumps the filter-bar search input
+   to 44px / 16px on coarse pointers (no auto-zoom), gives the table
+   cards a real 44×44 checkbox hit target, slides the list↔detail flip,
+   and turns the activity drawer into a bottom sheet at <700px. All
+   rules scoped to `.admin-shell` or `.admin-bottom-tabs` so the
+   consumer app never inherits.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── AdminBottomTabs — mirrors BottomTabs.jsx vocabulary, scoped to admin ── */
+.admin-shell { --admin-bottom-tabs-h: 40px; }
+.admin-bottom-tabs {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: calc(var(--admin-bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
+  padding-bottom: max(calc(var(--sab) / 2), 10px);
+  background: var(--admin-surface);
+  border-top: 1px solid var(--admin-border);
+  display: none;
+  align-items: stretch;
+  z-index: 40;
+}
+.admin-bottom-tabs-safezone {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: env(safe-area-inset-bottom);
+  background: var(--admin-surface);
+  z-index: 39;
+  pointer-events: none;
+  display: none;
+}
+.admin-bottom-tab {
+  flex: 1;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 2px 0 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--admin-text-faint);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring);
+}
+.admin-bottom-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 28px;
+  border-radius: var(--radius-pill);
+  transition: background var(--dur-slow) ease, color var(--dur-slow) ease;
+}
+.admin-bottom-tab-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.admin-bottom-tab:active { transform: scale(0.92); }
+.admin-bottom-tab--active { color: var(--admin-accent); }
+.admin-bottom-tab--active .admin-bottom-tab-icon {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+}
+@media (max-width: 900px) {
+  .admin-bottom-tabs,
+  .admin-bottom-tabs-safezone { display: flex; }
+  /* Push admin content above the tab strip so list bottoms aren't
+     hidden behind it. Desktop reverts via the !important media gate
+     above this one — we don't want it forever-padded on desktop. */
+  .admin-shell .admin-content {
+    padding-bottom: calc(var(--admin-bottom-tabs-h) + max(calc(var(--sab) / 2), 10px) + 16px);
+  }
+}
+
+/* ── Bulk bar: switch to fixed-bottom at <1024px, sit ABOVE the tab strip ──
+   Sticky-inside-overflow is unreliable on iOS Safari; fixed at viewport
+   bottom is the reliable path. Above 1024px the desktop split-view
+   sticky pattern stays unchanged. */
+@media (max-width: 1023px) {
+  .admin-shell .admin-bulk-bar {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(var(--admin-bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
+    padding-bottom: 10px;
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.10);
+    z-index: 41;
+  }
+}
+/* At <900px the tab strip stops rendering at all (display:none kicks
+   in if no .admin-bottom-tabs is mounted) — defensive fallback so the
+   bulk bar still clears the home indicator. */
+
+/* ── Filter bar: 44px / 16px input on coarse pointers (no iOS zoom) ── */
+@media (hover: none) and (pointer: coarse) {
+  .admin-shell .admin-filter-bar-v2-search-input {
+    height: 44px;
+    font-size: 16px;
+    padding: 0 14px 0 36px;
+  }
+  .admin-shell .admin-filter-bar-v2-search-icon { left: 12px; }
+}
+
+/* ── Filter bar pills: horizontal scroll at <700px (no wrap) ── */
+@media (max-width: 700px) {
+  .admin-shell .admin-filter-bar-v2-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -14px;
+    padding: 4px 14px;
+    scrollbar-width: none;
+  }
+  .admin-shell .admin-filter-bar-v2-pills::-webkit-scrollbar { display: none; }
+  .admin-shell .admin-filter-bar-v2-pill {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    height: 36px;
+  }
+}
+
+/* ── Popover clipping at narrow viewports ── */
+@media (max-width: 500px) {
+  .admin-shell .admin-filter-facet-pop,
+  .admin-shell .admin-saved-views-pop {
+    left: 0;
+    right: auto;
+    min-width: min(280px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
+  }
+}
+
+/* ── AdminTable mobile cards: 44×44 checkbox cell with visible divider ── */
+@media (max-width: 700px) {
+  .admin-shell .admin-tbl-card { padding: 10px 12px; }
+  .admin-shell .admin-tbl-card-checkbox {
+    min-width: 44px;
+    min-height: 44px;
+    margin: -10px 8px -10px -12px;
+    padding: 0 12px;
+    border-right: 1px solid var(--admin-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+  }
+  .admin-shell .admin-tbl-card-checkbox .admin-tbl-checkbox { width: 22px; height: 22px; }
+}
+
+/* ── List ↔ detail slide animation on Users at <1024px ── */
+@media (max-width: 1023px) and (prefers-reduced-motion: no-preference) {
+  .admin-shell .admin-split-view[data-mobile-pane="detail"] .admin-split-view-detail {
+    animation: adminPaneSlideIn 220ms ease-out;
+  }
+}
+@keyframes adminPaneSlideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* ── Activity drawer: bottom-sheet variant on phones ──
+   At <700px the slide-from-right drawer conflicts with iOS Safari's
+   right-edge history-back gesture. Flipping it to a slide-up sheet
+   removes the conflict and matches platform conventions. */
+@media (max-width: 700px) {
+  .admin-shell .admin-activity-drawer[data-mobile-sheet="true"],
+  .admin-activity-drawer[data-mobile-sheet="true"] {
+    top: auto;
+    left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 85dvh;
+    border-left: none;
+    border-top: 1px solid var(--admin-border);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    transform: none;
+    animation: adminSheetSlideUp 240ms ease-out;
+    padding-bottom: max(var(--sab), 12px);
+  }
+  .admin-activity-drawer[data-mobile-sheet="true"]::before {
+    content: "";
+    display: block;
+    width: 36px; height: 4px;
+    border-radius: 2px;
+    background: var(--admin-border-strong);
+    margin: 6px auto 4px;
+    flex-shrink: 0;
+  }
+}
+@keyframes adminSheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
