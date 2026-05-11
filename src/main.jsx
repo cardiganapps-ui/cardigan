@@ -8,6 +8,7 @@ import { initSentry } from './lib/sentry'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './lib/skewProtection'
 import { installBodyScrollLock } from './lib/bodyScrollLock'
+import { isNative } from './lib/platform'
 
 /* Defer Sentry init to browser idle. The SDK is dynamic-imported
    inside initSentry() — without the deferral the chunk would still
@@ -48,8 +49,12 @@ createRoot(document.getElementById('root')).render(
    user taps it → we post {type:'SKIP_WAITING'} to the waiting SW →
    sw.js calls skipWaiting + clients.claim → controllerchange fires →
    we reload. `updateViaCache: 'none'` stops iOS from serving /sw.js
-   out of HTTP cache, so reg.update() actually hits the network. */
-if ('serviceWorker' in navigator) {
+   out of HTTP cache, so reg.update() actually hits the network.
+
+   Skipped inside Capacitor: the native shell ships its own embedded
+   bundle and OS-level update path; a SW would just precache assets the
+   WebView already has on disk. */
+if ('serviceWorker' in navigator && !isNative()) {
   window.addEventListener('load', async () => {
     const reg = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',

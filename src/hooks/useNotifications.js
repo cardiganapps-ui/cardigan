@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { putPushState, clearPushState } from "../pushStore";
+import { isNative } from "../lib/platform";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
@@ -32,9 +33,15 @@ async function readyWithTimeout(timeoutMs = 5000) {
 }
 
 /**
- * Detect whether we're on iOS but NOT installed as a standalone PWA.
+ * Detect whether we're on iOS Safari but NOT installed as a standalone PWA.
+ * Inside the native iOS shell this is irrelevant — Phase 2 swaps web-push
+ * for the Capacitor PushNotifications plugin (APNs), which doesn't require
+ * a home-screen install. Returning false here lets the iOS native build
+ * fall through to the normal enable() path even though the inner subscribe
+ * call won't actually do anything useful until the Phase 2 swap lands.
  */
 function isIOSNotStandalone() {
+  if (isNative()) return false;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone =
     window.navigator.standalone === true ||
