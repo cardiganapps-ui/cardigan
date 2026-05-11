@@ -45,7 +45,7 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
   const [recoveredKey, setRecoveredKey] = useState("");
   const [recoverErr, setRecoverErr] = useState("");
 
-  const { toast, show: showUndo, dismiss: dismissUndo } = useAdminUndoToast();
+  const { toast, show: showUndo, dismiss: dismissUndo, runUndo } = useAdminUndoToast();
 
   const userIdSafe = account.userId || "";
   const emailSafe = account.email || "";
@@ -402,7 +402,7 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
         </div>
       )}
 
-      <AdminUndoToast toast={toast} onDismiss={dismissUndo} />
+      <AdminUndoToast toast={toast} onDismiss={dismissUndo} runUndo={runUndo} />
     </div>
   );
 }

@@ -155,6 +155,9 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId, embedde
     onViewAs?.(id);
   };
 
+  // Tab bar — always-on shape so the strip doesn't reflow when an
+  // async-loaded sub-bundle (ratings) lands. The Ratings tab body
+  // renders an empty state when there are no ratings yet.
   const TABS = [
     { k: "profile",      l: t("admin.userDetail.tabProfile") },
     { k: "activity",     l: t("admin.userDetail.tabActivity") },
@@ -162,7 +165,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId, embedde
     { k: "usage",        l: t("admin.userDetail.tabUsage") },
     { k: "devices",      l: t("admin.userDetail.tabDevices") },
     { k: "audit",        l: t("admin.userDetail.tabAudit") },
-    ...(ratings.length > 0 ? [{ k: "ratings", l: t("admin.userDetail.tabRatings") }] : []),
+    { k: "ratings",      l: t("admin.userDetail.tabRatings") },
   ];
 
   return (
@@ -265,8 +268,10 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId, embedde
             />
           )}
 
-          {tab === "ratings" && ratings.length > 0 && (
-            <RatingsBlock ratings={ratings} t={t} embedded />
+          {tab === "ratings" && (
+            ratings.length > 0
+              ? <RatingsBlock ratings={ratings} t={t} embedded />
+              : <AdminEmpty title={t("admin.userDetail.ratingsEmpty")} />
           )}
 
           {tab === "subscription" && (

@@ -89,6 +89,7 @@ export function useAdminCommands({
   onClose,
   showToast,
   onViewAs,
+  currentAdminId,
 }) {
   const { verb, query: rest } = useMemo(() => parseQuery(query), [query]);
 
@@ -122,7 +123,16 @@ export function useAdminCommands({
       return { typeToAct: [], recent: recentCmds };
     }
 
-    const matches = matchAccounts(adminAccounts || [], rest);
+    let matches = matchAccounts(adminAccounts || [], rest);
+    // Defense-in-depth: skip self-targeting for destructive verbs.
+    // The server already rejects (admin-block-user / admin-delete-user
+    // both check userId === admin.id), but filtering here means the
+    // admin doesn't see a stray error toast for a no-op flight.
+    // `comp` / `uncomp` / `view as` intentionally allow self per the
+    // CLAUDE.md spec ("Used for the admin's own account…").
+    if (currentAdminId && (verb.key === "block" || verb.key === "unblock" || verb.key === "delete")) {
+      matches = matches.filter((a) => a.userId !== currentAdminId);
+    }
     if (matches.length === 0) return { typeToAct: [], recent: recentCmds };
 
     const typeToAct = matches.map((a) => {
@@ -182,7 +192,7 @@ export function useAdminCommands({
       };
     });
     return { typeToAct, recent: recentCmds };
-  }, [verb, rest, query, adminAccounts, isAdminUser, navigate, onClose, showToast, onViewAs]);
+  }, [verb, rest, query, adminAccounts, isAdminUser, navigate, onClose, showToast, onViewAs, currentAdminId]);
 
   return {
     typeToAct: commands.typeToAct,

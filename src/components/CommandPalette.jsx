@@ -51,7 +51,7 @@ function score(query, text) {
   return 0;
 }
 
-export default function CommandPalette({ open, onClose, onViewAsUser }) {
+export default function CommandPalette({ open, onClose, onViewAsUser, currentAdminId }) {
   const { t } = useT();
   const { navigate, patients, requestFabAction, openExpediente, isAdminUser, showToast } = useCardigan();
   // Admin account list — lazy-fetched the first time the palette opens
@@ -104,6 +104,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser }) {
     onClose,
     showToast,
     onViewAs: onViewAsUser,
+    currentAdminId,
   });
 
   const commands = useMemo(() => {

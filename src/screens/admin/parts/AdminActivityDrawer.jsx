@@ -58,12 +58,19 @@ export function AdminActivityDrawer({ open, onClose, onJumpToUser }) {
   useEscape(open ? onClose : null);
 
   // Lock body scroll while open. Mirrors the pattern in app sheets.
+  // Two effects: the first ties the lock to `open`, the second is a
+  // belt-and-suspenders unmount cleanup that always clears the inline
+  // override on tear-down, so a parent re-mount that snaps `open=true`
+  // away mid-render can't leave the body permanently un-scrollable.
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
+  useEffect(() => () => {
+    // Guarantee cleanup if the drawer is open at unmount time.
+    document.body.style.overflow = "";
+  }, []);
 
   // Lazy fetch on first open. Refetch each open is too aggressive for
   // a side-panel; admins can re-open if they want a fresh pull. The

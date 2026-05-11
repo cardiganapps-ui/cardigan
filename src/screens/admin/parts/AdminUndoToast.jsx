@@ -7,16 +7,17 @@ import { Toast } from "../../../components/Toast";
    window to undo by hitting the API the other way.
 
    Pattern in the caller:
-     const { toast, show, dismiss } = useAdminUndoToast();
+     const { toast, show, dismiss, runUndo } = useAdminUndoToast();
      await adminBlockUser(uid, true);
      show({ message: "Bloqueado…", onUndo: async () => adminBlockUser(uid, false) });
      ...
-     return (<><AdminUndoToast toast={toast} onDismiss={dismiss} /></>);
+     return (<><AdminUndoToast toast={toast} onDismiss={dismiss} runUndo={runUndo} /></>);
 
-   The undo callback runs whatever the caller passes. If the caller
-   wants to fully revert local UI state on undo, they handle that
-   inside `onUndo`. */
-export function AdminUndoToast({ toast, onDismiss }) {
+   `runUndo` is the idempotent entry point that the toast UI calls
+   when the user taps "Deshacer". The hook guards against re-entry so
+   a rapid double-tap (or a tap that lands during the auto-dismiss
+   fade) can't fire `onUndo` twice and flip the action back on. */
+export function AdminUndoToast({ toast, onDismiss, runUndo }) {
   if (!toast) return null;
   return (
     <Toast
@@ -25,13 +26,7 @@ export function AdminUndoToast({ toast, onDismiss }) {
       type="success"
       duration={toast.durationMs}
       actionLabel="Deshacer"
-      onRetry={async () => {
-        try { await toast.onUndo?.(); }
-        catch {
-          // Caller can show its own error toast if needed; swallow here.
-        }
-        finally { onDismiss?.(); }
-      }}
+      onRetry={() => runUndo?.(toast)}
       onDismiss={onDismiss}
     />
   );

@@ -64,8 +64,13 @@ export function AdminTable({
   const showEmpty = !loading && rows && rows.length === 0;
   const hasRowActions = typeof rowActions === "function";
 
+  // Defensive normalization: selectable callers should pass either a
+  // Set or an array; null/undefined falls back to an empty Set rather
+  // than crashing on `new Set(undefined)`.
   const selectionSet = selectable
-    ? (selectedKeys instanceof Set ? selectedKeys : new Set(selectedKeys || []))
+    ? (selectedKeys instanceof Set
+        ? selectedKeys
+        : new Set(Array.isArray(selectedKeys) ? selectedKeys : []))
     : null;
 
   const allRowKeys = (rows || []).map(rowKey);

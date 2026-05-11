@@ -1963,6 +1963,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         <CommandPalette
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
+          currentAdminId={user?.id}
           onViewAsUser={admin && !readOnly ? (uid) => {
             // Same impersonation entry as AdminLayout's onViewAs. We
             // snapshot the admin hash (empty when invoked from a non-admin

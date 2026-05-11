@@ -1573,6 +1573,9 @@ export default {
         toggle_code: "C\u00f3digo alternado",
         recover_encryption: "Recuperaci\u00f3n de cifrado",
         view_as: "Ver como usuario",
+        saved_view_create: "Vista guardada creada",
+        saved_view_update: "Vista guardada editada",
+        saved_view_delete: "Vista guardada eliminada",
       },
     },
 

@@ -17,7 +17,7 @@
    is recorded for audit but never used for ACL.
 */
 
-import { requireAdmin, getServiceClient } from "./_admin.js";
+import { requireAdmin, getServiceClient, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
 
 const SCREENS = new Set([
@@ -80,10 +80,17 @@ async function handleCreate(req, res, admin) {
     .select("id, screen, name, filter_state, created_by, created_at, updated_at")
     .single();
   if (error) return bad(res, "Insert failed", 500);
+  // Best-effort audit log. Logging failures never block the user op.
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    action: "saved_view_create",
+    payload: { id: data.id, screen: data.screen, name: data.name },
+    req,
+  });
   return res.status(200).json({ view: data });
 }
 
-async function handleUpdate(req, res) {
+async function handleUpdate(req, res, admin) {
   const body = req.body || {};
   if (!body.id || typeof body.id !== "string") return bad(res, "id requerido");
   const updates = {};
@@ -107,16 +114,36 @@ async function handleUpdate(req, res) {
     .single();
   if (error) return bad(res, "Update failed", 500);
   if (!data) return bad(res, "View no encontrada", 404);
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    action: "saved_view_update",
+    payload: {
+      id: data.id,
+      screen: data.screen,
+      changedKeys: Object.keys(updates),
+    },
+    req,
+  });
   return res.status(200).json({ view: data });
 }
 
-async function handleDelete(req, res) {
+async function handleDelete(req, res, admin) {
   const body = req.body || {};
   const id = body.id || req.query?.id;
   if (!id || typeof id !== "string") return bad(res, "id requerido");
   const svc = getServiceClient();
+  // Read row before delete so the audit payload retains the screen +
+  // name (otherwise the audit row is just an orphaned id).
+  const { data: prior } = await svc.from("admin_saved_views")
+    .select("id, screen, name").eq("id", id).maybeSingle();
   const { error } = await svc.from("admin_saved_views").delete().eq("id", id);
   if (error) return bad(res, "Delete failed", 500);
+  await logAuditEvent(svc, {
+    actorId: admin.id,
+    action: "saved_view_delete",
+    payload: prior ? { id: prior.id, screen: prior.screen, name: prior.name } : { id },
+    req,
+  });
   return res.status(200).json({ ok: true });
 }
 
@@ -125,8 +152,8 @@ async function handler(req, res) {
   if (!admin) return;
   if (req.method === "GET") return handleList(req, res);
   if (req.method === "POST") return handleCreate(req, res, admin);
-  if (req.method === "PATCH") return handleUpdate(req, res);
-  if (req.method === "DELETE") return handleDelete(req, res);
+  if (req.method === "PATCH") return handleUpdate(req, res, admin);
+  if (req.method === "DELETE") return handleDelete(req, res, admin);
   res.setHeader("Allow", "GET, POST, PATCH, DELETE");
   return res.status(405).json({ error: "Method not allowed" });
 }

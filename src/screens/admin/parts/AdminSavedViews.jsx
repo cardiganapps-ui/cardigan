@@ -57,7 +57,12 @@ export function AdminSavedViews({ screen, currentState, onApply, ariaLabel }) {
     fetchAdminSavedViews(screen)
       .then((rows) => { if (!cancelled) { setViews(rows); setLoaded(true); } })
       .catch((e) => { if (!cancelled) setError(e?.message || "Error"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        // Mirror the .then/.catch cancellation gate so a popover that
+        // unmounts mid-flight doesn't drop a stale setLoading(false)
+        // into a defunct render tree.
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, [open, loaded, loading, screen]);
 
