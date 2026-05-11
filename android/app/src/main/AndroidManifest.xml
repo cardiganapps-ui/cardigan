@@ -22,6 +22,36 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!--
+                Android App Links — auto-verified deep-link entry points for
+                cardigan.mx. autoVerify="true" tells Play that this intent
+                filter should be checked against the assetlinks.json file at
+                https://cardigan.mx/.well-known/assetlinks.json. When the
+                file's sha256_cert_fingerprints match the certificate that
+                signed this APK, the OS opens cardigan.mx links directly
+                in the app instead of routing them through Chrome.
+
+                Until the release keystore is generated and its SHA-256
+                lands in assetlinks.json, auto-verify will fail and links
+                continue opening in the browser (no regression vs today).
+                The intent filter still wins user-disambiguation prompts
+                ("Open with Cardigan?"), so a user can manually opt in.
+
+                Path patterns cover the entry points the cold-boot URL
+                parser in src/App.jsx handles: patient invite, influencer
+                code, app root (Stripe billing return arrives at /).
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="cardigan.mx" />
+                <data android:pathPattern="/i/.*" />
+                <data android:pathPattern="/c/.*" />
+                <data android:pathPattern="/" />
+            </intent-filter>
+
         </activity>
 
         <provider

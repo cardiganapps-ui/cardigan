@@ -774,6 +774,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // showSuccess is stable. Run once on mount only.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Native foreground push: the OS doesn't display the system tray
+  // banner when the app is in the foreground (Android suppresses it,
+  // iOS requires explicit opt-in via UNUserNotificationCenter delegate).
+  // src/lib/nativePush.js relays the FCM payload via a CustomEvent
+  // so we can surface it in-app via the existing Toast queue, keeping
+  // the foreground reminder reachable without leaving the running app.
+  useEffect(() => {
+    const handler = (e) => {
+      const detail = e?.detail || {};
+      const body = detail.body || detail.title || "Recordatorio";
+      showToast(body, "info");
+    };
+    window.addEventListener("cardigan-native-push-received", handler);
+    return () => window.removeEventListener("cardigan-native-push-received", handler);
+  }, [showToast]);
   // Surface mutationError from the data layer as a persistent,
   // keyed entry in the toast queue. The `mutation-error` key makes
   // showToast de-dup: re-raising replaces the existing entry rather

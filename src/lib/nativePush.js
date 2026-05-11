@@ -25,13 +25,18 @@ async function attachLifecycleListeners() {
   const { PushNotifications } = await import("@capacitor/push-notifications");
 
   // Foreground delivery — the OS doesn't display the notification
-  // banner automatically when the app is in the foreground. We log
-  // for now; Phase 3 will dispatch to the existing in-app Toast so
-  // a foreground reminder still surfaces visually.
+  // banner automatically when the app is in the foreground. Bridge to
+  // the in-app toast via a CustomEvent so App.jsx (where showToast is
+  // owned) can render it without coupling this module to React.
   await PushNotifications.addListener("pushNotificationReceived", (notification) => {
-    if (import.meta.env?.DEV) {
-      console.log("[nativePush] foreground notification:", notification);
-    }
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("cardigan-native-push-received", {
+      detail: {
+        title: notification?.title || "",
+        body: notification?.body || "",
+        data: notification?.data || {},
+      },
+    }));
   });
 
   // User tapped a notification. The payload's `data.url` (set

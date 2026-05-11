@@ -10,6 +10,7 @@ import './lib/skewProtection'
 import { installBodyScrollLock } from './lib/bodyScrollLock'
 import { isNative } from './lib/platform'
 import { initNativeShell } from './lib/nativeBoot'
+import { initNativeDeepLinks } from './lib/nativeDeepLinks'
 
 /* Defer Sentry init to browser idle. The SDK is dynamic-imported
    inside initSentry() — without the deferral the chunk would still
@@ -33,6 +34,10 @@ installBodyScrollLock()
 // Capacitor-only: hide the splash screen after first paint and align
 // the status bar style to the current theme. No-op on web.
 initNativeShell()
+
+// Capacitor-only: route App Links / Universal Links (cardigan.mx/i/<t>,
+// /c/<c>, ?billing=*, etc.) back into the in-app URL parser. No-op on web.
+initNativeDeepLinks()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
