@@ -530,7 +530,13 @@ body:has(.confirm-dialog-overlay) .bottom-tabs { display: none !important; }
 }
 .drawer-panel {
   position: absolute; top: 0; left: 0;
-  width: 78%; max-width: 300px;
+  /* Trimmed to match the admin drawer (64% / 220px max). Longest
+     consumer nav label is "Pacientes" (~85px); even with the avatar
+     header and the "Cerrar sesión" footer button, everything fits
+     under 200px content area. Frees up screen so users can see what
+     they're navigating between. Persistent-rail desktop widths
+     (240px / 260px) live in responsive.css and stay unchanged. */
+  width: 64%; max-width: 220px;
   height: 100%;
   background: var(--nav-bg);
   pointer-events: all;
