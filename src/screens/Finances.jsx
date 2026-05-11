@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { getClientColor } from "../data/seedData";
-import { IconCheck, IconTrendingUp, IconTrendingDown, IconUsers, IconPlus, IconDollar, IconRepeat, IconPaperclip, IconArrowDown, IconDownload } from "../components/Icons";
+import { IconCheck, IconTrendingUp, IconTrendingDown, IconUsers, IconPlus, IconDollar, IconRepeat, IconPaperclip, IconArrowDown, IconDownload, IconChevron } from "../components/Icons";
 import { Toggle } from "../components/Toggle";
 import { shortDateToISO, todayISO } from "../utils/dates";
 import { formatMXN } from "../utils/format";
@@ -23,6 +23,11 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [groupByClient, setGroupByClient] = useState(false);
+  // Patient-name keyed: which grouped row is expanded to show its
+  // individual payments. Independent of `expandedId` (which controls
+  // the per-payment edit/delete actions reveal) so the two expansion
+  // levels nest cleanly.
+  const [expandedGroup, setExpandedGroup] = useState(null);
   const [period, setPeriod] = useState("all");
   // Lazy-load window. Rendering every payment row up-front was the
   // single worst scroll-jank source on iOS Safari — a therapist with
@@ -54,6 +59,10 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(FINANCES_INITIAL_WINDOW);
+    // Collapse any open grouped-patient row when the filter set
+    // changes — the previously-expanded patient may no longer match,
+    // and re-anchoring scroll alongside a stale expansion looks broken.
+    setExpandedGroup(null);
   }, [period, groupByClient, payments.length]);
 
   const { filtered, totalFiltered, grouped } = useMemo(() => {
@@ -249,15 +258,52 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
                 const total = pList.reduce((s,p)=>s+p.amount,0);
                 const first = pList[0];
                 const patient = patients.find(pt => pt.name === name);
+                const isOpen = expandedGroup === name;
                 return (
-                  <div className="bal-row" key={name}>
-                    <Avatar initials={patient ? patient.initials : name.slice(0,2).toUpperCase()}
-                      color={getClientColor(first?.colorIdx ?? gi)} size="sm" />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div className="bal-name">{name}</div>
-                      <div className="bal-sub">{t("finances.paymentCount", { count: pList.length })}</div>
+                  <div key={name}>
+                    <div
+                      className="bal-row"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      onClick={() => setExpandedGroup(isOpen ? null : name)}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter" || ev.key === " ") {
+                          ev.preventDefault();
+                          setExpandedGroup(isOpen ? null : name);
+                        }
+                      }}
+                      style={{ cursor: "pointer", background: "var(--white)" }}
+                    >
+                      <Avatar initials={patient ? patient.initials : name.slice(0,2).toUpperCase()}
+                        color={getClientColor(first?.colorIdx ?? gi)} size="sm" />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div className="bal-name">{name}</div>
+                        <div className="bal-sub">{t("finances.paymentCount", { count: pList.length })}</div>
+                      </div>
+                      <div className="bal-amt amount-paid" style={{ display:"inline-flex", alignItems:"center", gap:8 }}>
+                        +{formatMXN(total)}
+                        <span aria-hidden="true" style={{
+                          display:"inline-flex",
+                          color:"var(--charcoal-xl)",
+                          transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+                          transition: "transform var(--dur-fast) var(--ease-spring)",
+                        }}>
+                          <IconChevron size={14} />
+                        </span>
+                      </div>
                     </div>
-                    <div className="bal-amt amount-paid">+{formatMXN(total)}</div>
+                    {isOpen && (
+                      // Nested chronological list — already filtered
+                      // by the active period (via `grouped`) and sorted
+                      // newest-first by the outer memo, matching the
+                      // ungrouped view's reading order. Cream wrapper
+                      // gives a subtle visual indent so the nested rows
+                      // read as "belonging to" the patient above them.
+                      <div style={{ background:"var(--cream)", borderTop:"1px solid var(--border-lt)" }}>
+                        {pList.map((p, i) => renderRow(p, i))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
