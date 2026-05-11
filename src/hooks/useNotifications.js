@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { putPushState, clearPushState } from "../pushStore";
 import { isNative } from "../lib/platform";
+import { subscribeNative, checkNativePermission } from "../lib/nativePush";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
@@ -77,6 +78,23 @@ async function postSubscription(subscription) {
 }
 
 /**
+ * POST a native push token to the server. Mirrors postSubscription but
+ * sends the { platform, token } shape that api/push-subscribe.js routes
+ * into a native push_subscriptions row (platform='ios'|'android',
+ * p256dh/auth null).
+ */
+async function postNativeToken({ platform, token: deviceToken }) {
+  const access = (await supabase.auth.getSession()).data?.session?.access_token;
+  if (!access) return { ok: false };
+  const resp = await fetch("/api/push-subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${access}` },
+    body: JSON.stringify({ platform, token: deviceToken }),
+  });
+  return { ok: resp.ok };
+}
+
+/**
  * Create a fresh browser-level push subscription and hand it to the
  * server. Shared by the normal `enable()` path and the reconciliation
  * path that repairs a missing browser subscription for a user whose
@@ -94,12 +112,16 @@ async function subscribeAndPersist() {
 }
 
 export function useNotifications(user) {
-  const supported =
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window &&
-    !!VAPID_PUBLIC_KEY;
+  // Native is always supported (the Capacitor plugin handles the platform
+  // detail). On web we require service worker + PushManager + the VAPID
+  // public key — the existing strict gate.
+  const supported = isNative()
+    ? true
+    : (typeof window !== "undefined" &&
+       "serviceWorker" in navigator &&
+       "PushManager" in window &&
+       "Notification" in window &&
+       !!VAPID_PUBLIC_KEY);
 
   const [permission, setPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "default"
@@ -132,6 +154,20 @@ export function useNotifications(user) {
       const prefEnabled = !!(data && data.enabled);
       if (data) {
         setReminderMinutesState(data.reminder_minutes || 30);
+      }
+
+      // Native path: there's no service-worker subscription to verify —
+      // the device token is opaque and FCM/APNs handle rotation. Read
+      // the OS permission, trust the server's enabled flag, and exit.
+      // The user can explicitly re-enable to refresh the token.
+      if (isNative()) {
+        const nativePerm = await checkNativePermission();
+        if (cancelled) return;
+        setPermission(nativePerm === "prompt" ? "default" : nativePerm);
+        setEnabled(prefEnabled && nativePerm === "granted");
+        if (prefEnabled && nativePerm === "denied") setReconciledOff(true);
+        setLoading(false);
+        return;
       }
 
       // Sync OS-level permission state.
@@ -226,6 +262,36 @@ export function useNotifications(user) {
     if (!user) return { ok: false, code: "no-session" };
     if (needsInstall) return { ok: false, code: "install-required" };
 
+    // Native branch: Capacitor PushNotifications plugin handles permission
+    // + token registration internally. We skip the web's pushManager
+    // dance and just POST the resulting token to the server.
+    if (isNative()) {
+      setEnabled(true);
+      setReconciledOff(false);
+      const reg = await subscribeNative();
+      if (!reg.ok) {
+        setEnabled(false);
+        if (reg.code === "permission-denied") setPermission("denied");
+        return { ok: false, code: reg.code === "permission-denied" ? "permission-denied" : "subscribe-failed" };
+      }
+      setPermission("granted");
+      const { ok: serverOk } = await postNativeToken({ platform: reg.platform, token: reg.token });
+      if (!serverOk) {
+        setEnabled(false);
+        return { ok: false, code: "server-error" };
+      }
+      await supabase.from("notification_preferences").upsert(
+        {
+          user_id: user.id,
+          enabled: true,
+          reminder_minutes: reminderMinutes,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+      return { ok: true };
+    }
+
     // Permission is the one step that genuinely blocks on user input —
     // handle it before flipping optimistic state so a denial doesn't
     // cause a visible flicker of the toggle turning on then off.
@@ -292,6 +358,25 @@ export function useNotifications(user) {
     // toggle on).
     setEnabled(false);
 
+    // Native: there's no plugin-level unsubscribe (APNs/FCM tokens are
+    // managed by the OS and only revoked by uninstalling the app or
+    // toggling permission in system Settings). We just flip the
+    // preferences row off so the cron stops fanning out to this user.
+    // The actual native subscription rows in push_subscriptions stay —
+    // they're harmless until the user re-enables or the token rotates.
+    if (isNative()) {
+      const { error } = await supabase.from("notification_preferences").upsert(
+        { user_id: user.id, enabled: false, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+      if (error) {
+        if (import.meta.env.DEV) console.error("native disable upsert error:", error);
+        setEnabled(true);
+        return { ok: false, code: "server-error" };
+      }
+      return { ok: true };
+    }
+
     try {
       const reg = await readyWithTimeout();
       const subscription = reg ? await reg.pushManager.getSubscription() : null;
@@ -335,6 +420,28 @@ export function useNotifications(user) {
   const sendTest = useCallback(async () => {
     if (!user) return { ok: false, code: "no-session" };
     if (!supported) return { ok: false, code: "unsupported" };
+
+    // Native: no browser-subscription pre-sync needed — enable() already
+    // stored the device token on the server. Skip straight to the test.
+    if (isNative()) {
+      try {
+        const access = (await supabase.auth.getSession()).data?.session?.access_token;
+        if (!access) return { ok: false, code: "no-session" };
+        const resp = await fetch("/api/push-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${access}` },
+        });
+        const body = await resp.json().catch(() => ({}));
+        if (!resp.ok) return { ok: false, code: "server-error" };
+        if (body?.sent) return { ok: true };
+        const results = Array.isArray(body?.results) ? body.results : [];
+        if (results.length === 0) return { ok: false, code: "no-subscription" };
+        return { ok: false, code: "send-failed" };
+      } catch (err) {
+        if (import.meta.env.DEV) console.error("native sendTest error:", err);
+        return { ok: false, code: "server-error" };
+      }
+    }
 
     // 1. Ensure the server has a current browser subscription. Best
     //    effort — if any step fails we still let the server decide,

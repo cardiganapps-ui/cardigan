@@ -3,6 +3,52 @@ import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_push.js";
 import { withSentry } from "./_sentry.js";
 
+// Accepts EITHER of two shapes:
+//
+//   Web Push (existing):
+//     { subscription: { endpoint, keys: { p256dh, auth } } }
+//   Native (Phase 2.2+):
+//     { platform: 'ios' | 'android', token: string }
+//
+// Both upsert into push_subscriptions keyed on endpoint (for native rows
+// the FCM/APNs token IS the endpoint). The platform column distinguishes
+// the rows so the cron's fan-out can route each to the correct send path
+// (web-push for 'web', FCM for 'android', APNs for 'ios').
+
+function parseBody(body) {
+  if (!body || typeof body !== "object") return { error: "Invalid body" };
+
+  // Native shape
+  if (body.platform || body.token) {
+    const platform = body.platform;
+    const token = typeof body.token === "string" ? body.token.trim() : "";
+    if (platform !== "ios" && platform !== "android") {
+      return { error: "Invalid platform" };
+    }
+    if (!token) return { error: "Missing token" };
+    return {
+      kind: "native",
+      platform,
+      endpoint: token,
+      p256dh: null,
+      auth: null,
+    };
+  }
+
+  // Web shape
+  const sub = body.subscription;
+  if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
+    return { error: "Invalid subscription" };
+  }
+  return {
+    kind: "web",
+    platform: "web",
+    endpoint: sub.endpoint,
+    p256dh: sub.keys.p256dh,
+    auth: sub.keys.auth,
+  };
+}
+
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -10,37 +56,38 @@ async function handler(req, res) {
     const user = await getAuthUser(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-    const { subscription } = req.body || {};
-    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
-      return res.status(400).json({ error: "Invalid subscription" });
-    }
+    const parsed = parseBody(req.body);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
 
     const supabase = getServiceClient();
 
     // Opaque one-shot token that lets the SW re-register the subscription
     // after a browser-initiated rotation without being able to hold a JWT.
-    // The SW stores it in IDB; the unauthenticated /api/push-resubscribe
-    // endpoint matches on (endpoint, resub_token) to authorize the swap.
+    // Only meaningful for web rows — native push doesn't have a
+    // service-worker rotation flow — but harmless to mint either way and
+    // keeps the response shape consistent for the client.
     const resubToken = crypto.randomBytes(32).toString("base64url");
 
-    // Upsert push subscription (unique on endpoint). We omit created_at
-    // so the column's DEFAULT now() fires on initial insert but isn't
-    // overwritten on every mount-time re-post — preserves accurate row
-    // age for future TTL / cleanup sweeps.
+    // Upsert push subscription (unique on endpoint). The platform +
+    // shape constraints on push_subscriptions ensure web rows keep
+    // p256dh/auth and native rows null them out — see
+    // supabase/migrations/063_native_push_subscriptions.sql.
     const { error: subError } = await supabase
       .from("push_subscriptions")
       .upsert(
         {
           user_id: user.id,
-          endpoint: subscription.endpoint,
-          p256dh: subscription.keys.p256dh,
-          auth: subscription.keys.auth,
+          platform: parsed.platform,
+          endpoint: parsed.endpoint,
+          p256dh: parsed.p256dh,
+          auth: parsed.auth,
           resub_token: resubToken,
         },
         { onConflict: "endpoint" }
       );
 
     if (subError) {
+      console.error("push_subscriptions upsert error:", subError.message);
       return res.status(500).json({ error: "Failed to save subscription" });
     }
 
