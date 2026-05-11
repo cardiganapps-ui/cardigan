@@ -1720,6 +1720,7 @@ export default {
 
     userDetail: {
       tabProfile: "Perfil",
+      tabActivity: "Actividad",
       tabSubscription: "Suscripci\u00f3n",
       tabUsage: "Uso",
       tabDevices: "Dispositivos",

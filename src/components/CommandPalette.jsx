@@ -4,6 +4,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useT } from "../i18n/index";
 import { fetchAllAccounts } from "../hooks/useCardiganData";
+import { useAdminCommands, recordAdminRecent } from "../screens/admin/parts/useAdminCommands";
 
 const NAV_COMMANDS = [
   { id: "nav:home",     group: "Navegar", labelKey: "nav.home",      screen: "home",     Icon: IconHome },
@@ -50,9 +51,9 @@ function score(query, text) {
   return 0;
 }
 
-export default function CommandPalette({ open, onClose }) {
+export default function CommandPalette({ open, onClose, onViewAsUser }) {
   const { t } = useT();
-  const { navigate, patients, requestFabAction, openExpediente, isAdminUser } = useCardigan();
+  const { navigate, patients, requestFabAction, openExpediente, isAdminUser, showToast } = useCardigan();
   // Admin account list — lazy-fetched the first time the palette opens
   // for an admin so non-admin sessions never make this round-trip.
   const [adminAccounts, setAdminAccounts] = useState([]);
@@ -92,6 +93,19 @@ export default function CommandPalette({ open, onClose }) {
       .catch(() => { adminFetchedRef.current = false; });
   }, [open, isAdminUser]);
 
+  // Admin-only type-to-act parser + recent items. Returns synthetic
+  // commands prefixed by verb (block/comp/view as/etc.) plus a recent
+  // list when no query is typed.
+  const adminCmds = useAdminCommands({
+    query,
+    adminAccounts,
+    isAdminUser,
+    navigate,
+    onClose,
+    showToast,
+    onViewAs: onViewAsUser,
+  });
+
   const commands = useMemo(() => {
     const navCmds = NAV_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { navigate(c.screen); onClose(); } }));
     const actionCmds = ACTION_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { requestFabAction?.(c.fabKey); onClose(); } }));
@@ -111,22 +125,43 @@ export default function CommandPalette({ open, onClose }) {
           group: "Admin · usuarios",
           label: a.fullName ? `${a.fullName} · ${a.email || ""}` : (a.email || a.userId.slice(0, 8) + "…"),
           Icon: IconUsers,
-          run: () => { navigate(`admin/users/${a.userId}`); onClose(); },
+          run: () => {
+            recordAdminRecent(`admin:user:${a.userId}`);
+            navigate(`admin/users/${a.userId}`);
+            onClose();
+          },
         }))
       : [];
-    return [...navCmds, ...actionCmds, ...adminNavCmds, ...patientCmds, ...adminAccountCmds];
-  }, [patients, t, navigate, requestFabAction, openExpediente, onClose, isAdminUser, adminAccounts]);
+    // Order: Recent (no-query only) → Acciones rápidas (verb-prefixed) →
+    // navigate / actions / patients / admin nav / admin accounts.
+    return [
+      ...adminCmds.recent,
+      ...adminCmds.typeToAct,
+      ...navCmds,
+      ...actionCmds,
+      ...adminNavCmds,
+      ...patientCmds,
+      ...adminAccountCmds,
+    ];
+  }, [patients, t, navigate, requestFabAction, openExpediente, onClose, isAdminUser, adminAccounts, adminCmds]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) {
-      // No query: show everything ordered by group
+      // No query: show everything ordered by group (pinned items already
+      // at the head of `commands`).
       return commands;
     }
-    return commands
+    // Pinned commands (admin type-to-act + recent) skip fuzzy scoring —
+    // they're already context-relevant to the query (verb-prefix matched
+    // upstream). The rest are filtered by score and sorted.
+    const pinned = commands.filter((c) => c.pinned);
+    const rest = commands
+      .filter((c) => !c.pinned)
       .map((c) => ({ cmd: c, s: score(query, c.label) }))
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s)
       .map((x) => x.cmd);
+    return [...pinned, ...rest];
   }, [commands, query]);
 
   // Reset selection to the top whenever the query changes (new filtered list).

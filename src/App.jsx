@@ -1960,7 +1960,21 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         )}
         {!readOnly && !hideFab && <QuickActions />}
         {!hideBottomTabs && <BottomTabs />}
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          onViewAsUser={admin && !readOnly ? (uid) => {
+            // Same impersonation entry as AdminLayout's onViewAs. We
+            // snapshot the admin hash (empty when invoked from a non-admin
+            // screen) so the read-only banner's exit returns to wherever
+            // the admin invoked the action from.
+            viewAsOriginHashRef.current = typeof window !== "undefined"
+              ? window.location.hash
+              : null;
+            setViewAsUserId(uid);
+            navigate("home");
+          } : undefined}
+        />
 
         {user && !demo && !readOnly && (
           <BugReportSheet open={bugReportOpen} onClose={() => setBugReportOpen(false)} user={user} screen={screen} />

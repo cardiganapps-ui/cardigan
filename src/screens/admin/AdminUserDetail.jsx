@@ -8,6 +8,7 @@ import { useAuditLabel } from "./parts/auditLabels";
 import { AdminTable } from "./parts/AdminTable";
 import { AdminBadge } from "./parts/AdminBadge";
 import { AdminEmpty } from "./parts/AdminEmpty";
+import { UserActivityTab } from "./parts/UserActivityTab";
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -156,10 +157,12 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId, embedde
 
   const TABS = [
     { k: "profile",      l: t("admin.userDetail.tabProfile") },
+    { k: "activity",     l: t("admin.userDetail.tabActivity") },
     { k: "subscription", l: t("admin.userDetail.tabSubscription") },
     { k: "usage",        l: t("admin.userDetail.tabUsage") },
     { k: "devices",      l: t("admin.userDetail.tabDevices") },
     { k: "audit",        l: t("admin.userDetail.tabAudit") },
+    ...(ratings.length > 0 ? [{ k: "ratings", l: t("admin.userDetail.tabRatings") }] : []),
   ];
 
   return (
@@ -250,10 +253,20 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId, embedde
                   ? `${privacy.latest_consent_version} · ${fmtDateTime(privacy.latest_consent_at)}`
                   : "—"],
               ].filter(Boolean)} />
-              {ratings.length > 0 && (
-                <RatingsBlock ratings={ratings} t={t} />
-              )}
             </>
+          )}
+
+          {tab === "activity" && (
+            <UserActivityTab
+              profile={profile}
+              subscription={subscription}
+              privacy={privacy}
+              audit={audit}
+            />
+          )}
+
+          {tab === "ratings" && ratings.length > 0 && (
+            <RatingsBlock ratings={ratings} t={t} embedded />
           )}
 
           {tab === "subscription" && (
@@ -476,12 +489,14 @@ function DefList({ rows }) {
    Profile tab when at least one row exists. Each row: prompt kind,
    N stars (rendered as ★ characters for compactness — admin tool,
    no need for the full SVG icon), optional comment, timestamp. */
-function RatingsBlock({ ratings, t }) {
+function RatingsBlock({ ratings, t, embedded = false }) {
   return (
-    <div style={{ marginTop: 24 }}>
-      <div className="admin-eyebrow" style={{ marginBottom: 10 }}>
-        {t("admin.userDetail.sectionRatings")}
-      </div>
+    <div style={{ marginTop: embedded ? 0 : 24 }}>
+      {!embedded && (
+        <div className="admin-eyebrow" style={{ marginBottom: 10 }}>
+          {t("admin.userDetail.sectionRatings")}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {ratings.map((r) => (
           <div

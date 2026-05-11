@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconTrash, IconChevron } from "../../../components/Icons";
+import { IconTrash, IconChevron, IconKey } from "../../../components/Icons";
 import { useT } from "../../../i18n/index";
 import { haptic } from "../../../utils/haptics";
 import { PROFESSIONS } from "../../../data/constants";
@@ -9,40 +9,29 @@ import {
   adminDeleteUser,
   adminUpdateProfession,
   adminGrantComp,
+  adminRecoverEncryption,
 } from "../../../hooks/useCardiganData";
+import { useAdminUndoToast } from "./useAdminUndoToast";
+import { AdminUndoToast } from "./AdminUndoToast";
 
 /* ── UserActionsMenu ──
-   The admin-action surface for User Detail. Wraps:
-     - View as user (primary)
-     - Block / Unblock (with confirmation)
-     - Delete (with type-to-confirm)
-     - Change profession (two-step)
-     - Toggle comp (always-free) access
+   The admin-action surface for User Detail. v2 changes:
 
-   Default layout:
-     [ Ver como ]    [ Más opciones ▾ ]
-     ▼ when expanded:
-       Profession  [select]
-       Acceso      [comp toggle]
-       [Bloquear / Desbloquear]   [Eliminar]
-
-   The expandable disclosure replaces the previous always-expanded
-   three-row stack that ate ~150px of vertical real estate. The
-   primary "Ver como" remains one tap away; secondary actions are
-   one tap behind a clear affordance.
-
-   `compact` prop is a legacy escape hatch (was used by an inline
-   AccountRow that no longer exists) and now does nothing — left in
-   the signature to avoid breaking any caller that still passes it.
+     • Block / Unblock now fires immediately and surfaces an 8s undo
+       toast ("Bloqueado · Deshacer") — replaces the two-tap inline-confirm
+       flow. Reversal calls the same RPC the other way.
+     • Comp grant / revoke gains the same undo-toast pattern.
+     • Recuperar cifrado is a new menu item under "Más opciones" that
+       calls /api/admin-recover-encryption and shows the recovered
+       base64 master key in a copy-friendly dialog.
+     • Delete keeps the typed-confirm dialog (the destructive path stays
+       deliberate — undo can't bring a deleted user back).
 */
 // eslint-disable-next-line no-unused-vars
 export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, compact = false }) {
   const { t } = useT();
   const { setProfessionLocal } = useCardigan();
-  const [mode, setMode] = useState("default"); // default | confirmBlock | confirmDelete
-  // Disclosure state for the secondary action panel. Collapsed by
-  // default — the admin sees only "Ver como" + "Más opciones ▾"
-  // until they explicitly need a destructive or configuration action.
+  const [mode, setMode] = useState("default"); // default | confirmDelete | recoverShow
   const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -52,10 +41,12 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
   const [professionErr, setProfessionErr] = useState("");
   const [compBusy, setCompBusy] = useState(false);
   const [compErr, setCompErr] = useState("");
+  const [recoverBusy, setRecoverBusy] = useState(false);
+  const [recoveredKey, setRecoveredKey] = useState("");
+  const [recoverErr, setRecoverErr] = useState("");
 
-  // Defensive: account.userId should always be a uuid, but guarding
-  // means a bad row from a future RPC change can't crash the entire
-  // admin surface. Same for email — null-safe before .trim().
+  const { toast, show: showUndo, dismiss: dismissUndo } = useAdminUndoToast();
+
   const userIdSafe = account.userId || "";
   const emailSafe = account.email || "";
   const isSelf = !!userIdSafe && userIdSafe === currentAdminId;
@@ -65,13 +56,6 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
     : false;
 
   const reset = () => { setMode("default"); setErr(""); setDeleteConfirmText(""); };
-
-  const doBlock = async (block) => {
-    setBusy(true); setErr("");
-    try { await adminBlockUser(account.userId, block); onAction?.(); reset(); }
-    catch (e) { setErr(e.message || t("admin.actionError")); }
-    finally { setBusy(false); }
-  };
 
   const doDelete = async () => {
     setBusy(true); setErr("");
@@ -96,26 +80,111 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
     }
   };
 
-  if (mode === "confirmBlock") {
+  /* Fire-and-undo for block/unblock. The mutation happens immediately;
+     the toast just exposes an 8s window to fire the reverse mutation. */
+  const toggleBlock = async () => {
+    const wasBlocked = !!account.blocked;
+    setBusy(true); setErr("");
+    try {
+      await adminBlockUser(account.userId, !wasBlocked);
+      haptic.tap();
+      onAction?.();
+      showUndo({
+        message: wasBlocked ? "Desbloqueado · 8s para deshacer" : "Bloqueado · 8s para deshacer",
+        onUndo: async () => {
+          await adminBlockUser(account.userId, wasBlocked);
+          onAction?.();
+        },
+      });
+    } catch (e) {
+      setErr(e.message || t("admin.actionError"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleComp = async () => {
+    const wasGranted = !!account.compGranted;
+    setCompBusy(true); setCompErr("");
+    try {
+      await adminGrantComp(account.userId, !wasGranted);
+      haptic.tap();
+      onAction?.();
+      showUndo({
+        message: wasGranted ? "Comp revocada · 8s para deshacer" : "Comp otorgada · 8s para deshacer",
+        onUndo: async () => {
+          await adminGrantComp(account.userId, wasGranted);
+          onAction?.();
+        },
+      });
+    } catch (e) {
+      setCompErr(e.message || t("admin.actionError"));
+    } finally {
+      setCompBusy(false);
+    }
+  };
+
+  const doRecoverEncryption = async () => {
+    setRecoverBusy(true); setRecoverErr(""); setRecoveredKey("");
+    try {
+      const { masterKey } = await adminRecoverEncryption(account.userId);
+      setRecoveredKey(masterKey || "");
+      setMode("recoverShow");
+      onAction?.();
+    } catch (e) {
+      setRecoverErr(e.message || t("admin.actionError"));
+    } finally {
+      setRecoverBusy(false);
+    }
+  };
+
+  if (mode === "recoverShow") {
     return (
       <div style={{ padding: "0 0 4px" }}>
-        <div style={{ background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)", borderRadius: "var(--radius)", padding: "12px 14px", marginBottom: 10 }}>
-          <div style={{ fontFamily: "var(--font-d)", fontSize: "var(--text-md)", fontWeight: 800, color: "var(--charcoal)", marginBottom: 4 }}>
-            {account.blocked
-              ? t("admin.unblockTitle", { email: emailLabel })
-              : t("admin.blockTitle", { email: emailLabel })}
+        <div style={{
+          background: "var(--admin-accent-soft)",
+          borderRadius: "var(--radius)",
+          padding: "12px 14px",
+          marginBottom: 10,
+        }}>
+          <div style={{ fontFamily: "var(--font-d)", fontSize: 14, fontWeight: 800, color: "var(--admin-text)", marginBottom: 4 }}>
+            Clave maestra recuperada
           </div>
-          <div style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.5 }}>
-            {account.blocked ? t("admin.unblockBody") : t("admin.blockBody")}
+          <div style={{ fontSize: 12.5, color: "var(--admin-text-meta)", lineHeight: 1.5, marginBottom: 8 }}>
+            Envía esta clave a {emailLabel} fuera de línea (correo cifrado o Signal).
+            El usuario la usará para restablecer su frase de paso.
           </div>
+          <textarea
+            readOnly
+            value={recoveredKey}
+            rows={3}
+            style={{
+              width: "100%", fontFamily: "var(--admin-mono)", fontSize: 11,
+              padding: 10, border: "1px solid var(--admin-border)",
+              borderRadius: 6, background: "var(--admin-surface)",
+              color: "var(--admin-text)", resize: "none",
+            }}
+            onFocus={(e) => e.target.select()}
+          />
         </div>
-        {err && <div className="form-error">{err}</div>}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <button className="btn btn-secondary" onClick={reset} disabled={busy}>{t("cancel")}</button>
-          <button className="btn"
-            style={{ background: account.blocked ? "var(--green)" : "var(--amber)", color: "var(--white)", boxShadow: "none" }}
-            onClick={() => doBlock(!account.blocked)} disabled={busy}>
-            {busy ? t("admin.processing") : (account.blocked ? t("admin.unblockConfirm") : t("admin.blockConfirm"))}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => { setRecoveredKey(""); reset(); }}
+          >
+            Cerrar
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{ background: "var(--admin-accent)", color: "var(--admin-surface)", boxShadow: "none" }}
+            onClick={async () => {
+              try { await navigator.clipboard?.writeText(recoveredKey); haptic.tap(); }
+              catch { /* clipboard blocked */ }
+            }}
+          >
+            Copiar clave
           </button>
         </div>
       </div>
@@ -130,10 +199,10 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
             <IconTrash size={22} />
           </div>
         </div>
-        <div style={{ fontFamily: "var(--font-d)", fontSize: "var(--text-md)", fontWeight: 800, color: "var(--charcoal)", textAlign: "center", marginBottom: 6, letterSpacing: "-0.2px" }}>
+        <div style={{ fontFamily: "var(--font-d)", fontSize: "var(--text-md)", fontWeight: 800, color: "var(--admin-text)", textAlign: "center", marginBottom: 6, letterSpacing: "-0.2px" }}>
           {t("admin.deleteAccountTitle", { email: emailLabel })}
         </div>
-        <div style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.5, textAlign: "center", marginBottom: 12 }}>
+        <div style={{ fontSize: "var(--text-sm)", color: "var(--admin-text-meta)", lineHeight: 1.5, textAlign: "center", marginBottom: 12 }}>
           {t("admin.deleteAccountWarning")}
         </div>
 
@@ -141,7 +210,7 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
           <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--red)", marginBottom: 6 }}>
             {t("admin.deleteAccountLost")}
           </div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.6 }}>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: "var(--text-sm)", color: "var(--admin-text-meta)", lineHeight: 1.6 }}>
             <li>{t("admin.deleteAccountLostData")}</li>
             <li>{t("admin.deleteAccountLostFiles")}</li>
             <li>{t("admin.deleteAccountLostAuth", { email: emailLabel })}</li>
@@ -149,15 +218,15 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
         </div>
 
         {!account.blocked && (
-          <div style={{ background: "var(--teal-pale)", borderRadius: "var(--radius)", padding: "10px 14px", marginBottom: 10 }}>
-            <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--teal-dark)", marginBottom: 4 }}>
+          <div style={{ background: "var(--admin-accent-soft)", borderRadius: "var(--radius)", padding: "10px 14px", marginBottom: 10 }}>
+            <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--admin-accent)", marginBottom: 4 }}>
               {t("admin.deleteAccountAlternativeTitle")}
             </div>
-            <div style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.5, marginBottom: 10 }}>
+            <div style={{ fontSize: "var(--text-sm)", color: "var(--admin-text-meta)", lineHeight: 1.5, marginBottom: 10 }}>
               {t("admin.deleteAccountAlternativeBody")}
             </div>
             <button type="button"
-              onClick={() => { setDeleteConfirmText(""); setErr(""); setMode("confirmBlock"); }}
+              onClick={() => { setDeleteConfirmText(""); setErr(""); reset(); toggleBlock(); }}
               className="btn btn-secondary" style={{ width: "100%", height: 36, fontSize: "var(--text-sm)" }}>
               {t("admin.deleteAccountAlternativeCta")}
             </button>
@@ -192,12 +261,9 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
   // Default mode — compact action bar with disclosure for secondary actions.
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* Primary action bar — Ver como (one tap) + a single Más
-          opciones disclosure for everything else. Single horizontal
-          row at any viewport. */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button className="btn"
-          style={{ flex: "1 1 160px", height: 36, fontSize: "var(--text-sm)", background: "var(--teal)", color: "var(--white)", boxShadow: "none", minWidth: 0 }}
+          style={{ flex: "1 1 160px", height: 36, fontSize: "var(--text-sm)", background: "var(--admin-accent)", color: "var(--admin-surface)", boxShadow: "none", minWidth: 0 }}
           onClick={() => onViewAs?.(account.userId)}>
           {t("admin.view")}
         </button>
@@ -207,8 +273,8 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
           style={{
             height: 36, padding: "0 14px", fontSize: "var(--text-sm)", fontWeight: 600,
             display: "inline-flex", alignItems: "center", gap: 6,
-            background: "var(--white)", border: "1px solid var(--border)",
-            borderRadius: "var(--radius-pill)", color: "var(--charcoal-md)",
+            background: "var(--admin-surface)", border: "1px solid var(--admin-border)",
+            borderRadius: "var(--radius-pill)", color: "var(--admin-text-meta)",
             cursor: "pointer", fontFamily: "inherit",
             transition: "background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease",
           }}>
@@ -219,18 +285,16 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
         </button>
       </div>
 
-      {/* Disclosure panel — collapsed by default. Holds profession,
-          comp, block, delete in a single tidy stack. */}
       {moreOpen && (
         <div style={{
           marginTop: 14, paddingTop: 14,
-          borderTop: "1px solid var(--border-lt)",
+          borderTop: "1px solid var(--admin-border)",
           display: "flex", flexDirection: "column", gap: 12,
           animation: "fadeIn 0.18s ease",
         }}>
           {/* Profession row */}
           <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 140px) 1fr", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--charcoal-xl)", fontWeight: 700 }}>
+            <span style={{ fontSize: 12, color: "var(--admin-text-faint)", fontWeight: 700 }}>
               {t("adminProfession.label")}
             </span>
             <select
@@ -250,7 +314,7 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
           {pendingProfession && (
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn"
-                style={{ flex: 1, height: 32, fontSize: "var(--text-sm)", background: "var(--teal)", color: "var(--white)", boxShadow: "none" }}
+                style={{ flex: 1, height: 32, fontSize: "var(--text-sm)", background: "var(--admin-accent)", color: "var(--admin-surface)", boxShadow: "none" }}
                 disabled={professionBusy}
                 onClick={() => doChangeProfession(pendingProfession)}>
                 {professionBusy ? t("adminProfession.saving") : t("adminProfession.confirm")}
@@ -265,62 +329,80 @@ export function UserActionsMenu({ account, currentAdminId, onViewAs, onAction, c
           )}
           {professionErr && <div className="form-error" style={{ marginTop: 0 }}>{professionErr}</div>}
 
-          {/* Comp row — same grid as profession so labels align */}
+          {/* Comp row — fire-and-undo */}
           <div style={{ display: "grid", gridTemplateColumns: "minmax(120px, 140px) 1fr", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--charcoal-xl)", fontWeight: 700 }}>
+            <span style={{ fontSize: 12, color: "var(--admin-text-faint)", fontWeight: 700 }}>
               {t("admin.compAccessLabel")}
             </span>
             <button
               className="btn"
               style={{
                 height: 34, fontSize: "var(--text-sm)", padding: "0 14px", boxShadow: "none",
-                background: account.compGranted ? "var(--green-bg)" : "var(--cream)",
-                color: account.compGranted ? "var(--green)" : "var(--charcoal-md)",
+                background: account.compGranted ? "rgba(47, 143, 92, 0.10)" : "var(--admin-surface-2)",
+                color: account.compGranted ? "var(--admin-success)" : "var(--admin-text-meta)",
+                border: "1px solid var(--admin-border)",
                 justifySelf: "start",
               }}
               disabled={compBusy}
-              onClick={async () => {
-                setCompBusy(true); setCompErr("");
-                try {
-                  await adminGrantComp(account.userId, !account.compGranted);
-                  haptic.tap();
-                  onAction?.();
-                } catch (e) {
-                  setCompErr(e.message || "Error");
-                } finally {
-                  setCompBusy(false);
-                }
-              }}>
+              onClick={toggleComp}>
               {compBusy ? "…" : account.compGranted ? t("admin.compRevoke") : t("admin.compGrant")}
             </button>
           </div>
           {compErr && <div className="form-error" style={{ marginTop: 0 }}>{compErr}</div>}
 
-          {/* Destructive actions — visually grouped at the bottom of
-              the panel so they read as "consequence-bearing" rather
-              than "primary actions". Self-protection guards keep the
-              admin from blocking/deleting their own account. */}
+          {/* Destructive actions row. Block now uses fire-and-undo (no
+              two-tap confirm); Delete keeps the typed-confirm dialog. */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
             <button className="btn"
               style={{
                 height: 36, fontSize: "var(--text-sm)", boxShadow: "none",
-                background: account.blocked ? "var(--green-bg)" : "var(--amber-bg)",
-                color: account.blocked ? "var(--green)" : "var(--amber)",
-                opacity: isSelf ? 0.5 : 1,
+                background: account.blocked ? "rgba(47, 143, 92, 0.10)" : "rgba(180, 122, 20, 0.10)",
+                color: account.blocked ? "var(--admin-success)" : "var(--admin-warn)",
+                border: "1px solid var(--admin-border)",
+                opacity: isSelf || busy ? 0.5 : 1,
               }}
-              disabled={isSelf}
-              onClick={() => { setErr(""); haptic.warn(); setMode("confirmBlock"); }}>
-              {account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock")}
+              disabled={isSelf || busy}
+              onClick={toggleBlock}>
+              {busy ? "…" : (account.blocked ? t("admin.accountUnblock") : t("admin.accountBlock"))}
             </button>
             <button className="btn"
-              style={{ height: 36, fontSize: "var(--text-sm)", boxShadow: "none", background: "var(--red-bg)", color: "var(--red)", opacity: isSelf ? 0.5 : 1, gap: 6 }}
+              style={{
+                height: 36, fontSize: "var(--text-sm)", boxShadow: "none",
+                background: "rgba(197, 68, 59, 0.10)", color: "var(--admin-danger)",
+                border: "1px solid var(--admin-border)",
+                opacity: isSelf ? 0.5 : 1, gap: 6,
+              }}
               disabled={isSelf}
               onClick={() => { setErr(""); setDeleteConfirmText(""); haptic.warn(); setMode("confirmDelete"); }}>
               <IconTrash size={13} /> {t("admin.accountDelete")}
             </button>
           </div>
+          {err && <div className="form-error" style={{ marginTop: 0 }}>{err}</div>}
+
+          {/* Recuperar cifrado — surfaces the previously-unexposed
+              /api/admin-recover-encryption endpoint. Hidden as a
+              tertiary action so an admin only finds it when they need
+              it. Always available regardless of self/blocked state —
+              recovery is read-only on the user's wrapper. */}
+          <button type="button"
+            onClick={doRecoverEncryption}
+            disabled={recoverBusy}
+            style={{
+              alignSelf: "flex-start",
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "6px 12px", fontSize: 12.5, fontWeight: 600,
+              background: "transparent", border: "1px dashed var(--admin-border)",
+              borderRadius: 999, color: "var(--admin-text-meta)",
+              cursor: recoverBusy ? "default" : "pointer", marginTop: 4,
+            }}>
+            <IconKey size={13} />
+            {recoverBusy ? "Recuperando…" : "Recuperar cifrado"}
+          </button>
+          {recoverErr && <div className="form-error" style={{ marginTop: 0 }}>{recoverErr}</div>}
         </div>
       )}
+
+      <AdminUndoToast toast={toast} onDismiss={dismissUndo} />
     </div>
   );
 }

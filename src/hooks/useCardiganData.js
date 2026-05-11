@@ -245,6 +245,26 @@ export async function adminUpdateProfession(userId, profession) {
   return res.json();
 }
 
+/* Recover a target user's encryption master key. Admin-gated. The
+   server decrypts recovery_wrap with the private key and returns the
+   master-key bytes as base64 — the admin then sends this out-of-band
+   so the user can reset their passphrase. Logged in audit_log as
+   "recover_encryption". */
+export async function adminRecoverEncryption(userId) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-recover-encryption", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) {
+    let msg = "Recover failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through to default msg */ }
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
 /* Toggle complimentary (always-free) access on a user's
    user_subscriptions row. Admin-gated server-side. */
 export async function adminGrantComp(userId, granted, reason) {
