@@ -452,14 +452,13 @@
   .admin-rail {
     position: fixed;
     inset: 0 auto 0 0;
-    /* Trimmed aggressively for iPhone. "Adquisición" (11 chars, the
-       longest label) needs ~110px of text + 16px icon + 10px gap +
-       24px nav padding ≈ 160px content area — well under 220px. The
-       drawer feels like a focused nav surface, not a half-screen wall.
-       Width % keeps a touch of viewport-relative breathing room on
-       larger phones (430px Pro Max → 215px drawer). */
-    width: 64%;
-    max-width: 220px;
+    /* Trimmed for iPhone, then nudged back up after 220px felt
+       cramped. 68% / 240px keeps the labels comfortably padded from
+       the right edge without burning half the screen. "Adquisición"
+       (the longest label, ~110px text) still has ~80px of breathing
+       room. */
+    width: 68%;
+    max-width: 240px;
     /* z-index 42 puts the rail ABOVE the scrim (41) which is ABOVE
        the bottom-tabs (40). Tapping outside the rail (including over
        the tab strip) hits the scrim and closes the drawer. */
