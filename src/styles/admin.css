@@ -452,9 +452,15 @@
   .admin-rail {
     position: fixed;
     inset: 0 auto 0 0;
-    width: 78%;
-    max-width: 300px;
-    z-index: 1;
+    /* Trimmed from 78% / 300px so the labels sit closer to the right
+       edge — the longest item "Adquisición" fits comfortably under
+       260px and the drawer feels less wasteful on a 390px iPhone. */
+    width: 72%;
+    max-width: 260px;
+    /* z-index 42 puts the rail ABOVE the scrim (41) which is ABOVE
+       the bottom-tabs (40). Tapping outside the rail (including over
+       the tab strip) hits the scrim and closes the drawer. */
+    z-index: 42;
     transform: translateX(-100%);
     transition: transform var(--dur-slower) var(--ease-spring);
     will-change: transform;
@@ -478,16 +484,21 @@
   .admin-rail--open { transform: translateX(0); }
   .admin-rail--open::after { opacity: 1; }
   /* Scrim always renders so it can fade in/out on the same cadence
-     as the panel slide — matching the main drawer's overlay. The
-     wrapper's onClick still dismisses; pointer-events disable when
-     fully transparent so it doesn't eat taps. */
+     as the panel slide — matching the main drawer's overlay.
+     z-index 41 puts it ABOVE the bottom-tabs strip (which sits at 40),
+     so a tap anywhere outside the rail — including over the tabs —
+     closes the drawer. `cursor: pointer` + `touch-action: manipulation`
+     guarantee the synthetic click fires cleanly on iOS Safari (no
+     300ms tap delay). */
   .admin-rail-scrim {
     position: fixed; inset: 0;
     background: var(--scrim-bg);
-    z-index: 0;
+    z-index: 41;
     -webkit-backdrop-filter: var(--blur-drawer);
     backdrop-filter: var(--blur-drawer);
     animation: fadeIn var(--dur-slower) ease;
+    cursor: pointer;
+    touch-action: manipulation;
   }
   .admin-hamburger { display: inline-flex; }
   .admin-content { padding: 18px 16px calc(var(--sab, 0px) + 18px); }
