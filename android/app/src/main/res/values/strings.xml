@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cardigan</string>
+    <string name="title_activity_main">Cardigan</string>
+    <string name="package_name">mx.cardigan.app</string>
+    <string name="custom_url_scheme">mx.cardigan.app</string>
+</resources>

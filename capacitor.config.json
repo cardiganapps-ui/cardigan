@@ -1,0 +1,13 @@
+{
+  "appId": "mx.cardigan.app",
+  "appName": "Cardigan",
+  "webDir": "dist",
+  "backgroundColor": "#FFFFFF",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}

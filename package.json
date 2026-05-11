@@ -17,12 +17,17 @@
     "audit:deps": "npm audit --omit=dev --audit-level=critical",
     "audit:db": "node --env-file=.env.local scripts/audit-db-health.mjs",
     "audit:orphans": "node --env-file=.env.local scripts/audit-orphan-rows.mjs",
-    "audit:signup": "node --env-file=.env.local scripts/verify-signup-flow.mjs"
+    "audit:signup": "node --env-file=.env.local scripts/verify-signup-flow.mjs",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:open:android": "npx cap open android",
+    "cap:run:android": "npm run build && npx cap run android"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
     "@aws-sdk/client-s3": "^3.1028.0",
     "@aws-sdk/s3-request-presigner": "^3.1028.0",
+    "@capacitor/android": "^8.3.3",
+    "@capacitor/core": "^8.3.3",
     "@sentry/node": "^10.50.0",
     "@sentry/react": "^10.50.0",
     "@supabase/supabase-js": "^2.102.1",
@@ -37,6 +42,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.3",
     "@eslint/js": "^9.39.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
