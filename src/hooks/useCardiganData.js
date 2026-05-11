@@ -245,6 +245,73 @@ export async function adminUpdateProfession(userId, profession) {
   return res.json();
 }
 
+/* Saved-views CRUD — admin-only filter presets shared across the
+   admin team. Backed by the admin_saved_views table (mig 063). */
+export async function fetchAdminSavedViews(screen) {
+  const headers = await authHeaders();
+  const url = screen
+    ? `/api/admin-saved-views?screen=${encodeURIComponent(screen)}`
+    : "/api/admin-saved-views";
+  const res = await fetch(url, { method: "GET", headers });
+  if (!res.ok) {
+    let msg = "Fetch failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through */ }
+    throw new Error(msg);
+  }
+  const j = await res.json();
+  return j.views || [];
+}
+
+export async function createAdminSavedView({ screen, name, filterState }) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-saved-views", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ screen, name, filterState }),
+  });
+  if (!res.ok) {
+    let msg = "Create failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through */ }
+    throw new Error(msg);
+  }
+  const j = await res.json();
+  return j.view;
+}
+
+export async function updateAdminSavedView({ id, name, filterState }) {
+  const headers = await authHeaders();
+  const body = { id };
+  if (name !== undefined) body.name = name;
+  if (filterState !== undefined) body.filterState = filterState;
+  const res = await fetch("/api/admin-saved-views", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let msg = "Update failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through */ }
+    throw new Error(msg);
+  }
+  const j = await res.json();
+  return j.view;
+}
+
+export async function deleteAdminSavedView(id) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-saved-views", {
+    method: "DELETE",
+    headers,
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) {
+    let msg = "Delete failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* fall through */ }
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
 /* Recover a target user's encryption master key. Admin-gated. The
    server decrypts recovery_wrap with the private key and returns the
    master-key bytes as base64 — the admin then sends this out-of-band

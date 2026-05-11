@@ -16,6 +16,8 @@ import { AdminSkeletonRow } from "./AdminSkeletonRow";
      • Renders an empty state via the `empty` slot when no rows
      • Reserves a row-actions slot (kebab on hover) — Phase 2 wires the
        actual menu; Phase 1 ships the visual only
+     • Supports MULTI-select (selectable + selectedKeys + onSelectionChange)
+       — adds a checkbox column on the left with header "select all"
 
    Props:
      columns:     [{ key, label, sortable?, align?, render?, width?, mono?, headerExtra? }]
@@ -25,14 +27,20 @@ import { AdminSkeletonRow } from "./AdminSkeletonRow";
      sort:        { key, dir: "asc"|"desc" } | null
      onSortChange:(nextSort) => void                 (passes null on clear)
      onRowClick:  (row) => void                      (optional — enables hover/cursor)
-     selectedRowKey: string | null
+     selectedRowKey: string | null                   (single-select highlight)
      loading:     boolean
      skeletonRows:number (default 12)
      empty:       ReactNode rendered when !loading && rows.length === 0
      rowActions:  (row) => ReactNode                  (Phase 2; placeholder ok)
      mobileLayout:(row) => { primary, secondary?, meta?, badges?, right? }
                   When omitted, the <700px viewport falls back to a
-                  horizontally-scrollable table. */
+                  horizontally-scrollable table.
+
+     selectable:        boolean — show checkbox column for multi-select
+     selectedKeys:      Set<string> | string[] of row keys currently checked
+     onSelectionChange: (Set<string>) => void    — bulk add/remove handler
+     selectionDisabled: (row) => boolean         — per-row checkbox disable
+*/
 export function AdminTable({
   columns,
   rows,
@@ -47,10 +55,25 @@ export function AdminTable({
   rowActions,
   mobileLayout,
   ariaLabel,
+  selectable = false,
+  selectedKeys,
+  onSelectionChange,
+  selectionDisabled,
 }) {
   const showSkeletons = loading && (!rows || rows.length === 0);
   const showEmpty = !loading && rows && rows.length === 0;
   const hasRowActions = typeof rowActions === "function";
+
+  const selectionSet = selectable
+    ? (selectedKeys instanceof Set ? selectedKeys : new Set(selectedKeys || []))
+    : null;
+
+  const allRowKeys = (rows || []).map(rowKey);
+  const eligibleKeys = selectable
+    ? allRowKeys.filter((k, i) => !(typeof selectionDisabled === "function" && selectionDisabled(rows[i])))
+    : [];
+  const allSelected = selectable && eligibleKeys.length > 0 && eligibleKeys.every((k) => selectionSet.has(k));
+  const someSelected = selectable && !allSelected && eligibleKeys.some((k) => selectionSet.has(k));
 
   const handleHeaderClick = (col) => {
     if (!col.sortable || typeof onSortChange !== "function") return;
@@ -65,11 +88,41 @@ export function AdminTable({
     onSortChange(null);
   };
 
+  const toggleAll = () => {
+    if (!onSelectionChange) return;
+    const next = new Set(selectionSet);
+    if (allSelected) {
+      eligibleKeys.forEach((k) => next.delete(k));
+    } else {
+      eligibleKeys.forEach((k) => next.add(k));
+    }
+    onSelectionChange(next);
+  };
+
+  const toggleRow = (key, disabled) => {
+    if (!onSelectionChange || disabled) return;
+    const next = new Set(selectionSet);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    onSelectionChange(next);
+  };
+
   return (
     <div className="admin-tbl-wrap">
       <table className="admin-tbl" aria-label={ariaLabel}>
         <thead>
           <tr>
+            {selectable && (
+              <th className="admin-tbl-select-col" scope="col" aria-label="Seleccionar todo">
+                <input
+                  type="checkbox"
+                  className="admin-tbl-checkbox"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                  onChange={toggleAll}
+                  disabled={eligibleKeys.length === 0}
+                />
+              </th>
+            )}
             {columns.map((col) => {
               const active = sort && sort.key === col.key;
               return (
@@ -98,11 +151,11 @@ export function AdminTable({
         </thead>
         <tbody>
           {showSkeletons && Array.from({ length: skeletonRows }, (_, i) => (
-            <AdminSkeletonRow key={`sk-${i}`} columns={columns} rowIndex={i} />
+            <AdminSkeletonRow key={`sk-${i}`} columns={columns} rowIndex={i} prefixCols={selectable ? 1 : 0} />
           ))}
           {showEmpty && (
             <tr>
-              <td colSpan={columns.length + (hasRowActions ? 1 : 0)} style={{ padding: 0 }}>
+              <td colSpan={columns.length + (selectable ? 1 : 0) + (hasRowActions ? 1 : 0)} style={{ padding: 0 }}>
                 {empty}
               </td>
             </tr>
@@ -110,14 +163,32 @@ export function AdminTable({
           {!showSkeletons && !showEmpty && (rows || []).map((row) => {
             const key = rowKey(row);
             const selected = selectedRowKey && key === selectedRowKey;
+            const checked = selectable && selectionSet.has(key);
+            const disabled = selectable && typeof selectionDisabled === "function" && selectionDisabled(row);
             const clickable = typeof onRowClick === "function";
             return (
               <tr
                 key={key}
                 data-clickable={clickable ? "true" : "false"}
                 data-selected={selected ? "true" : "false"}
+                data-checked={checked ? "true" : "false"}
                 onClick={clickable ? () => onRowClick(row) : undefined}
               >
+                {selectable && (
+                  <td
+                    className="admin-tbl-select-col"
+                    onClick={(e) => { e.stopPropagation(); toggleRow(key, disabled); }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="admin-tbl-checkbox"
+                      checked={checked}
+                      onChange={(e) => { e.stopPropagation(); toggleRow(key, disabled); }}
+                      disabled={disabled}
+                      aria-label="Seleccionar fila"
+                    />
+                  </td>
+                )}
                 {columns.map((col) => (
                   <td
                     key={col.key}
@@ -154,36 +225,54 @@ export function AdminTable({
           {!showSkeletons && !showEmpty && (rows || []).map((row) => {
             const key = rowKey(row);
             const selected = selectedRowKey && key === selectedRowKey;
+            const checked = selectable && selectionSet.has(key);
+            const disabled = selectable && typeof selectionDisabled === "function" && selectionDisabled(row);
             const layout = mobileLayout(row) || {};
             const clickable = typeof onRowClick === "function";
-            const Tag = clickable ? "button" : "div";
-            const props = clickable
-              ? { type: "button", onClick: () => onRowClick(row) }
-              : {};
             return (
-              <Tag
+              <div
                 key={key}
                 className="admin-tbl-card"
                 data-selected={selected ? "true" : "false"}
+                data-checked={checked ? "true" : "false"}
                 role="listitem"
-                style={clickable ? {
-                  appearance: "none", background: "var(--admin-surface)", border: "none",
-                  textAlign: "left", fontFamily: "inherit", color: "inherit", width: "100%",
-                } : undefined}
-                {...props}
               >
-                <div className="admin-tbl-card-row">
-                  <div className="admin-tbl-card-primary">{layout.primary}</div>
-                  {(layout.badges || layout.right) && (
-                    <div className="admin-tbl-card-badges">
-                      {layout.badges}
-                      {layout.right}
-                    </div>
-                  )}
+                {selectable && (
+                  <label
+                    className="admin-tbl-card-checkbox"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      className="admin-tbl-checkbox"
+                      checked={checked}
+                      onChange={() => toggleRow(key, disabled)}
+                      disabled={disabled}
+                      aria-label="Seleccionar"
+                    />
+                  </label>
+                )}
+                <div
+                  className="admin-tbl-card-body"
+                  onClick={clickable ? () => onRowClick(row) : undefined}
+                  style={clickable ? { cursor: "pointer" } : undefined}
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onKeyDown={clickable ? (e) => { if (e.key === "Enter") onRowClick(row); } : undefined}
+                >
+                  <div className="admin-tbl-card-row">
+                    <div className="admin-tbl-card-primary">{layout.primary}</div>
+                    {(layout.badges || layout.right) && (
+                      <div className="admin-tbl-card-badges">
+                        {layout.badges}
+                        {layout.right}
+                      </div>
+                    )}
+                  </div>
+                  {layout.secondary && <div className="admin-tbl-card-secondary">{layout.secondary}</div>}
+                  {layout.meta && <div className="admin-tbl-card-meta">{layout.meta}</div>}
                 </div>
-                {layout.secondary && <div className="admin-tbl-card-secondary">{layout.secondary}</div>}
-                {layout.meta && <div className="admin-tbl-card-meta">{layout.meta}</div>}
-              </Tag>
+              </div>
             );
           })}
         </div>

@@ -2,18 +2,20 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAdminRoute } from "./useAdminRoute";
 import {
   IconHome, IconUsers, IconDollar, IconTrendingUp, IconTag, IconBug, IconShield,
-  IconActivity, IconMenu, IconX, IconChevronRight, IconArrowLeft, IconLogOut,
+  IconActivity, IconMenu, IconX, IconChevronRight, IconArrowLeft, IconLogOut, IconBell,
 } from "../../components/Icons";
 import { LogoIcon } from "../../components/LogoMark";
 import { AdminOverview } from "./AdminOverview";
 import { AdminUsers } from "./AdminUsers";
-import { AdminUserDetail } from "./AdminUserDetail";
+// AdminUserDetail is rendered embedded inside AdminUsers' split view —
+// no longer a top-level branch in this switch.
 import { AdminRevenue } from "./AdminRevenue";
 import { AdminAcquisition } from "./AdminAcquisition";
 import { AdminCodes } from "./AdminCodes";
 import { AdminReports } from "./AdminReports";
 import { AdminAudit } from "./AdminAudit";
 import { AdminHealth } from "./AdminHealth";
+import { AdminActivityDrawer } from "./parts/AdminActivityDrawer";
 
 const SECTIONS = [
   { key: "overview",    label: "Resumen",     icon: IconHome,        group: "insights" },
@@ -50,6 +52,7 @@ const TITLE_BY_SECTION = {
 export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
   const route = useAdminRoute();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   // Close the mobile drawer when the section changes — without this,
   // tapping a section on a small viewport leaves the drawer open over
@@ -299,6 +302,11 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
               {/* Page-specific actions (e.g. "Nuevo código") are rendered
                   inside each page rather than plumbed through here — keeps
                   pages self-contained and the layout stable. */}
+              <button type="button" className="admin-bell-btn"
+                onClick={() => setActivityOpen(true)}
+                aria-label="Actividad reciente" title="Actividad reciente">
+                <IconBell size={16} />
+              </button>
               <button type="button" className="admin-exit-btn" onClick={() => onLeaveAdmin?.()}
                 aria-label="Salir de admin" title="Salir de admin">
                 <IconX size={16} />
@@ -317,6 +325,11 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
           </div>
         </div>
       </main>
+      <AdminActivityDrawer
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+        onJumpToUser={(uid) => route.navigate("users", uid)}
+      />
     </div>
   );
 }

@@ -1,17 +1,26 @@
-import { useMemo, useState } from "react";
-import { fetchAllAccounts } from "../../hooks/useCardiganData";
+import { useCallback, useMemo, useState } from "react";
+import {
+  fetchAllAccounts,
+  adminBlockUser,
+  adminGrantComp,
+} from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
 import { Avatar } from "../../components/Avatar";
 import { TierBadge } from "./parts/TierBadge";
 import { downloadCsv } from "./parts/csv";
-import { IconDownload, IconArrowLeft } from "../../components/Icons";
-import { useAdminQuery } from "./useAdminQuery";
+import {
+  IconDownload, IconArrowLeft, IconShield, IconCheck, IconUserPlus,
+} from "../../components/Icons";
+import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
 import { AdminPage } from "./parts/AdminPage";
 import { AdminFilterBar } from "./parts/AdminFilterBar";
 import { AdminListHeader } from "./parts/AdminListHeader";
 import { AdminTable } from "./parts/AdminTable";
 import { AdminBadge } from "./parts/AdminBadge";
 import { AdminEmpty } from "./parts/AdminEmpty";
+import { AdminBulkBar } from "./parts/AdminBulkBar";
+import { AdminSavedViews } from "./parts/AdminSavedViews";
 import { AdminUserDetail } from "./AdminUserDetail";
 import { useAdminSort } from "./parts/useAdminSort";
 
@@ -53,11 +62,14 @@ function fmtDate(iso) {
    in AdminListHeader. */
 export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, currentAdminId }) {
   const { t } = useT();
+  const { showToast } = useCardigan();
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
+  const [bulkSelected, setBulkSelected] = useState(() => new Set());
+  const [bulkPending, setBulkPending] = useState(null); // "block" | "unblock" | "comp" | "uncomp" | "csv" | null
   const { sort: sortKey, setSort: setSortKey } = useAdminSort("users", { key: "name", dir: "asc" });
 
-  const { data: accounts = [], loading, error } = useAdminQuery("users:all", fetchAllAccounts);
+  const { data: accounts = [], loading, error, refetch } = useAdminQuery("users:all", fetchAllAccounts);
 
   const tierFilters = useMemo(() => [
     { k: "all",       l: t("admin.users.filter.all") },
@@ -109,6 +121,75 @@ export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, c
     const [key, dir] = v.split(":");
     setSortKey({ key, dir });
   };
+
+  // Bulk operations. Run sequentially via Promise.allSettled so a
+  // single failure doesn't stall the rest of the batch. Self-protection
+  // is handled at the row level via selectionDisabled — admin's own
+  // userId is never even checkable.
+  const selectedAccounts = useMemo(() => {
+    if (bulkSelected.size === 0) return [];
+    return accounts.filter((a) => bulkSelected.has(a.userId));
+  }, [accounts, bulkSelected]);
+
+  const runBulk = useCallback(async (key, runOne) => {
+    if (bulkPending || bulkSelected.size === 0) return;
+    setBulkPending(key);
+    try {
+      const results = await Promise.allSettled(selectedAccounts.map(runOne));
+      const ok = results.filter((r) => r.status === "fulfilled").length;
+      const fail = results.length - ok;
+      if (fail === 0) showToast?.(`Listo · ${ok} cuenta${ok === 1 ? "" : "s"}`, "success");
+      else if (ok === 0) showToast?.(`Falló: ${fail} cuenta${fail === 1 ? "" : "s"}`, "error");
+      else showToast?.(`${ok} OK · ${fail} con error`, "warning");
+      // Drop caches that depend on the changed rows.
+      invalidateAdminCache("users:all");
+      invalidateAdminCache("audit");
+      invalidateAdminCache("overview");
+      setBulkSelected(new Set());
+      refetch?.();
+    } finally {
+      setBulkPending(null);
+    }
+  }, [bulkPending, bulkSelected.size, selectedAccounts, showToast, refetch]);
+
+  const bulkActions = useMemo(() => [
+    {
+      key: "comp",
+      label: "Otorgar comp",
+      Icon: IconUserPlus,
+      onClick: () => runBulk("comp", (a) => adminGrantComp(a.userId, true)),
+    },
+    {
+      key: "block",
+      label: "Bloquear",
+      Icon: IconShield,
+      danger: true,
+      onClick: () => runBulk("block", (a) => adminBlockUser(a.userId, true)),
+    },
+    {
+      key: "unblock",
+      label: "Desbloquear",
+      Icon: IconCheck,
+      onClick: () => runBulk("unblock", (a) => adminBlockUser(a.userId, false)),
+    },
+    {
+      key: "csv",
+      label: "Exportar CSV",
+      Icon: IconDownload,
+      onClick: () => {
+        downloadCsv("cardigan-users-selected-{date}.csv", selectedAccounts, [
+          { label: t("admin.userDetail.labelName"), get: (a) => a.fullName || "" },
+          { label: t("admin.userDetail.labelEmail"), get: (a) => a.email || "" },
+          { label: "Tier", get: (a) => a.tier || "" },
+          { label: t("admin.users.colPatients"), get: (a) => a.patientCount },
+          { label: t("admin.users.colSignup"), get: (a) => a.firstSeen || "" },
+          { label: "User ID", get: (a) => a.userId },
+        ]);
+      },
+    },
+  ], [runBulk, selectedAccounts, t]);
+
+  const selectionDisabled = useCallback((row) => row.userId === currentAdminId, [currentAdminId]);
 
   const onExport = () => {
     downloadCsv("cardigan-users-{date}.csv", filtered, [
@@ -253,7 +334,44 @@ export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, c
               active: tier === tf.k,
               onClick: () => setTier(tf.k),
             }))}
-          />
+            facets={[
+              {
+                key: "tier",
+                label: "Tier",
+                options: tierFilters.map((tf) => ({
+                  key: tf.k,
+                  label: tf.l,
+                  active: tier === tf.k,
+                  apply: () => setTier(tf.k),
+                })),
+              },
+              {
+                key: "sort",
+                label: "Ordenar",
+                options: sortOptions.map((opt) => ({
+                  key: opt.value,
+                  label: opt.label,
+                  active: sortDropdownValue === opt.value,
+                  apply: () => handleSortChange(opt.value),
+                })),
+              },
+            ]}
+          >
+            <AdminSavedViews
+              screen="users"
+              currentState={{
+                search,
+                tier,
+                sort: sortKey,
+              }}
+              onApply={(state) => {
+                if (state?.search !== undefined) setSearch(state.search || "");
+                if (state?.tier !== undefined) setTier(state.tier || "all");
+                if (state?.sort) setSortKey(state.sort);
+                setBulkSelected(new Set());
+              }}
+            />
+          </AdminFilterBar>
           {hasError ? (
             <AdminEmpty title={t("admin.ui.error")} body={String(error)} />
           ) : (
@@ -275,8 +393,18 @@ export function AdminUsers({ selectedId, onSelect, onClearSelection, onViewAs, c
               )}
               mobileLayout={mobileLayout}
               ariaLabel={t("admin.users.title")}
+              selectable
+              selectedKeys={bulkSelected}
+              onSelectionChange={setBulkSelected}
+              selectionDisabled={selectionDisabled}
             />
           )}
+          <AdminBulkBar
+            count={bulkSelected.size}
+            actions={bulkActions}
+            pendingKey={bulkPending}
+            onClear={() => setBulkSelected(new Set())}
+          />
         </div>
 
         {/* Detail pane */}

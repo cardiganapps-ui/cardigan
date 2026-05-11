@@ -540,6 +540,35 @@ create table if not exists admin_audit_log (
 -- /admin/revenue page. is_admin() gated. Mirrors useSubscription.js
 -- isPro semantics for the active-sub count.
 
+-- Admin saved views (migration 063). Shared filter presets across the
+-- admin team for the per-screen AdminFilterBar dropdown. is_admin() on
+-- every operation (read+write); no per-row ownership gate so any
+-- admin can edit/delete any view.
+create table if not exists admin_saved_views (
+  id uuid primary key default gen_random_uuid(),
+  screen text not null check (screen in (
+    'users', 'audit', 'revenue', 'acquisition', 'codes', 'reports'
+  )),
+  name text not null check (length(name) between 1 and 60),
+  filter_state jsonb not null,
+  created_by uuid not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint admin_saved_views_filter_state_size
+    check (octet_length(filter_state::text) <= 4096)
+);
+create index if not exists idx_admin_saved_views_screen_created
+  on admin_saved_views (screen, created_at desc);
+alter table admin_saved_views enable row level security;
+create policy "Admin reads saved views"
+  on admin_saved_views for select using (is_admin());
+create policy "Admin inserts saved views"
+  on admin_saved_views for insert with check (is_admin());
+create policy "Admin updates saved views"
+  on admin_saved_views for update using (is_admin()) with check (is_admin());
+create policy "Admin deletes saved views"
+  on admin_saved_views for delete using (is_admin());
+
 -- User ratings (migration 048). 1-5 star + optional comment captured
 -- via the in-app sheet at structured prompts (day_14_v1 today;
 -- day_30_v1 fallback). prompt_kind is free-text so new prompt

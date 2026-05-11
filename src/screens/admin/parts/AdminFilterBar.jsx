@@ -1,28 +1,36 @@
-import { IconSearch } from "../../../components/Icons";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { IconSearch, IconPlus, IconX } from "../../../components/Icons";
+import { useEscape } from "../../../hooks/useEscape";
 
 /* ── AdminFilterBar ─────────────────────────────────────────────────────
    Standard filter row: search input on the left, filter pills on the
-   right. Replaces every screen's hand-rolled filter wrapper.
+   right.
 
-   Phase 1: ships static pill arrays (per-screen filter definitions).
-   Phase 2: layers typeahead `+ Filter` + saved-views dropdown on the
-   same primitive — see the plan file.
+   Phase 1 surface: static pill arrays per screen.
+   Phase 2 additions:
+     • children slot (e.g. <AdminSavedViews>)
+     • `facets` typeahead picker — when provided, renders a "+ Filtro"
+       affordance at the end of the pills row. Clicking opens a
+       searchable popover listing all facet options not yet active.
+       Picking one calls the option's `apply()` (typically the same
+       handler the static pill would use). Useful when a screen has
+       so many facets that a flat pill row gets noisy.
 
    Props:
      searchValue:       controlled search string
      onSearchChange:    (next) => void
      searchPlaceholder: placeholder text
      pills:             [{ key, label, active, onClick, count?, icon? }]
-                        — keep arrays small (≤8) for Phase 1; for larger
-                        facet sets, defer to Phase 2 typeahead.
-     children:          extra slot rendered after the pills (e.g. a sort
-                        dropdown or a CSV-export button on screens that
-                        don't use AdminListHeader). */
+     facets:            [{ key, label, options: [{ key, label, apply,
+                          active? }] }]
+                        Pass alongside `pills` to enable +Filtro typeahead.
+     children:          right-side slot (e.g. AdminSavedViews dropdown) */
 export function AdminFilterBar({
   searchValue,
   onSearchChange,
   searchPlaceholder,
   pills,
+  facets,
   children,
 }) {
   return (
@@ -42,9 +50,9 @@ export function AdminFilterBar({
           />
         </div>
       )}
-      {pills && pills.length > 0 && (
+      {((pills && pills.length > 0) || (facets && facets.length > 0)) && (
         <div className="admin-filter-bar-v2-pills" role="group">
-          {pills.map((p) => (
+          {(pills || []).map((p) => (
             <button
               key={p.key}
               type="button"
@@ -59,9 +67,140 @@ export function AdminFilterBar({
               )}
             </button>
           ))}
+          {facets && facets.length > 0 && <FacetPicker facets={facets} />}
         </div>
       )}
       {children}
+    </div>
+  );
+}
+
+/* + Filtro typeahead. Lists all facet options across all groups, with a
+   case-insensitive substring filter. Picking an option calls its
+   apply() which the parent typically wires to the same handler the
+   pill would call. Active options are visually marked but still
+   selectable so the admin can re-apply / toggle. */
+function FacetPicker({ facets }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Closing also resets the typed query — handled in this single
+  // helper so both the Esc + outside-click + opt-click paths converge.
+  const close = () => { setOpen(false); setQ(""); };
+
+  useEscape(open ? close : null);
+
+  // Outside-click closes.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        close();
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // Auto-focus the input when opened.
+  useEffect(() => {
+    if (open) {
+      const id = setTimeout(() => inputRef.current?.focus(), 30);
+      return () => clearTimeout(id);
+    }
+  }, [open]);
+
+  const flat = useMemo(() => {
+    const out = [];
+    for (const f of facets) {
+      for (const o of f.options || []) {
+        out.push({
+          ...o,
+          group: f.label,
+          searchKey: `${f.label} ${o.label}`.toLowerCase(),
+        });
+      }
+    }
+    return out;
+  }, [facets]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return flat;
+    return flat.filter((o) => o.searchKey.includes(needle));
+  }, [flat, q]);
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const o of filtered) {
+      if (!map.has(o.group)) map.set(o.group, []);
+      map.get(o.group).push(o);
+    }
+    return Array.from(map.entries());
+  }, [filtered]);
+
+  return (
+    <div ref={containerRef} className="admin-filter-facet" style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="admin-filter-bar-v2-pill admin-filter-bar-v2-pill--add"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <IconPlus size={11} />
+        <span>Filtro</span>
+      </button>
+      {open && (
+        <div className="admin-filter-facet-pop" role="listbox">
+          <div className="admin-filter-facet-search">
+            <IconSearch size={12} />
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar filtro…"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => setQ("")}
+                aria-label="Limpiar"
+                className="admin-filter-facet-clear"
+              >
+                <IconX size={11} />
+              </button>
+            )}
+          </div>
+          <div className="admin-filter-facet-list">
+            {grouped.length === 0 ? (
+              <div className="admin-filter-facet-empty">Sin coincidencias</div>
+            ) : (
+              grouped.map(([groupLabel, opts]) => (
+                <div key={groupLabel} className="admin-filter-facet-group">
+                  <div className="admin-filter-facet-group-label">{groupLabel}</div>
+                  {opts.map((o) => (
+                    <button
+                      key={`${groupLabel}:${o.key}`}
+                      type="button"
+                      className={`admin-filter-facet-opt${o.active ? " admin-filter-facet-opt--active" : ""}`}
+                      onClick={() => { o.apply?.(); close(); }}
+                    >
+                      <span>{o.label}</span>
+                      {o.active && <span aria-hidden="true">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

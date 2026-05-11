@@ -5,10 +5,17 @@
 
    Pure presentational — AdminTable instantiates `skeletonRows` of these
    while `loading && !rows`. Each skeleton bar's width is hashed from the
-   column index so successive rows don't line up identically. */
-export function AdminSkeletonRow({ columns, rowIndex = 0 }) {
+   column index so successive rows don't line up identically.
+
+   `prefixCols` reserves N empty leading <td>s — used by AdminTable
+   when a checkbox-select column is rendered, so the skeleton's column
+   alignment matches the populated rows. */
+export function AdminSkeletonRow({ columns, rowIndex = 0, prefixCols = 0 }) {
   return (
     <tr className="admin-tbl-skeleton" aria-hidden="true">
+      {Array.from({ length: prefixCols }, (_, i) => (
+        <td key={`prefix-${i}`} className="admin-tbl-select-col" />
+      ))}
       {columns.map((col, i) => {
         // Pseudo-random width per (row, col) so skeleton rows don't all
         // look identical. Modulo a few buckets keeps it deterministic.
