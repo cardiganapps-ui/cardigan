@@ -118,7 +118,14 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
         onClick={() => setExpandedId(isExpanded ? null : p.id)}
         style={{
           cursor: "pointer",
-          background: nested ? "transparent" : "var(--white)",
+          // SwipeableRow stages a red action button BEHIND the row and
+          // slides the row over it. The nested rows must therefore be
+          // OPAQUE — using `transparent` lets the action bleed through
+          // even at rest (the +$1,100 amount visibly overlapped
+          // "Eliminar" in mid-swipe). `--teal-mist` matches the parent
+          // wrapper exactly so the row still reads as part of the
+          // subset container.
+          background: nested ? "var(--teal-mist)" : "var(--white)",
           ...(nested ? { paddingLeft: 36, minHeight: 48, gap: 10 } : {}),
         }}
       >
@@ -131,7 +138,11 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
               width: 8, height: 8, borderRadius: "50%",
               background: "var(--teal)",
               flexShrink: 0,
-              boxShadow: "0 0 0 3px var(--white)",
+              // Halo matches the wrapper bg so the dot reads as
+              // punched through the thread spine (the spine sits at
+              // x=28, the dot lands at ~x=28-30, halo covers the
+              // 2px line behind the dot).
+              boxShadow: "0 0 0 3px var(--teal-mist)",
             }}
           />
         ) : (
