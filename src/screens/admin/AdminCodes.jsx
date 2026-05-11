@@ -7,12 +7,14 @@ import { NewCodeSheet } from "./parts/NewCodeSheet";
 import { CodeCreatedSheet } from "./parts/CodeCreatedSheet";
 import { CopyChip } from "./parts/CopyChip";
 import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
+import { AdminPage } from "./parts/AdminPage";
+import { AdminBadge } from "./parts/AdminBadge";
+import { AdminEmpty } from "./parts/AdminEmpty";
 
-/* ── AdminCodes ──
-   Influencer / partner discount codes. Lifted from CodesTab in
-   AdminPanel.jsx with no behavior changes. Uses useAdminQuery with
-   optimistic mutate() so a toggle or create is reflected instantly
-   without waiting on a refetch. */
+/* ── AdminCodes ─────────────────────────────────────────────────────────
+   Influencer / partner discount codes. Optimistic toggle/create kept;
+   layout now wraps in AdminPage with `.admin-row-card` rows instead of
+   hand-rolled inline-styled boxes. */
 export function AdminCodes() {
   const { t } = useT();
   const [showNew, setShowNew] = useState(false);
@@ -48,47 +50,76 @@ export function AdminCodes() {
     setShowNew(false);
   };
 
-  // Surface either the load error or the per-row toggle error.
   const displayError = error || toggleError;
+  const initialLoading = loading && codes.length === 0;
 
   return (
     <>
-      <div className="admin-card">
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="admin-card-title">{t("admin.codesTitle")}</div>
-            <div className="admin-card-sub">{t("admin.codesSubtitle")}</div>
-          </div>
+      <AdminPage
+        title={t("admin.codes.title")}
+        subtitle={t("admin.codes.subtitle")}
+        actions={(
           <button
             type="button"
             onClick={() => { setShowNew(true); haptic.tap(); }}
             className="btn"
             style={{
-              height: 36, padding: "0 14px", fontSize: 13,
-              background: "var(--charcoal)", color: "var(--white)",
-              display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0,
-            }}>
-            <IconPlus size={14} /> {t("admin.codesNew")}
+              height: 32, padding: "0 12px", fontSize: 12.5,
+              background: "var(--admin-text)", color: "var(--admin-surface)",
+              display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8,
+            }}
+          >
+            <IconPlus size={14} /> {t("admin.codes.newAction")}
           </button>
-        </div>
-
-        {loading && codes.length === 0 && <div className="admin-empty">{t("admin.codesLoading")}</div>}
+        )}
+      >
         {displayError && (
-          <div style={{ background: "var(--red-bg)", color: "var(--red)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, marginBottom: 10 }}>
+          <div
+            role="alert"
+            style={{
+              background: "rgba(197, 68, 59, 0.10)",
+              color: "var(--admin-danger)",
+              padding: "10px 14px",
+              borderRadius: 8,
+              fontSize: 12.5,
+              border: "1px solid rgba(197, 68, 59, 0.20)",
+            }}
+          >
             {displayError}
           </div>
         )}
-        {!loading && codes.length === 0 && !error && (
-          <div className="admin-empty">{t("admin.codesEmpty")}</div>
-        )}
-        {codes.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {codes.map(c => (
-              <CodeRow key={c.id} code={c} busy={busyId === c.id} onToggle={() => onToggle(c)} t={t} />
-            ))}
-          </div>
-        )}
-      </div>
+
+        <AdminPage.Section>
+          {initialLoading ? (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="admin-row-card" aria-hidden="true">
+                  <span className="sk-bar sk-bar-md" style={{ width: "32%" }} />
+                  <span className="sk-bar sk-bar-sm" style={{ width: "55%", marginTop: 4 }} />
+                  <span className="sk-bar sk-bar-xs" style={{ width: "70%", marginTop: 4 }} />
+                </div>
+              ))}
+            </div>
+          ) : codes.length === 0 ? (
+            <AdminEmpty
+              title={t("admin.codes.empty")}
+              body={t("admin.codes.emptyBody")}
+            />
+          ) : (
+            <div role="list">
+              {codes.map((c) => (
+                <CodeRow
+                  key={c.id}
+                  code={c}
+                  busy={busyId === c.id}
+                  onToggle={() => onToggle(c)}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+        </AdminPage.Section>
+      </AdminPage>
 
       {showNew && (
         <NewCodeSheet onClose={() => setShowNew(false)} onCreated={handleCreated} />
@@ -108,53 +139,53 @@ function CodeRow({ code, busy, onToggle, t }) {
   const link = `https://cardigan.mx/c/${code.code}`;
 
   return (
-    <div style={{
-      background: "var(--white)",
-      border: "1px solid var(--border-lt)",
-      borderRadius: "var(--radius)",
-      padding: "12px 14px",
-      opacity: code.active ? 1 : 0.6,
-    }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-            <span style={{
-              fontFamily: "var(--font-mono, monospace)",
-              fontSize: 14, fontWeight: 700, color: "var(--charcoal)", letterSpacing: "0.4px",
-            }}>
-              {code.code}
-            </span>
-            <span className={`badge ${code.active ? "badge-green" : "badge-gray"}`}
-              style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              {code.active ? t("admin.codesActive") : t("admin.codesInactive")}
-            </span>
-          </div>
-          {code.influencer_name && (
-            <div style={{ fontSize: 12, color: "var(--charcoal-md)", marginBottom: 4 }}>
-              {code.influencer_name}
-            </div>
-          )}
-          <div style={{ fontSize: 13, color: "var(--charcoal)", marginBottom: 2 }}>
-            {t("admin.codesPercent", { percent: code.percent_off })} · {durationLabel}
-          </div>
-          <div style={{ fontSize: 11, color: "var(--charcoal-xl)" }}>
-            {t("admin.codesUsage", { signups: code.signup_count || 0, paid: code.paid_count || 0 })}
-          </div>
-        </div>
-        <button type="button" onClick={onToggle} disabled={busy}
-          style={{
-            background: "none", border: "1px solid var(--border)", color: "var(--charcoal-md)",
-            padding: "4px 10px", fontSize: 11, fontWeight: 600,
-            borderRadius: "var(--radius-pill)", cursor: busy ? "default" : "pointer",
-            fontFamily: "inherit", flexShrink: 0, WebkitTapHighlightColor: "transparent",
+    <div className="admin-row-card" role="listitem" style={{ opacity: code.active ? 1 : 0.6 }}>
+      <div className="admin-row-card-row">
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{
+            fontFamily: "var(--admin-mono)",
+            fontSize: 13.5,
+            fontWeight: 700,
+            color: "var(--admin-text)",
+            letterSpacing: "0.4px",
           }}>
+            {code.code}
+          </span>
+          {code.active
+            ? <AdminBadge tone="success">{t("admin.codesActive")}</AdminBadge>
+            : <AdminBadge tone="neutral">{t("admin.codesInactive")}</AdminBadge>}
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={busy}
+          style={{
+            background: "var(--admin-surface)",
+            border: "1px solid var(--admin-border)",
+            color: "var(--admin-text-meta)",
+            padding: "4px 10px",
+            fontSize: 11.5,
+            fontWeight: 600,
+            borderRadius: 999,
+            cursor: busy ? "default" : "pointer",
+            fontFamily: "inherit",
+            flexShrink: 0,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
           {code.active ? t("admin.codesDisable") : t("admin.codesEnable")}
         </button>
       </div>
-      <div style={{
-        marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-lt)",
-        display: "flex", alignItems: "center", gap: 8,
-      }}>
+      {code.influencer_name && (
+        <div className="admin-row-card-secondary">{code.influencer_name}</div>
+      )}
+      <div style={{ fontSize: 12.5, color: "var(--admin-text)" }}>
+        {t("admin.codesPercent", { percent: code.percent_off })} · {durationLabel}
+      </div>
+      <div className="admin-row-card-meta">
+        {t("admin.codesUsage", { signups: code.signup_count || 0, paid: code.paid_count || 0 })}
+      </div>
+      <div style={{ paddingTop: 8, borderTop: "1px solid var(--admin-border)", display: "flex", alignItems: "center", gap: 8 }}>
         <CopyChip text={link} label={t("admin.codesShareLink")} />
       </div>
     </div>

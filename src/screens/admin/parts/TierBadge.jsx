@@ -1,13 +1,11 @@
 import { formatDate } from "../../../utils/format";
+import { AdminBadge } from "./AdminBadge";
 
-/* ── TierBadge ────────────────────────────────────────────────────────
+/* ── TierBadge ──────────────────────────────────────────────────────────
    Single source of truth for "what tier is this account?" pill across
-   admin surfaces. Mirrors the original logic from AccountRow's
-   tier-pill block (AdminPanel.jsx pre-v2) so the new dashboard renders
-   identical badges to the legacy modal during the parity period.
-
-   Uses the shared .badge-* classes from components.css so dark-mode
-   token swaps stay in sync with every other badge in the app.
+   admin surfaces. Routes through AdminBadge so the dot+text vocabulary
+   stays consistent with every other status badge in the admin shell,
+   and so dark-mode token swaps work via the --admin-* variables.
 
    Shape:
      account: { tier, subscriptionCancelAt, subscriptionPeriodEnd,
@@ -25,23 +23,21 @@ export function TierBadge({ account }) {
         catch { /* fall through */ }
       }
       return (
-        <span className="badge badge-amber">
+        <AdminBadge tone="warn">
           {dateStr ? `Pro · termina ${dateStr}` : "Pro · cancelada"}
-        </span>
+        </AdminBadge>
       );
     }
-    return <span className="badge badge-teal">Pro</span>;
+    return <AdminBadge tone="brand">Pro</AdminBadge>;
   }
   if (account.tier === "comp") {
-    return <span className="badge badge-green">Gratis</span>;
+    return <AdminBadge tone="success">Gratis</AdminBadge>;
   }
   if (account.tier === "trial") {
-    return (
-      <span className="badge badge-amber">Prueba: {account.daysLeftInTrial}d</span>
-    );
+    return <AdminBadge tone="warn">Prueba: {account.daysLeftInTrial}d</AdminBadge>;
   }
   if (account.tier === "expired") {
-    return <span className="badge badge-red">Vencida</span>;
+    return <AdminBadge tone="danger">Vencida</AdminBadge>;
   }
   return null;
 }

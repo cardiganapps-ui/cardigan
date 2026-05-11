@@ -184,9 +184,19 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
   let body;
   switch (route.section) {
     case "users":
-      body = route.id
-        ? <AdminUserDetail uid={route.id} onViewAs={handleViewAs} onBack={() => goSection("users")} currentAdminId={currentAdminId} />
-        : <AdminUsers onSelect={(uid) => route.navigate("users", uid)} />;
+      // Users renders the master-detail split itself. At ≥1024px the
+      // list and the embedded user detail share the screen; at
+      // <1024px the user-detail takes over the viewport when an id is
+      // selected and the list hides via data-mobile-pane.
+      body = (
+        <AdminUsers
+          selectedId={route.id || null}
+          onSelect={(uid) => route.navigate("users", uid)}
+          onClearSelection={() => route.navigate("users")}
+          onViewAs={handleViewAs}
+          currentAdminId={currentAdminId}
+        />
+      );
       break;
     case "revenue":     body = <AdminRevenue />; break;
     case "acquisition": body = <AdminAcquisition />; break;
@@ -270,17 +280,14 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId }) {
               {route.section === "users" && route.id && (
                 <button type="button"
                   onClick={() => goSection("users")}
-                  style={{
-                    background: "none", border: "none", padding: 0, cursor: "pointer",
-                    display: "inline-flex", alignItems: "center", color: "var(--charcoal-md)",
-                  }}
+                  className="admin-back-arrow"
                   aria-label="Volver">
                   <IconArrowLeft size={18} />
                 </button>
               )}
               <nav className="admin-breadcrumbs" aria-label="Breadcrumb">
                 {breadcrumbs.map((c, i) => (
-                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span key={i} className="admin-breadcrumb-item">
                     {i > 0 && <span className="admin-breadcrumb-sep"><IconChevronRight size={12} /></span>}
                     {c.onClick ? <button type="button" onClick={c.onClick}>{c.label}</button> : <span>{c.label}</span>}
                   </span>

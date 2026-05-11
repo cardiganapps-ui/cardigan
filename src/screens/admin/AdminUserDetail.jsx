@@ -4,6 +4,10 @@ import { useT } from "../../i18n/index";
 import { UserActionsMenu } from "./parts/UserActionsMenu";
 import { TierBadge } from "./parts/TierBadge";
 import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
+import { useAuditLabel } from "./parts/auditLabels";
+import { AdminTable } from "./parts/AdminTable";
+import { AdminBadge } from "./parts/AdminBadge";
+import { AdminEmpty } from "./parts/AdminEmpty";
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -33,9 +37,6 @@ function fmtMoneyCents(cents, currency = "MXN") {
   return amount.toLocaleString("es-MX", { style: "currency", currency, maximumFractionDigits: 0 });
 }
 function fmtBytes(b) {
-  // Guard non-positive (corrupt rows can produce negatives or NaN —
-  // Math.log(<=0) returns NaN/-Infinity and the unit lookup goes
-  // sideways, surfacing "NaN undefined" to the admin).
   if (!b || b <= 0 || !Number.isFinite(b)) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
@@ -49,40 +50,26 @@ function initialsFor(name, email) {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-const TABS = [
-  { k: "profile", l: "Perfil" },
-  { k: "subscription", l: "Suscripción" },
-  { k: "usage", l: "Uso" },
-  { k: "devices", l: "Dispositivos" },
-  { k: "audit", l: "Auditoría" },
-];
-
-const ACTION_LABELS = {
-  block_user: "Bloqueado",
-  unblock_user: "Desbloqueado",
-  delete_user: "Eliminado",
-  update_profession: "Cambio de profesión",
-  grant_comp: "Comp otorgada",
-  revoke_comp: "Comp revocada",
-  recover_encryption: "Recuperación de cifrado",
-  view_as: "Ver como usuario",
-  create_code: "Código creado",
-  toggle_code: "Código alternado",
-};
-
-/* ── AdminUserDetail ──
+/* ── AdminUserDetail ────────────────────────────────────────────────────
    Flagship page. One server round-trip via /api/admin-user-detail
    composes the entire snapshot. Tabs: Profile / Suscripción / Uso /
-   Dispositivos / Auditoría. NO patient PII — counts and metadata
-   only. */
-export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
+   Dispositivos / Auditoría. NO patient PII — counts and metadata only.
+
+   v2 changes:
+     • `embedded` prop suppresses the outer wrapper chrome so the page
+       can live inside the master-detail split view on AdminUsers
+       at ≥1024px. When standalone, behavior is unchanged.
+     • Tabs use `.admin-tabs-v2` instead of inline-styled buttons.
+     • Inline tables replaced with <AdminTable>.
+     • Badges use <AdminBadge>; tier/profession chips reuse the existing
+       <TierBadge> (which itself routes through AdminBadge now).
+     • Empty states use <AdminEmpty>.
+     • Hardcoded Spanish strings routed through useT(). */
+export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId, embedded = false }) {
   const { t } = useT();
+  const auditLabel = useAuditLabel();
   const [tab, setTab] = useState("profile");
 
-  // useAdminQuery owns the cancellation + cache; the unique cache key
-  // includes the uid so a click from user A → user B can't have the
-  // older response stomp the newer one (the race fixed in the May
-  // audit).
   const fetcher = useCallback(() => Promise.all([
     fetchUserDetail(uid),
     fetchAuditLog({ targetUserId: uid, limit: 100 }).catch(() => []),
@@ -93,13 +80,6 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
   const profile = bundle?.detail?.profile || null;
   const subscription = bundle?.detail?.subscription || null;
 
-  // Build a synthetic account-like object so UserActionsMenu sees the
-  // same shape it does in the Users list. Tier resolution mirrors
-  // fetchAllAccounts in useCardiganData.js so a user opened directly
-  // via #admin/users/<uid> renders the SAME badge as in the list —
-  // including the "expired" state the prior implementation collapsed
-  // into "trial". MUST live before any early-return below because
-  // hooks can't be called conditionally.
   const account = useMemo(() => {
     if (!profile) return null;
     const TRIAL_DAYS = 30;
@@ -110,18 +90,11 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
       PAID.has(status)
       || (status === "trialing" && !!subscription?.default_payment_method)
     );
-    // Date.now() is impure but the result feeds into a useMemo
-    // that re-runs only when profile/subscription change — the
-    // worst case is a tier badge that's a few seconds stale across
-    // the trial cutoff, which is fine for an admin tool.
     // eslint-disable-next-line react-hooks/purity
     const now = Date.now();
     const isPatient = !!profile.is_patient;
     let tier = "expired";
     let daysLeftInTrial = null;
-    // Patient users don't carry a subscription (the therapist pays);
-    // collapse tier to null so TierBadge renders nothing rather than
-    // an inaccurate "Vencida" or "Prueba" pill.
     if (isPatient) {
       tier = null;
     } else if (compGranted) {
@@ -156,8 +129,20 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
     };
   }, [profile, subscription]);
 
-  if (loading && !bundle) return <div className="admin-empty">Cargando…</div>;
-  if (error && !bundle) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
+  if (loading && !bundle) {
+    return (
+      <DetailContainer embedded={embedded}>
+        <DetailSkeleton />
+      </DetailContainer>
+    );
+  }
+  if (error && !bundle) {
+    return (
+      <DetailContainer embedded={embedded}>
+        <AdminEmpty title={t("admin.ui.error")} body={String(error)} />
+      </DetailContainer>
+    );
+  }
   if (!bundle) return null;
 
   const { invoices, usage, devices, privacy } = bundle.detail;
@@ -169,61 +154,51 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
     onViewAs?.(id);
   };
 
+  const TABS = [
+    { k: "profile",      l: t("admin.userDetail.tabProfile") },
+    { k: "subscription", l: t("admin.userDetail.tabSubscription") },
+    { k: "usage",        l: t("admin.userDetail.tabUsage") },
+    { k: "devices",      l: t("admin.userDetail.tabDevices") },
+    { k: "audit",        l: t("admin.userDetail.tabAudit") },
+  ];
+
   return (
-    <>
+    <DetailContainer embedded={embedded}>
       <div className="admin-card">
         <div className="admin-user-header">
           <div className="admin-user-avatar">{initialsFor(profile.full_name, profile.email)}</div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-            {/* Name row — name + tier + blocked badge inline. The
-                tier sits next to the name where the eye reads it
-                first, replacing the old "naked text after a dot"
-                style. */}
             <div className="admin-user-name">
-              <span>{profile.full_name || <span style={{ color: "var(--charcoal-xl)", fontStyle: "italic", fontWeight: 600 }}>{t("admin.noName")}</span>}</span>
-              {account.isPatient && <span className="badge badge-rose">Paciente</span>}
+              <span>{profile.full_name || <span style={{ color: "var(--admin-text-faint)", fontStyle: "italic", fontWeight: 600 }}>{t("admin.noName")}</span>}</span>
+              {account.isPatient && <AdminBadge tone="info">{t("admin.users.tier.patient")}</AdminBadge>}
               {!account.isPatient && <TierBadge account={account} />}
-              {account.blocked && <span className="badge badge-red">Bloqueado</span>}
+              {account.blocked && <AdminBadge tone="danger">Bloqueado</AdminBadge>}
             </div>
-            {/* Email on its own line so a long address doesn't
-                push everything else around, and so it's the one
-                copy-pasteable thing on the row. */}
             {profile.email && (
-              <div style={{ fontSize: 13, color: "var(--charcoal-md)", overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12.5, color: "var(--admin-text-meta)", overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.4 }}>
                 {profile.email}
               </div>
             )}
-            {/* Structured chips replace the dot-separated meta line.
-                Each fact is its own pill, scannable at a glance.
-                Last-access (technical detail) moves to the Profile
-                tab where it belongs. */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
               {profile.profession && (
-                <span className="badge badge-teal">
+                <AdminBadge tone="brand">
                   {t(`onboarding.professions.${profile.profession}.label`)}
-                </span>
+                </AdminBadge>
               )}
               {profile.created_at && (
-                <span className="badge badge-gray" title={fmtDate(profile.created_at)}>
+                <AdminBadge tone="neutral" title={fmtDate(profile.created_at)}>
                   Alta {fmtRelativeShort(profile.created_at)}
-                </span>
+                </AdminBadge>
               )}
             </div>
           </div>
         </div>
 
-        {/* Action bar — primary "Ver como" + compact "Más" disclosure
-            that expands the secondary admin actions inline. Saves the
-            ~150px of vertical space the previous always-expanded
-            three-row layout consumed. */}
         <UserActionsMenu
           account={account}
           currentAdminId={currentAdminId}
           onViewAs={handleViewAs}
           onAction={(meta) => {
-            // Mutations (block / comp / profession / delete) make
-            // the Users list and the audit trail stale — drop both
-            // cache slices and refetch the current detail page.
             invalidateAdminCache("users:all");
             invalidateAdminCache("audit");
             invalidateAdminCache("overview");
@@ -234,47 +209,41 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
       </div>
 
       <div className="admin-card" style={{ padding: 0 }}>
-        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border-lt)", overflowX: "auto" }} className="admin-tab-stack">
+        <div className="admin-tabs-v2" role="tablist">
           {TABS.map((tb) => {
             const active = tab === tb.k;
             return (
-              <button key={tb.k} type="button"
+              <button
+                key={tb.k}
+                type="button"
+                role="tab"
+                aria-selected={active}
                 onClick={() => setTab(tb.k)}
-                style={{
-                  padding: "12px 16px",
-                  background: "none",
-                  border: "none",
-                  borderBottom: active ? "2px solid var(--teal)" : "2px solid transparent",
-                  color: active ? "var(--charcoal)" : "var(--charcoal-xl)",
-                  fontFamily: "inherit",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}>
+                className={`admin-tabs-v2-tab${active ? " admin-tabs-v2-tab--active" : ""}`}
+              >
                 {tb.l}
               </button>
             );
           })}
         </div>
-        <div style={{ padding: "16px 20px" }}>
+        <div style={{ padding: "14px 18px" }}>
           {tab === "profile" && (
             <>
               <DefList rows={[
-                ["User ID", profile.user_id],
-                ["Email", profile.email],
-                ["Nombre", profile.full_name || "—"],
+                [t("admin.userDetail.labelUserId"), profile.user_id],
+                [t("admin.userDetail.labelEmail"), profile.email],
+                [t("admin.userDetail.labelName"), profile.full_name || "—"],
                 ["Tipo", account.accountType === "patient"
-                  ? "Paciente"
+                  ? t("admin.users.tier.patient")
                   : account.accountType === "therapist"
-                    ? "Terapeuta"
+                    ? t("admin.users.tier.therapist")
                     : "Sin perfil"],
-                ["Profesión", profile.profession ? t(`onboarding.professions.${profile.profession}.label`) : "—"],
+                [t("admin.userDetail.labelProfession"), profile.profession ? t(`onboarding.professions.${profile.profession}.label`) : "—"],
                 ["Origen de alta", profile.signup_source || "—"],
                 profile.signup_source === "other" ? ["Origen detalle", profile.signup_source_detail || "—"] : null,
                 ["Origen registrado", fmtDateTime(profile.signup_source_recorded_at)],
                 ["Bloqueado hasta", profile.banned_until ? fmtDateTime(profile.banned_until) : "no"],
-                ["Último acceso", fmtDateTime(profile.last_sign_in_at)],
+                [t("admin.userDetail.labelLastSignIn"), fmtDateTime(profile.last_sign_in_at)],
                 ["Cuenta creada", fmtDateTime(profile.created_at)],
                 ["Cifrado de notas", privacy.encryption_enabled ? `activo (kid: ${privacy.encryption_recovery_kid || "—"})` : "no"],
                 ["Aviso de privacidad", privacy.latest_consent_version
@@ -282,7 +251,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                   : "—"],
               ].filter(Boolean)} />
               {ratings.length > 0 && (
-                <RatingsBlock ratings={ratings} />
+                <RatingsBlock ratings={ratings} t={t} />
               )}
             </>
           )}
@@ -290,28 +259,28 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
           {tab === "subscription" && (
             <>
               {!subscription && account.isPatient && (
-                <div className="admin-empty">
-                  <span className="admin-empty-title">Cuenta de paciente</span>
-                  <span className="admin-empty-body">Los pacientes no se suscriben a Cardigan — el terapeuta paga el plan. Aquí no habrá facturas ni renovaciones.</span>
-                </div>
+                <AdminEmpty
+                  title="Cuenta de paciente"
+                  body="Los pacientes no se suscriben a Cardigan — el terapeuta paga el plan. Aquí no habrá facturas ni renovaciones."
+                />
               )}
               {!subscription && !account.isPatient && (
-                <div className="admin-empty">
-                  <span className="admin-empty-title">Aún en periodo de prueba</span>
-                  <span className="admin-empty-body">Este usuario no ha iniciado un checkout. Cuando se suscriba aparecerán aquí los detalles del plan, las facturas y la fecha de renovación.</span>
-                </div>
+                <AdminEmpty
+                  title="Aún en periodo de prueba"
+                  body="Este usuario no ha iniciado un checkout. Cuando se suscriba aparecerán aquí los detalles del plan, las facturas y la fecha de renovación."
+                />
               )}
               {subscription && (
                 <>
                   <DefList rows={[
-                    ["Estado", subscription.status || "—"],
+                    [t("admin.userDetail.labelStatus"), subscription.status || "—"],
                     ["Plan (price)", subscription.stripe_price_id || "—"],
                     ["Comp otorgada", subscription.comp_granted ? `sí · ${fmtDateTime(subscription.comp_granted_at)}` : "no"],
                     subscription.comp_reason ? ["Comp motivo", subscription.comp_reason] : null,
                     ["Período actual termina", fmtDateTime(subscription.current_period_end)],
                     ["Cancelar al final del período", subscription.cancel_at_period_end ? "sí" : "no"],
                     ["Cancela en", fmtDateTime(subscription.cancel_at)],
-                    ["Fin de prueba", fmtDateTime(subscription.trial_end)],
+                    [t("admin.userDetail.labelTrialEnds"), fmtDateTime(subscription.trial_end)],
                     ["Días extra de prueba", subscription.trial_extension_days || 0],
                     ["Customer (Stripe)", subscription.stripe_customer_id || "—"],
                     ["Subscription (Stripe)", subscription.stripe_subscription_id || "—"],
@@ -322,40 +291,33 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
                   ].filter(Boolean)} />
                   {invoices && invoices.length > 0 && (
                     <>
-                      <h3 style={{ fontFamily: "var(--font-d)", fontSize: 13, fontWeight: 800, marginTop: 18, marginBottom: 8 }}>
-                        Últimas facturas
+                      <h3 style={{ fontFamily: "var(--font-d)", fontSize: 12.5, fontWeight: 800, marginTop: 18, marginBottom: 8, color: "var(--admin-text)" }}>
+                        {t("admin.userDetail.sectionInvoices")}
                       </h3>
-                      <div className="admin-table-wrap">
-                      <table className="admin-table">
-                        <thead>
-                          <tr>
-                            <th>Fecha</th>
-                            <th style={{ textAlign: "right" }}>Monto</th>
-                            <th>Estado</th>
-                            <th>Stripe</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoices.map((inv) => (
-                            <tr key={inv.id}>
-                              <td>{fmtDate(inv.created_at)}</td>
-                              <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                                {fmtMoneyCents(inv.amount_cents, inv.currency || "MXN")}
-                              </td>
-                              <td>{inv.paid_at ? <span className="badge badge-green">Pagada</span> : "—"}</td>
-                              <td>
-                                {inv.hosted_invoice_url ? (
-                                  <a href={inv.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
-                                    style={{ color: "var(--teal-dark)", fontWeight: 600 }}>
-                                    Abrir →
-                                  </a>
-                                ) : "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      </div>
+                      <AdminTable
+                        columns={[
+                          { key: "created_at", label: t("admin.revenue.colDate"), render: (inv) => fmtDate(inv.created_at), width: 130 },
+                          { key: "amount_cents", label: t("admin.revenue.colAmount"), align: "right", width: 110,
+                            render: (inv) => fmtMoneyCents(inv.amount_cents, inv.currency || "MXN") },
+                          { key: "paid_at", label: t("admin.revenue.colStatus"), width: 100,
+                            render: (inv) => inv.paid_at
+                              ? <AdminBadge tone="success">{t("admin.revenue.statusPaid")}</AdminBadge>
+                              : <AdminBadge tone="neutral">—</AdminBadge> },
+                          { key: "hosted_invoice_url", label: "Stripe", width: 90,
+                            render: (inv) => inv.hosted_invoice_url
+                              ? <a href={inv.hosted_invoice_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--admin-accent)", fontWeight: 600 }}>Abrir →</a>
+                              : "—" },
+                        ]}
+                        rows={invoices}
+                        rowKey={(inv) => inv.id}
+                        mobileLayout={(inv) => ({
+                          primary: fmtMoneyCents(inv.amount_cents, inv.currency || "MXN"),
+                          meta: [<span key="d">{fmtDate(inv.created_at)}</span>],
+                          badges: inv.paid_at
+                            ? <AdminBadge tone="success">{t("admin.revenue.statusPaid")}</AdminBadge>
+                            : <AdminBadge tone="neutral">—</AdminBadge>,
+                        })}
+                      />
                     </>
                   )}
                 </>
@@ -365,7 +327,7 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
 
           {tab === "usage" && (
             <DefList rows={[
-              ["Pacientes", usage.patients],
+              [t("admin.userDetail.labelPatients"), usage.patients],
               ["Sesiones (total)", usage.sessions_total],
               ["Sesiones (30d)", usage.sessions_30d],
               ["Sesiones completadas", usage.sessions_completed],
@@ -383,46 +345,40 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
 
           {tab === "devices" && (
             <>
-              <h3 style={{ fontFamily: "var(--font-d)", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>
-                Push subscriptions ({devices.push_subscriptions.length})
+              <h3 style={{ fontFamily: "var(--font-d)", fontSize: 12.5, fontWeight: 800, marginBottom: 8, color: "var(--admin-text)" }}>
+                {t("admin.userDetail.pushSubsCount", { count: devices.push_subscriptions.length })}
               </h3>
               {devices.push_subscriptions.length === 0 ? (
-                <div className="admin-empty">
-                  <span className="admin-empty-title">Sin dispositivos con notificaciones</span>
-                  <span className="admin-empty-body">El usuario no ha activado los recordatorios push. No recibirá avisos antes de sus sesiones hasta que lo haga desde Ajustes.</span>
-                </div>
+                <AdminEmpty
+                  title="Sin dispositivos con notificaciones"
+                  body="El usuario no ha activado los recordatorios push. No recibirá avisos antes de sus sesiones hasta que lo haga desde Ajustes."
+                />
               ) : (
-                <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Endpoint host</th>
-                      <th>Registrado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {devices.push_subscriptions.map((p) => (
-                      <tr key={p.id}>
-                        <td style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}>{p.endpoint_host || "—"}</td>
-                        <td>{fmtDateTime(p.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
+                <AdminTable
+                  columns={[
+                    { key: "endpoint_host", label: "Endpoint host", mono: true,
+                      render: (p) => p.endpoint_host || "—" },
+                    { key: "created_at", label: "Registrado", width: 180,
+                      render: (p) => fmtDateTime(p.created_at) },
+                  ]}
+                  rows={devices.push_subscriptions}
+                  rowKey={(p) => p.id}
+                  mobileLayout={(p) => ({
+                    primary: p.endpoint_host || "—",
+                    meta: [<span key="d">{fmtDateTime(p.created_at)}</span>],
+                  })}
+                />
               )}
-              <h3 style={{ fontFamily: "var(--font-d)", fontSize: 13, fontWeight: 800, margin: "16px 0 8px" }}>
-                Token de calendario
+              <h3 style={{ fontFamily: "var(--font-d)", fontSize: 12.5, fontWeight: 800, margin: "16px 0 8px", color: "var(--admin-text)" }}>
+                {t("admin.userDetail.sectionCalendar")}
               </h3>
               {devices.calendar_token ? (
                 <DefList rows={[
-                  ["Emitido", fmtDateTime(devices.calendar_token.issued_at)],
-                  ["Último uso", fmtDateTime(devices.calendar_token.last_accessed_at)],
+                  [t("admin.userDetail.labelIssuedAt"), fmtDateTime(devices.calendar_token.issued_at)],
+                  [t("admin.userDetail.labelLastUsed"), fmtDateTime(devices.calendar_token.last_accessed_at)],
                 ]} />
               ) : (
-                <div className="admin-empty" style={{ padding: 20 }}>
-                  <span className="admin-empty-body">El usuario no ha generado un enlace de calendario. Puede crearlo desde Ajustes → Calendario.</span>
-                </div>
+                <AdminEmpty body={t("admin.userDetail.calendarTokenEmpty")} />
               )}
             </>
           )}
@@ -430,41 +386,74 @@ export function AdminUserDetail({ uid, onViewAs, onBack, currentAdminId }) {
           {tab === "audit" && (
             <>
               {audit.length === 0 ? (
-                <div className="admin-empty">
-                  <span className="admin-empty-title">Cuenta sin intervenciones</span>
-                  <span className="admin-empty-body">No hemos bloqueado, otorgado comp ni cambiado nada en esta cuenta. Cualquier acción administrativa se registrará aquí.</span>
-                </div>
+                <AdminEmpty
+                  title="Cuenta sin intervenciones"
+                  body="No hemos bloqueado, otorgado comp ni cambiado nada en esta cuenta. Cualquier acción administrativa se registrará aquí."
+                />
               ) : (
-                <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Acción</th>
-                      <th>Datos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {audit.map((r) => (
-                      <tr key={r.id}>
-                        <td style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.created_at)}</td>
-                        <td style={{ fontWeight: 600 }}>{ACTION_LABELS[r.action] || r.action}</td>
-                        <td title={r.payload ? JSON.stringify(r.payload) : ""}
-                          style={{
-                            fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--charcoal-xl)",
-                            maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
+                <AdminTable
+                  columns={[
+                    { key: "created_at", label: t("admin.audit.colDate"), width: 160,
+                      render: (r) => <span style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.created_at)}</span> },
+                    { key: "action", label: t("admin.audit.colAction"),
+                      render: (r) => <span style={{ fontWeight: 600 }}>{auditLabel(r.action)}</span> },
+                    { key: "payload", label: "Datos", mono: true,
+                      render: (r) => (
+                        <span
+                          title={r.payload ? JSON.stringify(r.payload) : ""}
+                          style={{ display: "inline-block", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        >
                           {r.payload ? JSON.stringify(r.payload) : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
+                        </span>
+                      ) },
+                  ]}
+                  rows={audit}
+                  rowKey={(r) => r.id}
+                  mobileLayout={(r) => ({
+                    primary: auditLabel(r.action),
+                    secondary: r.payload ? JSON.stringify(r.payload) : null,
+                    meta: [<span key="d">{fmtDateTime(r.created_at)}</span>],
+                  })}
+                />
               )}
             </>
           )}
         </div>
+      </div>
+    </DetailContainer>
+  );
+}
+
+/* Outer container. When embedded inside the master-detail split view,
+   skip the page-fade wrapper — the split host already provides padding
+   and a `key` for the screen-level transition. */
+function DetailContainer({ embedded, children }) {
+  if (embedded) {
+    return <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{children}</div>;
+  }
+  return <>{children}</>;
+}
+
+function DetailSkeleton() {
+  return (
+    <>
+      <div className="admin-card" aria-busy="true">
+        <div className="admin-user-header">
+          <span className="sk-circle" style={{ width: 64, height: 64 }} />
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+            <span className="sk-bar sk-bar-lg" style={{ width: "45%" }} />
+            <span className="sk-bar sk-bar-sm" style={{ width: "65%" }} />
+            <span className="sk-bar sk-bar-xs" style={{ width: "30%" }} />
+          </div>
+        </div>
+      </div>
+      <div className="admin-card" style={{ padding: 18 }} aria-busy="true">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} style={{ display: "flex", gap: 14, padding: "8px 0" }}>
+            <span className="sk-bar sk-bar-sm" style={{ width: 140 }} />
+            <span className="sk-bar sk-bar-sm" style={{ flex: 1 }} />
+          </div>
+        ))}
       </div>
     </>
   );
@@ -487,11 +476,11 @@ function DefList({ rows }) {
    Profile tab when at least one row exists. Each row: prompt kind,
    N stars (rendered as ★ characters for compactness — admin tool,
    no need for the full SVG icon), optional comment, timestamp. */
-function RatingsBlock({ ratings }) {
+function RatingsBlock({ ratings, t }) {
   return (
     <div style={{ marginTop: 24 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--charcoal-md)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-        Calificaciones
+      <div className="admin-eyebrow" style={{ marginBottom: 10 }}>
+        {t("admin.userDetail.sectionRatings")}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {ratings.map((r) => (
@@ -499,24 +488,25 @@ function RatingsBlock({ ratings }) {
             key={`${r.prompt_kind}-${r.created_at}`}
             style={{
               padding: "10px 12px",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
-              background: "var(--white)",
-            }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+              border: "1px solid var(--admin-border)",
+              borderRadius: 8,
+              background: "var(--admin-surface)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5 }}>
               <span style={{ color: "var(--amber, #E8B86C)", letterSpacing: 1 }}>
                 {"★".repeat(r.stars)}
-                <span style={{ color: "var(--charcoal-xl)" }}>{"★".repeat(5 - r.stars)}</span>
+                <span style={{ color: "var(--admin-text-faint)" }}>{"★".repeat(5 - r.stars)}</span>
               </span>
-              <span style={{ fontFamily: "var(--font-mono, monospace)", color: "var(--charcoal-md)" }}>
+              <span style={{ fontFamily: "var(--admin-mono)", color: "var(--admin-text-meta)" }}>
                 {r.prompt_kind}
               </span>
-              <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--charcoal-xl)" }}>
+              <span style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--admin-text-faint)" }}>
                 {fmtDateTime(r.created_at)}
               </span>
             </div>
             {r.comment && (
-              <div style={{ marginTop: 6, fontSize: 13, color: "var(--charcoal)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
+              <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--admin-text)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
                 {r.comment}
               </div>
             )}

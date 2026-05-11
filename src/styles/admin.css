@@ -318,10 +318,11 @@
 }
 .admin-table thead th {
   position: sticky; top: 0;
-  /* Soft cream tint so the header still reads as a header against the
-     white card bg, but doesn't shout. Picks up the same tone as
-     teal-mist on the row hover so the family feels coherent. */
-  background: var(--cream);
+  /* Header tint deferred to admin-tokens.css (--admin-surface-2) so the
+     internal-tools cool-gray pivot doesn't fight with the warm --cream
+     fallback that the consumer app keeps. Outside .admin-shell the rule
+     above this would still set a background; we don't render an
+     .admin-table outside admin today, so omitting a fallback is safe. */
   border-bottom: 1px solid var(--border-lt);
   text-align: left;
   font-weight: 700;

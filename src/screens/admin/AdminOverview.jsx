@@ -3,6 +3,11 @@ import { fetchAdminAnalytics, fetchAuditLog, fetchRevenueOverview } from "../../
 import { StatCard } from "./parts/StatCard";
 import { DailyBars } from "./parts/DailyBars";
 import { useAdminQuery } from "./useAdminQuery";
+import { useT } from "../../i18n/index";
+import { useAuditLabel } from "./parts/auditLabels";
+import { AdminPage } from "./parts/AdminPage";
+import { AdminKPIGrid } from "./parts/AdminKPIGrid";
+import { AdminEmpty } from "./parts/AdminEmpty";
 
 function fmtMoney(n) {
   return `$${(Number(n) || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
@@ -24,25 +29,14 @@ function fmtRelative(iso) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
-const ACTION_LABELS = {
-  block_user: "Bloqueo de usuario",
-  unblock_user: "Desbloqueo",
-  delete_user: "Eliminación",
-  update_profession: "Cambio de profesión",
-  grant_comp: "Comp otorgada",
-  revoke_comp: "Comp revocada",
-  create_code: "Código creado",
-  toggle_code: "Código alternado",
-  recover_encryption: "Recuperación de cifrado",
-  view_as: "Ver como usuario",
-};
-
-/* ── AdminOverview ──
+/* ── AdminOverview ──────────────────────────────────────────────────────
    Landing page: hero KPI band + 30-day daily charts + a recent
-   activity feed sourced from the new admin_audit_log table.
-   Uses useAdminQuery so revisits (Overview → Users → Overview)
-   render instantly from cache and revalidate in the background. */
+   activity feed. Composed via AdminPage + AdminKPIGrid; activity feed
+   gets a skeleton state instead of a "Cargando…" string. */
 export function AdminOverview({ onJump }) {
+  const { t } = useT();
+  const auditLabel = useAuditLabel();
+
   const fetcher = useCallback(() => Promise.all([
     fetchAdminAnalytics({ days: 30 }),
     fetchRevenueOverview().catch(() => null),
@@ -50,8 +44,8 @@ export function AdminOverview({ onJump }) {
   ]).then(([analytics, revenue, recent]) => ({ analytics, revenue, recent })), []);
   const { data, loading, error } = useAdminQuery("overview", fetcher);
 
-  if (loading && !data) return <div className="admin-empty">Cargando…</div>;
-  if (error && !data) return <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>;
+  const initialLoading = loading && !data;
+  const hasError = !!error && !data;
 
   const ov = data?.analytics?.overview || {};
   const daily = data?.analytics?.daily || [];
@@ -60,72 +54,120 @@ export function AdminOverview({ onJump }) {
   const recent = data?.recent || [];
 
   return (
-    <>
-      {/* Each KPI is a portal to the detail page that owns it.
-          Drilling in is one tap from the dashboard rather than a
-          two-step "Overview → side rail → page". Cards without a
-          clear destination (Pacientes / Pagos counts) stay
-          informational. */}
-      <div className="admin-kpi-grid">
-        <StatCard label="Usuarios" value={ov.users_total ?? 0}
+    <AdminPage
+      title={t("admin.overview.title")}
+      subtitle={t("admin.overview.subtitle")}
+    >
+      <AdminKPIGrid loading={initialLoading} loadingCount={6}>
+        <StatCard
+          label="Usuarios"
+          value={ov.users_total ?? 0}
           sub={`${ov.users_active_30d ?? 0} activos · ${ov.users_blocked ?? 0} bloqueados`}
-          onClick={() => onJump?.("users")} />
-        <StatCard label="Suscripciones Pro" value={activeSubs}
-          sub={fmtMoney(mrrCents / 100) + " MRR"} accent="teal-dark"
-          onClick={() => onJump?.("revenue")} />
-        <StatCard label="Activos 30d" value={ov.users_active_30d ?? 0}
+          onClick={() => onJump?.("users")}
+        />
+        <StatCard
+          label="Suscripciones Pro"
+          value={activeSubs}
+          sub={`${fmtMoney(mrrCents / 100)} MRR`}
+          accent="teal-dark"
+          onClick={() => onJump?.("revenue")}
+        />
+        <StatCard
+          label="Activos 30d"
+          value={ov.users_active_30d ?? 0}
           sub={`${ov.users_signups_30d ?? 0} altas en 30d`}
-          onClick={() => onJump?.("acquisition")} />
-        <StatCard label="Sesiones" value={ov.sessions_total ?? 0}
-          sub={`${ov.sessions_30d ?? 0} en 30 días`} />
-        <StatCard label="Pagos" value={ov.payments_total ?? 0}
+          onClick={() => onJump?.("acquisition")}
+        />
+        <StatCard
+          label="Sesiones"
+          value={ov.sessions_total ?? 0}
+          sub={`${ov.sessions_30d ?? 0} en 30 días`}
+        />
+        <StatCard
+          label="Pagos"
+          value={ov.payments_total ?? 0}
           sub={`${ov.payments_30d ?? 0} en 30 días`}
-          onClick={() => onJump?.("revenue")} />
-        <StatCard label="Pacientes" value={ov.patients_total ?? 0}
-          sub={`${ov.push_subscriptions ?? 0} con push`} />
-      </div>
+          onClick={() => onJump?.("revenue")}
+        />
+        <StatCard
+          label="Pacientes"
+          value={ov.patients_total ?? 0}
+          sub={`${ov.push_subscriptions ?? 0} con push`}
+        />
+      </AdminKPIGrid>
 
-      <div className="admin-card">
-        <div className="admin-card-title">Actividad diaria · 30 días</div>
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-          <DailyBars daily={daily} accessor={(r) => r.active_users} label="Usuarios activos" />
-          <DailyBars daily={daily} accessor={(r) => r.signups} label="Altas" color="var(--green)" />
-          <DailyBars daily={daily} accessor={(r) => r.sessions_created} label="Sesiones creadas" color="var(--charcoal-md)" />
-        </div>
-      </div>
-
-      <div className="admin-card">
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
-          <div className="admin-card-title">Actividad reciente</div>
-          <button type="button"
-            onClick={() => onJump?.("audit")}
-            style={{ background: "none", border: "none", color: "var(--teal-dark)", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>
-            Ver registro completo →
-          </button>
-        </div>
-        {recent.length === 0 ? (
-          <div className="admin-empty">
-            <span className="admin-empty-title">Aún no hay actividad</span>
-            <span className="admin-empty-body">Las acciones administrativas (bloqueos, cambios de profesión, comp) aparecerán aquí cuando ocurran.</span>
+      <AdminPage.Section title={t("admin.overview.sectionDaily")} padded>
+        {initialLoading ? (
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} aria-hidden="true" style={{ height: 100, display: "flex", alignItems: "flex-end", gap: 4 }}>
+                {Array.from({ length: 30 }, (_, j) => (
+                  <span key={j} className="sk-bar" style={{ width: 6, height: `${30 + ((i + j) % 7) * 8}%`, borderRadius: 2 }} />
+                ))}
+              </div>
+            ))}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            <DailyBars daily={daily} accessor={(r) => r.active_users} label="Usuarios activos" />
+            <DailyBars daily={daily} accessor={(r) => r.signups} label="Altas" color="var(--admin-success)" />
+            <DailyBars daily={daily} accessor={(r) => r.sessions_created} label="Sesiones creadas" color="var(--admin-text-meta)" />
+          </div>
+        )}
+      </AdminPage.Section>
+
+      <AdminPage.Section
+        title={t("admin.overview.sectionActivity")}
+        headerExtra={(
+          <button
+            type="button"
+            onClick={() => onJump?.("audit")}
+            style={{
+              background: "none", border: "none",
+              color: "var(--admin-accent)", fontSize: 12, fontWeight: 700,
+              cursor: "pointer", padding: 0,
+            }}
+          >
+            {t("admin.overview.activityViewAll")} →
+          </button>
+        )}
+      >
+        {hasError ? (
+          <AdminEmpty title={t("admin.ui.error")} body={String(error)} />
+        ) : initialLoading ? (
+          <div role="status" aria-busy="true">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="admin-activity-row" aria-hidden="true">
+                <span className="sk-circle" style={{ width: 24, height: 24, flexShrink: 0 }} />
+                <span className="sk-bar sk-bar-sm" style={{ flex: 1, maxWidth: "55%" }} />
+                <span className="sk-bar sk-bar-xs" style={{ width: 56 }} />
+              </div>
+            ))}
+          </div>
+        ) : recent.length === 0 ? (
+          <AdminEmpty
+            title="Aún no hay actividad"
+            body="Las acciones administrativas (bloqueos, cambios de profesión, comp) aparecerán aquí cuando ocurran."
+          />
+        ) : (
+          <div>
             {recent.slice(0, 12).map((r) => (
-              <div key={r.id} style={{
-                display: "flex", justifyContent: "space-between", gap: 12,
-                padding: "8px 0", borderBottom: "1px solid var(--border-lt)", fontSize: 13,
-              }}>
-                <span style={{ color: "var(--charcoal)", fontWeight: 600 }}>
-                  {ACTION_LABELS[r.action] || r.action}
+              <div key={r.id} className="admin-activity-row">
+                <span className="admin-activity-row-body">
+                  <span className="admin-activity-row-actor">{auditLabel(r.action)}</span>
+                  {r.target_user_id && (
+                    <>
+                      {" "}
+                      <span className="admin-activity-row-target">{r.target_user_id.slice(0, 8)}…</span>
+                    </>
+                  )}
                 </span>
-                <span style={{ color: "var(--charcoal-xl)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-                  {fmtRelative(r.created_at)}
-                </span>
+                <span className="admin-activity-row-time">{fmtRelative(r.created_at)}</span>
               </div>
             ))}
           </div>
         )}
-      </div>
-    </>
+      </AdminPage.Section>
+    </AdminPage>
   );
 }

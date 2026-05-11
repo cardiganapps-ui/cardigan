@@ -1,0 +1,868 @@
+/* ── Admin design tokens + primitive classes ──────────────────────────
+   This file is the *aesthetic pivot* of the admin redesign. It declares
+   a parallel `--admin-*` token set scoped to `.admin-shell` and overrides
+   the admin-only surface treatments from `admin.css` so the panel reads
+   as a cool-gray internal tool (Linear / Stripe / Plain register)
+   without touching the global `--white` / `--charcoal` / `--cream`
+   tokens that the consumer therapist app depends on.
+
+   Loaded AFTER `admin.css` in `src/styles/index.css`, so specific
+   property overrides on shared classes (`.admin-shell`, `.admin-card`,
+   `.admin-rail`, `.admin-header`, `.admin-table`) win by cascade.
+
+   Every selector below requires a `.admin-shell` ancestor, so a stray
+   `.admin-card` rendered outside the admin (none exists today, but as
+   a safeguard) wouldn't inherit the cool palette.
+
+   The `Admin*` primitives in `src/screens/admin/parts/` consume the
+   `--admin-*` variables exclusively — they don't reach into `--charcoal`
+   / `--cream` / `--white`. */
+
+.admin-shell {
+  /* Cool-gray neutrals scoped to admin only */
+  --admin-bg: #FAFAFB;
+  --admin-surface: #FFFFFF;
+  --admin-surface-2: #F4F5F7;        /* sticky table header, subtle panels */
+  --admin-surface-3: #EFF1F4;        /* inset / nested surfaces */
+  --admin-border: #E6E8EB;
+  --admin-border-strong: #D8DBDF;
+  --admin-text: #1A1D21;
+  --admin-text-meta: #6B7178;
+  --admin-text-faint: #9AA0A6;
+  --admin-row-hover: #F4F5F7;
+  --admin-row-selected: #EEF1F5;
+  --admin-accent: var(--teal-dark);  /* reuse brand teal for selected state + primary */
+  --admin-accent-soft: #E8F1F4;      /* selected-row tint that reads cooler than teal-pale */
+  --admin-mono: ui-monospace, "SF Mono", "Menlo", monospace;
+  --admin-danger: #C5443B;
+  --admin-success: #2F8F5C;
+  --admin-warn: #B47A14;
+  --admin-info: #4A6FA5;
+
+  /* Density baseline. Body 13px, tabular-nums by default so every
+     number column lines up without per-call utility classes. */
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+/* Dark-mode parity — admin keeps its own scoped dark palette so the
+   internal-tools register is preserved even when the user has dark mode
+   active. */
+html[data-theme="dark"] .admin-shell,
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .admin-shell {
+    --admin-bg: #0F1115;
+    --admin-surface: #161A20;
+    --admin-surface-2: #1B2027;
+    --admin-surface-3: #21262E;
+    --admin-border: #262C34;
+    --admin-border-strong: #313842;
+    --admin-text: #ECEEF1;
+    --admin-text-meta: #98A0AB;
+    --admin-text-faint: #6F7783;
+    --admin-row-hover: #1B2027;
+    --admin-row-selected: #1F2731;
+    --admin-accent-soft: #14323A;
+  }
+}
+
+/* ── Override existing admin.css surface treatments ──
+   admin.css references the warm Cardigan tokens (--white, --border-lt,
+   --cream, --charcoal, --charcoal-md, --charcoal-xl). Surgically remap
+   each one to its --admin-* equivalent here. */
+
+.admin-shell {
+  background: var(--admin-bg) !important;
+}
+.admin-shell .admin-rail {
+  background: var(--admin-surface);
+  border-right-color: var(--admin-border);
+}
+.admin-shell .admin-rail-brand { color: var(--admin-text); }
+.admin-shell .admin-rail-brand-meta { color: var(--admin-accent); }
+.admin-shell .admin-rail-section-label { color: var(--admin-text-faint); }
+.admin-shell .admin-rail-item { color: var(--admin-text-meta); }
+.admin-shell .admin-rail-item--active {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+  box-shadow: inset 2px 0 0 var(--admin-accent);
+}
+@media (hover: hover) {
+  .admin-shell .admin-rail-item:hover {
+    background: var(--admin-row-hover);
+    color: var(--admin-text);
+  }
+  .admin-shell .admin-rail-item--active:hover {
+    background: var(--admin-accent-soft);
+    color: var(--admin-accent);
+  }
+}
+.admin-shell .admin-rail-footer { border-top-color: var(--admin-border); }
+.admin-shell .admin-rail-badge { color: var(--admin-text-faint); }
+
+.admin-shell .admin-header {
+  background: var(--admin-surface);
+  border-bottom-color: var(--admin-border);
+}
+.admin-shell .admin-breadcrumbs,
+.admin-shell .admin-breadcrumbs a,
+.admin-shell .admin-breadcrumbs button { color: var(--admin-text-faint); }
+@media (hover: hover) {
+  .admin-shell .admin-breadcrumbs a:hover,
+  .admin-shell .admin-breadcrumbs button:hover { color: var(--admin-text-meta); }
+}
+.admin-shell .admin-breadcrumb-sep { color: var(--admin-text-faint); }
+.admin-shell .admin-page-title { color: var(--admin-text); }
+.admin-shell .admin-exit-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text-meta);
+}
+@media (hover: hover) {
+  .admin-shell .admin-exit-btn:hover {
+    background: var(--admin-surface-2);
+    border-color: var(--admin-border-strong);
+    color: var(--admin-text);
+    transform: translateY(-1px);
+  }
+}
+
+.admin-shell .admin-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  /* Replace the warm-shadowed lift with a flatter, more workmanlike
+     elevation that fits the internal-tools register. */
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.admin-shell .admin-card-title { color: var(--admin-text); }
+.admin-shell .admin-card-sub { color: var(--admin-text-meta); }
+.admin-shell .admin-stat:hover {
+  border-color: var(--admin-border-strong);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.admin-shell .admin-table { font-size: 13px; }
+.admin-shell .admin-table thead th {
+  background: var(--admin-surface-2);
+  color: var(--admin-text-faint);
+  border-bottom-color: var(--admin-border);
+}
+.admin-shell .admin-table tbody td { border-bottom-color: var(--admin-border); color: var(--admin-text); }
+@media (hover: hover) {
+  .admin-shell .admin-table tbody tr:hover { background: var(--admin-row-hover); }
+}
+
+.admin-shell .admin-search-input {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+.admin-shell .admin-search-input:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.18);
+}
+.admin-shell .admin-filter-pill {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text-meta);
+}
+.admin-shell .admin-filter-pill--active {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}
+@media (hover: hover) {
+  .admin-shell .admin-filter-pill:hover { background: var(--admin-surface-2); border-color: var(--admin-border-strong); }
+  .admin-shell .admin-filter-pill--active:hover { background: var(--admin-accent-soft); }
+}
+
+.admin-shell .admin-empty,
+.admin-shell .admin-empty-body { color: var(--admin-text-faint); }
+.admin-shell .admin-empty-title { color: var(--admin-text); }
+
+.admin-shell .admin-link-tile {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+@media (hover: hover) {
+  .admin-shell .admin-link-tile:hover {
+    background: var(--admin-row-hover);
+    border-color: var(--admin-border-strong);
+  }
+}
+.admin-shell .admin-link-tile-title { color: var(--admin-text); }
+.admin-shell .admin-link-tile-sub { color: var(--admin-text-faint); }
+
+.admin-shell .admin-user-avatar {
+  background: var(--admin-accent);
+  color: var(--admin-surface);
+}
+.admin-shell .admin-user-name { color: var(--admin-text); }
+.admin-shell .admin-user-meta,
+.admin-shell .admin-user-email,
+.admin-shell .admin-user-meta-line { color: var(--admin-text-meta); }
+
+.admin-shell .admin-deflist-row dt { color: var(--admin-text-faint); }
+.admin-shell .admin-deflist-row dd { color: var(--admin-text); }
+
+/* ── New primitive: AdminPage shell ──
+   Standardized page header rhythm. Used by AdminPage.jsx. */
+.admin-page-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admin-page-v2-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-page-v2-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.admin-page-v2-title {
+  font-family: var(--font-d);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--admin-text);
+  margin: 0;
+}
+.admin-page-v2-sub {
+  font-size: 12px;
+  color: var(--admin-text-meta);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+.admin-page-v2-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.admin-page-v2-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-page-v2-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admin-page-v2-section {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.admin-page-v2-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.admin-page-v2-section-title {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-text);
+  margin: 0;
+  letter-spacing: -0.1px;
+}
+.admin-page-v2-section-body {
+  /* No padding by default — sections render full-bleed tables. Pass
+     `padded` prop to AdminPage.Section for forms / activity feeds. */
+}
+.admin-page-v2-section-body--padded { padding: 14px 16px; }
+
+/* ── AdminListHeader: title + count + sort + filter slot + actions ── */
+.admin-list-header-v2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+.admin-list-header-v2-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.admin-list-header-v2-title {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-text);
+  letter-spacing: -0.1px;
+}
+.admin-list-header-v2-count {
+  font-size: 12px;
+  color: var(--admin-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.admin-list-header-v2-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.admin-list-header-v2-sort {
+  appearance: none;
+  height: 30px;
+  padding: 0 24px 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--admin-text);
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--admin-text-faint) 50%), linear-gradient(135deg, var(--admin-text-faint) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+/* ── AdminFilterBar: search + filter pills row ── */
+.admin-filter-bar-v2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--admin-border);
+  background: var(--admin-surface-2);
+  flex-wrap: wrap;
+}
+.admin-filter-bar-v2-search {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.admin-filter-bar-v2-search-icon {
+  position: absolute;
+  left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--admin-text-faint);
+  pointer-events: none;
+  display: inline-flex;
+}
+.admin-filter-bar-v2-search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 30px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--admin-text);
+  outline: none;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.admin-filter-bar-v2-search-input:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.18);
+}
+.admin-filter-bar-v2-search-input::placeholder { color: var(--admin-text-faint); }
+.admin-filter-bar-v2-pills {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.admin-filter-bar-v2-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  background: var(--admin-surface);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-text-meta);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.admin-filter-bar-v2-pill--active {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}
+@media (hover: hover) {
+  .admin-filter-bar-v2-pill:hover { background: var(--admin-surface-2); border-color: var(--admin-border-strong); }
+  .admin-filter-bar-v2-pill--active:hover { background: var(--admin-accent-soft); }
+}
+
+/* ── AdminTable: dense table primitive ──
+   - 36px row height
+   - Sticky header (within scroll container)
+   - Sortable columns (header click → sort)
+   - Hover-revealed row-action kebab (right edge)
+   - Selected row tint
+   - At <700px, falls back to stacked cards via .admin-tbl-card */
+.admin-tbl-wrap {
+  position: relative;
+  width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+  background: var(--admin-surface);
+}
+.admin-tbl thead th {
+  position: sticky;
+  top: 0;
+  background: var(--admin-surface-2);
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text-faint);
+  text-align: left;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+.admin-tbl thead th[data-sortable="true"] { cursor: pointer; }
+@media (hover: hover) {
+  .admin-tbl thead th[data-sortable="true"]:hover { color: var(--admin-text-meta); }
+}
+.admin-tbl thead th .admin-tbl-th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.admin-tbl thead th .admin-tbl-sort-caret {
+  font-size: 9px;
+  color: var(--admin-text-faint);
+  opacity: 0;
+  transition: opacity var(--dur-fast) ease;
+}
+.admin-tbl thead th[data-sort-active="true"] .admin-tbl-sort-caret { opacity: 1; color: var(--admin-accent); }
+.admin-tbl thead th[data-align="right"] { text-align: right; }
+.admin-tbl thead th[data-align="center"] { text-align: center; }
+
+.admin-tbl tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--admin-border);
+  vertical-align: middle;
+  color: var(--admin-text);
+  height: 38px;
+}
+.admin-tbl tbody td[data-align="right"] { text-align: right; }
+.admin-tbl tbody td[data-align="center"] { text-align: center; }
+.admin-tbl tbody td[data-mono="true"] {
+  font-family: var(--admin-mono);
+  font-size: 11.5px;
+  color: var(--admin-text-meta);
+}
+.admin-tbl tbody tr {
+  position: relative;
+  transition: background-color var(--dur-fast) ease;
+}
+.admin-tbl tbody tr[data-clickable="true"] { cursor: pointer; }
+.admin-tbl tbody tr[data-selected="true"] {
+  background: var(--admin-row-selected);
+}
+.admin-tbl tbody tr[data-selected="true"] td:first-child {
+  box-shadow: inset 2px 0 0 var(--admin-accent);
+}
+@media (hover: hover) {
+  .admin-tbl tbody tr[data-clickable="true"]:hover { background: var(--admin-row-hover); }
+  .admin-tbl tbody tr[data-selected="true"]:hover { background: var(--admin-row-selected); }
+}
+.admin-tbl tbody tr:last-child td { border-bottom: none; }
+.admin-tbl-row-actions {
+  position: relative;
+  text-align: right;
+  width: 36px;
+}
+.admin-tbl-row-actions-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  color: var(--admin-text-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+@media (hover: hover) {
+  .admin-tbl tbody tr:hover .admin-tbl-row-actions-btn { opacity: 1; }
+  .admin-tbl-row-actions-btn:hover { background: var(--admin-surface-2); color: var(--admin-text); }
+}
+/* Touch viewports — always show the kebab since there's no hover. */
+@media (hover: none) {
+  .admin-tbl-row-actions-btn { opacity: 1; }
+}
+
+/* Skeleton row pulses */
+.admin-tbl-skeleton td {
+  padding: 12px;
+}
+.admin-tbl-skeleton .sk-bar { height: 10px; border-radius: 3px; }
+
+/* ── Mobile fallback: stacked cards ── */
+.admin-tbl-cards { display: none; }
+@media (max-width: 700px) {
+  .admin-tbl-wrap { overflow: visible; }
+  .admin-tbl { display: none; }
+  .admin-tbl-cards {
+    display: flex;
+    flex-direction: column;
+    background: var(--admin-surface);
+  }
+  .admin-tbl-card {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--admin-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--dur-fast) ease;
+  }
+  .admin-tbl-card:last-child { border-bottom: none; }
+  .admin-tbl-card[data-selected="true"] {
+    background: var(--admin-row-selected);
+    box-shadow: inset 2px 0 0 var(--admin-accent);
+  }
+  .admin-tbl-card[data-selected="true"]:active { background: var(--admin-row-selected); }
+  .admin-tbl-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .admin-tbl-card-primary {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--admin-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .admin-tbl-card-secondary {
+    font-size: 12px;
+    color: var(--admin-text-meta);
+    overflow-wrap: anywhere;
+  }
+  .admin-tbl-card-meta {
+    font-size: 11px;
+    color: var(--admin-text-faint);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .admin-tbl-card-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ── AdminEmpty: title + body + CTA, no illustration ── */
+.admin-empty-v2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 20px;
+  gap: 6px;
+}
+.admin-empty-v2-title {
+  font-family: var(--font-d);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+.admin-empty-v2-body {
+  font-size: 12px;
+  color: var(--admin-text-meta);
+  max-width: 360px;
+  line-height: 1.55;
+}
+.admin-empty-v2-cta {
+  margin-top: 10px;
+}
+
+/* ── AdminKPIGrid: tight auto-fit KPI grid ── */
+.admin-kpi-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+/* ── AdminBadge: status dot + text ── */
+.admin-badge-v2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+}
+.admin-badge-v2::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+.admin-badge-v2--neutral { background: var(--admin-surface-2); color: var(--admin-text-meta); }
+.admin-badge-v2--success { background: rgba(47, 143, 92, 0.10);  color: var(--admin-success); }
+.admin-badge-v2--warn    { background: rgba(180, 122, 20, 0.10); color: var(--admin-warn); }
+.admin-badge-v2--danger  { background: rgba(197, 68, 59, 0.10);  color: var(--admin-danger); }
+.admin-badge-v2--info    { background: rgba(74, 111, 165, 0.10); color: var(--admin-info); }
+.admin-badge-v2--brand   { background: var(--admin-accent-soft); color: var(--admin-accent); }
+.admin-badge-v2--ghost {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text-meta);
+}
+.admin-badge-v2--ghost::before { display: none; }
+
+/* ── AdminTabs: tab strip used in User Detail ── */
+.admin-tabs-v2 {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--admin-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 14px;
+}
+.admin-tabs-v2-tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--admin-text-meta);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.admin-tabs-v2-tab--active {
+  color: var(--admin-text);
+  border-bottom-color: var(--admin-accent);
+}
+@media (hover: hover) {
+  .admin-tabs-v2-tab:hover { color: var(--admin-text); }
+}
+
+/* ── AdminSplitView: master-detail layout at >=1024px ──
+   Below 1024px, the panes don't share screen space — the host
+   component flips data-mobile-pane between "list" and "detail" so
+   the user sees only one at a time (today's route-overlay flow).
+   Above 1024px, the panes render side-by-side and data-mobile-pane is
+   ignored. */
+.admin-split-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+@media (max-width: 1023.98px) {
+  .admin-split-view[data-mobile-pane="list"] .admin-split-view-detail { display: none; }
+  .admin-split-view[data-mobile-pane="detail"] .admin-split-view-list { display: none; }
+  .admin-split-view-detail { width: 100%; }
+}
+@media (min-width: 1024px) {
+  .admin-split-view {
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .admin-split-view-list {
+    flex: 0 0 380px;
+    max-width: 380px;
+    position: sticky;
+    top: 16px;
+    /* Allow the list to scroll inside its own height when long. */
+    max-height: calc(100vh - var(--sat, 0px) - 56px - 32px);
+    overflow: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--admin-border);
+    background: var(--admin-surface);
+  }
+  .admin-split-view-detail {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* On desktop, the detail pane's "no selection yet" state is a
+     centered placeholder card. */
+  .admin-split-view-empty {
+    border: 1px dashed var(--admin-border);
+    border-radius: var(--radius-lg);
+    background: var(--admin-surface);
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--admin-text-faint);
+    font-size: 12.5px;
+  }
+}
+@media (max-width: 1023.98px) {
+  .admin-split-view-list { border: 1px solid var(--admin-border); border-radius: var(--radius-lg); background: var(--admin-surface); }
+  .admin-split-view-empty { display: none; }
+}
+@media (min-width: 1024px) {
+  /* The "back" button in the detail pane is only useful on mobile where
+     the list pane is hidden. At ≥1024px the list is right there next
+     to the detail, so hide it. */
+  .admin-split-view-back { display: none; }
+}
+
+/* ── AdminActivityRow: used in Overview's recent activity feed ── */
+.admin-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--admin-border);
+  font-size: 12.5px;
+  color: var(--admin-text);
+}
+.admin-activity-row:last-child { border-bottom: none; }
+.admin-activity-row-icon {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--admin-surface-2);
+  color: var(--admin-text-meta);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.admin-activity-row-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-activity-row-actor {
+  font-weight: 600;
+  color: var(--admin-text);
+}
+.admin-activity-row-target {
+  font-family: var(--admin-mono);
+  font-size: 11.5px;
+  color: var(--admin-text-meta);
+}
+.admin-activity-row-time {
+  font-size: 11.5px;
+  color: var(--admin-text-faint);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── AdminRowCard: generic row-card primitive (used for Codes and the
+   <700px AdminTable fallback). One canonical row look — no per-screen
+   inline-styled boxes. */
+.admin-row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+.admin-row-card:last-child { border-bottom: none; }
+.admin-row-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-row-card-primary {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+.admin-row-card-secondary {
+  font-size: 12px;
+  color: var(--admin-text-meta);
+  word-break: break-word;
+}
+.admin-row-card-meta {
+  font-size: 11.5px;
+  color: var(--admin-text-faint);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── AdminLayout helpers (hoisted from inline styles in AdminLayout.jsx) ── */
+.admin-shell .admin-back-arrow {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  color: var(--admin-text-meta);
+}
+.admin-shell .admin-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Eyebrow used by AdminListHeader, AdminPage header subtitle, etc. ── */
+.admin-shell .admin-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--admin-text-faint);
+  font-weight: 700;
+}
+
+/* ── Reduce motion: skeleton shimmer stays, but trim transitions ── */
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell .admin-tbl thead th[data-sortable="true"],
+  .admin-shell .admin-tbl-row-actions-btn,
+  .admin-shell .admin-filter-bar-v2-pill,
+  .admin-shell .admin-tabs-v2-tab {
+    transition: none;
+  }
+}

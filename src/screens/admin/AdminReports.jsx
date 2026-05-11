@@ -1,10 +1,14 @@
 import { useState, useCallback, useMemo } from "react";
 import { fetchBugReports, deleteBugReport, archiveBugReports } from "../../hooks/useCardiganData";
 import { useT } from "../../i18n/index";
-import { IconCheck, IconDownload, IconSearch } from "../../components/Icons";
+import { IconCheck, IconDownload } from "../../components/Icons";
 import { BugReportRow } from "./parts/BugReportRow";
 import { downloadCsv } from "./parts/csv";
 import { useAdminQuery, invalidateAdminCache } from "./useAdminQuery";
+import { SegmentedControl } from "../../components/SegmentedControl";
+import { AdminPage } from "./parts/AdminPage";
+import { AdminFilterBar } from "./parts/AdminFilterBar";
+import { AdminEmpty } from "./parts/AdminEmpty";
 
 function formatReportText(r) {
   const date = r.created_at ? new Date(r.created_at).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -31,9 +35,11 @@ function downloadReportsTxt(reports) {
   URL.revokeObjectURL(url);
 }
 
-/* ── AdminReports ──
-   Bug-report inbox lifted from BugsTab in AdminPanel.jsx with search
-   + CSV export added. */
+/* ── AdminReports ───────────────────────────────────────────────────────
+   Bug-report inbox. SegmentedControl now drives the active/archived
+   tab (replaces the hand-rolled pill row), search + actions go through
+   AdminFilterBar, layout wraps in AdminPage. BugReportRow stays
+   unchanged. */
 export function AdminReports() {
   const { t } = useT();
   const [showArchived, setShowArchived] = useState(false);
@@ -42,8 +48,6 @@ export function AdminReports() {
   const [search, setSearch] = useState("");
   const [actionError, setActionError] = useState("");
 
-  // Cache key includes the active/archived flag so flipping the
-  // toggle doesn't blow away the other tab's already-loaded list.
   const cacheKey = `reports:${showArchived ? "archived" : "active"}`;
   const fetcher = useCallback(() => fetchBugReports({ archived: showArchived }), [showArchived]);
   const { data: reports = [], loading, error: loadError, mutate } = useAdminQuery(cacheKey, fetcher);
@@ -63,8 +67,6 @@ export function AdminReports() {
       const stillPending = fresh.filter(r => ids.includes(r.id));
       if (stillPending.length > 0) throw new Error(t("admin.bugsArchiveFailed"));
       mutate(fresh);
-      // The "archived" tab now has new entries — drop its slot so
-      // flipping to it triggers a fresh fetch.
       invalidateAdminCache("reports:archived");
       setConfirmArchive(false);
     } catch (e) {
@@ -95,88 +97,120 @@ export function AdminReports() {
     ]);
   };
 
+  const tabValue = showArchived ? "archived" : "active";
+  const initialLoading = loading && reports.length === 0;
+
   return (
-    <div className="admin-card">
-      <div style={{ display: "flex", background: "var(--cream)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2, marginBottom: 12 }}>
-        {[{ k: false, l: t("admin.bugsActive") }, { k: true, l: t("admin.bugsArchived") }].map(tb => (
-          <button key={String(tb.k)} onClick={() => { setShowArchived(tb.k); setConfirmArchive(false); }}
-            style={{
-              flex: 1, padding: "5px 10px", fontSize: 11, fontWeight: 700,
-              borderRadius: "var(--radius-pill)", border: "none", cursor: "pointer",
-              fontFamily: "var(--font)", minHeight: 28,
-              background: showArchived === tb.k ? "var(--white)" : "transparent",
-              color: showArchived === tb.k ? "var(--charcoal)" : "var(--charcoal-xl)",
-              boxShadow: showArchived === tb.k ? "var(--shadow-sm)" : "none",
-              transition: "all 0.4s",
-            }}>
-            {tb.l}
+    <AdminPage
+      title={t("admin.reports.title")}
+      subtitle={t("admin.reports.subtitle")}
+    >
+      <div>
+        <SegmentedControl
+          value={tabValue}
+          onChange={(k) => { setShowArchived(k === "archived"); setConfirmArchive(false); }}
+          items={[
+            { k: "active", l: t("admin.reports.tabActive") },
+            { k: "archived", l: t("admin.reports.tabArchived") },
+          ]}
+        />
+      </div>
+
+      <AdminPage.Section>
+        <AdminFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={t("admin.reports.searchPlaceholder")}
+        >
+          <button
+            type="button"
+            onClick={() => downloadReportsTxt(filtered)}
+            className="admin-filter-bar-v2-pill"
+            title=".txt"
+          >
+            <IconDownload size={13} /> .txt
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            onClick={onCsv}
+            className="admin-filter-bar-v2-pill"
+          >
+            <IconDownload size={13} /> CSV
+          </button>
+          {!showArchived && (
+            confirmArchive ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleArchiveAll}
+                  disabled={archiving}
+                  className="admin-filter-bar-v2-pill admin-filter-bar-v2-pill--active"
+                  style={{ background: "var(--admin-success)", color: "white", borderColor: "var(--admin-success)" }}
+                >
+                  {archiving ? "..." : t("admin.bugsArchiveConfirm")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmArchive(false)}
+                  className="admin-filter-bar-v2-pill"
+                >
+                  {t("cancel")}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmArchive(true)}
+                className="admin-filter-bar-v2-pill"
+              >
+                <IconCheck size={13} /> {t("admin.bugsArchiveAll")}
+              </button>
+            )
+          )}
+        </AdminFilterBar>
 
-      <div className="admin-filters">
-        <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--charcoal-xl)", display: "inline-flex" }}>
-            <IconSearch size={14} />
-          </span>
-          <input className="admin-search-input" type="search"
-            placeholder="Buscar mensaje, email o pantalla…"
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: 32 }} />
-        </div>
-        <button type="button" onClick={() => downloadReportsTxt(filtered)}
-          className="admin-filter-pill"
-          style={{ background: "var(--teal-pale)", borderColor: "var(--teal)", color: "var(--teal-dark)" }}>
-          <IconDownload size={13} /> .txt
-        </button>
-        <button type="button" onClick={onCsv}
-          className="admin-filter-pill"
-          style={{ background: "var(--teal-pale)", borderColor: "var(--teal)", color: "var(--teal-dark)" }}>
-          <IconDownload size={13} /> CSV
-        </button>
-        {!showArchived && (
-          confirmArchive ? (
-            <>
-              <button onClick={handleArchiveAll} disabled={archiving}
-                className="admin-filter-pill"
-                style={{ background: "var(--green)", color: "var(--white)", borderColor: "var(--green)" }}>
-                {archiving ? "..." : t("admin.bugsArchiveConfirm")}
-              </button>
-              <button onClick={() => setConfirmArchive(false)} className="admin-filter-pill">
-                {t("cancel")}
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setConfirmArchive(true)}
-              className="admin-filter-pill"
-              style={{ background: "var(--green-bg)", color: "var(--green)", borderColor: "var(--green)" }}>
-              <IconCheck size={13} /> {t("admin.bugsArchiveAll")}
-            </button>
-          )
+        {error && (
+          <div
+            role="alert"
+            style={{
+              margin: "12px 16px",
+              background: "rgba(197, 68, 59, 0.10)",
+              color: "var(--admin-danger)",
+              padding: "10px 14px",
+              borderRadius: 8,
+              fontSize: 12.5,
+              border: "1px solid rgba(197, 68, 59, 0.20)",
+            }}
+          >
+            {error}
+          </div>
         )}
-      </div>
 
-      {loading && <div className="admin-empty">{t("admin.bugsLoading")}</div>}
-      {error && (
-        <div style={{ background: "var(--red-bg)", color: "var(--red)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, marginBottom: 10 }}>
-          {error}
-        </div>
-      )}
-      {!loading && filtered.length === 0 && !error && (
-        <div className="admin-empty">
-          {showArchived ? t("admin.bugsArchivedEmpty") : t("admin.bugsEmpty")}
-        </div>
-      )}
-      {!loading && filtered.length > 0 && (
-        <>
-          <div style={{ fontSize: 11, color: "var(--charcoal-xl)", marginBottom: 8 }}>
-            {t("admin.bugsCount", { count: filtered.length })}
+        {initialLoading ? (
+          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="admin-row-card" aria-hidden="true">
+                <span className="sk-bar sk-bar-md" style={{ width: "62%" }} />
+                <span className="sk-bar sk-bar-sm" style={{ width: "40%", marginTop: 4 }} />
+              </div>
+            ))}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.map(r => <BugReportRow key={r.id} report={r} onDelete={handleDelete} />)}
+        ) : filtered.length === 0 && !error ? (
+          <AdminEmpty
+            title={showArchived ? t("admin.reports.emptyArchived") : t("admin.reports.empty")}
+            body={!showArchived ? t("admin.reports.emptyBody") : undefined}
+          />
+        ) : (
+          <div style={{ padding: "12px 16px 16px" }}>
+            <div style={{ fontSize: 11.5, color: "var(--admin-text-faint)", marginBottom: 8 }}>
+              {t("admin.bugsCount", { count: filtered.length })}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {filtered.map(r => <BugReportRow key={r.id} report={r} onDelete={handleDelete} />)}
+            </div>
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </AdminPage.Section>
+    </AdminPage>
   );
 }

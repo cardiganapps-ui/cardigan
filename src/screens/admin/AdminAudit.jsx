@@ -1,41 +1,28 @@
 import { useState, useMemo, useCallback } from "react";
 import { fetchAuditLog } from "../../hooks/useCardiganData";
 import { downloadCsv } from "./parts/csv";
-import { IconDownload, IconSearch } from "../../components/Icons";
+import { IconDownload } from "../../components/Icons";
 import { useAdminQuery } from "./useAdminQuery";
-
-const ACTION_LABELS = {
-  block_user: "Bloqueo de usuario",
-  unblock_user: "Desbloqueo",
-  delete_user: "Eliminación",
-  update_profession: "Cambio de profesión",
-  grant_comp: "Comp otorgada",
-  revoke_comp: "Comp revocada",
-  create_code: "Código creado",
-  toggle_code: "Código alternado",
-  recover_encryption: "Recuperación de cifrado",
-  view_as: "Ver como usuario",
-};
+import { useT } from "../../i18n/index";
+import { AdminPage } from "./parts/AdminPage";
+import { AdminTable } from "./parts/AdminTable";
+import { AdminFilterBar } from "./parts/AdminFilterBar";
+import { AdminEmpty } from "./parts/AdminEmpty";
+import { useAuditLabel } from "./parts/auditLabels";
 
 function fmtDateTime(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
 }
 
-const ACTION_FILTERS = [
-  { k: "all", l: "Todas" },
-  { k: "block_user", l: "Bloqueos" },
-  { k: "delete_user", l: "Eliminaciones" },
-  { k: "grant_comp", l: "Comp" },
-  { k: "view_as", l: "Ver como" },
-  { k: "create_code", l: "Códigos" },
-  { k: "recover_encryption", l: "Cifrado" },
-];
-
-/* ── AdminAudit ──
+/* ── AdminAudit ─────────────────────────────────────────────────────────
    Chronological dump of admin_audit_log. Filters: action type + free
-   text. CSV export supplies the raw rows for offline analysis. */
+   text. CSV export supplies the raw rows for offline analysis. Now
+   rendered through the v2 admin primitives so the table is dense at
+   ≥700px and stacks into cards on phone. */
 export function AdminAudit() {
+  const { t } = useT();
+  const auditLabel = useAuditLabel();
   const [actionFilter, setActionFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -56,85 +43,123 @@ export function AdminAudit() {
 
   const onCsv = () => {
     downloadCsv("cardigan-audit-{date}.csv", filtered, [
-      { label: "Fecha", get: (r) => r.created_at },
-      { label: "Acción", get: (r) => r.action },
-      { label: "Actor ID", get: (r) => r.actor_id },
-      { label: "Target ID", get: (r) => r.target_user_id || "" },
-      { label: "Payload", get: (r) => r.payload ? JSON.stringify(r.payload) : "" },
+      { label: t("admin.audit.colDate"), get: (r) => r.created_at },
+      { label: t("admin.audit.colAction"), get: (r) => r.action },
+      { label: t("admin.audit.colActor"), get: (r) => r.actor_id },
+      { label: t("admin.audit.colTarget"), get: (r) => r.target_user_id || "" },
+      { label: t("admin.audit.colPayload"), get: (r) => r.payload ? JSON.stringify(r.payload) : "" },
       { label: "IP", get: (r) => r.ip || "" },
       { label: "User-Agent", get: (r) => r.ua || "" },
     ]);
   };
 
-  return (
-    <div className="admin-card">
-      <div style={{ marginBottom: 12 }}>
-        <div className="admin-card-title">Registro de auditoría</div>
-        <div className="admin-card-sub">
-          Cada acción administrativa queda registrada con actor, objetivo, IP y user-agent.
-          Inmutable; sólo los administradores pueden leerlo (RLS).
-        </div>
-      </div>
+  const filterDefs = [
+    { k: "all", l: t("admin.audit.filter.all") },
+    { k: "block_user", l: t("admin.audit.filter.blocks") },
+    { k: "delete_user", l: t("admin.audit.filter.deletes") },
+    { k: "grant_comp", l: t("admin.audit.filter.comp") },
+    { k: "view_as", l: t("admin.audit.filter.viewAs") },
+    { k: "create_code", l: t("admin.audit.filter.codes") },
+    { k: "recover_encryption", l: t("admin.audit.filter.recovery") },
+    { k: "update_profession", l: t("admin.audit.filter.profession") },
+  ];
 
-      <div className="admin-filters">
-        <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--charcoal-xl)", display: "inline-flex" }}>
-            <IconSearch size={14} />
-          </span>
-          <input className="admin-search-input" type="search"
-            placeholder="Buscar actor, objetivo, payload…"
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: 32 }} />
-        </div>
-        {ACTION_FILTERS.map((af) => (
-          <button key={af.k} type="button"
-            className={`admin-filter-pill${actionFilter === af.k ? " admin-filter-pill--active" : ""}`}
-            onClick={() => setActionFilter(af.k)}>
-            {af.l}
-          </button>
-        ))}
-        <button type="button" className="admin-filter-pill" onClick={onCsv}
-          style={{ background: "var(--teal-pale)", borderColor: "var(--teal)", color: "var(--teal-dark)" }}>
+  const columns = [
+    {
+      key: "created_at", label: t("admin.audit.colDate"), width: 170,
+      render: (r) => <span style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.created_at)}</span>,
+    },
+    {
+      key: "action", label: t("admin.audit.colAction"), width: 180,
+      render: (r) => <span style={{ fontWeight: 600 }}>{auditLabel(r.action)}</span>,
+    },
+    {
+      key: "actor_id", label: t("admin.audit.colActor"), mono: true, width: 110,
+      render: (r) => (r.actor_id ? `${r.actor_id.slice(0, 8)}…` : "—"),
+    },
+    {
+      key: "target_user_id", label: t("admin.audit.colTarget"), mono: true, width: 110,
+      render: (r) => (r.target_user_id ? `${r.target_user_id.slice(0, 8)}…` : "—"),
+    },
+    {
+      key: "payload", label: t("admin.audit.colPayload"), mono: true,
+      render: (r) => (
+        <span
+          title={r.payload ? JSON.stringify(r.payload) : ""}
+          style={{ display: "inline-block", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {r.payload ? JSON.stringify(r.payload) : "—"}
+        </span>
+      ),
+    },
+  ];
+
+  const mobileLayout = (r) => ({
+    primary: auditLabel(r.action),
+    secondary: r.payload ? JSON.stringify(r.payload) : null,
+    meta: [
+      <span key="d">{fmtDateTime(r.created_at)}</span>,
+      <span key="a" style={{ fontFamily: "var(--admin-mono)" }}>
+        {r.actor_id ? `actor ${r.actor_id.slice(0, 8)}…` : ""}
+      </span>,
+      r.target_user_id ? (
+        <span key="t" style={{ fontFamily: "var(--admin-mono)" }}>
+          → {r.target_user_id.slice(0, 8)}…
+        </span>
+      ) : null,
+    ].filter(Boolean),
+  });
+
+  const isInitialLoading = loading && rows.length === 0;
+  const hasError = !!error && rows.length === 0;
+
+  return (
+    <AdminPage
+      title={t("admin.audit.title")}
+      subtitle={t("admin.audit.subtitle")}
+      actions={(
+        <button
+          type="button"
+          className="admin-filter-pill"
+          onClick={onCsv}
+          style={{ background: "var(--admin-accent-soft)", borderColor: "var(--admin-accent)", color: "var(--admin-accent)" }}
+        >
           <IconDownload size={13} /> CSV
         </button>
-      </div>
-
-      {loading && rows.length === 0 && <div className="admin-empty">Cargando…</div>}
-      {error && rows.length === 0 && <div className="admin-empty" style={{ color: "var(--red)" }}>{error}</div>}
-      {!loading && !error && filtered.length === 0 && rows.length > 0 && <div className="admin-empty">Sin resultados.</div>}
-      {!loading && !error && filtered.length === 0 && rows.length === 0 && <div className="admin-empty">Sin eventos registrados.</div>}
-      {filtered.length > 0 && (
-        <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Acción</th>
-              <th>Actor</th>
-              <th>Objetivo</th>
-              <th>Payload</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.created_at)}</td>
-                <td style={{ fontWeight: 600 }}>{ACTION_LABELS[r.action] || r.action}</td>
-                <td style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11 }}>
-                  {(r.actor_id || "").slice(0, 8)}…
-                </td>
-                <td style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11 }}>
-                  {r.target_user_id ? `${r.target_user_id.slice(0, 8)}…` : "—"}
-                </td>
-                <td style={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--charcoal-xl)", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {r.payload ? JSON.stringify(r.payload) : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
       )}
-    </div>
+    >
+      <AdminPage.Section title={t("admin.audit.sectionTitle")}>
+        <AdminFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={t("admin.audit.searchPlaceholder")}
+          pills={filterDefs.map((af) => ({
+            key: af.k,
+            label: af.l,
+            active: actionFilter === af.k,
+            onClick: () => setActionFilter(af.k),
+          }))}
+        />
+        {hasError ? (
+          <AdminEmpty title={t("admin.ui.error")} body={String(error)} />
+        ) : (
+          <AdminTable
+            columns={columns}
+            rows={filtered}
+            rowKey={(r) => r.id}
+            loading={isInitialLoading}
+            skeletonRows={10}
+            empty={(
+              <AdminEmpty
+                title={rows.length === 0 ? t("admin.audit.empty") : t("admin.audit.noResults")}
+                body={rows.length === 0 ? t("admin.audit.emptyBody") : t("admin.ui.noResultsBody")}
+              />
+            )}
+            mobileLayout={mobileLayout}
+            ariaLabel={t("admin.audit.title")}
+          />
+        )}
+      </AdminPage.Section>
+    </AdminPage>
   );
 }
