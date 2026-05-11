@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "677073432436",
+    "project_id": "cardigan-276f3",
+    "storage_bucket": "cardigan-276f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:677073432436:android:2f2bfe359edcd4dbc28621",
+        "android_client_info": {
+          "package_name": "mx.cardigan.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMEpBV_FM2AcVib_QwRHpIqSqPgso4Asw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
