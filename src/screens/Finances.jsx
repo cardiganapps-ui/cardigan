@@ -102,22 +102,60 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
     return () => observer.disconnect();
   }, [visibleCount, filtered.length]);
 
-  const renderRow = (p, i) => {
+  // `nested` flips this row into the "child-of-a-grouped-patient" look:
+  // drops the redundant avatar (the parent row already shows it), shrinks
+  // the visual weight, and shifts the row right so the spine on the
+  // wrapper draws the eye through the subset. Keeps the same expand /
+  // swipe-to-delete interactions as the top-level row.
+  const renderRow = (p, i, nested = false) => {
     const patient = patients.find(pt => pt.name === p.patient);
     const isExpanded = expandedId === p.id;
     const rowBody = (
-      <div className="bal-row" role="button" tabIndex={0} onClick={() => setExpandedId(isExpanded ? null : p.id)} style={{ cursor:"pointer", background:"var(--white)" }}>
-        <Avatar initials={patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
-          color={getClientColor(p.colorIdx ?? i)} size="sm" />
+      <div
+        className="bal-row"
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpandedId(isExpanded ? null : p.id)}
+        style={{
+          cursor: "pointer",
+          background: nested ? "transparent" : "var(--white)",
+          ...(nested ? { paddingLeft: 36, minHeight: 48, gap: 10 } : {}),
+        }}
+      >
+        {nested ? (
+          // Bullet marker — pinned to the spine on the wrapper. Replaces
+          // the avatar (redundant since the parent row owns identity).
+          <span
+            aria-hidden="true"
+            style={{
+              width: 8, height: 8, borderRadius: "50%",
+              background: "var(--teal)",
+              flexShrink: 0,
+              boxShadow: "0 0 0 3px var(--white)",
+            }}
+          />
+        ) : (
+          <Avatar
+            initials={patient ? patient.initials : p.patient.slice(0,2).toUpperCase()}
+            color={getClientColor(p.colorIdx ?? i)} size="sm"
+          />
+        )}
         <div style={{ flex:1, minWidth:0 }}>
           {!groupByClient && <div className="bal-name">{p.patient}</div>}
-          <div className="bal-sub" style={{ display:"flex", alignItems:"center", gap:6, marginTop: groupByClient ? 0 : 2 }}>
+          <div className="bal-sub" style={{
+            display:"flex", alignItems:"center", gap:6,
+            marginTop: groupByClient ? 0 : 2,
+            fontSize: nested ? 12 : undefined,
+          }}>
             <span>{p.date}</span>
             <span style={{ width:3, height:3, borderRadius:"50%", background:"var(--charcoal-xl)", display:"inline-block" }} />
             <span>{p.method}</span>
           </div>
         </div>
-        <div className="bal-amt amount-paid">+{formatMXN(p.amount)}</div>
+        <div className={`bal-amt amount-paid${nested ? " amount-paid--nested" : ""}`}
+          style={nested ? { fontSize: 14, fontWeight: 700 } : undefined}>
+          +{formatMXN(p.amount)}
+        </div>
       </div>
     );
     return (
@@ -294,14 +332,39 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
                       </div>
                     </div>
                     {isOpen && (
-                      // Nested chronological list — already filtered
-                      // by the active period (via `grouped`) and sorted
-                      // newest-first by the outer memo, matching the
-                      // ungrouped view's reading order. Cream wrapper
-                      // gives a subtle visual indent so the nested rows
-                      // read as "belonging to" the patient above them.
-                      <div style={{ background:"var(--cream)", borderTop:"1px solid var(--border-lt)" }}>
-                        {pList.map((p, i) => renderRow(p, i))}
+                      // Subset container. Reads as "these payments belong
+                      // to the patient above" via three layered cues:
+                      //   1. Tinted background that's visibly distinct
+                      //      from the white card surface (and from the
+                      //      darker shell in dark mode — --teal-mist
+                      //      flips correctly in both palettes).
+                      //   2. A 2px vertical thread on the left, aligned
+                      //      with the parent row's avatar center, that
+                      //      draws the eye from the parent through the
+                      //      children.
+                      //   3. Inset rows (no redundant avatar) — see
+                      //      renderRow's `nested` branch above.
+                      // Combined, the expansion reads as a clear child
+                      // group at a glance.
+                      <div style={{
+                        position: "relative",
+                        background: "var(--teal-mist)",
+                        borderTop: "1px solid var(--border-lt)",
+                      }}>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            position: "absolute",
+                            left: 28,
+                            top: 4,
+                            bottom: 12,
+                            width: 2,
+                            background: "var(--teal-light)",
+                            borderRadius: 2,
+                            pointerEvents: "none",
+                          }}
+                        />
+                        {pList.map((p, i) => renderRow(p, i, true))}
                       </div>
                     )}
                   </div>
