@@ -49,8 +49,32 @@
 
 /* Dark-mode parity — admin keeps its own scoped dark palette so the
    internal-tools register is preserved even when the user has dark mode
-   active. */
-html[data-theme="dark"] .admin-shell,
+   active.
+
+   Two trigger paths, both flip the same tokens:
+     1. Explicit `data-theme="dark"` set by the app theme toggle
+     2. OS-level `prefers-color-scheme: dark` when no explicit theme
+        override is set
+
+   Each path needs its own rule block — combining them with a comma
+   selector list before an @media at-rule is invalid CSS. The
+   shared values are pulled into a custom property block via
+   --admin-dark-tokens (Sass-style "extend" via copy is fine for two
+   call sites). */
+html[data-theme="dark"] .admin-shell {
+  --admin-bg: #0F1115;
+  --admin-surface: #161A20;
+  --admin-surface-2: #1B2027;
+  --admin-surface-3: #21262E;
+  --admin-border: #262C34;
+  --admin-border-strong: #313842;
+  --admin-text: #ECEEF1;
+  --admin-text-meta: #98A0AB;
+  --admin-text-faint: #6F7783;
+  --admin-row-hover: #1B2027;
+  --admin-row-selected: #1F2731;
+  --admin-accent-soft: #14323A;
+}
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .admin-shell {
     --admin-bg: #0F1115;
