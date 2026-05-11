@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { haptic } from "../utils/haptics";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -116,7 +117,19 @@ export function ConfirmDialog({
     onCancel?.();
   };
 
-  return (
+  // Portal to <body> so the dialog's `position: fixed; inset: 0`
+  // resolves against the VIEWPORT, not whatever the nearest
+  // transformed/animated ancestor happens to be. The Drawer panel
+  // (translateX), sheet panels (translateY), patient-tab transitions
+  // (translateX), and SwipeableRows (translateX) all create new
+  // containing blocks for fixed-positioned descendants — without the
+  // portal, the confirm modal renders constrained to that ancestor's
+  // width and the action buttons overflow (May 2026 screenshot:
+  // sign-out dialog inside the 220px drawer had "Cerrar sesión"
+  // bleeding past the drawer edge). createPortal escapes the React
+  // tree so the dialog always lives at body level.
+  if (typeof document === "undefined") return null;
+  return createPortal((
     <div
       className={`confirm-dialog-overlay${leaving ? " is-leaving" : ""}`}
       onClick={handleOverlayClick}
@@ -170,5 +183,5 @@ export function ConfirmDialog({
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }
