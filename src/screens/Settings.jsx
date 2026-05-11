@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { supabase } from "../supabaseClient";
 import { shortDateToISO } from "../utils/dates";
+import { openExternal } from "../lib/nativeBrowser";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
@@ -533,7 +534,7 @@ export function Settings({ user, signOut, refreshUser }) {
     const res = await subscription.openPortal();
     setSubBusy(false);
     if (!res.ok) { setSubError(res.error || t("subscription.errorGeneric")); return; }
-    if (res.url) window.location.href = res.url;
+    if (res.url) await openExternal(res.url);
   };
   // Manual reconciliation — pulls live Stripe state and writes to DB.
   // Recovers from delayed/missed cancellation webhooks so the user

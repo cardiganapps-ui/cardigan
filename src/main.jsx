@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './lib/skewProtection'
 import { installBodyScrollLock } from './lib/bodyScrollLock'
 import { isNative } from './lib/platform'
+import { initNativeShell } from './lib/nativeBoot'
 
 /* Defer Sentry init to browser idle. The SDK is dynamic-imported
    inside initSentry() — without the deferral the chunk would still
@@ -28,6 +29,10 @@ if (typeof window !== 'undefined') {
 // no per-sheet wiring, and any future sheet that follows the
 // existing class conventions inherits the lock automatically.
 installBodyScrollLock()
+
+// Capacitor-only: hide the splash screen after first paint and align
+// the status bar style to the current theme. No-op on web.
+initNativeShell()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
