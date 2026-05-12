@@ -20,7 +20,9 @@
     "audit:signup": "node --env-file=.env.local scripts/verify-signup-flow.mjs",
     "cap:sync": "npm run build && npx cap sync android",
     "cap:open:android": "npx cap open android",
-    "cap:run:android": "npm run build && npx cap run android"
+    "cap:run:android": "npm run build && npx cap run android",
+    "cap:bundle:android": "npm run build && npx cap sync android && cd android && ./gradlew :app:bundleRelease && echo '\\nAAB → android/app/build/outputs/bundle/release/app-release.aab'",
+    "cap:fingerprint:android": "keytool -list -v -keystore android/cardigan-upload.keystore -alias cardigan-upload 2>/dev/null | grep 'SHA256:' || echo 'No keystore at android/cardigan-upload.keystore — run scripts/android-keystore.sh first'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

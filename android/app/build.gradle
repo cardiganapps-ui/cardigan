@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+// Release signing config — sourced from android/keystore.properties
+// (gitignored). When the file is absent, `gradle assembleRelease` falls
+// through to an unsigned build (Gradle warns but doesn't crash), so a
+// dev who hasn't set up the upload key can still verify a release-mode
+// compile. Production uploads to Play MUST be signed; CI is expected to
+// drop the properties file from secrets at build time.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader('UTF-8') { keystoreProperties.load(it) }
+}
+
 android {
     namespace = "mx.cardigan.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +28,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreProperties.containsKey("storeFile")) {
+                storeFile rootProject.file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystoreProperties.containsKey("storeFile")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
