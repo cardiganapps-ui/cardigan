@@ -402,6 +402,7 @@ export default {
     cancelNoCharge: "Cancelar sin cobrar",
     cancelChargeExplain: "La {session.s} se cancelar\u00e1 pero se cobrar\u00e1 {client.al}.",
     cancelNoChargeExplain: "La {session.s} se cancelar\u00e1 sin generar cargo.",
+    cancelPastCompletedHint: "Esta {session.s} ya estaba marcada como completada. Si la cancelas sin cobro, su monto se descontar\u00e1 del saldo {client.del} autom\u00e1ticamente.",
     confirmCancel: "Confirmar cancelaci\u00f3n",
     sessionType: "Tipo de {session.s}",
     sessionRate: "{rate.s} de esta {session.s}",

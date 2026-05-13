@@ -97,6 +97,83 @@ describe("updateSessionStatus", () => {
     expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.CANCELLED);
     expect(ctx.patients.get()[0].billed).toBe(3000);
   });
+
+  // ── Retroactive edits on past sessions ──
+  // Lifted the UI restriction that hid Cancel from completed rows,
+  // and switched updateSessionStatus to a predicate-based delta so
+  // every transition (not just the cancellation toggle) lands
+  // patient.billed on the same value the live amountDue calc would.
+
+  it("completed → cancelled (no charge) decrements billed by rate", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue("sessions", { error: null });
+    mock.enqueue("patients", { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.CANCELLED);
+    // Was counted (completed) → not counted (cancelled). billed drops.
+    expect(ctx.patients.get()[0].billed).toBe(3000);
+  });
+
+  it("completed → cancel-with-charge keeps billed unchanged (charged still counts)", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue("sessions", { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, /* charge= */ true);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.CHARGED);
+    // Both completed and charged count toward consumed → no delta.
+    expect(ctx.patients.get()[0].billed).toBe(4000);
+  });
+
+  it("charged → cancelled (refund a cancellation fee) decrements billed", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CHARGED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue("sessions", { error: null });
+    mock.enqueue("patients", { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.CANCELLED);
+    // Charged counted; cancelled doesn't. Billed drops.
+    expect(ctx.patients.get()[0].billed).toBe(3000);
+  });
+
+  it("cancelled → completed (retroactive bill) increments billed", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CANCELLED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue("sessions", { error: null });
+    mock.enqueue("patients", { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.COMPLETED, false);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.COMPLETED);
+    // Was not counted → now counted. Billed rises.
+    expect(ctx.patients.get()[0].billed).toBe(5000);
+  });
+
+  it("past-scheduled → cancelled drops billed (auto-completing slot no longer counts)", async () => {
+    // "8-Abr" with the test data is in the past relative to the
+    // canonical predicate's auto-complete window, so SCHEDULED
+    // counted as consumed. Cancelling explicitly removes it.
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue("sessions", { error: null });
+    mock.enqueue("patients", { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.CANCELLED);
+    expect(ctx.patients.get()[0].billed).toBe(3000);
+  });
 });
 
 describe("createSession", () => {

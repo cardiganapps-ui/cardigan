@@ -6,6 +6,7 @@ import {
 } from "../data/constants";
 import { getInitials, formatShortDate, parseShortDate, parseLocalDate } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
+import { sessionCountsTowardBalance } from "../utils/accounting";
 import { getRecurringDates } from "../utils/recurrence";
 
 // Re-export for callers that historically imported it from this module.
@@ -106,6 +107,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // dismiss in the same visual frame. Network fires in the background;
   // on error we revert both session status and patient.billed and
   // raise the mutationError (surfaces as the app-level error toast).
+  //
+  // Now accepts ANY status transition (e.g. completed → cancelled on a
+  // past session) — the previous code only adjusted billed when the
+  // cancellation toggle flipped, which left completed → scheduled
+  // transitions silently inconsistent with the live amountDue calc.
+  // We delegate the "should this contribute?" decision to the canonical
+  // predicate `sessionCountsTowardBalance` so the optimistic counter
+  // update can never drift from the prime-directive accounting formula
+  // (CLAUDE.md rule #4).
   async function updateSessionStatus(sessionId, status, charge, cancelReason) {
     const session = upcomingSessions.find(s => s.id === sessionId);
     if (!session) return false;
@@ -114,21 +124,27 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (cancelReason !== undefined) update.cancel_reason = cancelReason || null;
     if (newStatus === SESSION_STATUS.SCHEDULED || newStatus === SESSION_STATUS.COMPLETED) update.cancel_reason = null;
 
-    const oldStatus = session.status;
-    const wasCancelled = oldStatus === SESSION_STATUS.CANCELLED;
-    const nowCancelled = newStatus === SESSION_STATUS.CANCELLED;
     const prevSession = { ...session };
     const patient = session.patient_id ? patients.find(p => p.id === session.patient_id) : null;
     const prevPatient = patient ? { ...patient } : null;
 
-    // Compute the billed delta once so both the optimistic update and
-    // the eventual server write agree on the same target number.
+    // Compute the billed delta from the CANONICAL predicate so any
+    // transition (completed → cancelled / charged → completed / past-
+    // scheduled → cancelled, etc.) lands the counter on the same
+    // value the live amountDue calc would. One `now` reference is
+    // shared between the before/after probe so a session sitting on
+    // the auto-complete boundary can't flip mid-decision.
+    const now = new Date();
+    const wasCounted = sessionCountsTowardBalance(session, now);
+    const nextShape = { ...session, status: newStatus };
+    const willCount = sessionCountsTowardBalance(nextShape, now);
+
     let targetBilled = null;
-    if (patient && wasCancelled !== nowCancelled) {
+    if (patient && wasCounted !== willCount) {
       const sessRate = session.rate != null ? session.rate : patient.rate;
-      targetBilled = nowCancelled
-        ? Math.max(0, patient.billed - sessRate)
-        : patient.billed + sessRate;
+      targetBilled = willCount
+        ? patient.billed + sessRate
+        : Math.max(0, patient.billed - sessRate);
     }
 
     // Apply optimistic state now.

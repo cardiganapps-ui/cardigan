@@ -278,6 +278,24 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onMa
           ) : cancelling ? (
             <div>
               <div style={{ fontSize:14, fontWeight:700, color:"var(--charcoal)", marginBottom:12 }}>{t("sessions.cancelSession")}</div>
+              {/* Friendly heads-up when retroactively cancelling a
+                  session that was already marked completed. The
+                  accounting WILL adjust automatically via the
+                  predicate-based delta in updateSessionStatus, but the
+                  user deserves to see that it's about to happen. */}
+              {session.status === SESSION_STATUS.COMPLETED && (
+                <div style={{
+                  background: "var(--amber-bg)",
+                  borderRadius: "var(--radius)",
+                  padding: "10px 12px",
+                  marginBottom: 12,
+                  fontSize: 12.5,
+                  color: "var(--charcoal-md)",
+                  lineHeight: 1.45,
+                }}>
+                  {t("sessions.cancelPastCompletedHint")}
+                </div>
+              )}
               {cancelCharge === null ? (
                 <>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
@@ -382,7 +400,15 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onMa
                 <button className="btn btn-secondary" style={{ flex:1, height:44 }} onClick={startReschedule}>
                   {t("sessions.reschedule")}
                 </button>
-                {!isCancelled && session.status !== SESSION_STATUS.COMPLETED && (
+                {/* Cancel is available on any non-cancelled session,
+                    including past completed ones — the user can
+                    retroactively mark a "completed" session as
+                    cancelled (no charge) or as charged (cancel-with-
+                    charge). The optimistic accounting in
+                    updateSessionStatus derives the billed delta from
+                    the canonical predicate, so the counters land
+                    correctly for every transition. */}
+                {!isCancelled && (
                   <button
                     className="btn btn-secondary"
                     style={{ flex:1, height:44, color:"var(--red)", borderColor:"var(--red-bg)" }}
