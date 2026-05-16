@@ -224,3 +224,67 @@ describe("rescheduleSession offline path", () => {
     expect(mock.calls).toHaveLength(0);
   });
 });
+
+describe("generateRecurringSessions offline path", () => {
+  it("offline: adds temp rows + enqueues a single sessions.bulk_insert", async () => {
+    setOnline(false);
+    const ctx = seed();
+    // DAY_TO_JS uses full Spanish names ("Lunes", not "Lun").
+    const schedules = [{ day: "Lunes", time: "10:00", duration: 60, frequency: "weekly", modality: "presencial" }];
+
+    // Start + end dates inside a small window so we only get a handful of rows.
+    const startIso = "2026-05-18";
+    const endIso = "2026-06-08";
+
+    const ok = await ctx.actions.generateRecurringSessions("pat-1", schedules, startIso, endIso);
+
+    expect(ok).toBe(true);
+    const rows = ctx.upcomingSessions.get();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every(r => r._optimistic)).toBe(true);
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("sessions.bulk_insert");
+    expect(queue.getEntries()[0].args.rows.length).toBe(rows.length);
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("bulk_insert replay swallows 23505 (idempotent on duplicate-key)", async () => {
+    setOnline(true);
+    // Prime the response queue with a 23505 error — what a 2nd drain
+    // would see if the first one already inserted the rows.
+    mock.enqueue("sessions", { data: null, error: { code: "23505", message: "duplicate key" } });
+
+    await queue.enqueue("sessions.bulk_insert", { rows: [{ patient_id: "pat-1", date: todayShort(), time: "10:00" }] });
+    const result = await queue.drain();
+
+    expect(result).toEqual({ drained: 1, remaining: 0 });
+  });
+});
+
+describe("finalizePatient offline path", () => {
+  it("offline: removes future scheduled rows locally + enqueues sessions.finalize_patient", async () => {
+    setOnline(false);
+    const ctx = seed({ sessions: [
+      // past completed (kept)
+      { id: "s-past", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "1-Mar", time: "10:00" },
+      // future scheduled (deleted) — inferYear picks 2026-06-15
+      // (closest to runtime 2026-05-16), which is > the 2026-06-01
+      // cutoff so it lands in toDelete.
+      { id: "s-fut", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "15-Jun", time: "10:00" },
+    ]});
+
+    const ok = await ctx.actions.finalizePatient("pat-1", "2026-06-01");
+
+    expect(ok).toBe(true);
+    // Only the future scheduled row was removed.
+    expect(ctx.upcomingSessions.get().map(s => s.id)).toEqual(["s-past"]);
+    // Patient status flipped optimistically.
+    expect(ctx.patients.get()[0].status).toBe("ended");
+    // Queue carries the multi-step op.
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("sessions.finalize_patient");
+    expect(queue.getEntries()[0].args.toDeleteIds).toEqual(["s-fut"]);
+    expect(queue.getEntries()[0].args.statusValue).toBe("ended");
+    expect(mock.calls).toHaveLength(0);
+  });
+});

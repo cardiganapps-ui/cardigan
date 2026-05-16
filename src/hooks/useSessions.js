@@ -42,6 +42,33 @@ registerHandler("sessions.update", async ({ id, userId, patch }) => {
   return await supabase.from("sessions").update(patch).eq("id", id).eq("user_id", userId);
 });
 
+// Bulk insert (recurring schedule generation). Replay-safe via the
+// 23505 swallow: if a prior drain already inserted the rows, the
+// uniq_sessions_patient_date_time index errors the whole batch with
+// SQLSTATE 23505. Treat as success — the trigger already recomputed
+// counters on the original drain, retrying would just no-op.
+registerHandler("sessions.bulk_insert", async ({ rows }) => {
+  const result = await supabase.from("sessions").insert(rows).select();
+  if (result.error?.code === "23505") return { data: [], error: null };
+  return result;
+});
+
+// Multi-step finalize: bulk delete + patient status flip. Both steps
+// are idempotent — a retry hits "nothing to delete" + "status already
+// ended", both no-ops. Safe to retry on transient failure.
+registerHandler("sessions.finalize_patient", async ({ patientId, userId, toDeleteIds, statusValue }) => {
+  if (toDeleteIds?.length > 0) {
+    const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+    if (r1.error) return r1;
+  }
+  const r2 = await supabase.from("patients").update({ status: statusValue }).eq("id", patientId).eq("user_id", userId);
+  return r2;
+});
+
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 // Module-level ref to the latest setUpcomingSessions, mirrored from the
 // action factory. Same pattern as usePayments — the factory runs every
 // render; the onReplay subscription must register only once.
@@ -528,21 +555,65 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }
     if (allRows.length === 0) return false;
 
-    setMutating(true);
     setMutationError("");
-    const { data, error } = await supabase.from("sessions").insert(allRows).select();
-    if (error) { setMutating(false); setMutationError(error.message); return false; }
 
-    // patient.{sessions,billed} are recomputed by the trigger that fires
-    // on the bulk insert above (once per row — see migration 069's
-    // perf note). Optimistic React state mirrors the expected values.
+    // Optimistic counters + local rows. When offline, temp ids stand
+    // in for the server-assigned ones; when online the supabase return
+    // values replace them. Either way the predicate-aware delta keeps
+    // UI in sync with what the trigger will compute server-side.
     const now = new Date();
-    const newSessions = patient.sessions + data.length;
-    const countedDelta = data.reduce((sum, r) => (
+    const newSessions = patient.sessions + allRows.length;
+    const countedDelta = allRows.reduce((sum, r) => (
       sum + (sessionCountsTowardBalance(r, now) ? (r.rate ?? patient.rate ?? 0) : 0)
     ), 0);
     const newBilled = patient.billed + countedDelta;
 
+    if (isOffline()) {
+      // Add optimistic temp rows so the UI shows the new schedule
+      // immediately. Bulk inserts use a single queue entry so the
+      // bulk is replayed atomically (preserves the ordering the
+      // uniq_sessions_patient_date_time index expects).
+      const optimisticRows = allRows.map((r) => ({
+        ...r,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        status: SESSION_STATUS.SCHEDULED,
+        colorIdx: r.color_idx,
+        _optimistic: true,
+      }));
+      setUpcomingSessions(prev => [...prev, ...optimisticRows]);
+      setPatients(prev => prev.map(p => p.id === patientId
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+      await enqueue("sessions.bulk_insert", { rows: allRows });
+      return true;
+    }
+
+    setMutating(true);
+    let data, error;
+    try {
+      const res = await supabase.from("sessions").insert(allRows).select();
+      data = res.data; error = res.error;
+    } catch {
+      // Transport-level — same shape as the offline path: optimistic
+      // temp rows + queue. The bulk replays atomically on drain.
+      const optimisticRows = allRows.map((r) => ({
+        ...r,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        status: SESSION_STATUS.SCHEDULED,
+        colorIdx: r.color_idx,
+        _optimistic: true,
+      }));
+      setUpcomingSessions(prev => [...prev, ...optimisticRows]);
+      setPatients(prev => prev.map(p => p.id === patientId
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+      await enqueue("sessions.bulk_insert", { rows: allRows });
+      setMutating(false);
+      return true;
+    }
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    // patient.{sessions,billed} are recomputed by the trigger that fires
+    // on the bulk insert above. Optimistic React state already mirrored
+    // the expected values above; replace temp rows with server rows here.
     setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
     setPatients(prev => prev.map(p => p.id === patientId
       ? { ...p, sessions: newSessions, billed: newBilled } : p));
@@ -658,49 +729,68 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   async function finalizePatient(patientId, finishDate) {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !finishDate) return false;
-    setMutating(true);
     setMutationError("");
     const cutoff = parseLocalDate(finishDate);
 
-    // Find scheduled sessions after the finish date
+    // Find scheduled sessions after the finish date.
     const toDelete = upcomingSessions.filter(s => {
       if (s.patient_id !== patientId || s.status !== SESSION_STATUS.SCHEDULED) return false;
       return parseShortDate(s.date) > cutoff;
     });
+    // Strip temp ids — those rows haven't been inserted server-side
+    // yet (their underlying queue entry is still pending), so there's
+    // no real row to delete. Local removal still happens.
+    const toDeleteIds = toDelete.map(s => s.id).filter(id => !(typeof id === "string" && id.startsWith("temp-")));
 
     let adjustedBilled = patient.billed;
     let adjustedSessions = patient.sessions;
-
     if (toDelete.length > 0) {
-      const ids = toDelete.map(s => s.id);
-      const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
-      if (error) { setMutating(false); setMutationError(error.message); return false; }
-      // Predicate-aware billed-decrement. finalizePatient filters to
-      // future-only scheduled rows (date > cutoff), so in practice
-      // none of these were counted — but routing through the predicate
-      // keeps the code uniform with the prime-directive formula.
       const now = new Date();
       adjustedBilled -= toDelete.reduce((sum, s) => (
         sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
       ), 0);
       adjustedSessions -= toDelete.length;
-      setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
+      // Optimistic removal + status flip in local state.
+      const removeIds = new Set(toDelete.map(s => s.id));
+      setUpcomingSessions(prev => prev.filter(s => !removeIds.has(s.id)));
     }
-
-    // Patient patch carries only `status` — billed/sessions are
-    // recomputed by the trigger on the session DELETE above.
-    const { data: updated, error: pErr } = await supabase.from("patients")
-      .update({ status: PATIENT_STATUS.ENDED })
-      .eq("id", patientId).eq("user_id", userId).select().single();
-    if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
     setPatients(prev => prev.map(p => p.id === patientId
-      ? { ...updated, colorIdx: updated.color_idx,
+      ? { ...p, status: PATIENT_STATUS.ENDED,
           billed: Math.max(0, adjustedBilled),
           sessions: Math.max(0, adjustedSessions) }
       : p));
 
-    setMutating(false);
-    return true;
+    // Offline / transport-error: one queue entry runs the whole
+    // multi-step flow on drain. The handler's two steps are each
+    // idempotent (nothing-to-delete + already-ended are both no-ops),
+    // so retries are safe.
+    if (isOffline()) {
+      await enqueue("sessions.finalize_patient", {
+        patientId, userId, toDeleteIds, statusValue: PATIENT_STATUS.ENDED,
+      });
+      return true;
+    }
+
+    setMutating(true);
+    try {
+      if (toDeleteIds.length > 0) {
+        const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+        if (error) { setMutating(false); setMutationError(error.message); return false; }
+      }
+      const { error: pErr } = await supabase.from("patients")
+        .update({ status: PATIENT_STATUS.ENDED })
+        .eq("id", patientId).eq("user_id", userId);
+      setMutating(false);
+      if (pErr) { setMutationError(pErr.message); return false; }
+      return true;
+    } catch {
+      // Transport failure — queue the full flow for retry.
+      setMutating(false);
+      await enqueue("sessions.finalize_patient", {
+        patientId, userId, toDeleteIds, statusValue: PATIENT_STATUS.ENDED,
+      });
+      return true;
+    }
   }
 
   // Generic write-with-optimistic-lock helper. Used by the four

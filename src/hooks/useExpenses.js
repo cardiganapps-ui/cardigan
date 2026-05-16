@@ -22,6 +22,36 @@
 import { supabase } from "../supabaseClient";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
 import { shortDateToISO } from "../utils/dates";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
+
+// Offline queue handlers (Phase 4 of offline support — covers
+// createExpense, updateExpense, deleteExpense). Recurring-template
+// CRUD is admin-rare so stays online-only for now.
+registerHandler("expenses.insert", async ({ row }) => {
+  return await supabase.from("expenses").insert(row).select().single();
+});
+registerHandler("expenses.update", async ({ id, userId, patch }) => {
+  return await supabase.from("expenses").update(patch).eq("id", id).eq("user_id", userId);
+});
+registerHandler("expenses.delete", async ({ id, userId }) => {
+  return await supabase.from("expenses").delete().eq("id", id).eq("user_id", userId);
+});
+
+// Module-level setExpenses ref so the once-registered onReplay
+// listener swaps temp ids in the live state holder (same pattern as
+// usePayments / useSessions / useNotes).
+let _setExpensesRef = null;
+onReplay((entry, result) => {
+  if (entry.op !== "expenses.insert") return;
+  if (!result || result.error || !result.data) return;
+  const tempId = entry.optimisticMeta?.tempId;
+  if (!tempId || !_setExpensesRef) return;
+  _setExpensesRef(prev => prev.map(e => e.id === tempId ? result.data : e));
+});
+
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
 
 export function createExpenseActions({
   userId,
@@ -30,6 +60,9 @@ export function createExpenseActions({
   deleteDocument,
   setMutating, setMutationError,
 }) {
+  // Refresh the module-level ref so the once-registered onReplay
+  // listener writes into the live state holder.
+  _setExpensesRef = setExpenses;
 
   // ── Single expense CRUD ────────────────────────────────────────────
 
@@ -73,32 +106,40 @@ export function createExpenseActions({
     setExpenses(prev => [optimisticRow, ...prev]);
     setMutationError("");
 
+    const row = {
+      user_id: userId,
+      amount: parsedAmount,
+      category, date,
+      description: description || null,
+      payment_method: paymentMethod || null,
+      tax_treatment: taxTreatment,
+      cfdi_uuid: cfdiUuid || null,
+      cfdi_url: cfdiUrl || null,
+      receipt_document_id: receiptDocumentId || null,
+      note: note || null,
+      recurring_id: recurringId,
+      period_year: periodYear,
+      period_month: periodMonth,
+    };
+
+    if (isOffline()) {
+      await enqueue("expenses.insert", { row }, { tempId });
+      return true;
+    }
+
     (async () => {
       try {
-        const { data, error } = await supabase.from("expenses").insert({
-          user_id: userId,
-          amount: parsedAmount,
-          category, date,
-          description: description || null,
-          payment_method: paymentMethod || null,
-          tax_treatment: taxTreatment,
-          cfdi_uuid: cfdiUuid || null,
-          cfdi_url: cfdiUrl || null,
-          receipt_document_id: receiptDocumentId || null,
-          note: note || null,
-          recurring_id: recurringId,
-          period_year: periodYear,
-          period_month: periodMonth,
-        }).select().single();
+        const { data, error } = await supabase.from("expenses").insert(row).select().single();
         if (error) {
           setExpenses(prev => prev.filter(e => e.id !== tempId));
           setMutationError(error.message);
           return;
         }
         setExpenses(prev => prev.map(e => e.id === tempId ? data : e));
-      } catch (e) {
-        setExpenses(prev => prev.filter(e => e.id !== tempId));
-        setMutationError(e?.message || "Network error");
+      } catch {
+        // Transport failure mid-flight — queue with the temp row for
+        // the replay listener to reconcile on drain.
+        await enqueue("expenses.insert", { row }, { tempId });
       }
     })();
 
@@ -141,27 +182,35 @@ export function createExpenseActions({
     setExpenses(arr => arr.map(e => e.id === id ? next : e));
     setMutationError("");
 
+    const updatePayload = {
+      amount: next.amount,
+      category: next.category,
+      date: next.date,
+      description: next.description,
+      payment_method: next.payment_method,
+      tax_treatment: next.tax_treatment,
+      cfdi_uuid: next.cfdi_uuid,
+      cfdi_url: next.cfdi_url,
+      receipt_document_id: next.receipt_document_id,
+      note: next.note,
+    };
+    // Push the recalc through to the DB too. Only when recurring,
+    // and only when the period actually changed — avoids needless
+    // writes for the common in-month edit case.
+    if (prev.recurring_id && (next.period_year !== prev.period_year || next.period_month !== prev.period_month)) {
+      updatePayload.period_year = next.period_year;
+      updatePayload.period_month = next.period_month;
+    }
+
+    // Temp-id row: insert hasn't drained yet; defer.
+    if (typeof id === "string" && id.startsWith("temp-")) return true;
+    if (isOffline()) {
+      await enqueue("expenses.update", { id, userId, patch: updatePayload });
+      return true;
+    }
+
     setMutating(true);
     try {
-      const updatePayload = {
-        amount: next.amount,
-        category: next.category,
-        date: next.date,
-        description: next.description,
-        payment_method: next.payment_method,
-        tax_treatment: next.tax_treatment,
-        cfdi_uuid: next.cfdi_uuid,
-        cfdi_url: next.cfdi_url,
-        receipt_document_id: next.receipt_document_id,
-        note: next.note,
-      };
-      // Push the recalc through to the DB too. Only when recurring,
-      // and only when the period actually changed — avoids needless
-      // writes for the common in-month edit case.
-      if (prev.recurring_id && (next.period_year !== prev.period_year || next.period_month !== prev.period_month)) {
-        updatePayload.period_year = next.period_year;
-        updatePayload.period_month = next.period_month;
-      }
       const { error } = await supabase.from("expenses").update(updatePayload)
         .eq("id", id).eq("user_id", userId);
       setMutating(false);
@@ -171,11 +220,11 @@ export function createExpenseActions({
         return false;
       }
       return true;
-    } catch (e) {
+    } catch {
+      // Transport failure — queue and keep optimistic state.
       setMutating(false);
-      setExpenses(arr => arr.map(e => e.id === id ? prev : e));
-      setMutationError(e?.message || "Network error");
-      return false;
+      await enqueue("expenses.update", { id, userId, patch: updatePayload });
+      return true;
     }
   }
 
@@ -193,13 +242,32 @@ export function createExpenseActions({
     // helper handles its own R2 cleanup; if it fails, we log and
     // continue — an orphan R2 object is recoverable, an inconsistent
     // expense + missing receipt isn't.
-    if (prev.receipt_document_id && typeof deleteDocument === "function") {
+    //
+    // Note: receipt cleanup runs ONLINE only — R2 operations can't be
+    // queued without further infrastructure (presigned URL TTL +
+    // binary payload). Offline-deleted expenses with receipts will
+    // leave an R2 orphan that the audit surfaces. Acceptable tradeoff
+    // for an edge case (offline + receipt + delete).
+    if (prev.receipt_document_id && typeof deleteDocument === "function" && !isOffline()) {
       try { await deleteDocument(prev.receipt_document_id); }
       catch { /* swallow — audit script will surface orphans */ }
     }
 
-    const { error } = await supabase.from("expenses").delete()
-      .eq("id", id).eq("user_id", userId);
+    // Temp-id rows haven't drained; no real row to delete.
+    if (typeof id === "string" && id.startsWith("temp-")) return true;
+    if (isOffline()) {
+      await enqueue("expenses.delete", { id, userId });
+      return true;
+    }
+
+    let error;
+    try {
+      const res = await supabase.from("expenses").delete().eq("id", id).eq("user_id", userId);
+      error = res.error;
+    } catch {
+      await enqueue("expenses.delete", { id, userId });
+      return true;
+    }
     if (error) {
       setExpenses(arr => [prev, ...arr]);
       setMutationError(error.message);
