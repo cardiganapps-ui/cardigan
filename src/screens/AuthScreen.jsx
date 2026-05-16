@@ -110,7 +110,7 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
       <div style={{ marginTop: 14, padding: "10px 14px", background: "var(--teal-pale)", borderRadius: "var(--radius)", fontSize: 13, color: "var(--teal-dark)", lineHeight: 1.5 }}>
         {t("auth.verifyTip")}
       </div>
-      {resendError && <div style={{ fontSize: 13, color: "var(--red)", marginTop: 12 }}>{resendError}</div>}
+      {resendError && <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginTop: 12 }}>{resendError}</div>}
       {TURNSTILE_ENABLED && (
         <div style={{ display:"flex", justifyContent:"center", marginTop: 12 }}>
           <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
@@ -550,7 +550,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
             </span>
           </label>
         )}
-        {error && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{error}</div>}
+        {error && <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{error}</div>}
         {mode === "login" && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 14, marginTop: -6 }}>
             {onMagicLink ? (

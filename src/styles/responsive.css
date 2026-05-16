@@ -1,3 +1,29 @@
+/* Skip-to-main link. Visually off-screen until it receives keyboard
+   focus, at which point it slides in at the top-left corner. Mouse +
+   touch users never see it; keyboard users get a one-Tab shortcut
+   past the chrome. Position absolute so it overlays without pushing
+   layout. Z-index above the topbar to stay visible during focus. */
+.skip-link {
+  position: absolute;
+  top: 0; left: 0;
+  background: var(--teal); color: var(--white);
+  padding: 8px 14px;
+  border-radius: 0 0 var(--radius) 0;
+  font-size: 13px; font-weight: 700;
+  text-decoration: none;
+  z-index: 200;
+  /* Move off-screen by default. Transitioning transform keeps the
+     focus reveal smooth without a layout reflow. */
+  transform: translateY(-100%);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--teal-light);
+  outline-offset: 2px;
+}
+
 /* Desktop-only elements: hidden on mobile */
 .topbar-screen-name, .topbar-refresh-btn, .topbar-actions,
 .home-two-panel-desktop { display: none; }
@@ -106,7 +132,11 @@
   .topbar-brand { color: var(--charcoal); }
   .topbar-screen-name {
     display: inline; font-size: 14px; color: var(--charcoal-lt);
-    margin-left: 12px; font-weight: 600; font-family: var(--font);
+    /* h1 element brings default margin + block display that would
+       break the inline topbar layout; zero them out so the semantic
+       upgrade doesn't change the visual chrome. */
+    margin: 0 0 0 12px; font-weight: 600; font-family: var(--font);
+    line-height: 1;
   }
   .topbar-refresh-btn {
     display: flex; align-items: center; justify-content: center;

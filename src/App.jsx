@@ -1715,6 +1715,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   return (
     <CardiganProvider value={ctxValue}>
     <div className="shell" ref={shellRef}>
+      {/* Skip-to-main-content link — visually hidden until it receives
+          focus, at which point it materializes in the top-left corner.
+          Lets keyboard users (and switch-control users) jump past the
+          topbar, drawer, and bottom-tabs to the page content with one
+          Tab + Enter, instead of tabbing through every nav button on
+          every page change. */}
+      <a href="#main-content" className="skip-link">
+        {t("a11y.skipToMain") || "Saltar al contenido"}
+      </a>
       {/* LFPDPPP consent gate — blocks the app on first login or after a
           policy version bump. Skipped in demo mode (no real user) and
           in admin "view as user" mode (read-only). */}
@@ -1853,7 +1862,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
       </Suspense>
 
-      <div className="main-content">
+      <div className="main-content" id="main-content">
         <div className="status-bar" />
 
         {/* iOS Safari-only install nudge. Hidden in PWA mode, demo mode,
@@ -2018,7 +2027,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             <div className="hamburger-line" />
           </button>
           <button type="button" className="topbar-brand" onClick={() => navigate("home")} aria-label={t("nav.home")} style={{ cursor:"pointer", background:"none", border:"none", padding:0 }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></button>
-          <span className="topbar-screen-name">{t(`nav.${screen}`)}</span>
+          {/* Per-screen H1 — only visible on desktop (topbar-screen-name
+              is `display: none` below 768px), but always announced to
+              screen readers via aria-live=polite so an AT user knows
+              what page they just navigated to. Without this the topbar
+              had zero heading semantics and AT users had to infer the
+              current screen from URL hash or active nav item. */}
+          <h1 className="topbar-screen-name" aria-live="polite">{t(`nav.${screen}`)}</h1>
           <div className="topbar-right">
             {/* Mobile-only entry to the command palette / patient
                 search. Cmd-K is keyboard-gated and TopbarActions is

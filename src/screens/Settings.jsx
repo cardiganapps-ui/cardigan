@@ -1964,7 +1964,7 @@ export function Settings({ user, signOut, refreshUser }) {
                     <label className="input-label">{t("settings.encConfirmPassphrase")}</label>
                     <PasswordInput autoComplete="new-password" value={encSetupPass2} onChange={(e) => setEncSetupPass2(e.target.value)} disabled={encBusy} />
                   </div>
-                  {encUiError && <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
+                  {encUiError && <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{encUiError}</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <button type="button" className="btn btn-primary" onClick={submitEncryptionSetup} disabled={encBusy || encSetupPass1.length < 8}>
                       {encBusy ? t("loading") : t("settings.encEnableCta")}
@@ -2193,7 +2193,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 </div>
               )}
               {deleteError && (
-                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{deleteError}</div>
+                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{deleteError}</div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button
@@ -2270,7 +2270,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 </>
               )}
               {(mfaUiError || mfa.error) && (
-                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
+                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button
@@ -2319,7 +2319,7 @@ export function Settings({ user, signOut, refreshUser }) {
                 {t("settings.mfaUnenrollWarn")}
               </div>
               {(mfaUiError || mfa.error) && (
-                <div style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
+                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{mfaUiError || mfa.error}</div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button

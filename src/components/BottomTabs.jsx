@@ -24,21 +24,20 @@ export function BottomTabs() {
 
   return (
     <>
-      <nav className="bottom-tabs" role="tablist" aria-label={t("nav.menu")}>
+      <nav className="bottom-tabs" aria-label={t("nav.menu")}>
         {TABS.map(tab => {
           const active = screen === tab.key;
           return (
             <button
               key={tab.key}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-current={active ? "page" : undefined}
               className={`bottom-tab ${active ? "bottom-tab--active" : ""}`}
               onClick={() => {
                 if (!active) haptic.tap();
                 navigate(tab.key);
               }}>
-              <span className="bottom-tab-icon"><tab.Icon size={20} /></span>
+              <span className="bottom-tab-icon" aria-hidden="true"><tab.Icon size={20} /></span>
               <span className="bottom-tab-label">{t(tab.tKey)}</span>
             </button>
           );

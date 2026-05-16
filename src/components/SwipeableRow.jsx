@@ -135,17 +135,49 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
     releaseSwipe(ROW_OWNER_ID);
   }, []);
 
+  // Keyboard accessibility: the touch-swipe gesture is unreachable
+  // from a keyboard, so we additionally make the action button
+  // tab-reachable. When it receives focus we auto-reveal the row so
+  // sighted keyboard users (and screen readers reading the row)
+  // understand what action they're about to fire. Blurring or
+  // Escape snaps back. Touch behavior is unchanged.
+  const handleActionFocus = useCallback(() => {
+    setOffset(REVEAL_PX);
+    revealedRef.current = true;
+  }, []);
+  const handleActionBlur = useCallback(() => {
+    setOffset(0);
+    revealedRef.current = false;
+  }, []);
+  const handleActionKey = useCallback((e) => {
+    if (e.key === "Escape") {
+      setOffset(0);
+      revealedRef.current = false;
+      e.currentTarget.blur();
+    }
+  }, []);
+
   const background = TONE_BG[actionTone] || TONE_BG.danger;
 
   return (
     <div style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
-      <div
+      <button
+        type="button"
+        aria-label={actionLabel}
+        onFocus={handleActionFocus}
+        onBlur={handleActionBlur}
+        onKeyDown={handleActionKey}
         style={{
           position:"absolute", top:0, right:0, bottom:0, width:80,
           display:"flex", alignItems:"center", justifyContent:"center",
           background, color:"var(--white)",
           fontSize:"var(--text-xs)", fontWeight:700, cursor:"pointer",
           borderRadius:"0 var(--radius) var(--radius) 0",
+          border:"none", padding:0,
+          // Take focus indicator color from background contrast — white
+          // text on red/green/amber is high-contrast, the native focus
+          // ring will outline the button itself once it's revealed.
+          font:"inherit", fontFamily:"var(--font)",
         }}
         onClick={() => {
           setOffset(0);
@@ -153,7 +185,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
           onAction?.();
         }}>
         {actionLabel}
-      </div>
+      </button>
       <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchCancel}
         style={{
           transform: `translateX(${offset}px)`,
