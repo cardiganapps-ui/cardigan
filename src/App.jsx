@@ -1,12 +1,17 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
-import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
-import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
-import { MilestoneCelebration } from "./components/MilestoneCelebration.jsx";
-import { ActivationCompleteShareSheet } from "./components/ActivationCompleteShareSheet.jsx";
-import { RatingSheet } from "./components/RatingSheet.jsx";
-import { ShareFolderSheet } from "./components/sheets/ShareFolderSheet.jsx";
+// Conditionally rendered after first paint by various gates (one-time
+// prompts, encryption unlock, post-subscribe celebration, etc.). Lazy
+// shaves them off the cold-start payload.
+const EncryptionUnlockGate = lazy(() => import("./components/EncryptionUnlockGate.jsx"));
+const SubscriptionWelcome = lazy(() => import("./components/SubscriptionWelcome.jsx"));
+const MilestoneCelebration = lazy(() => import("./components/MilestoneCelebration.jsx").then(m => ({ default: m.MilestoneCelebration })));
+const ActivationCompleteShareSheet = lazy(() => import("./components/ActivationCompleteShareSheet.jsx").then(m => ({ default: m.ActivationCompleteShareSheet })));
+const RatingSheet = lazy(() => import("./components/RatingSheet.jsx").then(m => ({ default: m.RatingSheet })));
+// Conditionally rendered by activeSheet === "shareFolder" — lazy
+// keeps its (and its date-picker / preview deps') bytes off cold start.
+const ShareFolderSheet = lazy(() => import("./components/sheets/ShareFolderSheet.jsx").then(m => ({ default: m.ShareFolderSheet })));
 import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
@@ -26,13 +31,20 @@ import { useDemoData } from "./hooks/useDemoData";
 import { useNavigation } from "./hooks/useNavigation";
 import { CardiganProvider } from "./context/CardiganContext";
 import { I18nProvider, useT } from "./i18n/index";
-import { Drawer } from "./components/Drawer";
-import { PaymentModal } from "./components/PaymentModal";
-import { ExpenseSheet } from "./components/sheets/ExpenseSheet";
-import { RecurringExpenseSheet } from "./components/sheets/RecurringExpenseSheet";
+// Lazy-load the conditionally-rendered surfaces. Each only mounts in
+// response to a user action (open drawer, record payment, open command
+// palette, etc.), so deferring them shaves their bytes off the cold-
+// start cost. Sub-2KB Suspense fallback={null} is invisible — these
+// modules ship in their own chunks and pre-fetch by Vite's link
+// preload as soon as the main shell renders.
+const Drawer = lazy(() => import("./components/Drawer").then(m => ({ default: m.Drawer })));
+const PaymentModal = lazy(() => import("./components/PaymentModal").then(m => ({ default: m.PaymentModal })));
+const ExpenseSheet = lazy(() => import("./components/sheets/ExpenseSheet").then(m => ({ default: m.ExpenseSheet })));
+const RecurringExpenseSheet = lazy(() => import("./components/sheets/RecurringExpenseSheet").then(m => ({ default: m.RecurringExpenseSheet })));
+const CommandPalette = lazy(() => import("./components/CommandPalette"));
+const InstallPrompt = lazy(() => import("./components/InstallPrompt").then(m => ({ default: m.InstallPrompt })));
 import { QuickActions } from "./components/QuickActions";
 import TopbarActions from "./components/TopbarActions";
-import CommandPalette from "./components/CommandPalette";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useViewport } from "./hooks/useViewport";
 import { DRAWER_EDGE_BAND, release as releaseSwipe, tryClaim as trySwipeClaim } from "./hooks/swipeCoordinator";
@@ -44,7 +56,6 @@ import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
 import Tooltip from "./components/Tooltip";
-import { InstallPrompt } from "./components/InstallPrompt";
 // Tutorial only runs on first sign-in (and on user-triggered replay
 // from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
 // the main bundle for users who already finished it.
@@ -69,18 +80,28 @@ const Finances = lazy(() => import("./screens/Finances").then(m => ({ default: m
 const Archivo = lazy(() => import("./screens/Archivo").then(m => ({ default: m.Archivo })));
 const Settings = lazy(() => import("./screens/Settings").then(m => ({ default: m.Settings })));
 const PrivacyPolicy = lazy(() => import("./screens/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
-import { AuthScreen } from "./screens/AuthScreen";
-import { PatientClaimScreen } from "./screens/patient/PatientClaimScreen";
-import { PatientClaimGate } from "./screens/patient/PatientClaimGate";
-import { PatientApp } from "./screens/patient/PatientApp";
+// Patient surface — entire subtree never runs for therapist accounts
+// (and vice versa). Lazy so the dominant therapist cold-start doesn't
+// pull in the patient portal it'll never render.
+const PatientClaimScreen = lazy(() => import("./screens/patient/PatientClaimScreen").then(m => ({ default: m.PatientClaimScreen })));
+const PatientClaimGate = lazy(() => import("./screens/patient/PatientClaimGate").then(m => ({ default: m.PatientClaimGate })));
+const PatientApp = lazy(() => import("./screens/patient/PatientApp").then(m => ({ default: m.PatientApp })));
+// AuthScreen is only mounted pre-login; after first login the import
+// stays in the cache and contributes nothing further. Keeping it lazy
+// shaves the unauth shell down as well.
+const AuthScreen = lazy(() => import("./screens/AuthScreen").then(m => ({ default: m.AuthScreen })));
 import { useRoleDetection } from "./hooks/useRoleDetection";
 import { setInviteToken, getInviteToken } from "./utils/inviteTokenStorage";
 // Admin dashboard is gated by isAdmin(user) and lives on its own
 // `#admin/...` route family. Lazy so the chunk only ships when the
 // admin (one user platform-wide) actually opens it.
 const AdminLayout = lazy(() => import("./screens/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
-import { ProfessionOnboarding } from "./screens/ProfessionOnboarding";
-import { SignupSourceStep } from "./screens/SignupSourceStep";
+// One-time onboarding steps — never re-visited by an established
+// account, so lazy with no perceptible Suspense cost (the screens
+// are simple and the gating logic above keeps them off the cold
+// path for everyone except the user signing up right now).
+const ProfessionOnboarding = lazy(() => import("./screens/ProfessionOnboarding").then(m => ({ default: m.ProfessionOnboarding })));
+const SignupSourceStep = lazy(() => import("./screens/SignupSourceStep").then(m => ({ default: m.SignupSourceStep })));
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useAccentTheme } from "./hooks/useAccentTheme";
 import { DEFAULT_PROFESSION, SIGNUP_SOURCE_CUTOFF_ISO } from "./data/constants";
@@ -109,6 +130,20 @@ const TRIAL_REMINDER_THRESHOLDS = [15, 7, 1];
 // reminder modal — they're clearly aware of the trial and we don't
 // need to interrupt them again.
 const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+
+// Used as the Suspense fallback whenever a lazy chunk owns the full
+// viewport (AuthScreen, PatientApp, etc.). Mirrors the role-loading
+// splash so the brand chrome never disappears between transitions.
+function AuthSplash() {
+  return (
+    <div className="shell" style={{ justifyContent: "center", alignItems: "center", gap: 12 }}>
+      <span className="cardigan-splash-logo" aria-hidden="true">
+        <LogoIcon size={48} color="var(--teal)" />
+      </span>
+      <div style={{ fontFamily: "var(--font-d)", fontSize: 22, fontWeight: 800, color: "var(--charcoal)", letterSpacing: "-0.3px" }}>cardigan</div>
+    </div>
+  );
+}
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
@@ -274,16 +309,26 @@ function CardiganApp() {
     // PatientClaimScreen forever (the inviteToken remains in
     // sessionStorage by design — it's needed for the post-auth
     // claim) and the buttons would appear to do nothing.
+    // PatientClaimScreen + AuthScreen are lazy — wrap in Suspense
+    // so the lazy fetch doesn't unmount the unauth shell. Fallback
+    // is the same splash the role-loading gate below renders, so
+    // the user sees uninterrupted brand chrome while the chunk loads.
     if (inviteToken && !authIntent) {
       return (
-        <PatientClaimScreen
-          token={inviteToken}
-          onCreateAccount={() => setAuthIntent("signup")}
-          onSignIn={() => setAuthIntent("login")}
-        />
+        <Suspense fallback={<AuthSplash />}>
+          <PatientClaimScreen
+            token={inviteToken}
+            onCreateAccount={() => setAuthIntent("signup")}
+            onSignIn={() => setAuthIntent("login")}
+          />
+        </Suspense>
       );
     }
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} onMagicLink={signInWithMagicLink} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />;
+    return (
+      <Suspense fallback={<AuthSplash />}>
+        <AuthScreen onSignIn={signIn} onSignUp={signUp} onMagicLink={signInWithMagicLink} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />
+      </Suspense>
+    );
   }
 
   // Block the main shell behind the MFA gate. Self-resolves to no-op
@@ -298,12 +343,14 @@ function CardiganApp() {
   // into PatientApp.
   if (inviteToken) {
     return (
-      <PatientClaimGate
-        token={inviteToken}
-        user={user}
-        onComplete={() => setRoleVersion(v => v + 1)}
-        onSignOut={signOut}
-      />
+      <Suspense fallback={<AuthSplash />}>
+        <PatientClaimGate
+          token={inviteToken}
+          user={user}
+          onComplete={() => setRoleVersion(v => v + 1)}
+          onSignOut={signOut}
+        />
+      </Suspense>
     );
   }
 
@@ -324,7 +371,11 @@ function CardiganApp() {
   // Patient shell — completely separate surface from the therapist
   // app. Mounts its own data hook, its own (minimal) context.
   if (role.role === "patient") {
-    return <PatientApp user={user} signOut={signOut} />;
+    return (
+      <Suspense fallback={<AuthSplash />}>
+        <PatientApp user={user} signOut={signOut} />
+      </Suspense>
+    );
   }
 
   // Orphan — signed in but no profession + no linked patient row.
@@ -1554,10 +1605,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     && userProfile.profession === null
   ) {
     return (
-      <ProfessionOnboarding
-        onSelect={(p) => userProfile.createProfile(p)}
-        onSignOut={signOut}
-      />
+      <Suspense fallback={<AuthSplash />}>
+        <ProfessionOnboarding
+          onSelect={(p) => userProfile.createProfile(p)}
+          onSignOut={signOut}
+        />
+      </Suspense>
     );
   }
   if (
@@ -1570,10 +1623,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     && eligibleForSourcePrompt
   ) {
     return (
-      <SignupSourceStep
-        onSubmit={(payload) => userProfile.setSignupSource(payload)}
-        onSignOut={signOut}
-      />
+      <Suspense fallback={<AuthSplash />}>
+        <SignupSourceStep
+          onSubmit={(payload) => userProfile.setSignupSource(payload)}
+          onSignOut={signOut}
+        />
+      </Suspense>
     );
   }
 
@@ -1611,14 +1666,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           in admin "view as user" mode (read-only). */}
       {!demo && !readOnly && user && <ConsentBanner user={user} />}
       {!demo && !readOnly && user && !cryptoGateDismissed && (
-        <EncryptionUnlockGate noteCrypto={noteCrypto} onSkip={() => setCryptoGateDismissed(true)} />
+        <Suspense fallback={null}>
+          <EncryptionUnlockGate noteCrypto={noteCrypto} onSkip={() => setCryptoGateDismissed(true)} />
+        </Suspense>
       )}
       {welcomeProOpen && (
-        <SubscriptionWelcome
-          daysLeftInTrial={subscription.daysLeftInTrial}
-          onContinue={closeWelcomePro}
-          onSubscribe={subscribeFromWelcomePro}
-        />
+        <Suspense fallback={null}>
+          <SubscriptionWelcome
+            daysLeftInTrial={subscription.daysLeftInTrial}
+            onContinue={closeWelcomePro}
+            onSubscribe={subscribeFromWelcomePro}
+          />
+        </Suspense>
       )}
       <Suspense fallback={null}>
         {welcomePaymentOpen && (
@@ -1687,10 +1746,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           No UI of its own — fires success toasts via context.
           Skipped in demo + admin-view-as flows by passing accessState. */}
       {!demo && !viewAsUserId && user && (
-        <MilestoneCelebration
-          userId={user.id}
-          accessState={subscription.accessState}
-        />
+        <Suspense fallback={null}>
+          <MilestoneCelebration
+            userId={user.id}
+            accessState={subscription.accessState}
+          />
+        </Suspense>
       )}
       {/* Opens after the user crosses all 4 activation steps (the
           ActivationChecklist fires this via openActivationShareSheet
@@ -1698,44 +1759,54 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           sense that the state stays false until that single
           transition — no rendering cost on the steady state. */}
       {!demo && !readOnly && user && (
-        <ActivationCompleteShareSheet
-          open={activationShareOpen}
-          onClose={() => setActivationShareOpen(false)}
-          code={subscription?.referralInfo?.code || null}
-        />
+        <Suspense fallback={null}>
+          <ActivationCompleteShareSheet
+            open={activationShareOpen}
+            onClose={() => setActivationShareOpen(false)}
+            code={subscription?.referralInfo?.code || null}
+          />
+        </Suspense>
       )}
       {/* In-app rating sheet — driven either by the #rating hash
           (email deep-link) or the organic day-14 eligibility check
           above. Hidden in demo + read-only modes. */}
       {!demo && !readOnly && user && (
-        <RatingSheet
-          open={ratingSheetOpen}
-          onClose={() => setRatingSheetOpen(false)}
-          promptKind="day14_v1"
-          userId={user.id}
-        />
+        <Suspense fallback={null}>
+          <RatingSheet
+            open={ratingSheetOpen}
+            onClose={() => setRatingSheetOpen(false)}
+            promptKind="day14_v1"
+            userId={user.id}
+          />
+        </Suspense>
       )}
       {/* PWA Web Share Target receiver — only mounts when a share
           arrived (shareFolderUrl set by the URL-param effect). The
           sheet itself handles the "URL didn't parse" case so we
           don't need to validate here. */}
       {!demo && !readOnly && user && shareFolderUrl && (
-        <ShareFolderSheet
-          open={!!shareFolderUrl}
-          url={shareFolderUrl}
-          onClose={() => setShareFolderUrl(null)}
-        />
+        <Suspense fallback={null}>
+          <ShareFolderSheet
+            open={!!shareFolderUrl}
+            url={shareFolderUrl}
+            onClose={() => setShareFolderUrl(null)}
+          />
+        </Suspense>
       )}
-      <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
-        user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
-        onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
+      <Suspense fallback={null}>
+        <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
+          user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
+          onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
+      </Suspense>
 
       <div className="main-content">
         <div className="status-bar" />
 
         {/* iOS Safari-only install nudge. Hidden in PWA mode, demo mode,
             and readonly mode. Dismissed state persists in localStorage. */}
-        {!demo && !readOnly && <InstallPrompt />}
+        {!demo && !readOnly && (
+          <Suspense fallback={null}><InstallPrompt /></Suspense>
+        )}
 
         {/* Demo banner */}
         {demo && (
@@ -1940,30 +2011,37 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           </div>
         </PullToRefresh>
         {!readOnly && (
-          <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }}
-            initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
+          <Suspense fallback={null}>
+            <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }}
+              initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
+          </Suspense>
         )}
         {!readOnly && expenseSheetOpen && (
-          <ExpenseSheet
-            editingExpense={editingExpense}
-            onClose={(msg) => {
-              setExpenseSheetOpen(false);
-              setEditingExpense(null);
-              if (typeof msg === "string" && msg) showSuccess(msg);
-            }}
-          />
+          <Suspense fallback={null}>
+            <ExpenseSheet
+              editingExpense={editingExpense}
+              onClose={(msg) => {
+                setExpenseSheetOpen(false);
+                setEditingExpense(null);
+                if (typeof msg === "string" && msg) showSuccess(msg);
+              }}
+            />
+          </Suspense>
         )}
         {!readOnly && recurringExpenseSheetOpen && (
-          <RecurringExpenseSheet
-            onClose={() => setRecurringExpenseSheetOpen(false)}
-          />
+          <Suspense fallback={null}>
+            <RecurringExpenseSheet
+              onClose={() => setRecurringExpenseSheetOpen(false)}
+            />
+          </Suspense>
         )}
         {!readOnly && !hideFab && <QuickActions />}
         {!hideBottomTabs && <BottomTabs />}
-        <CommandPalette
-          open={paletteOpen}
-          onClose={() => setPaletteOpen(false)}
-          currentAdminId={user?.id}
+        <Suspense fallback={null}>
+          <CommandPalette
+            open={paletteOpen}
+            onClose={() => setPaletteOpen(false)}
+            currentAdminId={user?.id}
           onViewAsUser={admin && !readOnly ? (uid) => {
             // Same impersonation entry as AdminLayout's onViewAs. We
             // snapshot the admin hash (empty when invoked from a non-admin
@@ -1975,7 +2053,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             setViewAsUserId(uid);
             navigate("home");
           } : undefined}
-        />
+          />
+        </Suspense>
 
         {user && !demo && !readOnly && (
           <BugReportSheet open={bugReportOpen} onClose={() => setBugReportOpen(false)} user={user} screen={screen} />
