@@ -129,33 +129,21 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }).select().single();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
+    // patient.sessions and patient.billed are maintained by
+    // trg_sessions_recalc_counters (migration 069). The session INSERT
+    // above fires the trigger which atomically recomputes both
+    // counters. Local React state mirrors the expected post-trigger
+    // values so the UI doesn't lag the round-trip — predicate gates
+    // the billed bump the same way the SQL function does.
     const newSessions = patient.sessions + 1;
-    // Predicate-aware billed increment. CLAUDE.md rule #4 says
-    // patient.billed must use the same formula as the live amountDue
-    // calc — and a fresh session row at status=scheduled only counts
-    // when it's already past (intake backdated by the therapist).
-    // Future-dated rows stay out of billed until they auto-complete /
-    // are explicitly marked completed / are charged-on-cancel — each
-    // of which triggers its own delta in updateSessionStatus. Without
-    // this gate, creating a recurring window of 15 future sessions
-    // inflated billed by 15× rate immediately, drifting from consumed
-    // until the next recalc.
     const willCountNew = sessionCountsTowardBalance(
       { status: SESSION_STATUS.SCHEDULED, date: date.trim(), time: time.trim() },
     );
     const newBilled = willCountNew ? patient.billed + sessionRate : patient.billed;
-    const { error: pErr } = await supabase.from("patients")
-      .update({ sessions: newSessions, billed: newBilled })
-      .eq("id", patient.id);
 
     setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" }]);
-    if (pErr) {
-      const fixed = await recalcPatientCounters(patient.id);
-      if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-    } else {
-      setPatients(prev => prev.map(p => p.id === patient.id
-        ? { ...p, sessions: newSessions, billed: newBilled } : p));
-    }
+    setPatients(prev => prev.map(p => p.id === patient.id
+      ? { ...p, sessions: newSessions, billed: newBilled } : p));
     setMutating(false);
     return true;
   }
@@ -191,20 +179,20 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patient = session.patient_id ? patients.find(p => p.id === session.patient_id) : null;
     const prevPatient = patient ? { ...patient } : null;
 
-    // Predicate-aligned delta (same as before — the RPC trusts this
-    // input). Shared `now` between before/after probes so a session on
-    // the auto-complete boundary doesn't flip mid-decision.
+    // Predicate-aligned optimistic billed update. The DB-side trigger
+    // (trg_sessions_recalc_counters, migration 069) computes the
+    // persisted patient.billed; this JS arithmetic only feeds the
+    // optimistic React state so the UI doesn't lag the round-trip.
+    // Shared `now` between before/after probes so a session on the
+    // auto-complete boundary doesn't flip mid-decision.
     const now = new Date();
     const wasCounted = sessionCountsTowardBalance(session, now);
     const nextShape = { ...session, status: newStatus };
     const willCount = sessionCountsTowardBalance(nextShape, now);
-
-    let billedDelta = 0;
     let targetBilled = null;
     if (patient && wasCounted !== willCount) {
       const sessRate = session.rate ?? patient.rate ?? 0;
-      billedDelta = willCount ? sessRate : -sessRate;
-      targetBilled = Math.max(0, patient.billed + billedDelta);
+      targetBilled = Math.max(0, patient.billed + (willCount ? sessRate : -sessRate));
     }
 
     // Apply optimistic state — matches the server's normalization
@@ -221,10 +209,10 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }
     setMutationError("");
 
-    // Single atomic RPC. Both writes commit-or-rollback together; on
-    // error we revert local state to the prior snapshot. No more
-    // recalc-fallback fork needed (the patient-write-after-session-
-    // write race is gone).
+    // Single RPC writes the session row; patient.billed is recomputed
+    // by the trigger that fires on the UPDATE. The RPC signature
+    // shrank to 4 args after migration 069 — billed delta no longer
+    // passed.
     //
     // p_expected_version carries the version we last read. The RPC
     // raises SQLSTATE 40001 ("serialization failure") when another tab
@@ -239,7 +227,6 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           p_session_id: sessionId,
           p_new_status: newStatus,
           p_cancel_reason: cancelReasonInput,
-          p_billed_delta: billedDelta,
           p_expected_version: prevSession.version ?? null,
         });
         if (error) {
@@ -277,29 +264,21 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
 
+    // patient.sessions and patient.billed are recomputed by the trigger
+    // (migration 069) that fired on the DELETE above. Optimistic React
+    // state updates with the same predicate-aware decrement so the UI
+    // is consistent until the next refetch.
     if (session?.patient_id) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
         const sessRate = session.rate ?? patient.rate ?? 0;
-        // Predicate-aware decrement: only sessions that were actually
-        // counted in billed should subtract on delete. The old check
-        // (status !== CANCELLED) wrongly subtracted for future-scheduled
-        // rows that were never counted, deflating billed below truth.
         const wasBilled = sessionCountsTowardBalance(session);
         const newSessions = Math.max(0, patient.sessions - 1);
         const newBilled = wasBilled
           ? Math.max(0, patient.billed - sessRate)
           : patient.billed;
-        const { error: pErr } = await supabase.from("patients")
-          .update({ sessions: newSessions, billed: newBilled })
-          .eq("id", patient.id).eq("user_id", userId);
-        if (pErr) {
-          const fixed = await recalcPatientCounters(patient.id);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-        } else {
-          setPatients(prev => prev.map(p => p.id === patient.id
-            ? { ...p, sessions: newSessions, billed: newBilled } : p));
-        }
+        setPatients(prev => prev.map(p => p.id === patient.id
+          ? { ...p, sessions: newSessions, billed: newBilled } : p));
       }
     }
     return true;
@@ -369,18 +348,12 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           await reconcileSessionConflict(sessionId, prevSession, prevPatient);
           return;
         }
-        // Mirror the server-side version bump locally.
+        // Mirror the server-side version bump locally. patient.billed
+        // recompute is handled by the trigger that fired on the session
+        // UPDATE — no follow-up patients write needed.
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId
           ? { ...s, version: (prevSession.version ?? 0) + 1 }
           : s));
-        if (patient && targetBilled != null) {
-          const { error: pErr } = await supabase.from("patients")
-            .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
-          if (pErr) {
-            const fixed = await recalcPatientCounters(patient.id);
-            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-          }
-        }
       } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
         if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
@@ -434,30 +407,19 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const { data, error } = await supabase.from("sessions").insert(allRows).select();
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
-    const newSessions = patient.sessions + data.length;
-    // Predicate-aware billed delta: only rows that the canonical
-    // predicate would count contribute (past-dated rows backdated
-    // into the recurrence window — typical case is none). Future
-    // rows pick up consumed when they auto-complete in the live
-    // predicate; the stored billed catches up on next mutation or
-    // recalc.
+    // patient.{sessions,billed} are recomputed by the trigger that fires
+    // on the bulk insert above (once per row — see migration 069's
+    // perf note). Optimistic React state mirrors the expected values.
     const now = new Date();
+    const newSessions = patient.sessions + data.length;
     const countedDelta = data.reduce((sum, r) => (
       sum + (sessionCountsTowardBalance(r, now) ? (r.rate ?? patient.rate ?? 0) : 0)
     ), 0);
     const newBilled = patient.billed + countedDelta;
-    const { error: pErr } = await supabase.from("patients")
-      .update({ sessions: newSessions, billed: newBilled })
-      .eq("id", patient.id).eq("user_id", userId);
 
     setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
-    if (pErr) {
-      const fixed = await recalcPatientCounters(patient.id);
-      if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
-    } else {
-      setPatients(prev => prev.map(p => p.id === patientId
-        ? { ...p, sessions: newSessions, billed: newBilled } : p));
-    }
+    setPatients(prev => prev.map(p => p.id === patientId
+      ? { ...p, sessions: newSessions, billed: newBilled } : p));
     setMutating(false);
     return true;
   }
@@ -484,8 +446,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const ids = toDelete.map(s => s.id);
       const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
-      // Predicate-aware billed-decrement. Sessions that weren't being
-      // counted (future-scheduled) shouldn't trim billed when deleted.
+      // Optimistic React state: same predicate-aware decrement the
+      // trigger applied server-side.
       const now = new Date();
       adjustedBilled -= toDelete.reduce((sum, s) => (
         sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
@@ -494,12 +456,21 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
     }
 
-    const patch = { rate: newRate, day: primary.day, time: primary.time,
-      billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) };
+    // Patient patch carries rate + day + time (not trigger-maintained).
+    // billed/sessions are recomputed by the trigger fires on the
+    // session DELETE above.
+    const patch = { rate: newRate, day: primary.day, time: primary.time };
     const { data: updated, error: pErr } = await supabase.from("patients")
       .update(patch).eq("id", patientId).eq("user_id", userId).select().single();
     if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
-    setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
+    // Server's updated row may not reflect the latest trigger output
+    // (the trigger ran before this UPDATE); use locally-computed
+    // counters for the optimistic snapshot.
+    setPatients(prev => prev.map(p => p.id === patientId
+      ? { ...updated, colorIdx: updated.color_idx,
+          billed: Math.max(0, adjustedBilled),
+          sessions: Math.max(0, adjustedSessions) }
+      : p));
 
     // Exclude the rows we just deleted — the local `upcomingSessions` still
     // references them (setState hasn't flushed) and including their dates
@@ -540,25 +511,17 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (allRows.length > 0) {
       const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
       if (!sErr && sessData) {
-        const finalSessions = (updated.sessions || 0) + sessData.length;
-        // Predicate-aware: only rows the live amountDue calc would
-        // count contribute to billed. Effective dates land in the
-        // future ~99% of the time (recurrence window is forward-
-        // looking), so countedDelta is typically 0; recalc reconciles
-        // if a backdated effectiveDate slips through.
+        // Counters maintained by trigger on the bulk insert. Optimistic
+        // React state mirrors the expected post-trigger values.
+        const finalSessions = Math.max(0, adjustedSessions) + sessData.length;
         const nowSc = new Date();
         const countedDelta = sessData.reduce((sum, r) => (
           sum + (sessionCountsTowardBalance(r, nowSc) ? (r.rate ?? newRate ?? 0) : 0)
         ), 0);
-        const finalBilled = (updated.billed || 0) + countedDelta;
-        const { error: pErr2 } = await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId).eq("user_id", userId);
+        const finalBilled = Math.max(0, adjustedBilled) + countedDelta;
         setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
-        if (pErr2) {
-          const fixed = await recalcPatientCounters(patientId);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
-        } else {
-          setPatients(prev => prev.map(p => p.id === patientId ? { ...p, sessions: finalSessions, billed: finalBilled } : p));
-        }
+        setPatients(prev => prev.map(p => p.id === patientId
+          ? { ...p, sessions: finalSessions, billed: finalBilled } : p));
       }
     }
 
@@ -598,11 +561,17 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
     }
 
+    // Patient patch carries only `status` — billed/sessions are
+    // recomputed by the trigger on the session DELETE above.
     const { data: updated, error: pErr } = await supabase.from("patients")
-      .update({ status: PATIENT_STATUS.ENDED, billed: Math.max(0, adjustedBilled), sessions: Math.max(0, adjustedSessions) })
+      .update({ status: PATIENT_STATUS.ENDED })
       .eq("id", patientId).eq("user_id", userId).select().single();
     if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
-    setPatients(prev => prev.map(p => p.id === patientId ? { ...updated, colorIdx: updated.color_idx } : p));
+    setPatients(prev => prev.map(p => p.id === patientId
+      ? { ...updated, colorIdx: updated.color_idx,
+          billed: Math.max(0, adjustedBilled),
+          sessions: Math.max(0, adjustedSessions) }
+      : p));
 
     setMutating(false);
     return true;
@@ -680,26 +649,17 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // Optimistic — flip local rate so the form can dismiss; reverted
     // by writeSessionWithLock on error / conflict.
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, rate } : s));
-    const ok = await writeSessionWithLock(sessionId, { rate }, session, async () => {
-      // Adjust patient.billed only when the session actually contributes
-      // to consumed under the canonical predicate. The old check
-      // (status !== CANCELLED) wrongly bumped billed for future-scheduled
-      // rows that don't count yet — rate changes on those are silent
-      // until the session auto-completes.
-      if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session)) {
-        const patient = patients.find(p => p.id === session.patient_id);
-        if (patient) {
-          const newBilled = Math.max(0, patient.billed + diff);
-          const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id).eq("user_id", userId);
-          if (pErr) {
-            const fixed = await recalcPatientCounters(patient.id);
-            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-          } else {
-            setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
-          }
-        }
+    // Optimistic patient.billed update — same predicate the SQL trigger
+    // applies after the session UPDATE. The trigger persists; this is
+    // purely for UI consistency until the next refetch.
+    if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session)) {
+      const patient = patients.find(p => p.id === session.patient_id);
+      if (patient) {
+        const newBilled = Math.max(0, patient.billed + diff);
+        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
       }
-    });
+    }
+    const ok = await writeSessionWithLock(sessionId, { rate }, session);
     setMutating(false);
     return ok;
   }

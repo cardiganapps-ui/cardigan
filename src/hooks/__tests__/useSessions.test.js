@@ -194,7 +194,9 @@ describe("updateSessionStatus", () => {
     expect(ctx.patients.get()[0].billed).toBe(3000);
   });
 
-  it("RPC call carries the expected payload (id, status, reason, delta, expected version)", async () => {
+  it("RPC call carries the expected payload (id, status, reason, expected version)", async () => {
+    // Migration 069 removed p_billed_delta — the patient.billed
+    // recompute is now triggered server-side by the session UPDATE.
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00", version: 7 };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue(RPC, { error: null });
@@ -208,7 +210,6 @@ describe("updateSessionStatus", () => {
       p_session_id: "s-1",
       p_new_status: SESSION_STATUS.CANCELLED,
       p_cancel_reason: "tarde",
-      p_billed_delta: -1000, // counted → not counted
       p_expected_version: 7,
     });
   });

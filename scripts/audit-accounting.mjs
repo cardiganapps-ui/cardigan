@@ -27,6 +27,15 @@
      credit    = max(0, patient.paid − consumed)
 */
 
+// Force the predicate calculation into the user's tz so the audit's JS
+// verdict matches the live in-browser predicate AND the trigger-set
+// patient.billed (migration 069). Without this the runner's default tz
+// (UTC in CI, whatever-the-dev-machine-is locally) shifts the past-
+// scheduled boundary by up to ±6 hours, fabricating "billed drift" for
+// sessions whose end falls inside that window. All current users are
+// MX-tz; revisit when multi-tz support is needed.
+process.env.TZ = "America/Mexico_City";
+
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 // Mirror parseShortDate + sessionCountsTowardBalance from src/utils so

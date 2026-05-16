@@ -15,7 +15,6 @@ import { createNoteActions } from "./useNotes";
 import { createDocumentActions } from "./useDocuments";
 import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
-import { recalcPatientCounters } from "../utils/patients";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { enrichPatientsWithBalance } from "../utils/accounting";
@@ -679,17 +678,13 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
           const { data, error } = await supabase.from("sessions").insert(rows).select();
           if (!error && data) {
             insertedRows.push(...data);
+            // patient.sessions and patient.billed are maintained by the
+            // trigger (migration 069) that fires on the bulk insert.
+            // Locally, sessions counter grows by data.length; billed
+            // grows by zero because auto-extend rows are all future-
+            // dated (predicate doesn't count them yet).
             const newSessions = patient.sessions + data.length;
-            const newBilled = patient.billed + patient.rate * data.length;
-            const { error: pErr } = await supabase.from("patients")
-              .update({ sessions: newSessions, billed: newBilled })
-              .eq("id", patient.id);
-            if (pErr) {
-              const fixed = await recalcPatientCounters(patient.id);
-              if (fixed) patientUpdates.set(patient.id, fixed);
-            } else {
-              patientUpdates.set(patient.id, { sessions: newSessions, billed: newBilled });
-            }
+            patientUpdates.set(patient.id, { sessions: newSessions });
           }
         }
 

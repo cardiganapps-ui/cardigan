@@ -4377,6 +4377,13 @@
       "security": "definer"
     },
     {
+      "args": "m smallint, d smallint, ref timestamp with time zone, p_tz text",
+      "definition": "CREATE OR REPLACE FUNCTION public.infer_short_date_year(m smallint, d smallint, ref timestamp with time zone, p_tz text)\n RETURNS smallint\n LANGUAGE plpgsql\n IMMUTABLE PARALLEL SAFE\nAS $function$\ndeclare\n  ref_date date := (ref at time zone p_tz)::date;\n  ref_year smallint := extract(year from ref_date)::smallint;\n  best_year smallint := ref_year;\n  best_diff integer := 1000000;\n  y smallint;\n  cand date;\n  diff integer;\nbegin\n  for y in select unnest(array[ref_year - 1, ref_year, ref_year + 1]) loop\n    begin\n      cand := make_date(y::int, m::int, d::int);\n      diff := abs(cand - ref_date);\n      if diff < best_diff then\n        best_diff := diff;\n        best_year := y;\n      end if;\n    exception when others then\n      null;\n    end;\n  end loop;\n  return best_year;\nend;\n$function$\n",
+      "name": "infer_short_date_year",
+      "returns": "smallint",
+      "security": "invoker"
+    },
+    {
       "args": "",
       "definition": "CREATE OR REPLACE FUNCTION public.is_admin()\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nbegin\r\n  return auth.jwt() ->> 'email' = 'gaxioladiego@gmail.com';\r\nend;\r\n$function$\n",
       "name": "is_admin",
@@ -4405,10 +4412,31 @@
       "security": "invoker"
     },
     {
+      "args": "p_patient_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.recalc_patient_session_counters(p_patient_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_patient_rate integer;\n  v_user_id uuid;\n  v_tz text;\n  v_sessions integer;\n  v_billed integer;\n  v_now timestamptz := now();\nbegin\n  select rate, user_id into v_patient_rate, v_user_id\n    from patients where id = p_patient_id;\n  if v_user_id is null then return; end if;\n\n  select coalesce(timezone, 'America/Mexico_City') into v_tz\n    from notification_preferences where user_id = v_user_id;\n  if v_tz is null then v_tz := 'America/Mexico_City'; end if;\n\n  select count(*)::integer into v_sessions\n    from sessions where patient_id = p_patient_id;\n\n  select coalesce(sum(coalesce(s.rate, v_patient_rate, 0)), 0)::integer into v_billed\n    from sessions s\n    where s.patient_id = p_patient_id\n      and public.session_counts_at(s.status, s.date, s.time, v_tz, v_now);\n\n  update patients\n  set sessions = coalesce(v_sessions, 0),\n      billed = coalesce(v_billed, 0)\n  where id = p_patient_id;\nend;\n$function$\n",
+      "name": "recalc_patient_session_counters",
+      "returns": "void",
+      "security": "invoker"
+    },
+    {
+      "args": "p_status text, p_date text, p_time text, p_tz text, ref timestamp with time zone",
+      "definition": "CREATE OR REPLACE FUNCTION public.session_counts_at(p_status text, p_date text, p_time text, p_tz text, ref timestamp with time zone)\n RETURNS boolean\n LANGUAGE plpgsql\n IMMUTABLE PARALLEL SAFE\nAS $function$\ndeclare\n  parts text[];\n  d_num smallint;\n  mon text;\n  m smallint;\n  yr_suffix text;\n  y smallint;\n  hh smallint := 0;\n  mm smallint := 0;\n  tp text[];\n  session_end_local timestamp;\n  session_end_at timestamptz;\nbegin\n  if p_status = 'completed' or p_status = 'charged' then\n    return true;\n  end if;\n  if p_status <> 'scheduled' then\n    return false;\n  end if;\n  parts := regexp_match(\n    p_date,\n    '^([0-9]+)-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(?:-([0-9]{2}))?$'\n  );\n  if parts is null then return false; end if;\n  d_num := parts[1]::smallint;\n  mon := parts[2];\n  m := public.spanish_month_idx(mon);\n  if m is null then return false; end if;\n  yr_suffix := parts[3];\n  if yr_suffix is not null then\n    y := (2000 + yr_suffix::smallint)::smallint;\n  else\n    y := public.infer_short_date_year(m, d_num, ref, p_tz);\n  end if;\n  tp := string_to_array(p_time, ':');\n  if array_length(tp, 1) >= 2 then\n    hh := tp[1]::smallint;\n    mm := tp[2]::smallint;\n  end if;\n  begin\n    session_end_local := make_timestamp(y::int, m::int, d_num::int, hh::int, mm::int, 0) + interval '1 hour';\n  exception when others then\n    return false;\n  end;\n  session_end_at := session_end_local at time zone p_tz;\n  return ref >= session_end_at;\nend;\n$function$\n",
+      "name": "session_counts_at",
+      "returns": "boolean",
+      "security": "invoker"
+    },
+    {
       "args": "",
       "definition": "CREATE OR REPLACE FUNCTION public.sessions_normalize_date()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  NEW.date := normalize_short_date(NEW.date);\n  RETURN NEW;\nEND;\n$function$\n",
       "name": "sessions_normalize_date",
       "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "mon text",
+      "definition": "CREATE OR REPLACE FUNCTION public.spanish_month_idx(mon text)\n RETURNS smallint\n LANGUAGE sql\n IMMUTABLE PARALLEL SAFE\nAS $function$\n  select case mon\n    when 'Ene' then 1 when 'Feb' then 2 when 'Mar' then 3 when 'Abr' then 4\n    when 'May' then 5 when 'Jun' then 6 when 'Jul' then 7 when 'Ago' then 8\n    when 'Sep' then 9 when 'Oct' then 10 when 'Nov' then 11 when 'Dic' then 12\n  end::smallint;\n$function$\n",
+      "name": "spanish_month_idx",
+      "returns": "smallint",
       "security": "invoker"
     },
     {
@@ -4419,8 +4447,15 @@
       "security": "invoker"
     },
     {
-      "args": "p_session_id uuid, p_new_status text, p_cancel_reason text, p_billed_delta integer, p_expected_version integer",
-      "definition": "CREATE OR REPLACE FUNCTION public.update_session_status_atomic(p_session_id uuid, p_new_status text, p_cancel_reason text, p_billed_delta integer, p_expected_version integer DEFAULT NULL::integer)\n RETURNS json\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_user_id uuid;\n  v_session sessions%rowtype;\n  v_billed_after integer;\n  v_exists boolean;\nbegin\n  v_user_id := auth.uid();\n  if v_user_id is null then\n    raise exception 'unauthenticated' using errcode = '42501';\n  end if;\n\n  if p_new_status not in ('scheduled', 'completed', 'cancelled', 'charged') then\n    raise exception 'invalid status: %', p_new_status using errcode = '22023';\n  end if;\n\n  update sessions\n  set status = p_new_status,\n      cancel_reason = case\n        when p_new_status in ('scheduled', 'completed') then null\n        else p_cancel_reason\n      end\n  where id = p_session_id\n    and user_id = v_user_id\n    and (p_expected_version is null or version = p_expected_version)\n  returning * into v_session;\n\n  if not found then\n    select exists(select 1 from sessions where id = p_session_id and user_id = v_user_id)\n      into v_exists;\n    if v_exists and p_expected_version is not null then\n      raise exception 'session version conflict' using errcode = '40001';\n    end if;\n    raise exception 'session not found' using errcode = 'P0002';\n  end if;\n\n  if p_billed_delta != 0 and v_session.patient_id is not null then\n    update patients\n    set billed = greatest(0, billed + p_billed_delta)\n    where id = v_session.patient_id\n      and user_id = v_user_id\n    returning billed into v_billed_after;\n  end if;\n\n  return json_build_object(\n    'session', row_to_json(v_session),\n    'billed', v_billed_after\n  );\nend;\n$function$\n",
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.trg_sessions_recalc_counters()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nbegin\n  if (tg_op = 'INSERT') then\n    if new.patient_id is not null then\n      perform public.recalc_patient_session_counters(new.patient_id);\n    end if;\n  elsif (tg_op = 'UPDATE') then\n    if old.patient_id is distinct from new.patient_id then\n      if old.patient_id is not null then perform public.recalc_patient_session_counters(old.patient_id); end if;\n      if new.patient_id is not null then perform public.recalc_patient_session_counters(new.patient_id); end if;\n    elsif old.status is distinct from new.status\n       or old.date is distinct from new.date\n       or old.time is distinct from new.time\n       or old.rate is distinct from new.rate then\n      if new.patient_id is not null then perform public.recalc_patient_session_counters(new.patient_id); end if;\n    end if;\n  elsif (tg_op = 'DELETE') then\n    if old.patient_id is not null then perform public.recalc_patient_session_counters(old.patient_id); end if;\n  end if;\n  return null;\nend;\n$function$\n",
+      "name": "trg_sessions_recalc_counters",
+      "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "p_session_id uuid, p_new_status text, p_cancel_reason text, p_expected_version integer",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_session_status_atomic(p_session_id uuid, p_new_status text, p_cancel_reason text, p_expected_version integer DEFAULT NULL::integer)\n RETURNS json\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_user_id uuid;\n  v_session sessions%rowtype;\n  v_exists boolean;\nbegin\n  v_user_id := auth.uid();\n  if v_user_id is null then\n    raise exception 'unauthenticated' using errcode = '42501';\n  end if;\n\n  if p_new_status not in ('scheduled', 'completed', 'cancelled', 'charged') then\n    raise exception 'invalid status: %', p_new_status using errcode = '22023';\n  end if;\n\n  update sessions\n  set status = p_new_status,\n      cancel_reason = case\n        when p_new_status in ('scheduled', 'completed') then null\n        else p_cancel_reason\n      end\n  where id = p_session_id\n    and user_id = v_user_id\n    and (p_expected_version is null or version = p_expected_version)\n  returning * into v_session;\n\n  if not found then\n    select exists(select 1 from sessions where id = p_session_id and user_id = v_user_id)\n      into v_exists;\n    if v_exists and p_expected_version is not null then\n      raise exception 'session version conflict' using errcode = '40001';\n    end if;\n    raise exception 'session not found' using errcode = 'P0002';\n  end if;\n\n  return json_build_object('session', row_to_json(v_session));\nend;\n$function$\n",
       "name": "update_session_status_atomic",
       "returns": "json",
       "security": "invoker"
@@ -6072,6 +6107,27 @@
       "event_manipulation": "UPDATE",
       "table_name": "sessions",
       "trigger_name": "sessions_normalize_date_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION trg_sessions_recalc_counters()",
+      "action_timing": "AFTER",
+      "event_manipulation": "DELETE",
+      "table_name": "sessions",
+      "trigger_name": "sessions_recalc_counters_after_iud"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION trg_sessions_recalc_counters()",
+      "action_timing": "AFTER",
+      "event_manipulation": "INSERT",
+      "table_name": "sessions",
+      "trigger_name": "sessions_recalc_counters_after_iud"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION trg_sessions_recalc_counters()",
+      "action_timing": "AFTER",
+      "event_manipulation": "UPDATE",
+      "table_name": "sessions",
+      "trigger_name": "sessions_recalc_counters_after_iud"
     },
     {
       "action_statement": "EXECUTE FUNCTION withdraw_reschedule_requests_on_move()",

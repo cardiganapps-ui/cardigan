@@ -921,3 +921,140 @@ drop trigger if exists payments_recalc_paid_after_iud on payments;
 create trigger payments_recalc_paid_after_iud
 after insert or update or delete on payments
 for each row execute function public.trg_payments_recalc_paid();
+
+-- ============================================================
+-- Trigger: maintain patient.sessions = COUNT(*) and patient.billed
+-- = Σ rate over sessions matching the canonical predicate
+-- (sessionCountsTowardBalance in utils/accounting.js).
+--
+-- The SQL predicate mirrors the JS one and MUST stay in sync —
+-- otherwise the trigger and the live amountDue calc disagree, and
+-- the audit fires.
+--
+-- Timezone correctness: looks up the user's tz from
+-- notification_preferences (default America/Mexico_City) so the
+-- past-scheduled auto-complete boundary matches the user's wall clock.
+--
+-- Same code as migration 069; mirrored here so a fresh-clone build
+-- of the schema reproduces production behavior.
+-- ============================================================
+create or replace function public.spanish_month_idx(mon text)
+returns smallint language sql immutable parallel safe as $$
+  select case mon
+    when 'Ene' then 1 when 'Feb' then 2 when 'Mar' then 3 when 'Abr' then 4
+    when 'May' then 5 when 'Jun' then 6 when 'Jul' then 7 when 'Ago' then 8
+    when 'Sep' then 9 when 'Oct' then 10 when 'Nov' then 11 when 'Dic' then 12
+  end::smallint;
+$$;
+
+create or replace function public.infer_short_date_year(
+  m smallint, d smallint, ref timestamptz, p_tz text
+) returns smallint language plpgsql immutable parallel safe as $$
+declare
+  ref_date date := (ref at time zone p_tz)::date;
+  ref_year smallint := extract(year from ref_date)::smallint;
+  best_year smallint := ref_year;
+  best_diff integer := 1000000;
+  y smallint;
+  cand date;
+  diff integer;
+begin
+  for y in select unnest(array[ref_year - 1, ref_year, ref_year + 1]) loop
+    begin
+      cand := make_date(y::int, m::int, d::int);
+      diff := abs(cand - ref_date);
+      if diff < best_diff then best_diff := diff; best_year := y; end if;
+    exception when others then null;
+    end;
+  end loop;
+  return best_year;
+end;
+$$;
+
+create or replace function public.session_counts_at(
+  p_status text, p_date text, p_time text, p_tz text, ref timestamptz
+) returns boolean language plpgsql immutable parallel safe as $$
+declare
+  parts text[];
+  d_num smallint; mon text; m smallint;
+  yr_suffix text; y smallint;
+  hh smallint := 0; mm smallint := 0;
+  tp text[];
+  session_end_local timestamp;
+  session_end_at timestamptz;
+begin
+  if p_status = 'completed' or p_status = 'charged' then return true; end if;
+  if p_status <> 'scheduled' then return false; end if;
+  parts := regexp_match(p_date, '^([0-9]+)-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(?:-([0-9]{2}))?$');
+  if parts is null then return false; end if;
+  d_num := parts[1]::smallint;
+  mon := parts[2];
+  m := public.spanish_month_idx(mon);
+  if m is null then return false; end if;
+  yr_suffix := parts[3];
+  if yr_suffix is not null then
+    y := (2000 + yr_suffix::smallint)::smallint;
+  else
+    y := public.infer_short_date_year(m, d_num, ref, p_tz);
+  end if;
+  tp := string_to_array(p_time, ':');
+  if array_length(tp, 1) >= 2 then
+    hh := tp[1]::smallint; mm := tp[2]::smallint;
+  end if;
+  begin
+    session_end_local := make_timestamp(y::int, m::int, d_num::int, hh::int, mm::int, 0) + interval '1 hour';
+  exception when others then return false;
+  end;
+  session_end_at := session_end_local at time zone p_tz;
+  return ref >= session_end_at;
+end;
+$$;
+
+create or replace function public.recalc_patient_session_counters(p_patient_id uuid)
+returns void language plpgsql security invoker set search_path = public, pg_temp as $$
+declare
+  v_patient_rate integer; v_user_id uuid; v_tz text;
+  v_sessions integer; v_billed integer;
+  v_now timestamptz := now();
+begin
+  select rate, user_id into v_patient_rate, v_user_id from patients where id = p_patient_id;
+  if v_user_id is null then return; end if;
+  select coalesce(timezone, 'America/Mexico_City') into v_tz
+    from notification_preferences where user_id = v_user_id;
+  if v_tz is null then v_tz := 'America/Mexico_City'; end if;
+  select count(*)::integer into v_sessions from sessions where patient_id = p_patient_id;
+  select coalesce(sum(coalesce(s.rate, v_patient_rate, 0)), 0)::integer into v_billed
+    from sessions s
+    where s.patient_id = p_patient_id
+      and public.session_counts_at(s.status, s.date, s.time, v_tz, v_now);
+  update patients set sessions = coalesce(v_sessions, 0), billed = coalesce(v_billed, 0)
+    where id = p_patient_id;
+end;
+$$;
+
+create or replace function public.trg_sessions_recalc_counters()
+returns trigger language plpgsql security invoker set search_path = public, pg_temp as $$
+begin
+  if (tg_op = 'INSERT') then
+    if new.patient_id is not null then perform public.recalc_patient_session_counters(new.patient_id); end if;
+  elsif (tg_op = 'UPDATE') then
+    if old.patient_id is distinct from new.patient_id then
+      if old.patient_id is not null then perform public.recalc_patient_session_counters(old.patient_id); end if;
+      if new.patient_id is not null then perform public.recalc_patient_session_counters(new.patient_id); end if;
+    elsif old.status is distinct from new.status
+       or old.date is distinct from new.date
+       or old.time is distinct from new.time
+       or old.rate is distinct from new.rate then
+      if new.patient_id is not null then perform public.recalc_patient_session_counters(new.patient_id); end if;
+    end if;
+  elsif (tg_op = 'DELETE') then
+    if old.patient_id is not null then perform public.recalc_patient_session_counters(old.patient_id); end if;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists sessions_recalc_counters_after_iud on sessions;
+create trigger sessions_recalc_counters_after_iud
+after insert or update or delete on sessions
+for each row execute function public.trg_sessions_recalc_counters();
