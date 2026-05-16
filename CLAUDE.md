@@ -150,6 +150,16 @@ Runs as the `postgres` role, which has limits:
 
 For regular data operations, `supabase-js` + the service-role key is simpler and still bypasses RLS.
 
+### Schema drift detection (CI guard)
+The live `public` schema is mirrored to `supabase/schema.snapshot.json` — a canonical JSON inventory of every table, column, constraint, index, trigger, function, and RLS policy. `.github/workflows/schema-drift.yml` regenerates that inventory and diffs it on every push / PR that touches `supabase/`, plus nightly at 04:15 UTC. CI fails when production DDL has been changed out-of-band (ad-hoc SQL in the dashboard) or when a migration / `schema.sql` edit was committed without being applied — drift in either direction is a real-world bug class.
+
+When you intentionally change schema (new migration, function rewrite, RLS edit): apply the change to live, then regenerate + commit the snapshot.
+```
+node --env-file=.env.local scripts/schema-snapshot.mjs --update
+git add supabase/schema.snapshot.json
+```
+The script reads via the same `SUPABASE_PAT` the audit workflow uses; it never writes to the database. The diff path also runs as part of `--update`, so a stale snapshot is the only way to push and immediately fail CI.
+
 ### Vercel API (for env vars, deploys, project settings)
 Base: `https://api.vercel.com`, header `Authorization: Bearer $VERCEL_TOKEN`. Project name is `cardigan` (find ID via `GET /v9/projects?search=cardigan`).
 

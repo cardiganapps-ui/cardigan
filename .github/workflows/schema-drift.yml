@@ -1,0 +1,58 @@
+# ── Schema drift detection ────────────────────────────────────────────
+#
+# Runs scripts/schema-snapshot.mjs against the live database and fails
+# when production DDL diverges from supabase/schema.snapshot.json (the
+# committed canonical inventory of every table, column, constraint,
+# index, trigger, function, and RLS policy in the `public` schema).
+#
+# Fires:
+#   • On every push/PR that touches supabase/ — catches the
+#     "I added a migration but forgot to update the snapshot" case.
+#   • Nightly at 04:15 UTC — catches the "someone ran ad-hoc SQL in
+#     the dashboard" case. Sits 15 min after the accounting audit so
+#     drift in either system surfaces in a single morning email.
+#
+# Setup (one-time, GitHub repo Settings → Secrets and variables →
+# Actions): same two secrets the accounting audit already uses:
+#   SUPABASE_PAT          — Management API personal access token
+#   SUPABASE_PROJECT_REF  — project subdomain
+#
+# The script is read-only against production. The only write is to the
+# local snapshot file, and only when --update is passed (never in CI).
+
+name: Schema drift detection
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "scripts/schema-snapshot.mjs"
+      - ".github/workflows/schema-drift.yml"
+  pull_request:
+    paths:
+      - "supabase/**"
+      - "scripts/schema-snapshot.mjs"
+      - ".github/workflows/schema-drift.yml"
+  schedule:
+    - cron: "15 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Diff live schema against committed snapshot
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: node scripts/schema-snapshot.mjs

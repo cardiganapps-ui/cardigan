@@ -1,0 +1,6049 @@
+{
+  "columns": [
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "account_deletions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "account_deletions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "account_deletions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "reason",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "account_deletions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "deleted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "account_deletions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "admin_audit_log",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "actor_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "admin_audit_log",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "target_user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "admin_audit_log",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "action",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "admin_audit_log",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "payload",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "admin_audit_log",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": null,
+      "column_name": "ip",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "admin_audit_log",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "ua",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "admin_audit_log",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "admin_audit_log",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "admin_saved_views",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "screen",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "admin_saved_views",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "admin_saved_views",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "filter_state",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "admin_saved_views",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": null,
+      "column_name": "created_by",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "admin_saved_views",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "admin_saved_views",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "admin_saved_views",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "bug_reports",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 2,
+      "table_name": "bug_reports",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_email",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "bug_reports",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "bug_reports",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "screen",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "bug_reports",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "logs",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "bug_reports",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_agent",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "bug_reports",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "bug_reports",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "archived_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "bug_reports",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "job",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "cron_state",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_run_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 2,
+      "table_name": "cron_state",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "documents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "documents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "documents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "documents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "documents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "file_path",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "documents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'application/octet-stream'::text",
+      "column_name": "file_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "documents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "file_size",
+      "data_type": "bigint",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "documents",
+      "udt_name": "int8"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "documents",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "documents",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "uploaded_by_user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "documents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "'patient'::text",
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 12,
+      "table_name": "documents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "expenses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "expenses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "amount",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "expenses",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "date",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "category",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "payment_method",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'deductible'::text",
+      "column_name": "tax_treatment",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "cfdi_uuid",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "cfdi_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "recurring_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "expenses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "period_year",
+      "data_type": "smallint",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "expenses",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "period_month",
+      "data_type": "smallint",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "expenses",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "receipt_document_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "expenses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "note",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 15,
+      "table_name": "expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "color_idx",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 16,
+      "table_name": "expenses",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 17,
+      "table_name": "expenses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 18,
+      "table_name": "expenses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "export_audit",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "export_audit",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "exported_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "export_audit",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "bytes",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "export_audit",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "influencer_codes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "code",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "influencer_codes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_coupon_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "influencer_codes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_promotion_code_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "influencer_codes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "influencer_name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "influencer_codes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "percent_off",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "influencer_codes",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "duration",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "influencer_codes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "duration_in_months",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "influencer_codes",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "true",
+      "column_name": "active",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "influencer_codes",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "created_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "influencer_codes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "influencer_codes",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "notes",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "influencer_codes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "lifecycle_emails",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "lifecycle_emails",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "sent_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "lifecycle_emails",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "resend_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "lifecycle_emails",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "measurements",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "measurements",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "measurements",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "taken_at",
+      "data_type": "date",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "measurements",
+      "udt_name": "date"
+    },
+    {
+      "column_default": null,
+      "column_name": "weight_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "waist_cm",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "hip_cm",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "body_fat_pct",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "notes",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "measurements",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "measurements",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "'manual'::text",
+      "column_name": "source",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 11,
+      "table_name": "measurements",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "scanned_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "measurements",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "device_model",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "measurements",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "skeletal_muscle_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "body_fat_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 15,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "visceral_fat_level",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 16,
+      "table_name": "measurements",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "total_body_water_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 17,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "protein_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 18,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "minerals_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 19,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "basal_metabolic_rate_kcal",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 20,
+      "table_name": "measurements",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "phase_angle",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 21,
+      "table_name": "measurements",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "inbody_score",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 22,
+      "table_name": "measurements",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "raw_extra",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 23,
+      "table_name": "measurements",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "notes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "notes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "notes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "notes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "notes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "content",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "notes",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "notes",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "notes",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "false",
+      "column_name": "pinned",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "notes",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "false",
+      "column_name": "encrypted",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "notes",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "notification_preferences",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "notification_preferences",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "true",
+      "column_name": "enabled",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "notification_preferences",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "30",
+      "column_name": "reminder_minutes",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "notification_preferences",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "'America/Mexico_City'::text",
+      "column_name": "timezone",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "notification_preferences",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "notification_preferences",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "patient_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "token_hash",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "patient_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "token_prefix",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "patient_invites",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "patient_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "therapist_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "patient_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "(now() + '30 days'::interval)",
+      "column_name": "expires_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "patient_invites",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "used_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "patient_invites",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "used_by_user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "patient_invites",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "patient_invites",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "patient_payment_intents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "patient_payment_intents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "therapist_user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "patient_payment_intents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "paid_by_user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "patient_payment_intents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_payment_intent_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "patient_payment_intents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_account_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "patient_payment_intents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "amount_cents",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "patient_payment_intents",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "'mxn'::text",
+      "column_name": "currency",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "patient_payment_intents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'pending'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "patient_payment_intents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "payment_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "patient_payment_intents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 11,
+      "table_name": "patient_payment_intents",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "succeeded_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "patient_payment_intents",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "patients",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "patients",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "parent",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "initials",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "700",
+      "column_name": "rate",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "'Lunes'::text",
+      "column_name": "day",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'16:00'::text",
+      "column_name": "time",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'active'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "billed",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "0",
+      "column_name": "paid",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "0",
+      "column_name": "sessions",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "0",
+      "column_name": "color_idx",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "patients",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "start_date",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "ordinal_position": 15,
+      "table_name": "patients",
+      "udt_name": "date"
+    },
+    {
+      "column_default": null,
+      "column_name": "birthdate",
+      "data_type": "date",
+      "is_nullable": "YES",
+      "ordinal_position": 16,
+      "table_name": "patients",
+      "udt_name": "date"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "phone",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 17,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 18,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "tutor_frequency",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 19,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "false",
+      "column_name": "whatsapp_enabled",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 20,
+      "table_name": "patients",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "whatsapp_consent_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 21,
+      "table_name": "patients",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "height_cm",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 22,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "goal_weight_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 23,
+      "table_name": "patients",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "allergies",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 24,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "medical_conditions",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 25,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "goal_body_fat_pct",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 26,
+      "table_name": "patients",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "goal_skeletal_muscle_kg",
+      "data_type": "numeric",
+      "is_nullable": "YES",
+      "ordinal_position": 27,
+      "table_name": "patients",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": "'recurring'::text",
+      "column_name": "scheduling_mode",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 28,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "external_folder_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 29,
+      "table_name": "patients",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 30,
+      "table_name": "patients",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_intake_completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 31,
+      "table_name": "patients",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "payments",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "payments",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "payments",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "payments",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "initials",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "payments",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "amount",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "payments",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "date",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "payments",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'Transferencia'::text",
+      "column_name": "method",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "payments",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "color_idx",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "payments",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "payments",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "note",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "payments",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "1",
+      "column_name": "version",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 12,
+      "table_name": "payments",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "push_subscriptions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "push_subscriptions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "endpoint",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "push_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "p256dh",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "push_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "auth",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "push_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "push_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "resub_token",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "push_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'web'::text",
+      "column_name": "platform",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "push_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "endpoint",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "rate_limits",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "bucket",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "rate_limits",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "hit_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "rate_limits",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "recurring_expenses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "recurring_expenses",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "amount",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "recurring_expenses",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "category",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "recurring_expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "recurring_expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "day_of_month",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "recurring_expenses",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "payment_method",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "recurring_expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'deductible'::text",
+      "column_name": "tax_treatment",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "recurring_expenses",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "true",
+      "column_name": "active",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "recurring_expenses",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "start_year",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "recurring_expenses",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "start_month",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "ordinal_position": 11,
+      "table_name": "recurring_expenses",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "paused_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "recurring_expenses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "recurring_expenses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "recurring_expenses",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "referral_credits",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "inviter_user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "referral_credits",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "invitee_user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "referral_credits",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "amount_cents",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "referral_credits",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "invoice_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "referral_credits",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "credited_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "referral_credits",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "nextval('resend_events_id_seq'::regclass)",
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "resend_events",
+      "udt_name": "int8"
+    },
+    {
+      "column_default": null,
+      "column_name": "email_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 2,
+      "table_name": "resend_events",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "resend_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "event_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "resend_events",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "email_created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "resend_events",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "to_addr",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "resend_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "subject",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "resend_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "seconds_since_send",
+      "data_type": "double precision",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "resend_events",
+      "udt_name": "float8"
+    },
+    {
+      "column_default": null,
+      "column_name": "raw",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "resend_events",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "inserted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "resend_events",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "sent_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "sent_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "sent_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "sent_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "sent_reminders",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "'push'::text",
+      "column_name": "channel",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "sent_reminders",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "submitted_by",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "original_date",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "original_time",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "proposed_date",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "proposed_time",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_note",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "therapist_note",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'pending'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 12,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "resolved_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "resolved_by",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "expires_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 15,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "approve_token",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 16,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "reject_token",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 17,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 18,
+      "table_name": "session_reschedule_requests",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "sessions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "sessions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "sessions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "initials",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "time",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "day",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "date",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'scheduled'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "color_idx",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "sessions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "sessions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "cancel_reason",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "60",
+      "column_name": "duration",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "sessions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "rate",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "sessions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "'presencial'::text",
+      "column_name": "modality",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 15,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'regular'::text",
+      "column_name": "session_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 16,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "false",
+      "column_name": "is_recurring",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 17,
+      "table_name": "sessions",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "visit_type",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 18,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'weekly'::text",
+      "column_name": "recurrence_frequency",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 19,
+      "table_name": "sessions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_rescheduled_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 20,
+      "table_name": "sessions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_rescheduled_from",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 21,
+      "table_name": "sessions",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": "1",
+      "column_name": "version",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 22,
+      "table_name": "sessions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "stripe_invoices",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "stripe_invoices",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_customer_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "stripe_invoices",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_subscription_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "stripe_invoices",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "amount_cents",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "stripe_invoices",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "'mxn'::text",
+      "column_name": "currency",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "stripe_invoices",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "paid_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "stripe_invoices",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "hosted_invoice_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "stripe_invoices",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "pdf_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "stripe_invoices",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "stripe_invoices",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "event_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "stripe_webhook_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "stripe_webhook_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "received_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "stripe_webhook_events",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "payload",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "stripe_webhook_events",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_account_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "false",
+      "column_name": "charges_enabled",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "false",
+      "column_name": "payouts_enabled",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "false",
+      "column_name": "details_submitted",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_event_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "therapist_connect_accounts",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "trial_extensions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "trial_extensions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "days",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "trial_extensions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "reason",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "trial_extensions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "granted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "trial_extensions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_calendar_tokens",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_calendar_tokens",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "user_calendar_tokens",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_accessed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "user_calendar_tokens",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "token_hash",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "user_calendar_tokens",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "token_prefix",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "user_calendar_tokens",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_consents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_consents",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "policy_version",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "user_consents",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "accepted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "user_consents",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_encryption_keys",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_encryption_keys",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "passphrase_wrap",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "user_encryption_keys",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "passphrase_salt",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "user_encryption_keys",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "passphrase_iv",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "user_encryption_keys",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "600000",
+      "column_name": "passphrase_iters",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "user_encryption_keys",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "recovery_wrap",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "user_encryption_keys",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'v1'::text",
+      "column_name": "recovery_kid",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "user_encryption_keys",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "user_encryption_keys",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "user_encryption_keys",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_profiles",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "profession",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_profiles",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "user_profiles",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "user_profiles",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "signup_source",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "user_profiles",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "signup_source_detail",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "user_profiles",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "signup_source_recorded_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "user_profiles",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_ratings",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "prompt_kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_ratings",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stars",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "user_ratings",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": null,
+      "column_name": "comment",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "user_ratings",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "user_ratings",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "user_subscriptions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_customer_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_subscription_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "stripe_price_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "current_period_end",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "false",
+      "column_name": "cancel_at_period_end",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "user_subscriptions",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "trial_end",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "latest_invoice_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "hosted_invoice_url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "false",
+      "column_name": "comp_granted",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "user_subscriptions",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": null,
+      "column_name": "comp_granted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "comp_granted_by",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 15,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "comp_reason",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 16,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "referral_code",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 17,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "referred_by",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 18,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "referral_reward_credited_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 19,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "0",
+      "column_name": "referral_rewards_count",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 20,
+      "table_name": "user_subscriptions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "0",
+      "column_name": "pending_credit_amount_cents",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 21,
+      "table_name": "user_subscriptions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "default_payment_method",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 22,
+      "table_name": "user_subscriptions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "trial_extension_days",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 23,
+      "table_name": "user_subscriptions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "last_stripe_event_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 24,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "cancel_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 25,
+      "table_name": "user_subscriptions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "influencer_code_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 26,
+      "table_name": "user_subscriptions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "whatsapp_audit",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "whatsapp_audit",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "whatsapp_audit",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "whatsapp_audit",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "recipient_phone",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "whatsapp_audit",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "template_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 6,
+      "table_name": "whatsapp_audit",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "whatsapp_audit",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "meta_message_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "whatsapp_audit",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "error_code",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "whatsapp_audit",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "error_reason",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 10,
+      "table_name": "whatsapp_audit",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "raw_response",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 11,
+      "table_name": "whatsapp_audit",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "whatsapp_audit",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "whatsapp_audit",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "whatsapp_events",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "meta_message_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 2,
+      "table_name": "whatsapp_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "event_type",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 3,
+      "table_name": "whatsapp_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "recipient_phone",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "whatsapp_events",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "raw",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "whatsapp_events",
+      "udt_name": "jsonb"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "whatsapp_events",
+      "udt_name": "timestamptz"
+    }
+  ],
+  "constraints": [
+    {
+      "conname": "account_deletions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "account_deletions"
+    },
+    {
+      "conname": "admin_audit_log_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "admin_audit_log"
+    },
+    {
+      "conname": "admin_saved_views_filter_state_size",
+      "contype": "c",
+      "definition": "CHECK ((octet_length((filter_state)::text) <= 4096))",
+      "table_name": "admin_saved_views"
+    },
+    {
+      "conname": "admin_saved_views_name_check",
+      "contype": "c",
+      "definition": "CHECK (((length(name) >= 1) AND (length(name) <= 60)))",
+      "table_name": "admin_saved_views"
+    },
+    {
+      "conname": "admin_saved_views_screen_check",
+      "contype": "c",
+      "definition": "CHECK ((screen = ANY (ARRAY['users'::text, 'audit'::text, 'revenue'::text, 'acquisition'::text, 'codes'::text, 'reports'::text])))",
+      "table_name": "admin_saved_views"
+    },
+    {
+      "conname": "admin_saved_views_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "admin_saved_views"
+    },
+    {
+      "conname": "bug_reports_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "table_name": "bug_reports"
+    },
+    {
+      "conname": "bug_reports_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "bug_reports"
+    },
+    {
+      "conname": "cron_state_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (job)",
+      "table_name": "cron_state"
+    },
+    {
+      "conname": "documents_kind_check",
+      "contype": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['patient'::text, 'receipt'::text])))",
+      "table_name": "documents"
+    },
+    {
+      "conname": "documents_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "documents"
+    },
+    {
+      "conname": "documents_session_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL",
+      "table_name": "documents"
+    },
+    {
+      "conname": "documents_uploaded_by_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (uploaded_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "table_name": "documents"
+    },
+    {
+      "conname": "documents_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "documents"
+    },
+    {
+      "conname": "documents_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "documents"
+    },
+    {
+      "conname": "expenses_amount_check",
+      "contype": "c",
+      "definition": "CHECK ((amount > 0))",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_category_check",
+      "contype": "c",
+      "definition": "CHECK ((category = ANY (ARRAY['consultorio'::text, 'servicios'::text, 'software'::text, 'insumos'::text, 'formacion'::text, 'honorarios'::text, 'transporte'::text, 'marketing'::text, 'comisiones'::text, 'impuestos'::text, 'otro'::text])))",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_date_format",
+      "contype": "c",
+      "definition": "CHECK ((date ~ '^([1-9]|[12][0-9]|3[01])-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(-[0-9]{2})?$'::text))",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_payment_method_check",
+      "contype": "c",
+      "definition": "CHECK ((payment_method = ANY (ARRAY['Transferencia'::text, 'Efectivo'::text, 'Tarjeta'::text, 'Otro'::text])))",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_period_month_check",
+      "contype": "c",
+      "definition": "CHECK (((period_month IS NULL) OR ((period_month >= 1) AND (period_month <= 12))))",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_tax_treatment_check",
+      "contype": "c",
+      "definition": "CHECK ((tax_treatment = ANY (ARRAY['deductible'::text, 'non_deductible'::text, 'personal'::text])))",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_receipt_document_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (receipt_document_id) REFERENCES documents(id) ON DELETE SET NULL",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_recurring_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (recurring_id) REFERENCES recurring_expenses(id) ON DELETE SET NULL",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "expenses_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "expenses"
+    },
+    {
+      "conname": "export_audit_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "export_audit"
+    },
+    {
+      "conname": "export_audit_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "export_audit"
+    },
+    {
+      "conname": "influencer_codes_check",
+      "contype": "c",
+      "definition": "CHECK ((((duration <> 'repeating'::text) AND (duration_in_months IS NULL)) OR ((duration = 'repeating'::text) AND ((duration_in_months >= 1) AND (duration_in_months <= 12)))))",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "influencer_codes_code_check",
+      "contype": "c",
+      "definition": "CHECK ((code ~ '^[A-Z0-9]{4,20}$'::text))",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "influencer_codes_duration_check",
+      "contype": "c",
+      "definition": "CHECK ((duration = ANY (ARRAY['once'::text, 'repeating'::text, 'forever'::text])))",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "influencer_codes_percent_off_check",
+      "contype": "c",
+      "definition": "CHECK (((percent_off >= 1) AND (percent_off <= 100)))",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "influencer_codes_created_by_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "influencer_codes_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "influencer_codes_code_key",
+      "contype": "u",
+      "definition": "UNIQUE (code)",
+      "table_name": "influencer_codes"
+    },
+    {
+      "conname": "lifecycle_emails_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "lifecycle_emails"
+    },
+    {
+      "conname": "lifecycle_emails_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id, kind)",
+      "table_name": "lifecycle_emails"
+    },
+    {
+      "conname": "measurements_source_check",
+      "contype": "c",
+      "definition": "CHECK ((source = ANY (ARRAY['manual'::text, 'inbody_csv'::text, 'inbody_api'::text])))",
+      "table_name": "measurements"
+    },
+    {
+      "conname": "measurements_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "measurements"
+    },
+    {
+      "conname": "measurements_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "measurements"
+    },
+    {
+      "conname": "measurements_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "measurements"
+    },
+    {
+      "conname": "notes_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "notes"
+    },
+    {
+      "conname": "notes_session_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL",
+      "table_name": "notes"
+    },
+    {
+      "conname": "notes_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "notes"
+    },
+    {
+      "conname": "notes_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "notes"
+    },
+    {
+      "conname": "notification_preferences_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "notification_preferences"
+    },
+    {
+      "conname": "notification_preferences_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "notification_preferences"
+    },
+    {
+      "conname": "notification_preferences_user_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (user_id)",
+      "table_name": "notification_preferences"
+    },
+    {
+      "conname": "patient_invites_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "patient_invites"
+    },
+    {
+      "conname": "patient_invites_therapist_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (therapist_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "patient_invites"
+    },
+    {
+      "conname": "patient_invites_used_by_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (used_by_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "table_name": "patient_invites"
+    },
+    {
+      "conname": "patient_invites_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "patient_invites"
+    },
+    {
+      "conname": "patient_invites_token_hash_key",
+      "contype": "u",
+      "definition": "UNIQUE (token_hash)",
+      "table_name": "patient_invites"
+    },
+    {
+      "conname": "patient_payment_intents_amount_cents_check",
+      "contype": "c",
+      "definition": "CHECK ((amount_cents > 0))",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'succeeded'::text, 'failed'::text, 'canceled'::text])))",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_paid_by_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (paid_by_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_payment_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_therapist_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (therapist_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patient_payment_intents_stripe_payment_intent_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (stripe_payment_intent_id)",
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "conname": "patients_billed_nonneg",
+      "contype": "c",
+      "definition": "CHECK ((billed >= 0))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_external_folder_url_len",
+      "contype": "c",
+      "definition": "CHECK (((external_folder_url IS NULL) OR (length(external_folder_url) <= 2048)))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_initials_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(initials) > 0))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_name_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(name) > 0))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_paid_nonneg",
+      "contype": "c",
+      "definition": "CHECK ((paid >= 0))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_scheduling_mode_check",
+      "contype": "c",
+      "definition": "CHECK ((scheduling_mode = ANY (ARRAY['recurring'::text, 'episodic'::text])))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_sessions_nonneg",
+      "contype": "c",
+      "definition": "CHECK ((sessions >= 0))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'ended'::text, 'potential'::text, 'discarded'::text])))",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_patient_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "patients"
+    },
+    {
+      "conname": "patients_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "patients"
+    },
+    {
+      "conname": "payments_date_format",
+      "contype": "c",
+      "definition": "CHECK ((date ~ '^([1-9]|[12][0-9]|3[01])-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(-[0-9]{2})?$'::text))",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_initials_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(initials) > 0))",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_method_check",
+      "contype": "c",
+      "definition": "CHECK ((method = ANY (ARRAY['Transferencia'::text, 'Efectivo'::text, 'Tarjeta'::text, 'Retiro sin Tarjeta'::text, 'Otro'::text])))",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_patient_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(patient) > 0))",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "payments"
+    },
+    {
+      "conname": "push_subscriptions_platform_check",
+      "contype": "c",
+      "definition": "CHECK ((platform = ANY (ARRAY['web'::text, 'ios'::text, 'android'::text])))",
+      "table_name": "push_subscriptions"
+    },
+    {
+      "conname": "push_subscriptions_shape_check",
+      "contype": "c",
+      "definition": "CHECK ((((platform = 'web'::text) AND (p256dh IS NOT NULL) AND (auth IS NOT NULL)) OR ((platform = ANY (ARRAY['ios'::text, 'android'::text])) AND (p256dh IS NULL) AND (auth IS NULL))))",
+      "table_name": "push_subscriptions"
+    },
+    {
+      "conname": "push_subscriptions_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "push_subscriptions"
+    },
+    {
+      "conname": "push_subscriptions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "push_subscriptions"
+    },
+    {
+      "conname": "push_subscriptions_endpoint_key",
+      "contype": "u",
+      "definition": "UNIQUE (endpoint)",
+      "table_name": "push_subscriptions"
+    },
+    {
+      "conname": "rate_limits_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (endpoint, bucket, hit_at)",
+      "table_name": "rate_limits"
+    },
+    {
+      "conname": "recurring_expenses_amount_check",
+      "contype": "c",
+      "definition": "CHECK ((amount > 0))",
+      "table_name": "recurring_expenses"
+    },
+    {
+      "conname": "recurring_expenses_day_of_month_check",
+      "contype": "c",
+      "definition": "CHECK (((day_of_month >= 1) AND (day_of_month <= 31)))",
+      "table_name": "recurring_expenses"
+    },
+    {
+      "conname": "recurring_expenses_start_month_check",
+      "contype": "c",
+      "definition": "CHECK (((start_month >= 1) AND (start_month <= 12)))",
+      "table_name": "recurring_expenses"
+    },
+    {
+      "conname": "recurring_expenses_tax_treatment_check",
+      "contype": "c",
+      "definition": "CHECK ((tax_treatment = ANY (ARRAY['deductible'::text, 'non_deductible'::text, 'personal'::text])))",
+      "table_name": "recurring_expenses"
+    },
+    {
+      "conname": "recurring_expenses_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "recurring_expenses"
+    },
+    {
+      "conname": "recurring_expenses_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "recurring_expenses"
+    },
+    {
+      "conname": "referral_credits_invitee_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (invitee_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "referral_credits"
+    },
+    {
+      "conname": "referral_credits_inviter_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (inviter_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "referral_credits"
+    },
+    {
+      "conname": "referral_credits_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "referral_credits"
+    },
+    {
+      "conname": "referral_credits_inviter_user_id_invitee_user_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (inviter_user_id, invitee_user_id)",
+      "table_name": "referral_credits"
+    },
+    {
+      "conname": "resend_events_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "resend_events"
+    },
+    {
+      "conname": "sent_reminders_session_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE",
+      "table_name": "sent_reminders"
+    },
+    {
+      "conname": "sent_reminders_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "sent_reminders"
+    },
+    {
+      "conname": "sent_reminders_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "sent_reminders"
+    },
+    {
+      "conname": "sent_reminders_uniq",
+      "contype": "u",
+      "definition": "UNIQUE (session_id, user_id, channel)",
+      "table_name": "sent_reminders"
+    },
+    {
+      "conname": "session_reschedule_requests_resolved_by_check",
+      "contype": "c",
+      "definition": "CHECK (((resolved_by IS NULL) OR (resolved_by = ANY (ARRAY['therapist_app'::text, 'therapist_email'::text, 'patient_withdraw'::text, 'auto_expire'::text, 'auto_session_moved'::text]))))",
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "conname": "session_reschedule_requests_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text, 'withdrawn'::text, 'expired'::text])))",
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "conname": "session_reschedule_requests_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "conname": "session_reschedule_requests_session_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE",
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "conname": "session_reschedule_requests_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "conname": "sessions_date_format",
+      "contype": "c",
+      "definition": "CHECK ((date ~ '^([1-9]|[12][0-9]|3[01])-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(-[0-9]{2})?$'::text))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_duration_positive",
+      "contype": "c",
+      "definition": "CHECK (((duration IS NOT NULL) AND (duration > 0)))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_initials_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(initials) > 0))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_modality_check",
+      "contype": "c",
+      "definition": "CHECK ((modality = ANY (ARRAY['presencial'::text, 'virtual'::text, 'telefonica'::text, 'a-domicilio'::text])))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_patient_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(patient) > 0))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_rate_nonneg",
+      "contype": "c",
+      "definition": "CHECK (((rate IS NULL) OR (rate >= 0)))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_recurrence_frequency_check",
+      "contype": "c",
+      "definition": "CHECK ((recurrence_frequency = ANY (ARRAY['weekly'::text, 'biweekly'::text, 'monthly'::text])))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_session_type_check",
+      "contype": "c",
+      "definition": "CHECK ((session_type = ANY (ARRAY['regular'::text, 'tutor'::text, 'interview'::text])))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text, 'charged'::text])))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_time_format",
+      "contype": "c",
+      "definition": "CHECK ((\"time\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_visit_type_check",
+      "contype": "c",
+      "definition": "CHECK (((visit_type IS NULL) OR (visit_type = ANY (ARRAY['intake'::text, 'followup'::text, 'maintenance'::text]))))",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "sessions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "sessions"
+    },
+    {
+      "conname": "stripe_invoices_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "stripe_invoices"
+    },
+    {
+      "conname": "stripe_invoices_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "stripe_invoices"
+    },
+    {
+      "conname": "stripe_webhook_events_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (event_id)",
+      "table_name": "stripe_webhook_events"
+    },
+    {
+      "conname": "therapist_connect_accounts_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "therapist_connect_accounts"
+    },
+    {
+      "conname": "therapist_connect_accounts_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id)",
+      "table_name": "therapist_connect_accounts"
+    },
+    {
+      "conname": "therapist_connect_accounts_stripe_account_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (stripe_account_id)",
+      "table_name": "therapist_connect_accounts"
+    },
+    {
+      "conname": "trial_extensions_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "trial_extensions"
+    },
+    {
+      "conname": "trial_extensions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "trial_extensions"
+    },
+    {
+      "conname": "trial_extensions_user_id_reason_key",
+      "contype": "u",
+      "definition": "UNIQUE (user_id, reason)",
+      "table_name": "trial_extensions"
+    },
+    {
+      "conname": "user_calendar_tokens_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_calendar_tokens"
+    },
+    {
+      "conname": "user_calendar_tokens_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "user_calendar_tokens"
+    },
+    {
+      "conname": "user_calendar_tokens_user_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (user_id)",
+      "table_name": "user_calendar_tokens"
+    },
+    {
+      "conname": "user_consents_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_consents"
+    },
+    {
+      "conname": "user_consents_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "user_consents"
+    },
+    {
+      "conname": "user_consents_user_id_policy_version_key",
+      "contype": "u",
+      "definition": "UNIQUE (user_id, policy_version)",
+      "table_name": "user_consents"
+    },
+    {
+      "conname": "user_encryption_keys_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_encryption_keys"
+    },
+    {
+      "conname": "user_encryption_keys_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "user_encryption_keys"
+    },
+    {
+      "conname": "user_encryption_keys_user_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (user_id)",
+      "table_name": "user_encryption_keys"
+    },
+    {
+      "conname": "user_profiles_profession_check",
+      "contype": "c",
+      "definition": "CHECK ((profession = ANY (ARRAY['psychologist'::text, 'nutritionist'::text, 'tutor'::text, 'music_teacher'::text, 'trainer'::text])))",
+      "table_name": "user_profiles"
+    },
+    {
+      "conname": "user_profiles_signup_source_check",
+      "contype": "c",
+      "definition": "CHECK (((signup_source IS NULL) OR (signup_source = ANY (ARRAY['instagram'::text, 'facebook'::text, 'tiktok'::text, 'google'::text, 'colleague'::text, 'podcast'::text, 'event'::text, 'other'::text]))))",
+      "table_name": "user_profiles"
+    },
+    {
+      "conname": "user_profiles_signup_source_detail_check",
+      "contype": "c",
+      "definition": "CHECK (((signup_source_detail IS NULL) OR ((signup_source = 'other'::text) AND (length(signup_source_detail) <= 60))))",
+      "table_name": "user_profiles"
+    },
+    {
+      "conname": "user_profiles_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_profiles"
+    },
+    {
+      "conname": "user_profiles_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id)",
+      "table_name": "user_profiles"
+    },
+    {
+      "conname": "user_ratings_stars_check",
+      "contype": "c",
+      "definition": "CHECK (((stars >= 1) AND (stars <= 5)))",
+      "table_name": "user_ratings"
+    },
+    {
+      "conname": "user_ratings_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_ratings"
+    },
+    {
+      "conname": "user_ratings_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id, prompt_kind)",
+      "table_name": "user_ratings"
+    },
+    {
+      "conname": "user_subscriptions_influencer_code_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (influencer_code_id) REFERENCES influencer_codes(id) ON DELETE SET NULL",
+      "table_name": "user_subscriptions"
+    },
+    {
+      "conname": "user_subscriptions_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "user_subscriptions"
+    },
+    {
+      "conname": "user_subscriptions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id)",
+      "table_name": "user_subscriptions"
+    },
+    {
+      "conname": "user_subscriptions_referral_code_key",
+      "contype": "u",
+      "definition": "UNIQUE (referral_code)",
+      "table_name": "user_subscriptions"
+    },
+    {
+      "conname": "user_subscriptions_stripe_customer_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (stripe_customer_id)",
+      "table_name": "user_subscriptions"
+    },
+    {
+      "conname": "user_subscriptions_stripe_subscription_id_key",
+      "contype": "u",
+      "definition": "UNIQUE (stripe_subscription_id)",
+      "table_name": "user_subscriptions"
+    },
+    {
+      "conname": "whatsapp_audit_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text])))",
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "conname": "whatsapp_audit_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL",
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "conname": "whatsapp_audit_session_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE",
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "conname": "whatsapp_audit_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "conname": "whatsapp_audit_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "conname": "whatsapp_events_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "whatsapp_events"
+    }
+  ],
+  "functions": [
+    {
+      "args": "days integer",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_analytics_daily(days integer DEFAULT 30)\n RETURNS TABLE(day date, signups integer, active_users integer, sessions_created integer, payments_created integer)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  span_days int := greatest(1, least(coalesce(days, 30), 365));\n  start_at timestamptz := (current_date - (span_days - 1))::timestamptz;\nbegin\n  if not is_admin() then\n    raise exception 'Forbidden';\n  end if;\n\n  return query\n  with date_series as (\n    select generate_series(current_date - (span_days - 1), current_date, '1 day'::interval)::date as day\n  ),\n  signups as (\n    select created_at::date as day, count(*)::int as cnt\n    from auth.users\n    where created_at >= start_at\n    group by created_at::date\n  ),\n  activity as (\n    select t.day, count(distinct t.user_id)::int as cnt\n    from (\n      select user_id, created_at::date as day from sessions where created_at >= start_at\n      union all\n      select user_id, created_at::date as day from payments where created_at >= start_at\n      union all\n      select user_id, updated_at::date as day from notes where updated_at >= start_at\n      union all\n      select user_id, created_at::date as day from documents where created_at >= start_at\n    ) t\n    group by t.day\n  ),\n  sessions_per_day as (\n    select created_at::date as day, count(*)::int as cnt\n    from sessions\n    where created_at >= start_at\n    group by created_at::date\n  ),\n  payments_per_day as (\n    select created_at::date as day, count(*)::int as cnt\n    from payments\n    where created_at >= start_at\n    group by created_at::date\n  )\n  select\n    d.day,\n    coalesce(s.cnt, 0) as signups,\n    coalesce(a.cnt, 0) as active_users,\n    coalesce(sp.cnt, 0) as sessions_created,\n    coalesce(pp.cnt, 0) as payments_created\n  from date_series d\n  left join signups       s  on s.day  = d.day\n  left join activity      a  on a.day  = d.day\n  left join sessions_per_day sp on sp.day = d.day\n  left join payments_per_day pp on pp.day = d.day\n  order by d.day;\nend;\n$function$\n",
+      "name": "admin_analytics_daily",
+      "returns": "TABLE(day date, signups integer, active_users integer, sessions_created integer, payments_created integer)",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_analytics_overview()\n RETURNS json\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'auth'\nAS $function$\ndeclare\n  result json;\n  thirty_days_ago timestamptz := now() - interval '30 days';\nbegin\n  if not is_admin() then\n    raise exception 'Forbidden';\n  end if;\n\n  with active_users_30d as (\n    select user_id from sessions where created_at >= thirty_days_ago\n    union\n    select user_id from payments where created_at >= thirty_days_ago\n    union\n    select user_id from notes where updated_at >= thirty_days_ago\n    union\n    select user_id from documents where created_at >= thirty_days_ago\n  )\n  select json_build_object(\n    'users_total',         (select count(*) from auth.users),\n    'users_blocked',       (select count(*) from auth.users where banned_until is not null and banned_until > now()),\n    'users_signups_30d',   (select count(*) from auth.users where created_at >= thirty_days_ago),\n    'users_active_30d',    (select count(distinct user_id) from active_users_30d),\n    'patients_total',      (select count(*) from patients),\n    'sessions_total',      (select count(*) from sessions),\n    'sessions_30d',        (select count(*) from sessions where created_at >= thirty_days_ago),\n    'payments_total',      (select count(*) from payments),\n    'payments_30d',        (select count(*) from payments where created_at >= thirty_days_ago),\n    'money_tracked_total', (select coalesce(sum(amount), 0) from payments),\n    'money_tracked_30d',   (select coalesce(sum(amount), 0) from payments where created_at >= thirty_days_ago),\n    'notes_total',         (select count(*) from notes),\n    'documents_total',     (select count(*) from documents),\n    'push_subscriptions',  (select count(*) from push_subscriptions),\n    'as_of',               now()\n  ) into result;\n\n  return result;\nend;\n$function$\n",
+      "name": "admin_analytics_overview",
+      "returns": "json",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_revenue_overview()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\ndeclare\n  result jsonb;\n  monthly_price_cents int := 29900; -- $299 MXN tax-inclusive\nbegin\n  if not is_admin() then\n    raise exception 'Forbidden';\n  end if;\n\n  with sub_stats as (\n    select\n      count(*) filter (\n        where comp_granted is not true\n        and (status in ('active','past_due')\n             or (status = 'trialing' and default_payment_method is not null))\n      ) as active_subs,\n      count(*) filter (\n        where comp_granted is not true\n        and status = 'trialing'\n        and default_payment_method is null\n      ) as trialing_subs,\n      count(*) filter (where comp_granted is true) as comp_subs,\n      count(*) filter (\n        where status = 'canceled'\n        and updated_at > now() - interval '30 days'\n      ) as cancelled_30d\n    from user_subscriptions\n  ),\n  inv_stats as (\n    select\n      coalesce(sum(amount_cents) filter (\n        where paid_at is not null and paid_at > now() - interval '30 days'\n      ), 0) as revenue_30d_cents,\n      coalesce(sum(amount_cents) filter (\n        where paid_at is not null\n      ), 0) as revenue_total_cents\n    from stripe_invoices\n  )\n  select jsonb_build_object(\n    'active_subs',           s.active_subs,\n    'trialing_subs',         s.trialing_subs,\n    'comp_subs',             s.comp_subs,\n    'cancelled_30d',         s.cancelled_30d,\n    'mrr_estimate_cents',    s.active_subs * monthly_price_cents,\n    'revenue_30d_cents',     i.revenue_30d_cents,\n    'revenue_total_cents',   i.revenue_total_cents,\n    'currency',              'mxn',\n    'as_of',                 now()\n  ) into result\n  from sub_stats s, inv_stats i;\n\n  return result;\nend;\n$function$\n",
+      "name": "admin_revenue_overview",
+      "returns": "jsonb",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_saved_views_set_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nbegin\n  new.updated_at := now();\n  return new;\nend;\n$function$\n",
+      "name": "admin_saved_views_set_updated_at",
+      "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "target_user_id uuid, blocked boolean",
+      "definition": "CREATE OR REPLACE FUNCTION public.admin_set_user_blocked(target_user_id uuid, blocked boolean)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'auth'\nAS $function$\r\nbegin\r\n  update auth.users\r\n  set banned_until = case when blocked then '2999-01-01'::timestamptz else null end\r\n  where id = target_user_id;\r\nend;\r\n$function$\n",
+      "name": "admin_set_user_blocked",
+      "returns": "void",
+      "security": "definer"
+    },
+    {
+      "args": "report_ids uuid[]",
+      "definition": "CREATE OR REPLACE FUNCTION public.archive_bug_reports(report_ids uuid[])\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nBEGIN\r\n  IF NOT is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;\r\n  UPDATE bug_reports SET archived_at = now() WHERE id = ANY(report_ids);\r\nEND;\r\n$function$\n",
+      "name": "archive_bug_reports",
+      "returns": "void",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.bump_version_on_update()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nbegin\n  if NEW.version is null or NEW.version = OLD.version then\n    NEW.version := OLD.version + 1;\n  end if;\n  return NEW;\nend;\n$function$\n",
+      "name": "bump_version_on_update",
+      "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.diag_cron_job_state()\n RETURNS jsonb\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'cron', 'pg_catalog'\nAS $function$\n  select jsonb_build_object(\n    'job', (\n      select jsonb_build_object(\n        'jobid', j.jobid,\n        'jobname', j.jobname,\n        'schedule', j.schedule,\n        'active', j.active,\n        'command_preview', regexp_replace(substring(j.command from 1 for 400), 'Bearer [A-Za-z0-9+/=_-]+', 'Bearer [REDACTED]', 'g')\n      )\n      from cron.job j\n      where j.jobname = 'send-session-reminders'\n    ),\n    'recentRuns', (\n      select jsonb_agg(row_to_json(r) order by r.start_time desc)\n      from (\n        select runid, status, return_message, start_time, end_time\n        from cron.job_run_details\n        where jobid = (select jobid from cron.job where jobname = 'send-session-reminders')\n        order by start_time desc\n        limit 20\n      ) r\n    )\n  );\n$function$\n",
+      "name": "diag_cron_job_state",
+      "returns": "jsonb",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_therapists_for_patient()\n RETURNS TABLE(patient_id uuid, therapist_user_id uuid, therapist_email text, therapist_full_name text, therapist_profession text, therapist_avatar text, therapist_accepts_online_payments boolean)\n LANGUAGE sql\n SECURITY DEFINER\nAS $function$\n  select\n    p.id,\n    p.user_id,\n    au.email::text,\n    coalesce(au.raw_user_meta_data->>'full_name', '')::text,\n    coalesce(up.profession, 'psychologist')::text,\n    coalesce(au.raw_user_meta_data->>'avatar', '')::text,\n    coalesce(tca.charges_enabled, false)\n  from patients p\n  join auth.users au on au.id = p.user_id\n  left join user_profiles up on up.user_id = p.user_id\n  left join therapist_connect_accounts tca on tca.user_id = p.user_id\n  where p.patient_user_id = auth.uid()\n    and p.status in ('active', 'potential');\n$function$\n",
+      "name": "get_therapists_for_patient",
+      "returns": "TABLE(patient_id uuid, therapist_user_id uuid, therapist_email text, therapist_full_name text, therapist_profession text, therapist_avatar text, therapist_accepts_online_payments boolean)",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_user_profiles()\n RETURNS TABLE(id uuid, email text, full_name text, banned_until timestamp with time zone, created_at timestamp with time zone, profession text, is_patient boolean)\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nbegin\n  if not is_admin() then\n    return;\n  end if;\n  return query\n    select\n      au.id,\n      au.email::text,\n      coalesce(au.raw_user_meta_data->>'full_name', '')::text as full_name,\n      au.banned_until,\n      au.created_at,\n      up.profession::text,\n      exists(\n        select 1 from patients p\n        where p.patient_user_id = au.id\n      ) as is_patient\n    from auth.users au\n    left join user_profiles up on up.user_id = au.id;\nend;\n$function$\n",
+      "name": "get_user_profiles",
+      "returns": "TABLE(id uuid, email text, full_name text, banned_until timestamp with time zone, created_at timestamp with time zone, profession text, is_patient boolean)",
+      "security": "definer"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_admin()\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nbegin\r\n  return auth.jwt() ->> 'email' = 'gaxioladiego@gmail.com';\r\nend;\r\n$function$\n",
+      "name": "is_admin",
+      "returns": "boolean",
+      "security": "definer"
+    },
+    {
+      "args": "raw text",
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_short_date(raw text)\n RETURNS text\n LANGUAGE plpgsql\n IMMUTABLE\nAS $function$\nDECLARE\n  parts TEXT[];\n  d INT;\n  m TEXT;\nBEGIN\n  IF raw IS NULL THEN RETURN NULL; END IF;\n  parts := regexp_split_to_array(btrim(raw), '[\\s-]+');\n  IF array_length(parts, 1) < 2 THEN RETURN raw; END IF;\n  BEGIN\n    d := parts[1]::INT;\n  EXCEPTION WHEN OTHERS THEN\n    RETURN raw;\n  END;\n  m := parts[2];\n  IF m NOT IN ('Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic') THEN\n    RETURN raw;\n  END IF;\n  RETURN d::TEXT || '-' || m;\nEND;\n$function$\n",
+      "name": "normalize_short_date",
+      "returns": "text",
+      "security": "invoker"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.payments_normalize_date()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  NEW.date := normalize_short_date(NEW.date);\n  RETURN NEW;\nEND;\n$function$\n",
+      "name": "payments_normalize_date",
+      "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.sessions_normalize_date()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  NEW.date := normalize_short_date(NEW.date);\n  RETURN NEW;\nEND;\n$function$\n",
+      "name": "sessions_normalize_date",
+      "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "p_session_id uuid, p_new_status text, p_cancel_reason text, p_billed_delta integer, p_expected_version integer",
+      "definition": "CREATE OR REPLACE FUNCTION public.update_session_status_atomic(p_session_id uuid, p_new_status text, p_cancel_reason text, p_billed_delta integer, p_expected_version integer DEFAULT NULL::integer)\n RETURNS json\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_user_id uuid;\n  v_session sessions%rowtype;\n  v_billed_after integer;\n  v_exists boolean;\nbegin\n  v_user_id := auth.uid();\n  if v_user_id is null then\n    raise exception 'unauthenticated' using errcode = '42501';\n  end if;\n\n  if p_new_status not in ('scheduled', 'completed', 'cancelled', 'charged') then\n    raise exception 'invalid status: %', p_new_status using errcode = '22023';\n  end if;\n\n  update sessions\n  set status = p_new_status,\n      cancel_reason = case\n        when p_new_status in ('scheduled', 'completed') then null\n        else p_cancel_reason\n      end\n  where id = p_session_id\n    and user_id = v_user_id\n    and (p_expected_version is null or version = p_expected_version)\n  returning * into v_session;\n\n  if not found then\n    select exists(select 1 from sessions where id = p_session_id and user_id = v_user_id)\n      into v_exists;\n    if v_exists and p_expected_version is not null then\n      raise exception 'session version conflict' using errcode = '40001';\n    end if;\n    raise exception 'session not found' using errcode = 'P0002';\n  end if;\n\n  if p_billed_delta != 0 and v_session.patient_id is not null then\n    update patients\n    set billed = greatest(0, billed + p_billed_delta)\n    where id = v_session.patient_id\n      and user_id = v_user_id\n    returning billed into v_billed_after;\n  end if;\n\n  return json_build_object(\n    'session', row_to_json(v_session),\n    'billed', v_billed_after\n  );\nend;\n$function$\n",
+      "name": "update_session_status_atomic",
+      "returns": "json",
+      "security": "invoker"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.withdraw_reschedule_requests_on_move()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nbegin\n  if (old.date is distinct from new.date)\n     or (old.time is distinct from new.time)\n     or (old.status = 'scheduled' and new.status is distinct from 'scheduled') then\n    update session_reschedule_requests\n       set status = 'withdrawn',\n           resolved_at = now(),\n           resolved_by = 'auto_session_moved',\n           approve_token = null,\n           reject_token = null\n     where session_id = new.id\n       and status = 'pending';\n  end if;\n  return new;\nend;\n$function$\n",
+      "name": "withdraw_reschedule_requests_on_move",
+      "returns": "trigger",
+      "security": "invoker"
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX account_deletions_pkey ON public.account_deletions USING btree (id)",
+      "indexname": "account_deletions_pkey",
+      "tablename": "account_deletions"
+    },
+    {
+      "indexdef": "CREATE INDEX admin_audit_log_action_idx ON public.admin_audit_log USING btree (action, created_at DESC)",
+      "indexname": "admin_audit_log_action_idx",
+      "tablename": "admin_audit_log"
+    },
+    {
+      "indexdef": "CREATE INDEX admin_audit_log_created_idx ON public.admin_audit_log USING btree (created_at DESC)",
+      "indexname": "admin_audit_log_created_idx",
+      "tablename": "admin_audit_log"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX admin_audit_log_pkey ON public.admin_audit_log USING btree (id)",
+      "indexname": "admin_audit_log_pkey",
+      "tablename": "admin_audit_log"
+    },
+    {
+      "indexdef": "CREATE INDEX admin_audit_log_target_idx ON public.admin_audit_log USING btree (target_user_id, created_at DESC)",
+      "indexname": "admin_audit_log_target_idx",
+      "tablename": "admin_audit_log"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX admin_saved_views_pkey ON public.admin_saved_views USING btree (id)",
+      "indexname": "admin_saved_views_pkey",
+      "tablename": "admin_saved_views"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_admin_saved_views_screen_created ON public.admin_saved_views USING btree (screen, created_at DESC)",
+      "indexname": "idx_admin_saved_views_screen_created",
+      "tablename": "admin_saved_views"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX bug_reports_pkey ON public.bug_reports USING btree (id)",
+      "indexname": "bug_reports_pkey",
+      "tablename": "bug_reports"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX cron_state_pkey ON public.cron_state USING btree (job)",
+      "indexname": "cron_state_pkey",
+      "tablename": "cron_state"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX documents_pkey ON public.documents USING btree (id)",
+      "indexname": "documents_pkey",
+      "tablename": "documents"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_documents_uploaded_by ON public.documents USING btree (uploaded_by_user_id) WHERE (uploaded_by_user_id IS NOT NULL)",
+      "indexname": "idx_documents_uploaded_by",
+      "tablename": "documents"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_documents_user_kind ON public.documents USING btree (user_id, kind)",
+      "indexname": "idx_documents_user_kind",
+      "tablename": "documents"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX expenses_pkey ON public.expenses USING btree (id)",
+      "indexname": "expenses_pkey",
+      "tablename": "expenses"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_expenses_category ON public.expenses USING btree (user_id, category)",
+      "indexname": "idx_expenses_category",
+      "tablename": "expenses"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_expenses_user_date ON public.expenses USING btree (user_id, date)",
+      "indexname": "idx_expenses_user_date",
+      "tablename": "expenses"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_expenses_user_id ON public.expenses USING btree (user_id)",
+      "indexname": "idx_expenses_user_id",
+      "tablename": "expenses"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_expenses_recurring_period ON public.expenses USING btree (recurring_id, period_year, period_month) WHERE (recurring_id IS NOT NULL)",
+      "indexname": "uniq_expenses_recurring_period",
+      "tablename": "expenses"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX export_audit_pkey ON public.export_audit USING btree (id)",
+      "indexname": "export_audit_pkey",
+      "tablename": "export_audit"
+    },
+    {
+      "indexdef": "CREATE INDEX export_audit_user_time_idx ON public.export_audit USING btree (user_id, exported_at DESC)",
+      "indexname": "export_audit_user_time_idx",
+      "tablename": "export_audit"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX influencer_codes_code_key ON public.influencer_codes USING btree (code)",
+      "indexname": "influencer_codes_code_key",
+      "tablename": "influencer_codes"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX influencer_codes_pkey ON public.influencer_codes USING btree (id)",
+      "indexname": "influencer_codes_pkey",
+      "tablename": "influencer_codes"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_lifecycle_emails_kind_sent ON public.lifecycle_emails USING btree (kind, sent_at DESC)",
+      "indexname": "idx_lifecycle_emails_kind_sent",
+      "tablename": "lifecycle_emails"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX lifecycle_emails_pkey ON public.lifecycle_emails USING btree (user_id, kind)",
+      "indexname": "lifecycle_emails_pkey",
+      "tablename": "lifecycle_emails"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_measurements_patient ON public.measurements USING btree (patient_id, taken_at DESC)",
+      "indexname": "idx_measurements_patient",
+      "tablename": "measurements"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_measurements_user_id ON public.measurements USING btree (user_id)",
+      "indexname": "idx_measurements_user_id",
+      "tablename": "measurements"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX measurements_pkey ON public.measurements USING btree (id)",
+      "indexname": "measurements_pkey",
+      "tablename": "measurements"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_measurements_scan ON public.measurements USING btree (patient_id, scanned_at, source) WHERE (scanned_at IS NOT NULL)",
+      "indexname": "uniq_measurements_scan",
+      "tablename": "measurements"
+    },
+    {
+      "indexdef": "CREATE INDEX notes_encrypted_user_idx ON public.notes USING btree (user_id) WHERE (encrypted = true)",
+      "indexname": "notes_encrypted_user_idx",
+      "tablename": "notes"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX notes_pkey ON public.notes USING btree (id)",
+      "indexname": "notes_pkey",
+      "tablename": "notes"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_notification_preferences_user_id ON public.notification_preferences USING btree (user_id)",
+      "indexname": "idx_notification_preferences_user_id",
+      "tablename": "notification_preferences"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX notification_preferences_pkey ON public.notification_preferences USING btree (id)",
+      "indexname": "notification_preferences_pkey",
+      "tablename": "notification_preferences"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX notification_preferences_user_id_key ON public.notification_preferences USING btree (user_id)",
+      "indexname": "notification_preferences_user_id_key",
+      "tablename": "notification_preferences"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_patient_invites_patient ON public.patient_invites USING btree (patient_id)",
+      "indexname": "idx_patient_invites_patient",
+      "tablename": "patient_invites"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX patient_invites_pkey ON public.patient_invites USING btree (id)",
+      "indexname": "patient_invites_pkey",
+      "tablename": "patient_invites"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX patient_invites_token_hash_key ON public.patient_invites USING btree (token_hash)",
+      "indexname": "patient_invites_token_hash_key",
+      "tablename": "patient_invites"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ppi_paid_by ON public.patient_payment_intents USING btree (paid_by_user_id)",
+      "indexname": "idx_ppi_paid_by",
+      "tablename": "patient_payment_intents"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ppi_patient ON public.patient_payment_intents USING btree (patient_id)",
+      "indexname": "idx_ppi_patient",
+      "tablename": "patient_payment_intents"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ppi_stripe_id ON public.patient_payment_intents USING btree (stripe_payment_intent_id)",
+      "indexname": "idx_ppi_stripe_id",
+      "tablename": "patient_payment_intents"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ppi_therapist ON public.patient_payment_intents USING btree (therapist_user_id)",
+      "indexname": "idx_ppi_therapist",
+      "tablename": "patient_payment_intents"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX patient_payment_intents_pkey ON public.patient_payment_intents USING btree (id)",
+      "indexname": "patient_payment_intents_pkey",
+      "tablename": "patient_payment_intents"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX patient_payment_intents_stripe_payment_intent_id_key ON public.patient_payment_intents USING btree (stripe_payment_intent_id)",
+      "indexname": "patient_payment_intents_stripe_payment_intent_id_key",
+      "tablename": "patient_payment_intents"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_patients_patient_user_id ON public.patients USING btree (patient_user_id) WHERE (patient_user_id IS NOT NULL)",
+      "indexname": "idx_patients_patient_user_id",
+      "tablename": "patients"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX patients_pkey ON public.patients USING btree (id)",
+      "indexname": "patients_pkey",
+      "tablename": "patients"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX payments_pkey ON public.payments USING btree (id)",
+      "indexname": "payments_pkey",
+      "tablename": "payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_push_subscriptions_platform_user ON public.push_subscriptions USING btree (user_id, platform)",
+      "indexname": "idx_push_subscriptions_platform_user",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_push_subscriptions_resub_token ON public.push_subscriptions USING btree (resub_token) WHERE (resub_token IS NOT NULL)",
+      "indexname": "idx_push_subscriptions_resub_token",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_push_subscriptions_user_id ON public.push_subscriptions USING btree (user_id)",
+      "indexname": "idx_push_subscriptions_user_id",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_subscriptions_endpoint_key ON public.push_subscriptions USING btree (endpoint)",
+      "indexname": "push_subscriptions_endpoint_key",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_subscriptions_pkey ON public.push_subscriptions USING btree (id)",
+      "indexname": "push_subscriptions_pkey",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_rate_limits_endpoint_bucket ON public.rate_limits USING btree (endpoint, bucket, hit_at DESC)",
+      "indexname": "idx_rate_limits_endpoint_bucket",
+      "tablename": "rate_limits"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX rate_limits_pkey ON public.rate_limits USING btree (endpoint, bucket, hit_at)",
+      "indexname": "rate_limits_pkey",
+      "tablename": "rate_limits"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_recurring_expenses_user_id ON public.recurring_expenses USING btree (user_id)",
+      "indexname": "idx_recurring_expenses_user_id",
+      "tablename": "recurring_expenses"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX recurring_expenses_pkey ON public.recurring_expenses USING btree (id)",
+      "indexname": "recurring_expenses_pkey",
+      "tablename": "recurring_expenses"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_referral_credits_invitee ON public.referral_credits USING btree (invitee_user_id)",
+      "indexname": "idx_referral_credits_invitee",
+      "tablename": "referral_credits"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_referral_credits_inviter ON public.referral_credits USING btree (inviter_user_id, credited_at DESC)",
+      "indexname": "idx_referral_credits_inviter",
+      "tablename": "referral_credits"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX referral_credits_inviter_user_id_invitee_user_id_key ON public.referral_credits USING btree (inviter_user_id, invitee_user_id)",
+      "indexname": "referral_credits_inviter_user_id_invitee_user_id_key",
+      "tablename": "referral_credits"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX referral_credits_pkey ON public.referral_credits USING btree (id)",
+      "indexname": "referral_credits_pkey",
+      "tablename": "referral_credits"
+    },
+    {
+      "indexdef": "CREATE INDEX resend_events_email_id_idx ON public.resend_events USING btree (email_id)",
+      "indexname": "resend_events_email_id_idx",
+      "tablename": "resend_events"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX resend_events_pkey ON public.resend_events USING btree (id)",
+      "indexname": "resend_events_pkey",
+      "tablename": "resend_events"
+    },
+    {
+      "indexdef": "CREATE INDEX resend_events_type_event_at_idx ON public.resend_events USING btree (type, event_at DESC)",
+      "indexname": "resend_events_type_event_at_idx",
+      "tablename": "resend_events"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_sent_reminders_session_id ON public.sent_reminders USING btree (session_id)",
+      "indexname": "idx_sent_reminders_session_id",
+      "tablename": "sent_reminders"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_sent_reminders_user_id ON public.sent_reminders USING btree (user_id)",
+      "indexname": "idx_sent_reminders_user_id",
+      "tablename": "sent_reminders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX sent_reminders_pkey ON public.sent_reminders USING btree (id)",
+      "indexname": "sent_reminders_pkey",
+      "tablename": "sent_reminders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX sent_reminders_uniq ON public.sent_reminders USING btree (session_id, user_id, channel)",
+      "indexname": "sent_reminders_uniq",
+      "tablename": "sent_reminders"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_reschedule_pending ON public.session_reschedule_requests USING btree (user_id, status, expires_at) WHERE (status = 'pending'::text)",
+      "indexname": "idx_reschedule_pending",
+      "tablename": "session_reschedule_requests"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX session_reschedule_requests_pkey ON public.session_reschedule_requests USING btree (id)",
+      "indexname": "session_reschedule_requests_pkey",
+      "tablename": "session_reschedule_requests"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_one_pending_per_session ON public.session_reschedule_requests USING btree (session_id) WHERE (status = 'pending'::text)",
+      "indexname": "uniq_one_pending_per_session",
+      "tablename": "session_reschedule_requests"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_reschedule_approve_token ON public.session_reschedule_requests USING btree (approve_token) WHERE (approve_token IS NOT NULL)",
+      "indexname": "uniq_reschedule_approve_token",
+      "tablename": "session_reschedule_requests"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_reschedule_reject_token ON public.session_reschedule_requests USING btree (reject_token) WHERE (reject_token IS NOT NULL)",
+      "indexname": "uniq_reschedule_reject_token",
+      "tablename": "session_reschedule_requests"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_sessions_session_type ON public.sessions USING btree (session_type)",
+      "indexname": "idx_sessions_session_type",
+      "tablename": "sessions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_sessions_visit_type ON public.sessions USING btree (visit_type) WHERE (visit_type IS NOT NULL)",
+      "indexname": "idx_sessions_visit_type",
+      "tablename": "sessions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX sessions_pkey ON public.sessions USING btree (id)",
+      "indexname": "sessions_pkey",
+      "tablename": "sessions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_sessions_patient_date_time ON public.sessions USING btree (patient_id, date, \"time\") WHERE (patient_id IS NOT NULL)",
+      "indexname": "uniq_sessions_patient_date_time",
+      "tablename": "sessions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_sessions_user_slot ON public.sessions USING btree (user_id, date, \"time\") WHERE (status = 'scheduled'::text)",
+      "indexname": "uniq_sessions_user_slot",
+      "tablename": "sessions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_stripe_invoices_user_paid_at ON public.stripe_invoices USING btree (user_id, paid_at DESC)",
+      "indexname": "idx_stripe_invoices_user_paid_at",
+      "tablename": "stripe_invoices"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX stripe_invoices_pkey ON public.stripe_invoices USING btree (id)",
+      "indexname": "stripe_invoices_pkey",
+      "tablename": "stripe_invoices"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_stripe_webhook_events_received_at ON public.stripe_webhook_events USING btree (received_at DESC)",
+      "indexname": "idx_stripe_webhook_events_received_at",
+      "tablename": "stripe_webhook_events"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX stripe_webhook_events_pkey ON public.stripe_webhook_events USING btree (event_id)",
+      "indexname": "stripe_webhook_events_pkey",
+      "tablename": "stripe_webhook_events"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX therapist_connect_accounts_pkey ON public.therapist_connect_accounts USING btree (user_id)",
+      "indexname": "therapist_connect_accounts_pkey",
+      "tablename": "therapist_connect_accounts"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX therapist_connect_accounts_stripe_account_id_key ON public.therapist_connect_accounts USING btree (stripe_account_id)",
+      "indexname": "therapist_connect_accounts_stripe_account_id_key",
+      "tablename": "therapist_connect_accounts"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX trial_extensions_pkey ON public.trial_extensions USING btree (id)",
+      "indexname": "trial_extensions_pkey",
+      "tablename": "trial_extensions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX trial_extensions_user_id_reason_key ON public.trial_extensions USING btree (user_id, reason)",
+      "indexname": "trial_extensions_user_id_reason_key",
+      "tablename": "trial_extensions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_user_calendar_tokens_hash ON public.user_calendar_tokens USING btree (token_hash)",
+      "indexname": "uniq_user_calendar_tokens_hash",
+      "tablename": "user_calendar_tokens"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_calendar_tokens_pkey ON public.user_calendar_tokens USING btree (id)",
+      "indexname": "user_calendar_tokens_pkey",
+      "tablename": "user_calendar_tokens"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_calendar_tokens_user_id_key ON public.user_calendar_tokens USING btree (user_id)",
+      "indexname": "user_calendar_tokens_user_id_key",
+      "tablename": "user_calendar_tokens"
+    },
+    {
+      "indexdef": "CREATE INDEX user_calendar_tokens_user_idx ON public.user_calendar_tokens USING btree (user_id)",
+      "indexname": "user_calendar_tokens_user_idx",
+      "tablename": "user_calendar_tokens"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_consents_pkey ON public.user_consents USING btree (id)",
+      "indexname": "user_consents_pkey",
+      "tablename": "user_consents"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_consents_user_id_policy_version_key ON public.user_consents USING btree (user_id, policy_version)",
+      "indexname": "user_consents_user_id_policy_version_key",
+      "tablename": "user_consents"
+    },
+    {
+      "indexdef": "CREATE INDEX user_consents_user_idx ON public.user_consents USING btree (user_id)",
+      "indexname": "user_consents_user_idx",
+      "tablename": "user_consents"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_encryption_keys_pkey ON public.user_encryption_keys USING btree (id)",
+      "indexname": "user_encryption_keys_pkey",
+      "tablename": "user_encryption_keys"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_encryption_keys_user_id_key ON public.user_encryption_keys USING btree (user_id)",
+      "indexname": "user_encryption_keys_user_id_key",
+      "tablename": "user_encryption_keys"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_profiles_profession ON public.user_profiles USING btree (profession)",
+      "indexname": "idx_user_profiles_profession",
+      "tablename": "user_profiles"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_profiles_signup_source ON public.user_profiles USING btree (signup_source)",
+      "indexname": "idx_user_profiles_signup_source",
+      "tablename": "user_profiles"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_profiles_pkey ON public.user_profiles USING btree (user_id)",
+      "indexname": "user_profiles_pkey",
+      "tablename": "user_profiles"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_ratings_kind_created ON public.user_ratings USING btree (prompt_kind, created_at DESC)",
+      "indexname": "idx_user_ratings_kind_created",
+      "tablename": "user_ratings"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_ratings_pkey ON public.user_ratings USING btree (user_id, prompt_kind)",
+      "indexname": "user_ratings_pkey",
+      "tablename": "user_ratings"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_subscriptions_comp_granted ON public.user_subscriptions USING btree (comp_granted) WHERE (comp_granted = true)",
+      "indexname": "idx_user_subscriptions_comp_granted",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_subscriptions_customer ON public.user_subscriptions USING btree (stripe_customer_id)",
+      "indexname": "idx_user_subscriptions_customer",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_subscriptions_influencer_code ON public.user_subscriptions USING btree (influencer_code_id)",
+      "indexname": "idx_user_subscriptions_influencer_code",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_subscriptions_referral_code ON public.user_subscriptions USING btree (referral_code) WHERE (referral_code IS NOT NULL)",
+      "indexname": "idx_user_subscriptions_referral_code",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_subscriptions_referred_by ON public.user_subscriptions USING btree (referred_by) WHERE (referred_by IS NOT NULL)",
+      "indexname": "idx_user_subscriptions_referred_by",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_subscriptions_status ON public.user_subscriptions USING btree (status)",
+      "indexname": "idx_user_subscriptions_status",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_subscriptions_pkey ON public.user_subscriptions USING btree (user_id)",
+      "indexname": "user_subscriptions_pkey",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_subscriptions_referral_code_key ON public.user_subscriptions USING btree (referral_code)",
+      "indexname": "user_subscriptions_referral_code_key",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_subscriptions_stripe_customer_id_key ON public.user_subscriptions USING btree (stripe_customer_id)",
+      "indexname": "user_subscriptions_stripe_customer_id_key",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_subscriptions_stripe_subscription_id_key ON public.user_subscriptions USING btree (stripe_subscription_id)",
+      "indexname": "user_subscriptions_stripe_subscription_id_key",
+      "tablename": "user_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_whatsapp_audit_meta_id ON public.whatsapp_audit USING btree (meta_message_id)",
+      "indexname": "idx_whatsapp_audit_meta_id",
+      "tablename": "whatsapp_audit"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_whatsapp_audit_user_id ON public.whatsapp_audit USING btree (user_id)",
+      "indexname": "idx_whatsapp_audit_user_id",
+      "tablename": "whatsapp_audit"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX whatsapp_audit_pkey ON public.whatsapp_audit USING btree (id)",
+      "indexname": "whatsapp_audit_pkey",
+      "tablename": "whatsapp_audit"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_whatsapp_events_meta_id ON public.whatsapp_events USING btree (meta_message_id)",
+      "indexname": "idx_whatsapp_events_meta_id",
+      "tablename": "whatsapp_events"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX whatsapp_events_pkey ON public.whatsapp_events USING btree (id)",
+      "indexname": "whatsapp_events_pkey",
+      "tablename": "whatsapp_events"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "account_deletions admin select",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "account_deletions",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads audit log",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "admin_audit_log",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin deletes saved views",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "admin_saved_views",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin inserts saved views",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "admin_saved_views",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads saved views",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "admin_saved_views",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin updates saved views",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "admin_saved_views",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin can delete bug reports",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "bug_reports",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin can read bug reports",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "bug_reports",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can insert bug reports",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "bug_reports",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads cron state",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "cron_state",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin can read all documents",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all documents",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patients delete own uploaded documents",
+      "qual": "((uploaded_by_user_id = auth.uid()) AND (patient_id IN ( SELECT patients.id\n   FROM patients\n  WHERE ((patients.patient_user_id = auth.uid()) AND (patients.status = ANY (ARRAY['active'::text, 'potential'::text]))))))",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patients insert own documents",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": "((uploaded_by_user_id = auth.uid()) AND (patient_id IN ( SELECT patients.id\n   FROM patients\n  WHERE ((patients.patient_user_id = auth.uid()) AND (patients.status = ANY (ARRAY['active'::text, 'potential'::text]))))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patients read own uploaded documents",
+      "qual": "((uploaded_by_user_id = auth.uid()) AND (patient_id IN ( SELECT patients.id\n   FROM patients\n  WHERE ((patients.patient_user_id = auth.uid()) AND (patients.status = ANY (ARRAY['active'::text, 'potential'::text]))))))",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can delete own documents",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can insert own documents",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own documents",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own documents",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own documents",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "documents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all expenses",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "expenses",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own expenses",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "expenses",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "export_audit select own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "export_audit",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "admin reads influencer codes",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "influencer_codes",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "admin writes influencer codes",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "influencer_codes",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads lifecycle emails",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "lifecycle_emails",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own lifecycle emails",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "lifecycle_emails",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all measurements",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "measurements",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own measurements",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "measurements",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all notes",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "notes",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own notes",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "notes",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all notification preferences",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "notification_preferences",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own notification preferences",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "notification_preferences",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Therapists create invites for their patients",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "patient_invites",
+      "with_check": "((therapist_id = auth.uid()) AND (patient_id IN ( SELECT patients.id\n   FROM patients\n  WHERE (patients.user_id = auth.uid()))))"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Therapists read own invites",
+      "qual": "(therapist_id = auth.uid())",
+      "roles": "{public}",
+      "tablename": "patient_invites",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patient reads own payment intents",
+      "qual": "(paid_by_user_id = auth.uid())",
+      "roles": "{public}",
+      "tablename": "patient_payment_intents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Therapist reads incoming payments",
+      "qual": "(therapist_user_id = auth.uid())",
+      "roles": "{public}",
+      "tablename": "patient_payment_intents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all patients",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "patients",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patients read own patient row",
+      "qual": "((patient_user_id = auth.uid()) AND (status = ANY (ARRAY['active'::text, 'potential'::text])))",
+      "roles": "{public}",
+      "tablename": "patients",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own patients",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "patients",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all payments",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "payments",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patients read own payments",
+      "qual": "(patient_id IN ( SELECT patients.id\n   FROM patients\n  WHERE ((patients.patient_user_id = auth.uid()) AND (patients.status = ANY (ARRAY['active'::text, 'potential'::text])))))",
+      "roles": "{public}",
+      "tablename": "payments",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own payments",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "payments",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all push subscriptions",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "push_subscriptions",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own push subscriptions",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "push_subscriptions",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all recurring expenses",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "recurring_expenses",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own recurring expenses",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "recurring_expenses",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all referral credits",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "referral_credits",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own referral credits as inviter",
+      "qual": "(auth.uid() = inviter_user_id)",
+      "roles": "{public}",
+      "tablename": "referral_credits",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "admin can read resend_events",
+      "qual": "is_admin()",
+      "roles": "{authenticated}",
+      "tablename": "resend_events",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own sent reminders",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "sent_reminders",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all reschedule requests",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "session_reschedule_requests",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patient reads requests for own patient row",
+      "qual": "(EXISTS ( SELECT 1\n   FROM patients p\n  WHERE ((p.id = session_reschedule_requests.patient_id) AND (p.patient_user_id = auth.uid()))))",
+      "roles": "{public}",
+      "tablename": "session_reschedule_requests",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Therapist reads own reschedule requests",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "session_reschedule_requests",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all sessions",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "sessions",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Patients read own sessions",
+      "qual": "(patient_id IN ( SELECT patients.id\n   FROM patients\n  WHERE ((patients.patient_user_id = auth.uid()) AND (patients.status = ANY (ARRAY['active'::text, 'potential'::text])))))",
+      "roles": "{public}",
+      "tablename": "sessions",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own sessions",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "sessions",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all invoices",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "stripe_invoices",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own invoices",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "stripe_invoices",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads webhook events",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "stripe_webhook_events",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Therapist reads own connect account",
+      "qual": "(user_id = auth.uid())",
+      "roles": "{public}",
+      "tablename": "therapist_connect_accounts",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all trial extensions",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "trial_extensions",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own trial extensions",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "trial_extensions",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_calendar_tokens delete own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_calendar_tokens",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_calendar_tokens insert own",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "user_calendar_tokens",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_calendar_tokens select own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_calendar_tokens",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_calendar_tokens update own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_calendar_tokens",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_consents insert own",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "user_consents",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_consents select own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_consents",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_encryption_keys admin select",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "user_encryption_keys",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_encryption_keys select own",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_encryption_keys",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all profiles",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "user_profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin updates all profiles",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "user_profiles",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users insert own profile",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "user_profiles",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own profile",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users update own profile",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_profiles",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all ratings",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "user_ratings",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users insert own ratings",
+      "qual": null,
+      "roles": "{public}",
+      "tablename": "user_ratings",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own ratings",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_ratings",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all subscriptions",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "user_subscriptions",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own subscription",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "user_subscriptions",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "wa_audit_owner",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "whatsapp_audit",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "wa_events_admin_read",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "whatsapp_events",
+      "with_check": null
+    }
+  ],
+  "rls_state": [
+    {
+      "rls_enabled": true,
+      "table_name": "account_deletions"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "admin_audit_log"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "admin_saved_views"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "bug_reports"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "cron_state"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "documents"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "expenses"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "export_audit"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "influencer_codes"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "lifecycle_emails"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "measurements"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "notes"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "notification_preferences"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "patient_invites"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "patients"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "payments"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "push_subscriptions"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "rate_limits"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "recurring_expenses"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "referral_credits"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "resend_events"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "sent_reminders"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "sessions"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "stripe_invoices"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "stripe_webhook_events"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "therapist_connect_accounts"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "trial_extensions"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "user_calendar_tokens"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "user_consents"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "user_encryption_keys"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "user_profiles"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "user_ratings"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "user_subscriptions"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "whatsapp_events"
+    }
+  ],
+  "tables": [
+    {
+      "table_name": "account_deletions"
+    },
+    {
+      "table_name": "admin_audit_log"
+    },
+    {
+      "table_name": "admin_saved_views"
+    },
+    {
+      "table_name": "bug_reports"
+    },
+    {
+      "table_name": "cron_state"
+    },
+    {
+      "table_name": "documents"
+    },
+    {
+      "table_name": "expenses"
+    },
+    {
+      "table_name": "export_audit"
+    },
+    {
+      "table_name": "influencer_codes"
+    },
+    {
+      "table_name": "lifecycle_emails"
+    },
+    {
+      "table_name": "measurements"
+    },
+    {
+      "table_name": "notes"
+    },
+    {
+      "table_name": "notification_preferences"
+    },
+    {
+      "table_name": "patient_invites"
+    },
+    {
+      "table_name": "patient_payment_intents"
+    },
+    {
+      "table_name": "patients"
+    },
+    {
+      "table_name": "payments"
+    },
+    {
+      "table_name": "push_subscriptions"
+    },
+    {
+      "table_name": "rate_limits"
+    },
+    {
+      "table_name": "recurring_expenses"
+    },
+    {
+      "table_name": "referral_credits"
+    },
+    {
+      "table_name": "resend_events"
+    },
+    {
+      "table_name": "sent_reminders"
+    },
+    {
+      "table_name": "session_reschedule_requests"
+    },
+    {
+      "table_name": "sessions"
+    },
+    {
+      "table_name": "stripe_invoices"
+    },
+    {
+      "table_name": "stripe_webhook_events"
+    },
+    {
+      "table_name": "therapist_connect_accounts"
+    },
+    {
+      "table_name": "trial_extensions"
+    },
+    {
+      "table_name": "user_calendar_tokens"
+    },
+    {
+      "table_name": "user_consents"
+    },
+    {
+      "table_name": "user_encryption_keys"
+    },
+    {
+      "table_name": "user_profiles"
+    },
+    {
+      "table_name": "user_ratings"
+    },
+    {
+      "table_name": "user_subscriptions"
+    },
+    {
+      "table_name": "whatsapp_audit"
+    },
+    {
+      "table_name": "whatsapp_events"
+    }
+  ],
+  "triggers": [
+    {
+      "action_statement": "EXECUTE FUNCTION admin_saved_views_set_updated_at()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "UPDATE",
+      "table_name": "admin_saved_views",
+      "trigger_name": "admin_saved_views_set_updated_at_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION bump_version_on_update()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "UPDATE",
+      "table_name": "payments",
+      "trigger_name": "payments_bump_version"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION payments_normalize_date()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "INSERT",
+      "table_name": "payments",
+      "trigger_name": "payments_normalize_date_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION payments_normalize_date()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "UPDATE",
+      "table_name": "payments",
+      "trigger_name": "payments_normalize_date_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION bump_version_on_update()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "UPDATE",
+      "table_name": "sessions",
+      "trigger_name": "sessions_bump_version"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION sessions_normalize_date()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "INSERT",
+      "table_name": "sessions",
+      "trigger_name": "sessions_normalize_date_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION sessions_normalize_date()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "UPDATE",
+      "table_name": "sessions",
+      "trigger_name": "sessions_normalize_date_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION withdraw_reschedule_requests_on_move()",
+      "action_timing": "AFTER",
+      "event_manipulation": "UPDATE",
+      "table_name": "sessions",
+      "trigger_name": "sessions_withdraw_reschedule_on_move"
+    }
+  ]
+}
