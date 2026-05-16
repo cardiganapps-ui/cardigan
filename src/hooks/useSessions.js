@@ -467,6 +467,72 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
+  // Undo-aware delete. Splits deleteSession's optimistic block from
+  // its network commit so the App-level orchestration can show a
+  // "Sesión eliminada · Deshacer" toast for ~5s and only fire the
+  // supabase call (or queue, if offline) when the timer expires or
+  // the tab is hidden. Returns { commit, undo }:
+  //   • commit() — runs the server-side delete (or enqueues offline).
+  //               No-op if undo() ran first.
+  //   • undo()   — restores the snapshotted session row AND the
+  //               patient counter snapshot. No-op if commit() ran.
+  // The pair is shaped so the caller can wire it into setTimeout +
+  // visibilitychange + toast without leaking the action's internals.
+  function softDeleteSession(sessionId) {
+    const session = upcomingSessions.find(s => s.id === sessionId);
+    if (!session) return { commit: async () => true, undo: () => {} };
+    const prevSession = { ...session };
+    const patient = session.patient_id ? patients.find(p => p.id === session.patient_id) : null;
+    const prevPatient = patient ? { ...patient } : null;
+
+    setMutationError("");
+    setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (patient) {
+      const sessRate = session.rate ?? patient.rate ?? 0;
+      const wasBilled = sessionCountsTowardBalance(session);
+      const newSessions = Math.max(0, patient.sessions - 1);
+      const newBilled = wasBilled
+        ? Math.max(0, patient.billed - sessRate)
+        : patient.billed;
+      setPatients(prev => prev.map(p => p.id === patient.id
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+    }
+
+    let done = false;
+    return {
+      async commit() {
+        if (done) return true;
+        done = true;
+        const isOptimisticRow = typeof sessionId === "string" && sessionId.startsWith("temp-");
+        if (isOptimisticRow) return true;
+        if (isOffline()) {
+          await enqueue("sessions.delete", { id: sessionId, userId });
+          return true;
+        }
+        try {
+          const { error } = await supabase.from("sessions").delete().eq("id", sessionId).eq("user_id", userId);
+          if (error) {
+            // Restore on hard error so the user isn't left with a
+            // missing session and no signal.
+            setUpcomingSessions(prev => [prevSession, ...prev]);
+            if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+            setMutationError(error.message);
+            return false;
+          }
+        } catch {
+          await enqueue("sessions.delete", { id: sessionId, userId });
+        }
+        return true;
+      },
+      undo() {
+        if (done) return;
+        done = true;
+        setUpcomingSessions(prev => [prevSession, ...prev]);
+        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+      },
+    };
+  }
+
   // Optimistic: updates local state immediately so the SessionSheet
   // can dismiss without waiting on the network round-trip. Reverts
   // the session row on server error and surfaces it via mutationError.
@@ -991,5 +1057,5 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return ok;
   }
 
-  return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason };
+  return { createSession, updateSessionStatus, deleteSession, softDeleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason };
 }

@@ -330,5 +330,55 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     return true;
   }
 
-  return { createPayment, deletePayment, updatePayment };
+  // Undo-aware payment delete. Same shape as softDeleteSession —
+  // returns { commit, undo } so App.jsx can show a "Deshacer" toast
+  // for ~5s and only fire the supabase call when the window expires.
+  function softDeletePayment(paymentId) {
+    const payment = payments.find(p => p.id === paymentId);
+    if (!payment) return { commit: async () => true, undo: () => {} };
+    const prevPayment = { ...payment };
+    const patient = payment.patient_id ? patients.find(p => p.id === payment.patient_id) : null;
+    const prevPatient = patient ? { ...patient } : null;
+
+    setMutationError("");
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
+    if (patient) {
+      const newPaid = Math.max(0, patient.paid - payment.amount);
+      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
+    }
+
+    let done = false;
+    return {
+      async commit() {
+        if (done) return true;
+        done = true;
+        const isOptimisticRow = typeof paymentId === "string" && paymentId.startsWith("temp-");
+        if (isOptimisticRow) return true;
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          await enqueue("payments.delete", { id: paymentId, userId });
+          return true;
+        }
+        try {
+          const res = await supabase.from("payments").delete().eq("id", paymentId).eq("user_id", userId);
+          if (res.error) {
+            setPayments(prev => [prevPayment, ...prev]);
+            if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+            setMutationError(res.error.message);
+            return false;
+          }
+        } catch {
+          await enqueue("payments.delete", { id: paymentId, userId });
+        }
+        return true;
+      },
+      undo() {
+        if (done) return;
+        done = true;
+        setPayments(prev => [prevPayment, ...prev]);
+        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+      },
+    };
+  }
+
+  return { createPayment, deletePayment, softDeletePayment, updatePayment };
 }

@@ -460,8 +460,60 @@ export function createExpenseActions({
     return { inserted: inserted.length };
   }
 
+  // Undo-aware expense delete. Mirrors softDeleteSession /
+  // softDeletePayment. Note: the R2 receipt-document cascade in
+  // deleteExpense runs at commit time, NOT at the optimistic
+  // remove step — so an undone delete leaves the receipt intact.
+  // If the commit fires (timer or visibility hidden) the receipt
+  // is cleaned up just like a direct deleteExpense call.
+  function softDeleteExpense(id) {
+    const prev = expenses.find(e => e.id === id);
+    if (!prev) return { commit: async () => true, undo: () => {} };
+
+    setMutationError("");
+    setExpenses(arr => arr.filter(e => e.id !== id));
+
+    let done = false;
+    return {
+      async commit() {
+        if (done) return true;
+        done = true;
+        const isOptimisticRow = typeof id === "string" && id.startsWith("temp-");
+        if (isOptimisticRow) return true;
+        // Cascade the receipt R2 object FIRST so we don't end up with
+        // a dangling expense pointing at a half-deleted document. Same
+        // guard as deleteExpense — only attempt online (R2 ops can't
+        // be queued without further infrastructure).
+        if (prev.receipt_document_id && typeof deleteDocument === "function" && !isOffline()) {
+          try { await deleteDocument(prev.receipt_document_id); }
+          catch { /* swallow — audit script surfaces orphans */ }
+        }
+        if (isOffline()) {
+          await enqueue("expenses.delete", { id, userId });
+          return true;
+        }
+        try {
+          const res = await supabase.from("expenses").delete().eq("id", id).eq("user_id", userId);
+          if (res.error) {
+            setExpenses(arr => [prev, ...arr]);
+            setMutationError(res.error.message);
+            return false;
+          }
+        } catch {
+          await enqueue("expenses.delete", { id, userId });
+        }
+        return true;
+      },
+      undo() {
+        if (done) return;
+        done = true;
+        setExpenses(arr => [prev, ...arr]);
+      },
+    };
+  }
+
   return {
-    createExpense, updateExpense, deleteExpense,
+    createExpense, updateExpense, deleteExpense, softDeleteExpense,
     createRecurringTemplate, updateRecurringTemplate, deleteRecurringTemplate,
     generateRecurringExpenses, generatePendingRecurringExpenses,
   };

@@ -1461,6 +1461,56 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     }
     return ok;
   }, [showSuccess]);
+  // Undo-aware delete wrapper. Takes a `softFn` that returns
+  // { commit, undo } (defined per-domain in useSessions /
+  // usePayments / useExpenses / useNotes) and orchestrates:
+  //   1. Optimistic state change happens immediately inside softFn.
+  //   2. A "X eliminado · Deshacer" toast shows for UNDO_MS.
+  //   3. If the user taps "Deshacer" within the window → undo() runs
+  //      and the row reappears in place. No network call.
+  //   4. Otherwise the timer fires → commit() runs the server-side
+  //      delete (or enqueues offline).
+  //   5. If the tab is backgrounded mid-window, commit() runs eagerly
+  //      via the visibilitychange handler — closing the tab would
+  //      kill the setTimeout and silently leave the row in the DB.
+  // Returns true so callers using `await delete(id)` see the same
+  // success contract as before.
+  const UNDO_MS = 5000;
+  const withUndoableDelete = useCallback((softFn, label) => async (...args) => {
+    if (typeof softFn !== "function") return false;
+    const handle = softFn(...args);
+    if (!handle || typeof handle.commit !== "function") return false;
+
+    let done = false;
+    let timer;
+    const onHidden = () => { if (document.visibilityState === "hidden") finalize(); };
+    const cleanup = () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onHidden);
+    };
+    const finalize = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      handle.commit();
+    };
+    const restore = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      handle.undo();
+    };
+
+    timer = setTimeout(finalize, UNDO_MS);
+    document.addEventListener("visibilitychange", onHidden);
+    haptic.tap();
+    showToast(label, "info", {
+      actionLabel: "Deshacer",
+      onRetry: restore,
+      duration: UNDO_MS,
+    });
+    return true;
+  }, [showToast]);
   const ctxValue = useMemo(() => ({
     ...data,
     // Override data.readOnly with the composed value (admin view-as
@@ -1476,11 +1526,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     uploadDocument: subscription?.isPro
       ? data.uploadDocument
       : async () => { requirePro("documents"); return null; },
-    deleteSession: withSuccess(data.deleteSession, "Sesi\u00f3n eliminada"),
-    deletePayment: withSuccess(data.deletePayment, "Pago eliminado"),
-    deleteExpense: withSuccess(data.deleteExpense, "Gasto eliminado"),
+    // The four everyday destructive actions go through the undoable
+    // wrapper: optimistic remove + "Deshacer" toast + 5s commit
+    // window. Recurring-template delete stays straight-through \u2014
+    // it's an admin-rare action and undoable wouldn't add much.
+    deleteSession: withUndoableDelete(data.softDeleteSession, "Sesi\u00f3n eliminada"),
+    deletePayment: withUndoableDelete(data.softDeletePayment, "Pago eliminado"),
+    deleteExpense: withUndoableDelete(data.softDeleteExpense, "Gasto eliminado"),
     deleteRecurringTemplate: withSuccess(data.deleteRecurringTemplate, "Plantilla eliminada"),
-    deleteNote: withSuccess(data.deleteNote, "Nota eliminada"),
+    deleteNote: withUndoableDelete(data.softDeleteNote, "Nota eliminada"),
     noteCrypto,
     profession,
     accentTheme,
@@ -1572,7 +1626,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       );
       return ok;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess, withUndoableDelete]);
 
   // First-time user gate: a 2-step onboarding wizard before mounting
   // the main shell. Demo mode and admin "view as user" mode bypass —

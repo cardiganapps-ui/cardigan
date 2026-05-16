@@ -249,5 +249,46 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  return { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes };
+  // Undo-aware note delete. Same shape as the other soft variants.
+  // Temp-id notes (offline-inserted, not yet drained) are a local-
+  // only delete and don't queue anything server-side on commit.
+  function softDeleteNote(id) {
+    const prev = notes.find(n => n.id === id);
+    if (!prev) return { commit: async () => true, undo: () => {} };
+
+    setMutationError("");
+    setNotes(arr => arr.filter(n => n.id !== id));
+
+    let done = false;
+    return {
+      async commit() {
+        if (done) return true;
+        done = true;
+        const isOptimisticRow = typeof id === "string" && id.startsWith("temp-");
+        if (isOptimisticRow) return true;
+        if (isOffline()) {
+          await enqueue("notes.delete", { id, userId });
+          return true;
+        }
+        try {
+          const res = await supabase.from("notes").delete().eq("id", id).eq("user_id", userId);
+          if (res.error) {
+            setNotes(arr => [prev, ...arr]);
+            setMutationError(res.error.message);
+            return false;
+          }
+        } catch {
+          await enqueue("notes.delete", { id, userId });
+        }
+        return true;
+      },
+      undo() {
+        if (done) return;
+        done = true;
+        setNotes(arr => [prev, ...arr]);
+      },
+    };
+  }
+
+  return { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, softDeleteNote, deleteNotes };
 }
