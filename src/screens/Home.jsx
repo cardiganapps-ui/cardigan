@@ -53,7 +53,7 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
+  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
   const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
@@ -179,6 +179,19 @@ export function Home({ setScreen, userName }) {
     if (editingNote?.id) await deleteNote(editingNote.id);
   }, [editingNote, deleteNote]);
   const handleCloseNote = useCallback(() => setEditingNote(null), [setEditingNote]);
+  // Open the note attached to a session, or create+open one if none.
+  // Mirrors PatientExpediente::openSessionNote so the "Agregar nota"
+  // button in SessionSheet behaves identically across Home, Agenda,
+  // and the patient profile. Closing the SessionSheet first so the
+  // sheet's focus trap doesn't fight the NoteEditor's.
+  const openSessionNote = useCallback(async (session) => {
+    if (!session) return;
+    const existing = (notes || []).find(n => n.session_id === session.id);
+    setSelectedSession(null);
+    if (existing) { setEditingNote(existing); return; }
+    const created = await createNote?.({ patientId: session.patient_id || null, sessionId: session.id, title: "", content: "" });
+    if (created) setEditingNote(created);
+  }, [notes, createNote, setSelectedSession, setEditingNote]);
   const owingPatients = patients.filter(p => p.amountDue > 0 && !isPotentialOrDiscarded(p));
 
   const openPatient = (name) => {
@@ -626,6 +639,7 @@ export function Home({ setScreen, userName }) {
         session={selectedSession}
         patients={patients}
         notes={notes}
+        onOpenNote={openSessionNote}
         onClose={() => setSelectedSession(null)}
         onCancelSession={onCancelSession}
         onMarkCompleted={onMarkCompleted}

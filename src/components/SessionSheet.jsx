@@ -2,7 +2,7 @@ import { useState } from "react";
 import { getClientColor } from "../data/seedData";
 import { isCancelledStatus, isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass } from "../utils/sessions";
 import { shortDateToISO, isoToShortDate } from "../utils/dates";
-import { IconX, IconTrash, IconCheck, IconRefresh } from "./Icons";
+import { IconX, IconTrash, IconCheck, IconRefresh, IconClipboard } from "./Icons";
 import { Avatar } from "./Avatar";
 import { haptic } from "../utils/haptics";
 import { useT } from "../i18n/index";
@@ -13,7 +13,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SESSION_STATUS } from "../data/constants";
 import { formatMXN } from "../utils/format";
 
-export function SessionSheet({ session, patients, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
+export function SessionSheet({ session, patients, notes, onOpenNote, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
   const { t } = useT();
   const { openExpediente, profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -419,6 +419,25 @@ export function SessionSheet({ session, patients, onClose, onCancelSession, onMa
                   </button>
                 )}
               </div>
+
+              {/* Session-linked note affordance (Phase 0). PatientExpediente,
+                  Home, and Agenda all pass onOpenNote; the handler opens an
+                  existing note for this session or creates+opens a fresh
+                  one with patient_id + session_id prefilled. The label
+                  flips based on whether a note already exists so users
+                  know they're returning to it, not duplicating. */}
+              {onOpenNote && (
+                <button
+                  className="btn btn-secondary"
+                  style={{ width:"100%", height:44, gap:8 }}
+                  onClick={() => onOpenNote(session)}
+                >
+                  <IconClipboard size={14} />
+                  {(notes || []).some(n => n.session_id === session.id)
+                    ? t("sessions.openNote") || "Ver nota"
+                    : t("sessions.addNote") || "Agregar nota"}
+                </button>
+              )}
             </div>
           )}
         </div>
