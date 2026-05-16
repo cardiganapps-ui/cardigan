@@ -194,8 +194,8 @@ describe("updateSessionStatus", () => {
     expect(ctx.patients.get()[0].billed).toBe(3000);
   });
 
-  it("RPC call carries the expected payload (session id, status, reason, delta)", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00" };
+  it("RPC call carries the expected payload (id, status, reason, delta, expected version)", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00", version: 7 };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue(RPC, { error: null });
 
@@ -209,7 +209,65 @@ describe("updateSessionStatus", () => {
       p_new_status: SESSION_STATUS.CANCELLED,
       p_cancel_reason: "tarde",
       p_billed_delta: -1000, // counted → not counted
+      p_expected_version: 7,
     });
+  });
+
+  // Optimistic locking (migration 065). When the RPC raises SQLSTATE
+  // 40001 ("serialization failure" — our reserved code for "another
+  // writer bumped the version under your feet"), the hook must:
+  //   1. Revert the optimistic flip back to the prior session shape
+  //   2. Refetch the row to learn the new server state
+  //   3. Surface a user-facing "edited elsewhere" message
+  //   4. Restore the patient-billed snapshot we touched optimistically
+  it("40001 version conflict: refetches row, replaces local state, restores patient", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00", version: 3 };
+    const ctx = seed({ sessions: [sess] });
+    // RPC rejects with the optimistic-lock conflict code.
+    mock.enqueue(RPC, { error: { message: "session version conflict", code: "40001" } });
+    // Hook's reconcileSessionConflict then refetches sessions. The server
+    // already has a fresh row (someone else flipped it to completed AND
+    // bumped version to 4).
+    mock.enqueue("sessions", { data: { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00", version: 4 }, error: null });
+
+    const ok = await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
+    expect(ok).toBe(true);
+    await flush();
+
+    // Local state replaced with server truth (status from the refetch,
+    // not the optimistic CANCELLED we tried).
+    const refreshed = ctx.upcomingSessions.get()[0];
+    expect(refreshed.status).toBe(SESSION_STATUS.COMPLETED);
+    expect(refreshed.version).toBe(4);
+    // patient.billed bounced back to the pre-attempt value.
+    expect(ctx.patients.get()[0].billed).toBe(4000);
+    // User-facing message uses the conflict copy, not the raw RPC error.
+    expect(ctx.mutationError.get()).toContain("se editó");
+  });
+
+  it("40001 version conflict on a deleted row: drops it locally and surfaces 'no existe'", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00", version: 3 };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue(RPC, { error: { message: "session version conflict", code: "40001" } });
+    // Refetch returns null — row was hard-deleted by another tab.
+    mock.enqueue("sessions", { data: null, error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()).toHaveLength(0);
+    expect(ctx.mutationError.get()).toMatch(/ya no existe/);
+  });
+
+  it("success bumps local version to match the trigger's server-side increment", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00", version: 5 };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue(RPC, { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.COMPLETED, false);
+    await flush();
+
+    expect(ctx.upcomingSessions.get()[0].version).toBe(6);
   });
 });
 

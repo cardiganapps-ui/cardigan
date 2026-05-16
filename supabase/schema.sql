@@ -101,6 +101,13 @@ create table if not exists sessions (
   -- another migration.
   last_rescheduled_at timestamptz,
   last_rescheduled_from jsonb,
+  -- Optimistic locking (migration 065). Bumped by the
+  -- bump_version_on_update trigger on every UPDATE. Hooks pass the
+  -- version they read in their WHERE clause; a mismatch surfaces as a
+  -- conflict (SQLSTATE 40001 from the status RPC, empty data array
+  -- from direct UPDATEs) instead of silently overwriting a concurrent
+  -- write from another tab / device / patient-portal action.
+  version integer not null default 1,
   created_at timestamptz default now()
 );
 

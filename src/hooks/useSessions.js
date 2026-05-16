@@ -12,7 +12,50 @@ import { getRecurringDates } from "../utils/recurrence";
 // Re-export for callers that historically imported it from this module.
 export { getRecurringDates };
 
+// Spanish copy for the "another tab/device wrote first" toast. Reused
+// across every session-mutation path that runs the optimistic-locking
+// guard from migration 065. Keep this string here so the message stays
+// uniform — users see the same wording whether they conflict on status,
+// reschedule, modality, rate, visit type, or cancel reason.
+const CONFLICT_MSG = "Esta sesión se editó en otro lugar. Volvimos a cargarla — intenta de nuevo.";
+const MISSING_MSG = "Esta sesión ya no existe.";
+
 export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
+
+  // Optimistic locking conflict handler — shared by every session-update
+  // path. Called when a .eq("version", v) filter rejected the write (0
+  // rows updated) or when the status RPC raises SQLSTATE 40001. Decides
+  // between "row was edited elsewhere" (refetch + replace local state)
+  // and "row no longer exists" (drop locally) by re-reading by id. Also
+  // restores the prior patient row when the optimistic mutation touched
+  // patient.billed.
+  async function reconcileSessionConflict(sessionId, prevSession, prevPatient) {
+    const { data: fresh } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (fresh) {
+      setUpcomingSessions(prev => prev.map(s => s.id === sessionId
+        ? { ...fresh, colorIdx: fresh.color_idx, modality: fresh.modality || "presencial" }
+        : s));
+      setMutationError(CONFLICT_MSG);
+    } else {
+      setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
+      setMutationError(MISSING_MSG);
+    }
+    if (prevPatient) {
+      // Patient row may have been mutated by the same path; restore the
+      // pre-attempt snapshot and let recalcPatientCounters reconcile from
+      // truth. The recalc is fire-and-forget because the conflict UX is
+      // the primary feedback.
+      setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+      recalcPatientCounters(prevPatient.id).then((fixed) => {
+        if (fixed) setPatients(prev => prev.map(p => p.id === prevPatient.id ? { ...p, ...fixed } : p));
+      }).catch(() => {});
+    }
+  }
 
   async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate, modality, visitType }) {
     if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
@@ -182,6 +225,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // error we revert local state to the prior snapshot. No more
     // recalc-fallback fork needed (the patient-write-after-session-
     // write race is gone).
+    //
+    // p_expected_version carries the version we last read. The RPC
+    // raises SQLSTATE 40001 ("serialization failure") when another tab
+    // / device / patient-portal write bumped the version under our
+    // feet. We surface that case via reconcileSessionConflict — refetch
+    // the row, replace local state with server truth, restore the
+    // patient counter via recalc. Distinct from a plain error: a 40001
+    // means "your read was stale", not "the write failed".
     (async () => {
       try {
         const { error } = await supabase.rpc("update_session_status_atomic", {
@@ -189,11 +240,23 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           p_new_status: newStatus,
           p_cancel_reason: cancelReasonInput,
           p_billed_delta: billedDelta,
+          p_expected_version: prevSession.version ?? null,
         });
         if (error) {
           setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
-          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-          setMutationError(error.message);
+          if (error.code === "40001") {
+            await reconcileSessionConflict(sessionId, prevSession, prevPatient);
+          } else {
+            if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+            setMutationError(error.message);
+          }
+        } else {
+          // On success the trigger bumped server-side version by 1. Mirror
+          // it locally so a follow-up edit on the same row passes its
+          // own version check.
+          setUpcomingSessions(prev => prev.map(s => s.id === sessionId
+            ? { ...s, version: (prevSession.version ?? 0) + 1 }
+            : s));
         }
       } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
@@ -288,13 +351,28 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     (async () => {
       try {
-        const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+        // Optimistic lock: .eq("version", v) → 0 rows updated when
+        // another writer bumped version. .select("id") makes the
+        // returned data array reflect actual rows updated; a length-0
+        // result means the version filter rejected us.
+        const expectedVersion = prevSession.version ?? null;
+        let q = supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+        if (expectedVersion != null) q = q.eq("version", expectedVersion);
+        const { data, error } = await q.select("id");
         if (error) {
           setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
           if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
           setMutationError(error.message);
           return;
         }
+        if (expectedVersion != null && (!data || data.length === 0)) {
+          await reconcileSessionConflict(sessionId, prevSession, prevPatient);
+          return;
+        }
+        // Mirror the server-side version bump locally.
+        setUpcomingSessions(prev => prev.map(s => s.id === sessionId
+          ? { ...s, version: (prevSession.version ?? 0) + 1 }
+          : s));
         if (patient && targetBilled != null) {
           const { error: pErr } = await supabase.from("patients")
             .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
@@ -530,14 +608,46 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
+  // Generic write-with-optimistic-lock helper. Used by the four
+  // non-status mutators below (modality, visit_type, rate, cancel
+  // reason). All four are the same shape: patch one or two columns,
+  // bump version, surface conflicts via reconcileSessionConflict, mirror
+  // the new version locally on success. Returns true on success, false
+  // on error/conflict — caller already updated optimistic state. The
+  // helper handles revert + setMutationError on failure.
+  async function writeSessionWithLock(sessionId, patch, prevSession, onSuccess) {
+    const expectedVersion = prevSession.version ?? null;
+    let q = supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
+    if (expectedVersion != null) q = q.eq("version", expectedVersion);
+    const { data, error } = await q.select("id");
+    if (error) {
+      setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+      setMutationError(error.message);
+      return false;
+    }
+    if (expectedVersion != null && (!data || data.length === 0)) {
+      await reconcileSessionConflict(sessionId, prevSession, null);
+      return false;
+    }
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId
+      ? { ...s, version: (prevSession.version ?? 0) + 1 }
+      : s));
+    if (typeof onSuccess === "function") await onSuccess();
+    return true;
+  }
+
   async function updateSessionModality(sessionId, modality) {
+    const prevSession = upcomingSessions.find(s => s.id === sessionId);
+    if (!prevSession) return false;
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions").update({ modality }).eq("id", sessionId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    // Optimistic — flip local state synchronously so the UI updates
+    // without waiting for the round-trip; the helper reverts on error
+    // or conflict.
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, modality } : s));
-    return true;
+    const ok = await writeSessionWithLock(sessionId, { modality }, prevSession);
+    setMutating(false);
+    return ok;
   }
 
   async function updateSessionVisitType(sessionId, visitType) {
@@ -546,14 +656,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // 041; the upstream UI uses the VISIT_TYPE enum so this is a
     // belt-and-suspenders rather than a user-input boundary.
     const next = visitType == null ? null : String(visitType);
+    const prevSession = upcomingSessions.find(s => s.id === sessionId);
+    if (!prevSession) return false;
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions")
-      .update({ visit_type: next }).eq("id", sessionId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, visit_type: next } : s));
-    return true;
+    const ok = await writeSessionWithLock(sessionId, { visit_type: next }, prevSession);
+    setMutating(false);
+    return ok;
   }
 
   async function updateSessionRate(sessionId, newRate) {
@@ -567,44 +677,43 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions").update({ rate }).eq("id", sessionId).eq("user_id", userId);
-    if (error) { setMutating(false); setMutationError(error.message); return false; }
+    // Optimistic — flip local rate so the form can dismiss; reverted
+    // by writeSessionWithLock on error / conflict.
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, rate } : s));
-
-    // Adjust patient.billed only when the session actually contributes
-    // to consumed under the canonical predicate. The old check
-    // (status !== CANCELLED) wrongly bumped billed for future-scheduled
-    // rows that don't count yet — rate changes on those are silent
-    // until the session auto-completes.
-    if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session)) {
-      const patient = patients.find(p => p.id === session.patient_id);
-      if (patient) {
-        const newBilled = Math.max(0, patient.billed + diff);
-        const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id).eq("user_id", userId);
-        if (pErr) {
-          const fixed = await recalcPatientCounters(patient.id);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-        } else {
-          setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
+    const ok = await writeSessionWithLock(sessionId, { rate }, session, async () => {
+      // Adjust patient.billed only when the session actually contributes
+      // to consumed under the canonical predicate. The old check
+      // (status !== CANCELLED) wrongly bumped billed for future-scheduled
+      // rows that don't count yet — rate changes on those are silent
+      // until the session auto-completes.
+      if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session)) {
+        const patient = patients.find(p => p.id === session.patient_id);
+        if (patient) {
+          const newBilled = Math.max(0, patient.billed + diff);
+          const { error: pErr } = await supabase.from("patients").update({ billed: newBilled }).eq("id", patient.id).eq("user_id", userId);
+          if (pErr) {
+            const fixed = await recalcPatientCounters(patient.id);
+            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+          } else {
+            setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: newBilled } : p));
+          }
         }
       }
-    }
-
+    });
     setMutating(false);
-    return true;
+    return ok;
   }
 
   async function updateCancelReason(sessionId, reason) {
     const trimmed = (reason || "").trim();
+    const prevSession = upcomingSessions.find(s => s.id === sessionId);
+    if (!prevSession) return false;
     setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions")
-      .update({ cancel_reason: trimmed || null })
-      .eq("id", sessionId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, cancel_reason: trimmed || null } : s));
-    return true;
+    const ok = await writeSessionWithLock(sessionId, { cancel_reason: trimmed || null }, prevSession);
+    setMutating(false);
+    return ok;
   }
 
   return { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason };
