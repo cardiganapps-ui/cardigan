@@ -37,12 +37,25 @@ import { I18nProvider, useT } from "./i18n/index";
 // start cost. Sub-2KB Suspense fallback={null} is invisible — these
 // modules ship in their own chunks and pre-fetch by Vite's link
 // preload as soon as the main shell renders.
-const Drawer = lazy(() => import("./components/Drawer").then(m => ({ default: m.Drawer })));
-const PaymentModal = lazy(() => import("./components/PaymentModal").then(m => ({ default: m.PaymentModal })));
-const ExpenseSheet = lazy(() => import("./components/sheets/ExpenseSheet").then(m => ({ default: m.ExpenseSheet })));
-const RecurringExpenseSheet = lazy(() => import("./components/sheets/RecurringExpenseSheet").then(m => ({ default: m.RecurringExpenseSheet })));
-const CommandPalette = lazy(() => import("./components/CommandPalette"));
-const InstallPrompt = lazy(() => import("./components/InstallPrompt").then(m => ({ default: m.InstallPrompt })));
+// Importer factories are extracted so we can both lazy-load AND
+// prefetch the chunks. The prefetch path (called from useEffect +
+// hamburger hover/focus, see AppShell) imports the module so the
+// browser caches it; the lazy wrapper then resolves instantly when
+// the user actually opens the surface. Without the prefetch the
+// first hamburger tap on a cold load gets a "nothing happens" beat
+// while the chunk fetches in the background — Suspense fallback={null}.
+const drawerImport = () => import("./components/Drawer");
+const paymentModalImport = () => import("./components/PaymentModal");
+const expenseSheetImport = () => import("./components/sheets/ExpenseSheet");
+const recurringExpenseSheetImport = () => import("./components/sheets/RecurringExpenseSheet");
+const commandPaletteImport = () => import("./components/CommandPalette");
+const installPromptImport = () => import("./components/InstallPrompt");
+const Drawer = lazy(() => drawerImport().then(m => ({ default: m.Drawer })));
+const PaymentModal = lazy(() => paymentModalImport().then(m => ({ default: m.PaymentModal })));
+const ExpenseSheet = lazy(() => expenseSheetImport().then(m => ({ default: m.ExpenseSheet })));
+const RecurringExpenseSheet = lazy(() => recurringExpenseSheetImport().then(m => ({ default: m.RecurringExpenseSheet })));
+const CommandPalette = lazy(commandPaletteImport);
+const InstallPrompt = lazy(() => installPromptImport().then(m => ({ default: m.InstallPrompt })));
 import { QuickActions } from "./components/QuickActions";
 import TopbarActions from "./components/TopbarActions";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -631,6 +644,26 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Idle-prefetch the lazy interactive chunks once the shell renders.
+  // requestIdleCallback (Chromium/FF) runs after first paint when the
+  // main thread is idle; Safari falls back to a 1.5s setTimeout. By
+  // the time a therapist taps the hamburger / FAB / command palette
+  // these chunks are warm in the browser cache and Suspense resolves
+  // instantly — the "fallback={null}" beat we'd otherwise see on cold
+  // load disappears.
+  useEffect(() => {
+    const prefetch = () => {
+      drawerImport(); commandPaletteImport();
+      paymentModalImport(); expenseSheetImport();
+    };
+    const ric = typeof window !== "undefined" && window.requestIdleCallback;
+    if (ric) {
+      const id = ric(prefetch, { timeout: 3000 });
+      return () => window.cancelIdleCallback?.(id);
+    }
+    const id = setTimeout(prefetch, 1500);
+    return () => clearTimeout(id);
+  }, []);
   const { isTablet } = useViewport();
   const [viewAsUserId, setViewAsUserId] = useState(null);
   // Where the admin came from when they entered "view as user" mode.
@@ -774,6 +807,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       const next = [...base, {
         id, kind: type, message: msg,
         persistent: !!opts.persistent,
+        // Forward `duration` so callers (e.g. withUndoableDelete's 5-second
+        // window) can override the 1.4s default. Previously dropped here,
+        // which silently made the "Deshacer" toast disappear at 1.4s
+        // while the commit timer still ran out to 5s — leaving ~3.6s of
+        // ghost-undo state where the row was gone, no toast visible, no
+        // way to recover. ToastStack forwards the value through to <Toast>.
+        duration: opts.duration,
         onRetry: opts.onRetry,
         actionLabel: opts.actionLabel,
         key: opts.key,
@@ -2021,7 +2061,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         }} />
 
         <div className="topbar">
-          <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label={t("nav.menu")}>
+          <button
+            className={`hamburger ${drawerOpen?"open":""}`}
+            data-tour="hamburger"
+            onClick={() => setDrawerOpen(o=>!o)}
+            onMouseEnter={drawerImport}
+            onFocus={drawerImport}
+            aria-label={t("nav.menu")}
+          >
             <div className="hamburger-line" />
             <div className="hamburger-line" />
             <div className="hamburger-line" />

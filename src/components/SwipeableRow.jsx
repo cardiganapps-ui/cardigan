@@ -179,10 +179,26 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
           // ring will outline the button itself once it's revealed.
           font:"inherit", fontFamily:"var(--font)",
         }}
-        onClick={() => {
+        onClick={(e) => {
+          // Before the row unmounts (onAction may delete it), find the
+          // next SwipeableRow action button in the list and queue it
+          // up for focus. Without this, keyboard users get stranded —
+          // focus falls back to <body> after the deleted row's
+          // button unmounts and they have to Tab back into the list.
+          const allActionBtns = Array.from(document.querySelectorAll('button[aria-label]'))
+            .filter(btn => btn !== e.currentTarget && btn.getAttribute('aria-label') === actionLabel);
+          const nextFocus = allActionBtns[0] || null;
           setOffset(0);
           revealedRef.current = false;
           onAction?.();
+          // requestAnimationFrame so the move-focus happens AFTER React
+          // commits the row removal — focusing a node that's about to
+          // unmount would just leak focus back to <body>.
+          if (nextFocus) {
+            requestAnimationFrame(() => {
+              try { nextFocus.focus(); } catch { /* node may have unmounted too */ }
+            });
+          }
         }}>
         {actionLabel}
       </button>

@@ -1013,7 +1013,7 @@ $$;
 create or replace function public.recalc_patient_session_counters(p_patient_id uuid)
 returns void language plpgsql security invoker set search_path = public, pg_temp as $$
 declare
-  v_patient_rate integer; v_user_id uuid; v_tz text;
+  v_patient_rate integer; v_user_id uuid; v_tz text; v_tz_valid boolean;
   v_sessions integer; v_billed integer;
   v_now timestamptz := now();
 begin
@@ -1022,6 +1022,12 @@ begin
   select coalesce(timezone, 'America/Mexico_City') into v_tz
     from notification_preferences where user_id = v_user_id;
   if v_tz is null then v_tz := 'America/Mexico_City'; end if;
+  -- Defensive validation (migration 070): a malformed timezone string
+  -- in notification_preferences would crash session_counts_at via
+  -- `at time zone p_tz`, aborting the triggering UPDATE. Fall back to
+  -- the same default to keep writes flowing.
+  select exists(select 1 from pg_timezone_names where name = v_tz) into v_tz_valid;
+  if not v_tz_valid then v_tz := 'America/Mexico_City'; end if;
   select count(*)::integer into v_sessions from sessions where patient_id = p_patient_id;
   select coalesce(sum(coalesce(s.rate, v_patient_rate, 0)), 0)::integer into v_billed
     from sessions s

@@ -164,6 +164,7 @@ export function ToastStack({ toasts, onDismiss, max = 3 }) {
       message={toast.message}
       type={toast.kind}
       persistent={toast.persistent}
+      duration={toast.duration}
       onDismiss={() => onDismiss(toast.id)}
       onRetry={toast.onRetry}
       actionLabel={toast.actionLabel}
