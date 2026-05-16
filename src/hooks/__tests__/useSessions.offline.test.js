@@ -261,6 +261,42 @@ describe("generateRecurringSessions offline path", () => {
   });
 });
 
+describe("applyScheduleChange offline path", () => {
+  it("offline: optimistic local state + one queue entry that carries the whole flow", async () => {
+    setOnline(false);
+    const ctx = seed({ sessions: [
+      // Past completed — kept (not in toDelete because !SCHEDULED).
+      { id: "s-past", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "1-Mar", time: "10:00" },
+      // Future scheduled — will be removed by the effDate filter.
+      { id: "s-fut", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "15-Jun", time: "10:00" },
+    ]});
+
+    const ok = await ctx.actions.applyScheduleChange("pat-1", {
+      schedules: [{ day: "Lunes", time: "11:00", duration: 60, frequency: "weekly", modality: "presencial" }],
+      rate: 1200,
+      effectiveDate: "2026-06-01",
+      endDate: "2026-06-29",
+    });
+
+    expect(ok).toBe(true);
+    // Future scheduled session removed locally; new temp rows appended.
+    const rows = ctx.upcomingSessions.get();
+    expect(rows.some(r => r.id === "s-fut")).toBe(false);
+    expect(rows.some(r => r.id === "s-past")).toBe(true);
+    const newRows = rows.filter(r => r._optimistic);
+    expect(newRows.length).toBeGreaterThan(0);
+    // Patient patch applied locally — rate moved.
+    expect(ctx.patients.get()[0].rate).toBe(1200);
+    // Single queue entry carries the whole multi-step replay.
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("sessions.apply_schedule_change");
+    expect(queue.getEntries()[0].args.toDeleteIds).toEqual(["s-fut"]);
+    expect(queue.getEntries()[0].args.patientPatch).toEqual({ rate: 1200, day: "Lunes", time: "11:00" });
+    expect(queue.getEntries()[0].args.newRows.length).toBe(newRows.length);
+    expect(mock.calls).toHaveLength(0);
+  });
+});
+
 describe("finalizePatient offline path", () => {
   it("offline: removes future scheduled rows locally + enqueues sessions.finalize_patient", async () => {
     setOnline(false);

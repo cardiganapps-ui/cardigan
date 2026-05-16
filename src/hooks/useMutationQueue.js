@@ -8,12 +8,19 @@ import { useConnectivity } from "./useConnectivity.js";
    is restored.
 
    Returned shape:
-     • entries   — array of queued mutation entries. Empty when the
-                   queue is idle.
-     • online    — current navigator.onLine state.
-     • flushing  — true while drain() is in flight.
-     • flush()   — manual trigger (used by the "Reintentar" button in
-                   the offline banner).
+     • entries           — array of queued mutation entries. Empty
+                           when the queue is idle.
+     • online            — current navigator.onLine state.
+     • flushing          — true while drain() is in flight.
+     • lastDrainResult   — { drained, remaining, at } | null. Set after
+                           every drain that touched the queue (drained
+                           > 0). Used by the App-level toast to surface
+                           "X cambios guardados" feedback. App.jsx
+                           reads + clears it after rendering.
+     • flush()           — manual trigger (Reintentar button in the
+                           offline banner).
+     • acknowledgeDrain()— clears lastDrainResult after the consumer
+                           has handled it.
 
    The hook does NOT enqueue — call sites import enqueue() from
    ../lib/mutationQueue directly. This hook owns lifecycle + UI signal.
@@ -21,6 +28,7 @@ import { useConnectivity } from "./useConnectivity.js";
 export function useMutationQueue() {
   const [entries, setEntries] = useState(() => getEntries());
   const [flushing, setFlushing] = useState(false);
+  const [lastDrainResult, setLastDrainResult] = useState(null);
   const { online } = useConnectivity();
 
   // Initialize the queue + subscribe to changes. init() loads from
@@ -47,7 +55,12 @@ export function useMutationQueue() {
     const t = setTimeout(async () => {
       if (cancelled) return;
       setFlushing(true);
-      try { await drain(); } finally { if (!cancelled) setFlushing(false); }
+      try {
+        const result = await drain();
+        if (!cancelled && result.drained > 0) {
+          setLastDrainResult({ ...result, at: Date.now() });
+        }
+      } finally { if (!cancelled) setFlushing(false); }
     }, 1500);
     return () => { cancelled = true; clearTimeout(t); };
     // Only re-run when online flips or queue grows from 0 → 1+. We
@@ -58,8 +71,16 @@ export function useMutationQueue() {
 
   async function flush() {
     setFlushing(true);
-    try { return await drain(); } finally { setFlushing(false); }
+    try {
+      const result = await drain();
+      if (result.drained > 0) setLastDrainResult({ ...result, at: Date.now() });
+      return result;
+    } finally { setFlushing(false); }
   }
 
-  return { entries, online, flushing, flush };
+  function acknowledgeDrain() {
+    setLastDrainResult(null);
+  }
+
+  return { entries, online, flushing, lastDrainResult, flush, acknowledgeDrain };
 }

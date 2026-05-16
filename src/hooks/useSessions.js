@@ -65,6 +65,26 @@ registerHandler("sessions.finalize_patient", async ({ patientId, userId, toDelet
   return r2;
 });
 
+// Schedule change: bulk delete + patient patch + bulk insert, all in
+// one queue entry so they replay atomically. Each step is idempotent
+// on retry — the delete by id is a no-op if already done, the patient
+// patch is the same value each time, and the bulk insert's 23505
+// swallow makes a re-insert pass-through.
+registerHandler("sessions.apply_schedule_change", async ({ patientId, userId, toDeleteIds, patientPatch, newRows }) => {
+  if (toDeleteIds?.length > 0) {
+    const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+    if (r1.error) return r1;
+  }
+  const r2 = await supabase.from("patients").update(patientPatch).eq("id", patientId).eq("user_id", userId);
+  if (r2.error) return r2;
+  if (newRows?.length > 0) {
+    const r3 = await supabase.from("sessions").insert(newRows).select();
+    if (r3.error?.code === "23505") return { data: [], error: null };
+    return r3;
+  }
+  return { error: null };
+});
+
 function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
@@ -625,7 +645,6 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !effectiveDate || !schedules?.length) return false;
 
-    setMutating(true);
     setMutationError("");
     const effDate = parseLocalDate(effectiveDate);
     const newRate = Number(rate) || patient.rate;
@@ -635,47 +654,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       if (s.patient_id !== patientId || s.status !== SESSION_STATUS.SCHEDULED) return false;
       return parseShortDate(s.date) >= effDate;
     });
+    // Strip temp ids — those rows haven't been persisted yet (their
+    // insert is still in the queue). Local removal still happens.
+    const toDeleteIds = toDelete.map(s => s.id).filter(id => !(typeof id === "string" && id.startsWith("temp-")));
 
-    let adjustedBilled = patient.billed;
-    let adjustedSessions = patient.sessions;
-
-    if (toDelete.length > 0) {
-      const ids = toDelete.map(s => s.id);
-      const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
-      if (error) { setMutating(false); setMutationError(error.message); return false; }
-      // Optimistic React state: same predicate-aware decrement the
-      // trigger applied server-side.
-      const now = new Date();
-      adjustedBilled -= toDelete.reduce((sum, s) => (
-        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
-      ), 0);
-      adjustedSessions -= toDelete.length;
-      setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
-    }
-
-    // Patient patch carries rate + day + time (not trigger-maintained).
-    // billed/sessions are recomputed by the trigger fires on the
-    // session DELETE above.
-    const patch = { rate: newRate, day: primary.day, time: primary.time };
-    const { data: updated, error: pErr } = await supabase.from("patients")
-      .update(patch).eq("id", patientId).eq("user_id", userId).select().single();
-    if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
-    // Server's updated row may not reflect the latest trigger output
-    // (the trigger ran before this UPDATE); use locally-computed
-    // counters for the optimistic snapshot.
-    setPatients(prev => prev.map(p => p.id === patientId
-      ? { ...updated, colorIdx: updated.color_idx,
-          billed: Math.max(0, adjustedBilled),
-          sessions: Math.max(0, adjustedSessions) }
-      : p));
-
-    // Exclude the rows we just deleted — the local `upcomingSessions` still
-    // references them (setState hasn't flushed) and including their dates
-    // would skip regenerating the same slots at the new rate. Dedup key
-    // is (date, time), not date alone, so two schedules on the same day
-    // at different times are both generated and a cancelled slot at one
-    // time doesn't block a new slot at a different time. Mirrors
-    // uniq_sessions_patient_date_time in the DB.
+    // Compute new recurring rows. Use local `patient` snapshot for
+    // name/initials/color_idx — those don't change in this flow, only
+    // rate/day/time do. Matches what the server would produce.
     const deletedIds = new Set(toDelete.map(s => s.id));
     const existingSlots = new Set(
       upcomingSessions
@@ -690,40 +675,108 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const ds = formatShortDate(d);
         const slot = `${ds}|${s.time}`;
         if (!existingSlots.has(slot)) {
-          allRows.push({ user_id: userId, patient_id: patientId, patient: updated.name,
-            initials: updated.initials, time: s.time, day: s.day,
+          allRows.push({ user_id: userId, patient_id: patientId, patient: patient.name,
+            initials: patient.initials, time: s.time, day: s.day,
             date: ds, duration: dur, rate: newRate,
             modality: s.modality || "presencial",
-            // Schedule edit replays the recurring window — these rows
-            // are the new canonical recurring schedule for the
-            // patient.
             is_recurring: true,
             recurrence_frequency: freq,
-            color_idx: updated.color_idx || 0 });
+            color_idx: patient.colorIdx || 0 });
           existingSlots.add(slot);
         }
       });
     }
 
-    if (allRows.length > 0) {
-      const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
-      if (!sErr && sessData) {
-        // Counters maintained by trigger on the bulk insert. Optimistic
-        // React state mirrors the expected post-trigger values.
-        const finalSessions = Math.max(0, adjustedSessions) + sessData.length;
-        const nowSc = new Date();
-        const countedDelta = sessData.reduce((sum, r) => (
-          sum + (sessionCountsTowardBalance(r, nowSc) ? (r.rate ?? newRate ?? 0) : 0)
-        ), 0);
-        const finalBilled = Math.max(0, adjustedBilled) + countedDelta;
-        setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
-        setPatients(prev => prev.map(p => p.id === patientId
-          ? { ...p, sessions: finalSessions, billed: finalBilled } : p));
+    // Optimistic React state — same predicate-aware deltas the trigger
+    // will compute server-side once the queue / network has run.
+    const now = new Date();
+    let adjustedBilled = patient.billed;
+    let adjustedSessions = patient.sessions;
+    if (toDelete.length > 0) {
+      adjustedBilled -= toDelete.reduce((sum, s) => (
+        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
+      ), 0);
+      adjustedSessions -= toDelete.length;
+      setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+    }
+    const countedDelta = allRows.reduce((sum, r) => (
+      sum + (sessionCountsTowardBalance(r, now) ? (r.rate ?? newRate ?? 0) : 0)
+    ), 0);
+    const finalBilled = Math.max(0, adjustedBilled) + countedDelta;
+    const finalSessions = Math.max(0, adjustedSessions) + allRows.length;
+    setPatients(prev => prev.map(p => p.id === patientId
+      ? { ...p, rate: newRate, day: primary.day, time: primary.time,
+          billed: finalBilled, sessions: finalSessions }
+      : p));
+
+    const patientPatch = { rate: newRate, day: primary.day, time: primary.time };
+
+    // Offline / transport-error: one queue entry runs the whole
+    // multi-step flow on drain. Each step is idempotent (delete-by-id
+    // no-ops, patient patch is the same value, bulk insert swallows
+    // 23505) so retries are safe.
+    if (isOffline()) {
+      // Insert optimistic temp rows so the UI shows the new schedule
+      // immediately. They get swapped for server rows on a subsequent
+      // refetch (no per-row replay listener for bulk inserts — too
+      // many temp ids to track individually).
+      const optimisticRows = allRows.map((r) => ({
+        ...r,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        status: SESSION_STATUS.SCHEDULED,
+        colorIdx: r.color_idx,
+        _optimistic: true,
+      }));
+      if (optimisticRows.length > 0) {
+        setUpcomingSessions(prev => [...prev, ...optimisticRows]);
       }
+      await enqueue("sessions.apply_schedule_change", {
+        patientId, userId, toDeleteIds, patientPatch, newRows: allRows,
+      });
+      return true;
     }
 
-    setMutating(false);
-    return true;
+    setMutating(true);
+    try {
+      if (toDeleteIds.length > 0) {
+        const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+        if (error) { setMutating(false); setMutationError(error.message); return false; }
+      }
+      const { error: pErr } = await supabase.from("patients")
+        .update(patientPatch).eq("id", patientId).eq("user_id", userId);
+      if (pErr) { setMutating(false); setMutationError(pErr.message); return false; }
+
+      if (allRows.length > 0) {
+        const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
+        if (sErr) { setMutating(false); setMutationError(sErr.message); return false; }
+        // Counters maintained by trigger; replace local rows with the
+        // server-assigned shape (real ids, server defaults).
+        setUpcomingSessions(prev => [
+          ...prev,
+          ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" })),
+        ]);
+      }
+      setMutating(false);
+      return true;
+    } catch {
+      // Transport-level — queue the whole flow with optimistic temp
+      // rows so the user's edit isn't lost.
+      const optimisticRows = allRows.map((r) => ({
+        ...r,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        status: SESSION_STATUS.SCHEDULED,
+        colorIdx: r.color_idx,
+        _optimistic: true,
+      }));
+      if (optimisticRows.length > 0) {
+        setUpcomingSessions(prev => [...prev, ...optimisticRows]);
+      }
+      await enqueue("sessions.apply_schedule_change", {
+        patientId, userId, toDeleteIds, patientPatch, newRows: allRows,
+      });
+      setMutating(false);
+      return true;
+    }
   }
 
   async function finalizePatient(patientId, finishDate) {

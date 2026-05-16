@@ -1869,11 +1869,15 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           </div>
         )}
 
-        {/* Offline + mutation-queue surface (Phase 1 of offline support).
-            Renders when offline OR when the queue has pending entries
-            (e.g. flushing right after reconnect). Self-contained — no
-            props; reads from useMutationQueue. */}
-        <OfflineBanner />
+        {/* Offline + mutation-queue surface. Renders when offline OR
+            when the queue has pending entries (e.g. flushing right
+            after reconnect). onDrainSuccess fires a success toast
+            once per non-empty drain so the user gets positive
+            feedback that their offline changes were saved. */}
+        <OfflineBanner onDrainSuccess={(result) => {
+          const n = result.drained;
+          showSuccess(`${n} ${n === 1 ? "cambio guardado" : "cambios guardados"}`);
+        }} />
 
         <div className="topbar">
           <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label={t("nav.menu")}>
