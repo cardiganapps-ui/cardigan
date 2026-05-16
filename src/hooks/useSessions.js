@@ -55,11 +55,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       : patient.initials;
     // Accept any finite customRate >= 0 (pro-bono / sliding-scale sessions
     // legitimately use 0). Only fall back to patient.rate when the caller
-    // didn't provide a rate or passed a non-numeric value.
+    // didn't provide a rate or passed a non-numeric value. The final
+    // `?? 0` defends against a malformed patient row with null rate —
+    // without it, sessionRate becomes undefined and billed becomes NaN.
     const parsedCustomRate = customRate == null || customRate === "" ? NaN : Number(customRate);
     const sessionRate = Number.isFinite(parsedCustomRate) && parsedCustomRate >= 0
       ? parsedCustomRate
-      : patient.rate;
+      : (patient.rate ?? 0);
     const sessionDuration = Number(duration) > 0 ? Number(duration) : 60;
 
     setMutating(true);
@@ -85,7 +87,20 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     const newSessions = patient.sessions + 1;
-    const newBilled = patient.billed + sessionRate;
+    // Predicate-aware billed increment. CLAUDE.md rule #4 says
+    // patient.billed must use the same formula as the live amountDue
+    // calc — and a fresh session row at status=scheduled only counts
+    // when it's already past (intake backdated by the therapist).
+    // Future-dated rows stay out of billed until they auto-complete /
+    // are explicitly marked completed / are charged-on-cancel — each
+    // of which triggers its own delta in updateSessionStatus. Without
+    // this gate, creating a recurring window of 15 future sessions
+    // inflated billed by 15× rate immediately, drifting from consumed
+    // until the next recalc.
+    const willCountNew = sessionCountsTowardBalance(
+      { status: SESSION_STATUS.SCHEDULED, date: date.trim(), time: time.trim() },
+    );
+    const newBilled = willCountNew ? patient.billed + sessionRate : patient.billed;
     const { error: pErr } = await supabase.from("patients")
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id);
@@ -199,11 +214,12 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (session?.patient_id) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
-        const sessRate = session.rate != null ? session.rate : patient.rate;
-        // Cancelled sessions were already removed from billed when they were
-        // cancelled. Subtracting again here would double-count and drive
-        // amountDue below reality.
-        const wasBilled = session.status !== SESSION_STATUS.CANCELLED;
+        const sessRate = session.rate ?? patient.rate ?? 0;
+        // Predicate-aware decrement: only sessions that were actually
+        // counted in billed should subtract on delete. The old check
+        // (status !== CANCELLED) wrongly subtracted for future-scheduled
+        // rows that were never counted, deflating billed below truth.
+        const wasBilled = sessionCountsTowardBalance(session);
         const newSessions = Math.max(0, patient.sessions - 1);
         const newBilled = wasBilled
           ? Math.max(0, patient.billed - sessRate)
@@ -226,6 +242,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // Optimistic: updates local state immediately so the SessionSheet
   // can dismiss without waiting on the network round-trip. Reverts
   // the session row on server error and surfaces it via mutationError.
+  //
+  // Adjusts patient.billed when the predicate's verdict flips across
+  // the reschedule. Common cases:
+  //   • past-completed → future-scheduled : was counted, now not → -rate
+  //   • past-scheduled (auto-complete) → future-scheduled : same → -rate
+  //   • future-scheduled → past-scheduled (backdate) : was not, now is → +rate
+  // Without this, moving a session across the past/future boundary
+  // leaves patient.billed stranded above or below consumed until the
+  // next recalc.
   async function rescheduleSession(sessionId, newDate, newTime, newDuration) {
     if (!newDate?.trim() || !newTime?.trim()) return false;
     const prevSession = upcomingSessions.find(s => s.id === sessionId);
@@ -236,7 +261,26 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patch = { date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED };
     if (newDuration != null && Number(newDuration) > 0) patch.duration = Number(newDuration);
 
+    // Compute the predicate-aware billed delta BEFORE touching state so
+    // both optimistic + revert paths agree on the same target.
+    const patient = prevSession.patient_id ? patients.find(p => p.id === prevSession.patient_id) : null;
+    const prevPatient = patient ? { ...patient } : null;
+    const now = new Date();
+    const wasCounted = sessionCountsTowardBalance(prevSession, now);
+    const nextShape = { ...prevSession, ...patch };
+    const willCount = sessionCountsTowardBalance(nextShape, now);
+    let targetBilled = null;
+    if (patient && wasCounted !== willCount) {
+      const sessRate = prevSession.rate ?? patient.rate ?? 0;
+      targetBilled = willCount
+        ? patient.billed + sessRate
+        : Math.max(0, patient.billed - sessRate);
+    }
+
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...patch } : s));
+    if (patient && targetBilled != null) {
+      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: targetBilled } : p));
+    }
     setMutationError("");
 
     (async () => {
@@ -244,10 +288,21 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         const { error } = await supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
         if (error) {
           setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+          if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
           setMutationError(error.message);
+          return;
+        }
+        if (patient && targetBilled != null) {
+          const { error: pErr } = await supabase.from("patients")
+            .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
+          if (pErr) {
+            const fixed = await recalcPatientCounters(patient.id);
+            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
+          }
         }
       } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
+        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
         setMutationError(e?.message || "Network error");
       }
     })();
@@ -299,7 +354,17 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     const newSessions = patient.sessions + data.length;
-    const newBilled = patient.billed + patient.rate * data.length;
+    // Predicate-aware billed delta: only rows that the canonical
+    // predicate would count contribute (past-dated rows backdated
+    // into the recurrence window — typical case is none). Future
+    // rows pick up consumed when they auto-complete in the live
+    // predicate; the stored billed catches up on next mutation or
+    // recalc.
+    const now = new Date();
+    const countedDelta = data.reduce((sum, r) => (
+      sum + (sessionCountsTowardBalance(r, now) ? (r.rate ?? patient.rate ?? 0) : 0)
+    ), 0);
+    const newBilled = patient.billed + countedDelta;
     const { error: pErr } = await supabase.from("patients")
       .update({ sessions: newSessions, billed: newBilled })
       .eq("id", patient.id).eq("user_id", userId);
@@ -338,7 +403,12 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const ids = toDelete.map(s => s.id);
       const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
-      adjustedBilled -= toDelete.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
+      // Predicate-aware billed-decrement. Sessions that weren't being
+      // counted (future-scheduled) shouldn't trim billed when deleted.
+      const now = new Date();
+      adjustedBilled -= toDelete.reduce((sum, s) => (
+        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
+      ), 0);
       adjustedSessions -= toDelete.length;
       setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
     }
@@ -390,7 +460,16 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
       if (!sErr && sessData) {
         const finalSessions = (updated.sessions || 0) + sessData.length;
-        const finalBilled = (updated.billed || 0) + newRate * sessData.length;
+        // Predicate-aware: only rows the live amountDue calc would
+        // count contribute to billed. Effective dates land in the
+        // future ~99% of the time (recurrence window is forward-
+        // looking), so countedDelta is typically 0; recalc reconciles
+        // if a backdated effectiveDate slips through.
+        const nowSc = new Date();
+        const countedDelta = sessData.reduce((sum, r) => (
+          sum + (sessionCountsTowardBalance(r, nowSc) ? (r.rate ?? newRate ?? 0) : 0)
+        ), 0);
+        const finalBilled = (updated.billed || 0) + countedDelta;
         const { error: pErr2 } = await supabase.from("patients").update({ sessions: finalSessions, billed: finalBilled }).eq("id", patientId).eq("user_id", userId);
         setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
         if (pErr2) {
@@ -426,7 +505,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       const ids = toDelete.map(s => s.id);
       const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
       if (error) { setMutating(false); setMutationError(error.message); return false; }
-      adjustedBilled -= toDelete.reduce((sum, s) => sum + (s.rate != null ? s.rate : patient.rate), 0);
+      // Predicate-aware billed-decrement. finalizePatient filters to
+      // future-only scheduled rows (date > cutoff), so in practice
+      // none of these were counted — but routing through the predicate
+      // keeps the code uniform with the prime-directive formula.
+      const now = new Date();
+      adjustedBilled -= toDelete.reduce((sum, s) => (
+        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
+      ), 0);
       adjustedSessions -= toDelete.length;
       setUpcomingSessions(prev => prev.filter(s => !ids.includes(s.id)));
     }
@@ -482,8 +568,12 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (error) { setMutating(false); setMutationError(error.message); return false; }
     setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, rate } : s));
 
-    // Adjust patient billed if session is not cancelled (cancelled sessions don't count toward billed)
-    if (diff !== 0 && session.patient_id && session.status !== SESSION_STATUS.CANCELLED) {
+    // Adjust patient.billed only when the session actually contributes
+    // to consumed under the canonical predicate. The old check
+    // (status !== CANCELLED) wrongly bumped billed for future-scheduled
+    // rows that don't count yet — rate changes on those are silent
+    // until the session auto-completes.
+    if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session)) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
         const newBilled = Math.max(0, patient.billed + diff);

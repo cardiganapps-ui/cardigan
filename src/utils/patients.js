@@ -1,17 +1,19 @@
 import { supabase } from "../supabaseClient";
-import { SESSION_STATUS } from "../data/constants";
+import { sessionCountsTowardBalance } from "./accounting";
 
 /**
  * Recompute a patient's denormalized counters (sessions, billed, paid)
  * from the actual sessions and payments in the database. This is the
  * source-of-truth fallback when an optimistic counter update fails.
  *
- * Invariants (see CLAUDE.md Prime Directive):
+ * Invariants (see CLAUDE.md Prime Directive rule #4):
  *   sessions = total rows for this patient (includes cancelled)
- *   billed   = Σ rate over sessions where status ∈ {completed, charged}
- *              — matches the canonical amountDue formula. Older revisions
- *              counted every non-cancelled session here, which inflated
- *              billed by months of un-maintained SCHEDULED rows and
+ *   billed   = Σ rate over sessions where sessionCountsTowardBalance(s)
+ *              — the SAME canonical predicate the live amountDue calc
+ *              uses (utils/accounting.js). This includes past-scheduled
+ *              rows that auto-complete via the date+1h rule. Previous
+ *              revisions counted only {completed, charged}, which
+ *              silently DROPPED past-scheduled contributions and
  *              disagreed with the live amountDue calc.
  *   paid     = Σ amount over all payment rows for this patient
  *
@@ -20,21 +22,24 @@ import { SESSION_STATUS } from "../data/constants";
  */
 export async function recalcPatientCounters(patientId) {
   const [{ data: sessRows, error: sErr }, { data: pmtRows, error: pErr }] = await Promise.all([
-    supabase.from("sessions").select("rate, status").eq("patient_id", patientId),
+    // Predicate needs status + date + time for the past-scheduled auto-
+    // complete branch. Rate sums into billed when counted.
+    supabase.from("sessions").select("rate, status, date, time").eq("patient_id", patientId),
     supabase.from("payments").select("amount").eq("patient_id", patientId),
   ]);
   if (sErr || pErr) return null;
 
+  const now = new Date();
   let sessions = 0;
   let billed = 0;
   for (const s of sessRows || []) {
     sessions++;
-    if (s.status === SESSION_STATUS.COMPLETED || s.status === SESSION_STATUS.CHARGED) {
-      billed += s.rate || 0;
+    if (sessionCountsTowardBalance(s, now)) {
+      billed += s.rate ?? 0;
     }
   }
 
-  const paid = (pmtRows || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+  const paid = (pmtRows || []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
 
   const { error } = await supabase
     .from("patients")
