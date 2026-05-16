@@ -140,8 +140,47 @@ create table if not exists notes (
   title text default '',
   content text default '',
   pinned boolean default false,
+  -- Note encryption (migration 017). false → content is plaintext;
+  -- true → content holds the base64 ciphertext bundle that
+  -- cryptoNotes.js produces.
+  encrypted boolean not null default false,
+  -- Generated FTS column (migration 071). CASE-skips ciphertext so
+  -- the index doesn't tokenize the encrypted base64 bundle. Encrypted
+  -- users get an empty content_tsv contribution; their search falls
+  -- back to in-memory filtering of the decrypted cache.
+  search_tsv tsvector
+    generated always as (
+      setweight(to_tsvector('spanish', coalesce(title, '')), 'A') ||
+      setweight(
+        to_tsvector('spanish',
+          case when encrypted then '' else coalesce(content, '') end
+        ),
+        'B'
+      )
+    ) stored,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+);
+
+-- Note tags (migration 071). label is encrypted under the user's
+-- master key when note encryption is enabled. label_hash is a
+-- canonical-form HMAC for server-side dedup without leaking the
+-- plaintext. RLS: user owns their own tags.
+create table if not exists note_tags (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  label_ciphertext text not null,
+  label_hash text not null,
+  color text,
+  created_at timestamptz not null default now(),
+  unique (user_id, label_hash)
+);
+
+create table if not exists note_tag_links (
+  note_id uuid not null references notes(id) on delete cascade,
+  tag_id uuid not null references note_tags(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (note_id, tag_id)
 );
 
 -- Documents (file metadata; actual files stored in R2)
@@ -416,6 +455,11 @@ create index if not exists idx_payments_user_id on payments(user_id);
 create index if not exists idx_payments_patient_id on payments(patient_id);
 create index if not exists idx_notes_user_id on notes(user_id);
 create index if not exists idx_notes_patient_id on notes(patient_id);
+-- FTS (migration 071) — GIN over the generated tsvector. Encrypted
+-- rows contribute only the title weight; the body weight is empty.
+create index if not exists notes_search_tsv_idx on notes using gin (search_tsv);
+create index if not exists idx_note_tags_user_id on note_tags(user_id);
+create index if not exists idx_note_tag_links_tag_id on note_tag_links(tag_id);
 create index if not exists idx_documents_user_id on documents(user_id);
 create index if not exists idx_documents_patient_id on documents(patient_id);
 create index if not exists idx_documents_user_kind on documents(user_id, kind);
@@ -460,6 +504,8 @@ alter table notification_preferences enable row level security;
 alter table sent_reminders enable row level security;
 alter table user_profiles enable row level security;
 alter table measurements enable row level security;
+alter table note_tags enable row level security;
+alter table note_tag_links enable row level security;
 
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
@@ -475,6 +521,24 @@ create policy "Users read own profile"   on user_profiles for select using (auth
 create policy "Users insert own profile" on user_profiles for insert with check (auth.uid() = user_id);
 create policy "Users update own profile" on user_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage own measurements" on measurements for all using (auth.uid() = user_id);
+
+-- Note tags (migration 071). Link table's owner is derived from the
+-- referenced tag, which is owned by auth.uid() — keeps the RLS shape
+-- simple while preventing cross-user link insertion.
+do $$ begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='note_tags' and policyname='note_tags_owner') then
+    create policy note_tags_owner on note_tags
+      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='note_tag_links' and policyname='note_tag_links_owner') then
+    create policy note_tag_links_owner on note_tag_links
+      for all using (
+        exists (select 1 from note_tags t where t.id = tag_id and t.user_id = auth.uid())
+      ) with check (
+        exists (select 1 from note_tags t where t.id = tag_id and t.user_id = auth.uid())
+      );
+  end if;
+end $$;
 
 -- Bug reports: any authenticated user can insert; only admin can read/manage
 create policy "Users insert own bug reports" on bug_reports for insert with check (auth.uid() is not null);
@@ -1064,3 +1128,24 @@ drop trigger if exists sessions_recalc_counters_after_iud on sessions;
 create trigger sessions_recalc_counters_after_iud
 after insert or update or delete on sessions
 for each row execute function public.trg_sessions_recalc_counters();
+
+-- Notes full-text search RPC (migration 071). Wraps the
+-- websearch_to_tsquery + ts_rank pattern so JS callers can pass a
+-- raw query string and get id + updated_at + rank back. Encrypted
+-- notes contribute only the title to the index; callers with
+-- encryption enabled should fall back to in-memory filtering of
+-- the decrypted cache for body matches.
+create or replace function public.search_notes(p_query text, p_limit integer default 10)
+returns table (id uuid, updated_at timestamptz, rank real)
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  select n.id, n.updated_at,
+         ts_rank(n.search_tsv, websearch_to_tsquery('spanish', p_query)) as rank
+  from notes n
+  where n.user_id = auth.uid()
+    and n.search_tsv @@ websearch_to_tsquery('spanish', p_query)
+  order by rank desc, n.updated_at desc
+  limit greatest(1, coalesce(p_limit, 10));
+$$;
