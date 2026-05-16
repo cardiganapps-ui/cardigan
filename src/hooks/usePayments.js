@@ -3,6 +3,12 @@ import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 
+// Mirrors the session-side strings from useSessions.js. Keep the wording
+// uniform — users see the same message whether they conflict on a
+// session edit or a payment edit.
+const CONFLICT_MSG = "Este pago se editó en otro lugar. Volvimos a cargarlo — intenta de nuevo.";
+const MISSING_MSG = "Este pago ya no existe.";
+
 export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
 
   // Optimistic: the PaymentModal closes in the same frame the user
@@ -156,20 +162,65 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       }));
     };
 
+    // Optimistic locking (migration 066). The version filter rejects
+    // a write when another tab / device bumped the row under us — we
+    // detect the empty-data shape via .maybeSingle() returning null,
+    // refetch the row to learn server truth, and surface a friendly
+    // conflict message. Falls back to the unguarded path when the
+    // local row predates the column (version undefined).
+    const expectedVersion = prevPayment.version ?? null;
+
+    const reconcileConflict = async () => {
+      const { data: fresh } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("id", paymentId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (fresh) {
+        setPayments(prev => prev.map(p => p.id === paymentId
+          ? { ...fresh, colorIdx: fresh.color_idx }
+          : p));
+        setMutationError(CONFLICT_MSG);
+      } else {
+        setPayments(prev => prev.filter(p => p.id !== paymentId));
+        setMutationError(MISSING_MSG);
+      }
+      // Patient counters were mutated optimistically; restore the
+      // pre-attempt snapshot and let recalc reconcile from truth.
+      setPatients(prev => prev.map(p => {
+        if (prevOldPatient && p.id === prevOldPatient.id) return prevOldPatient;
+        if (prevNewPatient && p.id === prevNewPatient.id) return prevNewPatient;
+        return p;
+      }));
+      for (const patientId of patientUpdates.keys()) {
+        recalcPatientCounters(patientId).then((fixed) => {
+          if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
+        }).catch(() => {});
+      }
+    };
+
     (async () => {
       try {
-        const { data, error } = await supabase.from("payments").update({
+        let q = supabase.from("payments").update({
           patient_id: newPatient?.id || null,
           patient: patientName,
           initials: newPatient?.initials || getInitials(patientName),
           amount: parsedAmount, date, method,
           note: note || null,
           color_idx: newPatient?.colorIdx || 0,
-        }).eq("id", paymentId).eq("user_id", userId).select().single();
+        }).eq("id", paymentId).eq("user_id", userId);
+        if (expectedVersion != null) q = q.eq("version", expectedVersion);
+        const { data, error } = await q.select().maybeSingle();
 
         if (error) {
           revertOptimistic();
           setMutationError(error.message);
+          return;
+        }
+        if (expectedVersion != null && !data) {
+          // Version filter rejected — another writer bumped the row.
+          await reconcileConflict();
           return;
         }
         setPayments(prev => prev.map(p => p.id === paymentId ? { ...data, colorIdx: data.color_idx } : p));

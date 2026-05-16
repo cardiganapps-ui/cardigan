@@ -123,6 +123,11 @@ create table if not exists payments (
   method text default 'Transferencia' check (method in ('Transferencia', 'Efectivo', 'Tarjeta', 'Retiro sin Tarjeta', 'Otro')),
   note text default null,
   color_idx integer default 0,
+  -- Optimistic locking (migration 066). Same trigger function as
+  -- sessions.version (migration 065). See migration headers for the
+  -- threat model — single-author single-entry is the common case but
+  -- the Prime Directive forbids silent overwrites of money rows.
+  version integer not null default 1,
   created_at timestamptz default now()
 );
 

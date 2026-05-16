@@ -167,4 +167,50 @@ describe("updatePayment", () => {
     // Correct: 500 - 300 + 450 = 650. Wrong (if branch mis-nets): 500 + 150 = 650 or 500 - 300 + 450 + 450.
     expect(patients.get()[0].paid).toBe(650);
   });
+
+  // Optimistic locking (migration 066). When the .eq("version", v)
+  // filter matches zero rows, supabase-js returns { data: null, error:
+  // null }. The hook must refetch the row, replace local state with
+  // server truth, restore the patient.paid snapshot, and surface a
+  // friendly "edited elsewhere" toast.
+  it("version conflict: refetches row, replaces local state, restores patient.paid", async () => {
+    const patient = { id: "pat-1", name: "Ana López", initials: "AL", rate: 1000, paid: 500, sessions: 4, billed: 4000, colorIdx: 0 };
+    const patients = makeStateHolder([patient]);
+    const payments = makeStateHolder([{ id: "pmt-1", patient_id: "pat-1", patient: "Ana López", amount: 300, date: "8-Abr", method: "transferencia", version: 3 }]);
+    const actions = createPaymentActions("user-1", patients.get(), patients, payments.get(), payments, makeStateHolder(false), makeStateHolder(""));
+
+    // First payments response: the update returned 0 rows (version
+    // mismatch). Second: the reconciler refetches and gets a fresh row
+    // (amount edited to 400 by another tab; version bumped to 4).
+    mock.enqueue("payments", { data: null, error: null });
+    mock.enqueue("payments", { data: { id: "pmt-1", patient_id: "pat-1", patient: "Ana López", amount: 400, date: "8-Abr", method: "transferencia", color_idx: 0, version: 4 }, error: null });
+
+    await actions.updatePayment("pmt-1", { patientName: "Ana López", amount: 600, method: "transferencia", date: "8-Abr", note: "" });
+    await flush();
+
+    // Local row matches server truth (400), not the user's attempted edit (600).
+    expect(payments.get()[0].amount).toBe(400);
+    expect(payments.get()[0].version).toBe(4);
+    // patient.paid snapped back to the pre-attempt value (recalc would
+    // refine, but the seed is the pre-mutation snapshot).
+    expect(patients.get()[0].paid).toBe(500);
+  });
+
+  it("version conflict on a deleted row: drops locally with 'ya no existe'", async () => {
+    const patient = { id: "pat-1", name: "Ana López", initials: "AL", rate: 1000, paid: 500, sessions: 4, billed: 4000, colorIdx: 0 };
+    const patients = makeStateHolder([patient]);
+    const payments = makeStateHolder([{ id: "pmt-1", patient_id: "pat-1", patient: "Ana López", amount: 300, date: "8-Abr", method: "transferencia", version: 3 }]);
+    const mutationError = makeStateHolder("");
+    const actions = createPaymentActions("user-1", patients.get(), patients, payments.get(), payments, makeStateHolder(false), mutationError);
+
+    // First: 0 rows. Second: refetch returns null (row deleted).
+    mock.enqueue("payments", { data: null, error: null });
+    mock.enqueue("payments", { data: null, error: null });
+
+    await actions.updatePayment("pmt-1", { patientName: "Ana López", amount: 600, method: "transferencia", date: "8-Abr", note: "" });
+    await flush();
+
+    expect(payments.get()).toHaveLength(0);
+    expect(mutationError.get()).toMatch(/ya no existe/);
+  });
 });
