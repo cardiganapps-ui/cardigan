@@ -72,6 +72,14 @@ export function makeSupabaseMock() {
       },
       rpc: async (fn, args) => {
         state.calls.push({ rpc: fn, args });
+        // RPC responses queue under "rpc:<fn>" so a test can enqueue
+        // different responses for different RPC functions. Fallback
+        // to "rpc" (any function), then to `{ data: null, error: null }`.
+        const q = state.queues[`rpc:${fn}`] || state.queues.rpc;
+        if (q && q.length > 0) {
+          const resp = q.shift();
+          return typeof resp === "function" ? resp({ rpc: fn, args }) : resp;
+        }
         return { data: null, error: null };
       },
     },

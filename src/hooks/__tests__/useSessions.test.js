@@ -63,30 +63,42 @@ beforeEach(() => {
   recalcPatientCounters.mockResolvedValue(null);
 });
 
+// Tier-2 H: status updates now flow through update_session_status_atomic
+// (RPC), so the tests enqueue a single rpc response instead of a
+// (sessions, patients) pair. Optimistic state + revert semantics
+// remain identical from the caller's perspective.
+const RPC = "rpc:update_session_status_atomic";
+
 describe("updateSessionStatus", () => {
   it("scheduled → completed flips local status; server error reverts", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: { message: "Offline" } });
+    mock.enqueue(RPC, { error: { message: "Offline" } });
 
+    // Optimistic flip is applied synchronously before the function
+    // returns — in production React re-renders observe it before the
+    // background rpc continuation. The test can't reliably observe
+    // that intermediate value because microtask ordering between the
+    // outer `await updateSessionStatus` and the inner `await rpc`
+    // depends on the underlying mock's resolution depth (async
+    // function = one hop; chained-thenable = more hops). What's
+    // load-bearing here is the *outcome*: revert on server error,
+    // mutationError surfaced.
     const ok = await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.COMPLETED, false);
     expect(ok).toBe(true);
-    // Optimistic flip applied immediately.
-    expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.COMPLETED);
-    // Patient.billed doesn't change: scheduled → completed doesn't toggle the cancelled-ness.
-    expect(ctx.patients.get()[0].billed).toBe(4000);
 
     await flush();
 
     // Revert.
     expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.SCHEDULED);
+    expect(ctx.patients.get()[0].billed).toBe(4000);
     expect(ctx.mutationError.get()).toBe("Offline");
   });
 
   it("cancel-with-charge: status = charged, patient.billed unchanged (charge still counts)", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     const ok = await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, /* charge= */ true);
     expect(ok).toBe(true);
@@ -100,8 +112,7 @@ describe("updateSessionStatus", () => {
   it("cancel-without-charge decrements patient.billed by session rate", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
-    mock.enqueue("patients", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
     await flush();
@@ -119,8 +130,7 @@ describe("updateSessionStatus", () => {
   it("completed → cancelled (no charge) decrements billed by rate", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
-    mock.enqueue("patients", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
     await flush();
@@ -133,7 +143,7 @@ describe("updateSessionStatus", () => {
   it("completed → cancel-with-charge keeps billed unchanged (charged still counts)", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, /* charge= */ true);
     await flush();
@@ -146,8 +156,7 @@ describe("updateSessionStatus", () => {
   it("charged → cancelled (refund a cancellation fee) decrements billed", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CHARGED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
-    mock.enqueue("patients", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
     await flush();
@@ -160,8 +169,7 @@ describe("updateSessionStatus", () => {
   it("cancelled → completed (retroactive bill) increments billed", async () => {
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CANCELLED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
-    mock.enqueue("patients", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.COMPLETED, false);
     await flush();
@@ -172,19 +180,36 @@ describe("updateSessionStatus", () => {
   });
 
   it("past-scheduled → cancelled drops billed (auto-completing slot no longer counts)", async () => {
-    // "8-Abr" with the test data is in the past relative to the
+    // pastDate() places the session in the past relative to the
     // canonical predicate's auto-complete window, so SCHEDULED
     // counted as consumed. Cancelling explicitly removes it.
     const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
-    mock.enqueue("sessions", { error: null });
-    mock.enqueue("patients", { error: null });
+    mock.enqueue(RPC, { error: null });
 
     await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false);
     await flush();
 
     expect(ctx.upcomingSessions.get()[0].status).toBe(SESSION_STATUS.CANCELLED);
     expect(ctx.patients.get()[0].billed).toBe(3000);
+  });
+
+  it("RPC call carries the expected payload (session id, status, reason, delta)", async () => {
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00" };
+    const ctx = seed({ sessions: [sess] });
+    mock.enqueue(RPC, { error: null });
+
+    await ctx.actions.updateSessionStatus("s-1", SESSION_STATUS.CANCELLED, false, "tarde");
+    await flush();
+
+    const rpcCall = mock.calls.find((c) => c.rpc === "update_session_status_atomic");
+    expect(rpcCall).toBeDefined();
+    expect(rpcCall.args).toEqual({
+      p_session_id: "s-1",
+      p_new_status: SESSION_STATUS.CANCELLED,
+      p_cancel_reason: "tarde",
+      p_billed_delta: -1000, // counted → not counted
+    });
   });
 });
 

@@ -123,74 +123,77 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // on error we revert both session status and patient.billed and
   // raise the mutationError (surfaces as the app-level error toast).
   //
-  // Now accepts ANY status transition (e.g. completed → cancelled on a
-  // past session) — the previous code only adjusted billed when the
-  // cancellation toggle flipped, which left completed → scheduled
-  // transitions silently inconsistent with the live amountDue calc.
-  // We delegate the "should this contribute?" decision to the canonical
-  // predicate `sessionCountsTowardBalance` so the optimistic counter
-  // update can never drift from the prime-directive accounting formula
-  // (CLAUDE.md rule #4).
+  // Network write goes through update_session_status_atomic (migration
+  // 064) which updates the session row AND the patient.billed delta in
+  // ONE transaction. Before the RPC, we did two sequential writes with
+  // a recalcPatientCounters fallback if the patient write failed after
+  // the session write succeeded — functionally correct but two round-
+  // trips and a fork the prime directive shouldn't need. Now both
+  // writes commit-or-rollback together; no fallback path required.
+  //
+  // The billed-delta computation stays in JS (canonical predicate from
+  // utils/accounting.js::sessionCountsTowardBalance) so the predicate
+  // lives in exactly one place — the RPC just applies whatever delta
+  // the client computes. CLAUDE.md rule #4 still holds: counter math
+  // routes through the predicate, end to end.
   async function updateSessionStatus(sessionId, status, charge, cancelReason) {
     const session = upcomingSessions.find(s => s.id === sessionId);
     if (!session) return false;
     const newStatus = (status === SESSION_STATUS.CANCELLED && charge) ? SESSION_STATUS.CHARGED : status;
-    const update = { status: newStatus };
-    if (cancelReason !== undefined) update.cancel_reason = cancelReason || null;
-    if (newStatus === SESSION_STATUS.SCHEDULED || newStatus === SESSION_STATUS.COMPLETED) update.cancel_reason = null;
+    // RPC normalizes cancel_reason server-side when status is SCHEDULED
+    // or COMPLETED — the input from the caller is preserved otherwise.
+    const cancelReasonInput = cancelReason === undefined ? (session.cancel_reason ?? null) : (cancelReason || null);
 
     const prevSession = { ...session };
     const patient = session.patient_id ? patients.find(p => p.id === session.patient_id) : null;
     const prevPatient = patient ? { ...patient } : null;
 
-    // Compute the billed delta from the CANONICAL predicate so any
-    // transition (completed → cancelled / charged → completed / past-
-    // scheduled → cancelled, etc.) lands the counter on the same
-    // value the live amountDue calc would. One `now` reference is
-    // shared between the before/after probe so a session sitting on
-    // the auto-complete boundary can't flip mid-decision.
+    // Predicate-aligned delta (same as before — the RPC trusts this
+    // input). Shared `now` between before/after probes so a session on
+    // the auto-complete boundary doesn't flip mid-decision.
     const now = new Date();
     const wasCounted = sessionCountsTowardBalance(session, now);
     const nextShape = { ...session, status: newStatus };
     const willCount = sessionCountsTowardBalance(nextShape, now);
 
+    let billedDelta = 0;
     let targetBilled = null;
     if (patient && wasCounted !== willCount) {
-      const sessRate = session.rate != null ? session.rate : patient.rate;
-      targetBilled = willCount
-        ? patient.billed + sessRate
-        : Math.max(0, patient.billed - sessRate);
+      const sessRate = session.rate ?? patient.rate ?? 0;
+      billedDelta = willCount ? sessRate : -sessRate;
+      targetBilled = Math.max(0, patient.billed + billedDelta);
     }
 
-    // Apply optimistic state now.
-    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...update } : s));
+    // Apply optimistic state — matches the server's normalization
+    // (cancel_reason cleared for SCHEDULED/COMPLETED transitions).
+    const optimisticPatch = {
+      status: newStatus,
+      cancel_reason: (newStatus === SESSION_STATUS.SCHEDULED || newStatus === SESSION_STATUS.COMPLETED)
+        ? null
+        : cancelReasonInput,
+    };
+    setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ...optimisticPatch } : s));
     if (patient && targetBilled != null) {
       setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, billed: targetBilled } : p));
     }
     setMutationError("");
 
-    // Fire network in the background. Any failure → revert both tables.
-    // try/catch covers genuinely unexpected throws (the supabase-js client
-    // returns `{ error }` rather than throwing in normal failure modes,
-    // but we don't want a silent unhandled rejection to leave optimistic
-    // state in place if something exotic blows up).
+    // Single atomic RPC. Both writes commit-or-rollback together; on
+    // error we revert local state to the prior snapshot. No more
+    // recalc-fallback fork needed (the patient-write-after-session-
+    // write race is gone).
     (async () => {
       try {
-        const { error } = await supabase.from("sessions")
-          .update(update).eq("id", sessionId).eq("user_id", userId);
+        const { error } = await supabase.rpc("update_session_status_atomic", {
+          p_session_id: sessionId,
+          p_new_status: newStatus,
+          p_cancel_reason: cancelReasonInput,
+          p_billed_delta: billedDelta,
+        });
         if (error) {
           setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
           if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
           setMutationError(error.message);
-          return;
-        }
-        if (patient && targetBilled != null) {
-          const { error: pErr } = await supabase.from("patients")
-            .update({ billed: targetBilled }).eq("id", patient.id).eq("user_id", userId);
-          if (pErr) {
-            const fixed = await recalcPatientCounters(patient.id);
-            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-          }
         }
       } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
