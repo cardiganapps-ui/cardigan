@@ -32,13 +32,23 @@ registerHandler("notes.delete_many", async ({ ids, userId }) => {
 // (60s collapse) + cap (50 versions/note) atomically. Ciphertext
 // payloads — the client-side encrypt step already happened in
 // the caller before this handler runs.
-registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted }) => {
-  return await supabase.rpc("snapshot_note", {
+//
+// `debounceSeconds` is optional. RPC defaults to 60s; callers that
+// must force a new version row (the restore-from-history flow —
+// otherwise its pre-restore snapshot would be collapsed into the
+// most-recent save and the pre-restore content would be lost
+// forever) pass 0 to skip the debounce branch.
+registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted, debounceSeconds }) => {
+  const params = {
     p_note_id: noteId,
     p_title_ciphertext: titleCt,
     p_content_ciphertext: contentCt,
     p_encrypted: !!encrypted,
-  });
+  };
+  if (typeof debounceSeconds === "number" && debounceSeconds >= 0) {
+    params.p_debounce_seconds = debounceSeconds;
+  }
+  return await supabase.rpc("snapshot_note", params);
 });
 
 // Module-level ref so the once-registered replay listener swaps temp

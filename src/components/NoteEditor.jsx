@@ -15,6 +15,7 @@ import { VersionHistorySheet } from "./notes/VersionHistorySheet";
 import { AttachmentStrip } from "./notes/AttachmentStrip";
 import { useVoiceDictation } from "../lib/useVoiceDictation";
 import { supabase } from "../supabaseClient";
+import { enqueue } from "../lib/mutationQueue.js";
 import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
@@ -37,6 +38,19 @@ function relativeTime(dateStr, t) {
   if (days === 1) return t("timeYesterday");
   if (days < 7) return t("timeDaysAgo", { count: days });
   return formatDate(dateStr, "short");
+}
+
+/* Per-action cap on attachment uploads. Drag-and-drop can hand us
+   100+ files in one event; serialising 100 uploads burns the user's
+   bandwidth and Vercel function quota for what is almost always a
+   mis-drop. Cap + soft-warn. */
+const MAX_UPLOADS_PER_ACTION = 10;
+function capUploadBatch(files, showToast, t) {
+  if (files.length > MAX_UPLOADS_PER_ACTION) {
+    showToast?.(t("notes.attachments.tooMany", { count: MAX_UPLOADS_PER_ACTION }), "warning");
+    return files.slice(0, MAX_UPLOADS_PER_ACTION);
+  }
+  return files;
 }
 
 /* ── Empty-note detection ──
@@ -244,6 +258,12 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       dictation.stop();
       haptic.tap();
     } else {
+      // Focus the body before starting — voice transcripts always
+      // route through the editor's insertText, and starting with
+      // the title input focused would land the first words at the
+      // body's caret (line 0, col 0) rather than where the user
+      // is looking. Focus first → no surprise.
+      editorRef.current?.focus();
       dictation.start();
       haptic.tap();
     }
@@ -321,15 +341,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   }, [attachBusy, readOnly, note?.id]);
 
   const onAttachInputChange = useCallback(async (e) => {
-    const files = Array.from(e.target.files || []);
+    const all = Array.from(e.target.files || []);
     e.target.value = ""; // allow re-uploading the same file later
+    const files = capUploadBatch(all, showToast, t);
     for (const f of files) {
       // Serial — concurrent uploads compete for the same network
       // and confuse the progress bar UX. Most users attach one at
       // a time anyway.
       await uploadFileAsAttachment(f);
     }
-  }, [uploadFileAsAttachment]);
+  }, [uploadFileAsAttachment, showToast, t]);
 
   const onScrollPaste = useCallback((e) => {
     if (readOnly || !note?.id) return;
@@ -350,11 +371,12 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     if (readOnly || !note?.id) return;
     e.preventDefault();
     setDragOver(false);
-    const files = Array.from(e.dataTransfer?.files || []).filter(f => /^image\//.test(f.type));
+    const all = Array.from(e.dataTransfer?.files || []).filter(f => /^image\//.test(f.type));
+    const files = capUploadBatch(all, showToast, t);
     for (const f of files) {
       await uploadFileAsAttachment(f);
     }
-  }, [readOnly, note?.id, uploadFileAsAttachment]);
+  }, [readOnly, note?.id, uploadFileAsAttachment, showToast, t]);
 
   const onScrollDragOver = useCallback((e) => {
     if (readOnly || !note?.id) return;
@@ -371,12 +393,55 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   }, []);
 
   /* ── Restore-from-history ────────────────────────────────────────
-     Snapshots are written by the parent's updateNote success path,
-     so just routing through onSave (which calls updateNote) gives
-     us a fresh post-restore snapshot for free — the pre-restore
-     content survives in the timeline as the prior version, and the
-     restore itself shows up as a new version. */
+     Three concerns we have to thread carefully:
+
+     1. The 60s snapshot debounce in `snapshot_note` would otherwise
+        UPDATE the most-recent version row in place when restore
+        fires, overwriting the user's pre-restore current state and
+        deleting it from the timeline. We force a `debounceSeconds=0`
+        snapshot of the CURRENT (pre-restore) content first; that
+        guarantees a discrete row, and updateNote's auto-snapshot
+        afterwards is allowed to UPDATE _that_ row to the restored
+        content — the pre-restore content survives one version
+        further back.
+
+     2. Restoring an encrypted note while the vault is locked would
+        re-save it as plaintext (maybeEncrypt returns
+        { encrypted:false } when locked) and flip the encrypted
+        flag off — privacy regression. Refuse.
+
+     3. If the save itself fails, we must roll React state back to
+        the pre-restore content — otherwise the editor shows the
+        "restored" content while the DB still holds the old content,
+        and the next keystroke would silently persist the divergence. */
   const handleRestoreVersion = useCallback(async ({ title: newTitle, content: newContent }) => {
+    if (note?.encrypted && noteCrypto && !noteCrypto.canEncrypt) {
+      throw new Error("locked");
+    }
+
+    // (#1) Preserve pre-restore content in the timeline.
+    try {
+      const preTitle = title || "";
+      const preContent = content || "";
+      const wrapped = noteCrypto?.encrypt
+        ? await noteCrypto.encrypt(preContent)
+        : { content: preContent, encrypted: false };
+      await enqueue("notes.snapshot", {
+        noteId: note.id,
+        titleCt: preTitle,
+        contentCt: wrapped.content,
+        encrypted: !!wrapped.encrypted,
+        debounceSeconds: 0,
+      });
+    } catch {
+      /* best-effort — proceed with restore even if the preservation
+         snapshot couldn't be enqueued. The user's intent (restore)
+         wins over the safety net. */
+    }
+
+    // (#4) Capture pre-restore state so we can roll back on save failure.
+    const prevTitle = title;
+    const prevContent = content;
     setTitle(newTitle || "");
     setContent(newContent || "");
     editorRef.current?.setContent(newContent || "");
@@ -387,10 +452,13 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       await onSave({ title: newTitle || "", content: newContent || "" });
       setSaveState("saved");
     } catch {
+      setTitle(prevTitle);
+      setContent(prevContent);
+      editorRef.current?.setContent(prevContent || "");
       setSaveState("dirty");
       throw new Error("save_failed");
     }
-  }, [onSave]);
+  }, [note, noteCrypto, title, content, onSave]);
 
   /* ── Find + outline ────────────────────────────────────────────── */
   const handleJumpToMatch = useCallback((match) => {

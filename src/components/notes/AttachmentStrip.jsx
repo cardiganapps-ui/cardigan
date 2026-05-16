@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useT } from "../../i18n/index.jsx";
 import { useCardigan } from "../../context/CardiganContext";
+import { useEscape } from "../../hooks/useEscape";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { supabase } from "../../supabaseClient";
 import { IconX, IconTrash } from "../Icons";
 import { haptic } from "../../utils/haptics";
@@ -51,7 +53,7 @@ async function fetchPresigned(path, mime) {
 
 export function AttachmentStrip({ noteId }) {
   const { t } = useT();
-  const { noteAttachments, noteCrypto, deleteNoteAttachment, showToast } = useCardigan();
+  const { noteAttachments, noteCrypto, deleteNoteAttachment, showToast, setHideFab } = useCardigan();
 
   const rows = useMemo(
     () => (noteAttachments || []).filter(a => a.note_id === noteId),
@@ -60,7 +62,10 @@ export function AttachmentStrip({ noteId }) {
 
   // id → { url: string, failed?: boolean }
   const [tiles, setTiles] = useState({});
-  const objectUrlsRef = useRef(new Set());
+  // id → object-URL string. Map (not Set) so we can revoke per-id
+  // when a row leaves the list; the previous Set-based version
+  // leaked one blob URL per deleted attachment until unmount.
+  const objectUrlsRef = useRef(new Map());
   const [lightboxId, setLightboxId] = useState(null);
 
   // Resolve every attachment row into a renderable Blob URL.
@@ -70,6 +75,27 @@ export function AttachmentStrip({ noteId }) {
   useEffect(() => {
     let alive = true;
     const tracked = objectUrlsRef.current;
+
+    // Prune state + revoke blob URLs whose attachment row is gone.
+    // Without this, deleting an attachment leaks its blob URL until
+    // the editor unmounts AND keeps a stale `tiles` entry forever.
+    const liveIds = new Set(rows.map(r => r.id));
+    for (const [id, url] of Array.from(tracked.entries())) {
+      if (!liveIds.has(id)) {
+        URL.revokeObjectURL(url);
+        tracked.delete(id);
+      }
+    }
+    setTiles(prev => {
+      let changed = false;
+      const next = {};
+      for (const key of Object.keys(prev)) {
+        if (liveIds.has(key)) next[key] = prev[key];
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+
     rows.forEach(async (row) => {
       if (tiles[row.id]) return; // already resolved / failed once
       try {
@@ -113,7 +139,7 @@ export function AttachmentStrip({ noteId }) {
         }
         const blob = new Blob([plain], { type: row.mime || "image/jpeg" });
         const objectUrl = URL.createObjectURL(blob);
-        tracked.add(objectUrl);
+        tracked.set(row.id, objectUrl);
         setTiles(prev => ({ ...prev, [row.id]: { url: objectUrl } }));
       } catch {
         if (alive) setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
@@ -125,12 +151,22 @@ export function AttachmentStrip({ noteId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, noteCrypto]);
 
-  // Revoke any object URLs we minted (encrypted lane) on unmount.
-  // The unencrypted lane uses raw presigned URLs that the browser
-  // GCs naturally.
+  // Final cleanup on unmount — sweep anything still in the map.
   useEffect(() => () => {
     objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
     objectUrlsRef.current.clear();
+  }, []);
+
+  // Retry a previously-failed tile (network blip, transient decrypt
+  // failure). Clearing the tile entry causes the resolver effect to
+  // pick the row up again on the next run.
+  const retryTile = useCallback((id) => {
+    setTiles(prev => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }, []);
 
   const handleDelete = useCallback(async (id) => {
@@ -138,6 +174,18 @@ export function AttachmentStrip({ noteId }) {
     const ok = await deleteNoteAttachment(id);
     if (!ok) showToast?.(t("notes.attachments.deleteFailed"), "error");
   }, [deleteNoteAttachment, showToast, t]);
+
+  // Lightbox a11y: hide the FAB so it doesn't float over the
+  // image, wire Escape, and trap focus so keyboard users can
+  // dismiss without tab-escaping to the editor underneath.
+  const closeLightbox = useCallback(() => setLightboxId(null), []);
+  useEscape(lightboxId ? closeLightbox : null);
+  const lightboxRef = useFocusTrap(!!lightboxId);
+  useEffect(() => {
+    if (!lightboxId) return;
+    setHideFab?.(true);
+    return () => setHideFab?.(false);
+  }, [lightboxId, setHideFab]);
 
   if (rows.length === 0) return null;
 
@@ -158,9 +206,15 @@ export function AttachmentStrip({ noteId }) {
                   <img src={tile.url} alt="" />
                 </button>
               ) : tile?.failed ? (
-                <div className="mde-attach-thumb mde-attach-failed" aria-label={t("notes.attachments.loadFailed")}>
-                  <span>!</span>
-                </div>
+                <button
+                  type="button"
+                  className="mde-attach-thumb mde-attach-failed btn-tap"
+                  onClick={() => retryTile(row.id)}
+                  aria-label={t("notes.attachments.retry")}
+                  title={t("notes.attachments.retry")}
+                >
+                  <span aria-hidden="true">↻</span>
+                </button>
               ) : (
                 <div className="mde-attach-thumb mde-attach-loading" aria-hidden="true" />
               )}
@@ -182,8 +236,9 @@ export function AttachmentStrip({ noteId }) {
         if (!tile?.url) return null;
         return (
           <div
+            ref={lightboxRef}
             className="mde-attach-lightbox"
-            onClick={() => setLightboxId(null)}
+            onClick={closeLightbox}
             role="dialog"
             aria-modal="true"
             aria-label={t("notes.attachments.preview")}
@@ -191,8 +246,9 @@ export function AttachmentStrip({ noteId }) {
             <button
               type="button"
               className="mde-attach-lightbox-close"
-              onClick={(e) => { e.stopPropagation(); setLightboxId(null); }}
+              onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
               aria-label={t("close")}
+              autoFocus
             >
               <IconX size={18} />
             </button>

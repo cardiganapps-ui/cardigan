@@ -6,6 +6,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { IconX } from "../Icons";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { diffLines, diffSummary } from "../../lib/noteDiff";
 import { formatDate } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
@@ -40,6 +41,15 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [restoringId, setRestoringId] = useState(null);
+  // Pending-confirm version. Restore is a destructive-ish action
+  // (overwrites the live note) so we route it through ConfirmDialog
+  // — a mis-tap on the row's "Restaurar" button shouldn't silently
+  // replace the user's current state.
+  const [pendingRestore, setPendingRestore] = useState(null);
+  // Whether the current vault state allows a safe restore. An
+  // encrypted note + locked vault would flip the row to plaintext;
+  // we surface a disabled state with explainer copy instead.
+  const restoreBlockedByLock = !!note?.encrypted && noteCrypto && !noteCrypto.canEncrypt;
 
   // Fetch + decrypt on open. Cancellation flag prevents a stale
   // fetch (e.g. note swap while the sheet is animating in) from
@@ -108,13 +118,25 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
       haptic.success();
       showToast?.(t("notes.historyRestored"), "success");
       onClose?.();
-    } catch {
+    } catch (err) {
       haptic.warn();
-      showToast?.(t("notes.saveFailed"), "error");
+      const key = err?.message === "locked"
+        ? "notes.historyLockedToRestore"
+        : "notes.saveFailed";
+      showToast?.(t(key), "error");
     } finally {
       setRestoringId(null);
+      setPendingRestore(null);
     }
   }, [restoringId, onRestore, onClose, showToast, t]);
+
+  const requestRestore = useCallback((version) => {
+    if (restoreBlockedByLock) {
+      showToast?.(t("notes.historyLockedToRestore"), "error");
+      return;
+    }
+    setPendingRestore(version);
+  }, [restoreBlockedByLock, showToast, t]);
 
   if (!open) return null;
 
@@ -237,12 +259,17 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
                               <button
                                 type="button"
                                 className="btn btn-primary"
-                                onClick={() => restore(v)}
-                                disabled={restoringId === v.id}
+                                onClick={() => requestRestore(v)}
+                                disabled={restoringId === v.id || restoreBlockedByLock}
                                 style={{ marginTop: 14, width: "100%" }}
                               >
                                 {restoringId === v.id ? t("loading") : t("notes.historyRestore")}
                               </button>
+                            )}
+                            {restoreBlockedByLock && !isLatest && (
+                              <div style={{ fontSize: "var(--text-xs)", color: "var(--charcoal-md)", marginTop: 8 }}>
+                                {t("notes.historyLockedToRestore")}
+                              </div>
                             )}
                           </>
                         )}
@@ -255,6 +282,16 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!pendingRestore}
+        title={t("notes.historyRestoreConfirmTitle")}
+        body={t("notes.historyRestoreConfirmBody")}
+        confirmLabel={t("notes.historyRestore")}
+        cancelLabel={t("cancel")}
+        busy={!!restoringId}
+        onConfirm={() => pendingRestore && restore(pendingRestore)}
+        onCancel={() => setPendingRestore(null)}
+      />
     </div>
   );
 }

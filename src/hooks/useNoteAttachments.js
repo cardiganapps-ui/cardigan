@@ -25,6 +25,37 @@ async function authHeaders() {
   };
 }
 
+/* Probe an image File for its natural pixel dimensions before
+   upload. Persisting these in the DB lets downstream consumers
+   (notePdf, image strip aspect-ratio reservations) avoid a second
+   in-memory decode at render time. Best-effort — returns null if
+   the browser can't decode the file (corrupt, exotic codec). */
+async function probeImageDimensions(file) {
+  try {
+    if (typeof createImageBitmap === "function") {
+      const bmp = await createImageBitmap(file);
+      const out = { width: bmp.width, height: bmp.height };
+      bmp.close?.();
+      return out;
+    }
+  } catch { /* fall through to Image() */ }
+  try {
+    return await new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => {
+        resolve(null);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
+  } catch { return null; }
+}
+
 function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
@@ -68,11 +99,14 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
     setMutationError("");
 
     try {
-      // Read the file once into memory. v1 supports images up to ~10MB;
-      // we don't HEIC-convert here (the note attachment UX shows the
-      // user a thumbnail anyway and large iPhone HEICs are uncommon).
-      // If telemetry shows HEIC pain we can plumb maybeConvertHeic in.
-      const bytes = new Uint8Array(await file.arrayBuffer());
+      // Probe dimensions in parallel with reading the bytes. Both
+      // touch the file but the underlying browser code paths are
+      // independent, so doing them together saves wall-clock time
+      // on bigger photos.
+      const [bytes, probedDims] = await Promise.all([
+        file.arrayBuffer().then(buf => new Uint8Array(buf)),
+        probeImageDimensions(file),
+      ]);
 
       // Stable per-attachment uuid for the R2 key. The DB row gets a
       // separate uuid pk; we use the file uuid in the path so we can
@@ -89,14 +123,22 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
       // gates this — when the user hasn't set up / is locked, we
       // upload plaintext (matches the existing notes.encrypted=false
       // behaviour, same threat-model story).
+      //
+      // Lock-race guard: if the user locks the vault between the
+      // outer check and the actual call, encryptAttachmentBytes
+      // returns null. Silently uploading plaintext when the user
+      // expected encryption is the worst possible outcome — refuse
+      // and surface a clean error so they can re-unlock + retry.
       if (noteCrypto?.encryptAttachmentBytes && noteCrypto.canEncrypt) {
         const wrapped = await noteCrypto.encryptAttachmentBytes(bytes);
-        if (wrapped) {
-          uploadBytes = Uint8Array.from(atob(wrapped.ciphertext), c => c.charCodeAt(0));
-          uploadContentType = "application/octet-stream";
-          encrypted = true;
-          iv = wrapped.iv;
+        if (!wrapped) {
+          setMutationError("El cifrado se bloqueó a mitad de la subida. Desbloquea e intenta de nuevo.");
+          return null;
         }
+        uploadBytes = Uint8Array.from(atob(wrapped.ciphertext), c => c.charCodeAt(0));
+        uploadContentType = "application/octet-stream";
+        encrypted = true;
+        iv = wrapped.iv;
       }
 
       // Step 1: get presigned PUT URL
@@ -136,13 +178,17 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
 
       // Step 3: insert the row. mime is the ORIGINAL image type so
       // the read path knows how to construct the Blob even when the
-      // R2 bytes are octet-stream ciphertext.
+      // R2 bytes are octet-stream ciphertext. width/height (if the
+      // probe succeeded) let the PDF / thumbnail layer reserve the
+      // right aspect without a second decode pass.
       const row = {
         note_id: noteId,
         user_id: userId,
         r2_path: r2Path,
         mime: file.type || "image/jpeg",
         size_bytes: file.size,
+        width: probedDims?.width || null,
+        height: probedDims?.height || null,
         encrypted,
         iv,
       };

@@ -38,6 +38,14 @@ export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
 
   const recogRef = useRef(null);
   const userStoppedRef = useRef(false);
+  // Auto-restart counter. The engine sometimes hits an unrecoverable
+  // state (mid-permission revoke, audio device disappearing) that
+  // doesn't surface a proper onerror code. Without a cap the onend
+  // handler would spin restart attempts forever. Reset to 0 on any
+  // successful result so an active user isn't bitten by an earlier
+  // hiccup.
+  const restartAttemptsRef = useRef(0);
+  const MAX_RESTART_ATTEMPTS = 5;
   // Stash the latest onResult so the recogniser callbacks don't
   // capture a stale closure across renders. The recogniser
   // instance is created once per start() — without this we'd lose
@@ -61,6 +69,7 @@ export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
     setError("");
     setInterim("");
     userStoppedRef.current = false;
+    restartAttemptsRef.current = 0;
 
     const r = new RECOGNITION();
     r.lang = lang;
@@ -69,6 +78,9 @@ export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
     r.maxAlternatives = 1;
 
     r.onresult = (event) => {
+      // Engine is working — clear any prior restart accumulation so
+      // a transient earlier hiccup doesn't haunt the rest of the session.
+      restartAttemptsRef.current = 0;
       let liveInterim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const res = event.results[i];
@@ -102,18 +114,30 @@ export function useVoiceDictation({ lang = "es-MX", onResult } = {}) {
     r.onend = () => {
       // Chrome stops the session after a stretch of silence even
       // with continuous=true. If the user hasn't asked to stop,
-      // restart so the recording-state stays live for them.
+      // restart so the recording-state stays live for them — but
+      // cap restart attempts so we can't spin forever against a
+      // truly broken engine.
       if (userStoppedRef.current) {
         setRecording(false);
         setInterim("");
         recogRef.current = null;
         return;
       }
+      if (restartAttemptsRef.current >= MAX_RESTART_ATTEMPTS) {
+        setError("restart_exhausted");
+        userStoppedRef.current = true;
+        setRecording(false);
+        setInterim("");
+        recogRef.current = null;
+        return;
+      }
+      restartAttemptsRef.current += 1;
       try {
         r.start();
       } catch {
         // start() can throw if the engine is still tearing down —
-        // give it a beat and try again.
+        // give it a beat and try again. Still bounded by the
+        // counter incremented above.
         setTimeout(() => {
           if (!userStoppedRef.current) {
             try { r.start(); } catch { setRecording(false); }

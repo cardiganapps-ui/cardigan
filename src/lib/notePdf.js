@@ -129,14 +129,20 @@ function tokenInlineToSegments(tokenInline) {
   }));
 }
 
-// Detect `![alt](attachment:<id>)` — anywhere in a line. Returns
-// the first match (we render images on their own row in v1; mixed
-// inline text + image would need its own layout pass we don't
-// need yet).
-function extractAttachmentRef(line) {
-  if (!line) return null;
-  const m = /!\[[^\]]*\]\(attachment:([0-9a-f-]+)\)/i.exec(line);
-  return m ? { id: m[1], full: m[0] } : null;
+// Detect every `![alt](attachment:<id>)` in a line. Multiple refs
+// on one line are rendered as sequential image rows in v1 (mixed
+// inline text + image would need a real layout pass we don't
+// need yet, but at least we stop silently dropping the 2nd+
+// reference).
+function extractAttachmentRefs(line) {
+  if (!line) return [];
+  const out = [];
+  const re = /!\[[^\]]*\]\(attachment:([0-9a-f-]+)\)/gi;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    out.push({ id: m[1], full: m[0], index: m.index });
+  }
+  return out;
 }
 
 function addPageBreakIfNeeded(doc, y, neededHeight) {
@@ -207,36 +213,62 @@ function drawMetadata(doc, { patient, session, updatedAt }, y) {
   return y + 4;
 }
 
-async function drawImage(doc, dataUrl, y) {
+function drawPlaceholder(doc, message, y) {
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  setColor(doc, COLORS.charcoalXl);
+  y = addPageBreakIfNeeded(doc, y, 5);
+  doc.text(message, PAGE.margin, y);
+  return y + 6;
+}
+
+async function drawImage(doc, image, y) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const maxWidth = pageWidth - PAGE.margin * 2;
-  // Probe the image dimensions via an Image element so we can keep
-  // aspect ratio. addImage accepts width+height; if we pass only
-  // width it stretches.
-  const probe = await new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => resolve(null);
-    img.src = dataUrl;
-  });
-  if (!probe || !probe.w || !probe.h) return y;
+  const { dataUrl, mime, width: storedW, height: storedH } = image;
+
+  // HEIC / HEIF — jsPDF can't render either, so calling addImage
+  // would throw and the catch below would silently drop the image
+  // with no visible cue. Surface a placeholder instead so the
+  // reader knows something's missing.
+  if (mime && /^image\/(heic|heif)$/i.test(mime)) {
+    return drawPlaceholder(doc, "[imagen HEIC no soportada en PDF]", y);
+  }
+
+  // Probe only when the upload-time dimensions are missing (older
+  // rows pre-Phase-5-fixes don't have width/height). Avoids the
+  // double-decode for newer attachments.
+  let probeW = storedW;
+  let probeH = storedH;
+  if (!probeW || !probeH) {
+    const probe = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+    if (!probe || !probe.w || !probe.h) return drawPlaceholder(doc, "[imagen no disponible]", y);
+    probeW = probe.w;
+    probeH = probe.h;
+  }
+
   // mm-per-pixel arbitrary scale: cap at 80mm wide, scale down to
   // fit the page width with margin, preserve aspect ratio.
   const widthMm = Math.min(maxWidth, 80);
-  const heightMm = (widthMm * probe.h) / probe.w;
+  const heightMm = (widthMm * probeH) / probeW;
   y = addPageBreakIfNeeded(doc, y, heightMm + 6);
   // Format detection from the data URL prefix. jsPDF accepts JPEG,
-  // PNG, WEBP — heic gets converted by the resolver upstream.
+  // PNG, WEBP.
   let fmt = "JPEG";
   if (/^data:image\/png/i.test(dataUrl)) fmt = "PNG";
   else if (/^data:image\/webp/i.test(dataUrl)) fmt = "WEBP";
   try {
     doc.addImage(dataUrl, fmt, PAGE.margin, y, widthMm, heightMm);
   } catch {
-    // jsPDF throws on a few exotic encodings (e.g. progressive JPEG
-    // variants in older builds). Skip silently — the user still
-    // gets the rest of the note.
-    return y;
+    // jsPDF throws on a few exotic encodings (progressive JPEG
+    // variants in older builds, mismatched format hints). Surface
+    // a placeholder so the export doesn't have a silent gap.
+    return drawPlaceholder(doc, "[imagen no disponible]", y);
   }
   return y + heightMm + 4;
 }
@@ -249,36 +281,25 @@ async function drawBody(doc, lines, y, { resolvedImages }) {
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
 
-    // Pure-image lines (the only shape our editor produces for
-    // attachments today) render as a real image block when we
-    // have a resolved data URL for them.
-    const ref = extractAttachmentRef(raw);
-    if (ref) {
-      if (imagesRendered >= MAX_INLINE_IMAGES) {
-        // Cap reached — render the markdown text so the link still
-        // survives the export, and tell the user inline.
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(9);
-        setColor(doc, COLORS.charcoalXl);
-        y = addPageBreakIfNeeded(doc, y, 5);
-        doc.text("[imagen omitida — máximo 10 por PDF]", PAGE.margin, y);
-        y += 6;
-        continue;
+    // Image references in this line — usually exactly one (our
+    // editor inserts them on their own line), but handle the
+    // multi-ref case so a markdown-pasted note doesn't silently
+    // drop the 2nd+ image.
+    const refs = extractAttachmentRefs(raw);
+    if (refs.length > 0) {
+      for (const ref of refs) {
+        if (imagesRendered >= MAX_INLINE_IMAGES) {
+          y = drawPlaceholder(doc, "[imagen omitida — máximo 10 por PDF]", y);
+          continue;
+        }
+        const image = resolvedImages.get(ref.id);
+        if (image) {
+          y = await drawImage(doc, image, y);
+          imagesRendered += 1;
+        } else {
+          y = drawPlaceholder(doc, "[imagen no disponible]", y);
+        }
       }
-      const dataUrl = resolvedImages.get(ref.id);
-      if (dataUrl) {
-        y = await drawImage(doc, dataUrl, y);
-        imagesRendered += 1;
-        continue;
-      }
-      // Resolver failed / row not provided — drop a placeholder so
-      // the user knows there's a missing image at this slot.
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(9);
-      setColor(doc, COLORS.charcoalXl);
-      y = addPageBreakIfNeeded(doc, y, 5);
-      doc.text("[imagen no disponible]", PAGE.margin, y);
-      y += 6;
       continue;
     }
 
@@ -381,8 +402,9 @@ export async function buildNotePdf({
   if (!note) throw new Error("buildNotePdf: note is required");
 
   // Resolve images up-front so the renderer is purely synchronous.
-  // We hand the resolver the row + cap to MAX_INLINE_IMAGES so it
-  // doesn't waste bandwidth decrypting attachments we'd skip.
+  // Store the row's mime + width/height alongside the data URL so
+  // drawImage can skip a second decode and surface HEIC placeholders
+  // without throwing.
   const resolvedImages = new Map();
   if (imageResolver) {
     const inlineIds = collectInlineAttachmentIds((note.content || "").split("\n"));
@@ -392,7 +414,14 @@ export async function buildNotePdf({
     await Promise.all(eligible.map(async (a) => {
       try {
         const dataUrl = await imageResolver(a);
-        if (dataUrl) resolvedImages.set(a.id, dataUrl);
+        if (dataUrl) {
+          resolvedImages.set(a.id, {
+            dataUrl,
+            mime: a.mime,
+            width: a.width,
+            height: a.height,
+          });
+        }
       } catch { /* skip — placeholder will render */ }
     }));
   }
@@ -412,8 +441,7 @@ export async function buildNotePdf({
 function collectInlineAttachmentIds(lines) {
   const out = new Set();
   for (const line of lines) {
-    const m = extractAttachmentRef(line);
-    if (m) out.add(m.id);
+    for (const ref of extractAttachmentRefs(line)) out.add(ref.id);
   }
   return out;
 }
