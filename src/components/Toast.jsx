@@ -30,7 +30,14 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   // adjust-state-during-render so the toast enters/exits without a
   // set-state-in-effect cascade. The auto-dismiss timer stays in an
   // effect (legitimate async side-effect).
-  const [prevMessage, setPrevMessage] = useState(message);
+  //
+  // prevMessage initializes to null (NOT message) so the first render
+  // with a non-null message triggers the visibility flip. Initializing
+  // to message would leave them equal on mount, the condition would
+  // never fire, and visible would stay false forever — Toast would
+  // render null on every mount. (Repro: render a fresh <Toast /> with
+  // a unique key; without the null seed, no aria-live region appears.)
+  const [prevMessage, setPrevMessage] = useState(null);
   if (message !== prevMessage) {
     setPrevMessage(message);
     if (message) { setVisible(true); setLeaving(false); }
@@ -65,18 +72,31 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   const opacity = stackIndex === 0 ? 1 : Math.max(0.75, 1 - stackIndex * 0.1);
   const scale = stackIndex === 0 ? 1 : Math.max(0.94, 1 - stackIndex * 0.03);
 
+  // Screen-reader semantics: errors and warnings are "interrupt" toasts
+  // (role=alert, aria-live=assertive) so AT users hear them as soon as
+  // they appear. Success / info / generic toasts are "polite" — they
+  // queue behind the user's current speech. The visual class still
+  // drives the actual chrome.
+  const isInterrupt = type === "error" || type === "warning";
+  const liveRole = isInterrupt ? "alert" : "status";
+  const liveness = isInterrupt ? "assertive" : "polite";
+
   return (
-    <div style={{
-      position:"fixed", top, left:12, right:12,
-      zIndex:"var(--z-install)", pointerEvents:"auto",
-      animation: leaving
-        ? "toastOut var(--dur-fast) var(--ease-out) forwards"
-        : "toastIn var(--dur-slower) var(--ease-spring)",
-      opacity,
-      transform: `scale(${scale})`,
-      transformOrigin: "top center",
-      transition: "top var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)",
-    }}>
+    <div
+      role={liveRole}
+      aria-live={liveness}
+      aria-atomic="true"
+      style={{
+        position:"fixed", top, left:12, right:12,
+        zIndex:"var(--z-install)", pointerEvents:"auto",
+        animation: leaving
+          ? "toastOut var(--dur-fast) var(--ease-out) forwards"
+          : "toastIn var(--dur-slower) var(--ease-spring)",
+        opacity,
+        transform: `scale(${scale})`,
+        transformOrigin: "top center",
+        transition: "top var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)",
+      }}>
       <div
         style={{
           background: bg, color:"var(--white)", padding:"12px 16px", borderRadius:"var(--radius)",

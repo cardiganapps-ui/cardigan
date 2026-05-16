@@ -213,6 +213,8 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
           <IconSearch size={16} />
           <input
             ref={inputRef}
+            type="search"
+            aria-label={t("cmdp.placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}

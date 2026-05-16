@@ -148,7 +148,7 @@ export function Notes() {
 
       <div className="search-bar" style={{ marginBottom:12 }}>
         <IconSearch size={16} style={{ color:"var(--charcoal-xl)" }} />
-        <input placeholder={t("notes.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
+        <input type="search" aria-label={t("notes.searchPlaceholder")} placeholder={t("notes.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {!selectMode && (

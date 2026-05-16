@@ -401,6 +401,8 @@ export function Patients() {
               when Potenciales is active. Cheap polish that signals
               the mode shift without an extra title bar. */}
           <input
+            type="search"
+            aria-label={t("patients.searchPlaceholder")}
             placeholder={isPotentialView
               ? `Buscar ${t("patients.statusPotential").toLowerCase()}…`
               : t("patients.searchPlaceholder")}

@@ -153,7 +153,7 @@ export function Documents() {
       {/* Search bar */}
       <div className="search-bar" style={{ marginBottom:12 }}>
         <IconSearch size={16} style={{ color:"var(--charcoal-xl)" }} />
-        <input placeholder={t("docs.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
+        <input type="search" aria-label={t("docs.searchPlaceholder")} placeholder={t("docs.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {/* Upload button — Pro-gated. Non-Pro users see a "PRO" badge

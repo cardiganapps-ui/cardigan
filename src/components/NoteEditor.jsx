@@ -342,7 +342,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               aria-pressed={outlineOpen ? "true" : "false"}
               title={t("notes.outline")}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
                 <line x1="4" y1="7" x2="20" y2="7" />
                 <line x1="8" y1="12" x2="20" y2="12" />
                 <line x1="8" y1="17" x2="16" y2="17" />
@@ -369,7 +369,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
                 </svg>
               </button>

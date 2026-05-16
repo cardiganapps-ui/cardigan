@@ -1,6 +1,8 @@
 import { IconX, IconSparkle } from "../../../components/Icons";
 import { useT } from "../../../i18n/index";
 import { CopyChip } from "./CopyChip";
+import { useEscape } from "../../../hooks/useEscape";
+import { useFocusTrap } from "../../../hooks/useFocusTrap";
 
 /* ── CodeCreatedSheet ──
    Lifted verbatim from AdminPanel.jsx (legacy modal). Success sheet
@@ -9,6 +11,12 @@ import { CopyChip } from "./CopyChip";
    influencer wants. */
 export function CodeCreatedSheet({ code, onClose }) {
   const { t } = useT();
+  // A11y: same sheet conventions as the consumer-side sheets — esc
+  // dismisses, focus stays trapped inside until close. Without these
+  // keyboard users could tab back to the page underneath while the
+  // overlay obscures it.
+  useEscape(onClose);
+  useFocusTrap(true);
   const link = `https://cardigan.mx/c/${code.code}`;
   const durationLabel =
     code.duration === "once" ? t("admin.codesDurationOnce")

@@ -3,6 +3,8 @@ import { IconX } from "../../../components/Icons";
 import { useT } from "../../../i18n/index";
 import { haptic } from "../../../utils/haptics";
 import { createInfluencerCode } from "../../../hooks/useCardiganData";
+import { useEscape } from "../../../hooks/useEscape";
+import { useFocusTrap } from "../../../hooks/useFocusTrap";
 
 /* ── NewCodeSheet ──
    Lifted from AdminPanel.jsx (legacy modal). Modal-style sheet for
@@ -10,6 +12,10 @@ import { createInfluencerCode } from "../../../hooks/useCardiganData";
    page uses this verbatim — no logic changes during the lift. */
 export function NewCodeSheet({ onClose, onCreated }) {
   const { t } = useT();
+  // A11y: trap focus while open + dismiss on esc. Without these the
+  // form fields' tab order leaks back to the page underneath.
+  useEscape(onClose);
+  useFocusTrap(true);
   const [code, setCode] = useState("");
   const [influencerName, setInfluencerName] = useState("");
   const [percentOff, setPercentOff] = useState("20");

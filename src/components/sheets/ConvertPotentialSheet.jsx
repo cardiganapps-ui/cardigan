@@ -280,11 +280,15 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
                   <label className="input-label">{t("patients.start")}</label>
                   <input className="input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
-                <div onClick={() => setHasEndDate(v => !v)}
-                  style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", marginBottom: hasEndDate ? 8 : 0 }}>
+                <button
+                  type="button"
+                  className="btn-tap"
+                  aria-pressed={hasEndDate}
+                  onClick={() => setHasEndDate(v => !v)}
+                  style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: hasEndDate ? 8 : 0, width:"100%", background:"transparent", border:"none", padding:0, cursor:"pointer", textAlign:"left", color:"inherit", font:"inherit" }}>
                   <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.endDate")}</span>
                   <Toggle on={hasEndDate} onToggle={() => {}} />
-                </div>
+                </button>
                 {hasEndDate ? (
                   <div className="input-group" style={{ marginBottom:0 }}>
                     <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />

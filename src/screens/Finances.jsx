@@ -568,6 +568,9 @@ function ProyeccionTab({ sessions, patients }) {
           min={0} max={50} step={1}
           value={displayPct}
           onChange={e => setCustomCancel(Number(e.target.value))}
+          aria-label={t("finances.forecastAssumption")}
+          aria-valuemin={0} aria-valuemax={50} aria-valuenow={displayPct}
+          aria-valuetext={`${displayPct}%`}
           style={{ width:"100%", accentColor:"var(--teal)", marginBottom:8 }}
         />
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
