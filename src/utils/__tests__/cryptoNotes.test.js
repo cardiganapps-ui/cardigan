@@ -140,7 +140,9 @@ describe("encryptBytes / decryptBytes (Phase 5 attachments)", () => {
     const bytes = new Uint8Array(2048);
     crypto.getRandomValues(bytes);
     const { ciphertext, iv } = await encryptBytes(bytes, key);
-    expect(typeof ciphertext).toBe("string");
+    // Ciphertext is raw bytes (no base64 round-trip on the hot path);
+    // IV stays base64 because it lives in a text column on the row.
+    expect(ciphertext).toBeInstanceOf(Uint8Array);
     expect(typeof iv).toBe("string");
     const out = await decryptBytes(ciphertext, iv, key);
     expect(out.length).toBe(bytes.length);
@@ -153,7 +155,7 @@ describe("encryptBytes / decryptBytes (Phase 5 attachments)", () => {
     const a = await encryptBytes(bytes, key);
     const b = await encryptBytes(bytes, key);
     expect(a.iv).not.toBe(b.iv);
-    expect(a.ciphertext).not.toBe(b.ciphertext);
+    expect(a.ciphertext).not.toEqual(b.ciphertext);
   });
 
   it("throws decrypt_failed when the wrong key is supplied", async () => {
@@ -167,5 +169,10 @@ describe("encryptBytes / decryptBytes (Phase 5 attachments)", () => {
     const key = generateMasterKeyBytes();
     const { ciphertext } = await encryptBytes(new Uint8Array([0xff]), key);
     await expect(decryptBytes(ciphertext, "AAAA", key)).rejects.toThrow(/IV length/);
+  });
+
+  it("rejects non-Uint8Array ciphertext to keep callers honest", async () => {
+    const key = generateMasterKeyBytes();
+    await expect(decryptBytes("base64", "iv", key)).rejects.toThrow(/Uint8Array/);
   });
 });

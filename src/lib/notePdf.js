@@ -402,15 +402,28 @@ export async function buildNotePdf({
   if (!note) throw new Error("buildNotePdf: note is required");
 
   // Resolve images up-front so the renderer is purely synchronous.
-  // Store the row's mime + width/height alongside the data URL so
-  // drawImage can skip a second decode and surface HEIC placeholders
-  // without throwing.
+  // We pick the FIRST MAX_INLINE_IMAGES references by BODY ORDER,
+  // not by attachments-array order — otherwise a note that
+  // references attachments out of upload order could end up with
+  // the wrong subset rendered + "no disponible" placeholders for
+  // the ones the user actually wanted to see.
   const resolvedImages = new Map();
   if (imageResolver) {
-    const inlineIds = collectInlineAttachmentIds((note.content || "").split("\n"));
-    const eligible = (attachments || [])
-      .filter(a => inlineIds.has(a.id))
-      .slice(0, MAX_INLINE_IMAGES);
+    const lines = (note.content || "").split("\n");
+    const orderedIds = [];
+    const seen = new Set();
+    for (const line of lines) {
+      for (const ref of extractAttachmentRefs(line)) {
+        if (seen.has(ref.id)) continue;
+        seen.add(ref.id);
+        orderedIds.push(ref.id);
+      }
+    }
+    const attachmentsById = new Map((attachments || []).map(a => [a.id, a]));
+    const eligible = orderedIds
+      .slice(0, MAX_INLINE_IMAGES)
+      .map(id => attachmentsById.get(id))
+      .filter(Boolean);
     await Promise.all(eligible.map(async (a) => {
       try {
         const dataUrl = await imageResolver(a);
@@ -436,14 +449,6 @@ export async function buildNotePdf({
 
   drawFooter(doc, { therapistName, now });
   return doc;
-}
-
-function collectInlineAttachmentIds(lines) {
-  const out = new Set();
-  for (const line of lines) {
-    for (const ref of extractAttachmentRefs(line)) out.add(ref.id);
-  }
-  return out;
 }
 
 function slugifyForFilename(s) {

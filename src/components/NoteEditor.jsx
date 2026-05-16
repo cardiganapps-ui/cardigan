@@ -279,7 +279,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   // "aborted" — those are handled internally by the hook.
   const lastErrorRef = useRef("");
   useEffect(() => {
-    if (!dictation.error || dictation.error === lastErrorRef.current) return;
+    // Reset the de-dupe ref when the error clears so the SAME error
+    // code re-emerging later still fires a toast. Without this, a
+    // user who hits "not-allowed", grants permission, then later has
+    // the permission revoked would see the second failure silently
+    // (no toast → no explanation for why the mic stopped).
+    if (!dictation.error) {
+      lastErrorRef.current = "";
+      return;
+    }
+    if (dictation.error === lastErrorRef.current) return;
     lastErrorRef.current = dictation.error;
     const key =
       dictation.error === "not-allowed" ? "notes.voice.errPermission" :
@@ -415,6 +424,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         "restored" content while the DB still holds the old content,
         and the next keystroke would silently persist the divergence. */
   const handleRestoreVersion = useCallback(async ({ title: newTitle, content: newContent }) => {
+    // The kebab menu (and therefore Historial) is already gated on
+    // !readOnly, so this branch is unreachable from the UI. Belt-and-
+    // braces in case a future caller wires restore from somewhere
+    // else — readOnly mode (admin view-as) must never write.
+    if (readOnly) throw new Error("read_only");
     if (note?.encrypted && noteCrypto && !noteCrypto.canEncrypt) {
       throw new Error("locked");
     }
@@ -458,7 +472,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       setSaveState("dirty");
       throw new Error("save_failed");
     }
-  }, [note, noteCrypto, title, content, onSave]);
+  }, [note, noteCrypto, title, content, onSave, readOnly]);
 
   /* ── Find + outline ────────────────────────────────────────────── */
   const handleJumpToMatch = useCallback((match) => {
@@ -560,18 +574,21 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
       if (att.encrypted) {
         if (!noteCrypto?.decryptAttachmentBytes) return null;
-        let bin = "";
-        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-        const ctB64 = btoa(bin);
-        const plain = await noteCrypto.decryptAttachmentBytes(ctB64, att.iv);
+        const plain = await noteCrypto.decryptAttachmentBytes(bytes, att.iv);
         if (!plain) return null;
         bytes = plain;
       }
       // Build a data URL with the row's original mime so jsPDF can
-      // sniff JPEG / PNG / WEBP correctly.
-      let bin2 = "";
-      for (let i = 0; i < bytes.length; i++) bin2 += String.fromCharCode(bytes[i]);
-      const b64 = btoa(bin2);
+      // sniff JPEG / PNG / WEBP correctly. The final base64 here is
+      // unavoidable — jsPDF.addImage wants either a data URL or an
+      // <img> reference, and constructing an <img> + waiting for it
+      // is heavier than the single bytes→base64 pass.
+      let bin = "";
+      const CHUNK = 8192;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const b64 = btoa(bin);
       return `data:${att.mime || "image/jpeg"};base64,${b64}`;
     } catch {
       return null;

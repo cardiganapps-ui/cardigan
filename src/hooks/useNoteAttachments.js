@@ -135,7 +135,9 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
           setMutationError("El cifrado se bloqueó a mitad de la subida. Desbloquea e intenta de nuevo.");
           return null;
         }
-        uploadBytes = Uint8Array.from(atob(wrapped.ciphertext), c => c.charCodeAt(0));
+        // encryptBytes now returns raw bytes for the ciphertext — no
+        // base64 round-trip needed on the upload path.
+        uploadBytes = wrapped.ciphertext;
         uploadContentType = "application/octet-stream";
         encrypted = true;
         iv = wrapped.iv;

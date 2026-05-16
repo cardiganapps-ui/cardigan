@@ -248,9 +248,15 @@ export async function decryptNote(bundleBase64, masterKeyBytes) {
 // Same AES-GCM master key as the text notes — different envelope
 // shape. Image bundles can be tens of MB so we don't prefix a
 // version byte or embed the IV in the ciphertext; the row carries
-// both `encrypted=true` and an `iv` column. Returns base64 strings
-// so the caller can stuff them straight into JSON / DB rows
-// without binary serialization concerns.
+// both `encrypted=true` and an `iv` column.
+//
+// Returns the ciphertext as raw Uint8Array and the IV as base64.
+// Raw bytes for ciphertext is the right currency: it ships
+// straight to R2 via PUT, and the read path decrypts from raw
+// bytes too. A previous iteration returned base64 ciphertext
+// here, which forced upload + download paths to round-trip
+// 10MB+ payloads through atob/btoa on the main thread — multiple
+// hundreds of ms on mid-range phones.
 export async function encryptBytes(bytes, masterKeyBytes) {
   if (!(bytes instanceof Uint8Array)) throw new Error("bytes must be a Uint8Array");
   const aesKey = await importAesKey(masterKeyBytes);
@@ -261,24 +267,25 @@ export async function encryptBytes(bytes, masterKeyBytes) {
     bytes
   );
   return {
-    ciphertext: bytesToBase64(new Uint8Array(ct)),
+    ciphertext: new Uint8Array(ct),
     iv: bytesToBase64(iv),
   };
 }
 
 /**
  * Decrypt an attachment bundle back into raw bytes.
- * Inputs are base64 (matches what encryptBytes returned).
+ * Accepts ciphertext as Uint8Array (matches what encryptBytes
+ * returned) and IV as base64 (matches what the row column holds).
  * Throws on tamper / wrong key.
  */
-export async function decryptBytes(ciphertextBase64, ivBase64, masterKeyBytes) {
+export async function decryptBytes(ciphertextBytes, ivBase64, masterKeyBytes) {
+  if (!(ciphertextBytes instanceof Uint8Array)) throw new Error("ciphertextBytes must be a Uint8Array");
   const iv = base64ToBytes(ivBase64);
   if (iv.length !== IV_BYTES) throw new Error("Bad IV length");
-  const ct = base64ToBytes(ciphertextBase64);
   const aesKey = await importAesKey(masterKeyBytes);
   let plain;
   try {
-    plain = await getCrypto().subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ct);
+    plain = await getCrypto().subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ciphertextBytes);
   } catch (_err) {
     const e = new Error("Failed to decrypt attachment");
     e.code = "decrypt_failed";

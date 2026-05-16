@@ -125,13 +125,10 @@ export function AttachmentStrip({ noteId }) {
           setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
           return;
         }
+        // Raw bytes straight into the bytes-lane decrypt — no
+        // base64 round-trip on the main thread.
         const buf = new Uint8Array(await r.arrayBuffer());
-        // Re-base64 the bytes for the decrypt helper — it accepts the
-        // same envelope the upload path emitted.
-        let bin = "";
-        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-        const ctBase64 = btoa(bin);
-        const plain = await noteCrypto.decryptAttachmentBytes(ctBase64, row.iv);
+        const plain = await noteCrypto.decryptAttachmentBytes(buf, row.iv);
         if (!alive) return;
         if (!plain) {
           setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
@@ -168,6 +165,25 @@ export function AttachmentStrip({ noteId }) {
       return next;
     });
   }, []);
+
+  // Auto-clear failed tiles when the vault unlocks. A user who
+  // opens an encrypted note while locked sees every tile fail;
+  // requiring them to tap "retry" on each one after unlock is
+  // friction we can avoid by detecting the canEncrypt→true flip
+  // and clearing failed entries so the resolver re-fires.
+  const canDecrypt = !!noteCrypto?.canEncrypt;
+  useEffect(() => {
+    if (!canDecrypt) return;
+    setTiles(prev => {
+      let changed = false;
+      const next = {};
+      for (const k of Object.keys(prev)) {
+        if (prev[k]?.failed) { changed = true; continue; }
+        next[k] = prev[k];
+      }
+      return changed ? next : prev;
+    });
+  }, [canDecrypt]);
 
   const handleDelete = useCallback(async (id) => {
     haptic.warn();

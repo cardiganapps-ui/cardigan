@@ -48,6 +48,9 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     upcomingSessions: enrichedSessions,
     payments: data.payments,
     notes: data.notes,
+    tags: [], tagLinks: [],
+    rescheduleRequests: [], setRescheduleRequests: () => {},
+    noteAttachments: [],
     tutorReminders,
     loading: false,
     fetchError: "",
@@ -58,13 +61,20 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     // All mutations are no-ops in demo. Shape mirrors useCardiganData's
     // return value so every destructure across the app resolves to a
     // callable (readOnly UI prevents most of these from firing anyway).
+    // Soft-delete actions return a no-op {commit,undo} shape matching
+    // the real factory so withUndoableDelete doesn't crash.
     createPatient: noop, updatePatient: noop, deletePatient: noop,
     createPotential: noop, discardPotential: noop, convertPotentialToActive: noop,
     createSession: noop, updateSessionStatus: noop, deleteSession: noop,
+    softDeleteSession: () => ({ commit: async () => true, undo: () => {} }),
     rescheduleSession: noop, generateRecurringSessions: noop, applyScheduleChange: noop, finalizePatient: noop,
     updateSessionModality: noop, updateSessionRate: noop, updateSessionVisitType: noop, updateCancelReason: noop,
     createPayment: noop, deletePayment: noop, updatePayment: noop,
+    softDeletePayment: () => ({ commit: async () => true, undo: () => {} }),
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
+    softDeleteNote: () => ({ commit: async () => true, undo: () => {} }),
+    upsertTag: noopNote, deleteTag: noop, linkTag: noop, unlinkTag: noop,
+    uploadNoteAttachment: noopNote, deleteNoteAttachment: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,
     measurements: data.measurements || [],
     createMeasurement: noopNote, updateMeasurement: noop, deleteMeasurement: noop,
@@ -72,6 +82,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     expenses: data.expenses || [],
     recurringExpenses: data.recurringExpenses || [],
     createExpense: noop, updateExpense: noop, deleteExpense: noop,
+    softDeleteExpense: () => ({ commit: async () => true, undo: () => {} }),
     createRecurringTemplate: noopNote,
     updateRecurringTemplate: noop, deleteRecurringTemplate: noop,
     generateRecurringExpenses: async () => ({ inserted: 0, pending: 0 }),
