@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { maybeConvertHeic } from "../utils/heicConvert";
+import { enqueue, registerHandler } from "../lib/mutationQueue.js";
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -9,10 +10,48 @@ async function authHeaders() {
   };
 }
 
+// Offline queue handlers for the DB-only mutations. uploadDocument is
+// intentionally NOT queued — the binary payload + presigned URL TTL +
+// R2 PUT make it a bigger design problem. Users see an explicit
+// "necesitas conexión para subir archivos" error in the upload sheet
+// when offline.
+registerHandler("documents.update", async ({ id, userId, patch }) => {
+  return await supabase.from("documents").update(patch).eq("id", id).eq("user_id", userId).select("updated_at").maybeSingle();
+});
+
+// Delete is two server-side ops: R2 object purge (via API endpoint)
+// then the DB row. Both run on replay; R2 errors are swallowed
+// (orphan recoverable via audit) so we don't block the DB delete.
+// authHeaders is called inside the handler so the token is fresh at
+// replay time — a stale enqueue-time token would 401.
+registerHandler("documents.delete", async ({ id, userId, filePath }) => {
+  if (filePath) {
+    try {
+      const headers = await authHeaders();
+      await fetch("/api/delete-document", {
+        method: "POST", headers,
+        body: JSON.stringify({ path: filePath }),
+      });
+    } catch { /* R2 orphan — audit surfaces */ }
+  }
+  return await supabase.from("documents").delete().eq("id", id).eq("user_id", userId);
+});
+
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
 
   async function uploadDocument({ patientId, file, sessionId, name, onProgress, kind }) {
     if (!file) return null;
+    // Uploads need network — the presigned URL flow + R2 PUT don't
+    // queue cleanly. Surface a clear error rather than silently
+    // failing or pretending to queue.
+    if (isOffline()) {
+      setMutationError("Necesitas conexión para subir archivos.");
+      return null;
+    }
     setMutating(true);
     setMutationError("");
     // iPhones default to HEIC, which Anthropic vision can't read and
@@ -89,43 +128,92 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
   }
 
   async function renameDocument(id, name) {
-    setMutating(true);
     setMutationError("");
-    const { data, error } = await supabase.from("documents")
-      .update({ name })
-      .eq("id", id).eq("user_id", userId).select("updated_at").single();
+    const nowIso = new Date().toISOString();
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: nowIso } : d));
+    if (typeof id === "string" && id.startsWith("temp-")) return true;
+    if (isOffline()) {
+      await enqueue("documents.update", { id, userId, patch: { name } });
+      return true;
+    }
+    setMutating(true);
+    let data, error;
+    try {
+      const res = await supabase.from("documents")
+        .update({ name }).eq("id", id).eq("user_id", userId).select("updated_at").maybeSingle();
+      data = res.data; error = res.error;
+    } catch {
+      await enqueue("documents.update", { id, userId, patch: { name } });
+      setMutating(false);
+      return true;
+    }
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: data.updated_at } : d));
+    if (data?.updated_at) {
+      setDocuments(prev => prev.map(d => d.id === id ? { ...d, updated_at: data.updated_at } : d));
+    }
     return true;
   }
 
   async function tagDocumentSession(id, sessionId) {
-    setMutating(true);
     setMutationError("");
-    const { data, error } = await supabase.from("documents")
-      .update({ session_id: sessionId || null })
-      .eq("id", id).eq("user_id", userId).select("updated_at").single();
+    const next = sessionId || null;
+    const nowIso = new Date().toISOString();
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: next, updated_at: nowIso } : d));
+    if (typeof id === "string" && id.startsWith("temp-")) return true;
+    if (isOffline()) {
+      await enqueue("documents.update", { id, userId, patch: { session_id: next } });
+      return true;
+    }
+    setMutating(true);
+    let data, error;
+    try {
+      const res = await supabase.from("documents")
+        .update({ session_id: next }).eq("id", id).eq("user_id", userId).select("updated_at").maybeSingle();
+      data = res.data; error = res.error;
+    } catch {
+      await enqueue("documents.update", { id, userId, patch: { session_id: next } });
+      setMutating(false);
+      return true;
+    }
     setMutating(false);
     if (error) { setMutationError(error.message); return false; }
-    setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: sessionId || null, updated_at: data.updated_at } : d));
+    if (data?.updated_at) {
+      setDocuments(prev => prev.map(d => d.id === id ? { ...d, updated_at: data.updated_at } : d));
+    }
     return true;
   }
 
   async function deleteDocument(id) {
+    setMutationError("");
     const doc = documents.find(d => d.id === id);
-    if (doc?.file_path) {
-      const headers = await authHeaders();
-      await fetch("/api/delete-document", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ path: doc.file_path }),
-      });
-    }
-    const { error } = await supabase.from("documents").delete().eq("id", id).eq("user_id", userId);
-    if (error) { setMutationError(error.message); return false; }
+    const filePath = doc?.file_path;
+    // Optimistic removal applies whether we hit the wire, the queue,
+    // or just drop a temp-id doc locally.
     setDocuments(prev => prev.filter(d => d.id !== id));
-    return true;
+    if (typeof id === "string" && id.startsWith("temp-")) return true;
+    if (isOffline()) {
+      await enqueue("documents.delete", { id, userId, filePath });
+      return true;
+    }
+    // Online: R2 first (so a failed DB delete doesn't leave the file
+    // orphaned), then the row. Failures on either side fall to the
+    // queue with the same args.
+    try {
+      if (filePath) {
+        const headers = await authHeaders();
+        await fetch("/api/delete-document", {
+          method: "POST", headers,
+          body: JSON.stringify({ path: filePath }),
+        });
+      }
+      const { error } = await supabase.from("documents").delete().eq("id", id).eq("user_id", userId);
+      if (error) { setMutationError(error.message); return false; }
+      return true;
+    } catch {
+      await enqueue("documents.delete", { id, userId, filePath });
+      return true;
+    }
   }
 
   async function getDocumentUrl(filePath) {

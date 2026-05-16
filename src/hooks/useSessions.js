@@ -26,20 +26,38 @@ registerHandler("sessions.delete", async ({ id, userId }) => {
   return await supabase.from("sessions").delete().eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelReason }) => {
-  // Note: no p_expected_version — replay bypasses the optimistic lock.
-  return await supabase.rpc("update_session_status_atomic", {
+registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelReason, enqueuedVersion }) => {
+  // Conflict detection: if the row's version has moved past what we
+  // captured at enqueue time, another writer landed first. We still
+  // replay (last-write-wins by design for offline) but flag the
+  // result so drain() can surface the count.
+  let conflict = false;
+  if (enqueuedVersion != null) {
+    const { data: current } = await supabase.from("sessions").select("version").eq("id", id).maybeSingle();
+    if (current && current.version > enqueuedVersion) conflict = true;
+  }
+  const result = await supabase.rpc("update_session_status_atomic", {
     p_session_id: id,
     p_new_status: newStatus,
     p_cancel_reason: cancelReason,
   });
+  if (result.error) return result;
+  return { ...result, conflict };
 });
 
 // Generic session UPDATE replay — used by writeSessionWithLock when
 // offline / on transport error and by rescheduleSession. No version
-// filter (last-write-wins on replay).
-registerHandler("sessions.update", async ({ id, userId, patch }) => {
-  return await supabase.from("sessions").update(patch).eq("id", id).eq("user_id", userId);
+// filter (last-write-wins on replay); enqueuedVersion is used solely
+// for conflict counting.
+registerHandler("sessions.update", async ({ id, userId, patch, enqueuedVersion }) => {
+  let conflict = false;
+  if (enqueuedVersion != null) {
+    const { data: current } = await supabase.from("sessions").select("version").eq("id", id).maybeSingle();
+    if (current && current.version > enqueuedVersion) conflict = true;
+  }
+  const result = await supabase.from("sessions").update(patch).eq("id", id).eq("user_id", userId);
+  if (result.error) return result;
+  return { ...result, conflict };
 });
 
 // Bulk insert (recurring schedule generation). Replay-safe via the
@@ -362,6 +380,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       await enqueue("sessions.update_status_atomic", {
         id: sessionId, newStatus, cancelReason: cancelReasonInput,
+        enqueuedVersion: prevSession.version ?? null,
       });
       return true;
     }
@@ -497,7 +516,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const isOptimisticRow = typeof sessionId === "string" && sessionId.startsWith("temp-");
     if (isOptimisticRow) return true;
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      await enqueue("sessions.update", { id: sessionId, userId, patch });
+      await enqueue("sessions.update", { id: sessionId, userId, patch, enqueuedVersion: prevSession.version ?? null });
       return true;
     }
 
@@ -530,7 +549,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       } catch {
         // Transport-level failure — queue with last-write-wins replay.
         // Optimistic state stays so the user's reschedule is preserved.
-        await enqueue("sessions.update", { id: sessionId, userId, patch });
+        await enqueue("sessions.update", { id: sessionId, userId, patch, enqueuedVersion: prevSession.version ?? null });
       }
     })();
 
@@ -867,12 +886,12 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // replay) and return success. Optimistic state was already applied
     // by the caller. onSuccess (e.g. patient.billed adjustment in
     // updateSessionRate) still runs locally.
+    const expectedVersion = prevSession.version ?? null;
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      await enqueue("sessions.update", { id: sessionId, userId, patch });
+      await enqueue("sessions.update", { id: sessionId, userId, patch, enqueuedVersion: expectedVersion });
       if (typeof onSuccess === "function") await onSuccess();
       return true;
     }
-    const expectedVersion = prevSession.version ?? null;
     let q = supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
     if (expectedVersion != null) q = q.eq("version", expectedVersion);
     let data, error;
@@ -881,7 +900,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       data = res.data; error = res.error;
     } catch {
       // Transport failure mid-flight — queue and keep optimistic state.
-      await enqueue("sessions.update", { id: sessionId, userId, patch });
+      await enqueue("sessions.update", { id: sessionId, userId, patch, enqueuedVersion: expectedVersion });
       if (typeof onSuccess === "function") await onSuccess();
       return true;
     }

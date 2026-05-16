@@ -40,6 +40,35 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+// ── Background Sync nudge for the offline mutation queue ──
+// When the page enqueues a mutation while offline (or after a
+// transport error), it registers the "cardigan-drain-queue" sync tag.
+// Chromium fires `sync` when connectivity returns — even if the tab
+// is backgrounded — and we broadcast a DRAIN_QUEUE_NUDGE message to
+// every open client. Each client's useMutationQueue listens for the
+// message and triggers drain().
+//
+// Limitations (true tab-closed background sync needs more work):
+//   • If NO client is open, the message lands nowhere and the queue
+//     stays put until the user reopens the app. Real tab-closed sync
+//     would need the SW to import the queue lib + supabase auth
+//     state, which is a separate design problem.
+//   • Safari (iOS) doesn't implement SyncManager — falls back to the
+//     existing reconnect-based drain in the page (still works).
+//   • Firefox doesn't ship Background Sync — same fallback.
+self.addEventListener("sync", (event) => {
+  if (event.tag === "cardigan-drain-queue") {
+    event.waitUntil(broadcastDrainNudge());
+  }
+});
+
+async function broadcastDrainNudge() {
+  const clients = await self.clients.matchAll({ includeUncontrolled: true });
+  for (const client of clients) {
+    client.postMessage({ type: "DRAIN_QUEUE_NUDGE" });
+  }
+}
+
 // ── Runtime caching (replicated from previous generateSW config) ──
 
 // Supabase API — network-first with a 5-minute cache fallback. Bumped

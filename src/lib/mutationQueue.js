@@ -130,6 +130,19 @@ export async function enqueue(op, args, optimisticMeta) {
   entries.push(entry);
   await persist();
   notify();
+  // Best-effort Background Sync registration. When the browser
+  // implements SyncManager (Chromium-based) and the page is
+  // controlled by the SW, registering a tag causes the SW's `sync`
+  // event to fire on reconnect — even if the tab is backgrounded.
+  // The SW broadcasts a DRAIN_QUEUE_NUDGE to all clients (see sw.js).
+  // Safari + Firefox don't implement SyncManager — the existing
+  // reconnect-based drain in useMutationQueue still runs.
+  try {
+    if (typeof navigator !== "undefined" && navigator.serviceWorker && "SyncManager" in (globalThis.window || {})) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.sync) await reg.sync.register("cardigan-drain-queue");
+    }
+  } catch { /* permissions / unsupported — fallback path runs anyway */ }
   return entry;
 }
 
@@ -139,9 +152,10 @@ let draining = false;
 
 export async function drain() {
   await load();
-  if (draining) return { drained: 0, remaining: entries.length };
+  if (draining) return { drained: 0, remaining: entries.length, conflicts: 0 };
   draining = true;
   let drainedCount = 0;
+  let conflictsCount = 0;
   try {
     while (entries.length > 0) {
       const entry = entries[0];
@@ -170,9 +184,14 @@ export async function drain() {
         break;
       }
       // Success — pop, notify replay listeners (for state reconciliation),
-      // persist, continue.
+      // persist, continue. Handlers may opt-in to flagging `conflict: true`
+      // in the result when they detect that a concurrent online write
+      // bumped the row past the version captured at enqueue. The replay
+      // still applies (intentional last-write-wins for offline) but the
+      // count surfaces in the drain-success toast so the user knows.
       entries.shift();
       drainedCount += 1;
+      if (result?.conflict) conflictsCount += 1;
       for (const fn of replayListeners) {
         try { fn(entry, result); } catch { /* swallow */ }
       }
@@ -182,7 +201,7 @@ export async function drain() {
   } finally {
     draining = false;
   }
-  return { drained: drainedCount, remaining: entries.length };
+  return { drained: drainedCount, remaining: entries.length, conflicts: conflictsCount };
 }
 
 // Test/admin-only: drop all entries. Production code should never

@@ -96,7 +96,7 @@ describe("createPayment offline path", () => {
     const result = await queue.drain();
     await flush();
 
-    expect(result).toEqual({ drained: 1, remaining: 0 });
+    expect(result).toEqual({ drained: 1, remaining: 0, conflicts: 0 });
     // Replay reconciler swapped temp id → real id.
     expect(ctx.payments.get()[0].id).toBe("real-99");
     expect(ctx.payments.get()[0]._optimistic).toBeUndefined();

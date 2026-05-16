@@ -37,7 +37,7 @@ describe("mutationQueue", () => {
 
     const result = await mq.drain();
 
-    expect(result).toEqual({ drained: 3, remaining: 0 });
+    expect(result).toEqual({ drained: 3, remaining: 0, conflicts: 0 });
     expect(seen).toEqual([["a", 1], ["b", 2], ["a", 3]]);
     expect(mq.getEntries()).toEqual([]);
   });
@@ -55,13 +55,13 @@ describe("mutationQueue", () => {
 
     const first = await mq.drain();
     // First call errored, queue still has 2 entries (the head wasn't shifted).
-    expect(first).toEqual({ drained: 0, remaining: 2 });
+    expect(first).toEqual({ drained: 0, remaining: 2, conflicts: 0 });
     expect(mq.getEntries()[0].lastError).toBe("network");
     expect(mq.getEntries()[0].attempts).toBe(1);
 
     // Retry — first now succeeds, second runs and succeeds.
     const second = await mq.drain();
-    expect(second).toEqual({ drained: 2, remaining: 0 });
+    expect(second).toEqual({ drained: 2, remaining: 0, conflicts: 0 });
   });
 
   it("missing handler leaves the entry in queue without throwing", async () => {
@@ -110,6 +110,22 @@ describe("mutationQueue", () => {
     await mq.drain();
 
     expect(received).toEqual({ meta: { tempId: "temp-abc" }, real: "real-1" });
+  });
+
+  it("drain aggregates the per-entry `conflict` flag into the result count", async () => {
+    let i = 0;
+    mq.registerHandler("test.maybe-conflict", async () => {
+      i += 1;
+      // Every other entry "conflicts" with a remote write.
+      return { data: { ok: true }, conflict: i % 2 === 1 };
+    });
+
+    await mq.enqueue("test.maybe-conflict", {});
+    await mq.enqueue("test.maybe-conflict", {});
+    await mq.enqueue("test.maybe-conflict", {});
+
+    const result = await mq.drain();
+    expect(result).toEqual({ drained: 3, remaining: 0, conflicts: 2 });
   });
 
   it("re-entrant drain() returns immediately instead of double-running handlers", async () => {

@@ -1873,10 +1873,17 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             when the queue has pending entries (e.g. flushing right
             after reconnect). onDrainSuccess fires a success toast
             once per non-empty drain so the user gets positive
-            feedback that their offline changes were saved. */}
+            feedback that their offline changes were saved. When
+            handlers detect a version conflict (the row moved
+            server-side between enqueue and replay), the count gets
+            appended so the user knows their offline edit overwrote
+            something — surface, not block. */}
         <OfflineBanner onDrainSuccess={(result) => {
           const n = result.drained;
-          showSuccess(`${n} ${n === 1 ? "cambio guardado" : "cambios guardados"}`);
+          const c = result.conflicts || 0;
+          const base = `${n} ${n === 1 ? "cambio guardado" : "cambios guardados"}`;
+          const tail = c > 0 ? ` (${c} sobre ${c === 1 ? "un cambio remoto" : "cambios remotos"})` : "";
+          showSuccess(base + tail);
         }} />
 
         <div className="topbar">

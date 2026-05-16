@@ -28,9 +28,19 @@ registerHandler("payments.delete", async ({ id, userId }) => {
   return await supabase.from("payments").delete().eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("payments.update", async ({ id, userId, patch }) => {
+registerHandler("payments.update", async ({ id, userId, patch, enqueuedVersion }) => {
   // No .eq("version") — offline replay is last-write-wins by design.
-  return await supabase.from("payments").update(patch).eq("id", id).eq("user_id", userId).select().maybeSingle();
+  // We still surface a `conflict: true` flag when the row's current
+  // version is past the one captured at enqueue, so drain() can roll
+  // it into the success-toast count.
+  let conflict = false;
+  if (enqueuedVersion != null) {
+    const { data: current } = await supabase.from("payments").select("version").eq("id", id).maybeSingle();
+    if (current && current.version > enqueuedVersion) conflict = true;
+  }
+  const result = await supabase.from("payments").update(patch).eq("id", id).eq("user_id", userId).select().maybeSingle();
+  if (result.error) return result;
+  return { ...result, conflict };
 });
 
 // createPaymentActions is invoked on every render of useCardiganData,
@@ -283,7 +293,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     // Offline: queue without the version filter (last-write-wins on
     // replay) and return. Optimistic state already applied above.
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      await enqueue("payments.update", { id: paymentId, userId, patch });
+      await enqueue("payments.update", { id: paymentId, userId, patch, enqueuedVersion: prevPayment.version ?? null });
       return true;
     }
 
@@ -313,7 +323,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       } catch {
         // Transport failure mid-flight — queue with last-write-wins
         // replay semantics. Optimistic state stays in place.
-        await enqueue("payments.update", { id: paymentId, userId, patch });
+        await enqueue("payments.update", { id: paymentId, userId, patch, enqueuedVersion: prevPayment.version ?? null });
       }
     })();
 

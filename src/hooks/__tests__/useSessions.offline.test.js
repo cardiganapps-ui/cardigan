@@ -162,8 +162,10 @@ describe("updateSessionStatus offline path", () => {
       id: "s-1",
       newStatus: SESSION_STATUS.COMPLETED,
       cancelReason: null,
+      // enqueuedVersion captured so the replay handler can detect a
+      // version conflict (last-write-wins, but flagged in drain result).
+      enqueuedVersion: 3,
     });
-    expect(queue.getEntries()[0].args).not.toHaveProperty("expectedVersion");
     // No RPC call hit the wire.
     const rpcCalls = mock.calls.filter((c) => c.rpc);
     expect(rpcCalls).toHaveLength(0);
@@ -257,7 +259,7 @@ describe("generateRecurringSessions offline path", () => {
     await queue.enqueue("sessions.bulk_insert", { rows: [{ patient_id: "pat-1", date: todayShort(), time: "10:00" }] });
     const result = await queue.drain();
 
-    expect(result).toEqual({ drained: 1, remaining: 0 });
+    expect(result).toEqual({ drained: 1, remaining: 0, conflicts: 0 });
   });
 });
 
