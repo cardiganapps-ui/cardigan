@@ -19,6 +19,7 @@ import { recalcPatientCounters } from "../utils/patients";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { enrichPatientsWithBalance } from "../utils/accounting";
+import { useFocusRefresh } from "./useFocusRefresh";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -789,6 +790,12 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   }, [userId, readOnly, noteCrypto?.canEncrypt]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Multi-device sync: when the tab regains visibility after being
+  // hidden for ≥ 10s, pull fresh data so an edit made on another
+  // device shows up without a manual reload. Suppressed while a
+  // mutation is in flight to avoid clobbering optimistic state.
+  useFocusRefresh(refresh, { mutating });
 
   /* ── DOMAIN ACTIONS (delegated to focused modules) ── */
   const helpers = { formatShortDate, getRecurringDates };
