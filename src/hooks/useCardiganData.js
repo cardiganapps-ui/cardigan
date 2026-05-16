@@ -13,6 +13,7 @@ import { createSessionActions, getRecurringDates } from "./useSessions";
 import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
 import { createNoteTagActions } from "./useNoteTags";
+import { createNoteAttachmentActions } from "./useNoteAttachments";
 import { createDocumentActions } from "./useDocuments";
 import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
@@ -575,6 +576,11 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // `tagLinks` is the many-to-many join (note_id, tag_id).
   const [tags, setTags] = useState(initialCache?.tags || []);
   const [tagLinks, setTagLinks] = useState(initialCache?.tagLinks || []);
+  // Note attachments (Phase 5). Image rows keyed by note_id; the
+  // editor strip filters down to attachments for the open note.
+  // Soft-deleted rows are filtered out at fetch time so the live
+  // state is always the user-visible set.
+  const [noteAttachments, setNoteAttachments] = useState(initialCache?.noteAttachments || []);
   // Skeleton stays hidden when we hydrated from cache — the user
   // sees their data immediately. Skeleton fires only on a true cold
   // start (no cache, fresh login, or after the cache aged out).
@@ -613,9 +619,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
     let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
-    let tRes, tlRes;
+    let tRes, tlRes, naRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -635,6 +641,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // (1000 tags × hundreds of links is plenty headroom).
         q("note_tags", 1000).order("created_at", { ascending: false }),
         q("note_tag_links", 5000),
+        // Note attachments (Phase 5). Live rows only — the
+        // `deleted_at is null` partial index makes this filter cheap.
+        q("note_attachments", 2000).is("deleted_at", null).order("created_at", { ascending: false }),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -784,6 +793,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     setExpenses(eData);
     setRecurringExpenses(reData);
     setRescheduleRequests(rrRes?.data || []);
+    setNoteAttachments(naRes?.data || []);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -803,6 +813,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       expenses: eData,
       recurringExpenses: reData,
       rescheduleRequests: rrRes?.data || [],
+      noteAttachments: naRes?.data || [],
     });
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
@@ -832,6 +843,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
   const { upsertTag, deleteTag, linkTag, unlinkTag } =
     createNoteTagActions(userId, tags, setTags, tagLinks, setTagLinks, setMutationError, noteCrypto);
+  const { uploadNoteAttachment, deleteNoteAttachment } =
+    createNoteAttachmentActions(userId, noteAttachments, setNoteAttachments, setMutating, setMutationError, noteCrypto);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
   const { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements } =
@@ -916,6 +929,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     expenses, recurringExpenses,
     rescheduleRequests, setRescheduleRequests,
     tags, tagLinks,
+    noteAttachments,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
@@ -933,6 +947,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), softDeleteNote, deleteNotes: guard(deleteNotes),
     upsertTag: guard(upsertTag), deleteTag: guard(deleteTag),
     linkTag: guard(linkTag), unlinkTag: guard(unlinkTag),
+    uploadNoteAttachment: guard(uploadNoteAttachment),
+    deleteNoteAttachment: guard(deleteNoteAttachment),
     uploadDocument: guard(uploadDocument), renameDocument: guard(renameDocument),
     tagDocumentSession: guard(tagDocumentSession), deleteDocument: guard(deleteDocument),
     getDocumentUrl,

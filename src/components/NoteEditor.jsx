@@ -12,6 +12,7 @@ import { NoteContextChip } from "./notes/NoteContextChip";
 import { FindInNote } from "./notes/FindInNote";
 import { NoteOutline } from "./notes/NoteOutline";
 import { VersionHistorySheet } from "./notes/VersionHistorySheet";
+import { AttachmentStrip } from "./notes/AttachmentStrip";
 import { useVoiceDictation } from "../lib/useVoiceDictation";
 import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
@@ -61,7 +62,7 @@ function isEffectivelyEmpty(title, content, templates) {
 export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay" }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
-  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment } = useCardigan();
   const noteTemplates = useNoteTemplates();
   const { isDesktop } = useViewport();
   const [pinned, setPinned] = useState(!!note?.pinned);
@@ -266,6 +267,107 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       "notes.voice.errGeneric";
     showToast?.(t(key), "error");
   }, [dictation.error, showToast, t]);
+
+  /* ── Image attachments ───────────────────────────────────────────
+     Phase 5. Three ingress paths land here:
+       - Toolbar paperclip → file-picker
+       - Drag-and-drop onto the scroll area
+       - Paste image into the editor body
+     Each one ultimately calls uploadNoteAttachment, which inserts
+     a row in note_attachments + uploads bytes to R2. We append a
+     trailing newline + markdown reference at the end of the body
+     so the source preserves the link even though v1 renders the
+     image in the strip below the editor, not inline. */
+  const attachInputRef = useRef(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [attachBusy, setAttachBusy] = useState(false);
+
+  const insertAttachmentMarkdown = useCallback((id) => {
+    const ref = `\n![](attachment:${id})\n`;
+    editorRef.current?.insertText(ref);
+  }, []);
+
+  const uploadFileAsAttachment = useCallback(async (file) => {
+    if (!file || !note?.id || readOnly) return;
+    // 10MB ceiling — anything larger is almost always an iPhone HEIC
+    // straight out of the camera, and our v1 doesn't HEIC-convert
+    // (deferred to Phase 6 if telemetry shows pain).
+    if (file.size > 10 * 1024 * 1024) {
+      showToast?.(t("notes.attachments.tooLarge"), "error");
+      return;
+    }
+    if (!/^image\//.test(file.type)) {
+      showToast?.(t("notes.attachments.notImage"), "error");
+      return;
+    }
+    setAttachBusy(true);
+    try {
+      const row = await uploadNoteAttachment({ noteId: note.id, file });
+      if (row?.id) {
+        insertAttachmentMarkdown(row.id);
+        haptic.success();
+      } else {
+        showToast?.(t("notes.attachments.uploadFailed"), "error");
+      }
+    } finally {
+      setAttachBusy(false);
+    }
+  }, [note?.id, readOnly, uploadNoteAttachment, insertAttachmentMarkdown, showToast, t]);
+
+  const onPaperclipClick = useCallback(() => {
+    if (attachBusy || readOnly || !note?.id) return;
+    attachInputRef.current?.click();
+  }, [attachBusy, readOnly, note?.id]);
+
+  const onAttachInputChange = useCallback(async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow re-uploading the same file later
+    for (const f of files) {
+      // Serial — concurrent uploads compete for the same network
+      // and confuse the progress bar UX. Most users attach one at
+      // a time anyway.
+      await uploadFileAsAttachment(f);
+    }
+  }, [uploadFileAsAttachment]);
+
+  const onScrollPaste = useCallback((e) => {
+    if (readOnly || !note?.id) return;
+    const items = e.clipboardData?.items || [];
+    for (const it of items) {
+      if (it.kind === "file" && /^image\//.test(it.type)) {
+        const file = it.getAsFile();
+        if (file) {
+          e.preventDefault();
+          uploadFileAsAttachment(file);
+          return;
+        }
+      }
+    }
+  }, [readOnly, note?.id, uploadFileAsAttachment]);
+
+  const onScrollDrop = useCallback(async (e) => {
+    if (readOnly || !note?.id) return;
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer?.files || []).filter(f => /^image\//.test(f.type));
+    for (const f of files) {
+      await uploadFileAsAttachment(f);
+    }
+  }, [readOnly, note?.id, uploadFileAsAttachment]);
+
+  const onScrollDragOver = useCallback((e) => {
+    if (readOnly || !note?.id) return;
+    if (e.dataTransfer?.types?.includes("Files")) {
+      e.preventDefault();
+      setDragOver(true);
+    }
+  }, [readOnly, note?.id]);
+
+  const onScrollDragLeave = useCallback((e) => {
+    // Only clear when leaving the editor entirely — bubbling
+    // dragleave inside child elements would otherwise flicker.
+    if (e.currentTarget === e.target) setDragOver(false);
+  }, []);
 
   /* ── Restore-from-history ────────────────────────────────────────
      Snapshots are written by the parent's updateNote success path,
@@ -495,6 +597,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           voiceSupported={dictation.supported}
           voiceRecording={dictation.recording}
           onVoiceToggle={toggleVoice}
+          onAttachClick={note?.id ? onPaperclipClick : undefined}
         />
       )}
 
@@ -571,7 +674,14 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       )}
 
       {/* ── Body (title + markdown editor) ────────────────────── */}
-      <div ref={scrollRef} className="mde-scroll">
+      <div
+        ref={scrollRef}
+        className={"mde-scroll" + (dragOver ? " is-drag-over" : "")}
+        onPaste={onScrollPaste}
+        onDrop={onScrollDrop}
+        onDragOver={onScrollDragOver}
+        onDragLeave={onScrollDragLeave}
+      >
         {dateStr && <div className="mde-date">{dateStr}</div>}
 
         {isBrandNewEmpty && !readOnly && (
@@ -612,6 +722,30 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           onRequestFind={() => setFindOpen(true)}
           placeholder={t("notes.bodyPlaceholder")}
         />
+
+        {note?.id && <AttachmentStrip noteId={note.id} />}
+
+        {/* Hidden file input — paperclip click opens this. We accept
+            image/* and let uploadFileAsAttachment enforce the precise
+            allowlist + size cap. */}
+        {!readOnly && note?.id && (
+          <input
+            ref={attachInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            multiple
+            onChange={onAttachInputChange}
+            style={{ display: "none" }}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        )}
+
+        {dragOver && (
+          <div className="mde-drop-overlay" aria-hidden="true">
+            <div className="mde-drop-overlay-inner">{t("notes.attachments.dropHere")}</div>
+          </div>
+        )}
       </div>
 
       {/* ── Footer (word count + reading time) ────────────────── */}

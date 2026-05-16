@@ -714,6 +714,17 @@ export default {
       errNetwork: "No hay conexi\u00f3n para el dictado.",
       errGeneric: "No se pudo iniciar el dictado.",
     },
+    attachments: {
+      attach: "Adjuntar imagen",
+      label: "Im\u00e1genes adjuntas",
+      preview: "Ver imagen",
+      dropHere: "Suelta la imagen para adjuntar",
+      tooLarge: "La imagen es demasiado grande (m\u00e1ximo 10MB).",
+      notImage: "Solo se admiten im\u00e1genes.",
+      uploadFailed: "No se pudo subir la imagen.",
+      deleteFailed: "No se pudo eliminar la imagen.",
+      loadFailed: "No se pudo cargar la imagen.",
+    },
   },
 
   // ── Avatar ──

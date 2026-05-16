@@ -112,8 +112,13 @@ const IconMic = () => (
     <line x1="9" y1="21" x2="15" y2="21"/>
   </svg>
 );
+const IconPaperclipMini = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5L11 17.5a2 2 0 0 1-3-3l7-7" />
+  </svg>
+);
 
-export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSupported, voiceRecording, onVoiceToggle }) {
+export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSupported, voiceRecording, onVoiceToggle, onAttachClick }) {
   const { t } = useT();
   const has = (k) => active?.has(k);
   return (
@@ -147,20 +152,27 @@ export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSuppor
       <Tool label={t("notes.task") || "Checklist"} hint={`${MOD_LABEL}⇧9`} active={has("task")} onClick={() => onBlock("task")} disabled={disabled}>
         <IconTask />
       </Tool>
+      {(onAttachClick || voiceSupported) && <Sep />}
+      {onAttachClick && (
+        <Tool
+          label={t("notes.attachments.attach") || "Adjuntar imagen"}
+          onClick={onAttachClick}
+          disabled={disabled}
+        >
+          <IconPaperclipMini />
+        </Tool>
+      )}
       {voiceSupported && (
-        <>
-          <Sep />
-          <Tool
-            label={voiceRecording ? (t("notes.voice.stop") || "Detener") : (t("notes.voice.start") || "Dictar")}
-            active={voiceRecording}
-            onClick={onVoiceToggle}
-            disabled={disabled}
-          >
-            <span className={voiceRecording ? "mde-voice-mic is-recording" : "mde-voice-mic"}>
-              <IconMic />
-            </span>
-          </Tool>
-        </>
+        <Tool
+          label={voiceRecording ? (t("notes.voice.stop") || "Detener") : (t("notes.voice.start") || "Dictar")}
+          active={voiceRecording}
+          onClick={onVoiceToggle}
+          disabled={disabled}
+        >
+          <span className={voiceRecording ? "mde-voice-mic is-recording" : "mde-voice-mic"}>
+            <IconMic />
+          </span>
+        </Tool>
       )}
     </div>
   );

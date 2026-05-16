@@ -244,6 +244,49 @@ export async function decryptNote(bundleBase64, masterKeyBytes) {
   return textDecoder.decode(plain);
 }
 
+// ── Attachment byte helpers (Phase 5) ──
+// Same AES-GCM master key as the text notes — different envelope
+// shape. Image bundles can be tens of MB so we don't prefix a
+// version byte or embed the IV in the ciphertext; the row carries
+// both `encrypted=true` and an `iv` column. Returns base64 strings
+// so the caller can stuff them straight into JSON / DB rows
+// without binary serialization concerns.
+export async function encryptBytes(bytes, masterKeyBytes) {
+  if (!(bytes instanceof Uint8Array)) throw new Error("bytes must be a Uint8Array");
+  const aesKey = await importAesKey(masterKeyBytes);
+  const iv = randomBytes(IV_BYTES);
+  const ct = await getCrypto().subtle.encrypt(
+    { name: "AES-GCM", iv },
+    aesKey,
+    bytes
+  );
+  return {
+    ciphertext: bytesToBase64(new Uint8Array(ct)),
+    iv: bytesToBase64(iv),
+  };
+}
+
+/**
+ * Decrypt an attachment bundle back into raw bytes.
+ * Inputs are base64 (matches what encryptBytes returned).
+ * Throws on tamper / wrong key.
+ */
+export async function decryptBytes(ciphertextBase64, ivBase64, masterKeyBytes) {
+  const iv = base64ToBytes(ivBase64);
+  if (iv.length !== IV_BYTES) throw new Error("Bad IV length");
+  const ct = base64ToBytes(ciphertextBase64);
+  const aesKey = await importAesKey(masterKeyBytes);
+  let plain;
+  try {
+    plain = await getCrypto().subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ct);
+  } catch (_err) {
+    const e = new Error("Failed to decrypt attachment");
+    e.code = "decrypt_failed";
+    throw e;
+  }
+  return new Uint8Array(plain);
+}
+
 // ── Tag label helpers (Phase 1.3) ──
 // Tags use the existing encrypt/decrypt envelope for the label
 // ciphertext (when crypto is enabled). The hash helper here is the

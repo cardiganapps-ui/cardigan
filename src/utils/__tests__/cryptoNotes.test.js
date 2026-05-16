@@ -8,6 +8,8 @@ import {
   generateMasterKeyBytes,
   encryptNote,
   decryptNote,
+  encryptBytes,
+  decryptBytes,
   wrapMasterWithPassphrase,
   unwrapMasterWithPassphrase,
   _internals,
@@ -129,5 +131,41 @@ describe("master key generation", () => {
     expect(b.length).toBe(32);
     // Cosmically unlikely collision, sanity check.
     expect(a).not.toEqual(b);
+  });
+});
+
+describe("encryptBytes / decryptBytes (Phase 5 attachments)", () => {
+  it("round-trips arbitrary binary payloads", async () => {
+    const key = generateMasterKeyBytes();
+    const bytes = new Uint8Array(2048);
+    crypto.getRandomValues(bytes);
+    const { ciphertext, iv } = await encryptBytes(bytes, key);
+    expect(typeof ciphertext).toBe("string");
+    expect(typeof iv).toBe("string");
+    const out = await decryptBytes(ciphertext, iv, key);
+    expect(out.length).toBe(bytes.length);
+    expect(out).toEqual(bytes);
+  });
+
+  it("emits a fresh IV every call so identical bytes don't repeat", async () => {
+    const key = generateMasterKeyBytes();
+    const bytes = new Uint8Array([1, 2, 3, 4, 5]);
+    const a = await encryptBytes(bytes, key);
+    const b = await encryptBytes(bytes, key);
+    expect(a.iv).not.toBe(b.iv);
+    expect(a.ciphertext).not.toBe(b.ciphertext);
+  });
+
+  it("throws decrypt_failed when the wrong key is supplied", async () => {
+    const k1 = generateMasterKeyBytes();
+    const k2 = generateMasterKeyBytes();
+    const { ciphertext, iv } = await encryptBytes(new Uint8Array([1, 2, 3]), k1);
+    await expect(decryptBytes(ciphertext, iv, k2)).rejects.toMatchObject({ code: "decrypt_failed" });
+  });
+
+  it("rejects a malformed IV length", async () => {
+    const key = generateMasterKeyBytes();
+    const { ciphertext } = await encryptBytes(new Uint8Array([0xff]), key);
+    await expect(decryptBytes(ciphertext, "AAAA", key)).rejects.toThrow(/IV length/);
   });
 });

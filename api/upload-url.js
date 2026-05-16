@@ -48,6 +48,13 @@ const ALLOWED_UPLOAD_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/plain",
   "text/csv",
+  // Note-attachment encrypted lane (Phase 5). The client wraps image
+  // bytes with AES-GCM under the user's master key before upload, so
+  // the bytes R2 sees are opaque. Storing as octet-stream means the
+  // browser will download (never render) the raw ciphertext if the
+  // signed URL ever leaks — the only path to a viewable image is
+  // client-side decrypt with the master key.
+  "application/octet-stream",
 ]);
 
 async function handler(req, res) {

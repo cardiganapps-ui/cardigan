@@ -114,11 +114,22 @@ export async function getR2() {
   });
 }
 
-// Validate file path: must belong to user and contain no traversal
+// Validate file path: must belong to user and contain no traversal.
+//
+// Two accepted prefixes:
+//   • `<userId>/...`                      — documents, avatars, receipts
+//   • `notes/<userId>/<noteId>/<uuid>`    — Phase 5 note attachments,
+//     namespaced under `notes/` so the cleanup audit can find them
+//     in O(1) bucket listings without enumerating every user folder
+//
+// Path traversal (`..`) and empty segments (`//`) are rejected in
+// both shapes — same defence-in-depth as before.
 export function validatePath(path, userId) {
   if (!path || typeof path !== "string" || path.length > 512) return false;
   if (path.includes("..") || path.includes("//")) return false;
-  return path.startsWith(`${userId}/`);
+  if (path.startsWith(`${userId}/`)) return true;
+  if (path.startsWith(`notes/${userId}/`)) return true;
+  return false;
 }
 
 // Verify Supabase JWT and extract user_id

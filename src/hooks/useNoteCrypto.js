@@ -3,6 +3,8 @@ import { supabase } from "../supabaseClient";
 import {
   encryptNote,
   decryptNote,
+  encryptBytes,
+  decryptBytes,
   generateMasterKeyBytes,
   wrapMasterWithPassphrase,
   wrapMasterWithRecovery,
@@ -235,6 +237,24 @@ export function useNoteCrypto({ user } = {}) {
     }
   }, [status]);
 
+  // Bytes lane (Phase 5). Same key, different envelope (no version
+  // byte, IV stored separately on the row). Returns null when the
+  // vault is locked / disabled so the attachment code can fall back
+  // to a plaintext upload path.
+  const encryptAttachmentBytes = useCallback(async (bytes) => {
+    if (status !== "unlocked" || !masterKeyRef.current) return null;
+    return encryptBytes(bytes, masterKeyRef.current);
+  }, [status]);
+
+  const decryptAttachmentBytes = useCallback(async (ciphertextBase64, ivBase64) => {
+    if (status !== "unlocked" || !masterKeyRef.current) return null;
+    try {
+      return await decryptBytes(ciphertextBase64, ivBase64, masterKeyRef.current);
+    } catch {
+      return null;
+    }
+  }, [status]);
+
   return {
     status,
     error,
@@ -247,6 +267,8 @@ export function useNoteCrypto({ user } = {}) {
     changePassphrase,
     encrypt,
     decrypt,
+    encryptAttachmentBytes,
+    decryptAttachmentBytes,
     refreshStatus,
   };
 }

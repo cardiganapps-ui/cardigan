@@ -199,6 +199,31 @@ create table if not exists note_versions (
   unique (note_id, version_no)
 );
 
+-- Note attachments (migration 073). Inline media (images for v1)
+-- owned by a single note. Kept separate from `documents` for the
+-- usual Prime Directive isolation reasons: documents are billing
+-- artefacts that feed expedientes; note attachments are inline
+-- media. Mixing them tangles cascades, permissions, and audit.
+-- R2 path lives under notes/<userId>/<noteId>/<uuid>. When the
+-- user has note encryption unlocked at upload time the client
+-- encrypts bytes with the master AES-GCM key and stores the
+-- per-attachment IV here; the read path then fetches + decrypts
+-- rather than embedding the presigned URL.
+create table if not exists note_attachments (
+  id uuid primary key default gen_random_uuid(),
+  note_id uuid not null references notes(id) on delete cascade,
+  user_id uuid not null,
+  r2_path text not null,
+  mime text not null,
+  size_bytes integer,
+  width integer,
+  height integer,
+  encrypted boolean not null default false,
+  iv text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
 -- Documents (file metadata; actual files stored in R2)
 create table if not exists documents (
   id uuid default gen_random_uuid() primary key,
@@ -477,6 +502,8 @@ create index if not exists notes_search_tsv_idx on notes using gin (search_tsv);
 create index if not exists idx_note_tags_user_id on note_tags(user_id);
 create index if not exists idx_note_tag_links_tag_id on note_tag_links(tag_id);
 create index if not exists idx_note_versions_note_created on note_versions(note_id, created_at desc);
+create index if not exists idx_note_attachments_note on note_attachments(note_id) where deleted_at is null;
+create index if not exists idx_note_attachments_user_created on note_attachments(user_id, created_at desc) where deleted_at is null;
 create index if not exists idx_documents_user_id on documents(user_id);
 create index if not exists idx_documents_patient_id on documents(patient_id);
 create index if not exists idx_documents_user_kind on documents(user_id, kind);
@@ -524,6 +551,7 @@ alter table measurements enable row level security;
 alter table note_tags enable row level security;
 alter table note_tag_links enable row level security;
 alter table note_versions enable row level security;
+alter table note_attachments enable row level security;
 
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
@@ -558,6 +586,10 @@ do $$ begin
   end if;
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='note_versions' and policyname='note_versions_owner') then
     create policy note_versions_owner on note_versions
+      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='note_attachments' and policyname='note_attachments_owner') then
+    create policy note_attachments_owner on note_attachments
       for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
   end if;
 end $$;
