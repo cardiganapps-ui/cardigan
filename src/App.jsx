@@ -54,7 +54,7 @@ import { OfflineBanner } from "./components/OfflineBanner";
 import { useConnectivity } from "./hooks/useConnectivity";
 import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
-import { IconRefresh } from "./components/Icons";
+import { IconRefresh, IconSearch } from "./components/Icons";
 import Tooltip from "./components/Tooltip";
 // Tutorial only runs on first sign-in (and on user-triggered replay
 // from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
@@ -2020,6 +2020,20 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           <button type="button" className="topbar-brand" onClick={() => navigate("home")} aria-label={t("nav.home")} style={{ cursor:"pointer", background:"none", border:"none", padding:0 }}><LogoIcon size={20} color="currentColor" /><span>cardigan</span></button>
           <span className="topbar-screen-name">{t(`nav.${screen}`)}</span>
           <div className="topbar-right">
+            {/* Mobile-only entry to the command palette / patient
+                search. Cmd-K is keyboard-gated and TopbarActions is
+                hidden below 768px, so without this iPhone users had
+                no way to fuzzy-jump to a patient in a 30+ list. */}
+            {!readOnly && (
+              <button
+                type="button"
+                className="topbar-search-mobile"
+                onClick={() => setPaletteOpen(true)}
+                aria-label={t("cmdp.open") || "Buscar"}
+              >
+                <IconSearch size={18} />
+              </button>
+            )}
             {!readOnly && <TopbarActions onOpenPalette={() => setPaletteOpen(true)} />}
             <Tooltip label={t("retry")} placement="bottom">
               <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>

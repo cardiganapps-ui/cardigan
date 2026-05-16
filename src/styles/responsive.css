@@ -2,6 +2,25 @@
 .topbar-screen-name, .topbar-refresh-btn, .topbar-actions,
 .home-two-panel-desktop { display: none; }
 
+/* Mobile-only search-icon entry to the command palette. Opens the
+   same CommandPalette as Cmd-K on desktop, so phone users can
+   fuzzy-jump to a patient / screen / action without scrolling the
+   Patients list. Sits in topbar-right so the right-thumb reach is
+   natural. Tokens-only — flips automatically in dark mode. */
+.topbar-search-mobile {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  min-width: 36px; min-height: 36px;
+  background: var(--cream);
+  border: 1px solid var(--border-lt);
+  border-radius: 50%;
+  color: var(--charcoal-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-base) ease, background var(--dur-slow) ease;
+}
+.topbar-search-mobile:active { transform: scale(0.94); background: var(--teal-mist); }
+
 /* ── RESPONSIVE: DESKTOP (768px+) ── */
 @media (min-width: 768px) {
   /* Bottom-tab bar doesn't exist on desktop/iPad (sidebar drawer
@@ -129,6 +148,9 @@
     }
   }
 
+  /* Desktop has the larger search button inside TopbarActions —
+     hide the mobile-only entry to avoid two adjacent search icons. */
+  .topbar-search-mobile { display: none; }
   /* Desktop "+ Nuevo" button lives in the topbar; FAB softens to a
      secondary affordance so the two don't fight. */
   .topbar-actions { display: inline-flex; position: relative; margin-right: 4px; gap: 8px; align-items: center; }
