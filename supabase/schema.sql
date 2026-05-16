@@ -183,6 +183,22 @@ create table if not exists note_tag_links (
   primary key (note_id, tag_id)
 );
 
+-- Note version history (migration 072). Every successful save
+-- snapshots into a row here. The snapshot_note RPC owns debounce
+-- (60s collapse) + cap (50 versions per note) atomically so the
+-- timeline stays usable + storage bounded.
+create table if not exists note_versions (
+  id uuid primary key default gen_random_uuid(),
+  note_id uuid not null references notes(id) on delete cascade,
+  user_id uuid not null,
+  version_no int not null,
+  title_ciphertext text,
+  content_ciphertext text,
+  encrypted boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (note_id, version_no)
+);
+
 -- Documents (file metadata; actual files stored in R2)
 create table if not exists documents (
   id uuid default gen_random_uuid() primary key,
@@ -460,6 +476,7 @@ create index if not exists idx_notes_patient_id on notes(patient_id);
 create index if not exists notes_search_tsv_idx on notes using gin (search_tsv);
 create index if not exists idx_note_tags_user_id on note_tags(user_id);
 create index if not exists idx_note_tag_links_tag_id on note_tag_links(tag_id);
+create index if not exists idx_note_versions_note_created on note_versions(note_id, created_at desc);
 create index if not exists idx_documents_user_id on documents(user_id);
 create index if not exists idx_documents_patient_id on documents(patient_id);
 create index if not exists idx_documents_user_kind on documents(user_id, kind);
@@ -506,6 +523,7 @@ alter table user_profiles enable row level security;
 alter table measurements enable row level security;
 alter table note_tags enable row level security;
 alter table note_tag_links enable row level security;
+alter table note_versions enable row level security;
 
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
@@ -537,6 +555,10 @@ do $$ begin
       ) with check (
         exists (select 1 from note_tags t where t.id = tag_id and t.user_id = auth.uid())
       );
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='note_versions' and policyname='note_versions_owner') then
+    create policy note_versions_owner on note_versions
+      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
   end if;
 end $$;
 
@@ -1148,4 +1170,57 @@ as $$
     and n.search_tsv @@ websearch_to_tsquery('spanish', p_query)
   order by rank desc, n.updated_at desc
   limit greatest(1, coalesce(p_limit, 10));
+$$;
+
+-- Snapshot a note's current state into note_versions (migration 072).
+-- Debounce + cap are handled atomically server-side so the JS caller
+-- just fires-and-forgets. Returns the version_no that was written
+-- (debounced overwrites return the existing version_no).
+create or replace function public.snapshot_note(
+  p_note_id uuid,
+  p_title_ciphertext text,
+  p_content_ciphertext text,
+  p_encrypted boolean,
+  p_debounce_seconds integer default 60,
+  p_cap integer default 50
+) returns integer
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid;
+  v_latest_at timestamptz;
+  v_latest_no integer;
+  v_next_no integer;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'unauthenticated' using errcode = '42501';
+  end if;
+  if not exists (select 1 from notes where id = p_note_id and user_id = v_user_id) then
+    raise exception 'note not found' using errcode = 'P0002';
+  end if;
+  select created_at, version_no into v_latest_at, v_latest_no
+  from note_versions
+  where note_id = p_note_id
+  order by version_no desc
+  limit 1;
+  if v_latest_at is not null and now() - v_latest_at < make_interval(secs => p_debounce_seconds) then
+    update note_versions
+    set title_ciphertext = p_title_ciphertext,
+        content_ciphertext = p_content_ciphertext,
+        encrypted = p_encrypted,
+        created_at = now()
+    where note_id = p_note_id and version_no = v_latest_no;
+    return v_latest_no;
+  end if;
+  v_next_no := coalesce(v_latest_no, 0) + 1;
+  insert into note_versions (note_id, user_id, version_no, title_ciphertext, content_ciphertext, encrypted)
+    values (p_note_id, v_user_id, v_next_no, p_title_ciphertext, p_content_ciphertext, p_encrypted);
+  delete from note_versions
+  where note_id = p_note_id
+    and version_no <= v_next_no - greatest(1, coalesce(p_cap, 50));
+  return v_next_no;
+end;
 $$;

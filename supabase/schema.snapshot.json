@@ -1023,6 +1023,78 @@
       "data_type": "uuid",
       "is_nullable": "NO",
       "ordinal_position": 1,
+      "table_name": "note_versions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "note_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "note_versions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "note_versions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "version_no",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "note_versions",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "title_ciphertext",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "note_versions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "content_ciphertext",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "note_versions",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "false",
+      "column_name": "encrypted",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 7,
+      "table_name": "note_versions",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 8,
+      "table_name": "note_versions",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
       "table_name": "notes",
       "udt_name": "uuid"
     },
@@ -3729,6 +3801,24 @@
       "table_name": "note_tags"
     },
     {
+      "conname": "note_versions_note_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE",
+      "table_name": "note_versions"
+    },
+    {
+      "conname": "note_versions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "note_versions"
+    },
+    {
+      "conname": "note_versions_note_id_version_no_key",
+      "contype": "u",
+      "definition": "UNIQUE (note_id, version_no)",
+      "table_name": "note_versions"
+    },
+    {
       "conname": "notes_patient_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
@@ -4560,6 +4650,13 @@
       "security": "invoker"
     },
     {
+      "args": "p_note_id uuid, p_title_ciphertext text, p_content_ciphertext text, p_encrypted boolean, p_debounce_seconds integer, p_cap integer",
+      "definition": "CREATE OR REPLACE FUNCTION public.snapshot_note(p_note_id uuid, p_title_ciphertext text, p_content_ciphertext text, p_encrypted boolean, p_debounce_seconds integer DEFAULT 60, p_cap integer DEFAULT 50)\n RETURNS integer\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare\n  v_user_id uuid;\n  v_latest_at timestamptz;\n  v_latest_no integer;\n  v_next_no integer;\nbegin\n  v_user_id := auth.uid();\n  if v_user_id is null then\n    raise exception 'unauthenticated' using errcode = '42501';\n  end if;\n  if not exists (select 1 from notes where id = p_note_id and user_id = v_user_id) then\n    raise exception 'note not found' using errcode = 'P0002';\n  end if;\n  select created_at, version_no into v_latest_at, v_latest_no\n  from note_versions\n  where note_id = p_note_id\n  order by version_no desc\n  limit 1;\n  if v_latest_at is not null and now() - v_latest_at < make_interval(secs => p_debounce_seconds) then\n    update note_versions\n    set title_ciphertext = p_title_ciphertext,\n        content_ciphertext = p_content_ciphertext,\n        encrypted = p_encrypted,\n        created_at = now()\n    where note_id = p_note_id and version_no = v_latest_no;\n    return v_latest_no;\n  end if;\n  v_next_no := coalesce(v_latest_no, 0) + 1;\n  insert into note_versions (note_id, user_id, version_no, title_ciphertext, content_ciphertext, encrypted)\n    values (p_note_id, v_user_id, v_next_no, p_title_ciphertext, p_content_ciphertext, p_encrypted);\n  delete from note_versions\n  where note_id = p_note_id\n    and version_no <= v_next_no - greatest(1, coalesce(p_cap, 50));\n  return v_next_no;\nend;\n$function$\n",
+      "name": "snapshot_note",
+      "returns": "integer",
+      "security": "invoker"
+    },
+    {
       "args": "mon text",
       "definition": "CREATE OR REPLACE FUNCTION public.spanish_month_idx(mon text)\n RETURNS smallint\n LANGUAGE sql\n IMMUTABLE PARALLEL SAFE\nAS $function$\n  select case mon\n    when 'Ene' then 1 when 'Feb' then 2 when 'Mar' then 3 when 'Abr' then 4\n    when 'May' then 5 when 'Jun' then 6 when 'Jul' then 7 when 'Ago' then 8\n    when 'Sep' then 9 when 'Oct' then 10 when 'Nov' then 11 when 'Dic' then 12\n  end::smallint;\n$function$\n",
       "name": "spanish_month_idx",
@@ -4755,6 +4852,21 @@
       "indexdef": "CREATE UNIQUE INDEX note_tags_user_id_label_hash_key ON public.note_tags USING btree (user_id, label_hash)",
       "indexname": "note_tags_user_id_label_hash_key",
       "tablename": "note_tags"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_note_versions_note_created ON public.note_versions USING btree (note_id, created_at DESC)",
+      "indexname": "idx_note_versions_note_created",
+      "tablename": "note_versions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX note_versions_note_id_version_no_key ON public.note_versions USING btree (note_id, version_no)",
+      "indexname": "note_versions_note_id_version_no_key",
+      "tablename": "note_versions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX note_versions_pkey ON public.note_versions USING btree (id)",
+      "indexname": "note_versions_pkey",
+      "tablename": "note_versions"
     },
     {
       "indexdef": "CREATE INDEX notes_encrypted_user_idx ON public.notes USING btree (user_id) WHERE (encrypted = true)",
@@ -5463,6 +5575,15 @@
       "with_check": "(auth.uid() = user_id)"
     },
     {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "note_versions_owner",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "note_versions",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
       "cmd": "SELECT",
       "permissive": "PERMISSIVE",
       "policyname": "Admin reads all notes",
@@ -6004,6 +6125,10 @@
     },
     {
       "rls_enabled": true,
+      "table_name": "note_versions"
+    },
+    {
+      "rls_enabled": true,
       "table_name": "notes"
     },
     {
@@ -6146,6 +6271,9 @@
     },
     {
       "table_name": "note_tags"
+    },
+    {
+      "table_name": "note_versions"
     },
     {
       "table_name": "notes"

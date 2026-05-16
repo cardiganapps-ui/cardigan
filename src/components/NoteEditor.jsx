@@ -11,6 +11,7 @@ import { FormatToolbar } from "./notes/FormatToolbar";
 import { NoteContextChip } from "./notes/NoteContextChip";
 import { FindInNote } from "./notes/FindInNote";
 import { NoteOutline } from "./notes/NoteOutline";
+import { VersionHistorySheet } from "./notes/VersionHistorySheet";
 import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
@@ -76,6 +77,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [toast, setToast] = useState("");
   const [findOpen, setFindOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const saveTimer = useRef(null);
   const toastTimer = useRef(null);
   const scrollRef = useRef(null);
@@ -220,6 +222,28 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   /* ── Format buttons ────────────────────────────────────────────── */
   const onInlineFormat = (kind) => editorRef.current?.applyInlineFormat(kind);
   const onBlockFormat = (block) => editorRef.current?.applyBlockFormat(block);
+
+  /* ── Restore-from-history ────────────────────────────────────────
+     Snapshots are written by the parent's updateNote success path,
+     so just routing through onSave (which calls updateNote) gives
+     us a fresh post-restore snapshot for free — the pre-restore
+     content survives in the timeline as the prior version, and the
+     restore itself shows up as a new version. */
+  const handleRestoreVersion = useCallback(async ({ title: newTitle, content: newContent }) => {
+    setTitle(newTitle || "");
+    setContent(newContent || "");
+    editorRef.current?.setContent(newContent || "");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    pendingSaveArgs.current = null;
+    setSaveState("saving");
+    try {
+      await onSave({ title: newTitle || "", content: newContent || "" });
+      setSaveState("saved");
+    } catch {
+      setSaveState("dirty");
+      throw new Error("save_failed");
+    }
+  }, [onSave]);
 
   /* ── Find + outline ────────────────────────────────────────────── */
   const handleJumpToMatch = useCallback((match) => {
@@ -379,6 +403,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                     <IconSearchMenu />
                     <span>{t("notes.find.placeholder")}</span>
                   </button>
+                  {note?.id && (
+                    <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3 12a9 9 0 1 0 3-6.7" />
+                        <polyline points="3 4 3 9 8 9" />
+                        <polyline points="12 7 12 12 16 14" />
+                      </svg>
+                      <span>{t("notes.history")}</span>
+                    </button>
+                  )}
                   <div className="mde-menu-sep" />
                   <button className="mde-menu-item" role="menuitem" onClick={copyPlain}>
                     <IconClipboard size={15} />
@@ -538,6 +572,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
             />
           </div>
         </div>
+      )}
+
+      {/* ── Version history sheet ────────────────────────────────── */}
+      {note?.id && (
+        <VersionHistorySheet
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          note={note}
+          onRestore={handleRestoreVersion}
+        />
       )}
 
       {toast && (

@@ -27,6 +27,20 @@ registerHandler("notes.delete_many", async ({ ids, userId }) => {
   return await supabase.from("notes").delete().eq("user_id", userId).in("id", ids);
 });
 
+// Version snapshot (Phase 2). Enqueued by createNote + updateNote
+// after a successful network write. The RPC handles debounce
+// (60s collapse) + cap (50 versions/note) atomically. Ciphertext
+// payloads — the client-side encrypt step already happened in
+// the caller before this handler runs.
+registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted }) => {
+  return await supabase.rpc("snapshot_note", {
+    p_note_id: noteId,
+    p_title_ciphertext: titleCt,
+    p_content_ciphertext: contentCt,
+    p_encrypted: !!encrypted,
+  });
+});
+
 // Module-level ref so the once-registered replay listener swaps temp
 // note ids in the live state holder (same pattern as usePayments /
 // useSessions).
@@ -115,6 +129,15 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     // we substitute the original plaintext back in.
     const localRow = encrypted ? { ...data, content: content || "" } : data;
     setNotes(prev => [localRow, ...prev]);
+    // Version snapshot (Phase 2). Fire-and-forget enqueue so the
+    // returned note is the live row and the timeline gets a v1
+    // captured at first save. Server RPC debounces + caps.
+    enqueue("notes.snapshot", {
+      noteId: data.id,
+      titleCt: data.title || "",
+      contentCt: data.content || "",
+      encrypted: !!data.encrypted,
+    }).catch(() => { /* snapshot is best-effort */ });
     return localRow;
   }
 
@@ -151,6 +174,15 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? { ...n, updated_at: data.updated_at } : n));
     }
+    // Version snapshot (Phase 2). Use the ciphertext we already
+    // computed in `patch` so the snapshot matches what was just
+    // persisted. RPC handles 60s debounce + 50-version cap.
+    enqueue("notes.snapshot", {
+      noteId: id,
+      titleCt: patch.title || "",
+      contentCt: patch.content || "",
+      encrypted: !!patch.encrypted,
+    }).catch(() => { /* snapshot is best-effort */ });
     return true;
   }
 

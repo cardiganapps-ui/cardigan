@@ -685,6 +685,16 @@ export default {
     },
     outline: "\u00cdndice",
     outlineEmpty: "Agrega t\u00edtulos con # para ver el \u00edndice.",
+    history: "Historial",
+    historyTitle: "Historial de versiones",
+    historyEmpty: "A\u00fan no hay versiones guardadas.",
+    historyVersion: "Versi\u00f3n {n}",
+    historyCurrent: "Actual",
+    historyRestore: "Restaurar esta versi\u00f3n",
+    historyRestored: "Versi\u00f3n restaurada",
+    historyDecryptFailed: "No se pudo descifrar esta versi\u00f3n.",
+    historyLoadFailed: "No se pudo cargar el historial.",
+    historyNoChanges: "Sin cambios.",
   },
 
   // ── Avatar ──
