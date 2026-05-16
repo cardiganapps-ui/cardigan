@@ -38,10 +38,10 @@ async function flush() {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 }
 
-function seed() {
+function seed({ payments: initialPayments = [] } = {}) {
   const patient = { id: "pat-1", name: "Ana López", initials: "AL", rate: 1000, paid: 500, sessions: 4, billed: 4000, colorIdx: 0 };
   const patients = makeStateHolder([patient]);
-  const payments = makeStateHolder([]);
+  const payments = makeStateHolder(initialPayments);
   const actions = createPaymentActions(
     "user-1", patients.get(), patients, payments.get(), payments,
     makeStateHolder(false), makeStateHolder(""),
@@ -119,5 +119,53 @@ describe("createPayment offline path", () => {
     expect(queue.getEntries()).toHaveLength(1);
     expect(queue.getEntries()[0].op).toBe("payments.insert");
     expect(ctx.payments.get()).toHaveLength(1);
+  });
+});
+
+describe("deletePayment offline path", () => {
+  it("offline: removes locally + enqueues a payments.delete; no network call", async () => {
+    setOnline(false);
+    const ctx = seed({ payments: [{ id: "pmt-real", patient_id: "pat-1", amount: 200, version: 1 }] });
+
+    const ok = await ctx.actions.deletePayment("pmt-real");
+
+    expect(ok).toBe(true);
+    expect(ctx.payments.get()).toHaveLength(0);
+    expect(ctx.patients.get()[0].paid).toBe(300); // 500 - 200
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("payments.delete");
+    expect(queue.getEntries()[0].args.id).toBe("pmt-real");
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("deleting a temp-id row removes locally without queuing (no real row exists)", async () => {
+    setOnline(true);
+    const ctx = seed({ payments: [{ id: "temp-abc", patient_id: "pat-1", amount: 200 }] });
+
+    const ok = await ctx.actions.deletePayment("temp-abc");
+
+    expect(ok).toBe(true);
+    expect(ctx.payments.get()).toHaveLength(0);
+    expect(queue.getEntries()).toHaveLength(0);
+    expect(mock.calls).toHaveLength(0);
+  });
+});
+
+describe("updatePayment offline path", () => {
+  it("offline: queues with last-write-wins semantics (no version filter)", async () => {
+    setOnline(false);
+    const ctx = seed({ payments: [{ id: "pmt-real", patient_id: "pat-1", patient: "Ana López", amount: 300, date: "8-Abr", method: "transferencia", version: 5 }] });
+
+    const ok = await ctx.actions.updatePayment("pmt-real", {
+      patientName: "Ana López", amount: 450, method: "transferencia", date: "9-Abr", note: "",
+    });
+
+    expect(ok).toBe(true);
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("payments.update");
+    expect(queue.getEntries()[0].args.patch.amount).toBe(450);
+    // No version filter persisted — replay is last-write-wins.
+    expect(queue.getEntries()[0].args).not.toHaveProperty("expectedVersion");
+    expect(mock.calls).toHaveLength(0);
   });
 });

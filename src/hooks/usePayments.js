@@ -10,13 +10,27 @@ import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
 const CONFLICT_MSG = "Este pago se editó en otro lugar. Volvimos a cargarlo — intenta de nuevo.";
 const MISSING_MSG = "Este pago ya no existe.";
 
-// Offline queue handler for createPayment. Registered once at module
-// load time (idempotent — registerHandler is a Map.set). The handler
-// is called by the queue replayer with the persisted args; result
-// shape mirrors a normal supabase insert so the replay listener can
-// reconcile state (swap temp id → real id).
+// Offline queue handlers, registered once at module load time
+// (idempotent — registerHandler is a Map.set). Each handler runs the
+// supabase call with the persisted args; the result shape mirrors a
+// normal supabase response so the replay listener can reconcile state.
+//
+// Important: replay handlers DO NOT carry the F-tier version filter
+// for locked updates (e.g. payments.update). The queue's last-write-
+// wins semantics is intentional for offline writes — the user already
+// saw their offline state and expects it to persist. See migration 066
+// and the queue lib docblock for the full tradeoff.
 registerHandler("payments.insert", async ({ row }) => {
   return await supabase.from("payments").insert(row).select().single();
+});
+
+registerHandler("payments.delete", async ({ id, userId }) => {
+  return await supabase.from("payments").delete().eq("id", id).eq("user_id", userId);
+});
+
+registerHandler("payments.update", async ({ id, userId, patch }) => {
+  // No .eq("version") — offline replay is last-write-wins by design.
+  return await supabase.from("payments").update(patch).eq("id", id).eq("user_id", userId).select().maybeSingle();
 });
 
 // createPaymentActions is invoked on every render of useCardiganData,
@@ -121,17 +135,11 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
 
   async function deletePayment(paymentId) {
     const payment = payments.find(p => p.id === paymentId);
-    setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("payments").delete().eq("id", paymentId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
-    setPayments(prev => prev.filter(p => p.id !== paymentId));
 
-    // patient.paid is maintained by trg_payments_recalc_paid (migration
-    // 068) — the DELETE on payments fires the trigger which recomputes
-    // the patient's sum. Update local React state optimistically so
-    // the UI doesn't lag the round-trip.
+    // Optimistic removal + patient.paid decrement (trigger reconciles
+    // the persisted value on the next refetch).
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
     if (payment?.patient_id) {
       const patient = patients.find(p => p.id === payment.patient_id);
       if (patient) {
@@ -139,6 +147,34 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
         setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
       }
     }
+
+    // Skip the network call when we know we can't reach it. Deleting
+    // a temp-id row (one that originated offline and hasn't drained
+    // yet) is also a queue-only operation — no real row exists yet.
+    const isOptimisticRow = typeof paymentId === "string" && paymentId.startsWith("temp-");
+    if (isOptimisticRow || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      if (!isOptimisticRow) {
+        await enqueue("payments.delete", { id: paymentId, userId });
+      }
+      // For an unqueued temp row we just drop the optimistic insert
+      // from the queue (Phase 3 — for now the entry replays harmlessly
+      // and the resulting row gets deleted on next user action).
+      return true;
+    }
+
+    setMutating(true);
+    let error;
+    try {
+      const res = await supabase.from("payments").delete().eq("id", paymentId).eq("user_id", userId);
+      error = res.error;
+    } catch (e) {
+      // Transport-level failure — queue for retry.
+      await enqueue("payments.delete", { id: paymentId, userId });
+      setMutating(false);
+      return true;
+    }
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
     return true;
   }
 
@@ -235,16 +271,25 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       }
     };
 
+    const patch = {
+      patient_id: newPatient?.id || null,
+      patient: patientName,
+      initials: newPatient?.initials || getInitials(patientName),
+      amount: parsedAmount, date, method,
+      note: note || null,
+      color_idx: newPatient?.colorIdx || 0,
+    };
+
+    // Offline: queue without the version filter (last-write-wins on
+    // replay) and return. Optimistic state already applied above.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await enqueue("payments.update", { id: paymentId, userId, patch });
+      return true;
+    }
+
     (async () => {
       try {
-        let q = supabase.from("payments").update({
-          patient_id: newPatient?.id || null,
-          patient: patientName,
-          initials: newPatient?.initials || getInitials(patientName),
-          amount: parsedAmount, date, method,
-          note: note || null,
-          color_idx: newPatient?.colorIdx || 0,
-        }).eq("id", paymentId).eq("user_id", userId);
+        let q = supabase.from("payments").update(patch).eq("id", paymentId).eq("user_id", userId);
         if (expectedVersion != null) q = q.eq("version", expectedVersion);
         const { data, error } = await q.select().maybeSingle();
 
@@ -265,9 +310,10 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
         // ran and recomputes paid for both sides when patient_id
         // changes — see the migration's UPDATE branch. Local React
         // state was already adjusted optimistically above.
-      } catch (e) {
-        revertOptimistic();
-        setMutationError(e?.message || "Network error");
+      } catch {
+        // Transport failure mid-flight — queue with last-write-wins
+        // replay semantics. Optimistic state stays in place.
+        await enqueue("payments.update", { id: paymentId, userId, patch });
       }
     })();
 

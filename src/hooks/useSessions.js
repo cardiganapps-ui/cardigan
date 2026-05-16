@@ -8,9 +8,47 @@ import { getInitials, formatShortDate, parseShortDate, parseLocalDate } from "..
 import { recalcPatientCounters } from "../utils/patients";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { getRecurringDates } from "../utils/recurrence";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
 
 // Re-export for callers that historically imported it from this module.
 export { getRecurringDates };
+
+// Offline queue handlers (registered once at module load). Each handler
+// re-runs the supabase call when the queue drains on reconnect. For
+// locked updates the handler intentionally OMITS the version filter —
+// offline replays are last-write-wins by design (see migration 066
+// and lib/mutationQueue.js for the tradeoff).
+registerHandler("sessions.insert", async ({ row }) => {
+  return await supabase.from("sessions").insert(row).select().single();
+});
+
+registerHandler("sessions.delete", async ({ id, userId }) => {
+  return await supabase.from("sessions").delete().eq("id", id).eq("user_id", userId);
+});
+
+registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelReason }) => {
+  // Note: no p_expected_version — replay bypasses the optimistic lock.
+  return await supabase.rpc("update_session_status_atomic", {
+    p_session_id: id,
+    p_new_status: newStatus,
+    p_cancel_reason: cancelReason,
+  });
+});
+
+// Module-level ref to the latest setUpcomingSessions, mirrored from the
+// action factory. Same pattern as usePayments — the factory runs every
+// render; the onReplay subscription must register only once.
+let _setUpcomingSessionsRef = null;
+onReplay((entry, result) => {
+  if (entry.op !== "sessions.insert") return;
+  if (!result || result.error || !result.data) return;
+  const tempId = entry.optimisticMeta?.tempId;
+  if (!tempId || !_setUpcomingSessionsRef) return;
+  const data = result.data;
+  _setUpcomingSessionsRef(prev => prev.map(s => s.id === tempId
+    ? { ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" }
+    : s));
+});
 
 // Spanish copy for the "another tab/device wrote first" toast. Reused
 // across every session-mutation path that runs the optimistic-locking
@@ -21,6 +59,10 @@ const CONFLICT_MSG = "Esta sesión se editó en otro lugar. Volvimos a cargarla 
 const MISSING_MSG = "Esta sesión ya no existe.";
 
 export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
+  // Refresh the module-level ref so the once-registered onReplay
+  // listener writes into the live state holder.
+  _setUpcomingSessionsRef = setUpcomingSessions;
+
 
   // Optimistic locking conflict handler — shared by every session-update
   // path. Called when a .eq("version", v) filter rejected the write (0
@@ -107,9 +149,8 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       : (patient.rate ?? 0);
     const sessionDuration = Number(duration) > 0 ? Number(duration) : 60;
 
-    setMutating(true);
     setMutationError("");
-    const { data, error } = await supabase.from("sessions").insert({
+    const row = {
       user_id: userId, patient_id: patient.id,
       patient: patientName.trim(), initials: sessionInitials,
       time: time.trim(), day: dayName, date: date.trim(),
@@ -126,21 +167,60 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       // call site immediately sees the intent.
       is_recurring: false,
       color_idx: patient.colorIdx || 0,
-    }).select().single();
-    if (error) { setMutating(false); setMutationError(error.message); return false; }
+    };
 
-    // patient.sessions and patient.billed are maintained by
-    // trg_sessions_recalc_counters (migration 069). The session INSERT
-    // above fires the trigger which atomically recomputes both
-    // counters. Local React state mirrors the expected post-trigger
-    // values so the UI doesn't lag the round-trip — predicate gates
-    // the billed bump the same way the SQL function does.
+    // Optimistic path that supports the offline queue. When offline,
+    // we add a temp-id row to local state, enqueue the insert, and
+    // return immediately. The replay listener swaps temp id → real id
+    // on drain. patient.sessions / patient.billed run through the
+    // canonical predicate locally; the trigger will recompute the
+    // persisted value when the insert finally lands.
     const newSessions = patient.sessions + 1;
     const willCountNew = sessionCountsTowardBalance(
       { status: SESSION_STATUS.SCHEDULED, date: date.trim(), time: time.trim() },
     );
     const newBilled = willCountNew ? patient.billed + sessionRate : patient.billed;
 
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimisticRow = {
+        ...row, id: tempId, status: SESSION_STATUS.SCHEDULED,
+        colorIdx: row.color_idx, _optimistic: true,
+      };
+      setUpcomingSessions(prev => [...prev, optimisticRow]);
+      setPatients(prev => prev.map(p => p.id === patient.id
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+      await enqueue("sessions.insert", { row }, { tempId });
+      return true;
+    }
+
+    setMutating(true);
+    let data, error;
+    try {
+      const res = await supabase.from("sessions").insert(row).select().single();
+      data = res.data; error = res.error;
+    } catch {
+      // Transport-level failure mid-flight — queue with a temp row
+      // so the user's optimistic insert isn't lost.
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimisticRow = {
+        ...row, id: tempId, status: SESSION_STATUS.SCHEDULED,
+        colorIdx: row.color_idx, _optimistic: true,
+      };
+      setUpcomingSessions(prev => [...prev, optimisticRow]);
+      setPatients(prev => prev.map(p => p.id === patient.id
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
+      await enqueue("sessions.insert", { row }, { tempId });
+      setMutating(false);
+      return true;
+    }
+    if (error) { setMutating(false); setMutationError(error.message); return false; }
+
+    // patient.sessions and patient.billed are maintained server-side
+    // by trg_sessions_recalc_counters (migration 069). Local React
+    // state mirrors the same predicate-gated bump the SQL function
+    // applies. newSessions / newBilled were computed above for the
+    // offline path; same values land here.
     setUpcomingSessions(prev => [...prev, { ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" }]);
     setPatients(prev => prev.map(p => p.id === patient.id
       ? { ...p, sessions: newSessions, billed: newBilled } : p));
@@ -221,6 +301,17 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // the row, replace local state with server truth, restore the
     // patient counter via recalc. Distinct from a plain error: a 40001
     // means "your read was stale", not "the write failed".
+    //
+    // Offline: skip the RPC entirely, enqueue a version-less replay
+    // (last-write-wins on reconnect) — the optimistic state already
+    // mirrors what the user would see post-trigger.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await enqueue("sessions.update_status_atomic", {
+        id: sessionId, newStatus, cancelReason: cancelReasonInput,
+      });
+      return true;
+    }
+
     (async () => {
       try {
         const { error } = await supabase.rpc("update_session_status_atomic", {
@@ -257,17 +348,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
   async function deleteSession(sessionId) {
     const session = upcomingSessions.find(s => s.id === sessionId);
-    setMutating(true);
     setMutationError("");
-    const { error } = await supabase.from("sessions").delete().eq("id", sessionId).eq("user_id", userId);
-    setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+
+    // Optimistic removal. Apply BEFORE the network branch so the UI
+    // updates whether we hit the wire or queue.
     setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
 
     // patient.sessions and patient.billed are recomputed by the trigger
-    // (migration 069) that fired on the DELETE above. Optimistic React
-    // state updates with the same predicate-aware decrement so the UI
-    // is consistent until the next refetch.
+    // (migration 069) on the DELETE. Local React state mirrors the
+    // predicate-aware decrement so the UI doesn't lag.
     if (session?.patient_id) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
@@ -281,6 +370,27 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           ? { ...p, sessions: newSessions, billed: newBilled } : p));
       }
     }
+
+    // Skip the wire when offline, or when this is a temp-id row that
+    // hasn't drained yet (no real DB row to delete).
+    const isOptimisticRow = typeof sessionId === "string" && sessionId.startsWith("temp-");
+    if (isOptimisticRow || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      if (!isOptimisticRow) await enqueue("sessions.delete", { id: sessionId, userId });
+      return true;
+    }
+
+    setMutating(true);
+    let error;
+    try {
+      const res = await supabase.from("sessions").delete().eq("id", sessionId).eq("user_id", userId);
+      error = res.error;
+    } catch {
+      await enqueue("sessions.delete", { id: sessionId, userId });
+      setMutating(false);
+      return true;
+    }
+    setMutating(false);
+    if (error) { setMutationError(error.message); return false; }
     return true;
   }
 
