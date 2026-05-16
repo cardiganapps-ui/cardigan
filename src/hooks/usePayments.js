@@ -60,17 +60,12 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
           return;
         }
         // Swap the temp row for the server-assigned one so later edits
-        // and deletes can reference a real DB id.
+        // and deletes can reference a real DB id. patient.paid is now
+        // maintained by the trg_payments_recalc_paid trigger
+        // (migration 068) — the JS optimistic state already reflects the
+        // expected value and will reconcile to the trigger's truth on
+        // the next refetch.
         setPayments(prev => prev.map(p => p.id === tempId ? { ...data, colorIdx: data.color_idx } : p));
-
-        if (patient && newPaid != null) {
-          const { error: pErr } = await supabase.from("patients")
-            .update({ paid: newPaid }).eq("id", patient.id).eq("user_id", userId);
-          if (pErr) {
-            const fixed = await recalcPatientCounters(patient.id);
-            if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-          }
-        }
       } catch (e) {
         setPayments(prev => prev.filter(p => p.id !== tempId));
         if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
@@ -90,18 +85,15 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     if (error) { setMutationError(error.message); return false; }
     setPayments(prev => prev.filter(p => p.id !== paymentId));
 
+    // patient.paid is maintained by trg_payments_recalc_paid (migration
+    // 068) — the DELETE on payments fires the trigger which recomputes
+    // the patient's sum. Update local React state optimistically so
+    // the UI doesn't lag the round-trip.
     if (payment?.patient_id) {
       const patient = patients.find(p => p.id === payment.patient_id);
       if (patient) {
         const newPaid = Math.max(0, patient.paid - payment.amount);
-        const { error: pErr } = await supabase.from("patients")
-          .update({ paid: newPaid }).eq("id", patient.id).eq("user_id", userId);
-        if (pErr) {
-          const fixed = await recalcPatientCounters(patient.id);
-          if (fixed) setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, ...fixed } : p));
-        } else {
-          setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
-        }
+        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
       }
     }
     return true;
@@ -225,17 +217,11 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
         }
         setPayments(prev => prev.map(p => p.id === paymentId ? { ...data, colorIdx: data.color_idx } : p));
 
-        // Persist the same patient.paid targets we applied locally. Two
-        // targets mean two parallel updates; whichever fails falls back
-        // to the recalc helper.
-        for (const [patientId, targetPaid] of patientUpdates.entries()) {
-          const { error: pErr } = await supabase.from("patients")
-            .update({ paid: targetPaid }).eq("id", patientId).eq("user_id", userId);
-          if (pErr) {
-            const fixed = await recalcPatientCounters(patientId);
-            if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
-          }
-        }
+        // patient.paid is maintained by trg_payments_recalc_paid
+        // (migration 068). The trigger fires on the UPDATE we just
+        // ran and recomputes paid for both sides when patient_id
+        // changes — see the migration's UPDATE branch. Local React
+        // state was already adjusted optimistically above.
       } catch (e) {
         revertOptimistic();
         setMutationError(e?.message || "Network error");

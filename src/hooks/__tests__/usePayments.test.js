@@ -55,8 +55,11 @@ beforeEach(() => {
 describe("createPayment", () => {
   it("happy path: optimistic insert, patient.paid bumps, temp id swapped", async () => {
     const ctx = seed();
+    // After migration 068 the trigger maintains patient.paid — only
+    // the payments insert hits the wire from the hook side. Don't
+    // enqueue a patients response; an extra (unconsumed) enqueue would
+    // mask a regression that re-introduced the JS patient UPDATE.
     mock.enqueue("payments", { data: { id: "real-1", user_id: "user-1", patient_id: "pat-1", patient: "Ana López", initials: "AL", amount: 300, date: "8-Abr", method: "transferencia", note: null, color_idx: 2 }, error: null });
-    mock.enqueue("patients", { error: null });
 
     const ok = await ctx.actions.createPayment({ patientName: "Ana López", amount: 300, method: "transferencia", date: "8-Abr" });
     expect(ok).toBe(true);
@@ -89,26 +92,20 @@ describe("createPayment", () => {
     expect(ctx.mutationError.get()).toBe("Network fail");
   });
 
-  it("second-stage patient update failure triggers recalcPatientCounters", async () => {
-    const ctx = seed();
-    mock.enqueue("payments", { data: { id: "real-1", user_id: "user-1", patient_id: "pat-1", patient: "Ana López", amount: 300, color_idx: 2 }, error: null });
-    mock.enqueue("patients", { error: { message: "boom" } });
-    recalcPatientCounters.mockResolvedValue({ sessions: 4, billed: 4000, paid: 800 });
-
-    await ctx.actions.createPayment({ patientName: "Ana López", amount: 300 });
-    await flush();
-
-    expect(recalcPatientCounters).toHaveBeenCalledWith("pat-1");
-    expect(ctx.patients.get()[0].paid).toBe(800);
-  });
+  // Migration 068 — patient.paid is now maintained by a DB trigger
+  // (trg_payments_recalc_paid) instead of a follow-up patients UPDATE
+  // from JS. The prior "second-stage patient update failure"
+  // regression test is removed because the code path it exercised no
+  // longer exists: createPayment makes exactly one network call (the
+  // payments insert) and the trigger atomically recomputes paid.
 });
 
 describe("deletePayment", () => {
   it("happy path: removes row and decrements patient.paid", async () => {
     const ctx = seed({ payments: [{ id: "pmt-1", patient_id: "pat-1", amount: 200 }] });
 
+    // Single network call after migration 068 — trigger handles paid.
     mock.enqueue("payments", { error: null });
-    mock.enqueue("patients", { error: null });
 
     const ok = await ctx.actions.deletePayment("pmt-1");
     await flush();
@@ -118,18 +115,10 @@ describe("deletePayment", () => {
     expect(ctx.patients.get()[0].paid).toBe(300);
   });
 
-  it("second-stage patient update failure triggers recalcPatientCounters", async () => {
-    const ctx = seed({ payments: [{ id: "pmt-1", patient_id: "pat-1", amount: 200 }] });
-    mock.enqueue("payments", { error: null });
-    mock.enqueue("patients", { error: { message: "boom" } });
-    recalcPatientCounters.mockResolvedValue({ sessions: 4, billed: 4000, paid: 300 });
-
-    await ctx.actions.deletePayment("pmt-1");
-    await flush();
-
-    expect(recalcPatientCounters).toHaveBeenCalledWith("pat-1");
-    expect(ctx.patients.get()[0].paid).toBe(300);
-  });
+  // Migration 068 — patient.paid is now maintained by a DB trigger
+  // (trg_payments_recalc_paid). deletePayment no longer issues a
+  // patients UPDATE, so the prior "patient update failed → recalc"
+  // case is gone. The trigger fires on the payment DELETE atomically.
 });
 
 describe("updatePayment", () => {
@@ -140,9 +129,9 @@ describe("updatePayment", () => {
     const payments = makeStateHolder([{ id: "pmt-1", patient_id: "pat-A", patient: "Ana López", amount: 300, date: "8-Abr", method: "transferencia" }]);
     const actions = createPaymentActions("user-1", patients.get(), patients, payments.get(), payments, makeStateHolder(false), makeStateHolder(""));
 
+    // Single payments UPDATE — the trigger handles both A.paid and
+    // B.paid recompute atomically (cross-patient branch).
     mock.enqueue("payments", { data: { id: "pmt-1", user_id: "user-1", patient_id: "pat-B", patient: "Beto Pérez", amount: 400, date: "9-Abr", method: "efectivo", color_idx: 1 }, error: null });
-    mock.enqueue("patients", { error: null });
-    mock.enqueue("patients", { error: null });
 
     await actions.updatePayment("pmt-1", { patientName: "Beto Pérez", amount: 400, method: "efectivo", date: "9-Abr", note: "" });
     await flush();
@@ -159,7 +148,6 @@ describe("updatePayment", () => {
     const actions = createPaymentActions("user-1", patients.get(), patients, payments.get(), payments, makeStateHolder(false), makeStateHolder(""));
 
     mock.enqueue("payments", { data: { id: "pmt-1", user_id: "user-1", patient_id: "pat-1", patient: "Ana López", amount: 450, date: "8-Abr", method: "transferencia", color_idx: 0 }, error: null });
-    mock.enqueue("patients", { error: null });
 
     await actions.updatePayment("pmt-1", { patientName: "Ana López", amount: 450, method: "transferencia", date: "8-Abr", note: "" });
     await flush();

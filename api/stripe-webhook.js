@@ -538,23 +538,10 @@ async function reconcilePatientPaymentSuccess(svc, pi) {
     if (insertErr) return { ok: false, error: `payment insert: ${insertErr.message}` };
     paymentId = pmt?.id || null;
 
-    // Bump the denormalized patient.paid counter. Source-of-truth
-    // is the predicate in utils/patients.js::recalcPatientCounters,
-    // but we apply the delta inline here to keep the therapist's UI
-    // consistent on the next refetch. A scheduled audit run reconciles
-    // any drift.
-    if (paymentId) {
-      const { error: bumpErr } = await svc
-        .from("patients")
-        .update({ paid: (patient.paid || 0) + amountPesos })
-        .eq("id", patient.id);
-      if (bumpErr) {
-        // Don't fail the webhook for this — the audit script catches
-        // drift, and the next manual recalc fixes it. But surface to
-        // Sentry so we know if it's a recurring problem.
-        console.warn("stripe-webhook: patient.paid bump failed:", bumpErr.message);
-      }
-    }
+    // patient.paid is maintained by trg_payments_recalc_paid (migration
+    // 068). The INSERT into payments above fires the trigger, which
+    // atomically sets patient.paid = SUM(payments.amount) for this
+    // patient. No inline counter bump needed.
   }
 
   // Advance the PI row.

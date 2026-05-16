@@ -867,3 +867,57 @@ create trigger sessions_withdraw_reschedule_on_move
 after update on sessions
 for each row
 execute function withdraw_reschedule_requests_on_move();
+
+-- ============================================================
+-- Trigger: maintain patient.paid as SUM(payments.amount) for the
+-- patient. Removes the JS-side .update({ paid: ... }) calls from
+-- usePayments (createPayment / deletePayment / updatePayment) and
+-- from api/stripe-webhook.js — the DB now owns the invariant.
+--
+-- Same code as migration 068; mirrored here so a fresh-clone build
+-- of the schema reproduces production behavior. recalcPatientCounters
+-- (utils/patients.js) stays as a manual recovery tool.
+-- ============================================================
+create or replace function public.recalc_patient_paid(p_patient_id uuid)
+returns void
+language sql
+security invoker
+set search_path = public, pg_temp
+as $$
+  update patients
+  set paid = coalesce(
+    (select sum(amount) from payments where patient_id = p_patient_id),
+    0
+  )
+  where id = p_patient_id;
+$$;
+
+create or replace function public.trg_payments_recalc_paid()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if (tg_op = 'INSERT') then
+    if new.patient_id is not null then
+      perform public.recalc_patient_paid(new.patient_id);
+    end if;
+  elsif (tg_op = 'UPDATE') then
+    if old.patient_id is distinct from new.patient_id then
+      if old.patient_id is not null then perform public.recalc_patient_paid(old.patient_id); end if;
+      if new.patient_id is not null then perform public.recalc_patient_paid(new.patient_id); end if;
+    elsif old.amount is distinct from new.amount then
+      if new.patient_id is not null then perform public.recalc_patient_paid(new.patient_id); end if;
+    end if;
+  elsif (tg_op = 'DELETE') then
+    if old.patient_id is not null then perform public.recalc_patient_paid(old.patient_id); end if;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists payments_recalc_paid_after_iud on payments;
+create trigger payments_recalc_paid_after_iud
+after insert or update or delete on payments
+for each row execute function public.trg_payments_recalc_paid();

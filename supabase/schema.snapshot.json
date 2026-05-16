@@ -4398,9 +4398,23 @@
       "security": "invoker"
     },
     {
+      "args": "p_patient_id uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.recalc_patient_paid(p_patient_id uuid)\n RETURNS void\n LANGUAGE sql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n  update patients\n  set paid = coalesce(\n    (select sum(amount) from payments where patient_id = p_patient_id),\n    0\n  )\n  where id = p_patient_id;\n$function$\n",
+      "name": "recalc_patient_paid",
+      "returns": "void",
+      "security": "invoker"
+    },
+    {
       "args": "",
       "definition": "CREATE OR REPLACE FUNCTION public.sessions_normalize_date()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  NEW.date := normalize_short_date(NEW.date);\n  RETURN NEW;\nEND;\n$function$\n",
       "name": "sessions_normalize_date",
+      "returns": "trigger",
+      "security": "invoker"
+    },
+    {
+      "args": "",
+      "definition": "CREATE OR REPLACE FUNCTION public.trg_payments_recalc_paid()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nbegin\n  if (tg_op = 'INSERT') then\n    if new.patient_id is not null then\n      perform public.recalc_patient_paid(new.patient_id);\n    end if;\n  elsif (tg_op = 'UPDATE') then\n    if old.patient_id is distinct from new.patient_id then\n      if old.patient_id is not null then perform public.recalc_patient_paid(old.patient_id); end if;\n      if new.patient_id is not null then perform public.recalc_patient_paid(new.patient_id); end if;\n    elsif old.amount is distinct from new.amount then\n      if new.patient_id is not null then perform public.recalc_patient_paid(new.patient_id); end if;\n    end if;\n  elsif (tg_op = 'DELETE') then\n    if old.patient_id is not null then perform public.recalc_patient_paid(old.patient_id); end if;\n  end if;\n  return null;\nend;\n$function$\n",
+      "name": "trg_payments_recalc_paid",
       "returns": "trigger",
       "security": "invoker"
     },
@@ -6016,6 +6030,27 @@
       "event_manipulation": "UPDATE",
       "table_name": "payments",
       "trigger_name": "payments_normalize_date_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION trg_payments_recalc_paid()",
+      "action_timing": "AFTER",
+      "event_manipulation": "DELETE",
+      "table_name": "payments",
+      "trigger_name": "payments_recalc_paid_after_iud"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION trg_payments_recalc_paid()",
+      "action_timing": "AFTER",
+      "event_manipulation": "INSERT",
+      "table_name": "payments",
+      "trigger_name": "payments_recalc_paid_after_iud"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION trg_payments_recalc_paid()",
+      "action_timing": "AFTER",
+      "event_manipulation": "UPDATE",
+      "table_name": "payments",
+      "trigger_name": "payments_recalc_paid_after_iud"
     },
     {
       "action_statement": "EXECUTE FUNCTION bump_version_on_update()",
