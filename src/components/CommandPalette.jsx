@@ -5,6 +5,8 @@ import { useEscape } from "../hooks/useEscape";
 import { useT } from "../i18n/index";
 import { fetchAllAccounts } from "../hooks/useCardiganData";
 import { useAdminCommands, recordAdminRecent } from "../screens/admin/parts/useAdminCommands";
+import { supabase } from "../supabaseClient";
+import { tokenize, matches, buildExcerpt } from "../utils/noteSearch";
 
 const NAV_COMMANDS = [
   { id: "nav:home",     group: "Navegar", labelKey: "nav.home",      screen: "home",     Icon: IconHome },
@@ -53,7 +55,7 @@ function score(query, text) {
 
 export default function CommandPalette({ open, onClose, onViewAsUser, currentAdminId }) {
   const { t } = useT();
-  const { navigate, patients, requestFabAction, openExpediente, isAdminUser, showToast } = useCardigan();
+  const { navigate, patients, notes, requestFabAction, openExpediente, openNoteById, noteCrypto, isAdminUser, showToast } = useCardigan();
   // Admin account list — lazy-fetched the first time the palette opens
   // for an admin so non-admin sessions never make this round-trip.
   const [adminAccounts, setAdminAccounts] = useState([]);
@@ -107,6 +109,58 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
     currentAdminId,
   });
 
+  // ── Note search (Phase 1.2) ────────────────────────────────────
+  // Two paths:
+  //   • Encrypted users (noteCrypto.isEnabled) → in-memory filter over
+  //     the decrypted `notes` cache. The server-side tsvector index
+  //     has empty content for encrypted rows (only title is searchable
+  //     server-side), so we'd miss body matches if we hit the RPC.
+  //   • Unencrypted users → RPC against the GIN-backed search_notes
+  //     function. Catches the long-tail of notes older than the
+  //     500-row cap useCardiganData loads into memory, and gets
+  //     server-side ts_rank for free.
+  // Debounced 200ms so a fast typist doesn't issue an RPC per keystroke.
+  const [rpcNoteHits, setRpcNoteHits] = useState([]);
+  const encryptionEnabled = !!noteCrypto?.isEnabled;
+  // RPC search effect. When the query is empty / palette closed /
+  // user is on the encrypted lane, the in-memory filter below covers
+  // it and we don't read rpcNoteHits — no need to clear it from an
+  // effect (which the lint rule rightly flags). The async setTimeout
+  // is the only setState path, and it cancels on cleanup.
+  useEffect(() => {
+    if (!open) return;
+    const q = (query || "").trim();
+    if (!q || encryptionEnabled) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase.rpc("search_notes", { p_query: q, p_limit: 8 });
+      if (cancelled) return;
+      if (error || !Array.isArray(data)) { setRpcNoteHits([]); return; }
+      setRpcNoteHits(data.map(r => r.id));
+    }, 200);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [open, query, encryptionEnabled]);
+
+  // Build the notes-result list. Encrypted users get the in-memory
+  // filter; unencrypted users get the union of in-memory hits and
+  // RPC hits (id-deduped so the same row doesn't appear twice).
+  const noteHits = useMemo(() => {
+    const q = (query || "").trim();
+    if (!q) return [];
+    const terms = tokenize(q);
+    const inMemory = (notes || []).filter(n => {
+      const patient = n.patient_id ? (patients || []).find(p => p.id === n.patient_id) : null;
+      return matches(n, patient, terms);
+    });
+    if (encryptionEnabled) return inMemory.slice(0, 8);
+    const inMemIds = new Set(inMemory.map(n => n.id));
+    const rpcOnly = rpcNoteHits
+      .filter(id => !inMemIds.has(id))
+      .map(id => (notes || []).find(n => n.id === id))
+      .filter(Boolean);
+    return [...inMemory, ...rpcOnly].slice(0, 8);
+  }, [notes, patients, query, encryptionEnabled, rpcNoteHits]);
+
   const commands = useMemo(() => {
     const navCmds = NAV_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { navigate(c.screen); onClose(); } }));
     const actionCmds = ACTION_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { requestFabAction?.(c.fabKey); onClose(); } }));
@@ -117,6 +171,25 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
       Icon: IconUsers,
       run: () => { openExpediente?.(p); onClose(); },
     }));
+    // Note search results — only when the user has typed a query.
+    // Pre-scored as "pinned" so the standard fuzzy-score filter below
+    // doesn't re-score the label (which is just the note title + a
+    // body excerpt, not a deterministic match string).
+    const queryTerms = tokenize((query || "").trim());
+    const noteCmds = noteHits.map((n) => {
+      const patient = n.patient_id ? (patients || []).find(p => p.id === n.patient_id) : null;
+      const title = (n.title || "").trim() || (patient ? `Nota · ${patient.name}` : "Nota sin título");
+      const excerpt = buildExcerpt(n, queryTerms, 80);
+      return {
+        id: `note:${n.id}`,
+        group: "Notas",
+        label: title,
+        sublabel: excerpt || (patient ? patient.name : null),
+        Icon: IconClipboard,
+        pinned: true, // skip fuzzy re-score; results are already ranked
+        run: () => { openNoteById?.(n.id); onClose(); },
+      };
+    });
     const adminNavCmds = isAdminUser
       ? ADMIN_COMMANDS.map((c) => ({ ...c, run: () => { navigate(c.target); onClose(); } }))
       : [];
@@ -134,17 +207,18 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
         }))
       : [];
     // Order: Recent (no-query only) → Acciones rápidas (verb-prefixed) →
-    // navigate / actions / patients / admin nav / admin accounts.
+    // navigate / actions / patients / notes / admin nav / admin accounts.
     return [
       ...adminCmds.recent,
       ...adminCmds.typeToAct,
+      ...noteCmds, // pinned (pre-ranked); appears near the top when a query is active
       ...navCmds,
       ...actionCmds,
       ...adminNavCmds,
       ...patientCmds,
       ...adminAccountCmds,
     ];
-  }, [patients, t, navigate, requestFabAction, openExpediente, onClose, isAdminUser, adminAccounts, adminCmds]);
+  }, [patients, query, noteHits, t, navigate, requestFabAction, openExpediente, openNoteById, onClose, isAdminUser, adminAccounts, adminCmds]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) {
@@ -280,7 +354,20 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
                 onClick={() => row.cmd.run()}
               >
                 {row.cmd.Icon && <span className="cmdp-item-icon"><row.cmd.Icon size={15} /></span>}
-                <span className="cmdp-item-label">{row.cmd.label}</span>
+                <span className="cmdp-item-label">
+                  {row.cmd.label}
+                  {row.cmd.sublabel && (
+                    <span style={{
+                      display: "block",
+                      fontSize: 11, fontWeight: 500,
+                      color: "var(--charcoal-xl)",
+                      marginTop: 2,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>{row.cmd.sublabel}</span>
+                  )}
+                </span>
               </button>
             ))
           )}

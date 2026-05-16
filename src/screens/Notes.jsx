@@ -16,7 +16,7 @@ import { tokenize, matches } from "../utils/noteSearch";
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
 export function Notes() {
-  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente } = useCardigan();
+  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente, consumePendingNoteOpen } = useCardigan();
   const noteTemplates = useNoteTemplates();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
@@ -24,6 +24,20 @@ export function Notes() {
   const [filterPatient, setFilterPatient] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
+  // CommandPalette → Notas tap routes through openNoteById, which
+  // navigates to archivo and parks the id in a context ref. Consume
+  // it ONCE on mount; if notes haven't loaded yet we hold the id
+  // in local state and adjust during render when the row appears
+  // (React's recommended pattern over setState-in-effect for derived
+  // state — mirrors the Toast prevMessage flow).
+  const [pendingOpenId, setPendingOpenId] = useState(() => consumePendingNoteOpen?.() || null);
+  if (pendingOpenId) {
+    const found = (notes || []).find(n => n.id === pendingOpenId);
+    if (found) {
+      setPendingOpenId(null);
+      setEditingNote(found);
+    }
+  }
   const [selectMode, setSelectMode] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [selected, setSelected] = useState(new Set());

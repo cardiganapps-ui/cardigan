@@ -897,6 +897,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const { online } = useConnectivity();
   const pendingAgendaViewRef = useRef(null);
   const pendingExpedienteRef = useRef(null);
+  // Pending note open — set by CommandPalette when a user picks a note
+  // from the search results, consumed by Notes screen on mount. Mirrors
+  // the pendingExpedienteRef pattern so the palette doesn't need to
+  // reach into per-screen state setters.
+  const pendingNoteOpenRef = useRef(null);
 
   // ── Stripe return-from-Checkout / Portal handler ──
   // Stripe sends users back to /?billing=success|cancel|return after
@@ -1596,6 +1601,19 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       // on Pacientes — otherwise closing would navigate to itself.
       pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
       setScreen("patients");
+    },
+    openNoteById: (id) => {
+      // Navigate to Archivo (which routes to Notes tab by default) and
+      // stash the id; Notes screen reads it on mount and opens the
+      // editor with the matching note. Same pendingRef pattern as
+      // openExpediente / setAgendaView.
+      pendingNoteOpenRef.current = id;
+      setScreen("archivo");
+    },
+    consumePendingNoteOpen: () => {
+      const v = pendingNoteOpenRef.current;
+      pendingNoteOpenRef.current = null;
+      return v;
     },
     consumeExpediente: () => {
       const v = pendingExpedienteRef.current;
