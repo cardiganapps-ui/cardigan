@@ -169,3 +169,58 @@ describe("updateSessionStatus offline path", () => {
     expect(rpcCalls).toHaveLength(0);
   });
 });
+
+describe("writeSessionWithLock offline path (via updateSessionModality)", () => {
+  it("offline: queues sessions.update with the patch and no version filter", async () => {
+    setOnline(false);
+    const ctx = seed({ sessions: [
+      { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: todayShort(), time: "10:00", modality: "presencial", version: 2 },
+    ]});
+
+    const ok = await ctx.actions.updateSessionModality("s-1", "virtual");
+
+    expect(ok).toBe(true);
+    expect(ctx.upcomingSessions.get()[0].modality).toBe("virtual");
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("sessions.update");
+    expect(queue.getEntries()[0].args.patch).toEqual({ modality: "virtual" });
+    expect(queue.getEntries()[0].args.id).toBe("s-1");
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("temp-id row: applies optimistic locally and skips both wire and queue", async () => {
+    setOnline(true);
+    const ctx = seed({ sessions: [
+      { id: "temp-xyz", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: todayShort(), time: "10:00", modality: "presencial" },
+    ]});
+
+    const ok = await ctx.actions.updateSessionModality("temp-xyz", "virtual");
+
+    expect(ok).toBe(true);
+    expect(ctx.upcomingSessions.get()[0].modality).toBe("virtual");
+    // Underlying insert is still in the queue from elsewhere; this
+    // update is deferred — no new queue entry, no wire call.
+    expect(queue.getEntries()).toHaveLength(0);
+    expect(mock.calls).toHaveLength(0);
+  });
+});
+
+describe("rescheduleSession offline path", () => {
+  it("offline: applies optimistic patch + enqueues sessions.update", async () => {
+    setOnline(false);
+    const ctx = seed({ sessions: [
+      { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: todayShort(), time: "10:00", version: 1, day: "Lun" },
+    ]});
+
+    const ok = await ctx.actions.rescheduleSession("s-1", "15-Abr", "11:00", 60);
+
+    expect(ok).toBe(true);
+    expect(ctx.upcomingSessions.get()[0].date).toBe("15-Abr");
+    expect(ctx.upcomingSessions.get()[0].time).toBe("11:00");
+    expect(queue.getEntries()).toHaveLength(1);
+    expect(queue.getEntries()[0].op).toBe("sessions.update");
+    expect(queue.getEntries()[0].args.patch.date).toBe("15-Abr");
+    expect(queue.getEntries()[0].args.patch.time).toBe("11:00");
+    expect(mock.calls).toHaveLength(0);
+  });
+});

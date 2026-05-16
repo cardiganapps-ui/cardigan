@@ -35,6 +35,13 @@ registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelR
   });
 });
 
+// Generic session UPDATE replay — used by writeSessionWithLock when
+// offline / on transport error and by rescheduleSession. No version
+// filter (last-write-wins on replay).
+registerHandler("sessions.update", async ({ id, userId, patch }) => {
+  return await supabase.from("sessions").update(patch).eq("id", id).eq("user_id", userId);
+});
+
 // Module-level ref to the latest setUpcomingSessions, mirrored from the
 // action factory. Same pattern as usePayments — the factory runs every
 // render; the onReplay subscription must register only once.
@@ -438,6 +445,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }
     setMutationError("");
 
+    // Offline / temp-id: skip the wire, enqueue (or defer in the case
+    // of a not-yet-drained insert). Optimistic state already applied.
+    const isOptimisticRow = typeof sessionId === "string" && sessionId.startsWith("temp-");
+    if (isOptimisticRow) return true;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await enqueue("sessions.update", { id: sessionId, userId, patch });
+      return true;
+    }
+
     (async () => {
       try {
         // Optimistic lock: .eq("version", v) → 0 rows updated when
@@ -464,10 +480,10 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId
           ? { ...s, version: (prevSession.version ?? 0) + 1 }
           : s));
-      } catch (e) {
-        setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
-        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-        setMutationError(e?.message || "Network error");
+      } catch {
+        // Transport-level failure — queue with last-write-wins replay.
+        // Optimistic state stays so the user's reschedule is preserved.
+        await enqueue("sessions.update", { id: sessionId, userId, patch });
       }
     })();
 
@@ -695,10 +711,37 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // on error/conflict — caller already updated optimistic state. The
   // helper handles revert + setMutationError on failure.
   async function writeSessionWithLock(sessionId, patch, prevSession, onSuccess) {
+    // Temp-id rows haven't drained yet — the underlying insert is in
+    // the queue. Updating before that insert lands would target a non-
+    // existent row. Apply optimistic locally only and skip the wire;
+    // the user can re-edit after drain.
+    const isOptimisticRow = typeof sessionId === "string" && sessionId.startsWith("temp-");
+    if (isOptimisticRow) {
+      if (typeof onSuccess === "function") await onSuccess();
+      return true;
+    }
+    // Offline: queue without the version filter (last-write-wins on
+    // replay) and return success. Optimistic state was already applied
+    // by the caller. onSuccess (e.g. patient.billed adjustment in
+    // updateSessionRate) still runs locally.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await enqueue("sessions.update", { id: sessionId, userId, patch });
+      if (typeof onSuccess === "function") await onSuccess();
+      return true;
+    }
     const expectedVersion = prevSession.version ?? null;
     let q = supabase.from("sessions").update(patch).eq("id", sessionId).eq("user_id", userId);
     if (expectedVersion != null) q = q.eq("version", expectedVersion);
-    const { data, error } = await q.select("id");
+    let data, error;
+    try {
+      const res = await q.select("id");
+      data = res.data; error = res.error;
+    } catch {
+      // Transport failure mid-flight — queue and keep optimistic state.
+      await enqueue("sessions.update", { id: sessionId, userId, patch });
+      if (typeof onSuccess === "function") await onSuccess();
+      return true;
+    }
     if (error) {
       setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
       setMutationError(error.message);
