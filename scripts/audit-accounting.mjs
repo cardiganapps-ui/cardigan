@@ -31,6 +31,16 @@ const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct
 
 // Mirror parseShortDate + sessionCountsTowardBalance from src/utils so
 // the audit tool is a faithful off-DB double-check of the live formula.
+// ⚠️  KEEP IN SYNC WITH src/utils/accounting.js::sessionCountsTowardBalance
+//     AND src/utils/dates.js::parseShortDate / inferYear.
+//     Audit script + backfill script + live calc must all use the same
+//     formula. The vendored copies here exist because Node doesn't
+//     trivially import ESM from src/ at runtime (Vite + JSX), and
+//     these scripts are CLI-invoked. If the live predicate changes:
+//       1. update src/utils/accounting.js (the canonical version)
+//       2. mirror the change here AND in
+//          scripts/backfill-billed-from-predicate.mjs
+//       3. re-run npm test to confirm src + accounting.test.js still pass
 function parseSessionEnd(dateStr, timeStr, now) {
   if (!dateStr) return null;
   const parts = dateStr.split(/[\s-]+/);
@@ -275,13 +285,43 @@ async function main() {
   // violated. Used by the daily CI workflow so drift trips an alert
   // automatically. We deliberately do NOT fail on "patients owing"
   // (that's expected business state).
+  //
+  // What strict mode DOES gate on:
+  //   • Duplicate session rows (real corruption — DB index breach or
+  //     a write-race the partial-unique-index didn't catch)
+  //   • Duplicate recurring expense slots (same as above for expenses)
+  //   • Orphaned receipt pointers (a document delete that didn't null
+  //     the expense's receipt_document_id)
+  //   • patient.paid drift vs Σ payments (event-driven counter — only
+  //     changes when payments are inserted/deleted, so drift means a
+  //     bug in the optimistic update path or external DB writes)
+  //   • patient.sessions drift vs row count (same — event-driven, so
+  //     drift means a bug)
+  //
+  // What strict mode does NOT gate on:
+  //   • patient.billed drift. The predicate (sessionCountsTowardBalance)
+  //     is TIME-DEPENDENT — a future-scheduled session auto-completes
+  //     silently the moment `date+time+1h` passes, with no event to
+  //     update patient.billed until the next mutation. So billed
+  //     naturally lags predicate-consumed by exactly the rates of
+  //     sessions that have crossed the auto-complete boundary since
+  //     the last mutation. Failing the audit on this would fire every
+  //     morning after the previous evening's sessions tick past.
+  //     The live amountDue calc is unaffected (it always re-derives
+  //     from raw sessions); patient.billed is essentially a cached
+  //     denormalization that recalc-on-mutation keeps approximately
+  //     correct. Run `scripts/backfill-billed-from-predicate.mjs`
+  //     manually if you want to sync the cached values.
+  //
+  // We still REPORT billed drift in the global summary above so an
+  // unusual jump shows up in the workflow log even though it doesn't
+  // fail the workflow.
   if (strictMode) {
     const violations = [];
     if (dupes.length > 0)         violations.push(`${dupes.length} duplicate session group(s)`);
     if (dupRecur.length > 0)      violations.push(`${dupRecur.length} duplicate recurring slot(s)`);
     if (orphanReceipts.length > 0)violations.push(`${orphanReceipts.length} orphaned receipt(s)`);
     if (globalDriftCount > 0)     violations.push(`${globalDriftCount} paid-counter drift`);
-    if (globalBilledDriftCount > 0)   violations.push(`${globalBilledDriftCount} billed-counter drift`);
     if (globalSessionsDriftCount > 0) violations.push(`${globalSessionsDriftCount} sessions-counter drift`);
     if (violations.length > 0) {
       console.error(`\n✗ STRICT MODE: ${violations.length} invariant(s) violated:`);
@@ -289,6 +329,9 @@ async function main() {
       process.exit(1);
     }
     console.log("\n✓ STRICT MODE: all invariants hold.");
+    if (globalBilledDriftCount > 0) {
+      console.log(`  (billed drift on ${globalBilledDriftCount} patient(s) — expected lag from auto-completing sessions; not a failure)`);
+    }
   }
 
   if (dupRecur.length > 0) {

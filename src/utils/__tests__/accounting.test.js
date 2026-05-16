@@ -73,6 +73,27 @@ describe("sessionCountsTowardBalance", () => {
     expect(sessionCountsTowardBalance(null, NOW)).toBe(false);
     expect(sessionCountsTowardBalance(undefined, NOW)).toBe(false);
   });
+
+  it("handles a session whose 1-hour grace crosses midnight", () => {
+    // Session at 23:45 on 23-Abr → end-moment is 00:45 on 24-Abr.
+    // NOW is 24-Abr at 10:00, well past the rollover.
+    // setHours+setMinutes mutates the Date in place; combined with the
+    // +1h add, the wall-clock is 24-Abr 00:45 not 23-Abr 24:45 — JS
+    // Date math handles the day rollover, so the predicate should
+    // return true.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "23-Abr", time: "23:45" }), NOW
+    )).toBe(true);
+  });
+
+  it("handles a session right at the year boundary (Dec 31 23:30)", () => {
+    // 31-Dic inferred to 2025 (closest to NOW=2026-04-24 is 2025-12-31,
+    // ~115 days back; 2026-12-31 is ~250 days ahead). +1h end = 2026-01-01
+    // 00:30 — past relative to NOW.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "31-Dic", time: "23:30" }), NOW
+    )).toBe(true);
+  });
 });
 
 describe("computeConsumedByPatient", () => {

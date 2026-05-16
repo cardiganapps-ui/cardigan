@@ -2,6 +2,18 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { makeSupabaseMock, makeStateHolder } from "../../test/mockSupabase";
 import { SESSION_STATUS } from "../../data/constants";
 
+// Calendar-drift-safe helpers. Hardcoding "8-Abr" worked on May 16
+// when these were authored but would silently start failing every
+// January–March of subsequent years (when April 8 is parsed as a
+// future date by inferYear and the predicate flips its verdict).
+// `pastDate()` always resolves to ~30 days ago relative to runtime.
+const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function pastDate() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return `${d.getDate()}-${SHORT_MONTHS[d.getMonth()]}`;
+}
+
 const mock = makeSupabaseMock();
 const recalcPatientCounters = vi.fn(async () => null);
 
@@ -53,7 +65,7 @@ beforeEach(() => {
 
 describe("updateSessionStatus", () => {
   it("scheduled → completed flips local status; server error reverts", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: { message: "Offline" } });
 
@@ -72,7 +84,7 @@ describe("updateSessionStatus", () => {
   });
 
   it("cancel-with-charge: status = charged, patient.billed unchanged (charge still counts)", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
 
@@ -86,7 +98,7 @@ describe("updateSessionStatus", () => {
   });
 
   it("cancel-without-charge decrements patient.billed by session rate", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
     mock.enqueue("patients", { error: null });
@@ -105,7 +117,7 @@ describe("updateSessionStatus", () => {
   // patient.billed on the same value the live amountDue calc would.
 
   it("completed → cancelled (no charge) decrements billed by rate", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
     mock.enqueue("patients", { error: null });
@@ -119,7 +131,7 @@ describe("updateSessionStatus", () => {
   });
 
   it("completed → cancel-with-charge keeps billed unchanged (charged still counts)", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.COMPLETED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
 
@@ -132,7 +144,7 @@ describe("updateSessionStatus", () => {
   });
 
   it("charged → cancelled (refund a cancellation fee) decrements billed", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CHARGED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CHARGED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
     mock.enqueue("patients", { error: null });
@@ -146,7 +158,7 @@ describe("updateSessionStatus", () => {
   });
 
   it("cancelled → completed (retroactive bill) increments billed", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CANCELLED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.CANCELLED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
     mock.enqueue("patients", { error: null });
@@ -163,7 +175,7 @@ describe("updateSessionStatus", () => {
     // "8-Abr" with the test data is in the past relative to the
     // canonical predicate's auto-complete window, so SCHEDULED
     // counted as consumed. Cancelling explicitly removes it.
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "8-Abr", time: "10:00" };
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: pastDate(), time: "10:00" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: null });
     mock.enqueue("patients", { error: null });
@@ -185,7 +197,7 @@ describe("createSession", () => {
     const ctx = seed();
     mock.enqueue("sessions", { data: null, error: { message: "duplicate key value violates unique constraint", code: "23505" } });
 
-    const ok = await ctx.actions.createSession({ patientName: "Ana López", date: "8-Abr", time: "10:00", duration: 60 });
+    const ok = await ctx.actions.createSession({ patientName: "Ana López", date: pastDate(), time: "10:00", duration: 60 });
     expect(ok).toBe(false);
 
     expect(ctx.patients.get()[0].sessions).toBe(4);
@@ -197,7 +209,8 @@ describe("createSession", () => {
 
 describe("rescheduleSession", () => {
   it("optimistic update; server error reverts to prevSession", async () => {
-    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: "8-Abr", time: "10:00", day: "Mié" };
+    const originalDate = pastDate();
+    const sess = { id: "s-1", patient_id: "pat-1", status: SESSION_STATUS.SCHEDULED, rate: 1000, date: originalDate, time: "10:00", day: "Mié" };
     const ctx = seed({ sessions: [sess] });
     mock.enqueue("sessions", { error: { message: "Network down" } });
 
@@ -209,8 +222,8 @@ describe("rescheduleSession", () => {
 
     await flush();
 
-    // Reverted.
-    expect(ctx.upcomingSessions.get()[0].date).toBe("8-Abr");
+    // Reverted to the original (runtime-relative past) date.
+    expect(ctx.upcomingSessions.get()[0].date).toBe(originalDate);
     expect(ctx.upcomingSessions.get()[0].time).toBe("10:00");
     expect(ctx.mutationError.get()).toBe("Network down");
   });

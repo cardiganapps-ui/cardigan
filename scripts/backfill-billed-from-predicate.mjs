@@ -28,6 +28,9 @@ const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct
 // script uses the same vendored predicate — both are intentional
 // duplicates of utils/accounting.js so the off-DB tools never silently
 // drift from the live calc on a future predicate change.
+// ⚠️  KEEP IN SYNC WITH src/utils/accounting.js::sessionCountsTowardBalance
+//     AND scripts/audit-accounting.mjs (same vendored copy).
+//     See the audit script for the canonical update procedure.
 function parseSessionEnd(dateStr, timeStr, now) {
   if (!dateStr) return null;
   const parts = dateStr.split(/[\s-]+/);
