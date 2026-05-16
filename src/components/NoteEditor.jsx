@@ -14,6 +14,7 @@ import { NoteOutline } from "./notes/NoteOutline";
 import { VersionHistorySheet } from "./notes/VersionHistorySheet";
 import { AttachmentStrip } from "./notes/AttachmentStrip";
 import { useVoiceDictation } from "../lib/useVoiceDictation";
+import { supabase } from "../supabaseClient";
 import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
@@ -62,7 +63,7 @@ function isEffectivelyEmpty(title, content, templates) {
 export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay" }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
-  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName } = useCardigan();
   const noteTemplates = useNoteTemplates();
   const { isDesktop } = useViewport();
   const [pinned, setPinned] = useState(!!note?.pinned);
@@ -463,6 +464,79 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     setMenuOpen(false);
   };
 
+  /* ── Resolve an attachment row into a base64 data URL for the PDF
+     renderer. Pure side-effect — no React state; the PDF helper
+     awaits the promise per attachment. Encrypted rows go through
+     the bytes lane (fetch → decrypt → b64); unencrypted rows just
+     reuse the presigned URL → blob → b64 pipeline. */
+  const resolveAttachmentDataUrl = useCallback(async (att) => {
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const headers = {
+        "Authorization": `Bearer ${s?.access_token}`,
+        "Content-Type": "application/json",
+      };
+      const res = await fetch("/api/note-attachment-url", {
+        method: "POST", headers,
+        body: JSON.stringify({
+          path: att.r2_path,
+          mime: att.encrypted ? "application/octet-stream" : att.mime,
+        }),
+      });
+      if (!res.ok) return null;
+      const { url } = await res.json();
+      if (!url) return null;
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      let bytes = new Uint8Array(await r.arrayBuffer());
+
+      if (att.encrypted) {
+        if (!noteCrypto?.decryptAttachmentBytes) return null;
+        let bin = "";
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        const ctB64 = btoa(bin);
+        const plain = await noteCrypto.decryptAttachmentBytes(ctB64, att.iv);
+        if (!plain) return null;
+        bytes = plain;
+      }
+      // Build a data URL with the row's original mime so jsPDF can
+      // sniff JPEG / PNG / WEBP correctly.
+      let bin2 = "";
+      for (let i = 0; i < bytes.length; i++) bin2 += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin2);
+      return `data:${att.mime || "image/jpeg"};base64,${b64}`;
+    } catch {
+      return null;
+    }
+  }, [noteCrypto]);
+
+  const exportPdf = async () => {
+    if (!note?.id) { setMenuOpen(false); return; }
+    setMenuOpen(false);
+    const noteAttachmentsForThis = (noteAttachments || []).filter(a => a.note_id === note.id);
+    const linkedPatient = note.patient_id ? (patients || []).find(p => p.id === note.patient_id) : null;
+    const linkedSession = note.session_id ? (upcomingSessions || []).find(s => s.id === note.session_id) : null;
+    try {
+      // Lazy-load notePdf (and its jsPDF dep) so the ~700KB lib
+      // never lands in the main bundle. Vite splits this into its
+      // own chunk on first call.
+      const { downloadNotePdf } = await import("../lib/notePdf");
+      await downloadNotePdf({
+        note: { ...note, title, content },
+        attachments: noteAttachmentsForThis,
+        patient: linkedPatient,
+        session: linkedSession,
+        therapistName: userName || "",
+        imageResolver: resolveAttachmentDataUrl,
+      });
+      haptic.success();
+      flashToast(t("notes.pdfExported"));
+    } catch {
+      haptic.warn();
+      showToast?.(t("notes.exportFailed"), "error");
+    }
+  };
+
   useEffect(() => {
     if (!menuOpen) return;
     const onDoc = (e) => {
@@ -572,6 +646,12 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                     <IconDownload size={15} />
                     <span>{t("notes.exportMd")}</span>
                   </button>
+                  {note?.id && (
+                    <button className="mde-menu-item" role="menuitem" onClick={exportPdf}>
+                      <IconDownload size={15} />
+                      <span>{t("notes.exportPdf")}</span>
+                    </button>
+                  )}
                   {onDelete && (
                     <>
                       <div className="mde-menu-sep" />

@@ -665,6 +665,8 @@ export default {
     copyPlain: "Copiar como texto",
     copyMarkdown: "Copiar markdown",
     exportMd: "Exportar .md",
+    exportPdf: "Exportar PDF",
+    pdfExported: "PDF generado",
     copied: "Copiado al portapapeles",
     readingTime: "{mins} min de lectura",
     wordCountLabel: "{count} palabra{plural}",
