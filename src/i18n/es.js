@@ -695,6 +695,16 @@ export default {
     historyDecryptFailed: "No se pudo descifrar esta versi\u00f3n.",
     historyLoadFailed: "No se pudo cargar el historial.",
     historyNoChanges: "Sin cambios.",
+    inbox: "Bandeja",
+    inboxEmptyTitle: "Bandeja vac\u00eda",
+    inboxEmptyBody: "Las notas sin {client.s}, {session.s} ni etiqueta aparecer\u00e1n aqu\u00ed para que las archives despu\u00e9s.",
+    quickCapture: {
+      title: "Captura r\u00e1pida",
+      titlePlaceholder: "T\u00edtulo (opcional)",
+      placeholder: "Escribe aqu\u00ed\u2026",
+      save: "Guardar",
+      openEditor: "Editor completo",
+    },
   },
 
   // ── Avatar ──

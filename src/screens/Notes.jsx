@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { IconSearch, IconClipboard, IconX, IconStar, IconTrash, IconEdit, IconDocument, IconCheck, IconUser } from "../components/Icons";
+import { IconSearch, IconClipboard, IconX, IconStar, IconTrash, IconEdit, IconDocument, IconCheck, IconUser, IconArchive } from "../components/Icons";
 import { haptic } from "../utils/haptics";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SwipeableRow } from "../components/SwipeableRow";
@@ -25,6 +25,10 @@ export function Notes() {
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  // Inbox = no patient + no session + no tags. The "jot now, file later"
+  // bucket from the QuickCapture flow lands here so users can triage
+  // unfiled thoughts in one pass.
+  const [inboxOnly, setInboxOnly] = useState(false);
   // Selected tag filter (Phase 1.3). Multi-select; AND semantics.
   // Tap a pill in TagFilterPills to toggle. Stays as an array of ids
   // so the dependency in filteredNotes is comparable.
@@ -91,6 +95,13 @@ export function Notes() {
     const terms = tokenize(search);
     let list = (notes || []).filter(n => matches(n, patientsById.get(n.patient_id), terms));
     if (favoritesOnly) list = list.filter(n => n.pinned);
+    if (inboxOnly) {
+      // The Inbox is the set of notes the user hasn't filed anywhere
+      // yet: no patient link, no session link, and no tags. Pinned
+      // state is intentionally allowed — a pinned brain-dump still
+      // needs filing.
+      list = list.filter(n => !n.patient_id && !n.session_id && !tagsByNote.get(n.id));
+    }
     if (filterPatient === "general") list = list.filter(n => !n.patient_id);
     else if (filterPatient !== "all") list = list.filter(n => n.patient_id === filterPatient);
     // Tag AND-filter: every selected tag must be on the note.
@@ -106,7 +117,7 @@ export function Notes() {
       if (!a.pinned && b.pinned) return 1;
       return (b.updated_at || "").localeCompare(a.updated_at || "");
     });
-  }, [notes, search, filterPatient, favoritesOnly, patientsById, selectedTagIds, tagsByNote]);
+  }, [notes, search, filterPatient, favoritesOnly, inboxOnly, patientsById, selectedTagIds, tagsByNote]);
 
   const groupedNotes = useMemo(() => groupNotesByRecency(filteredNotes, t), [filteredNotes, t]);
 
@@ -238,6 +249,22 @@ export function Notes() {
           ))}
         </select>
         <button type="button"
+          onClick={() => setInboxOnly(v => !v)}
+          aria-pressed={inboxOnly}
+          aria-label={t("notes.inbox")}
+          title={t("notes.inbox")}
+          style={{
+            display:"flex", alignItems:"center", justifyContent:"center",
+            width:34, height:34, minHeight:34, borderRadius:"var(--radius)",
+            border: `1px solid ${inboxOnly ? "var(--teal)" : "var(--border)"}`,
+            background: inboxOnly ? "var(--teal-pale)" : "var(--white)",
+            color: inboxOnly ? "var(--teal-dark)" : "var(--charcoal-xl)",
+            cursor:"pointer", padding:0, flexShrink:0,
+            transition:"all 0.4s",
+          }}>
+          <IconArchive size={16} />
+        </button>
+        <button type="button"
           onClick={() => setFavoritesOnly(v => !v)}
           aria-pressed={favoritesOnly}
           aria-label={t("notes.onlyFavorites")}
@@ -266,12 +293,19 @@ export function Notes() {
                 title={t("notes.emptyTitle")}
                 body={t("notes.emptyBody")}
               />
-            : <EmptyState
-                kind="notes"
-                title={t("docs.noResults")}
-                body={t("notes.createFirstHint")}
-                compact
-              />)
+            : inboxOnly
+              ? <EmptyState
+                  kind="notes"
+                  title={t("notes.inboxEmptyTitle")}
+                  body={t("notes.inboxEmptyBody")}
+                  compact
+                />
+              : <EmptyState
+                  kind="notes"
+                  title={t("docs.noResults")}
+                  body={t("notes.createFirstHint")}
+                  compact
+                />)
         : <NoteGroupedList
             buckets={groupedNotes}
             patients={patients}

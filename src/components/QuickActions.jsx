@@ -4,6 +4,7 @@ import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { NoteEditor } from "./NoteEditor";
+import { QuickCaptureSheet } from "./notes/QuickCaptureSheet";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
@@ -23,11 +24,12 @@ const ACTIONS = QUICK_ACTIONS;
 
 export function QuickActions() {
   const { t } = useT();
-  const { patients, upcomingSessions, openRecordPaymentModal, openRecordExpenseModal, createPatient, createPotential, createSession, createNote, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
+  const { patients, upcomingSessions, openRecordPaymentModal, openRecordExpenseModal, createPatient, createPotential, createSession, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
   const isPro = !!subscription?.isPro;
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
   const [quickNote, setQuickNote] = useState(null);
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
 
   const handleAction = async (key) => {
     setMenuOpen(false);
@@ -41,9 +43,12 @@ export function QuickActions() {
     if (key === "payment") openRecordPaymentModal(null);
     else if (key === "expense") openRecordExpenseModal();
     else if (key === "note") {
-      // Quick-capture: skip the sheet, go straight to editor
-      const note = await createNote({ patientId: null, sessionId: null, title: "", content: "" });
-      if (note) setQuickNote(note);
+      // Open the QuickCaptureSheet — the lightweight "jot now,
+      // file later" path. From the sheet the user can escalate to
+      // the full editor with one tap if they want markdown / tags
+      // / linking. Discarding the sheet without typing writes no
+      // row, so the FAB tap is now zero-cost.
+      setQuickCaptureOpen(true);
     }
     else setActiveSheet(key);
   };
@@ -101,6 +106,19 @@ export function QuickActions() {
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} sessions={upcomingSessions} mutating={mutating} />
       )}
+      <QuickCaptureSheet
+        open={quickCaptureOpen}
+        onClose={() => setQuickCaptureOpen(false)}
+        onSaved={(note, { openInEditor }) => {
+          // Escalate-to-editor path: route the just-created note into
+          // the full NoteEditor so the user can keep typing with all
+          // the chrome (templates are skipped since the note has
+          // content, but formatting / linking / find / outline / history
+          // all work). The plain-save path just closes the sheet and
+          // the note appears in the list / Inbox.
+          if (openInEditor) setQuickNote(note);
+        }}
+      />
       {quickNote && (
         <NoteEditor
           note={quickNote}
