@@ -257,7 +257,14 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
             </>
           )}
           {filtered.length === 0 ? (
-            <div className="cmdp-empty">{t("cmdp.empty") || "Sin resultados"}</div>
+            <div className="cmdp-empty">
+              <div style={{ fontWeight: 700, color: "var(--charcoal)", marginBottom: 4 }}>
+                {t("cmdp.empty") || "Sin resultados"}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--charcoal-xl)" }}>
+                {t("cmdp.emptyHint") || "Prueba con un nombre de paciente o una sección."}
+              </div>
+            </div>
           ) : (
             grouped.map((row, i) => row.type === "header" ? (
               <div key={`h${i}`} className="cmdp-group-header">{row.label}</div>

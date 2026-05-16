@@ -927,13 +927,14 @@ function GastosTab({
         </div>
       )}
 
-      {/* List */}
+      {/* List — uses the canonical EmptyState illustration for visual
+          consistency with the rest of the app's empty surfaces. */}
       {filtered.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-state-icon"><IconArrowDown size={20} /></div>
-          <div className="empty-state-title">{t("gastos.none")}</div>
-          <div className="empty-state-body">{t("gastos.emptyBody")}</div>
-        </div>
+        <EmptyState
+          kind="finances"
+          title={t("gastos.none")}
+          body={t("gastos.emptyBody")}
+        />
       )}
 
       {visibleRows.map(e => {
@@ -1260,6 +1261,20 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             );
           })}
         </div>
+      )}
+
+      {/* ── Insights zero-state ──
+          When all three widgets below would self-hide (no payments,
+          no expenses, no completed sessions), the Resumen tab feels
+          blank for a brand-new account. Show a single warm hint so
+          users know this is where their trends will accumulate. */}
+      {trend.peak === 0 && topPatients.length === 0 && dayActivity.total === 0 && (
+        <EmptyState
+          kind="finances"
+          compact
+          title={t("gastos.insightsEmptyTitle") || "Tus tendencias aparecerán aquí"}
+          body={t("gastos.insightsEmptyBody") || "En cuanto registres pagos, gastos o completes sesiones, verás aquí gráficas de ingresos, top pacientes y actividad por día."}
+        />
       )}
 
       {/* ── 6-month revenue trend ──

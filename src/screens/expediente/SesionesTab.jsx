@@ -6,6 +6,7 @@ import { todayISO } from "../../utils/dates";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { usesVisitTypes, VISIT_TYPES } from "../../data/constants";
+import { EmptyState } from "../../components/EmptyState";
 
 const SESSIONS_COLLAPSED_COUNT = 5;
 
@@ -77,7 +78,12 @@ export function SesionesTab({
   if (pSessions.length === 0) {
     return (
       <div style={{ padding:"16px" }}>
-        <div className="card empty-hint">{t("expediente.noSessions")}</div>
+        <EmptyState
+          kind="agenda"
+          compact
+          title={t("expediente.noSessions")}
+          body={t("expediente.noSessionsBody") || null}
+        />
       </div>
     );
   }

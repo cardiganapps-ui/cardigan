@@ -5,6 +5,7 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { SwipeableRow } from "../../components/SwipeableRow";
 import { useT } from "../../i18n/index";
 import { formatMXN } from "../../utils/format";
+import { EmptyState } from "../../components/EmptyState";
 
 export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }) {
   const { t } = useT();
@@ -71,7 +72,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
 
       {/* Payment list */}
       {payFiltered.length === 0
-        ? <div className="card empty-hint">{t("finances.noPaymentsInPeriod")}</div>
+        ? <EmptyState kind="finances" compact title={t("finances.noPaymentsInPeriod")} />
         : <div className="card">
             {payFiltered.map((p) => {
               const isDeleting = confirmDeletePayId === p.id;

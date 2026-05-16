@@ -6,6 +6,7 @@ import { ExternalFolderCard } from "../../components/ExternalFolderCard";
 import { isWordDoc } from "../../utils/files";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
+import { EmptyState } from "../../components/EmptyState";
 
 export function ArchivoTab({
   patient, pNotes, pSessions, pDocuments,
@@ -57,9 +58,7 @@ export function ArchivoTab({
         {t("notes.newNote")}
       </button>
       {pNotes.length === 0
-        ? <div className="card" style={{ padding:"24px 16px", textAlign:"center", color:"var(--charcoal-xl)", fontSize:13 }}>
-            {t("notes.noNotes")}
-          </div>
+        ? <EmptyState kind="notes" compact title={t("notes.noNotes")} />
         : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {pNotes.map(n => {
               const linkedSession = n.session_id ? pSessions.find(s => s.id === n.session_id) : null;
