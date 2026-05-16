@@ -23,6 +23,12 @@
   outline: 2px solid var(--teal-light);
   outline-offset: 2px;
 }
+/* The skip-link's target (#main-content) gets tabindex="-1" so the
+   browser can focus it on hash navigation. Suppress the focus ring on
+   that programmatic focus — the user wanted to be HERE, not for the
+   whole content area to look selected. Native focus-visible still
+   honors keyboard focus on any actual interactive descendant. */
+#main-content:focus { outline: none; }
 
 /* Desktop-only elements: hidden on mobile */
 .topbar-screen-name, .topbar-refresh-btn, .topbar-actions,

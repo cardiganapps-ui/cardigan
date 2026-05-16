@@ -1902,7 +1902,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
       </Suspense>
 
-      <div className="main-content" id="main-content">
+      {/* tabIndex={-1} is what actually makes the skip-link work: a
+          plain <div> with id="main-content" wouldn't accept programmatic
+          focus, so the browser would update the URL hash but the
+          user's tab order would stay where it was. -1 means "focusable
+          via .focus() / hash navigation, but not in the normal tab
+          sequence" — exactly the contract we want. */}
+      <div className="main-content" id="main-content" tabIndex={-1}>
         <div className="status-bar" />
 
         {/* iOS Safari-only install nudge. Hidden in PWA mode, demo mode,
