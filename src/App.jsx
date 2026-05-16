@@ -38,6 +38,8 @@ import { useViewport } from "./hooks/useViewport";
 import { DRAWER_EDGE_BAND, release as releaseSwipe, tryClaim as trySwipeClaim } from "./hooks/swipeCoordinator";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { BottomTabs } from "./components/BottomTabs";
+import { OfflineBanner } from "./components/OfflineBanner";
+import { useConnectivity } from "./hooks/useConnectivity";
 import { LogoIcon } from "./components/LogoMark";
 import { HelpTip } from "./components/HelpTip";
 import { IconRefresh } from "./components/Icons";
@@ -798,20 +800,10 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         : prev);
     }
   }, [mutationError, showToast, refresh]);
-  // Online/offline indicator — navigator.onLine is imperfect but "good
-  // enough" for a surface warning; combined with explicit error toasts
-  // for actual request failures it catches the common cases.
-  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine !== false : true);
-  useEffect(() => {
-    const onUp = () => setOnline(true);
-    const onDown = () => setOnline(false);
-    window.addEventListener("online", onUp);
-    window.addEventListener("offline", onDown);
-    return () => {
-      window.removeEventListener("online", onUp);
-      window.removeEventListener("offline", onDown);
-    };
-  }, []);
+  // Online/offline state — useConnectivity is the canonical hook now
+  // (also consumed by OfflineBanner). Kept in the App-level context
+  // for any consumer that branches on it (e.g. action gating).
+  const { online } = useConnectivity();
   const pendingAgendaViewRef = useRef(null);
   const pendingExpedienteRef = useRef(null);
 
@@ -1877,15 +1869,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           </div>
         )}
 
-        {/* Offline indicator — shown whenever the browser reports no
-            network connectivity. Mutations will queue in local state but
-            fail at the Supabase round-trip, so we warn proactively. */}
-        {!online && (
-          <div style={{ background:"var(--amber)", padding:"6px 16px", display:"flex", alignItems:"center", justifyContent:"center", gap:8, zIndex:"var(--z-banner)", flexShrink:0 }}>
-            <span style={{ width:6, height:6, borderRadius:"50%", background:"var(--white)", display:"inline-block" }} />
-            <span style={{ fontSize:"var(--text-xs)", fontWeight:700, color:"var(--white)" }}>{t("offline")}</span>
-          </div>
-        )}
+        {/* Offline + mutation-queue surface (Phase 1 of offline support).
+            Renders when offline OR when the queue has pending entries
+            (e.g. flushing right after reconnect). Self-contained — no
+            props; reads from useMutationQueue. */}
+        <OfflineBanner />
 
         <div className="topbar">
           <button className={`hamburger ${drawerOpen?"open":""}`} data-tour="hamburger" onClick={() => setDrawerOpen(o=>!o)} aria-label={t("nav.menu")}>

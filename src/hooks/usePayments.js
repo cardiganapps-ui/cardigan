@@ -2,6 +2,7 @@ import { supabase } from "../supabaseClient";
 import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
 
 // Mirrors the session-side strings from useSessions.js. Keep the wording
 // uniform — users see the same message whether they conflict on a
@@ -9,12 +10,41 @@ import { recalcPatientCounters } from "../utils/patients";
 const CONFLICT_MSG = "Este pago se editó en otro lugar. Volvimos a cargarlo — intenta de nuevo.";
 const MISSING_MSG = "Este pago ya no existe.";
 
+// Offline queue handler for createPayment. Registered once at module
+// load time (idempotent — registerHandler is a Map.set). The handler
+// is called by the queue replayer with the persisted args; result
+// shape mirrors a normal supabase insert so the replay listener can
+// reconcile state (swap temp id → real id).
+registerHandler("payments.insert", async ({ row }) => {
+  return await supabase.from("payments").insert(row).select().single();
+});
+
+// createPaymentActions is invoked on every render of useCardiganData,
+// so subscribing inside the factory would leak listeners. We register
+// the replay reconciler ONCE at module load and route to the latest
+// setPayments via a module-level ref that the factory updates.
+let _setPaymentsRef = null;
+onReplay((entry, result) => {
+  if (entry.op !== "payments.insert") return;
+  if (!result || result.error || !result.data) return;
+  const tempId = entry.optimisticMeta?.tempId;
+  if (!tempId || !_setPaymentsRef) return;
+  _setPaymentsRef(prev => prev.map(p => p.id === tempId
+    ? { ...result.data, colorIdx: result.data.color_idx }
+    : p));
+});
+
 export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
+  // Refresh the module-level setPayments ref so the once-registered
+  // onReplay listener writes into the live state holder. Cheap pointer
+  // swap — re-running this per render is fine.
+  _setPaymentsRef = setPayments;
 
   // Optimistic: the PaymentModal closes in the same frame the user
   // taps Save. We add a temporary row with a client-side id, apply
-  // the patient.paid update locally, and fire the inserts in the
-  // background. On server error we revert both and raise a toast.
+  // the patient.paid update locally, and fire the insert in the
+  // background. If the browser reports offline, the insert is queued
+  // to IndexedDB and replayed on reconnect (Phase 1 of offline support).
   async function createPayment({ patientName, amount, method = PAYMENT_METHOD.TRANSFER, date = formatShortDate(), note = "" }) {
     const parsedAmount = Number(amount);
     if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
@@ -41,17 +71,28 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     }
     setMutationError("");
 
+    const row = {
+      user_id: userId,
+      patient_id: patient?.id || null,
+      patient: patientName,
+      initials: patient?.initials || getInitials(patientName),
+      amount: parsedAmount, date, method,
+      note: note || null,
+      color_idx: patient?.colorIdx || 0,
+    };
+
+    // Offline path: queue the insert and return success. The optimistic
+    // row stays in payments state with its temp id; the replay listener
+    // above swaps it on drain. patient.paid stays at the optimistic
+    // value; the trigger reconciles on next refetch after drain.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await enqueue("payments.insert", { row }, { tempId });
+      return true;
+    }
+
     (async () => {
       try {
-        const { data, error } = await supabase.from("payments").insert({
-          user_id: userId,
-          patient_id: patient?.id || null,
-          patient: patientName,
-          initials: patient?.initials || getInitials(patientName),
-          amount: parsedAmount, date, method,
-          note: note || null,
-          color_idx: patient?.colorIdx || 0,
-        }).select().single();
+        const { data, error } = await supabase.from("payments").insert(row).select().single();
 
         if (error) {
           setPayments(prev => prev.filter(p => p.id !== tempId));
@@ -67,9 +108,11 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
         // the next refetch.
         setPayments(prev => prev.map(p => p.id === tempId ? { ...data, colorIdx: data.color_idx } : p));
       } catch (e) {
-        setPayments(prev => prev.filter(p => p.id !== tempId));
-        if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-        setMutationError(e?.message || "Network error");
+        // Catch fires for transport-level failures (fetch threw, e.g.
+        // network dropped mid-flight). Queue + return success so the
+        // user doesn't lose their write — drain on reconnect.
+        await enqueue("payments.insert", { row }, { tempId });
+        setMutationError("");
       }
     })();
 
