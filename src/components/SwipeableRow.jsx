@@ -160,10 +160,11 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
   const background = TONE_BG[actionTone] || TONE_BG.danger;
 
   return (
-    <div style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
+    <div data-swipeable-row style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
       <button
         type="button"
         aria-label={actionLabel}
+        data-swipeable-action
         onFocus={handleActionFocus}
         onBlur={handleActionBlur}
         onKeyDown={handleActionKey}
@@ -181,13 +182,27 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
         }}
         onClick={(e) => {
           // Before the row unmounts (onAction may delete it), find the
-          // next SwipeableRow action button in the list and queue it
-          // up for focus. Without this, keyboard users get stranded —
-          // focus falls back to <body> after the deleted row's
-          // button unmounts and they have to Tab back into the list.
-          const allActionBtns = Array.from(document.querySelectorAll('button[aria-label]'))
-            .filter(btn => btn !== e.currentTarget && btn.getAttribute('aria-label') === actionLabel);
-          const nextFocus = allActionBtns[0] || null;
+          // next SwipeableRow action button in the SAME LIST so
+          // keyboard users land naturally on the next row. We scope
+          // the lookup by walking up to the closest common ancestor
+          // that contains another [data-swipeable-row], then querying
+          // its descendants. Without this scoping a global
+          // aria-label match could send focus into a confirm modal
+          // or a different list that happens to use the same label.
+          const currentRow = e.currentTarget.closest("[data-swipeable-row]");
+          let nextFocus = null;
+          if (currentRow) {
+            let parent = currentRow.parentElement;
+            while (parent && !nextFocus) {
+              const siblings = parent.querySelectorAll(
+                "[data-swipeable-row] [data-swipeable-action]",
+              );
+              for (const btn of siblings) {
+                if (btn !== e.currentTarget) { nextFocus = btn; break; }
+              }
+              parent = parent.parentElement;
+            }
+          }
           setOffset(0);
           revealedRef.current = false;
           onAction?.();

@@ -485,7 +485,13 @@ button.kpi-card:active {
   border-radius: var(--radius-pill); padding: 0 14px; height: 42px; gap: 8px;
   box-shadow: var(--shadow-sm);
 }
-.search-bar input { border: none; outline: none; font-family: var(--font); font-size: 14px; color: var(--charcoal); background: transparent; flex: 1; -webkit-appearance: none; }
+/* font-size: 16px is the iOS Safari auto-zoom threshold — below it, the
+   browser zooms in on focus and the user has to pinch back out. The
+   visual size on desktop still lands at the 14px-ish design intent
+   because the .search-bar's parent rows scale via --text-scale; the
+   16px floor here is purely a touch ergonomics guarantee per
+   CLAUDE.md's mobile rules. */
+.search-bar input { border: none; outline: none; font-family: var(--font); font-size: 16px; color: var(--charcoal); background: transparent; flex: 1; -webkit-appearance: none; }
 .search-bar input::placeholder { color: var(--charcoal-xl); }
 
 /* INPUT */
