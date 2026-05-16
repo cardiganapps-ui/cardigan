@@ -348,6 +348,51 @@ create table if not exists influencer_codes (
 );
 
 -- ============================================================
+-- Constraint hardening (migration 067)
+-- ============================================================
+-- Invariants that already live in JS — moved into the schema so a buggy
+-- client (current or future) can't corrupt the database. See migration
+-- 067 for the audit + rationale. `if not exists` keeps a fresh-DB
+-- bootstrap idempotent against re-running schema.sql.
+do $$ begin
+  -- Patients counter non-negativity
+  if not exists (select 1 from pg_constraint where conname='patients_paid_nonneg' and conrelid='public.patients'::regclass)
+    then alter table patients add constraint patients_paid_nonneg check (paid >= 0); end if;
+  if not exists (select 1 from pg_constraint where conname='patients_billed_nonneg' and conrelid='public.patients'::regclass)
+    then alter table patients add constraint patients_billed_nonneg check (billed >= 0); end if;
+  if not exists (select 1 from pg_constraint where conname='patients_sessions_nonneg' and conrelid='public.patients'::regclass)
+    then alter table patients add constraint patients_sessions_nonneg check (sessions >= 0); end if;
+  -- Session physical soundness
+  if not exists (select 1 from pg_constraint where conname='sessions_rate_nonneg' and conrelid='public.sessions'::regclass)
+    then alter table sessions add constraint sessions_rate_nonneg check (rate is null or rate >= 0); end if;
+  if not exists (select 1 from pg_constraint where conname='sessions_duration_positive' and conrelid='public.sessions'::regclass)
+    then alter table sessions add constraint sessions_duration_positive check (duration is not null and duration > 0); end if;
+  -- Non-empty text on identity columns
+  if not exists (select 1 from pg_constraint where conname='patients_name_nonempty' and conrelid='public.patients'::regclass)
+    then alter table patients add constraint patients_name_nonempty check (length(name) > 0); end if;
+  if not exists (select 1 from pg_constraint where conname='patients_initials_nonempty' and conrelid='public.patients'::regclass)
+    then alter table patients add constraint patients_initials_nonempty check (length(initials) > 0); end if;
+  if not exists (select 1 from pg_constraint where conname='sessions_patient_nonempty' and conrelid='public.sessions'::regclass)
+    then alter table sessions add constraint sessions_patient_nonempty check (length(patient) > 0); end if;
+  if not exists (select 1 from pg_constraint where conname='sessions_initials_nonempty' and conrelid='public.sessions'::regclass)
+    then alter table sessions add constraint sessions_initials_nonempty check (length(initials) > 0); end if;
+  if not exists (select 1 from pg_constraint where conname='payments_patient_nonempty' and conrelid='public.payments'::regclass)
+    then alter table payments add constraint payments_patient_nonempty check (length(patient) > 0); end if;
+  if not exists (select 1 from pg_constraint where conname='payments_initials_nonempty' and conrelid='public.payments'::regclass)
+    then alter table payments add constraint payments_initials_nonempty check (length(initials) > 0); end if;
+  -- Date format ("D-MMM" with Spanish 3-letter month, optional "-YY")
+  if not exists (select 1 from pg_constraint where conname='sessions_date_format' and conrelid='public.sessions'::regclass)
+    then alter table sessions add constraint sessions_date_format check (date ~ '^([1-9]|[12][0-9]|3[01])-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(-[0-9]{2})?$'); end if;
+  if not exists (select 1 from pg_constraint where conname='payments_date_format' and conrelid='public.payments'::regclass)
+    then alter table payments add constraint payments_date_format check (date ~ '^([1-9]|[12][0-9]|3[01])-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(-[0-9]{2})?$'); end if;
+  if not exists (select 1 from pg_constraint where conname='expenses_date_format' and conrelid='public.expenses'::regclass)
+    then alter table expenses add constraint expenses_date_format check (date ~ '^([1-9]|[12][0-9]|3[01])-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)(-[0-9]{2})?$'); end if;
+  -- Time format ("HH:MM" 24h)
+  if not exists (select 1 from pg_constraint where conname='sessions_time_format' and conrelid='public.sessions'::regclass)
+    then alter table sessions add constraint sessions_time_format check (time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'); end if;
+end $$;
+
+-- ============================================================
 -- Indexes
 -- ============================================================
 create index if not exists idx_patients_user_id on patients(user_id);
