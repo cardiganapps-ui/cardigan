@@ -244,6 +244,39 @@ export async function decryptNote(bundleBase64, masterKeyBytes) {
   return textDecoder.decode(plain);
 }
 
+// ── Tag label helpers (Phase 1.3) ──
+// Tags use the existing encrypt/decrypt envelope for the label
+// ciphertext (when crypto is enabled). The hash helper here is the
+// only new primitive — a SHA-256 of the canonical form, used by the
+// (user_id, label_hash) unique constraint to dedup case + diacritic
+// variations server-side without anyone seeing the plaintext.
+//
+// canonicalize: lowercase + strip diacritics + collapse whitespace.
+// Matches utils/noteSearch.js::normalize so users can't end up with
+// both "SOAP" and "soap" as separate tags by inadvertent case.
+export function canonicalizeTagLabel(label) {
+  return String(label || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+// Hex-encoded SHA-256 over the canonical form. Not HMAC-keyed: the
+// threat model already assumes DB-only compromise can't decrypt note
+// content, and the marginal exposure of common tag names like "SOAP"
+// is bounded. Per-user uniqueness comes from the column constraint.
+export async function hashTagLabel(label) {
+  const canonical = canonicalizeTagLabel(label);
+  if (!canonical) return "";
+  const buf = textEncoder.encode(canonical);
+  const digest = await getCrypto().subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 // Exposed for tests only.
 export const _internals = {
   PBKDF2_ITERS,

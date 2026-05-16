@@ -12,6 +12,7 @@ import { createPatientActions } from "./usePatients";
 import { createSessionActions, getRecurringDates } from "./useSessions";
 import { createPaymentActions } from "./usePayments";
 import { createNoteActions } from "./useNotes";
+import { createNoteTagActions } from "./useNoteTags";
 import { createDocumentActions } from "./useDocuments";
 import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
@@ -569,6 +570,11 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // accept/reject. Only `pending` rows hydrate into state — resolved
   // history surfaces only when the admin / audit script asks for it.
   const [rescheduleRequests, setRescheduleRequests] = useState(initialCache?.rescheduleRequests || []);
+  // Note tags (Phase 1.3). `tags` holds the per-user tag catalog
+  // with the label field already decrypted for in-memory render;
+  // `tagLinks` is the many-to-many join (note_id, tag_id).
+  const [tags, setTags] = useState(initialCache?.tags || []);
+  const [tagLinks, setTagLinks] = useState(initialCache?.tagLinks || []);
   // Skeleton stays hidden when we hydrated from cache — the user
   // sees their data immediately. Skeleton fires only on a true cold
   // start (no cache, fresh login, or after the cache aged out).
@@ -607,8 +613,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
     let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
+    let tRes, tlRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -622,6 +629,12 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // Pending reschedule requests only — resolved history surfaces
         // via the admin/audit paths, not the live UI.
         q("session_reschedule_requests", 200).eq("status", "pending").order("created_at", { ascending: false }),
+        // Note tags (Phase 1.3). The label_ciphertext column needs a
+        // decrypt pass on the client; the noteCrypto bag below does
+        // the work. Caps roughly match what a user can sanely create
+        // (1000 tags × hundreds of links is plenty headroom).
+        q("note_tags", 1000).order("created_at", { ascending: false }),
+        q("note_tag_links", 5000),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -751,6 +764,21 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       }));
     }
     setNotes(notesData);
+    // Decrypt tag labels (same envelope as notes). For non-encrypted
+    // rows the ciphertext column already holds the plaintext, so we
+    // pass it through unchanged. For encrypted rows we run the same
+    // decrypt the notes path uses.
+    let tagsData = tRes?.data || [];
+    if (noteCrypto?.decrypt) {
+      tagsData = await Promise.all(tagsData.map(async (t) => {
+        const plain = await noteCrypto.decrypt(t.label_ciphertext, /* encrypted= */ true).catch(() => null);
+        return { ...t, label: plain ?? t.label_ciphertext };
+      }));
+    } else {
+      tagsData = tagsData.map(t => ({ ...t, label: t.label_ciphertext }));
+    }
+    setTags(tagsData);
+    setTagLinks(tlRes?.data || []);
     setDocuments(dRes.data || []);
     setMeasurements(mRes.data || []);
     setExpenses(eData);
@@ -796,18 +824,20 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const helpers = { formatShortDate, getRecurringDates };
   const { createPatient, updatePatient, deletePatient, createPotential, discardPotential, convertPotentialToActive } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
-  const { createSession, updateSessionStatus, deleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason } =
+  const { createSession, updateSessionStatus, deleteSession, softDeleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason } =
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
-  const { createPayment, deletePayment, updatePayment } =
+  const { createPayment, deletePayment, softDeletePayment, updatePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
-  const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes } =
+  const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, softDeleteNote } =
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
+  const { upsertTag, deleteTag, linkTag, unlinkTag } =
+    createNoteTagActions(userId, tags, setTags, tagLinks, setTagLinks, setMutationError, noteCrypto);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
   const { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements } =
     createMeasurementActions(userId, measurements, setMeasurements, setMutating, setMutationError);
   const {
-    createExpense, updateExpense, deleteExpense,
+    createExpense, updateExpense, deleteExpense, softDeleteExpense,
     createRecurringTemplate, updateRecurringTemplate, deleteRecurringTemplate,
     generateRecurringExpenses, generatePendingRecurringExpenses,
   } = createExpenseActions({
@@ -885,20 +915,24 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
     expenses, recurringExpenses,
     rescheduleRequests, setRescheduleRequests,
+    tags, tagLinks,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
     createPatient: guard(createPatientWithRefresh), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
     createPotential: guard(createPotentialWithRefresh), discardPotential: guard(discardPotential), convertPotentialToActive: guard(convertPotentialWithRefresh),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
-    deleteSession: guard(deleteSession), rescheduleSession: guard(rescheduleSession),
+    deleteSession: guard(deleteSession), softDeleteSession,
+    rescheduleSession: guard(rescheduleSession),
     generateRecurringSessions: guard(generateRecurringSessions), applyScheduleChange: guard(applyScheduleChange),
     finalizePatient: guard(finalizePatient), updateSessionModality: guard(updateSessionModality), updateSessionRate: guard(updateSessionRate),
     updateSessionVisitType: guard(updateSessionVisitType),
     updateCancelReason: guard(updateCancelReason),
-    createPayment: guard(createPayment), deletePayment: guard(deletePayment), updatePayment: guard(updatePayment),
+    createPayment: guard(createPayment), deletePayment: guard(deletePayment), softDeletePayment, updatePayment: guard(updatePayment),
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
-    togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), deleteNotes: guard(deleteNotes),
+    togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), softDeleteNote, deleteNotes: guard(deleteNotes),
+    upsertTag: guard(upsertTag), deleteTag: guard(deleteTag),
+    linkTag: guard(linkTag), unlinkTag: guard(unlinkTag),
     uploadDocument: guard(uploadDocument), renameDocument: guard(renameDocument),
     tagDocumentSession: guard(tagDocumentSession), deleteDocument: guard(deleteDocument),
     getDocumentUrl,
@@ -906,7 +940,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     updateMeasurement: guard(updateMeasurement),
     deleteMeasurement: guard(deleteMeasurement),
     bulkCreateMeasurements: guard(bulkCreateMeasurements),
-    createExpense: guard(createExpense), updateExpense: guard(updateExpense), deleteExpense: guard(deleteExpense),
+    createExpense: guard(createExpense), updateExpense: guard(updateExpense), deleteExpense: guard(deleteExpense), softDeleteExpense,
     createRecurringTemplate: guard(createRecurringTemplate),
     updateRecurringTemplate: guard(updateRecurringTemplate),
     deleteRecurringTemplate: guard(deleteRecurringTemplate),

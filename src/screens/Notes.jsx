@@ -4,6 +4,8 @@ import { haptic } from "../utils/haptics";
 import { NoteEditor, NoteCard } from "../components/NoteEditor";
 import { SwipeableRow } from "../components/SwipeableRow";
 import { EmptyState } from "../components/EmptyState";
+import { TagFilterPills } from "../components/notes/TagFilterPills";
+import { NoteTagPicker } from "../components/notes/NoteTagPicker";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -16,13 +18,20 @@ import { tokenize, matches } from "../utils/noteSearch";
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
 export function Notes() {
-  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente, consumePendingNoteOpen } = useCardigan();
+  const { notes, patients, upcomingSessions, createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, openExpediente, consumePendingNoteOpen, tags, tagLinks, upsertTag, linkTag, unlinkTag } = useCardigan();
   const noteTemplates = useNoteTemplates();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   const [search, setSearch] = useState("");
   const [filterPatient, setFilterPatient] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  // Selected tag filter (Phase 1.3). Multi-select; AND semantics.
+  // Tap a pill in TagFilterPills to toggle. Stays as an array of ids
+  // so the dependency in filteredNotes is comparable.
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
+  const toggleTagFilter = useCallback((id) => {
+    setSelectedTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }, []);
   const [editingNote, setEditingNote] = useState(null);
   // CommandPalette → Notas tap routes through openNoteById, which
   // navigates to archivo and parks the id in a context ref. Consume
@@ -65,18 +74,39 @@ export function Notes() {
     return m;
   }, [patients]);
 
+  // Tag-id → Set(note_id) and the inverse — built once from the
+  // join table. The filteredNotes memo below uses tagsByNote for an
+  // O(1) check per note instead of scanning the full link table per
+  // entry.
+  const tagsByNote = useMemo(() => {
+    const m = new Map();
+    for (const l of (tagLinks || [])) {
+      if (!m.has(l.note_id)) m.set(l.note_id, new Set());
+      m.get(l.note_id).add(l.tag_id);
+    }
+    return m;
+  }, [tagLinks]);
+
   const filteredNotes = useMemo(() => {
     const terms = tokenize(search);
     let list = (notes || []).filter(n => matches(n, patientsById.get(n.patient_id), terms));
     if (favoritesOnly) list = list.filter(n => n.pinned);
     if (filterPatient === "general") list = list.filter(n => !n.patient_id);
     else if (filterPatient !== "all") list = list.filter(n => n.patient_id === filterPatient);
+    // Tag AND-filter: every selected tag must be on the note.
+    if (selectedTagIds.length > 0) {
+      list = list.filter(n => {
+        const noteTags = tagsByNote.get(n.id);
+        if (!noteTags) return false;
+        return selectedTagIds.every(id => noteTags.has(id));
+      });
+    }
     return list.sort((a, b) => {
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
       return (b.updated_at || "").localeCompare(a.updated_at || "");
     });
-  }, [notes, search, filterPatient, favoritesOnly, patientsById]);
+  }, [notes, search, filterPatient, favoritesOnly, patientsById, selectedTagIds, tagsByNote]);
 
   const groupedNotes = useMemo(() => groupNotesByRecency(filteredNotes, t), [filteredNotes, t]);
 
@@ -164,6 +194,13 @@ export function Notes() {
         <IconSearch size={16} style={{ color:"var(--charcoal-xl)" }} />
         <input type="search" aria-label={t("notes.searchPlaceholder")} placeholder={t("notes.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
+
+      <TagFilterPills
+        tags={tags}
+        tagLinks={tagLinks}
+        selectedIds={selectedTagIds}
+        onToggle={toggleTagFilter}
+      />
 
       {!selectMode && (
         <div style={{ marginBottom:12 }}>
@@ -303,6 +340,22 @@ export function Notes() {
                   </select>
                 </div>
               )}
+
+              {/* Tag picker (Phase 1.3) — chips for currently-linked
+                  tags + a free-text input for adding new ones. Type
+                  + Enter creates the tag (upsertTag dedups by canonical
+                  hash) and links it. Tap a chip to unlink. The list
+                  below shows the user's other tags as suggestions
+                  ranked by recency; tap to link. */}
+              <NoteTagPicker
+                noteId={propsNote.id}
+                tags={tags}
+                tagLinks={tagLinks}
+                upsertTag={upsertTag}
+                linkTag={linkTag}
+                unlinkTag={unlinkTag}
+              />
+
               <div style={{ display:"flex", gap:8, marginTop:4 }}>
                 <button className="btn btn-primary-teal" style={{ flex:1 }}
                   onClick={async () => {
