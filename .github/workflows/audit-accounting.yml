@@ -1,0 +1,55 @@
+# ── Daily accounting drift audit ──────────────────────────────────────
+#
+# Runs scripts/audit-accounting.mjs --strict against prod every night.
+# Fails the workflow (and notifies the repo owner via GitHub's default
+# email) when ANY of the prime-directive invariants drifts:
+#
+#   • Duplicate (patient_id, date, time) session rows
+#   • Duplicate recurring expense slots
+#   • Orphaned receipt_document_id pointers
+#   • patient.paid     drift vs Σ payments
+#   • patient.billed   drift vs predicate-aligned consumed (CLAUDE.md #4)
+#   • patient.sessions drift vs raw session row count
+#
+# Setup (one-time, GitHub repo Settings → Secrets and variables → Actions):
+#
+#   Required secrets:
+#     SUPABASE_PAT           — Management API personal access token
+#     SUPABASE_PROJECT_REF   — the subdomain part of SUPABASE_URL
+#                              (e.g. "axyuqfkmifcaupwhzfuw" from
+#                              https://axyuqfkmifcaupwhzfuw.supabase.co)
+#
+# The script is read-only — it never writes. Safe to run on a hot DB.
+# Cron is at 04:00 UTC = 22:00 Mexico City — comfortably past business
+# hours so the day's last activity has settled.
+
+name: Accounting audit
+
+on:
+  schedule:
+    # 04:00 UTC daily. "0 4 * * *" in GitHub cron syntax.
+    - cron: "0 4 * * *"
+  # Manual trigger from the Actions tab — useful for verifying a fix
+  # without waiting for the next nightly run.
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    # 5 min is plenty; the audit on the current fleet completes in ~10s.
+    # Higher cap protects against a hung Supabase API call.
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run strict accounting audit
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: node scripts/audit-accounting.mjs --strict

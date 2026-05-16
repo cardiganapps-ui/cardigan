@@ -73,6 +73,13 @@ if (!PAT || !REF) {
 }
 
 const userFilter = process.argv.find(a => a.startsWith("--user="))?.slice(7) || null;
+// --strict makes the script exit non-zero when any of these are
+// detected: duplicate sessions, paid-counter drift, billed-counter
+// drift, sessions-counter drift, duplicate recurring slots, orphaned
+// receipts. Wired by the daily GitHub Actions workflow so a silent
+// regression in any of the predicate-aligned counter paths trips an
+// alert within 24 hours.
+const strictMode = process.argv.includes("--strict");
 
 async function sql(query) {
   const r = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
@@ -136,6 +143,8 @@ async function main() {
   }
 
   let globalDriftCount = 0;
+  let globalBilledDriftCount = 0;
+  let globalSessionsDriftCount = 0;
   let globalOwedCount = 0;
   let globalOwedTotal = 0;
   let globalCreditTotal = 0;
@@ -185,13 +194,23 @@ async function main() {
       const amountDue = Math.max(0, delta);
       const credit = Math.max(0, -delta);
 
-      const drift = (p.paid || 0) !== paidSum;
-      if (drift) globalDriftCount++;
+      const paidDrift = (p.paid || 0) !== paidSum;
+      // billed counter must equal the predicate-aligned consumed
+      // (prime-directive rule #4). billedDrift catches anything that
+      // slips past the in-app paths and the recalc fallback.
+      const billedDrift = (p.billed || 0) !== consumed;
+      // sessions counter must equal the raw row count for this patient.
+      const sessionsDrift = (p.sessions || 0) !== psess.length;
+      if (paidDrift) globalDriftCount++;
+      if (billedDrift) globalBilledDriftCount++;
+      if (sessionsDrift) globalSessionsDriftCount++;
       if (amountDue > 0) { globalOwedCount++; globalOwedTotal += amountDue; uOwedTotal += amountDue; }
       if (credit > 0) { globalCreditTotal += credit; uCreditTotal += credit; }
 
       const flags = [
-        flag(drift, `paid counter drift: counter=${p.paid} real=${paidSum}`),
+        flag(paidDrift,    `paid counter drift: counter=${p.paid} real=${paidSum}`),
+        flag(billedDrift,  `billed counter drift: counter=${p.billed} predicate=${consumed}`),
+        flag(sessionsDrift,`sessions counter drift: counter=${p.sessions} real=${psess.length}`),
       ].filter(Boolean).join(" ");
 
       console.log(
@@ -242,13 +261,35 @@ async function main() {
   console.log(`Payments:           ${payments.length}`);
   console.log(`Expenses:           ${expensesCount[0]?.n ?? 0}`);
   console.log(`Recurring tpls:     ${recurCount[0]?.n ?? 0}`);
-  console.log(`Duplicate groups:   ${dupes.length} ${dupes.length ? "⚠" : "✓"}`);
-  console.log(`Dup. recur slots:   ${dupRecur.length} ${dupRecur.length ? "⚠" : "✓"}`);
-  console.log(`Orphaned receipts:  ${orphanReceipts.length} ${orphanReceipts.length ? "⚠" : "✓"}`);
-  console.log(`paid counter drift: ${globalDriftCount} patient(s) ${globalDriftCount ? "⚠" : "✓"}`);
-  console.log(`Patients owing:     ${globalOwedCount}`);
-  console.log(`Total owed:         ${fmt(globalOwedTotal)}`);
-  console.log(`Total credit:       ${fmt(globalCreditTotal)}`);
+  console.log(`Duplicate groups:    ${dupes.length} ${dupes.length ? "⚠" : "✓"}`);
+  console.log(`Dup. recur slots:    ${dupRecur.length} ${dupRecur.length ? "⚠" : "✓"}`);
+  console.log(`Orphaned receipts:   ${orphanReceipts.length} ${orphanReceipts.length ? "⚠" : "✓"}`);
+  console.log(`paid drift:          ${globalDriftCount} patient(s) ${globalDriftCount ? "⚠" : "✓"}`);
+  console.log(`billed drift:        ${globalBilledDriftCount} patient(s) ${globalBilledDriftCount ? "⚠" : "✓"}`);
+  console.log(`sessions drift:      ${globalSessionsDriftCount} patient(s) ${globalSessionsDriftCount ? "⚠" : "✓"}`);
+  console.log(`Patients owing:      ${globalOwedCount}`);
+  console.log(`Total owed:          ${fmt(globalOwedTotal)}`);
+  console.log(`Total credit:        ${fmt(globalCreditTotal)}`);
+
+  // Strict mode: exit non-zero when any structural invariant is
+  // violated. Used by the daily CI workflow so drift trips an alert
+  // automatically. We deliberately do NOT fail on "patients owing"
+  // (that's expected business state).
+  if (strictMode) {
+    const violations = [];
+    if (dupes.length > 0)         violations.push(`${dupes.length} duplicate session group(s)`);
+    if (dupRecur.length > 0)      violations.push(`${dupRecur.length} duplicate recurring slot(s)`);
+    if (orphanReceipts.length > 0)violations.push(`${orphanReceipts.length} orphaned receipt(s)`);
+    if (globalDriftCount > 0)     violations.push(`${globalDriftCount} paid-counter drift`);
+    if (globalBilledDriftCount > 0)   violations.push(`${globalBilledDriftCount} billed-counter drift`);
+    if (globalSessionsDriftCount > 0) violations.push(`${globalSessionsDriftCount} sessions-counter drift`);
+    if (violations.length > 0) {
+      console.error(`\n✗ STRICT MODE: ${violations.length} invariant(s) violated:`);
+      for (const v of violations) console.error(`    • ${v}`);
+      process.exit(1);
+    }
+    console.log("\n✓ STRICT MODE: all invariants hold.");
+  }
 
   if (dupRecur.length > 0) {
     console.log("\n--- Duplicate recurring slots (DB index breach!) ---");

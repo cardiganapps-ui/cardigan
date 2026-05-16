@@ -86,7 +86,7 @@ async function main() {
   const where = userFilter ? `WHERE user_id = '${esc(userFilter)}'` : "";
 
   const patients = await sql(`
-    SELECT id, user_id, name, rate, billed
+    SELECT id, user_id, name, rate, billed, sessions
     FROM patients ${where}
     ORDER BY user_id, name;
   `);
@@ -114,15 +114,30 @@ async function main() {
       if (!sessionCountsTowardBalance(s, now)) continue;
       computed += (s.rate != null ? s.rate : (p.rate || 0));
     }
-    const current = p.billed || 0;
-    if (computed === current) { unchanged++; continue; }
+    const currentBilled = p.billed || 0;
+    const currentSessions = p.sessions || 0;
+    const computedSessions = psess.length;
+    const billedDrift = computed !== currentBilled;
+    const sessionsDrift = computedSessions !== currentSessions;
+    if (!billedDrift && !sessionsDrift) { unchanged++; continue; }
     changed++;
-    totalDriftCents += Math.abs(computed - current);
-    updates.push({ id: p.id, name: p.name, user_id: p.user_id, from: current, to: computed });
-    console.log(`  ${p.user_id.slice(0,8)}… ${p.name.padEnd(30)} ${current.toString().padStart(8)} → ${computed.toString().padStart(8)}  (Δ ${(computed - current).toString().padStart(7)})`);
+    totalDriftCents += Math.abs(computed - currentBilled);
+    updates.push({
+      id: p.id, name: p.name, user_id: p.user_id,
+      billedFrom: currentBilled, billedTo: computed,
+      sessionsFrom: currentSessions, sessionsTo: computedSessions,
+      billedDrift, sessionsDrift,
+    });
+    const billedTag = billedDrift
+      ? `billed ${currentBilled.toString().padStart(8)} → ${computed.toString().padStart(8)}`
+      : "".padStart(28);
+    const sessTag = sessionsDrift
+      ? `  sessions ${currentSessions.toString().padStart(3)} → ${computedSessions.toString().padStart(3)}`
+      : "";
+    console.log(`  ${p.user_id.slice(0,8)}… ${p.name.padEnd(30)} ${billedTag}${sessTag}`);
   }
 
-  console.log(`\n${patients.length} patients · ${changed} drift · ${unchanged} aligned · total absolute drift ${totalDriftCents.toLocaleString("en-US")}`);
+  console.log(`\n${patients.length} patients · ${changed} drift · ${unchanged} aligned · total absolute billed drift ${totalDriftCents.toLocaleString("en-US")}`);
 
   if (dryRun) {
     console.log("\n--dry-run — no writes performed.");
@@ -135,11 +150,15 @@ async function main() {
 
   // Write each update individually so a single bad row can't poison
   // the whole backfill. Slow on huge fleets but correct, idempotent,
-  // and re-runnable.
+  // and re-runnable. Updates only the fields that drifted, so a
+  // patient with billed-drift only doesn't get sessions=X re-stamped.
   console.log("\nWriting updates…");
   let written = 0;
   for (const u of updates) {
-    const r = await sql(`UPDATE patients SET billed = ${u.to} WHERE id = '${esc(u.id)}'`);
+    const sets = [];
+    if (u.billedDrift) sets.push(`billed = ${u.billedTo}`);
+    if (u.sessionsDrift) sets.push(`sessions = ${u.sessionsTo}`);
+    const r = await sql(`UPDATE patients SET ${sets.join(", ")} WHERE id = '${esc(u.id)}'`);
     if (r) written++;
   }
   console.log(`Wrote ${written} updates.`);
