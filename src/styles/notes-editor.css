@@ -284,6 +284,71 @@
   flex-shrink: 0;
 }
 
+/* ── Voice dictation — mic + recording strip ───────────────────────
+   Mic icon inherits the active-tool color treatment; while
+   recording it gets a soft red pulse so the user has an obvious
+   "we are listening" cue even when the toolbar scrolls out of
+   view. */
+.mde-voice-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mde-voice-mic.is-recording {
+  color: var(--red);
+  animation: mdeVoicePulse 1.4s ease-in-out infinite;
+}
+@keyframes mdeVoicePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+.mde-voice-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  margin: 0 14px 6px;
+  background: var(--red-bg);
+  color: var(--charcoal);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
+}
+.mde-voice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+  animation: mdeVoicePulse 1.2s ease-in-out infinite;
+}
+.mde-voice-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--charcoal-md);
+}
+.mde-voice-stop {
+  background: var(--white);
+  color: var(--red);
+  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-height: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-voice-mic.is-recording,
+  .mde-voice-dot { animation: none; }
+}
+
 /* Desktop hint badge on hover (keyboard shortcut) */
 .mde-tool-hint {
   display: none;

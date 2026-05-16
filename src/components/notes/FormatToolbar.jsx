@@ -104,8 +104,16 @@ const IconTask = () => (
     <line x1="12" y1="17" x2="21" y2="17"/>
   </svg>
 );
+const IconMic = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="3" width="6" height="12" rx="3"/>
+    <path d="M5 11a7 7 0 0 0 14 0"/>
+    <line x1="12" y1="18" x2="12" y2="21"/>
+    <line x1="9" y1="21" x2="15" y2="21"/>
+  </svg>
+);
 
-export function FormatToolbar({ active, onInline, onBlock, disabled }) {
+export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSupported, voiceRecording, onVoiceToggle }) {
   const { t } = useT();
   const has = (k) => active?.has(k);
   return (
@@ -139,6 +147,21 @@ export function FormatToolbar({ active, onInline, onBlock, disabled }) {
       <Tool label={t("notes.task") || "Checklist"} hint={`${MOD_LABEL}⇧9`} active={has("task")} onClick={() => onBlock("task")} disabled={disabled}>
         <IconTask />
       </Tool>
+      {voiceSupported && (
+        <>
+          <Sep />
+          <Tool
+            label={voiceRecording ? (t("notes.voice.stop") || "Detener") : (t("notes.voice.start") || "Dictar")}
+            active={voiceRecording}
+            onClick={onVoiceToggle}
+            disabled={disabled}
+          >
+            <span className={voiceRecording ? "mde-voice-mic is-recording" : "mde-voice-mic"}>
+              <IconMic />
+            </span>
+          </Tool>
+        </>
+      )}
     </div>
   );
 }

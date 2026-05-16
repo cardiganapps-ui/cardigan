@@ -12,6 +12,7 @@ import { NoteContextChip } from "./notes/NoteContextChip";
 import { FindInNote } from "./notes/FindInNote";
 import { NoteOutline } from "./notes/NoteOutline";
 import { VersionHistorySheet } from "./notes/VersionHistorySheet";
+import { useVoiceDictation } from "../lib/useVoiceDictation";
 import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";
@@ -222,6 +223,49 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   /* ── Format buttons ────────────────────────────────────────────── */
   const onInlineFormat = (kind) => editorRef.current?.applyInlineFormat(kind);
   const onBlockFormat = (block) => editorRef.current?.applyBlockFormat(block);
+
+  /* ── Voice dictation ─────────────────────────────────────────────
+     Hidden entirely on browsers without SpeechRecognition (Safari).
+     Final transcript chunks land in the editor at the caret via the
+     imperative API; interim text is shown live in the recording
+     strip below the toolbar but is NOT inserted until the engine
+     finalises it. We append a single trailing space after each
+     finalised chunk so consecutive utterances stay readable. */
+  const insertVoiceText = useCallback((text) => {
+    const t = text.trim();
+    if (!t) return;
+    editorRef.current?.insertText(`${t} `);
+  }, []);
+  const dictation = useVoiceDictation({ lang: "es-MX", onResult: insertVoiceText });
+  const toggleVoice = useCallback(() => {
+    if (dictation.recording) {
+      dictation.stop();
+      haptic.tap();
+    } else {
+      dictation.start();
+      haptic.tap();
+    }
+  }, [dictation]);
+  // If the user navigates / closes the editor mid-dictation, make
+  // sure the recogniser is stopped so the mic indicator clears.
+  // dictation.stop is useCallback-stable inside the hook, so this
+  // effect's cleanup fires only on unmount.
+  const stopVoice = dictation.stop;
+  useEffect(() => () => { stopVoice(); }, [stopVoice]);
+  // Surface a one-time toast on permission denial / mic missing so
+  // the user knows why nothing happened. Suppress "no-speech" /
+  // "aborted" — those are handled internally by the hook.
+  const lastErrorRef = useRef("");
+  useEffect(() => {
+    if (!dictation.error || dictation.error === lastErrorRef.current) return;
+    lastErrorRef.current = dictation.error;
+    const key =
+      dictation.error === "not-allowed" ? "notes.voice.errPermission" :
+      dictation.error === "audio-capture" ? "notes.voice.errMic" :
+      dictation.error === "network" ? "notes.voice.errNetwork" :
+      "notes.voice.errGeneric";
+    showToast?.(t(key), "error");
+  }, [dictation.error, showToast, t]);
 
   /* ── Restore-from-history ────────────────────────────────────────
      Snapshots are written by the parent's updateNote success path,
@@ -448,7 +492,33 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           active={activeFormats}
           onInline={onInlineFormat}
           onBlock={onBlockFormat}
+          voiceSupported={dictation.supported}
+          voiceRecording={dictation.recording}
+          onVoiceToggle={toggleVoice}
         />
+      )}
+
+      {/* ── Voice recording strip ─────────────────────────────────
+         Shown only while the recogniser is live. Pulses the mic
+         indicator and surfaces the interim transcript so the user
+         can see what's being heard before it commits. */}
+      {!readOnly && dictation.recording && (
+        <div className="mde-voice-strip" role="status" aria-live="polite">
+          <span className="mde-voice-dot" aria-hidden="true" />
+          <span className="mde-voice-label">
+            {dictation.interim
+              ? dictation.interim
+              : t("notes.voice.listening")}
+          </span>
+          <button
+            type="button"
+            className="mde-voice-stop btn-tap"
+            onClick={toggleVoice}
+            aria-label={t("notes.voice.stop")}
+          >
+            {t("notes.voice.stop")}
+          </button>
+        </div>
       )}
 
       {/* ── Find-in-note bar ───────────────────────────────────── */}

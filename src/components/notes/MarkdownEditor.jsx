@@ -372,6 +372,26 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       caretRef.current = { line: 0, col: 0, endLine: 0, endCol: 0 };
       historyRef.current = { past: [], future: [], lastTs: 0 };
     },
+    /* Insert text at the caret (replacing any selection). Used by
+       voice dictation to push transcript chunks into the document
+       without going through the DOM input event pipeline. Pushes
+       history first so the user can undo the whole dictation pass
+       chunk by chunk. */
+    insertText(text) {
+      if (readOnly || !text) return;
+      const c = caretRef.current;
+      const start = Math.min(c.col, c.endCol);
+      const end = Math.max(c.col, c.endCol);
+      const startLine = Math.min(c.line, c.endLine);
+      const endLine = Math.max(c.line, c.endLine);
+      pushHistory(historyRef.current, lines, caretRef.current);
+      const r = replaceRange(lines, startLine, start, endLine, end, text);
+      caretRef.current = {
+        line: r.caret.line, col: r.caret.col,
+        endLine: r.caret.line, endCol: r.caret.col,
+      };
+      setLines(r.lines);
+    },
     getActiveFormats() {
       const c = caretRef.current;
       return activeFormatsAt(lines[c.line] || "", c.col);

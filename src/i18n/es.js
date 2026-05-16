@@ -705,6 +705,15 @@ export default {
       save: "Guardar",
       openEditor: "Editor completo",
     },
+    voice: {
+      start: "Dictar",
+      stop: "Detener",
+      listening: "Escuchando\u2026",
+      errPermission: "Permite el acceso al micr\u00f3fono para dictar.",
+      errMic: "No se detect\u00f3 un micr\u00f3fono.",
+      errNetwork: "No hay conexi\u00f3n para el dictado.",
+      errGeneric: "No se pudo iniciar el dictado.",
+    },
   },
 
   // ── Avatar ──
