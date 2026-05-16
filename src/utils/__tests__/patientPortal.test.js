@@ -18,7 +18,11 @@ function past(date, time = "10:00", status = "completed") {
 }
 
 // Build dates relative to a fixed "now" so the tests stay
-// deterministic across years.
+// deterministic across years. NOW is passed into classifySessions as
+// its third arg so the predicate's "is this slot past?" check uses the
+// same reference time the dates were built against — without that, real
+// wall-clock drift silently flips bucket verdicts and the test starts
+// failing some weeks after it's written.
 const NOW = new Date("2026-05-07T12:00:00Z");
 function shortFromOffset(daysAhead) {
   const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -29,7 +33,7 @@ function shortFromOffset(daysAhead) {
 
 describe("classifySessions", () => {
   it("returns empty future + past for empty input", () => {
-    const r = classifySessions([], [PATIENT_ID]);
+    const r = classifySessions([], [PATIENT_ID], NOW);
     expect(r.future).toEqual([]);
     expect(r.past).toEqual([]);
   });
@@ -38,7 +42,7 @@ describe("classifySessions", () => {
     const sessions = [
       { id: "x", patient_id: "p-other", date: "1-Jun", time: "10:00", status: "scheduled" },
     ];
-    const r = classifySessions(sessions, [PATIENT_ID]);
+    const r = classifySessions(sessions, [PATIENT_ID], NOW);
     expect(r.future).toEqual([]);
     expect(r.past).toEqual([]);
   });
@@ -46,7 +50,7 @@ describe("classifySessions", () => {
   it("buckets a clearly-future scheduled session into future", () => {
     const dateStr = shortFromOffset(7); // 7 days from NOW
     const s = future(dateStr, "14:00");
-    const r = classifySessions([s], [PATIENT_ID]);
+    const r = classifySessions([s], [PATIENT_ID], NOW);
     expect(r.future).toHaveLength(1);
     expect(r.past).toHaveLength(0);
   });
@@ -54,7 +58,7 @@ describe("classifySessions", () => {
   it("buckets a completed past session into past", () => {
     const dateStr = shortFromOffset(-5);
     const s = past(dateStr, "10:00", "completed");
-    const r = classifySessions([s], [PATIENT_ID]);
+    const r = classifySessions([s], [PATIENT_ID], NOW);
     expect(r.future).toHaveLength(0);
     expect(r.past).toHaveLength(1);
   });
@@ -62,7 +66,7 @@ describe("classifySessions", () => {
   it("buckets a cancelled session into past regardless of date", () => {
     const dateStr = shortFromOffset(10); // future date
     const s = { id: "c-1", patient_id: PATIENT_ID, date: dateStr, time: "10:00", status: "cancelled" };
-    const r = classifySessions([s], [PATIENT_ID]);
+    const r = classifySessions([s], [PATIENT_ID], NOW);
     // Cancelled doesn't appear as a future appointment; it's a
     // historical event with status=cancelled.
     expect(r.future).toHaveLength(0);
@@ -72,7 +76,7 @@ describe("classifySessions", () => {
   it("buckets a charged session into past regardless of date", () => {
     const dateStr = shortFromOffset(10);
     const s = { id: "ch-1", patient_id: PATIENT_ID, date: dateStr, time: "10:00", status: "charged" };
-    const r = classifySessions([s], [PATIENT_ID]);
+    const r = classifySessions([s], [PATIENT_ID], NOW);
     expect(r.past).toHaveLength(1);
   });
 
@@ -82,7 +86,7 @@ describe("classifySessions", () => {
       { id: "b", patient_id: "p-2", date: shortFromOffset(8), time: "11:00", status: "scheduled" },
       { id: "c", patient_id: "p-3", date: shortFromOffset(9), time: "12:00", status: "scheduled" },
     ];
-    const r = classifySessions(sessions, ["p-1", "p-2"]);
+    const r = classifySessions(sessions, ["p-1", "p-2"], NOW);
     expect(r.future).toHaveLength(2);
     expect(r.past).toHaveLength(0);
   });

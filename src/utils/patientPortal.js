@@ -17,10 +17,14 @@ import { sessionCountsTowardBalance } from "./accounting";
    rule mirrors what the therapist app shows so both sides see the
    same picture. */
 
-export function classifySessions(sessions, patientIds) {
+// `now` is injectable so tests can pin a reference time the same way the
+// rest of the accounting module already does (sessionCountsTowardBalance,
+// computeConsumedByPatient). Production callers omit it and get real
+// wall-clock time. Without this seam, tests that hardcode session dates
+// silently break once real time drifts past the hardcoded reference.
+export function classifySessions(sessions, patientIds, now = new Date()) {
   const ids = new Set(patientIds || []);
   const filtered = (sessions || []).filter((s) => ids.has(s.patient_id));
-  const now = new Date();
   const future = [];
   const past = [];
   for (const s of filtered) {
