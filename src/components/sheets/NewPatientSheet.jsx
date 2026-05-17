@@ -1038,10 +1038,18 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
 
           </div>
 
-          {/* Fade-in / hold / blur-out toast. Rendered sibling to the
-              sticky footer so it floats just above the Siguiente / Agregar
-              paciente button without shifting the layout. `key` ties the
-              animation to the feedback id so replays work. */}
+          {/* /morphRef container */}
+          </div>
+
+          {/* Sticky footer + feedback toast MUST live outside morphRef.
+              morphRef has overflow:hidden (so the height-morph animation
+              can clip content during the recordType swap) — and any
+              overflow:hidden ancestor breaks position:sticky for its
+              descendants. Inside morphRef the footer would anchor to
+              morphRef's bottom edge (i.e. flow with the form) instead
+              of staying pinned to the sheet-panel's scroll viewport.
+              Out here it sticks to the sheet bottom as intended and
+              covers the form content scrolling underneath. */}
           {feedback && (
             <div key={feedback.id} role="alert" aria-live="polite"
               style={{
@@ -1089,8 +1097,6 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                 </button>
               </div>
             )}
-          </div>
-          {/* /morphRef container */}
           </div>
         </form>
       </div>
