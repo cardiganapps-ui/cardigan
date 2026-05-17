@@ -48,11 +48,16 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
     if (message) { setVisible(true); setLeaving(false); }
     else { setVisible(false); }
   }
+  // Dismiss animation runs for DISMISS_MS — the matching JS unmount
+  // timer must hit AFTER the keyframe finishes (otherwise the DOM
+  // node vanishes mid-fade and the toast pops out). Keep these
+  // two in lockstep with the toastOut keyframe duration in base.css.
+  const DISMISS_MS = 280;
   useEffect(() => {
     if (!message || persistent) return;
     const timer = setTimeout(() => {
       setLeaving(true);
-      setTimeout(() => { setVisible(false); onDismiss?.(); }, 180);
+      setTimeout(() => { setVisible(false); onDismiss?.(); }, DISMISS_MS);
     }, effectiveDuration);
     return () => clearTimeout(timer);
   }, [message, effectiveDuration, onDismiss, persistent]);
@@ -60,7 +65,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   if (!visible || !message) return null;
 
   const bg = type === "error" ? "var(--red)" : type === "success" ? "var(--green)" : type === "warning" ? "var(--amber)" : "var(--charcoal)";
-  const dismiss = () => { setLeaving(true); setTimeout(() => { setVisible(false); onDismiss?.(); }, 180); };
+  const dismiss = () => { setLeaving(true); setTimeout(() => { setVisible(false); onDismiss?.(); }, DISMISS_MS); };
 
   // Type-specific icon — the message text alone left the toast feeling
   // homogeneous regardless of severity. A success toast and an error
@@ -95,7 +100,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
         position:"fixed", top, left:12, right:12,
         zIndex:"var(--z-install)", pointerEvents:"auto",
         animation: leaving
-          ? "toastOut var(--dur-fast) var(--ease-out) forwards"
+          ? "toastOut 280ms var(--ease-in-out) forwards"
           : "toastIn var(--dur-slower) var(--ease-spring)",
         opacity,
         transform: `scale(${scale})`,
