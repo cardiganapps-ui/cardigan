@@ -660,7 +660,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         <div className="mde-header-actions">
           {!readOnly && (
             <span className={"mde-save-indicator " + (saveState === "saved" ? "is-saved" : "is-saving")}>
-              {saveState === "saved" ? t("notes.saved") : t("notes.saving")}
+              <span className="mde-save-dot" aria-hidden="true" />
+              <span className="mde-save-label">
+                {saveState === "saved" ? t("notes.saved") : t("notes.saving")}
+              </span>
             </span>
           )}
           {hasHeadings && (
@@ -866,17 +869,21 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           </div>
         )}
 
-        <input
-          type="text"
-          className="mde-title"
-          value={title}
-          onChange={handleTitleChange}
-          onKeyDown={handleTitleKeyDown}
-          placeholder={t("notes.titlePlaceholder")}
-          autoFocus={!readOnly && !note?.id}
-          readOnly={readOnly}
-          aria-label={t("notes.titlePlaceholder")}
-        />
+        {/* Title is wrapped so we can hang a focus underline off the
+            parent — <input> can't carry ::after pseudo-elements. */}
+        <span className="mde-title-wrap">
+          <input
+            type="text"
+            className="mde-title"
+            value={title}
+            onChange={handleTitleChange}
+            onKeyDown={handleTitleKeyDown}
+            placeholder={t("notes.titlePlaceholder")}
+            autoFocus={!readOnly && !note?.id}
+            readOnly={readOnly}
+            aria-label={t("notes.titlePlaceholder")}
+          />
+        </span>
 
         <MarkdownEditor
           ref={editorRef}

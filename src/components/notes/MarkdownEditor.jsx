@@ -408,7 +408,16 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       requestAnimationFrame(() => {
         rootRef.current?.focus({ preventScroll: true });
         const div = lineDivsRef.current[targetLine];
-        if (div) div.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (div) {
+          div.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Brief landing flash so the eye finds the new position
+          // when jumping in from Find or the outline drawer. The CSS
+          // animation auto-resets via `forwards: none`; we still
+          // strip the class so a subsequent jump to the same line
+          // re-triggers the keyframe.
+          div.classList.add("is-jump-flash");
+          setTimeout(() => div.classList.remove("is-jump-flash"), 700);
+        }
         if (s !== e) {
           placeSelection(lineDivsRef.current, targetLine, s, targetLine, e);
         } else {

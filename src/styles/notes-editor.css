@@ -47,6 +47,33 @@
   font-weight: 400;
   transition: opacity var(--dur-fast) ease;
 }
+.mde-line {
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+/* Bear / Apple Notes-style focus dimming — once the user is editing,
+   the active line stays at full opacity and the rest of the document
+   gently fades, so the eye lands where the caret is. Falls back to no
+   dimming on browsers without :has() — graceful degradation, the
+   editor still works. */
+.mde-root:has(.mde-line.has-caret) .mde-line:not(.has-caret) {
+  opacity: 0.62;
+}
+/* Find-jump landing flash — when the user jumps via Find or the
+   outline drawer, briefly tint the target line so the eye lands. */
+.mde-line.is-jump-flash {
+  animation: mdeLineFlash 700ms var(--ease-out);
+  border-radius: 6px;
+}
+@keyframes mdeLineFlash {
+  0%   { background: color-mix(in srgb, var(--amber) 28%, transparent); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-line { transition: none; }
+  .mde-line.is-jump-flash { animation: none; }
+  .mde-root:has(.mde-line.has-caret) .mde-line:not(.has-caret) { opacity: 1; }
+}
+
 .mde-line:not(.has-caret) .md-syntax {
   font-size: 0;
   letter-spacing: -0.5em;
@@ -274,6 +301,18 @@
   background: var(--teal-pale);
   color: var(--teal-dark);
   transform: scale(1.04);
+  animation: mdeToolActivate var(--dur-base) var(--ease-spring) 1;
+}
+/* Punch on the moment a format toggle becomes active. The settle to
+   scale(1.04) is handled by the transition above; this keyframe just
+   adds the brief overshoot so toggles read tactile, not flat. */
+@keyframes mdeToolActivate {
+  0%   { transform: scale(0.92); }
+  60%  { transform: scale(1.12); }
+  100% { transform: scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-tool.is-active { animation: none; }
 }
 
 .mde-tool-sep {
@@ -933,4 +972,126 @@
   height: 1px;
   background: var(--border-lt);
   opacity: 0.6;
+}
+
+/* ── Phase A polish: title focus underline ───────────────────────────
+   The plain <input> can't carry pseudo-elements, so we wrap it in a
+   span and put the underline on the wrap. scaleX(0)→scaleX(1) from
+   the left edge so the underline draws in like a focus hint, not a
+   border that snaps on. Soft spring so it lands without bouncing. */
+.mde-title-wrap {
+  display: block;
+  position: relative;
+}
+.mde-title-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  height: 2px;
+  background: var(--teal);
+  border-radius: 1px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease-spring-soft);
+  pointer-events: none;
+}
+.mde-title-wrap:focus-within::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-title-wrap::after { transition: none; }
+}
+
+/* ── Phase A polish: animated save indicator ─────────────────────────
+   The static "Guardando…/Guardado" text was passive. A pulsing dot
+   during saves + a quick check-flash on success reads as actively
+   reassuring without taking more space. */
+.mde-save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.mde-save-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.mde-save-indicator.is-saving .mde-save-dot {
+  background: var(--amber);
+  animation: mdeSavingPulse 1.2s ease-in-out infinite;
+}
+.mde-save-indicator.is-saved .mde-save-dot {
+  background: var(--green);
+  animation: mdeSavedFlash var(--dur-slow) var(--ease-spring) 1;
+}
+@keyframes mdeSavingPulse {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%      { transform: scale(0.6);  opacity: 0.45; }
+}
+@keyframes mdeSavedFlash {
+  0%   { transform: scale(0); }
+  55%  { transform: scale(1.6); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-save-indicator.is-saving .mde-save-dot,
+  .mde-save-indicator.is-saved  .mde-save-dot { animation: none; }
+}
+
+/* ── Phase A polish: find bar entrance ──────────────────────────────
+   Soft-spring overshoot reads as deliberate, not abrupt. */
+.mde-find {
+  animation: findIn var(--dur-slow) var(--ease-spring-soft);
+}
+
+/* ── Phase A polish: attachment tile hover lift ─────────────────────
+   Tile elevates, scales subtly, picks up a teal-tinted border on
+   hover so it reads as a real interactive surface, not a static
+   thumbnail. Pointer-only — keeps mobile taps free of hover state. */
+.mde-attach-tile {
+  transition:
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-spring-soft),
+    border-color var(--dur-base) var(--ease-out);
+  border: 1px solid transparent;
+}
+@media (hover: hover) {
+  .mde-attach-tile:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px) scale(1.02);
+    border-color: var(--teal-light);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-attach-tile { transition: none; }
+  .mde-attach-tile:hover { transform: none; }
+}
+
+/* ── Phase A polish: voice mic sonar halo ───────────────────────────
+   Adds a soft expanding ring around the recording-dot so the live
+   state reads at-a-glance even when the strip is out of the user's
+   immediate gaze. */
+.mde-voice-dot {
+  position: relative;
+}
+.mde-voice-dot::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--red);
+  opacity: 0.45;
+  animation: mdeVoiceHalo 1.4s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes mdeVoiceHalo {
+  0%   { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(3);   opacity: 0;    }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-voice-dot::before { animation: none; opacity: 0; }
 }
