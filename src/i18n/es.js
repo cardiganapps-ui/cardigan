@@ -657,6 +657,8 @@ export default {
     past: "Pasadas",
     upcoming: "Pr\u00f3ximas",
     createFirstHint: "Crea tu primera nota con el bot\u00f3n de arriba.",
+    searchNoResults: "Sin resultados para \u00ab{term}\u00bb",
+    searchNoResultsHint: "Intenta con otra palabra o revisa que el {client.s} y la {session.s} est\u00e9n bien escritos.",
     selectedCount: "{count} seleccionada{plural}",
     formatting: "Formato",
     bold: "Negrita",

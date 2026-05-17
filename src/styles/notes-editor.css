@@ -960,8 +960,8 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--charcoal-xl);
-  padding: 10px 2px 4px;
+  color: var(--charcoal-md);
+  padding: 14px 2px 4px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -971,7 +971,88 @@
   flex: 1;
   height: 1px;
   background: var(--border-lt);
-  opacity: 0.6;
+  opacity: 0.45;
+}
+
+/* ── Phase B polish: note card row ──────────────────────────────────
+   The row used to be a bare inline-styled div. Promoted to a real
+   card class so we can drive hover/lift/accent variants from CSS.
+   The accent stripe on the left is a CSS custom property
+   (--note-row-accent) set inline by Notes.jsx based on pin/patient
+   state — teal-light for patient-linked, amber for pinned, neither
+   for general unfiled notes. */
+.note-card-row {
+  position: relative;
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-lt);
+  border-left: 3px solid var(--note-row-accent, transparent);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition:
+    transform var(--dur-base) var(--ease-spring-soft),
+    background var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .note-card-row:hover {
+    background: var(--teal-mist);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+  }
+}
+/* Pinned wins over the patient-color stripe — it's the user's
+   explicit "this matters" signal. Subtle amber-bg wash so the row
+   reads as flagged even when the card stripe is small. */
+.note-card-row.is-pinned {
+  background: color-mix(in srgb, var(--amber-bg) 50%, var(--white));
+}
+@media (hover: hover) {
+  .note-card-row.is-pinned:hover {
+    background: color-mix(in srgb, var(--amber-bg) 70%, var(--white));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-card-row { transition: none; }
+  .note-card-row:hover { transform: none; }
+}
+
+/* ── Phase B polish: tag filter pill ────────────────────────────────
+   Migrated from inline styles → class so we can drive hover from
+   CSS. Active state still uses the teal-pale accent for "this filter
+   is on"; idle hover lifts to cream to match the rest of the
+   tappable surfaces in the app. */
+.tag-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-lt);
+  background: var(--white);
+  color: var(--charcoal-md);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease;
+}
+.tag-filter-pill.is-active {
+  border-color: var(--teal);
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+@media (hover: hover) {
+  .tag-filter-pill:not(.is-active):hover {
+    background: var(--cream);
+    border-color: var(--border);
+  }
 }
 
 /* ── Phase A polish: title focus underline ───────────────────────────

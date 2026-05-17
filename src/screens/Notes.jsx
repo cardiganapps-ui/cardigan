@@ -300,12 +300,19 @@ export function Notes() {
                   body={t("notes.inboxEmptyBody")}
                   compact
                 />
-              : <EmptyState
-                  kind="notes"
-                  title={t("docs.noResults")}
-                  body={t("notes.createFirstHint")}
-                  compact
-                />)
+              : search.trim()
+                ? <EmptyState
+                    kind="notes"
+                    title={t("notes.searchNoResults", { term: search.trim() })}
+                    body={t("notes.searchNoResultsHint")}
+                    compact
+                  />
+                : <EmptyState
+                    kind="notes"
+                    title={t("docs.noResults")}
+                    body={t("notes.createFirstHint")}
+                    compact
+                  />)
         : <NoteGroupedList
             buckets={groupedNotes}
             patients={patients}
@@ -520,18 +527,22 @@ function NoteGroupedList({
             const isSelected = selected.has(n.id);
             const isLongPressing = longPressingId === n.id;
             const staggerIdx = Math.min(rowIndexById.get(n.id) ?? 0, 12);
+            // Visual accent stripe on the left edge:
+            //   pinned     → amber + a faint amber-bg wash
+            //   patient    → teal stripe (uses --teal-light so it
+            //                reads as accent, not "active" state)
+            //   neither    → transparent stripe (kept for alignment)
+            // Pinned wins when both apply — it's the user's explicit
+            // "this matters" signal, the patient link is metadata.
+            const accentColor = n.pinned
+              ? "var(--amber)"
+              : p ? "var(--teal-light)" : "transparent";
             const noteContent = (
               <div
-                className={"list-entry-stagger" + (isLongPressing ? " note-card-pressing" : "")}
+                className={"note-card-row list-entry-stagger" + (isLongPressing ? " note-card-pressing" : "") + (n.pinned ? " is-pinned" : "")}
                 style={{
-                  position: "relative",
-                  background: "var(--white)",
-                  borderRadius: "var(--radius)",
-                  border: "1px solid var(--border-lt)",
-                  boxShadow: "var(--shadow-sm)",
-                  overflow: "hidden",
-                  transition: "transform 0.4s ease, background 0.4s ease",
                   "--stagger-i": staggerIdx,
+                  "--note-row-accent": accentColor,
                 }}>
                 <div style={{ display: "flex", alignItems: "center" }}>
                   {selectMode && (

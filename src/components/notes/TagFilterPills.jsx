@@ -49,24 +49,9 @@ export function TagFilterPills({ tags, tagLinks, selectedIds, onToggle }) {
           <button
             key={tag.id}
             type="button"
-            className="btn-tap"
+            className={"tag-filter-pill btn-tap" + (active ? " is-active" : "")}
             aria-pressed={active}
             onClick={() => onToggle?.(tag.id)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              flexShrink: 0,
-              height: 32,
-              padding: "0 12px",
-              borderRadius: "var(--radius-pill)",
-              border: `1px solid ${active ? "var(--teal)" : "var(--border-lt)"}`,
-              background: active ? "var(--teal-pale)" : "var(--white)",
-              color: active ? "var(--teal-dark)" : "var(--charcoal-md)",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
           >
             <span style={{
               maxWidth: 140,
