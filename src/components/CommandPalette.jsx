@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { IconSearch, IconX, IconUsers, IconCalendar, IconDollar, IconClipboard, IconDocument, IconHome, IconUserPlus, IconCalendarPlus, IconShield, IconBarChart, IconTrendingUp, IconTag, IconBug, IconActivity } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
+import { useViewport } from "../hooks/useViewport";
 import { useT } from "../i18n/index";
 import { fetchAllAccounts } from "../hooks/useCardiganData";
 import { useAdminCommands, recordAdminRecent } from "../screens/admin/parts/useAdminCommands";
@@ -55,6 +56,12 @@ function score(query, text) {
 
 export default function CommandPalette({ open, onClose, onViewAsUser, currentAdminId }) {
   const { t } = useT();
+  // Keyboard hints (ESC chip, ↑↓ tips, mod-key shortcuts, footer) only
+  // mean something on a device with an actual keyboard. iPhone users
+  // see them as cosmetic clutter — hide everywhere below the tablet
+  // breakpoint. iPad portrait + landscape still show them since a
+  // Magic Keyboard / external BT keyboard is common there.
+  const { isTablet } = useViewport();
   const { navigate, patients, notes, requestFabAction, openExpediente, openNoteById, noteCrypto, isAdminUser, showToast } = useCardigan();
   // Admin account list — lazy-fetched the first time the palette opens
   // for an admin so non-admin sessions never make this round-trip.
@@ -294,10 +301,10 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
             onKeyDown={onKeyDown}
             placeholder={t("cmdp.placeholder")}
           />
-          <kbd className="cmdp-kbd">ESC</kbd>
+          {isTablet && <kbd className="cmdp-kbd">ESC</kbd>}
         </div>
         <div ref={listRef} className="cmdp-list" role="listbox">
-          {!query.trim() && (
+          {!query.trim() && isTablet && (
             <>
               <div className="cmdp-tips" aria-hidden>
                 <span className="cmdp-tip">
@@ -372,11 +379,13 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
             ))
           )}
         </div>
-        <div className="cmdp-footer">
-          <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">↑</kbd><kbd className="cmdp-kbd">↓</kbd> Navegar</span>
-          <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">↵</kbd> Abrir</span>
-          <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">esc</kbd> Cerrar</span>
-        </div>
+        {isTablet && (
+          <div className="cmdp-footer">
+            <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">↑</kbd><kbd className="cmdp-kbd">↓</kbd> Navegar</span>
+            <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">↵</kbd> Abrir</span>
+            <span className="cmdp-footer-hint"><kbd className="cmdp-kbd">esc</kbd> Cerrar</span>
+          </div>
+        )}
       </div>
     </div>
   );

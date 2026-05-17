@@ -22,6 +22,7 @@ export default {
     placeholder: "Buscar comandos, {client.p}\u2026",
     empty: "Sin resultados",
     emptyHint: "Prueba con un nombre de paciente o una secci\u00f3n.",
+    newPatient: "Nuevo {client.s}",
   },
   apply: "Aplicar cambios",
   ok: "OK",
