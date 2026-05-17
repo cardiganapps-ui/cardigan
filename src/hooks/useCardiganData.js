@@ -839,7 +839,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
   const { createPayment, deletePayment, softDeletePayment, updatePayment } =
     createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
-  const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, softDeleteNote } =
+  const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, softDeleteNote, setNoteCover } =
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
   const { upsertTag, deleteTag, linkTag, unlinkTag } =
     createNoteTagActions(userId, tags, setTags, tagLinks, setTagLinks, setMutationError, noteCrypto);
@@ -945,6 +945,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createPayment: guard(createPayment), deletePayment: guard(deletePayment), softDeletePayment, updatePayment: guard(updatePayment),
     createNote: guard(createNote), updateNote: guard(updateNote), updateNoteLink: guard(updateNoteLink),
     togglePinNote: guard(togglePinNote), deleteNote: guard(deleteNote), softDeleteNote, deleteNotes: guard(deleteNotes),
+    setNoteCover: guard(setNoteCover),
     upsertTag: guard(upsertTag), deleteTag: guard(deleteTag),
     linkTag: guard(linkTag), unlinkTag: guard(unlinkTag),
     uploadNoteAttachment: guard(uploadNoteAttachment),

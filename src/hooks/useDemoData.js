@@ -73,6 +73,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     softDeletePayment: () => ({ commit: async () => true, undo: () => {} }),
     createNote: noopNote, updateNote: noop, updateNoteLink: noop, togglePinNote: noop, deleteNote: noop, deleteNotes: noop,
     softDeleteNote: () => ({ commit: async () => true, undo: () => {} }),
+    setNoteCover: noop,
     upsertTag: noopNote, deleteTag: noop, linkTag: noop, unlinkTag: noop,
     uploadNoteAttachment: noopNote, deleteNoteAttachment: noop,
     documents: [], uploadDocument: noop, renameDocument: noop, tagDocumentSession: noop, deleteDocument: noop, getDocumentUrl: () => null,

@@ -1297,6 +1297,15 @@
       "udt_name": "tsvector"
     },
     {
+      "column_default": null,
+      "column_name": "cover_attachment_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 12,
+      "table_name": "notes",
+      "udt_name": "uuid"
+    },
+    {
       "column_default": "gen_random_uuid()",
       "column_name": "id",
       "data_type": "uuid",
@@ -3939,6 +3948,12 @@
       "table_name": "note_versions"
     },
     {
+      "conname": "notes_cover_attachment_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (cover_attachment_id) REFERENCES note_attachments(id) ON DELETE SET NULL",
+      "table_name": "notes"
+    },
+    {
       "conname": "notes_patient_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
@@ -5002,6 +5017,11 @@
       "indexdef": "CREATE UNIQUE INDEX note_versions_pkey ON public.note_versions USING btree (id)",
       "indexname": "note_versions_pkey",
       "tablename": "note_versions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_notes_cover_attachment ON public.notes USING btree (cover_attachment_id) WHERE (cover_attachment_id IS NOT NULL)",
+      "indexname": "idx_notes_cover_attachment",
+      "tablename": "notes"
     },
     {
       "indexdef": "CREATE INDEX notes_encrypted_user_idx ON public.notes USING btree (user_id) WHERE (encrypted = true)",

@@ -1275,6 +1275,39 @@
   -webkit-box-decoration-break: clone;
 }
 
+/* ── Phase E.2: cover hero ─────────────────────────────────────────
+   Optional image rendered above the title when the note has a
+   cover_attachment_id. Tapping reopens the cover picker so the
+   user can swap or clear it. The button reset + image fill keep
+   the surface looking like a hero, not a clickable button. */
+.mde-cover {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 0;
+  border: none;
+  background: var(--cream);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 21 / 9; /* wide cinema-ish — feels like a hero */
+  -webkit-tap-highlight-color: transparent;
+}
+.mde-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--dur-slower) var(--ease-out);
+}
+@media (hover: hover) {
+  .mde-cover:hover img { transform: scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-cover img { transition: none; }
+  .mde-cover:hover img { transform: none; }
+}
+
 /* ── Phase E.1: reading mode ───────────────────────────────────────
    Distraction-free presentation. Strips the editor chrome (toolbar,
    header action buttons, save indicator), suppresses the syntax-

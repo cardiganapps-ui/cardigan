@@ -158,6 +158,12 @@ create table if not exists notes (
         'B'
       )
     ) stored,
+  -- Cover image (migration 074). Optional — when set, the editor
+  -- renders the referenced attachment as a hero above the title
+  -- and the Notes list shows it as a row thumbnail. ON DELETE SET
+  -- NULL keeps the note alive when the underlying attachment goes
+  -- away.
+  cover_attachment_id uuid references note_attachments(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -504,6 +510,7 @@ create index if not exists idx_note_tag_links_tag_id on note_tag_links(tag_id);
 create index if not exists idx_note_versions_note_created on note_versions(note_id, created_at desc);
 create index if not exists idx_note_attachments_note on note_attachments(note_id) where deleted_at is null;
 create index if not exists idx_note_attachments_user_created on note_attachments(user_id, created_at desc) where deleted_at is null;
+create index if not exists idx_notes_cover_attachment on notes(cover_attachment_id) where cover_attachment_id is not null;
 create index if not exists idx_documents_user_id on documents(user_id);
 create index if not exists idx_documents_patient_id on documents(patient_id);
 create index if not exists idx_documents_user_kind on documents(user_id, kind);

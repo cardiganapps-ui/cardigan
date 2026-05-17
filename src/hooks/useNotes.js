@@ -268,6 +268,34 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
+  /* setNoteCover — Phase E.2. Updates the note's cover_attachment_id.
+     Pass null to clear the cover. Mirrors togglePinNote's pattern:
+     optimistic local update, offline-aware enqueue, online write +
+     in-memory rollback on error. Temp-id notes (offline-inserted)
+     defer the update to drain time. */
+  async function setNoteCover(id, attachmentId) {
+    const note = notes.find(n => n.id === id);
+    if (!note) return false;
+    const next = attachmentId || null;
+    setMutationError("");
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, cover_attachment_id: next } : n));
+    if (typeof id === "string" && id.startsWith("temp-")) return true;
+    if (isOffline()) {
+      await enqueue("notes.update", { id, userId, patch: { cover_attachment_id: next } });
+      return true;
+    }
+    let error;
+    try {
+      const res = await supabase.from("notes").update({ cover_attachment_id: next }).eq("id", id).eq("user_id", userId);
+      error = res.error;
+    } catch {
+      await enqueue("notes.update", { id, userId, patch: { cover_attachment_id: next } });
+      return true;
+    }
+    if (error) { setMutationError(error.message); return false; }
+    return true;
+  }
+
   async function togglePinNote(id) {
     const note = notes.find(n => n.id === id);
     if (!note) return false;
@@ -332,5 +360,5 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     };
   }
 
-  return { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, softDeleteNote, deleteNotes };
+  return { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, softDeleteNote, deleteNotes, setNoteCover };
 }

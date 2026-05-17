@@ -8,6 +8,7 @@ import { useLayer } from "../hooks/useLayer";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
 import { useAttachmentSrc } from "./notes/useAttachmentSrc";
+import { CoverPickerSheet } from "./notes/CoverPickerSheet";
 import { FormatToolbar } from "./notes/FormatToolbar";
 import { NoteContextChip } from "./notes/NoteContextChip";
 import { FindInNote } from "./notes/FindInNote";
@@ -78,7 +79,7 @@ function isEffectivelyEmpty(title, content, templates) {
 export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay", originRect = null }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
-  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName } = useCardigan();
+  const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName, setNoteCover } = useCardigan();
   const noteTemplates = useNoteTemplates();
   const { isDesktop } = useViewport();
   // Attachment src hook — called once at the parent so the strip
@@ -106,6 +107,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   // column with bigger type. Useful for sharing a screen with a
   // colleague or reviewing a long note without edit cues.
   const [readingMode, setReadingMode] = useState(false);
+  // Cover picker visibility (Phase E.2). Opens from the kebab.
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   // Heading scroll-spy state. The IntersectionObserver effect below
   // updates this whenever the topmost-visible heading changes; the
   // outline drawer reads it to highlight the matching entry.
@@ -820,6 +823,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                     <span>{readingMode ? t("notes.readingExit") : t("notes.readingMode")}</span>
                   </button>
                   {note?.id && (
+                    <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setCoverPickerOpen(true); }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="2.4" />
+                        <circle cx="9" cy="9" r="1.6" />
+                        <path d="M21 17l-5-5L7 21" />
+                      </svg>
+                      <span>{note.cover_attachment_id ? t("notes.cover.change") : t("notes.cover.set")}</span>
+                    </button>
+                  )}
+                  {note?.id && (
                     <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M3 12a9 9 0 1 0 3-6.7" />
@@ -977,6 +990,22 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           </div>
         )}
 
+        {/* Cover hero — Phase E.2. Renders only when the note has a
+            cover_attachment_id pointing at a resolved attachment.
+            Tap-target opens the picker so the user can switch /
+            remove the cover. Hides in readOnly. */}
+        {note?.cover_attachment_id && attachmentSrc.tiles[note.cover_attachment_id]?.url && (
+          <button
+            type="button"
+            className="mde-cover btn-tap"
+            onClick={() => !readOnly && setCoverPickerOpen(true)}
+            disabled={readOnly}
+            aria-label={t("notes.cover.change")}
+          >
+            <img src={attachmentSrc.tiles[note.cover_attachment_id].url} alt="" />
+          </button>
+        )}
+
         {/* Title is wrapped so we can hang a focus underline off the
             parent — <input> can't carry ::after pseudo-elements. */}
         <span className="mde-title-wrap">
@@ -1073,6 +1102,19 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           onClose={() => setHistoryOpen(false)}
           note={note}
           onRestore={handleRestoreVersion}
+        />
+      )}
+
+      {/* ── Cover picker sheet (Phase E.2) ────────────────────────── */}
+      {note?.id && (
+        <CoverPickerSheet
+          open={coverPickerOpen}
+          onClose={() => setCoverPickerOpen(false)}
+          attachmentRows={attachmentSrc.rows}
+          tiles={attachmentSrc.tiles}
+          currentCoverId={note.cover_attachment_id || null}
+          onPick={(attachmentId) => setNoteCover?.(note.id, attachmentId)}
+          onClear={() => setNoteCover?.(note.id, null)}
         />
       )}
 
