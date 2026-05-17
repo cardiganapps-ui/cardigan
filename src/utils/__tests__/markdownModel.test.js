@@ -3,6 +3,7 @@ import {
   tokenizeLine,
   renderLineHTML,
   getListPrefix,
+  getShortcutTransform,
   activeFormatsAt,
   toggleBlock,
   toggleInline,
@@ -270,5 +271,91 @@ describe("toPlainText — export / copy", () => {
 
   it("drops heading syntax but preserves text", () => {
     expect(toPlainText("# Title\nbody")).toBe("Title\nbody");
+  });
+});
+
+describe("getShortcutTransform — markdown autoformat", () => {
+  // The contract: returns null for no transform, or
+  // { newLine, newCol } when the typed char triggers one. The typed
+  // char is absorbed by the transform (caller doesn't insert it).
+
+  it("returns null when no shortcut applies", () => {
+    expect(getShortcutTransform("hello", 5, " ")).toBeNull();
+    expect(getShortcutTransform("# Title", 7, " ")).toBeNull();
+  });
+
+  it("returns null for empty / nullish inputs", () => {
+    expect(getShortcutTransform(null, 0, " ")).toBeNull();
+    expect(getShortcutTransform("", 0, null)).toBeNull();
+  });
+
+  it("canonicalises '* ' to '- ' at line start", () => {
+    expect(getShortcutTransform("*", 1, " ")).toEqual({
+      newLine: "- ",
+      newCol: 2,
+    });
+  });
+
+  it("canonicalises indented '  * ' to '  - '", () => {
+    expect(getShortcutTransform("  *", 3, " ")).toEqual({
+      newLine: "  - ",
+      newCol: 4,
+    });
+  });
+
+  it("does NOT fire '* → -' mid-line (only at indent boundary)", () => {
+    expect(getShortcutTransform("hello*", 6, " ")).toBeNull();
+  });
+
+  it("expands '[] ' to '[ ] ' (task syntax) at line start", () => {
+    expect(getShortcutTransform("[]", 2, " ")).toEqual({
+      newLine: "[ ] ",
+      newCol: 4,
+    });
+  });
+
+  it("expands indented '  [] ' to '  [ ] '", () => {
+    expect(getShortcutTransform("    []", 6, " ")).toEqual({
+      newLine: "    [ ] ",
+      newCol: 8,
+    });
+  });
+
+  it("preserves trailing content after a canonicalised bullet", () => {
+    // Caret between `*` and `more` — typed space converts the star.
+    expect(getShortcutTransform("*more", 1, " ")).toEqual({
+      newLine: "- more",
+      newCol: 2,
+    });
+  });
+
+  it("collapses '--' to em-dash on the second keystroke", () => {
+    // Line was "Hello -" (just typed first dash). User types another dash.
+    expect(getShortcutTransform("Hello -", 7, "-")).toEqual({
+      newLine: "Hello —",
+      newCol: 7,
+    });
+  });
+
+  it("preserves the literal '---' when typing the third dash", () => {
+    // Line is "--" (em-dash transform was somehow skipped, or pasted).
+    // Typing the third "-" must NOT collapse — preserve the source.
+    expect(getShortcutTransform("--", 2, "-")).toBeNull();
+  });
+
+  it("collapses '...' to ellipsis on the third dot", () => {
+    expect(getShortcutTransform("Wait..", 6, ".")).toEqual({
+      newLine: "Wait…",
+      newCol: 5,
+    });
+  });
+
+  it("preserves the literal '....' when typing the fourth dot", () => {
+    expect(getShortcutTransform("...", 3, ".")).toBeNull();
+  });
+
+  it("does not transform when typed char isn't space/dash/dot", () => {
+    expect(getShortcutTransform("*", 1, "a")).toBeNull();
+    expect(getShortcutTransform("[]", 2, "x")).toBeNull();
   });
 });

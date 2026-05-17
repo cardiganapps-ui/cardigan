@@ -5,6 +5,7 @@ import {
   lineClassNames,
   lineDataAttrs,
   getListPrefix,
+  getShortcutTransform,
   activeFormatsAt,
   toggleBlock,
   toggleInline,
@@ -452,6 +453,20 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     switch (e.inputType) {
       case "insertText": {
         e.preventDefault();
+        // Markdown autoformat shortcuts. Only fires on single-caret
+        // input (no selection) — replacing a selected range with
+        // a typed char shouldn't trigger a syntactic transform.
+        // The transform absorbs the typed char if it fires (no extra
+        // insertion below).
+        if (sel.startLine === sel.endLine && sel.startCol === sel.endCol) {
+          const shortcut = getShortcutTransform(lines[sel.startLine], sel.startCol, e.data);
+          if (shortcut) {
+            const next = lines.slice();
+            next[sel.startLine] = shortcut.newLine;
+            applyModel({ lines: next, caret: { line: sel.startLine, col: shortcut.newCol } });
+            return;
+          }
+        }
         applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, e.data || ""));
         return;
       }

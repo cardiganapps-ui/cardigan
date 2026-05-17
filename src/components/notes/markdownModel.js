@@ -285,6 +285,83 @@ export function getListPrefix(line) {
   return null;
 }
 
+/* ── Markdown autoformat shortcuts ─────────────────────────────────
+   Called from MarkdownEditor's insertText path before the typed char
+   lands. Given the current line, the col where the new character is
+   about to be inserted, and the character being typed, returns
+   { newLine, newCol } if a shortcut applies — the caller commits
+   that as the next state IN PLACE OF inserting the char normally
+   (i.e. the typed char is absorbed by the transform). Returns null
+   for no transform; caller falls through to default insertion.
+
+   Triggers:
+     • "*" + " " at line start (or indented) → "- " (canonical bullet)
+     • "[]" + " " at line start (or indented) → "[ ] " (task syntax)
+     • "-" + "-" anywhere with col ≥ 2 → "—" (em-dash). The previous
+       dash is replaced; the typed dash is absorbed. Skipped when the
+       caret would otherwise produce "---", so a deliberate triple-
+       dash sequence still types as "—-" (em-dash + hyphen).
+     • "." + "." + "." → "…" (ellipsis). Same absorbed-char pattern.
+
+   Deliberately narrow set: every transform here has to either be
+   purely typographic (em-dash, ellipsis) or canonicalise a syntax
+   the markdown model already understands. We don't introduce NEW
+   syntax via shortcuts — the in-app reference for "what markdown
+   does this editor support" stays the renderer, not this list. */
+export function getShortcutTransform(line, caretCol, typed) {
+  if (line == null) line = "";
+  if (typed == null) return null;
+  const before = line.slice(0, caretCol);
+
+  // Em-dash: two dashes collapse on the second keystroke. Skip when
+  // a third dash would land (preserve the user's literal "---").
+  if (typed === "-" && before.endsWith("-") && !before.endsWith("--")) {
+    return {
+      newLine: line.slice(0, caretCol - 1) + "—" + line.slice(caretCol),
+      newCol: caretCol,
+    };
+  }
+
+  // Ellipsis: three dots collapse on the third keystroke. Skip when
+  // a fourth would land.
+  if (typed === "." && before.endsWith("..") && !before.endsWith("...")) {
+    return {
+      newLine: line.slice(0, caretCol - 2) + "…" + line.slice(caretCol),
+      newCol: caretCol - 1,
+    };
+  }
+
+  // Below this point: space-triggered canonicalisations only.
+  if (typed !== " ") return null;
+
+  // "*" at line start (possibly indented) → "- " (canonical bullet
+  // marker). Both "* " and "- " render identically, but "- " is what
+  // the rest of the codebase produces (toolbar insert, list-prefix
+  // continuation). Canonicalise so the source stays consistent.
+  const starMatch = before.match(/^( *)\*$/);
+  if (starMatch) {
+    const indent = starMatch[1];
+    return {
+      newLine: indent + "- " + line.slice(caretCol),
+      newCol: indent.length + 2,
+    };
+  }
+
+  // "[]" at line start (possibly indented) → "[ ] " (task syntax).
+  // Apple Notes + iA Writer both auto-expand the empty-bracket
+  // shorthand into a real task on space; matches the muscle memory.
+  const taskMatch = before.match(/^( *)\[\]$/);
+  if (taskMatch) {
+    const indent = taskMatch[1];
+    return {
+      newLine: indent + "[ ] " + line.slice(caretCol),
+      newCol: indent.length + 4,
+    };
+  }
+
+  return null;
+}
+
 /* Which inline formats does the caret currently sit inside? Used by
    the toolbar to light up active buttons. `col` is the raw-markdown
    column in `line`. Block format is included alongside inline. */
