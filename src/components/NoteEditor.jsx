@@ -308,7 +308,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       observer.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [content]);
+    // Only re-attach the IO + MO when the heading set actually
+    // changes. Depending on `content` would re-run per keystroke,
+    // disconnecting + reconnecting both observers on every char.
+  }, [headingsSignature]);
 
   /* ── Scroll-shadow header ──────────────────────────────────────── */
   useEffect(() => {
@@ -573,6 +576,15 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     if (!isDesktop) setOutlineOpen(false);
   }, [isDesktop]);
   const hasHeadings = useMemo(() => extractOutline(content).length > 0, [content]);
+  // Cheap signature of the heading set used to dep the scroll-spy
+  // effect below. content changes every keystroke; the heading
+  // SET only changes when a line becomes / stops being a heading.
+  // Computing this is a string scan (microseconds); skipping the
+  // observer reattach saves an order of magnitude more work.
+  const headingsSignature = useMemo(
+    () => extractOutline(content).map(o => `${o.line}-${o.level}`).join(","),
+    [content]
+  );
 
   /* ── Template pick — only for brand-new empty notes ────────────── */
   const pickTemplate = (tpl) => {
@@ -739,16 +751,21 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     (!inlineMode ? (exiting ? " note-editor-exit" : " note-editor-enter") : "") +
     (readingMode ? " mde-reading-mode" : "");
 
+  // Single predicate for "is this a valid row-anchored origin?" so
+  // the inline CSS vars + the data-from-origin attribute stay in
+  // lockstep. Either both fire (rect is valid) or neither does (rect
+  // missing or zero-dim).
+  const hasValidOrigin = !!(
+    originRect
+    && typeof window !== "undefined"
+    && originRect.width > 4
+    && originRect.height > 4
+  );
   const shellStyle = inlineMode
     ? { flex: 1, minHeight: 0, background: "var(--white)", display: "flex", flexDirection: "column" }
     : {
         position: "fixed", inset: 0, background: "var(--white)", zIndex: "var(--z-note-editor)", display: "flex", flexDirection: "column",
-        // Row-anchored entrance: when the caller hands us the
-        // originating row's bounding rect, expose it as inline
-        // custom properties. The note-editor-enter[data-from-origin]
-        // animation reads them to start the morph from those
-        // coordinates rather than the default translate-up.
-        ...(originRect && typeof window !== "undefined" ? {
+        ...(hasValidOrigin ? {
           "--mde-origin-x":  `${originRect.left}px`,
           "--mde-origin-y":  `${originRect.top}px`,
           "--mde-origin-sx": originRect.width  / window.innerWidth,
@@ -757,7 +774,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       };
 
   return (
-    <div className={shellClass} style={shellStyle} data-from-origin={originRect ? "true" : undefined}>
+    <div className={shellClass} style={shellStyle} data-from-origin={hasValidOrigin ? "true" : undefined}>
       {/* ── Header ────────────────────────────────────────────── */}
       <div className={"mde-header" + (scrolled ? " is-scrolled" : "")}>
         <button className="mde-back" onClick={handleClose}>‹ {t("back")}</button>
@@ -1025,7 +1042,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         <MarkdownEditor
           ref={editorRef}
           initialContent={content}
-          readOnly={readOnly}
+          /* Reading mode rides on top of the editor's existing
+             readOnly path: contenteditable goes off so the caret
+             can't land, but the body remains selectable for copy.
+             Toggling out restores edit mode without remounting. */
+          readOnly={readOnly || readingMode}
           onContentChange={handleContentChange}
           onSelectionChange={handleSelectionChange}
           onRequestFind={() => setFindOpen(true)}
@@ -1115,6 +1136,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           currentCoverId={note.cover_attachment_id || null}
           onPick={(attachmentId) => setNoteCover?.(note.id, attachmentId)}
           onClear={() => setNoteCover?.(note.id, null)}
+          onRequestAttach={onPaperclipClick}
         />
       )}
 

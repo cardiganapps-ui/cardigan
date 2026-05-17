@@ -31,7 +31,10 @@ function computeFenceLayout(lines) {
   let insideFence = false;
   let runStart = -1;
   for (let i = 0; i < lines.length; i++) {
-    const isFence = /^```/.test(lines[i] || "");
+    // CommonMark allows up to 3 leading spaces before a fence
+    // marker. We honour that so a fence inside a quoted/indented
+    // context renders as a code block instead of literal backticks.
+    const isFence = /^ {0,3}```/.test(lines[i] || "");
     if (isFence) {
       // The fence marker itself is part of the run's first / last
       // visual position. Open: pos="top" (run starts here). Close:
@@ -302,6 +305,11 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   // opened on + the anchor rect so the portal can position the
   // popover near the caret. null when closed.
   const [slashMenu, setSlashMenu] = useState(null);
+  // rAF handle for a pending slash-trigger open. Tracked so a fast
+  // typist who lands a char between "/" and the rAF can cancel the
+  // pending open (so the menu doesn't pop on a line that's no
+  // longer just "/").
+  const slashPendingRef = useRef(0);
 
   /* Notify parent of content changes (skip the initial mount). */
   const didMountRef = useRef(false);
@@ -388,11 +396,17 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
 
   /* Wire attachment image sources whenever the resolution map
      changes OR the body re-renders (which would have nuked the
-     previously-set src attributes). Cheap querySelectorAll —
-     microseconds even on long notes — and runs only when there are
-     actually attachment placeholders in the DOM. */
+     previously-set src attributes). Walk runs every render the
+     body content changes; the includes() pre-check short-circuits
+     instantly on notes with no attachment syntax (the common
+     case). querySelectorAll is microseconds but adds up across
+     500-line notes typed at speed; the string scan beats it on
+     the cold path and the gate keeps lines as a real dep so
+     image insertions on previously-attachment-free notes still
+     wire up. */
   useLayoutEffect(() => {
     if (!attachmentTiles) return;
+    if (!lines.some(l => l && l.includes("attachment:"))) return;
     const root = rootRef.current;
     if (!root) return;
     const imgs = root.querySelectorAll("img[data-mde-attachment]");
@@ -569,7 +583,11 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
             applyModel({ lines: next, caret: { line: sel.startLine, col: shortcut.newCol } });
             // Typing any char while the slash menu is open dismisses
             // it (we don't support filter-as-you-type in v1).
-            if (slashMenu) setSlashMenu(null);
+            if (slashPendingRef.current) {
+          cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = 0;
+        }
+        if (slashMenu) setSlashMenu(null);
             return;
           }
         }
@@ -585,15 +603,32 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
           (lines[sel.startLine] || "") === ""
         ) {
           const targetLineIdx = sel.startLine;
-          requestAnimationFrame(() => {
+          if (slashPendingRef.current) cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = requestAnimationFrame(() => {
+            slashPendingRef.current = 0;
             const div = lineDivsRef.current[targetLineIdx];
             if (!div) return;
+            // Re-verify the line is still "/" — a fast typist can
+            // land another char in the rAF gap (~16ms). Reading the
+            // DOM's current textContent (post-render) sidesteps the
+            // stale closure problem of reading `lines` here. Strip
+            // the zero-width-space sentinel the renderer appends.
+            const text = (div.textContent || "").replace(/\u200B/g, "");
+            if (text !== "/") return;
             const rect = div.getBoundingClientRect();
             setSlashMenu({ line: targetLineIdx, anchorRect: rect });
           });
-        } else if (slashMenu) {
-          // Any other typed char dismisses the open menu.
-          setSlashMenu(null);
+        } else if (slashMenu || slashPendingRef.current) {
+          // Any other typed char dismisses the open OR pending menu.
+          if (slashPendingRef.current) {
+            cancelAnimationFrame(slashPendingRef.current);
+            slashPendingRef.current = 0;
+          }
+          if (slashPendingRef.current) {
+          cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = 0;
+        }
+        if (slashMenu) setSlashMenu(null);
         }
         return;
       }
@@ -609,24 +644,40 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       case "insertLineBreak":
       case "insertParagraph": {
         e.preventDefault();
+        if (slashPendingRef.current) {
+          cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = 0;
+        }
         if (slashMenu) setSlashMenu(null);
         handleEnter(sel);
         return;
       }
       case "deleteContentBackward": {
         e.preventDefault();
+        if (slashPendingRef.current) {
+          cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = 0;
+        }
         if (slashMenu) setSlashMenu(null);
         applyModel(deleteBackward(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol));
         return;
       }
       case "deleteContentForward": {
         e.preventDefault();
+        if (slashPendingRef.current) {
+          cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = 0;
+        }
         if (slashMenu) setSlashMenu(null);
         applyModel(deleteForward(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol));
         return;
       }
       case "deleteWordBackward": {
         e.preventDefault();
+        if (slashPendingRef.current) {
+          cancelAnimationFrame(slashPendingRef.current);
+          slashPendingRef.current = 0;
+        }
         if (slashMenu) setSlashMenu(null);
         applyModel(deleteWordBackward(lines, sel.startLine, sel.startCol));
         return;
@@ -826,7 +877,10 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         : null;
       // Multi-line selections fall through to a plain paste — wrapping
       // a paragraph break inside a [link] makes a broken link.
-      if (selText != null && selText.length > 0) {
+      // Skip the link wrap when the selection is whitespace-only —
+      // produces ugly empty-anchor markdown like `[   ](url)` and
+      // is almost always a missed-selection accident.
+      if (selText != null && selText.trim().length > 0) {
         const wrapped = `[${selText}](${trimmed})`;
         applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, wrapped));
         return;

@@ -19,7 +19,7 @@ import { haptic } from "../../utils/haptics";
    escape, swipe-to-close. Tapping a thumb is the implicit confirm;
    no separate "Save" button. */
 
-export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, currentCoverId, onPick, onClear }) {
+export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, currentCoverId, onPick, onClear, onRequestAttach }) {
   const { t } = useT();
   const [busy, setBusy] = useState(false);
 
@@ -88,14 +88,25 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
         </div>
         <div style={{ padding: "0 20px 22px" }}>
           {!hasAnyAttachments ? (
-            <div style={{
-              padding: "18px 0",
-              fontSize: "var(--text-sm)",
-              color: "var(--charcoal-md)",
-              textAlign: "center",
-              lineHeight: 1.5,
-            }}>
-              {t("notes.cover.noAttachments")}
+            <div style={{ padding: "8px 0 4px", textAlign: "center" }}>
+              <div style={{
+                fontSize: "var(--text-sm)",
+                color: "var(--charcoal-md)",
+                lineHeight: 1.5,
+                marginBottom: 14,
+              }}>
+                {t("notes.cover.noAttachments")}
+              </div>
+              {onRequestAttach && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => { onClose?.(); onRequestAttach(); }}
+                  style={{ minHeight: 44, padding: "0 22px" }}
+                >
+                  {t("notes.cover.attachNow")}
+                </button>
+              )}
             </div>
           ) : (
             <>

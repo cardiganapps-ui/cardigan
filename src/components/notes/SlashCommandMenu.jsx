@@ -68,13 +68,21 @@ export function SlashCommandMenu({ open, anchorRect, onSelect, onClose }) {
       if (ref.current.contains(e.target)) return;
       onClose?.();
     };
+    // Scroll-on-any-ancestor desyncs the popover from its anchor
+    // rect (the menu is position:fixed, the rect was captured at
+    // open time). Closing on first scroll keeps the visual
+    // relationship honest — user can re-trigger "/" if they still
+    // want the menu after scrolling.
+    const onScroll = () => onClose?.();
     document.addEventListener("keydown", onKey, true);
     document.addEventListener("mousedown", onDocPointer);
     document.addEventListener("touchstart", onDocPointer, { passive: true });
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
       document.removeEventListener("keydown", onKey, true);
       document.removeEventListener("mousedown", onDocPointer);
       document.removeEventListener("touchstart", onDocPointer);
+      window.removeEventListener("scroll", onScroll, { capture: true });
     };
   }, [open, onClose]);
 

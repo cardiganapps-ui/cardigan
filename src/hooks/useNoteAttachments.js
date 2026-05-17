@@ -76,7 +76,7 @@ registerHandler("note_attachments.delete", async ({ id, userId, r2Path }) => {
   return await supabase.from("note_attachments").delete().eq("id", id).eq("user_id", userId);
 });
 
-export function createNoteAttachmentActions(userId, attachments, setAttachments, setMutating, setMutationError, noteCrypto) {
+export function createNoteAttachmentActions(userId, attachments, setAttachments, setMutating, setMutationError, noteCrypto, setNotes) {
 
   /* uploadNoteAttachment
      Args: { noteId, file, onProgress? }
@@ -227,6 +227,14 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
     // Optimistic UI removal first — undo isn't surfaced for inline
     // media yet (Phase 5 v1 scope); the row simply disappears.
     setAttachments(prev => prev.filter(a => a.id !== id));
+    // Mirror the server-side ON DELETE SET NULL cascade in local
+    // state so any note that had this attachment as its cover
+    // clears the slot immediately. Without this the UI lags one
+    // refresh behind reality — the kebab still says "Cambiar
+    // portada" pointing at an attachment that no longer exists.
+    if (typeof setNotes === "function") {
+      setNotes(prev => prev.map(n => n.cover_attachment_id === id ? { ...n, cover_attachment_id: null } : n));
+    }
     if (isOffline()) {
       await enqueue("note_attachments.delete", { id, userId, r2Path });
       return true;

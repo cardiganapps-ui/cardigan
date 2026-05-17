@@ -86,6 +86,25 @@ describe("tokenizeLine — inline parsing", () => {
     expect(token.block).toBe("p");
   });
 
+  it("forgives trailing whitespace on an image-only line", () => {
+    // A stray space from paste shouldn't downgrade the line back to
+    // raw markdown text.
+    const token = tokenizeLine("![](attachment:abc-123)   ");
+    expect(token.block).toBe("image");
+    expect(token.attachmentId).toBe("abc-123");
+  });
+
+  it("renders literal === without collapsing into a mark", () => {
+    // Tightened mark regex (lookarounds for non-= boundary) keeps
+    // `===title===` rendering as literal text — no <mark> match.
+    const kinds = inlineKinds("===title===");
+    expect(kinds.filter(k => k === "mark")).toEqual([]);
+  });
+
+  it("still recognises ==mark== between non-= characters", () => {
+    expect(inlineKinds("==word== then ==another==")).toEqual(["mark", "mark"]);
+  });
+
   it("mixes kinds in one line", () => {
     expect(inlineKinds("**a** and *b*")).toEqual(["strong", "em"]);
   });

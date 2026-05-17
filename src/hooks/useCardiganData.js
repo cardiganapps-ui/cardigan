@@ -844,7 +844,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const { upsertTag, deleteTag, linkTag, unlinkTag } =
     createNoteTagActions(userId, tags, setTags, tagLinks, setTagLinks, setMutationError, noteCrypto);
   const { uploadNoteAttachment, deleteNoteAttachment } =
-    createNoteAttachmentActions(userId, noteAttachments, setNoteAttachments, setMutating, setMutationError, noteCrypto);
+    createNoteAttachmentActions(userId, noteAttachments, setNoteAttachments, setMutating, setMutationError, noteCrypto, setNotes);
   const { uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl } =
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
   const { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements } =

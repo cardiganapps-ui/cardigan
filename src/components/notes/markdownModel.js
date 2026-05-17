@@ -33,9 +33,12 @@ const INLINE_RULES = [
   { kind: "strong", re: /\*\*([^\n]+?)\*\*/g,      syntax: 2 },
   { kind: "strike", re: /~~([^\n]+?)~~/g,          syntax: 2 },
   // Highlight (`==text==`) — Obsidian / Bear use the same syntax.
-  // Two equals signs, single-line, no nested wrapping. Renderer
-  // emits <mark>; the toolbar's highlighter dropdown produces it.
-  { kind: "mark",   re: /==([^\n]+?)==/g,          syntax: 2 },
+  // Two equals signs, single-line, no nested wrapping. The
+  // lookarounds prevent greedy match into triple-equals runs:
+  // `===title===` should render literally, not as `<mark>=title=</mark>`.
+  // The content also can't start or end with `=` for the same
+  // reason. Renderer emits <mark>.
+  { kind: "mark",   re: /(?<!=)==([^=\n](?:[^\n]*?[^=\n])?|[^=\n])==(?!=)/g, syntax: 2 },
   { kind: "em",     re: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g, syntax: 1 },
 ];
 
@@ -105,7 +108,9 @@ export function tokenizeLine(raw) {
   // can swap visible content (inline <img> off-caret, raw markdown
   // on-caret) without disturbing the inline tokeniser. Inline image
   // mixing with paragraph text is out of scope for v1.
-  if ((m = raw.match(/^!\[([^\]]*)\]\(attachment:([0-9a-fA-F-]+)\)$/))) {
+  // Trailing whitespace is forgiven (paste from another app can
+   // leave a stray space) — the line still renders as an image.
+  if ((m = raw.match(/^!\[([^\]]*)\]\(attachment:([0-9a-fA-F-]+)\)\s*$/))) {
     return {
       block: "image",
       blockSyntax: raw,

@@ -1290,7 +1290,13 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  aspect-ratio: 21 / 9; /* wide cinema-ish — feels like a hero */
+  /* 16:9 reads as "hero" without going so wide that narrow phones
+     end up with a 100px sliver. Min-height keeps the surface a
+     usable target even when the parent is very narrow; max-height
+     prevents the hero from eating the screen on a tablet. */
+  aspect-ratio: 16 / 9;
+  min-height: 140px;
+  max-height: 320px;
   -webkit-tap-highlight-color: transparent;
 }
 .mde-cover img {

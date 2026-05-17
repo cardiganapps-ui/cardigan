@@ -675,6 +675,7 @@ export default {
       current: "Portada actual",
       usePill: "Usar como portada",
       noAttachments: "Adjunta una imagen a esta nota primero para usarla como portada.",
+      attachNow: "Adjuntar imagen",
     },
     code: "C\u00f3digo",
     h1: "T\u00edtulo",
