@@ -20,11 +20,16 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  // Uniform short fade across every type — 3s lingered too long even
-  // for errors and warnings. Error toasts that need persistence
-  // (e.g. mutationError with a Reintentar) opt in via `persistent`,
-  // and any caller can still override with an explicit duration prop.
-  const effectiveDuration = duration ?? 1400;
+  // Uniform short fade across every type. 1.4s still felt long when
+  // toasts stacked (you'd dismiss one and the next was still there
+  // half a beat too long), so the default is 900ms now. Plus the
+  // 180ms fade-out below = ~1080ms of visible time — long enough to
+  // read a short Spanish phrase, short enough to feel snappy.
+  //
+  // Error toasts that need persistence (mutationError with a
+  // Reintentar) opt in via `persistent`. Undo toasts pass their
+  // own UNDO_MS duration so the 5s window stays intact.
+  const effectiveDuration = duration ?? 900;
 
   // Flip visibility synchronously when the message prop changes —
   // adjust-state-during-render so the toast enters/exits without a
