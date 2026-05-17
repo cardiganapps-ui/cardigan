@@ -37,6 +37,12 @@ export function Notes() {
     setSelectedTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }, []);
   const [editingNote, setEditingNote] = useState(null);
+  // When the user taps a note row, capture the row's
+  // getBoundingClientRect() so the editor can morph from those
+  // coordinates rather than slide in from below. Reset to null when
+  // the editor closes or opens from a non-row trigger (e.g. pending
+  // open from CommandPalette, where the user never tapped a row).
+  const [editorOriginRect, setEditorOriginRect] = useState(null);
   // CommandPalette → Notas tap routes through openNoteById, which
   // navigates to archivo and parks the id in a context ref. Consume
   // it ONCE on mount; if notes haven't loaded yet we hold the id
@@ -162,10 +168,17 @@ export function Notes() {
     longPressRef.current = null;
     setLongPressingId(null);
   };
-  const handleNoteClick = (note) => {
+  const handleNoteClick = (note, ev) => {
     if (longPressRef.current === "fired") { longPressRef.current = null; return; }
     cancelLongPress();
-    if (selectMode) toggleSelect(note.id); else setEditingNote(note);
+    if (selectMode) { toggleSelect(note.id); return; }
+    // Capture the row's screen position so the editor can animate
+    // out from this card. If the event source is something other
+    // than a row (programmatic open via openNoteById), ev will be
+    // missing — fall back to the default slide-up animation.
+    const rect = ev?.currentTarget?.getBoundingClientRect?.() || null;
+    setEditorOriginRect(rect);
+    setEditingNote(note);
   };
 
   const propsNoteSessions = propsNote?._patientId
@@ -181,7 +194,8 @@ export function Notes() {
         note={editingNote}
         onSave={handleSaveNote}
         onDelete={editingNote.id ? handleDeleteNote : undefined}
-        onClose={() => setEditingNote(null)}
+        onClose={() => { setEditingNote(null); setEditorOriginRect(null); }}
+        originRect={editorOriginRect}
       />
     )}
     <div className={`page ${isTabletSplit ? "notes-page--split" : ""}`} style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
@@ -563,7 +577,7 @@ function NoteGroupedList({
                     onTouchStart={() => !selectMode && onLongPressStart(n)}
                     onTouchEnd={onLongPressCancel} onTouchMove={onLongPressCancel}
                     onTouchCancel={onLongPressCancel}>
-                    <NoteCard note={n} onClick={() => onNoteClick(n)}
+                    <NoteCard note={n} onClick={(ev) => onNoteClick(n, ev)}
                       patientName={p?.name} sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null}
                       onPatientClick={p ? () => openExpediente(p) : undefined} />
                   </div>

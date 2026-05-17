@@ -557,6 +557,30 @@
   animation: noteEditorIn var(--dur-slow) var(--ease-spring);
   will-change: transform, opacity;
 }
+/* Row-anchored entrance: when the caller passes an originRect,
+   start the morph from that screen position by composing translate
+   + scale. transform-origin = top-left so the scale grows from the
+   row's anchor (the user's finger). Same duration as the default
+   entrance but spring-anchored to the source point reads "the
+   card lifted" rather than "the screen slid up". */
+@keyframes noteEditorOriginIn {
+  0% {
+    transform: translate(var(--mde-origin-x, 0), var(--mde-origin-y, 0))
+               scale(var(--mde-origin-sx, 1), var(--mde-origin-sy, 1));
+    opacity: 0.55;
+    border-radius: var(--radius-lg);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+    border-radius: 0;
+  }
+}
+.note-editor-enter[data-from-origin="true"] {
+  animation: noteEditorOriginIn var(--dur-slow) var(--ease-spring);
+  transform-origin: top left;
+  overflow: hidden;
+}
 .note-editor-exit {
   animation: noteEditorOut var(--dur-base) var(--ease-out) forwards;
 }
@@ -1250,6 +1274,64 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+/* ── Phase E.1: reading mode ───────────────────────────────────────
+   Distraction-free presentation. Strips the editor chrome (toolbar,
+   header action buttons, save indicator), suppresses the syntax-
+   dimming pattern that surfaces raw markdown on the focused line,
+   widens the body to a centered max-width column, raises type
+   size + line-height. Reading-mode is an editor STATE (toggled via
+   the kebab "Modo lectura"), not a separate component — same
+   contenteditable, just visually quieted. Tap "Salir de modo
+   lectura" in the kebab to return. */
+.mde-reading-mode .mde-toolbar,
+.mde-reading-mode .mde-context-row,
+.mde-reading-mode .mde-find,
+.mde-reading-mode .mde-voice-strip {
+  display: none !important;
+}
+/* Header — keep the back button + the kebab (so the user can exit
+   reading mode) but hide everything else. */
+.mde-reading-mode .mde-save-indicator,
+.mde-reading-mode .mde-header-actions > button:not([data-menu-trigger]) {
+  display: none !important;
+}
+/* Body: widen, center, breathe. Cap max-width so long lines don't
+   sprawl; line-height bumps from default 1.55 → 1.75 (matches
+   reading-app norms). */
+.mde-reading-mode .mde-scroll {
+  padding-left: clamp(20px, 6vw, 64px);
+  padding-right: clamp(20px, 6vw, 64px);
+}
+.mde-reading-mode .mde-root,
+.mde-reading-mode .mde-title-wrap {
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.mde-reading-mode .mde-line {
+  font-size: var(--text-lg);
+  line-height: 1.75;
+}
+.mde-reading-mode .mde-title {
+  font-size: clamp(26px, 4vw, 32px);
+}
+.mde-reading-mode .mde-line--h1 .md-heading { font-size: 28px; }
+.mde-reading-mode .mde-line--h2 .md-heading { font-size: 22px; }
+.mde-reading-mode .mde-line--h3 .md-heading { font-size: 18px; }
+/* Suppress syntax dimming so raw markdown stays hidden even on the
+   "focused" line — reading-mode shows OUTPUT only. .md-syntax
+   already collapses off-caret; this rule forces it off-caret-style
+   regardless of focus. */
+.mde-reading-mode .md-syntax {
+  font-size: 0 !important;
+}
+.mde-reading-mode .mde-line:not(.has-caret) {
+  opacity: 1; /* defeat Phase A's focus dimming — every line equal */
+}
+/* Images stay visible regardless of caret since we suppress
+   .has-caret-driven hide rules. */
+.mde-reading-mode .md-image-frame { display: block !important; }
 
 /* ── Phase D.2: fenced code blocks ───────────────────────────────
    Lines inside ```...``` fences render as a single code block

@@ -665,6 +665,8 @@ export default {
     italic: "Cursiva",
     strike: "Tachado",
     highlight: "Resaltar",
+    readingMode: "Modo lectura",
+    readingExit: "Salir de modo lectura",
     code: "C\u00f3digo",
     h1: "T\u00edtulo",
     h2: "T\u00edtulo 2",

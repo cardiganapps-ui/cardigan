@@ -75,7 +75,7 @@ function isEffectivelyEmpty(title, content, templates) {
    buttons, title input, template chooser, autosave, close flow,
    patient/session linking plumbing. Editing logic lives in
    MarkdownEditor. */
-export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay" }) {
+export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay", originRect = null }) {
   const inlineMode = layout === "inline";
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName } = useCardigan();
@@ -101,6 +101,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [findOpen, setFindOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Reading mode strips the editor chrome (toolbar, header buttons,
+  // syntax dimming) and widens the body to a centered max-width
+  // column with bigger type. Useful for sharing a screen with a
+  // colleague or reviewing a long note without edit cues.
+  const [readingMode, setReadingMode] = useState(false);
   // Heading scroll-spy state. The IntersectionObserver effect below
   // updates this whenever the topmost-visible heading changes; the
   // outline drawer reads it to highlight the matching entry.
@@ -728,14 +733,28 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
   const shellClass =
     (inlineMode ? "note-editor-inline" : "note-editor-desktop") +
-    (!inlineMode ? (exiting ? " note-editor-exit" : " note-editor-enter") : "");
+    (!inlineMode ? (exiting ? " note-editor-exit" : " note-editor-enter") : "") +
+    (readingMode ? " mde-reading-mode" : "");
 
   const shellStyle = inlineMode
     ? { flex: 1, minHeight: 0, background: "var(--white)", display: "flex", flexDirection: "column" }
-    : { position: "fixed", inset: 0, background: "var(--white)", zIndex: "var(--z-note-editor)", display: "flex", flexDirection: "column" };
+    : {
+        position: "fixed", inset: 0, background: "var(--white)", zIndex: "var(--z-note-editor)", display: "flex", flexDirection: "column",
+        // Row-anchored entrance: when the caller hands us the
+        // originating row's bounding rect, expose it as inline
+        // custom properties. The note-editor-enter[data-from-origin]
+        // animation reads them to start the morph from those
+        // coordinates rather than the default translate-up.
+        ...(originRect && typeof window !== "undefined" ? {
+          "--mde-origin-x":  `${originRect.left}px`,
+          "--mde-origin-y":  `${originRect.top}px`,
+          "--mde-origin-sx": originRect.width  / window.innerWidth,
+          "--mde-origin-sy": originRect.height / window.innerHeight,
+        } : {}),
+      };
 
   return (
-    <div className={shellClass} style={shellStyle}>
+    <div className={shellClass} style={shellStyle} data-from-origin={originRect ? "true" : undefined}>
       {/* ── Header ────────────────────────────────────────────── */}
       <div className={"mde-header" + (scrolled ? " is-scrolled" : "")}>
         <button className="mde-back" onClick={handleClose}>‹ {t("back")}</button>
@@ -792,6 +811,13 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                   <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setFindOpen(true); }}>
                     <IconSearchMenu />
                     <span>{t("notes.find.placeholder")}</span>
+                  </button>
+                  <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setReadingMode(v => !v); }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M2 6a3 3 0 0 1 3-3h5v17H5a3 3 0 0 1-3-3V6z" />
+                      <path d="M22 6a3 3 0 0 0-3-3h-5v17h5a3 3 0 0 0 3-3V6z" />
+                    </svg>
+                    <span>{readingMode ? t("notes.readingExit") : t("notes.readingMode")}</span>
                   </button>
                   {note?.id && (
                     <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}>
