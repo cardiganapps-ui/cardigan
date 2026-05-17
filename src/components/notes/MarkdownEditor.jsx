@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useImperativeHandle, forwardRef, useCallback } from "react";
+import { SlashCommandMenu } from "./SlashCommandMenu";
 import {
   tokenizeLine,
   renderLineHTML,
@@ -242,6 +243,11 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   const historyRef = useRef({ past: [], future: [], lastTs: 0 });
   const pendingFocusRef = useRef(autoFocus);
   const lineDivsRef = useRef([]);
+  // Slash command menu — open when the user types "/" at the start
+  // of an otherwise-empty line. State holds the line index it
+  // opened on + the anchor rect so the portal can position the
+  // popover near the caret. null when closed.
+  const [slashMenu, setSlashMenu] = useState(null);
 
   /* Notify parent of content changes (skip the initial mount). */
   const didMountRef = useRef(false);
@@ -464,10 +470,34 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
             const next = lines.slice();
             next[sel.startLine] = shortcut.newLine;
             applyModel({ lines: next, caret: { line: sel.startLine, col: shortcut.newCol } });
+            // Typing any char while the slash menu is open dismisses
+            // it (we don't support filter-as-you-type in v1).
+            if (slashMenu) setSlashMenu(null);
             return;
           }
         }
         applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, e.data || ""));
+        // Slash command trigger: "/" at the start of an otherwise-
+        // empty line opens the menu. We defer to the next animation
+        // frame so the DOM has rendered the new "/" line — only then
+        // can we read the line's bounding rect for the menu anchor.
+        if (
+          e.data === "/" &&
+          sel.startLine === sel.endLine &&
+          sel.startCol === 0 &&
+          (lines[sel.startLine] || "") === ""
+        ) {
+          const targetLineIdx = sel.startLine;
+          requestAnimationFrame(() => {
+            const div = lineDivsRef.current[targetLineIdx];
+            if (!div) return;
+            const rect = div.getBoundingClientRect();
+            setSlashMenu({ line: targetLineIdx, anchorRect: rect });
+          });
+        } else if (slashMenu) {
+          // Any other typed char dismisses the open menu.
+          setSlashMenu(null);
+        }
         return;
       }
       case "insertReplacementText": {
@@ -482,21 +512,25 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       case "insertLineBreak":
       case "insertParagraph": {
         e.preventDefault();
+        if (slashMenu) setSlashMenu(null);
         handleEnter(sel);
         return;
       }
       case "deleteContentBackward": {
         e.preventDefault();
+        if (slashMenu) setSlashMenu(null);
         applyModel(deleteBackward(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol));
         return;
       }
       case "deleteContentForward": {
         e.preventDefault();
+        if (slashMenu) setSlashMenu(null);
         applyModel(deleteForward(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol));
         return;
       }
       case "deleteWordBackward": {
         e.preventDefault();
+        if (slashMenu) setSlashMenu(null);
         applyModel(deleteWordBackward(lines, sel.startLine, sel.startCol));
         return;
       }
@@ -679,6 +713,27 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     if (!text) return;
     const sel = currentModelSelection(rootRef.current, lineDivsRef.current);
     if (!sel) return;
+    // Smart paste: if the clipboard holds a single URL AND the user
+    // has selected text, wrap the selection in a markdown link
+    // [selection](url). Matches the muscle memory from Notion / Bear
+    // / Google Docs. Plain URL with no selection: just paste the URL
+    // (no transform — the user may want to type their own anchor).
+    const trimmed = text.trim();
+    const isUrl = /^https?:\/\/\S+$/i.test(trimmed) && !/\s/.test(trimmed);
+    const hasSelection = sel.startLine !== sel.endLine || sel.startCol !== sel.endCol;
+    if (isUrl && hasSelection) {
+      const sameLine = sel.startLine === sel.endLine;
+      const selText = sameLine
+        ? lines[sel.startLine].slice(sel.startCol, sel.endCol)
+        : null;
+      // Multi-line selections fall through to a plain paste — wrapping
+      // a paragraph break inside a [link] makes a broken link.
+      if (selText != null && selText.length > 0) {
+        const wrapped = `[${selText}](${trimmed})`;
+        applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, wrapped));
+        return;
+      }
+    }
     applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, text));
   };
 
@@ -700,27 +755,66 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     haptic.tap();
   };
 
+  // Slash-menu selection: replace the "/" on the trigger line with
+  // the chosen command's block prefix, position the caret after it.
+  // The trigger line is always the line stored when the menu opened
+  // (not the current caret line — selection may have moved).
+  const handleSlashSelect = useCallback((cmd) => {
+    if (!slashMenu) return;
+    const lineIdx = slashMenu.line;
+    const line = lines[lineIdx] || "";
+    // The line should be "/" (we only opened on an empty line +
+    // typed "/"). Replace from col 0 to col 1 with the prefix, even
+    // if the user typed extra chars after — those get nuked too,
+    // since the menu acts as a definitive intent to use that format.
+    const slashIdx = line.indexOf("/");
+    if (slashIdx < 0) { setSlashMenu(null); return; }
+    const newLine = cmd.prefix + line.slice(slashIdx + 1).trimStart();
+    const next = lines.slice();
+    next[lineIdx] = newLine;
+    applyModel({ lines: next, caret: { line: lineIdx, col: cmd.prefix.length } });
+    setSlashMenu(null);
+    // Re-focus the editor — clicking the menu may have moved focus
+    // to the popover's button. Defer one frame so the lineDivs ref
+    // update settles first.
+    requestAnimationFrame(() => {
+      rootRef.current?.focus({ preventScroll: true });
+    });
+    // applyModel isn't memoized — re-runs each render alongside
+    // `lines`. That's fine: the menu opens rarely enough that the
+    // callback identity churn doesn't matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slashMenu, lines]);
+
   return (
-    <div
-      ref={rootRef}
-      className="mde-root"
-      contentEditable={!readOnly}
-      suppressContentEditableWarning
-      aria-readonly={readOnly ? "true" : "false"}
-      role="textbox"
-      aria-multiline="true"
-      aria-label="Editor de nota"
-      data-placeholder={placeholder}
-      data-empty={lines.length === 1 && lines[0] === "" ? "true" : "false"}
-      spellCheck
-      onBeforeInput={onBeforeInput}
-      onKeyDown={onKeyDown}
-      onCompositionStart={onCompositionStart}
-      onCompositionEnd={onCompositionEnd}
-      onPaste={onPaste}
-      onDrop={onDrop}
-      onClick={onClick}
-    />
+    <>
+      <div
+        ref={rootRef}
+        className="mde-root"
+        contentEditable={!readOnly}
+        suppressContentEditableWarning
+        aria-readonly={readOnly ? "true" : "false"}
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Editor de nota"
+        data-placeholder={placeholder}
+        data-empty={lines.length === 1 && lines[0] === "" ? "true" : "false"}
+        spellCheck
+        onBeforeInput={onBeforeInput}
+        onKeyDown={onKeyDown}
+        onCompositionStart={onCompositionStart}
+        onCompositionEnd={onCompositionEnd}
+        onPaste={onPaste}
+        onDrop={onDrop}
+        onClick={onClick}
+      />
+      <SlashCommandMenu
+        open={!!slashMenu}
+        anchorRect={slashMenu?.anchorRect}
+        onSelect={handleSlashSelect}
+        onClose={() => setSlashMenu(null)}
+      />
+    </>
   );
 });
 

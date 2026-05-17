@@ -1176,3 +1176,16 @@
 @media (prefers-reduced-motion: reduce) {
   .mde-voice-dot::before { animation: none; opacity: 0; }
 }
+
+/* ── Phase C polish: slash command menu entrance ────────────────────
+   The menu portal renders into document.body with its own inline
+   positioning, but the entrance animation is named here so the
+   keyframes file stays the single source of motion truth. */
+@keyframes slashMenuIn {
+  0%   { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Portal child inherits this via animation-name; reduced-motion
+     scope kills it across the board. */
+}
