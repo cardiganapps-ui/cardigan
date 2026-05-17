@@ -260,6 +260,10 @@ The therapist-facing billing layer — entirely separate from patient `payments`
 - **Health check:** `GET /api/health` returns `{ status, checks: { supabase, r2 } }` — 200 when both are up, 503 otherwise. Unauthenticated, returns no user data. Point UptimeRobot (or equivalent) at `https://cardigan.mx/api/health` on a 5-minute interval.
 - **Rotating a noisy error:** silence it in the Sentry UI (create an inbound filter or ignore rule) rather than adding a try/catch that hides a real failure. If you need to suppress at the code level, add an allowlist check inside the specific handler — do NOT globally suppress in `_sentry.js`.
 - **Env setup:** `VITE_SENTRY_DSN` (client) and `SENTRY_DSN` (server) must be set in Vercel (Preview + Production) before the first post-merge deploy. Keep them distinct — rotation, routing, and sampling are per-DSN.
+- **Live setup (as of May 2026):** org slug `cardigan`, two projects:
+  - `cardigan-web` (platform: javascript-react) → `VITE_SENTRY_DSN`
+  - `cardigan-api` (platform: node) → `SENTRY_DSN`
+  Both DSNs are set on Vercel Production + Preview and mirrored in `.env.local`. `SENTRY_AUTH_TOKEN` in `.env.local` is a user auth token with `org:read project:read/write/admin` — use it to create new projects, rotate DSNs, or query issues via the API (`https://sentry.io/api/0/...`). To rotate a DSN: call `POST /projects/cardigan/<slug>/keys/`, swap the new DSN into Vercel + redeploy, then `DELETE /projects/cardigan/<slug>/keys/<oldId>/`.
 
 ### Edge Config (feature flags / kill switches)
 Reader: `api/_flags.js::getFlag(name)`. Pulls from the Vercel Edge Config store `cardigan-flags` (id `ecfg_ym2ipouu2lo2ywnspc5wbgdd9bsc`), connection string in the `EDGE_CONFIG` env var. The helper falls back to a documented default if the service is unreachable, so a brief Edge Config outage can never crash a request.
