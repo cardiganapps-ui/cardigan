@@ -434,8 +434,8 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                 >
                   <IconClipboard size={14} />
                   {(notes || []).some(n => n.session_id === session.id)
-                    ? t("sessions.openNote") || "Ver nota"
-                    : t("sessions.addNote") || "Agregar nota"}
+                    ? t("notes.viewNote")
+                    : t("notes.addNote")}
                 </button>
               )}
             </div>
