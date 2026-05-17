@@ -807,7 +807,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       const next = [...base, {
         id, kind: type, message: msg,
         persistent: !!opts.persistent,
-        // Forward `duration` so callers (e.g. withUndoableDelete's 5-second
+        // Forward `duration` so callers (e.g. withUndoableDelete's 3-second
         // window) can override the 1.4s default. Previously dropped here,
         // which silently made the "Deshacer" toast disappear at 1.4s
         // while the commit timer still ran out to 5s — leaving ~3.6s of
@@ -1512,7 +1512,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   //      kill the setTimeout and silently leave the row in the DB.
   // Returns true so callers using `await delete(id)` see the same
   // success contract as before.
-  const UNDO_MS = 5000;
+  const UNDO_MS = 3000;
   const withUndoableDelete = useCallback((softFn, label) => async (...args) => {
     if (typeof softFn !== "function") return false;
     const handle = softFn(...args);
@@ -1564,7 +1564,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       ? data.uploadDocument
       : async () => { requirePro("documents"); return null; },
     // The four everyday destructive actions go through the undoable
-    // wrapper: optimistic remove + "Deshacer" toast + 5s commit
+    // wrapper: optimistic remove + "Deshacer" toast + 3s commit
     // window. Recurring-template delete stays straight-through \u2014
     // it's an admin-rare action and undoable wouldn't add much.
     deleteSession: withUndoableDelete(data.softDeleteSession, "Sesi\u00f3n eliminada"),

@@ -52,7 +52,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   // timer must hit AFTER the keyframe finishes (otherwise the DOM
   // node vanishes mid-fade and the toast pops out). Keep these
   // two in lockstep with the toastOut keyframe duration in base.css.
-  const DISMISS_MS = 280;
+  const DISMISS_MS = 560;
   useEffect(() => {
     if (!message || persistent) return;
     const timer = setTimeout(() => {
@@ -100,7 +100,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
         position:"fixed", top, left:12, right:12,
         zIndex:"var(--z-install)", pointerEvents:"auto",
         animation: leaving
-          ? "toastOut 280ms var(--ease-in-out) forwards"
+          ? "toastOut 560ms var(--ease-in-out) forwards"
           : "toastIn var(--dur-slower) var(--ease-spring)",
         opacity,
         transform: `scale(${scale})`,

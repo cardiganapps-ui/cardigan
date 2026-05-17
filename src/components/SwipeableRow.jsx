@@ -181,26 +181,30 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
           font:"inherit", fontFamily:"var(--font)",
         }}
         onClick={(e) => {
-          // Before the row unmounts (onAction may delete it), find the
-          // next SwipeableRow action button in the SAME LIST so
-          // keyboard users land naturally on the next row. We scope
-          // the lookup by walking up to the closest common ancestor
-          // that contains another [data-swipeable-row], then querying
-          // its descendants. Without this scoping a global
-          // aria-label match could send focus into a confirm modal
-          // or a different list that happens to use the same label.
-          const currentRow = e.currentTarget.closest("[data-swipeable-row]");
+          // Keyboard-only courtesy: when the user activates the action
+          // via Enter/Space (e.detail === 0), focus would otherwise
+          // leak to <body> when this row unmounts. Walk to the next
+          // SwipeableRow action button in the same list so keyboard
+          // users land naturally on the next row. For touch / mouse
+          // (e.detail >= 1) we MUST NOT auto-focus the next row —
+          // doing so triggers its onFocus handler which auto-reveals
+          // the action slot, making it look like the app is staging a
+          // second deletion the user never asked for.
+          const isKeyboardActivation = e.detail === 0;
           let nextFocus = null;
-          if (currentRow) {
-            let parent = currentRow.parentElement;
-            while (parent && !nextFocus) {
-              const siblings = parent.querySelectorAll(
-                "[data-swipeable-row] [data-swipeable-action]",
-              );
-              for (const btn of siblings) {
-                if (btn !== e.currentTarget) { nextFocus = btn; break; }
+          if (isKeyboardActivation) {
+            const currentRow = e.currentTarget.closest("[data-swipeable-row]");
+            if (currentRow) {
+              let parent = currentRow.parentElement;
+              while (parent && !nextFocus) {
+                const siblings = parent.querySelectorAll(
+                  "[data-swipeable-row] [data-swipeable-action]",
+                );
+                for (const btn of siblings) {
+                  if (btn !== e.currentTarget) { nextFocus = btn; break; }
+                }
+                parent = parent.parentElement;
               }
-              parent = parent.parentElement;
             }
           }
           setOffset(0);
