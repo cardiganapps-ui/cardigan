@@ -43,6 +43,14 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px;
   min-width: 36px; min-height: 36px;
+  /* 8px left margin keeps the search circle visually anchored to
+     the hamburger rather than floating in the middle of the bar.
+     margin-right: auto absorbs the leftover flex slack so the
+     topbar-right cluster sits hard against the right safe-area
+     inset (space-between would otherwise spread the three flow
+     items — hamburger / search / right — evenly). */
+  margin-left: 8px;
+  margin-right: auto;
   background: var(--cream);
   border: 1px solid var(--border-lt);
   border-radius: 50%;
