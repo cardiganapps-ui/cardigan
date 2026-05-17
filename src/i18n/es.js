@@ -1368,6 +1368,11 @@ export default {
     pauseCta: "Necesito tomar un descanso",
     pauseHint: "Cancela ahora y reactiva cuando quieras \u2014 tus {client.p} y notas se quedan intactos.",
     trialDayBadge: "D\u00eda {n} de 30",
+    // Welcome-block chip shown on Home for trial users with no
+    // patients yet. Two variants so day 1 reads as a beginning
+    // and the rest of the trial reads as a countdown.
+    trialChipStart: "Tu prueba de 30 d\u00edas comienza hoy",
+    trialChipDaysLeft: "Quedan {n} d\u00edas de tu prueba gratuita",
     errorGeneric: "No se pudo iniciar el cobro. Intenta de nuevo.",
     toastSubscribed: "\u00a1Suscripci\u00f3n activa! Bienvenido a Cardigan Pro.",
   },

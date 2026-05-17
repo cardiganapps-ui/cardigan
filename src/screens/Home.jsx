@@ -290,6 +290,28 @@ export function Home({ setScreen, userName }) {
           <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:14 }}>
             {t("patients.addFirst")}
           </div>
+          {/* Day-1 trial chip — surfaces the trial state to brand-new
+              users on Home without waiting for the ≤7-days banner to
+              kick in. Renders only while the user is actively in
+              trial; subscribed/comp/expired users see nothing. */}
+          {subscription?.accessState === "trial" && typeof subscription?.daysLeftInTrial === "number" && (
+            <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 12px",
+                borderRadius: "var(--radius-pill)",
+                background: "var(--teal-pale)",
+                color: "var(--teal-dark)",
+                fontSize: "var(--text-xs)",
+                fontWeight: 700,
+                letterSpacing: "0.02em",
+              }}>
+                {subscription.daysLeftInTrial >= 30
+                  ? t("subscription.trialChipStart")
+                  : t("subscription.trialChipDaysLeft", { n: subscription.daysLeftInTrial })}
+              </span>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => requestFabAction?.("patient")}
