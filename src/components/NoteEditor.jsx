@@ -238,6 +238,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     setActiveFormats(active || new Set());
   }, []);
 
+  // Cheap signature of the heading set — used by the scroll-spy
+  // effect's deps array below. `content` changes every keystroke;
+  // the heading SET only changes when a line becomes / stops being
+  // a heading. Declared above the effect so it's not in TDZ when
+  // the deps array evaluates during render.
+  const headingsSignature = useMemo(
+    () => extractOutline(content).map(o => `${o.line}-${o.level}`).join(","),
+    [content]
+  );
+
   /* ── Heading scroll-spy ─────────────────────────────────────────
      IntersectionObserver tracks h1/h2/h3 lines inside the markdown
      editor root, identifies the topmost one currently in view, and
@@ -576,15 +586,6 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     if (!isDesktop) setOutlineOpen(false);
   }, [isDesktop]);
   const hasHeadings = useMemo(() => extractOutline(content).length > 0, [content]);
-  // Cheap signature of the heading set used to dep the scroll-spy
-  // effect below. content changes every keystroke; the heading
-  // SET only changes when a line becomes / stops being a heading.
-  // Computing this is a string scan (microseconds); skipping the
-  // observer reattach saves an order of magnitude more work.
-  const headingsSignature = useMemo(
-    () => extractOutline(content).map(o => `${o.line}-${o.level}`).join(","),
-    [content]
-  );
 
   /* ── Template pick — only for brand-new empty notes ────────────── */
   const pickTemplate = (tpl) => {
