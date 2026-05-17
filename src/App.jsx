@@ -1095,25 +1095,30 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const hideBottomTabs = screen === "admin";
   const notifications = useNotifications(demo ? null : user);
 
-  // Welcome-to-Pro prompt: fires once, after the user has finished or
-  // skipped the tutorial, IFF they're a real user on the natural trial
-  // (not subscribed, not comp, not admin). Persistent dismissal lives
-  // in localStorage so a refresh doesn't replay the modal. The eligible
-  // window is narrow on purpose — we never want to nag a paying user
-  // or someone who's already declined.
+  // Welcome-to-Pro prompt: fires once for real trial users (not
+  // subscribed, not comp, not admin). Persistent dismissal lives in
+  // localStorage so a refresh doesn't replay the modal.
+  //
+  // Timing: previously gated strictly on `tutorial.state === "done"`,
+  // which meant users who never engaged with the tutorial welcome at
+  // all (closed the tab, backgrounded the PWA, refreshed mid-onboard)
+  // never saw the trial prompt EVER. Now we have two paths:
+  //   • Tutorial reached "done" → fire after 600ms hand-off grace
+  //   • Tutorial sits in idle/welcome past a 10s ceiling → fire anyway
+  //   • Tutorial actively "running" → wait (don't interrupt)
+  // The effect re-runs on tutorial.state transitions, so a user who
+  // starts the tutorial 9s in still gets clean handoff at "done".
   useEffect(() => {
     if (demo || viewAsUserId) return;
     if (!user?.id) return;
     if (subscription.accessState !== "trial") return;
-    if (tutorial?.state !== "done") return;
+    if (tutorial?.state === "running") return;
     let stored = null;
     try { stored = localStorage.getItem(`cardigan.welcomePro.shown.v1.${user.id}`); }
     catch { /* private mode — fall through and show; worst case it shows twice */ }
     if (stored) return;
-    // Small grace window so the modal doesn't pop the same frame the
-    // tutorial confetti dismisses on. 600ms feels like a deliberate
-    // hand-off without making the user wait.
-    const id = setTimeout(() => setWelcomeProOpen(true), 600);
+    const delay = tutorial?.state === "done" ? 600 : 10000;
+    const id = setTimeout(() => setWelcomeProOpen(true), delay);
     return () => clearTimeout(id);
   }, [demo, viewAsUserId, user?.id, subscription.accessState, tutorial?.state]);
 
