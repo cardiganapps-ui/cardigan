@@ -1,5 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, useImperativeHandle, forwardRef, useCallback } from "react";
-import { SlashCommandMenu } from "./SlashCommandMenu";
+import { useEffect, useLayoutEffect, useRef, useState, useImperativeHandle, forwardRef, useCallback, lazy, Suspense } from "react";
+// Lazy-loaded so the portal-mounted slash menu doesn't bloat the
+// main bundle — it's only ever needed AFTER the user types "/" on
+// an empty line, by which point the chunk has time to fetch.
+const SlashCommandMenu = lazy(() => import("./SlashCommandMenu").then(m => ({ default: m.SlashCommandMenu })));
 import {
   tokenizeLine,
   renderLineHTML,
@@ -964,12 +967,16 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         onDrop={onDrop}
         onClick={onClick}
       />
-      <SlashCommandMenu
-        open={!!slashMenu}
-        anchorRect={slashMenu?.anchorRect}
-        onSelect={handleSlashSelect}
-        onClose={() => setSlashMenu(null)}
-      />
+      {slashMenu && (
+        <Suspense fallback={null}>
+          <SlashCommandMenu
+            open
+            anchorRect={slashMenu.anchorRect}
+            onSelect={handleSlashSelect}
+            onClose={() => setSlashMenu(null)}
+          />
+        </Suspense>
+      )}
     </>
   );
 });

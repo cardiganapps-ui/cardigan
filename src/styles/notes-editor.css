@@ -1315,6 +1315,20 @@
 .mde-cover.is-loading {
   cursor: default;
 }
+.mde-cover.is-failed {
+  cursor: pointer;
+  background: var(--red-bg);
+}
+.mde-cover-retry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 28px;
+  color: var(--red);
+  font-weight: 700;
+}
 .mde-cover-shimmer {
   display: block;
   width: 100%;

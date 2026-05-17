@@ -1023,19 +1023,31 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         {note?.cover_attachment_id && (() => {
           const coverTile = attachmentSrc.tiles[note.cover_attachment_id];
           const coverUrl = coverTile?.url;
+          const coverFailed = !coverUrl && coverTile?.failed;
+          // Failed cover: tap retries the resolve. Loading: shimmer
+          // placeholder reserves the 16:9 slot so the title doesn't
+          // jump down when the image lands. Resolved: hero image,
+          // tap opens the picker.
+          const handleClick = () => {
+            if (readOnly) return;
+            if (coverFailed) { attachmentSrc.retryTile(note.cover_attachment_id); return; }
+            setCoverPickerOpen(true);
+          };
           return (
             <button
               type="button"
-              className={"mde-cover btn-tap" + (coverUrl ? "" : " is-loading")}
-              onClick={() => !readOnly && setCoverPickerOpen(true)}
+              className={"mde-cover btn-tap" + (coverUrl ? "" : " is-loading") + (coverFailed ? " is-failed" : "")}
+              onClick={handleClick}
               disabled={readOnly}
               style={readOnly ? { cursor: "default" } : undefined}
-              aria-label={t("notes.cover.change")}
-              aria-busy={!coverUrl}
+              aria-label={coverFailed ? t("notes.attachments.retry") : t("notes.cover.change")}
+              aria-busy={!coverUrl && !coverFailed}
             >
               {coverUrl
                 ? <img src={coverUrl} alt="" />
-                : <span className="mde-cover-shimmer" aria-hidden="true" />}
+                : coverFailed
+                  ? <span className="mde-cover-retry" aria-hidden="true">↻</span>
+                  : <span className="mde-cover-shimmer" aria-hidden="true" />}
             </button>
           );
         })()}
