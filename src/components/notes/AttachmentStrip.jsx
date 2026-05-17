@@ -53,7 +53,7 @@ async function fetchPresigned(path, mime) {
 
 export function AttachmentStrip({ noteId }) {
   const { t } = useT();
-  const { noteAttachments, noteCrypto, deleteNoteAttachment, showToast, setHideFab } = useCardigan();
+  const { noteAttachments, noteCrypto, deleteNoteAttachment, showToast } = useCardigan();
 
   const rows = useMemo(
     () => (noteAttachments || []).filter(a => a.note_id === noteId),
@@ -191,17 +191,15 @@ export function AttachmentStrip({ noteId }) {
     if (!ok) showToast?.(t("notes.attachments.deleteFailed"), "error");
   }, [deleteNoteAttachment, showToast, t]);
 
-  // Lightbox a11y: hide the FAB so it doesn't float over the
-  // image, wire Escape, and trap focus so keyboard users can
-  // dismiss without tab-escaping to the editor underneath.
+  // Lightbox a11y: wire Escape, trap focus so keyboard users
+  // can dismiss without tab-escaping to the editor underneath.
+  // The FAB is auto-hidden via a `body:has(.mde-attach-lightbox)`
+  // rule in base.css — calling setHideFab(true) here would unmount
+  // <QuickActions /> in the FAB-launched NoteEditor flow, which is
+  // an ancestor of this strip; the lightbox would kill itself.
   const closeLightbox = useCallback(() => setLightboxId(null), []);
   useEscape(lightboxId ? closeLightbox : null);
   const lightboxRef = useFocusTrap(!!lightboxId);
-  useEffect(() => {
-    if (!lightboxId) return;
-    setHideFab?.(true);
-    return () => setHideFab?.(false);
-  }, [lightboxId, setHideFab]);
 
   if (rows.length === 0) return null;
 

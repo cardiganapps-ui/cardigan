@@ -525,7 +525,11 @@ body:has(.note-editor-desktop) .bottom-tabs,
 body:has(.confirm-dialog-overlay) .fab,
 body:has(.confirm-dialog-overlay) .fab-overlay,
 body:has(.confirm-dialog-overlay) .fab-menu,
-body:has(.confirm-dialog-overlay) .bottom-tabs { display: none !important; }
+body:has(.confirm-dialog-overlay) .bottom-tabs,
+body:has(.mde-attach-lightbox) .fab,
+body:has(.mde-attach-lightbox) .fab-overlay,
+body:has(.mde-attach-lightbox) .fab-menu,
+body:has(.mde-attach-lightbox) .bottom-tabs { display: none !important; }
 
 /* DRAWER PANEL */
 .drawer {

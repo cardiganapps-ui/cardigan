@@ -25,7 +25,7 @@ import { haptic } from "../../utils/haptics";
 
 export function QuickCaptureSheet({ open, onClose, onSaved }) {
   const { t } = useT();
-  const { createNote, setHideFab, showToast } = useCardigan();
+  const { createNote, showToast } = useCardigan();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,11 +42,13 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
     return () => clearTimeout(id);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    setHideFab?.(true);
-    return () => setHideFab?.(false);
-  }, [open, setHideFab]);
+  // No setHideFab effect here. The FAB is auto-hidden by the
+  // `body:has(.sheet-overlay) .fab { display: none }` rule in
+  // base.css whenever ANY .sheet-overlay is mounted — which this
+  // sheet is. Calling setHideFab(true) here would be fatal: this
+  // sheet renders as a CHILD of <QuickActions />, and hideFab=true
+  // unmounts QuickActions, which would take this sheet down with
+  // it the instant it tried to open.
 
   const isEmpty = !title.trim() && !content.trim();
 
