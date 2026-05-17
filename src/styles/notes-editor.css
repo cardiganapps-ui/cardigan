@@ -746,12 +746,39 @@
   gap: 10px;
   background: var(--white);
 }
-.mde-footer-left { color: var(--charcoal-xl); }
-.mde-footer-right { color: var(--charcoal-xl); }
+.mde-footer-left,
+.mde-footer-right {
+  color: var(--charcoal-xl);
+  /* Tabular numerals so the word count + reading time don't shift
+     horizontally between keystrokes. */
+  font-variant-numeric: tabular-nums;
+}
 
 /* ── Templates bar (shown only for brand-new empty notes) ─────────── */
 .mde-templates {
   margin-bottom: 16px;
+  overflow: hidden;
+  /* Smooth height + opacity collapse when the user starts typing.
+     `max-height` is interpolated from a generous ceiling (templates
+     wrap to at most 2 rows on a phone — ~120px) down to 0; the
+     same transition handles opacity + margin so the body slides up
+     in one motion. ease-spring-soft lands without bounce — a hop
+     here would steal attention back from the caret. */
+  max-height: 200px;
+  opacity: 1;
+  transition:
+    max-height var(--dur-slow) var(--ease-spring-soft),
+    opacity var(--dur-base) var(--ease-out),
+    margin-bottom var(--dur-slow) var(--ease-spring-soft);
+}
+.mde-templates.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mde-templates { transition: none; }
 }
 .mde-templates-label {
   font-size: 10px;

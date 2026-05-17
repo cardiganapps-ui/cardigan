@@ -627,7 +627,7 @@ export default {
     generalUnlinked: "Nota r\u00e1pida \u2014 no vinculada a ning\u00fan {client.s}",
     noteAttached: "Nota adjunta",
     titlePlaceholder: "T\u00edtulo",
-    bodyPlaceholder: "Escribe aqu\u00ed...",
+    bodyPlaceholder: "Escribe aqu\u00ed o pulsa / para comandos\u2026",
     templates: "Plantillas",
     tplSession: "Sesi\u00f3n regular",
     tplIntake: "Evaluaci\u00f3n inicial",

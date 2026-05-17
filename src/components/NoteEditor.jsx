@@ -746,6 +746,18 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     : "";
 
   const isBrandNewEmpty = !title && !content && !note?.title && !note?.content;
+  // Templates render while the note is brand-new + empty. The moment
+  // the user types anything we apply `is-collapsed` so the chooser
+  // animates out; once the keyframe completes we drop it from the DOM
+  // entirely. Without the delayed unmount the snap-disappear felt
+  // abrupt and stole the eye away from where the caret just landed.
+  const [templatesMounted, setTemplatesMounted] = useState(isBrandNewEmpty);
+  useEffect(() => {
+    if (isBrandNewEmpty) { setTemplatesMounted(true); return; }
+    if (!templatesMounted) return;
+    const t = setTimeout(() => setTemplatesMounted(false), 360);
+    return () => clearTimeout(t);
+  }, [isBrandNewEmpty, templatesMounted]);
 
   const shellClass =
     (inlineMode ? "note-editor-inline" : "note-editor-desktop") +
@@ -998,14 +1010,19 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
       >
         {dateStr && <div className="mde-date">{dateStr}</div>}
 
-        {isBrandNewEmpty && !readOnly && (
-          <div className="mde-templates">
+        {/* Templates chooser. Stays MOUNTED across the brand-new →
+            typed transition so we can collapse it with a CSS
+            animation instead of snapping it out. The delayed-unmount
+            (templatesMounted state above) keeps the node alive long
+            enough for the keyframe to finish. */}
+        {!readOnly && templatesMounted && (
+          <div className={"mde-templates" + (isBrandNewEmpty ? "" : " is-collapsed")} aria-hidden={!isBrandNewEmpty}>
             <div className="mde-templates-label">{t("notes.templates")}</div>
             <div className="mde-template-pills">
               {noteTemplates.filter(tp => tp.id !== "blank").map(tpl => {
                 const Ic = TEMPLATE_ICONS[tpl.icon];
                 return (
-                  <button key={tpl.id} type="button" className="mde-template-pill" onClick={() => pickTemplate(tpl)}>
+                  <button key={tpl.id} type="button" className="mde-template-pill" onClick={() => pickTemplate(tpl)} tabIndex={isBrandNewEmpty ? 0 : -1}>
                     {Ic && <Ic size={14} />}
                     <span>{tpl.name}</span>
                   </button>
@@ -1115,15 +1132,21 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         )}
       </div>
 
-      {/* ── Footer (word count + reading time) ────────────────── */}
-      <div className="mde-footer">
-        <span className="mde-footer-left">
-          {wordCount > 0 && readingMins > 0 ? t("notes.readingTime", { mins: readingMins }) : ""}
-        </span>
-        <span className="mde-footer-right">
-          {t("notes.wordCountLabel", { count: wordCount, plural: wordCount === 1 ? "" : "s" })}
-        </span>
-      </div>
+      {/* Footer (word count + reading time). Hidden until there's
+          actual content — "0 palabras" on a brand-new note is noise
+          that competes with the empty-state placeholder. Numbers
+          render with tabular-nums so they don't dance between
+          keystrokes. */}
+      {wordCount > 0 && (
+        <div className="mde-footer">
+          <span className="mde-footer-left">
+            {readingMins > 0 ? t("notes.readingTime", { mins: readingMins }) : ""}
+          </span>
+          <span className="mde-footer-right">
+            {t("notes.wordCountLabel", { count: wordCount, plural: wordCount === 1 ? "" : "s" })}
+          </span>
+        </div>
+      )}
 
       {/* ── Outline drawer / sheet ──────────────────────────────── */}
       {outlineOpen && (
