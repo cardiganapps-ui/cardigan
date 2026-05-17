@@ -32,6 +32,41 @@ const RELOAD_FLAG = "cardigan.errorboundary.reloaded";
    from Supabase and rehydrate cleanly. Per-key removal so
    unrelated localStorage entries (theme, consent, encryption keys,
    tutorial flags) survive. */
+/* When a render crash happens after a deploy, a fresh SW is often
+   sitting in the "waiting" state (our SW intentionally waits for
+   the UpdatePrompt toast to opt in). The crash short-circuits that
+   flow — the user never sees the toast, taps Recargar, the OLD SW
+   serves the OLD index.html + buggy JS, and they're stuck in a
+   reload loop. Force-skip the waiting SW so the next navigation
+   loads the new bundle. Falls through to a plain reload if there's
+   no SW or no waiting worker. */
+function activateWaitingSWThenReload() {
+  const fallback = () => window.location.reload();
+  if (typeof navigator === "undefined" || !navigator.serviceWorker) {
+    fallback();
+    return;
+  }
+  navigator.serviceWorker.getRegistration().then(reg => {
+    const waiting = reg?.waiting;
+    if (!waiting) { fallback(); return; }
+    // Wait for the new SW to take control, then reload onto the
+    // fresh bundle. controllerchange fires once the activated SW
+    // claims this client.
+    const onChange = () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onChange);
+    waiting.postMessage({ type: "SKIP_WAITING" });
+    // Safety net: if controllerchange doesn't fire within 1.5s,
+    // reload anyway — better to attempt the old path than spin.
+    setTimeout(() => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+      window.location.reload();
+    }, 1500);
+  }).catch(fallback);
+}
+
 function clearCorruptCaches() {
   if (typeof localStorage === "undefined") return;
   try {
@@ -88,13 +123,33 @@ export default class ErrorBoundary extends Component {
     // crashes too — if cached data is malformed we don't want the
     // user trapped in a reload loop.
     clearCorruptCaches();
+    // If there's a waiting SW (deploy just landed but the
+    // UpdatePrompt toast was pre-empted by this crash), auto-skip
+    // it and reload onto the new bundle once. The fresh code may
+    // contain the fix. Guarded by sessionStorage so a real bug
+    // present in BOTH old and new bundles doesn't loop.
+    if (typeof sessionStorage !== "undefined" && typeof navigator !== "undefined" && navigator.serviceWorker) {
+      const alreadyTried = sessionStorage.getItem(RELOAD_FLAG);
+      if (!alreadyTried) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          if (reg?.waiting) {
+            try { sessionStorage.setItem(RELOAD_FLAG, "1"); } catch { /* ignore */ }
+            activateWaitingSWThenReload();
+          }
+        }).catch(() => { /* ignore */ });
+      }
+    }
   }
 
   handleReload = () => {
     // Manual reload — wipe the auto-reload sessionStorage flag too
     // so a subsequent stale-deploy crash can still self-heal.
     try { sessionStorage.removeItem(RELOAD_FLAG); } catch { /* ignore */ }
-    window.location.reload();
+    // If a new SW is waiting (deploy landed but the UpdatePrompt
+    // toast never got to show because we crashed first), force it
+    // to activate before reloading. Otherwise the reload goes
+    // through the old SW + old precache and the bug re-fires.
+    activateWaitingSWThenReload();
   };
 
   render() {
