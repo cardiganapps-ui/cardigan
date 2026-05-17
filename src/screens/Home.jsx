@@ -322,6 +322,22 @@ export function Home({ setScreen, userName }) {
         </div>
       )}
 
+      {/* Activation checklist — only visible during the trial; auto-
+          hides once all four steps complete. Promoted above the rest
+          of Home (notifications prompt, today's sessions, balances)
+          so it's the first persistent affordance new users see. The
+          component self-derives state from context arrays and is a
+          no-op for users who've left trial. */}
+      {!readOnly && user?.id && (
+        <div style={{ padding: "8px 16px 0" }}>
+          <ActivationChecklist
+            userId={user.id}
+            accessState={subscription?.accessState}
+            onNavigate={setScreen}
+          />
+        </div>
+      )}
+
       <NotificationsPrompt variant="initial" />
 
       {/* Reschedule requests banner — shown when patients have
@@ -387,19 +403,6 @@ export function Home({ setScreen, userName }) {
           already opted in. */}
       {(patients?.length || 0) >= 1 && (
         <NotificationsPrompt variant="post_patient" />
-      )}
-
-      {/* Activation checklist — only visible during the trial, hides
-          itself once all four steps complete. Self-derives state from
-          context arrays. */}
-      {!readOnly && user?.id && (
-        <div style={{ padding: "8px 16px 0" }}>
-          <ActivationChecklist
-            userId={user.id}
-            accessState={subscription?.accessState}
-            onNavigate={setScreen}
-          />
-        </div>
       )}
 
       {/* Calendar feed discovery card — surfaces only after the user
