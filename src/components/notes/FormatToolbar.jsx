@@ -57,6 +57,16 @@ const IconStrike = () => (
     <path d="M15 15c0 2-1.5 3-4 3-2.5 0-4-1.3-4-3"/>
   </svg>
 );
+const IconHighlight = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    {/* Highlighter marker: angled tip pointing down-left, body
+        slanted right. Color comes from currentColor — the
+        .md-mark-* CSS sets the actual highlight fill. */}
+    <path d="M9 17l-4 4 1-5 8-12 4 4z" />
+    <path d="M13 4l3 3" />
+    <path d="M5 21h6" />
+  </svg>
+);
 const IconH1 = () => (
   <svg width="20" height="18" viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 6v12M12 6v12M4 12h8"/>
@@ -131,6 +141,9 @@ export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSuppor
       </Tool>
       <Tool label={t("notes.strike") || "Tachado"} hint={`${MOD_LABEL}⇧X`} active={has("strike")} onClick={() => onInline("strike")} disabled={disabled}>
         <IconStrike />
+      </Tool>
+      <Tool label={t("notes.highlight") || "Resaltar"} hint={`${MOD_LABEL}⇧H`} active={has("mark")} onClick={() => onInline("mark")} disabled={disabled}>
+        <IconHighlight />
       </Tool>
       <Sep />
       <Tool label={t("notes.h1") || "Título 1"} hint={`${MOD_LABEL}1`} active={has("h1")} onClick={() => onBlock("h1")} disabled={disabled}>

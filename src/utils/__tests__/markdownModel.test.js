@@ -61,6 +61,31 @@ describe("tokenizeLine — inline parsing", () => {
     expect(inlineKinds("`code`")).toEqual(["code"]);
   });
 
+  it("parses ==highlight== as a mark token (Phase D.2)", () => {
+    expect(inlineKinds("==important==")).toEqual(["mark"]);
+    // Mixed with other formats
+    expect(inlineKinds("**bold** plus ==marked==")).toEqual(["strong", "mark"]);
+  });
+
+  it("renders ==text== as a <mark> element", () => {
+    const token = tokenizeLine("==important==");
+    expect(renderLineHTML(token)).toContain('<mark class="md-mark">important</mark>');
+  });
+
+  it("detects image-only line as block=image (Phase D.1)", () => {
+    const token = tokenizeLine("![alt text](attachment:abc-123-def)");
+    expect(token.block).toBe("image");
+    expect(token.attachmentId).toBe("abc-123-def");
+    expect(token.alt).toBe("alt text");
+  });
+
+  it("does NOT treat a line as image when text surrounds the syntax", () => {
+    // Inline image references mixed with text fall through to a
+    // paragraph block. v1 doesn't support inline image embedding.
+    const token = tokenizeLine("see ![](attachment:abc) here");
+    expect(token.block).toBe("p");
+  });
+
   it("mixes kinds in one line", () => {
     expect(inlineKinds("**a** and *b*")).toEqual(["strong", "em"]);
   });

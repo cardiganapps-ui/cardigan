@@ -11,8 +11,53 @@ import {
   toggleBlock,
   toggleInline,
   toggleTaskOnLine,
+  escapeHtml,
 } from "./markdownModel";
 import { haptic } from "../../utils/haptics";
+
+/* Multi-line code-fence layout pre-pass. Walks `lines` once and
+   returns an array of { type, pos } per line:
+     • type: "marker"   — the line is a ``` (open or close)
+              "body"    — the line is inside an open fence
+              "out"     — normal markdown line
+     • pos: "top"       — first marker/body of a run
+            "bottom"    — last marker/body of a run
+            "only"      — single-line fence run (rare)
+            null        — middle of a multi-line run
+   The CSS uses `data-fence-pos` to round corners + pad the run's
+   first / last lines while keeping the middle uniform. */
+function computeFenceLayout(lines) {
+  const out = new Array(lines.length);
+  let insideFence = false;
+  let runStart = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const isFence = /^```/.test(lines[i] || "");
+    if (isFence) {
+      // The fence marker itself is part of the run's first / last
+      // visual position. Open: pos="top" (run starts here). Close:
+      // pos="bottom".
+      const pos = insideFence ? "bottom" : "top";
+      out[i] = { type: "marker", pos };
+      if (insideFence) {
+        // Closing the run — backfill body positions if the run
+        // contained only one body line, it gets pos="only"? No —
+        // body alone in a 3-line run (top marker / body / bottom
+        // marker) doesn't need pos differentiation since the
+        // markers carry the rounding.
+      }
+      insideFence = !insideFence;
+      runStart = insideFence ? i : -1;
+    } else if (insideFence) {
+      out[i] = { type: "body", pos: null };
+    } else {
+      out[i] = { type: "out", pos: null };
+    }
+  }
+  // Suppress the runStart unused-var warning while keeping the
+  // variable readable in case future logic needs the open index.
+  void runStart;
+  return out;
+}
 
 /* ── Cardigan notes — live markdown editor component ────────────────
    A contenteditable div whose source of truth is a `lines: string[]`
@@ -289,13 +334,35 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const hasFocus = document.activeElement === root;
     const focusedLine = hasFocus || pendingFocusRef.current ? caret.line : -1;
 
+    // Pre-pass: multi-line code fences are inherently stateful (no
+    // single line carries the "we're inside a fence" context),
+    // so walk top-to-bottom once and classify each line as a
+    // fence-marker, fence body, or out-of-fence. The renderer then
+    // diverges per case.
+    const fence = computeFenceLayout(lines);
+
     const html = lines.map((raw, i) => {
+      const finfo = fence[i];
+      const isFocused = i === focusedLine;
+      const caretCls = isFocused ? " has-caret" : "";
+      // Fence-marker line (``` or ```js). Plain monospace, no
+      // inline tokenising — the user's syntax stays literal.
+      if (finfo.type === "marker") {
+        const pos = finfo.pos ? ` data-fence-pos="${finfo.pos}"` : "";
+        return `<div class="mde-line mde-line--code-fence-marker${caretCls}" data-line="${i}"${pos}>${escapeHtml(raw) || "&#8203;"}<span class="mde-eol" data-nocount="1">${"​"}</span></div>`;
+      }
+      // Fence-body line. Render the raw text monospace, untokenised.
+      if (finfo.type === "body") {
+        const pos = finfo.pos ? ` data-fence-pos="${finfo.pos}"` : "";
+        const content = raw === "" ? "&#8203;" : escapeHtml(raw);
+        return `<div class="mde-line mde-line--code-fence${caretCls}" data-line="${i}"${pos}>${content}<span class="mde-eol" data-nocount="1">${"​"}</span></div>`;
+      }
+      // Out-of-fence: standard token-driven path.
       const token = tokenizeLine(raw);
       const cls = lineClassNames(token);
       const attrs = lineDataAttrs(token);
       const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(" ");
-      const isFocused = i === focusedLine;
-      const lineCls = cls + (isFocused ? " has-caret" : "");
+      const lineCls = cls + caretCls;
       return `<div class="${lineCls}" data-line="${i}" ${attrStr}>${renderLineHTML(token, { hasCaret: isFocused, readOnly, lineIdx: i })}</div>`;
     }).join("");
 
@@ -613,6 +680,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       if (k === "i") { e.preventDefault(); applyInline("em"); return; }
       if (k === "e") { e.preventDefault(); applyInline("code"); return; }
       if (e.shiftKey && (k === "x")) { e.preventDefault(); applyInline("strike"); return; }
+      if (e.shiftKey && (k === "h")) { e.preventDefault(); applyInline("mark");   return; }
       if (k === "1") { e.preventDefault(); applyBlockAt("h1"); return; }
       if (k === "2") { e.preventDefault(); applyBlockAt("h2"); return; }
       if (k === "3") { e.preventDefault(); applyBlockAt("h3"); return; }

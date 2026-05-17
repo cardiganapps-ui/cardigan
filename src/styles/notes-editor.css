@@ -1231,6 +1231,91 @@
   color: var(--teal-dark);
   border-radius: var(--radius-sm);
 }
+
+/* ── Phase D.2: text highlighting (==text==) ──────────────────────
+   <mark> renders a soft amber highlight by default. The browser's
+   built-in <mark> styling is too saturated and clashes with the
+   teal accent; this override keeps the highlight readable as
+   "marker over text" without overpowering the surrounding prose.
+   Inherit color so highlighted text doesn't get the browser's
+   default black — it should stay in flow with the paragraph. */
+.md-mark {
+  background: color-mix(in srgb, var(--amber) 32%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 1px 2px;
+  /* Compensate for the padding so highlighted text doesn't shift
+     the surrounding baseline. box-decoration-break wraps the
+     highlight cleanly when it spans a soft line wrap. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ── Phase D.2: fenced code blocks ───────────────────────────────
+   Lines inside ```...``` fences render as a single code block
+   spanning the run. The fence-marker lines themselves (``` lang)
+   get a hidden/dimmed treatment — they're syntax the user typed
+   but shouldn't dominate the visual. Inside-fence lines render
+   with monospace, tinted background, no inline tokenising. */
+.mde-line--code-fence {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--cream);
+  color: var(--charcoal);
+  padding: 2px 12px;
+  margin: 0;
+  white-space: pre;
+}
+/* First/last lines of a fence run get rounded corners + breathing
+   room. The `data-fence-pos` attribute is set by the renderer. */
+.mde-line--code-fence[data-fence-pos="top"] {
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding-top: 8px;
+  margin-top: 6px;
+}
+.mde-line--code-fence[data-fence-pos="bottom"] {
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+}
+.mde-line--code-fence[data-fence-pos="only"] {
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin: 6px 0;
+}
+/* Fence-marker lines (```) — dim them, smaller, monospace, with the
+   language hint trailing in a faint pill. Visually they read as
+   "this is the boundary" without taking up the spotlight. */
+.mde-line--code-fence-marker {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 11px;
+  color: var(--charcoal-xl);
+  background: var(--cream);
+  padding: 2px 12px;
+  border-radius: 0;
+}
+.mde-line--code-fence-marker[data-fence-pos="top"] {
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin-top: 6px;
+}
+.mde-line--code-fence-marker[data-fence-pos="bottom"] {
+  border-radius: 0 0 var(--radius) var(--radius);
+  margin-bottom: 6px;
+}
+/* Hide the fence markers when off-caret — the user shouldn't see
+   `lang` clutter once they're done writing. Show again on focus so
+   the markers can be deleted / edited. */
+.mde-line--code-fence-marker:not(.has-caret) {
+  font-size: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 0;
+}
+.mde-line--code-fence-marker:not(.has-caret)[data-fence-pos="top"] {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
 @media (prefers-reduced-motion: reduce) {
   /* Portal child inherits this via animation-name; reduced-motion
      scope kills it across the board. */

@@ -32,6 +32,10 @@ const INLINE_RULES = [
   { kind: "code",   re: /`([^`\n]+?)`/g,           syntax: 1 },
   { kind: "strong", re: /\*\*([^\n]+?)\*\*/g,      syntax: 2 },
   { kind: "strike", re: /~~([^\n]+?)~~/g,          syntax: 2 },
+  // Highlight (`==text==`) — Obsidian / Bear use the same syntax.
+  // Two equals signs, single-line, no nested wrapping. Renderer
+  // emits <mark>; the toolbar's highlighter dropdown produces it.
+  { kind: "mark",   re: /==([^\n]+?)==/g,          syntax: 2 },
   { kind: "em",     re: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g, syntax: 1 },
 ];
 
@@ -273,6 +277,7 @@ function renderInline(tok) {
   if (tok.kind === "em")     return `${leftSyn}<em class="md-em">${inner}</em>${rightSyn}`;
   if (tok.kind === "strike") return `${leftSyn}<span class="md-strike">${inner}</span>${rightSyn}`;
   if (tok.kind === "code")   return `${leftSyn}<code class="md-code">${inner}</code>${rightSyn}`;
+  if (tok.kind === "mark")   return `${leftSyn}<mark class="md-mark">${inner}</mark>${rightSyn}`;
   return escapeHtml(tok.text || "");
 }
 
@@ -450,7 +455,7 @@ export function toggleBlock(line, block) {
    selection is already fully wrapped in that delimiter, unwrap. If
    empty selection, insert delimiters at the caret. */
 export function toggleInline(line, start, end, kind) {
-  const delimiter = kind === "strong" ? "**" : kind === "em" ? "*" : kind === "strike" ? "~~" : kind === "code" ? "`" : null;
+  const delimiter = kind === "strong" ? "**" : kind === "em" ? "*" : kind === "strike" ? "~~" : kind === "code" ? "`" : kind === "mark" ? "==" : null;
   if (!delimiter) return { line, start, end };
   if (line == null) line = "";
   const len = delimiter.length;

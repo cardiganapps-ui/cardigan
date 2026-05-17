@@ -664,6 +664,7 @@ export default {
     bold: "Negrita",
     italic: "Cursiva",
     strike: "Tachado",
+    highlight: "Resaltar",
     code: "C\u00f3digo",
     h1: "T\u00edtulo",
     h2: "T\u00edtulo 2",
