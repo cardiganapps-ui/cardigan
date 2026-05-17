@@ -307,6 +307,29 @@ export function lineDataAttrs(token) {
   return attrs;
 }
 
+/* True if `lineIdx` falls inside a multi-line code fence (or is a
+   fence marker itself). Used by the editor to suppress markdown
+   autoformat shortcuts and the slash-command menu when the caret
+   is in a code block — typing "- " or "/" in pseudocode should
+   stay literal, not transform. Pure O(lineIdx) scan; no allocation. */
+export function isInsideFence(lines, lineIdx) {
+  if (!Array.isArray(lines) || lineIdx == null || lineIdx < 0) return false;
+  const upTo = Math.min(lineIdx, lines.length - 1);
+  let inside = false;
+  for (let i = 0; i <= upTo; i++) {
+    const isMarker = /^ {0,3}```/.test(lines[i] || "");
+    if (isMarker) {
+      // The marker line itself counts as inside — typing on a fence
+      // marker line is uncommon and shortcuts there would be confusing.
+      if (i === upTo) return true;
+      inside = !inside;
+    } else if (i === upTo) {
+      return inside;
+    }
+  }
+  return inside;
+}
+
 /* Smart Enter continuation: the caller feeds the current line text;
    we return the prefix that should start the next line, or null if
    we should exit list mode. Empty list item → exit. */

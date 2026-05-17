@@ -7,6 +7,7 @@ import {
   lineDataAttrs,
   getListPrefix,
   getShortcutTransform,
+  isInsideFence,
   activeFormatsAt,
   toggleBlock,
   toggleInline,
@@ -574,8 +575,10 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         // input (no selection) — replacing a selected range with
         // a typed char shouldn't trigger a syntactic transform.
         // The transform absorbs the typed char if it fires (no extra
-        // insertion below).
-        if (sel.startLine === sel.endLine && sel.startCol === sel.endCol) {
+        // insertion below). Suppress inside code fences so typing
+        // "*" + space inside a pseudocode block stays literal.
+        const insideFence = isInsideFence(lines, sel.startLine);
+        if (!insideFence && sel.startLine === sel.endLine && sel.startCol === sel.endCol) {
           const shortcut = getShortcutTransform(lines[sel.startLine], sel.startCol, e.data);
           if (shortcut) {
             const next = lines.slice();
@@ -598,6 +601,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         // can we read the line's bounding rect for the menu anchor.
         if (
           e.data === "/" &&
+          !insideFence &&
           sel.startLine === sel.endLine &&
           sel.startCol === 0 &&
           (lines[sel.startLine] || "") === ""

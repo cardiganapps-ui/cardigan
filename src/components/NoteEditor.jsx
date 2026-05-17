@@ -832,7 +832,14 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                     <IconSearchMenu />
                     <span>{t("notes.find.placeholder")}</span>
                   </button>
-                  <button className="mde-menu-item" role="menuitem" onClick={() => { setMenuOpen(false); setReadingMode(v => !v); }}>
+                  <button className="mde-menu-item" role="menuitem" onClick={() => {
+                    setMenuOpen(false);
+                    // Entering reading mode hides the voice strip and
+                    // its stop button. If dictation is live, that
+                    // would orphan the mic with no way to stop it.
+                    if (!readingMode && dictation.recording) dictation.stop();
+                    setReadingMode(v => !v);
+                  }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M2 6a3 3 0 0 1 3-3h5v17H5a3 3 0 0 1-3-3V6z" />
                       <path d="M22 6a3 3 0 0 0-3-3h-5v17h5a3 3 0 0 0 3-3V6z" />
@@ -1008,20 +1015,30 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         )}
 
         {/* Cover hero — Phase E.2. Renders only when the note has a
-            cover_attachment_id pointing at a resolved attachment.
-            Tap-target opens the picker so the user can switch /
-            remove the cover. Hides in readOnly. */}
-        {note?.cover_attachment_id && attachmentSrc.tiles[note.cover_attachment_id]?.url && (
-          <button
-            type="button"
-            className="mde-cover btn-tap"
-            onClick={() => !readOnly && setCoverPickerOpen(true)}
-            disabled={readOnly}
-            aria-label={t("notes.cover.change")}
-          >
-            <img src={attachmentSrc.tiles[note.cover_attachment_id].url} alt="" />
-          </button>
-        )}
+            cover_attachment_id. Reserve the slot while the
+            attachment URL resolves so the title doesn't jump down
+            when the image lands. Tap-target opens the picker so the
+            user can switch / remove the cover. Cursor flips to
+            default when disabled (readOnly). */}
+        {note?.cover_attachment_id && (() => {
+          const coverTile = attachmentSrc.tiles[note.cover_attachment_id];
+          const coverUrl = coverTile?.url;
+          return (
+            <button
+              type="button"
+              className={"mde-cover btn-tap" + (coverUrl ? "" : " is-loading")}
+              onClick={() => !readOnly && setCoverPickerOpen(true)}
+              disabled={readOnly}
+              style={readOnly ? { cursor: "default" } : undefined}
+              aria-label={t("notes.cover.change")}
+              aria-busy={!coverUrl}
+            >
+              {coverUrl
+                ? <img src={coverUrl} alt="" />
+                : <span className="mde-cover-shimmer" aria-hidden="true" />}
+            </button>
+          );
+        })()}
 
         {/* Title is wrapped so we can hang a focus underline off the
             parent — <input> can't carry ::after pseudo-elements. */}

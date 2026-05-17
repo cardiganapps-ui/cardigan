@@ -37,6 +37,16 @@ export function Notes() {
     setSelectedTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }, []);
   const [editingNote, setEditingNote] = useState(null);
+  // `editingNote` is captured at click time, so server-side mutations
+  // that arrive later (cover change, link change, pin toggle, tag
+  // sync) don't propagate into the editor. Re-derive from the live
+  // notes array on every render so the editor always sees the freshest
+  // row. Falls back to the captured snapshot for unsaved/new notes
+  // that haven't landed in the array yet.
+  const editingNoteFresh = useMemo(
+    () => (editingNote ? ((notes || []).find(n => n.id === editingNote.id) || editingNote) : null),
+    [editingNote, notes],
+  );
   // When the user taps a note row, capture the row's
   // getBoundingClientRect() so the editor can morph from those
   // coordinates rather than slide in from below. Reset to null when
@@ -188,12 +198,12 @@ export function Notes() {
 
   return (
     <>
-    {editingNote && !isTabletSplit && (
+    {editingNoteFresh && !isTabletSplit && (
       <NoteEditor
-        key={editingNote.id || "new"}
-        note={editingNote}
+        key={editingNoteFresh.id || "new"}
+        note={editingNoteFresh}
         onSave={handleSaveNote}
-        onDelete={editingNote.id ? handleDeleteNote : undefined}
+        onDelete={editingNoteFresh.id ? handleDeleteNote : undefined}
         onClose={() => { setEditingNote(null); setEditorOriginRect(null); }}
         originRect={editorOriginRect}
       />
@@ -474,12 +484,12 @@ export function Notes() {
     </div>
     {isTabletSplit && (
       <div className="notes-detail-col">
-        {editingNote ? (
+        {editingNoteFresh ? (
           <NoteEditor
-            key={editingNote.id || "new"}
-            note={editingNote}
+            key={editingNoteFresh.id || "new"}
+            note={editingNoteFresh}
             onSave={handleSaveNote}
-            onDelete={editingNote.id ? handleDeleteNote : undefined}
+            onDelete={editingNoteFresh.id ? handleDeleteNote : undefined}
             onClose={() => setEditingNote(null)}
             layout="inline"
           />

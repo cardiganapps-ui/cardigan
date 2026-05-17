@@ -1309,9 +1309,33 @@
 @media (hover: hover) {
   .mde-cover:hover img { transform: scale(1.02); }
 }
+/* Reserve the 16:9 slot while the attachment URL resolves so the
+   title doesn't jump down when the image lands. Same shimmer the
+   attachment strip uses, scaled to the hero. */
+.mde-cover.is-loading {
+  cursor: default;
+}
+.mde-cover-shimmer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--cream) 0%,
+    color-mix(in srgb, var(--cream) 60%, var(--white)) 50%,
+    var(--cream) 100%
+  );
+  background-size: 200% 100%;
+  animation: mdeCoverShimmer 1.4s linear infinite;
+}
+@keyframes mdeCoverShimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .mde-cover img { transition: none; }
   .mde-cover:hover img { transform: none; }
+  .mde-cover-shimmer { animation: none; }
 }
 
 /* ── Phase E.1: reading mode ───────────────────────────────────────
@@ -1327,13 +1351,13 @@
 .mde-reading-mode .mde-context-row,
 .mde-reading-mode .mde-find,
 .mde-reading-mode .mde-voice-strip {
-  display: none !important;
+  display: none;
 }
 /* Header — keep the back button + the kebab (so the user can exit
    reading mode) but hide everything else. */
 .mde-reading-mode .mde-save-indicator,
 .mde-reading-mode .mde-header-actions > button:not([data-menu-trigger]) {
-  display: none !important;
+  display: none;
 }
 /* Body: widen, center, breathe. Cap max-width so long lines don't
    sprawl; line-height bumps from default 1.55 → 1.75 (matches
@@ -1359,18 +1383,24 @@
 .mde-reading-mode .mde-line--h2 .md-heading { font-size: 22px; }
 .mde-reading-mode .mde-line--h3 .md-heading { font-size: 18px; }
 /* Suppress syntax dimming so raw markdown stays hidden even on the
-   "focused" line — reading-mode shows OUTPUT only. .md-syntax
-   already collapses off-caret; this rule forces it off-caret-style
-   regardless of focus. */
-.mde-reading-mode .md-syntax {
-  font-size: 0 !important;
+   "focused" line — reading-mode shows OUTPUT only. Off-caret is
+   already handled by the base `.mde-line:not(.has-caret) .md-syntax`
+   rule; this targets the on-caret case so the focused line matches.
+   Specificity (0,4,0) beats the base off-caret rule (0,3,0) so no
+   `!important` needed. */
+.mde-reading-mode .mde-line.has-caret .md-syntax {
+  font-size: 0;
+  letter-spacing: -0.5em;
+  opacity: 0;
+  pointer-events: none;
 }
 .mde-reading-mode .mde-line:not(.has-caret) {
   opacity: 1; /* defeat Phase A's focus dimming — every line equal */
 }
 /* Images stay visible regardless of caret since we suppress
-   .has-caret-driven hide rules. */
-.mde-reading-mode .md-image-frame { display: block !important; }
+   .has-caret-driven hide rules. Specificity (0,3,0) beats the
+   on-caret hide rule (0,2,0). */
+.mde-reading-mode .mde-line .md-image-frame { display: block; }
 
 /* ── Phase D.2: fenced code blocks ───────────────────────────────
    Lines inside ```...``` fences render as a single code block

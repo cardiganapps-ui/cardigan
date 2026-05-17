@@ -25,6 +25,12 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
   const { t } = useT();
   const { deleteNoteAttachment, showToast } = useCardigan();
 
+  // The hook owner (NoteEditor) always passes these, but defaulting
+  // here keeps the component safe if a future caller forgets — never
+  // crash a notes screen because of a missing prop.
+  const safeRows = rows || [];
+  const safeTiles = tiles || {};
+
   const [lightboxId, setLightboxId] = useState(null);
 
   const handleDelete = useCallback(async (id) => {
@@ -47,17 +53,17 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
   // another surface, note swap). Adjust state during render rather
   // than in an effect — matches the pattern used elsewhere for
   // derived-state corrections (see CommandPalette + Notes.jsx).
-  if (lightboxId && !rows.some(r => r.id === lightboxId)) {
+  if (lightboxId && !safeRows.some(r => r.id === lightboxId)) {
     setLightboxId(null);
   }
 
-  if (rows.length === 0) return null;
+  if (safeRows.length === 0) return null;
 
   return (
     <>
       <div className="mde-attach-strip" aria-label={t("notes.attachments.label")}>
-        {rows.map(row => {
-          const tile = tiles[row.id];
+        {safeRows.map(row => {
+          const tile = safeTiles[row.id];
           return (
             <div key={row.id} className="mde-attach-tile">
               {tile?.url ? (
@@ -96,7 +102,7 @@ export function AttachmentStrip({ tiles, retryTile, rows }) {
       </div>
 
       {lightboxId && (() => {
-        const tile = tiles[lightboxId];
+        const tile = safeTiles[lightboxId];
         if (!tile?.url) return null;
         return (
           <div
