@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { init, subscribe, drain, getEntries } from "../lib/mutationQueue.js";
 import { useConnectivity } from "./useConnectivity.js";
 
@@ -12,41 +12,23 @@ import { useConnectivity } from "./useConnectivity.js";
                            when the queue is idle.
      • online            — current navigator.onLine state.
      • flushing          — true while drain() is in flight.
-     • lastDrainResult   — { drained, remaining, at } | null. Set ONLY
-                           after a drain that follows a real offline
-                           period, OR after an explicit user-triggered
-                           flush. Routine online enqueues (snapshot,
-                           etc.) still drain — they just don't fire
-                           the "X cambios guardados" toast. The header
-                           "Guardando…/Guardado" indicator is enough
-                           feedback when the user is online; the toast
-                           is reserved for the offline-recovery moment
-                           when they need explicit confirmation that
-                           their queued work survived.
      • flush()           — manual trigger (Reintentar button in the
                            offline banner).
-     • acknowledgeDrain()— clears lastDrainResult after the consumer
-                           has handled it.
 
    The hook does NOT enqueue — call sites import enqueue() from
-   ../lib/mutationQueue directly. This hook owns lifecycle + UI signal.
+   ../lib/mutationQueue directly. This hook owns lifecycle + auto-drain.
+
+   No success-toast bridge: drains succeed silently. The OfflineBanner's
+   headline transitions ("Sin conexión" → "Sincronizando…" → vanish)
+   are the offline-recovery feedback; the per-save header indicator
+   covers normal online saves. Adding a toast on top carpet-bombed
+   the editor with "X cambios guardados" every time a snapshot enqueue
+   drained — for active editors that meant a toast on every save.
 */
 export function useMutationQueue() {
   const [entries, setEntries] = useState(() => getEntries());
   const [flushing, setFlushing] = useState(false);
-  const [lastDrainResult, setLastDrainResult] = useState(null);
   const { online } = useConnectivity();
-
-  // Tracks whether the user has been offline since the last successful
-  // drain. Auto-drain only surfaces a success toast when this is true
-  // (i.e., we're recovering from an offline period). Routine online
-  // drains — snapshot enqueues from note edits, tag links, etc. — stay
-  // silent so the user isn't carpet-bombed with "1 cambio guardado"
-  // for every keystroke that triggers an autosave.
-  const wasOfflineRef = useRef(false);
-  useEffect(() => {
-    if (!online) wasOfflineRef.current = true;
-  }, [online]);
 
   // Initialize the queue + subscribe to changes. init() loads from
   // IndexedDB; subscribe() pushes updates on every enqueue / drain
@@ -72,13 +54,7 @@ export function useMutationQueue() {
     const handler = async (event) => {
       if (event?.data?.type === "DRAIN_QUEUE_NUDGE") {
         setFlushing(true);
-        try {
-          const result = await drain();
-          if (result.drained > 0 && wasOfflineRef.current) {
-            setLastDrainResult({ ...result, at: Date.now() });
-            wasOfflineRef.current = false;
-          }
-        } finally { setFlushing(false); }
+        try { await drain(); } finally { setFlushing(false); }
       }
     };
     navigator.serviceWorker.addEventListener("message", handler);
@@ -95,13 +71,7 @@ export function useMutationQueue() {
     const t = setTimeout(async () => {
       if (cancelled) return;
       setFlushing(true);
-      try {
-        const result = await drain();
-        if (!cancelled && result.drained > 0 && wasOfflineRef.current) {
-          setLastDrainResult({ ...result, at: Date.now() });
-          wasOfflineRef.current = false;
-        }
-      } finally { if (!cancelled) setFlushing(false); }
+      try { await drain(); } finally { if (!cancelled) setFlushing(false); }
     }, 1500);
     return () => { cancelled = true; clearTimeout(t); };
     // Only re-run when online flips or queue grows from 0 → 1+. We
@@ -112,22 +82,9 @@ export function useMutationQueue() {
 
   async function flush() {
     setFlushing(true);
-    try {
-      const result = await drain();
-      // Manual flush is an explicit user request (the Reintentar
-      // button) — always surface the result, even when online. The
-      // wasOffline gate only governs the auto-drain path.
-      if (result.drained > 0) {
-        setLastDrainResult({ ...result, at: Date.now() });
-        wasOfflineRef.current = false;
-      }
-      return result;
-    } finally { setFlushing(false); }
+    try { return await drain(); }
+    finally { setFlushing(false); }
   }
 
-  function acknowledgeDrain() {
-    setLastDrainResult(null);
-  }
-
-  return { entries, online, flushing, lastDrainResult, flush, acknowledgeDrain };
+  return { entries, online, flushing, flush };
 }

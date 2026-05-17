@@ -1495,17 +1495,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       n: () => navigate("archivo"),
     },
   });
-  // Wrap delete actions so we show a success toast on completion. Keeps
-  // callers (SessionSheet, Finances, NoteEditor, etc.) unchanged — they
-  // still receive a function with the original signature.
-  const withSuccess = useCallback((fn, msg) => async (...args) => {
-    const ok = await fn(...args);
-    if (ok) {
-      haptic.tap();
-      showSuccess(msg);
-    }
-    return ok;
-  }, [showSuccess]);
+  // (withSuccess wrapper removed — the one remaining caller
+  // [deleteRecurringTemplate] no longer needs a success toast. The
+  // list row disappears as confirmation, which is enough.)
   // Undo-aware delete wrapper. Takes a `softFn` that returns
   // { commit, undo } (defined per-domain in useSessions /
   // usePayments / useExpenses / useNotes) and orchestrates:
@@ -1578,7 +1570,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     deleteSession: withUndoableDelete(data.softDeleteSession, "Sesi\u00f3n eliminada"),
     deletePayment: withUndoableDelete(data.softDeletePayment, "Pago eliminado"),
     deleteExpense: withUndoableDelete(data.softDeleteExpense, "Gasto eliminado"),
-    deleteRecurringTemplate: withSuccess(data.deleteRecurringTemplate, "Plantilla eliminada"),
+    deleteRecurringTemplate: data.deleteRecurringTemplate,
     deleteNote: withUndoableDelete(data.softDeleteNote, "Nota eliminada"),
     noteCrypto,
     profession,
@@ -1684,7 +1676,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       );
       return ok;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withSuccess, withUndoableDelete]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withUndoableDelete]);
 
   // First-time user gate: a 2-step onboarding wizard before mounting
   // the main shell. Demo mode and admin "view as user" mode bypass —
@@ -2069,20 +2061,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
 
         {/* Offline + mutation-queue surface. Renders when offline OR
             when the queue has pending entries (e.g. flushing right
-            after reconnect). onDrainSuccess fires a success toast
-            once per non-empty drain so the user gets positive
-            feedback that their offline changes were saved. When
-            handlers detect a version conflict (the row moved
-            server-side between enqueue and replay), the count gets
-            appended so the user knows their offline edit overwrote
-            something — surface, not block. */}
-        <OfflineBanner onDrainSuccess={(result) => {
-          const n = result.drained;
-          const c = result.conflicts || 0;
-          const base = `${n} ${n === 1 ? "cambio guardado" : "cambios guardados"}`;
-          const tail = c > 0 ? ` (${c} sobre ${c === 1 ? "un cambio remoto" : "cambios remotos"})` : "";
-          showSuccess(base + tail);
-        }} />
+            after reconnect). The banner itself is enough feedback —
+            we used to fire a "X cambios guardados" success toast on
+            every drain, but routine online enqueues (snapshots, tag
+            links) tripped it too, carpet-bombing the editor with
+            toasts that the header "Guardando…/Guardado" indicator
+            already covered. The banner's headline ("Sincronizando…"
+            then disappearing) is the offline-recovery signal. */}
+        <OfflineBanner />
 
         <div className="topbar">
           <button

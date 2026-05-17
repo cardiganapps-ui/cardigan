@@ -82,7 +82,9 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
     const res = await notifications.enable();
     setBusy(false);
     if (res?.ok) {
-      showToast(t("notifications.toastEnabled"), "success");
+      // No success toast — the prompt dismisses itself and the
+      // Settings toggle (when reachable) renders as enabled. Toast
+      // would be redundant on a flow that already animates away.
       markDismissed(variant);
       setHidden(true);
     } else if (res?.code === "permission-denied") {

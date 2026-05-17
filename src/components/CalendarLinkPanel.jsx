@@ -62,7 +62,7 @@ export function CalendarLinkPanel({ readOnly = false }) {
     if (!j) return;
     setCalendarToken(j);
     setManualOpen(true);          // surface the URL block immediately
-    showToast(t("settings.calendarEnabled"), "success");
+    // No toast — the URL block appearing IS the confirmation.
   };
 
   const rotate = async () => {
@@ -71,6 +71,8 @@ export function CalendarLinkPanel({ readOnly = false }) {
     if (!j) return;
     setCalendarToken(j);
     setManualOpen(true);
+    // Rotation IS security-relevant (old subscribers stop working), so
+    // we keep this one — the URL change isn't otherwise obvious.
     showToast(t("settings.calendarRotated"), "success");
   };
 

@@ -101,7 +101,8 @@ export function CalendarLinkPromptCard() {
       setCalendarToken(j);
       setJustEnabled(true);
       track("calendar_prompt_enabled");
-      showToast(t("settings.calendarEnabled"), "success");
+      // No toast — `justEnabled` rerenders the card into its success
+      // state with the URL block visible, which is the confirmation.
     } catch {
       showToast(t("settings.calendarError"), "error");
     } finally {

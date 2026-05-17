@@ -116,7 +116,10 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
     try {
       await onRestore?.({ title: version.title, content: version.content });
       haptic.success();
-      showToast?.(t("notes.historyRestored"), "success");
+      // No success toast — the sheet closes immediately and the
+      // editor underneath now shows the restored content, which is
+      // self-evident feedback. A toast on top would be redundant
+      // noise on a screen the user is already focused on.
       onClose?.();
     } catch (err) {
       haptic.warn();

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useMutationQueue } from "../hooks/useMutationQueue.js";
 
 /* ── OfflineBanner ─ thin strip below the topbar that signals offline
@@ -10,22 +9,14 @@ import { useMutationQueue } from "../hooks/useMutationQueue.js";
    Sits above .main-content so it doesn't obscure FABs or sheets.
    Tokens-only — flips automatically in dark mode.
 
-   Props:
-     • onDrainSuccess — optional callback fired once per non-empty
-       drain. Receives { drained, remaining, at }. Wired by App.jsx
-       to fire a "X cambios guardados" success toast — positive
-       feedback to close the loop on the offline workflow. */
-export function OfflineBanner({ onDrainSuccess }) {
-  const { entries, online, flushing, lastDrainResult, flush, acknowledgeDrain } = useMutationQueue();
+   No success-toast wiring: the banner's own headline transitions
+   ("Sin conexión" → "Sincronizando…" → disappears) are the
+   offline-recovery feedback. We previously bridged drain results
+   to an App-level toast, but that fired on routine online enqueues
+   too (snapshots, tag links) and overwhelmed the editor. */
+export function OfflineBanner() {
+  const { entries, online, flushing, flush } = useMutationQueue();
   const pending = entries.length;
-
-  // Bridge drain results out to the toast layer once per result, then
-  // acknowledge so the same toast doesn't refire on every render.
-  useEffect(() => {
-    if (!lastDrainResult) return;
-    if (typeof onDrainSuccess === "function") onDrainSuccess(lastDrainResult);
-    acknowledgeDrain();
-  }, [lastDrainResult, onDrainSuccess, acknowledgeDrain]);
 
   if (online && pending === 0) return null;
 

@@ -255,7 +255,7 @@ export function Settings({ user, signOut, refreshUser }) {
         const res = await notifications.enable();
         if (res?.ok) {
           haptic.success();
-          showToast(t("notifications.toastEnabled"), "success");
+          // Toggle flips visibly in the Settings row — no toast needed.
         } else {
           haptic.warn();
           showToast(t(notifErrorKey(res?.code)), res?.code === "permission-denied" ? "warning" : "error");
@@ -273,7 +273,7 @@ export function Settings({ user, signOut, refreshUser }) {
       const res = await notifications.enable();
       if (res?.ok) {
         haptic.success();
-        showToast(t("notifications.toastEnabled"), "success");
+        // Toggle flips visibly — no toast needed.
       } else {
         haptic.warn();
         showToast(t(notifErrorKey(res?.code)), res?.code === "permission-denied" ? "warning" : "error");
