@@ -56,9 +56,13 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => {
     panelRef.current = el;
-    scrollRef.current = el;
     setPanelEl(el);
   };
+  // Scroll happens inside a wrapper div between the header and the
+  // footer (see the flex layout below) — not on .sheet-panel itself.
+  // useSheetDrag reads scrollTop to decide drag vs. scroll, so point
+  // it at the inner scroll body.
+  const setScrollBody = (el) => { scrollRef.current = el; };
 
   // Record type — "patient" (full two-step regular patient flow) or
   // "potential" (slim single-step interview-stage flow). The user
@@ -405,7 +409,15 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           into the system clock. var(--sat) is env(safe-area-inset-
           top) (with 0 fallback for non-notch devices) plus a 16px
           gap so the sheet handle stays comfortably reachable. */}
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))", position:"relative" }}>
+      {/* Flex column: header at top, scroll body (flex 1) in the
+          middle, footer at the bottom. The previous design relied on
+          position:sticky inside the form to pin the Siguiente button,
+          but on this sheet specifically (the only one tall enough to
+          actually scroll) sticky never engaged reliably — ancestor
+          overflow/containment combinations differ enough across iOS
+          Safari versions that a flex-pinned footer is the only
+          bulletproof option. */}
+      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
         {submitting && (
           <div role="status" aria-live="polite"
             style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,
@@ -446,8 +458,12 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           <button className="sheet-close" aria-label={t("close")} onClick={onClose} disabled={submitting}><IconX size={14} /></button>
         </div>
 
-        <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
-          <div>
+        <form onSubmit={submit} style={{ padding:"0 20px 0", display:"flex", flexDirection:"column", flex:"1 1 auto", minHeight:0 }}>
+          {/* Scroll body — everything between here and its matching
+              </div> at line ~1042 scrolls. The feedback toast + footer
+              below sit outside this scroll surface and pin to the
+              form's bottom via the flex column above. */}
+          <div ref={setScrollBody} style={{ flex:"1 1 auto", minHeight:0, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
 
           {/* Mode toggle — first thing the user sees so they can
               pick "Paciente" (full profile + recurring schedule) or
@@ -1041,21 +1057,13 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           {/* /morphRef container */}
           </div>
 
-          {/* Sticky footer + feedback toast MUST live outside morphRef.
-              morphRef has overflow:hidden (so the height-morph animation
-              can clip content during the recordType swap) — and any
-              overflow:hidden ancestor breaks position:sticky for its
-              descendants. Inside morphRef the footer would anchor to
-              morphRef's bottom edge (i.e. flow with the form) instead
-              of staying pinned to the sheet-panel's scroll viewport.
-              Out here it sticks to the sheet bottom as intended and
-              covers the form content scrolling underneath. */}
+          {/* Fade-in / hold / blur-out toast — flex child between
+              the scroll body and the footer; no sticky needed. */}
           {feedback && (
             <div key={feedback.id} role="alert" aria-live="polite"
               style={{
-                position:"sticky", bottom:78, left:0, right:0,
                 pointerEvents:"none", display:"flex", justifyContent:"center",
-                marginTop:-12, marginBottom:-42, zIndex:2,
+                padding:"6px 0", flexShrink:0,
                 animation:"formFeedbackFade 2.6s ease forwards",
               }}>
               <div style={{
@@ -1072,7 +1080,9 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
             </div>
           )}
 
-          <div style={{ position:"sticky", bottom:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)", marginTop:8 }}>
+          {/* Footer — regular flex child, sits at the form's bottom
+              edge by virtue of the flex column layout above. */}
+          <div style={{ flexShrink:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)" }}>
             {isPotentialMode ? (
               /* Potential mode — single rose-tinted submit button to
                   match the lane's visual identity. No back button
