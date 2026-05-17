@@ -768,6 +768,14 @@ export default {
       update: "La foto se subi\u00f3 pero no se guard\u00f3 tu perfil. Intenta de nuevo.",
       save: "No se pudo guardar. Intenta de nuevo.",
     },
+    crop: {
+      title: "Ajusta tu foto",
+      hint: "Arrastra para mover \u00b7 pellizca o usa la barra para acercar",
+      confirm: "Listo",
+      zoom: "Acercar",
+      loadFailedTitle: "No pudimos abrir esa imagen",
+      loadFailedBody: "Intenta con otra foto. Si subiste un HEIC, prueba con un JPG o PNG.",
+    },
   },
 
   // ── Documents ──
