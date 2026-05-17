@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { init, subscribe, drain, getEntries } from "../lib/mutationQueue.js";
 import { useConnectivity } from "./useConnectivity.js";
 
@@ -12,11 +12,17 @@ import { useConnectivity } from "./useConnectivity.js";
                            when the queue is idle.
      • online            — current navigator.onLine state.
      • flushing          — true while drain() is in flight.
-     • lastDrainResult   — { drained, remaining, at } | null. Set after
-                           every drain that touched the queue (drained
-                           > 0). Used by the App-level toast to surface
-                           "X cambios guardados" feedback. App.jsx
-                           reads + clears it after rendering.
+     • lastDrainResult   — { drained, remaining, at } | null. Set ONLY
+                           after a drain that follows a real offline
+                           period, OR after an explicit user-triggered
+                           flush. Routine online enqueues (snapshot,
+                           etc.) still drain — they just don't fire
+                           the "X cambios guardados" toast. The header
+                           "Guardando…/Guardado" indicator is enough
+                           feedback when the user is online; the toast
+                           is reserved for the offline-recovery moment
+                           when they need explicit confirmation that
+                           their queued work survived.
      • flush()           — manual trigger (Reintentar button in the
                            offline banner).
      • acknowledgeDrain()— clears lastDrainResult after the consumer
@@ -30,6 +36,17 @@ export function useMutationQueue() {
   const [flushing, setFlushing] = useState(false);
   const [lastDrainResult, setLastDrainResult] = useState(null);
   const { online } = useConnectivity();
+
+  // Tracks whether the user has been offline since the last successful
+  // drain. Auto-drain only surfaces a success toast when this is true
+  // (i.e., we're recovering from an offline period). Routine online
+  // drains — snapshot enqueues from note edits, tag links, etc. — stay
+  // silent so the user isn't carpet-bombed with "1 cambio guardado"
+  // for every keystroke that triggers an autosave.
+  const wasOfflineRef = useRef(false);
+  useEffect(() => {
+    if (!online) wasOfflineRef.current = true;
+  }, [online]);
 
   // Initialize the queue + subscribe to changes. init() loads from
   // IndexedDB; subscribe() pushes updates on every enqueue / drain
@@ -57,7 +74,10 @@ export function useMutationQueue() {
         setFlushing(true);
         try {
           const result = await drain();
-          if (result.drained > 0) setLastDrainResult({ ...result, at: Date.now() });
+          if (result.drained > 0 && wasOfflineRef.current) {
+            setLastDrainResult({ ...result, at: Date.now() });
+            wasOfflineRef.current = false;
+          }
         } finally { setFlushing(false); }
       }
     };
@@ -77,8 +97,9 @@ export function useMutationQueue() {
       setFlushing(true);
       try {
         const result = await drain();
-        if (!cancelled && result.drained > 0) {
+        if (!cancelled && result.drained > 0 && wasOfflineRef.current) {
           setLastDrainResult({ ...result, at: Date.now() });
+          wasOfflineRef.current = false;
         }
       } finally { if (!cancelled) setFlushing(false); }
     }, 1500);
@@ -93,7 +114,13 @@ export function useMutationQueue() {
     setFlushing(true);
     try {
       const result = await drain();
-      if (result.drained > 0) setLastDrainResult({ ...result, at: Date.now() });
+      // Manual flush is an explicit user request (the Reintentar
+      // button) — always surface the result, even when online. The
+      // wasOffline gate only governs the auto-drain path.
+      if (result.drained > 0) {
+        setLastDrainResult({ ...result, at: Date.now() });
+        wasOfflineRef.current = false;
+      }
       return result;
     } finally { setFlushing(false); }
   }
