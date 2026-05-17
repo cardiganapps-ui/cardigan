@@ -1185,6 +1185,52 @@
   0%   { opacity: 0; transform: translateY(-6px) scale(0.96); }
   100% { opacity: 1; transform: translateY(0)    scale(1);    }
 }
+
+/* ── Phase D: inline image rendering ────────────────────────────────
+   When a line is solely "![alt](attachment:<id>)", the markdown
+   model now tokenises it as block=image. The renderer emits the
+   raw markdown (.md-image-raw — a .md-syntax member so it inherits
+   the off-caret hide rule) PLUS a sibling <span class="md-image-frame">
+   containing the actual <img>. Off-caret the syntax is hidden and
+   the image shows; on-caret the syntax appears and the image
+   hides — same WYSIWYG-ish pattern as Bear / Apple Notes. */
+.md-image-frame {
+  display: block;
+  margin: 6px 0;
+}
+.mde-line.has-caret .md-image-frame {
+  display: none;
+}
+.md-attachment-img {
+  display: block;
+  max-width: 100%;
+  max-height: 380px;
+  border-radius: var(--radius);
+  background: var(--cream);
+}
+/* Loading state — no src set yet. The shimmer pattern from the
+   strip is reused so the loading affordance reads consistently
+   across surfaces. */
+.md-attachment-img:not([src]) {
+  min-height: 140px;
+  background: linear-gradient(110deg, var(--cream) 8%, var(--cream-dark, #eee) 50%, var(--cream) 92%);
+  background-size: 200% 100%;
+  animation: mdeAttachShimmer 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .md-attachment-img:not([src]) { animation: none; }
+}
+
+/* ── Phase D: outline drawer active-heading highlight ──────────────
+   IntersectionObserver in NoteEditor identifies the topmost-visible
+   heading; the outline drawer marks the matching entry with .is-
+   active. Soft teal tint so it reads as "you are here" without
+   shouting. */
+.note-outline-entry.is-active {
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  border-radius: var(--radius-sm);
+}
 @media (prefers-reduced-motion: reduce) {
   /* Portal child inherits this via animation-name; reduced-motion
      scope kills it across the board. */

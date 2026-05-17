@@ -1,189 +1,31 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useT } from "../../i18n/index.jsx";
 import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { supabase } from "../../supabaseClient";
 import { IconX, IconTrash } from "../Icons";
 import { haptic } from "../../utils/haptics";
 
 /* ── AttachmentStrip ──────────────────────────────────────────────
    Phase 5 of the Notes premium roadmap. Horizontal strip of image
-   thumbnails sitting below the editor body. Doesn't render media
-   inside the contentEditable — too many edge cases with the
-   line-based model, and a strip reads better on mobile anyway.
+   thumbnails sitting below the editor body. Phase D refactor: the
+   resolution + cache logic moved to useAttachmentSrc so the inline
+   image rendering in MarkdownEditor can share the same blob URLs
+   without re-fetching / re-decrypting.
+
+   The hook is owned by the parent (NoteEditor) — it calls
+   useAttachmentSrc once and passes the result to BOTH the strip
+   and the editor body. Without lifting we'd hit the network +
+   decrypt twice per attachment.
 
    Each tile shows the thumb + a delete chip; tapping the thumb
-   opens a fullscreen lightbox for inspection.
+   opens a fullscreen lightbox for inspection. */
 
-   Blob URL cache:
-     The presigned GET URL has a 5-minute TTL. We fetch each
-     attachment once on mount, materialise a Blob URL, and stash
-     it keyed by attachment id. The cache is component-scoped
-     (per editor mount) so a re-open re-fetches — the right
-     trade-off vs. a global cache with revoke-on-eviction. URLs
-     are revoked on unmount.
-
-   Encryption:
-     For encrypted rows, the fetched bytes are AES-GCM ciphertext.
-     We use the noteCrypto bag from context to decrypt with the
-     stored IV before constructing the Blob. The constructed Blob
-     uses the ORIGINAL mime from the DB row, not the octet-stream
-     R2 served — so the browser renders it as a real image. */
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return {
-    "Authorization": `Bearer ${session?.access_token}`,
-    "Content-Type": "application/json",
-  };
-}
-
-async function fetchPresigned(path, mime) {
-  const headers = await authHeaders();
-  const res = await fetch("/api/note-attachment-url", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ path, mime: mime || "application/octet-stream" }),
-  });
-  if (!res.ok) return null;
-  const { url } = await res.json();
-  return url || null;
-}
-
-export function AttachmentStrip({ noteId }) {
+export function AttachmentStrip({ tiles, retryTile, rows }) {
   const { t } = useT();
-  const { noteAttachments, noteCrypto, deleteNoteAttachment, showToast } = useCardigan();
+  const { deleteNoteAttachment, showToast } = useCardigan();
 
-  const rows = useMemo(
-    () => (noteAttachments || []).filter(a => a.note_id === noteId),
-    [noteAttachments, noteId]
-  );
-
-  // id → { url: string, failed?: boolean }
-  const [tiles, setTiles] = useState({});
-  // id → object-URL string. Map (not Set) so we can revoke per-id
-  // when a row leaves the list; the previous Set-based version
-  // leaked one blob URL per deleted attachment until unmount.
-  const objectUrlsRef = useRef(new Map());
   const [lightboxId, setLightboxId] = useState(null);
-
-  // Resolve every attachment row into a renderable Blob URL.
-  // Encrypted rows go through the bytes lane (fetch → decrypt →
-  // Blob); unencrypted rows can use the presigned URL directly
-  // since R2 serves the original mime + an inline disposition.
-  useEffect(() => {
-    let alive = true;
-    const tracked = objectUrlsRef.current;
-
-    // Prune state + revoke blob URLs whose attachment row is gone.
-    // Without this, deleting an attachment leaks its blob URL until
-    // the editor unmounts AND keeps a stale `tiles` entry forever.
-    const liveIds = new Set(rows.map(r => r.id));
-    for (const [id, url] of Array.from(tracked.entries())) {
-      if (!liveIds.has(id)) {
-        URL.revokeObjectURL(url);
-        tracked.delete(id);
-      }
-    }
-    setTiles(prev => {
-      let changed = false;
-      const next = {};
-      for (const key of Object.keys(prev)) {
-        if (liveIds.has(key)) next[key] = prev[key];
-        else changed = true;
-      }
-      return changed ? next : prev;
-    });
-
-    rows.forEach(async (row) => {
-      if (tiles[row.id]) return; // already resolved / failed once
-      try {
-        if (!row.encrypted) {
-          const url = await fetchPresigned(row.r2_path, row.mime);
-          if (!alive) return;
-          if (!url) {
-            setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
-            return;
-          }
-          setTiles(prev => ({ ...prev, [row.id]: { url } }));
-          return;
-        }
-        // Encrypted lane: fetch ciphertext bytes, decrypt, build
-        // an object URL keyed off the original mime.
-        if (!noteCrypto?.decryptAttachmentBytes) {
-          setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
-          return;
-        }
-        const url = await fetchPresigned(row.r2_path, "application/octet-stream");
-        if (!url) {
-          setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
-          return;
-        }
-        const r = await fetch(url);
-        if (!r.ok) {
-          setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
-          return;
-        }
-        // Raw bytes straight into the bytes-lane decrypt — no
-        // base64 round-trip on the main thread.
-        const buf = new Uint8Array(await r.arrayBuffer());
-        const plain = await noteCrypto.decryptAttachmentBytes(buf, row.iv);
-        if (!alive) return;
-        if (!plain) {
-          setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
-          return;
-        }
-        const blob = new Blob([plain], { type: row.mime || "image/jpeg" });
-        const objectUrl = URL.createObjectURL(blob);
-        tracked.set(row.id, objectUrl);
-        setTiles(prev => ({ ...prev, [row.id]: { url: objectUrl } }));
-      } catch {
-        if (alive) setTiles(prev => ({ ...prev, [row.id]: { failed: true } }));
-      }
-    });
-    return () => { alive = false; };
-    // tiles intentionally NOT in deps — we only want to resolve
-    // newly-seen rows, not retry-loop on every state update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, noteCrypto]);
-
-  // Final cleanup on unmount — sweep anything still in the map.
-  useEffect(() => () => {
-    objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
-    objectUrlsRef.current.clear();
-  }, []);
-
-  // Retry a previously-failed tile (network blip, transient decrypt
-  // failure). Clearing the tile entry causes the resolver effect to
-  // pick the row up again on the next run.
-  const retryTile = useCallback((id) => {
-    setTiles(prev => {
-      if (!prev[id]) return prev;
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }, []);
-
-  // Auto-clear failed tiles when the vault unlocks. A user who
-  // opens an encrypted note while locked sees every tile fail;
-  // requiring them to tap "retry" on each one after unlock is
-  // friction we can avoid by detecting the canEncrypt→true flip
-  // and clearing failed entries so the resolver re-fires.
-  const canDecrypt = !!noteCrypto?.canEncrypt;
-  useEffect(() => {
-    if (!canDecrypt) return;
-    setTiles(prev => {
-      let changed = false;
-      const next = {};
-      for (const k of Object.keys(prev)) {
-        if (prev[k]?.failed) { changed = true; continue; }
-        next[k] = prev[k];
-      }
-      return changed ? next : prev;
-    });
-  }, [canDecrypt]);
 
   const handleDelete = useCallback(async (id) => {
     haptic.warn();
@@ -200,6 +42,14 @@ export function AttachmentStrip({ noteId }) {
   const closeLightbox = useCallback(() => setLightboxId(null), []);
   useEscape(lightboxId ? closeLightbox : null);
   const lightboxRef = useFocusTrap(!!lightboxId);
+
+  // Close the lightbox if the underlying row vanishes (delete from
+  // another surface, note swap). Adjust state during render rather
+  // than in an effect — matches the pattern used elsewhere for
+  // derived-state corrections (see CommandPalette + Notes.jsx).
+  if (lightboxId && !rows.some(r => r.id === lightboxId)) {
+    setLightboxId(null);
+  }
 
   if (rows.length === 0) return null;
 

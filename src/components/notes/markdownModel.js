@@ -96,6 +96,28 @@ export function tokenizeLine(raw) {
   if (raw == null) raw = "";
   let m;
 
+  // Image-only line: `![alt](attachment:<uuid>)` on its own. Whole
+  // line = one image. We special-case at block level so the renderer
+  // can swap visible content (inline <img> off-caret, raw markdown
+  // on-caret) without disturbing the inline tokeniser. Inline image
+  // mixing with paragraph text is out of scope for v1.
+  if ((m = raw.match(/^!\[([^\]]*)\]\(attachment:([0-9a-fA-F-]+)\)$/))) {
+    return {
+      block: "image",
+      blockSyntax: raw,
+      blockSyntaxLen: raw.length,
+      inline: [],
+      taskChecked: false,
+      indent: 0,
+      listMarker: null,
+      rawLen: raw.length,
+      contentStart: 0,
+      raw,
+      attachmentId: m[2],
+      alt: m[1],
+    };
+  }
+
   if ((m = raw.match(/^(#{1,3}) (.*)$/))) {
     const level = m[1].length;
     const contentStart = m[1].length + 1;
@@ -193,6 +215,21 @@ export function tokenizeLine(raw) {
    skips them. */
 export function renderLineHTML(token, { readOnly = false, lineIdx = 0 } = {}) {
   let html = "";
+
+  // Image block — emit the raw markdown span AND a sibling <img>
+  // placeholder. Existing `.md-syntax { display: none }` off-caret
+  // CSS hides the raw text by default; CSS toggles below
+  // (.mde-line.has-caret) flip the visibility so the user sees the
+  // markdown when editing the line, and the image when not.
+  // src is left blank — the editor's render effect resolves it from
+  // useAttachmentSrc and sets it imperatively. data-mde-attachment
+  // is the hook key.
+  if (token.block === "image") {
+    html += `<span class="md-syntax md-image-raw" data-syn="${token.raw.length}">${escapeHtml(token.raw)}</span>`;
+    html += `<span class="md-image-frame" data-nocount="1" contenteditable="false"><img class="md-attachment-img" data-mde-attachment="${escapeHtml(token.attachmentId)}" alt="${escapeHtml(token.alt)}" /></span>`;
+    html += `<span class="mde-eol" data-nocount="1">${"​"}</span>`;
+    return html;
+  }
 
   if (token.block === "task") {
     // Leading indent spaces + interactive checkbox + raw "[ ] ".

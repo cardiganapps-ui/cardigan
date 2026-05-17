@@ -7,7 +7,7 @@ import { extractOutline } from "./outlineUtil";
    headings, and renders a clickable list. Selecting a heading calls
    `onJump(lineIdx)` so the parent can scroll the editor to it. */
 
-export function NoteOutline({ content, onJump, variant = "drawer" }) {
+export function NoteOutline({ content, onJump, variant = "drawer", activeLine = null }) {
   const { t } = useT();
   const items = useMemo(() => extractOutline(content), [content]);
 
@@ -17,19 +17,23 @@ export function NoteOutline({ content, onJump, variant = "drawer" }) {
       {items.length === 0
         ? <div className="mde-outline-empty">{t("notes.outlineEmpty")}</div>
         : <ul className="mde-outline-list">
-            {items.map((it, idx) => (
-              <li
-                key={idx}
-                className={"mde-outline-item mde-outline-lvl-" + it.level}
-                onClick={() => onJump(it.line)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump(it.line); } }}
-              >
-                <span className="mde-outline-dot" />
-                <span className="mde-outline-text">{it.text}</span>
-              </li>
-            ))}
+            {items.map((it, idx) => {
+              const isActive = activeLine != null && it.line === activeLine;
+              return (
+                <li
+                  key={idx}
+                  className={"mde-outline-item note-outline-entry mde-outline-lvl-" + it.level + (isActive ? " is-active" : "")}
+                  onClick={() => onJump(it.line)}
+                  role="button"
+                  tabIndex={0}
+                  aria-current={isActive ? "true" : undefined}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump(it.line); } }}
+                >
+                  <span className="mde-outline-dot" />
+                  <span className="mde-outline-text">{it.text}</span>
+                </li>
+              );
+            })}
           </ul>}
     </div>
   );

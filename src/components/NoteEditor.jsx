@@ -7,6 +7,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
+import { useAttachmentSrc } from "./notes/useAttachmentSrc";
 import { FormatToolbar } from "./notes/FormatToolbar";
 import { NoteContextChip } from "./notes/NoteContextChip";
 import { FindInNote } from "./notes/FindInNote";
@@ -80,6 +81,11 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName } = useCardigan();
   const noteTemplates = useNoteTemplates();
   const { isDesktop } = useViewport();
+  // Attachment src hook — called once at the parent so the strip
+  // (thumbnails) and the MarkdownEditor (inline images) share one
+  // resolver cache. Without this lift each surface would fetch +
+  // decrypt every attachment independently.
+  const attachmentSrc = useAttachmentSrc(note?.id || null);
   const [pinned, setPinned] = useState(!!note?.pinned);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
@@ -95,6 +101,10 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [findOpen, setFindOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Heading scroll-spy state. The IntersectionObserver effect below
+  // updates this whenever the topmost-visible heading changes; the
+  // outline drawer reads it to highlight the matching entry.
+  const [activeHeadingLine, setActiveHeadingLine] = useState(null);
   const saveTimer = useRef(null);
   const toastTimer = useRef(null);
   const scrollRef = useRef(null);
@@ -219,6 +229,78 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const handleSelectionChange = useCallback(({ active }) => {
     setActiveFormats(active || new Set());
   }, []);
+
+  /* ── Heading scroll-spy ─────────────────────────────────────────
+     IntersectionObserver tracks h1/h2/h3 lines inside the markdown
+     editor root, identifies the topmost one currently in view, and
+     updates activeHeadingLine. The outline drawer reads this to
+     highlight the matching entry — "you are here" affordance while
+     scrolling through a long note.
+
+     Observer scope = the editor's scroll viewport (.mde-scroll).
+     A small rootMargin pulls the trigger zone toward the top of
+     the viewport so the heading transitions feel anchored to the
+     scroll-top rather than the centre. */
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    let raf = 0;
+    const visible = new Map(); // lineIdx → top (relative to viewport)
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const lineIdx = parseInt(entry.target.dataset.line, 10);
+        if (Number.isNaN(lineIdx)) continue;
+        if (entry.isIntersecting) {
+          visible.set(lineIdx, entry.boundingClientRect.top);
+        } else {
+          visible.delete(lineIdx);
+        }
+      }
+      // rAF-coalesce so a burst of crossings doesn't thrash React.
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (visible.size === 0) {
+          setActiveHeadingLine(null);
+          return;
+        }
+        // Pick the heading whose top is closest to (but above /
+        // overlapping) the viewport's top edge — i.e. the smallest
+        // line number among visible entries by document order.
+        let best = Infinity;
+        for (const lineIdx of visible.keys()) {
+          if (lineIdx < best) best = lineIdx;
+        }
+        setActiveHeadingLine(best === Infinity ? null : best);
+      });
+    }, {
+      root: scrollEl,
+      // Trigger zone: top 12% of viewport. A heading "becomes
+      // active" as it crosses into the top sliver.
+      rootMargin: "0px 0px -88% 0px",
+      threshold: 0,
+    });
+
+    // Re-observe whenever the content changes (new headings appear /
+    // disappear). MutationObserver on the editor root catches
+    // structural changes the IntersectionObserver doesn't see.
+    const editorRoot = scrollEl.querySelector(".mde-root");
+    if (!editorRoot) return () => { observer.disconnect(); if (raf) cancelAnimationFrame(raf); };
+    const wireUp = () => {
+      observer.disconnect();
+      visible.clear();
+      const headings = editorRoot.querySelectorAll(".mde-line--h1, .mde-line--h2, .mde-line--h3");
+      headings.forEach(h => observer.observe(h));
+    };
+    wireUp();
+    const mut = new MutationObserver(wireUp);
+    mut.observe(editorRoot, { childList: true, subtree: false });
+    return () => {
+      mut.disconnect();
+      observer.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [content]);
 
   /* ── Scroll-shadow header ──────────────────────────────────────── */
   useEffect(() => {
@@ -893,9 +975,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           onSelectionChange={handleSelectionChange}
           onRequestFind={() => setFindOpen(true)}
           placeholder={t("notes.bodyPlaceholder")}
+          attachmentTiles={attachmentSrc.tiles}
         />
 
-        {note?.id && <AttachmentStrip noteId={note.id} />}
+        {note?.id && (
+          <AttachmentStrip
+            tiles={attachmentSrc.tiles}
+            retryTile={attachmentSrc.retryTile}
+            rows={attachmentSrc.rows}
+          />
+        )}
 
         {/* Hidden file input — paperclip click opens this. We accept
             image/* and let uploadFileAsAttachment enforce the precise
@@ -945,6 +1034,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               content={content}
               onJump={(line) => { setOutlineOpen(false); handleJumpToLine(line); }}
               variant={isDesktop ? "drawer" : "sheet"}
+              activeLine={activeHeadingLine}
             />
           </div>
         </div>

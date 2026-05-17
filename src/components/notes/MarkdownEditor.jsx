@@ -232,6 +232,15 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   onRequestFind,
   autoFocus = false,
   placeholder = PLACEHOLDER,
+  // Map of attachment id → { url?, failed? }. Resolved by
+  // useAttachmentSrc upstream (NoteEditor). Whenever a line tokenises
+  // as an image block, the renderer emits an <img data-mde-
+  // attachment="..."> placeholder; a second useLayoutEffect walks
+  // the DOM after every render + tile update to set src from this
+  // map. Decoupling the resolution from the renderer keeps the
+  // markdown model pure — it has no idea attachments exist server-
+  // side.
+  attachmentTiles = null,
 }, ref) {
   const rootRef = useRef(null);
   const [lines, setLines] = useState(() => (initialContent || "").split("\n"));
@@ -309,6 +318,27 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       }
     }
   }, [lines, caretVersion, readOnly]);
+
+  /* Wire attachment image sources whenever the resolution map
+     changes OR the body re-renders (which would have nuked the
+     previously-set src attributes). Cheap querySelectorAll —
+     microseconds even on long notes — and runs only when there are
+     actually attachment placeholders in the DOM. */
+  useLayoutEffect(() => {
+    if (!attachmentTiles) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const imgs = root.querySelectorAll("img[data-mde-attachment]");
+    imgs.forEach((img) => {
+      const id = img.dataset.mdeAttachment;
+      const tile = id ? attachmentTiles[id] : null;
+      if (tile?.url && img.getAttribute("src") !== tile.url) {
+        img.setAttribute("src", tile.url);
+      } else if (!tile?.url && img.hasAttribute("src")) {
+        img.removeAttribute("src");
+      }
+    });
+  }, [lines, attachmentTiles]);
 
   /* Re-render when focus changes across lines (so the `.has-caret`
      class moves, and syntax dimming follows the caret). */
