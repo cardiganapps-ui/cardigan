@@ -297,6 +297,16 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   const rootRef = useRef(null);
   const [lines, setLines] = useState(() => (initialContent || "").split("\n"));
   const [caretVersion, setCaretVersion] = useState(0);
+  // Synchronous mirror of `lines`. setLines is async — between
+  // rapid keystrokes (or delete-then-type) React hasn't re-rendered
+  // yet, so the `lines` closure in input handlers is STALE. Reading
+  // a stale array means edits land at the right column against the
+  // wrong content: e.g. delete "y" → type "z" → "z" overwrites "y"'s
+  // neighbour instead of replacing it, resurrecting the deleted
+  // char. linesRef.current is the truth; applyModel updates it
+  // synchronously before scheduling the React state update.
+  const linesRef = useRef(null);
+  if (linesRef.current === null) linesRef.current = lines;
   const caretRef = useRef({ line: 0, col: 0, endLine: 0, endCol: 0 });
   const prevLinesRef = useRef(null);
   const prevCaretLineRef = useRef(-1);
@@ -467,30 +477,36 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       if (readOnly) return;
       const c = caretRef.current;
       if (c.line !== c.endLine) return; // cross-line wrap not supported v1
-      const line = lines[c.line] || "";
+      const curLines = linesRef.current;
+      const line = curLines[c.line] || "";
       const start = Math.min(c.col, c.endCol);
       const end = Math.max(c.col, c.endCol);
       const r = toggleInline(line, start, end, kind);
-      const nextLines = [...lines.slice(0, c.line), r.line, ...lines.slice(c.line + 1)];
-      pushHistory(historyRef.current, lines, caretRef.current);
+      const nextLines = [...curLines.slice(0, c.line), r.line, ...curLines.slice(c.line + 1)];
+      pushHistory(historyRef.current, curLines, caretRef.current);
       caretRef.current = { line: c.line, col: r.end, endLine: c.line, endCol: r.end };
+      linesRef.current = nextLines;
       setLines(nextLines);
       haptic.tap();
     },
     applyBlockFormat(block) {
       if (readOnly) return;
       const c = caretRef.current;
-      const line = lines[c.line] || "";
+      const curLines = linesRef.current;
+      const line = curLines[c.line] || "";
       const r = toggleBlock(line, block);
-      const nextLines = [...lines.slice(0, c.line), r.line, ...lines.slice(c.line + 1)];
-      pushHistory(historyRef.current, lines, caretRef.current);
+      const nextLines = [...curLines.slice(0, c.line), r.line, ...curLines.slice(c.line + 1)];
+      pushHistory(historyRef.current, curLines, caretRef.current);
       const nextCol = Math.max(0, c.col + r.colShift);
       caretRef.current = { line: c.line, col: nextCol, endLine: c.line, endCol: nextCol };
+      linesRef.current = nextLines;
       setLines(nextLines);
       haptic.tap();
     },
     setContent(content) {
-      setLines((content || "").split("\n"));
+      const nextLines = (content || "").split("\n");
+      linesRef.current = nextLines;
+      setLines(nextLines);
       caretRef.current = { line: 0, col: 0, endLine: 0, endCol: 0 };
       historyRef.current = { past: [], future: [], lastTs: 0 };
     },
@@ -502,27 +518,30 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     insertText(text) {
       if (readOnly || !text) return;
       const c = caretRef.current;
+      const curLines = linesRef.current;
       const start = Math.min(c.col, c.endCol);
       const end = Math.max(c.col, c.endCol);
       const startLine = Math.min(c.line, c.endLine);
       const endLine = Math.max(c.line, c.endLine);
-      pushHistory(historyRef.current, lines, caretRef.current);
-      const r = replaceRange(lines, startLine, start, endLine, end, text);
+      pushHistory(historyRef.current, curLines, caretRef.current);
+      const r = replaceRange(curLines, startLine, start, endLine, end, text);
       caretRef.current = {
         line: r.caret.line, col: r.caret.col,
         endLine: r.caret.line, endCol: r.caret.col,
       };
+      linesRef.current = r.lines;
       setLines(r.lines);
     },
     getActiveFormats() {
       const c = caretRef.current;
-      return activeFormatsAt(lines[c.line] || "", c.col);
+      return activeFormatsAt(linesRef.current[c.line] || "", c.col);
     },
     /* Jump to a range in the document: select it and scroll into
        view. Used by find-in-note and the outline drawer. */
     jumpTo({ line, startCol, endCol }) {
-      if (line == null || line >= lines.length) return;
-      const targetLine = Math.max(0, Math.min(line, lines.length - 1));
+      const curLines = linesRef.current;
+      if (line == null || line >= curLines.length) return;
+      const targetLine = Math.max(0, Math.min(line, curLines.length - 1));
       const s = Math.max(0, startCol ?? 0);
       const e = Math.max(s, endCol ?? s);
       caretRef.current = { line: targetLine, col: s, endLine: targetLine, endCol: e };
@@ -547,18 +566,21 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         }
       });
     },
-  }), [lines, readOnly]);
+  }), [readOnly]);
 
   /* ── Event handlers ─────────────────────────────────────────────── */
   const applyModel = (result, opts = {}) => {
     if (!result) return;
-    if (!opts.skipHistory) pushHistory(historyRef.current, lines, caretRef.current);
+    if (!opts.skipHistory) pushHistory(historyRef.current, linesRef.current, caretRef.current);
     caretRef.current = {
       line: result.caret.line,
       col: result.caret.col,
       endLine: result.caret.line,
       endCol: result.caret.col,
     };
+    // Write the ref BEFORE setLines so any synchronous handler that
+    // re-enters before React re-renders sees the fresh content.
+    linesRef.current = result.lines;
     setLines(result.lines);
   };
 
@@ -570,6 +592,12 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
 
     const sel = currentModelSelection(rootRef.current, lineDivsRef.current);
     if (!sel) return;
+
+    // Read from the ref, NOT the closure. Between rapid keystrokes
+    // (or delete-then-type) React hasn't re-rendered, so the `lines`
+    // closure here is stale by one or more edits. Shadow the binding
+    // so the rest of this handler reads the freshest content.
+    const lines = linesRef.current;
 
     switch (e.inputType) {
       case "insertText": {
@@ -705,6 +733,9 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   };
 
   const handleEnter = (sel) => {
+    // Read from the ref so rapid Enter-after-edit doesn't operate
+    // on stale closure state. Same rationale as onBeforeInput.
+    const lines = linesRef.current;
     // Smart list continuation on single-caret Enter inside a list line.
     if (sel.startLine === sel.endLine && sel.startCol === sel.endCol) {
       const line = lines[sel.startLine];
@@ -715,6 +746,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
           const next = [...lines.slice(0, sel.startLine), "", ...lines.slice(sel.startLine + 1)];
           pushHistory(historyRef.current, lines, caretRef.current);
           caretRef.current = { line: sel.startLine, col: 0, endLine: sel.startLine, endCol: 0 };
+          linesRef.current = next;
           setLines(next);
           return;
         }
@@ -757,52 +789,59 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   const applyInline = (kind) => {
     const c = caretRef.current;
     if (c.line !== c.endLine) return;
-    const line = lines[c.line] || "";
+    const curLines = linesRef.current;
+    const line = curLines[c.line] || "";
     const start = Math.min(c.col, c.endCol);
     const end = Math.max(c.col, c.endCol);
     const r = toggleInline(line, start, end, kind);
-    const nextLines = [...lines.slice(0, c.line), r.line, ...lines.slice(c.line + 1)];
-    pushHistory(historyRef.current, lines, caretRef.current);
+    const nextLines = [...curLines.slice(0, c.line), r.line, ...curLines.slice(c.line + 1)];
+    pushHistory(historyRef.current, curLines, caretRef.current);
     caretRef.current = { line: c.line, col: r.start, endLine: c.line, endCol: r.end };
+    linesRef.current = nextLines;
     setLines(nextLines);
     haptic.tap();
   };
 
   const applyBlockAt = (block) => {
     const c = caretRef.current;
-    const line = lines[c.line] || "";
+    const curLines = linesRef.current;
+    const line = curLines[c.line] || "";
     const r = toggleBlock(line, block);
-    const nextLines = [...lines.slice(0, c.line), r.line, ...lines.slice(c.line + 1)];
-    pushHistory(historyRef.current, lines, caretRef.current);
+    const nextLines = [...curLines.slice(0, c.line), r.line, ...curLines.slice(c.line + 1)];
+    pushHistory(historyRef.current, curLines, caretRef.current);
     const nextCol = Math.max(0, c.col + r.colShift);
     caretRef.current = { line: c.line, col: nextCol, endLine: c.line, endCol: nextCol };
+    linesRef.current = nextLines;
     setLines(nextLines);
     haptic.tap();
   };
 
   const handleTab = (shift) => {
     const c = caretRef.current;
-    const line = lines[c.line] || "";
+    const curLines = linesRef.current;
+    const line = curLines[c.line] || "";
     // Only indent/outdent for list lines
     const token = tokenizeLine(line);
     if (token.block !== "ul" && token.block !== "ol" && token.block !== "task") {
       // Plain tab insertion
-      applyModel(replaceRange(lines, c.line, c.col, c.endLine, c.endCol, "  "));
+      applyModel(replaceRange(curLines, c.line, c.col, c.endLine, c.endCol, "  "));
       return;
     }
     if (shift) {
       if (token.indent < 2) return; // nothing to outdent
       const stripped = line.slice(2); // remove 2 leading spaces
-      const nextLines = [...lines.slice(0, c.line), stripped, ...lines.slice(c.line + 1)];
-      pushHistory(historyRef.current, lines, caretRef.current);
+      const nextLines = [...curLines.slice(0, c.line), stripped, ...curLines.slice(c.line + 1)];
+      pushHistory(historyRef.current, curLines, caretRef.current);
       const nextCol = Math.max(0, c.col - 2);
       caretRef.current = { line: c.line, col: nextCol, endLine: c.line, endCol: nextCol };
+      linesRef.current = nextLines;
       setLines(nextLines);
     } else {
       const indented = "  " + line;
-      const nextLines = [...lines.slice(0, c.line), indented, ...lines.slice(c.line + 1)];
-      pushHistory(historyRef.current, lines, caretRef.current);
+      const nextLines = [...curLines.slice(0, c.line), indented, ...curLines.slice(c.line + 1)];
+      pushHistory(historyRef.current, curLines, caretRef.current);
       caretRef.current = { line: c.line, col: c.col + 2, endLine: c.line, endCol: c.col + 2 };
+      linesRef.current = nextLines;
       setLines(nextLines);
     }
   };
@@ -811,8 +850,9 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const h = historyRef.current;
     if (!h.past.length) return;
     const snap = h.past.pop();
-    h.future.push({ lines, caret: { ...caretRef.current } });
+    h.future.push({ lines: linesRef.current, caret: { ...caretRef.current } });
     caretRef.current = { ...snap.caret };
+    linesRef.current = snap.lines;
     setLines(snap.lines);
     haptic.tap();
   };
@@ -821,8 +861,9 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const h = historyRef.current;
     if (!h.future.length) return;
     const snap = h.future.pop();
-    h.past.push({ lines, caret: { ...caretRef.current } });
+    h.past.push({ lines: linesRef.current, caret: { ...caretRef.current } });
     caretRef.current = { ...snap.caret };
+    linesRef.current = snap.lines;
     setLines(snap.lines);
     haptic.tap();
   };
@@ -859,6 +900,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       }
     }
     caretRef.current = { line: caretLine, col: caretCol, endLine: caretLine, endCol: caretCol };
+    linesRef.current = nextLines;
     setLines(nextLines);
   };
 
@@ -869,6 +911,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     if (!text) return;
     const sel = currentModelSelection(rootRef.current, lineDivsRef.current);
     if (!sel) return;
+    const lines = linesRef.current;
     // Smart paste: if the clipboard holds a single URL AND the user
     // has selected text, wrap the selection in a markdown link
     // [selection](url). Matches the muscle memory from Notion / Bear
@@ -921,7 +964,8 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   const handleSlashSelect = useCallback((cmd) => {
     if (!slashMenu) return;
     const lineIdx = slashMenu.line;
-    const line = lines[lineIdx] || "";
+    const curLines = linesRef.current;
+    const line = curLines[lineIdx] || "";
     // The line should be "/" (we only opened on an empty line +
     // typed "/"). Replace from col 0 to col 1 with the prefix, even
     // if the user typed extra chars after — those get nuked too,
@@ -929,7 +973,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     const slashIdx = line.indexOf("/");
     if (slashIdx < 0) { setSlashMenu(null); return; }
     const newLine = cmd.prefix + line.slice(slashIdx + 1).trimStart();
-    const next = lines.slice();
+    const next = curLines.slice();
     next[lineIdx] = newLine;
     applyModel({ lines: next, caret: { line: lineIdx, col: cmd.prefix.length } });
     setSlashMenu(null);
@@ -942,8 +986,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     // applyModel isn't memoized — re-runs each render alongside
     // `lines`. That's fine: the menu opens rarely enough that the
     // callback identity churn doesn't matter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slashMenu, lines]);
+  }, [slashMenu]);
 
   return (
     <>
