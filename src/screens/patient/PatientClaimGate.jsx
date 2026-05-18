@@ -195,18 +195,9 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
           </button>
           <button
             type="button"
+            className="btn btn-ghost"
             onClick={onSignOut}
-            style={{
-              width: "100%",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "8px 0",
-              color: "var(--charcoal-md)",
-              fontFamily: "var(--font)",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
+            style={{ width: "100%", marginTop: 4 }}
           >
             {t("nav.signOut")}
           </button>
