@@ -39,7 +39,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run build:e2e && npx vite preview --mode e2e --port ${PORT} --strictPort`,
+    // --host 127.0.0.1 forces IPv4 binding. Without it, Vite's
+    // preview defaults to "localhost" which on some Linux runners
+    // (notably ubuntu-latest in GitHub Actions) resolves to ::1
+    // first — Playwright's webServer health check polls 127.0.0.1
+    // and times out, even though the server is up on IPv6.
+    command: `npm run build:e2e && npx vite preview --mode e2e --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}`,
     timeout: 90_000,
     reuseExistingServer: !process.env.CI,

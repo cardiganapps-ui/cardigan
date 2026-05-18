@@ -13,5 +13,11 @@ export default defineConfig({
     ],
     setupFiles: ["./src/test/setup.js"],
     globals: false,
+    // Vitest's default include pattern (`**/*.{test,spec}.{js,...}`)
+    // would scoop up the Playwright spec in e2e/ and try to run it
+    // with vitest — which crashes because @playwright/test's `test()`
+    // throws when invoked outside the Playwright runner. Keep the
+    // two test surfaces strictly separate.
+    exclude: ["node_modules", "dist", "e2e/**", ".git"],
   },
 });
