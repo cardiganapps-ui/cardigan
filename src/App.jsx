@@ -290,6 +290,23 @@ function CardiganApp() {
   }
 
   if (demoMode) {
+    // Patient-portal demo escape hatch: vite --mode e2e + ?demoRole=patient
+    // routes into the patient surface with fixture data instead of the
+    // therapist AppShell. Used by the e2e patient-portal smoke test.
+    // Production demo users (no MODE=e2e) never hit this branch —
+    // import.meta.env.MODE is statically replaced by Vite at build time
+    // so the predicate folds to false outside the test build.
+    const demoPatientRole = import.meta.env.MODE === "e2e"
+      && typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).get("demoRole") === "patient";
+    if (demoPatientRole) {
+      const fakeUser = { id: "demo-patient-user", email: "demo@cardigan.mx", user_metadata: {} };
+      return (
+        <Suspense fallback={<AuthSplash />}>
+          <PatientApp user={fakeUser} signOut={() => setDemoMode(false)} demo />
+        </Suspense>
+      );
+    }
     return <AppShell user={null} signOut={() => { setAuthIntent("signup"); setDemoMode(false); }} demo theme={theme} />;
   }
 
