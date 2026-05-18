@@ -1,0 +1,112 @@
+# ── Continuous integration ────────────────────────────────────────────
+#
+# Runs on every push to main and every PR — keeps the build green
+# and prevents the kind of editor-crash regression we shipped during
+# the Notes premium polish work (TDZ at mount, stale-closure on
+# rapid type-after-delete). Three parallel jobs:
+#
+#   • lint   — eslint
+#   • unit   — vitest (~6s wall, 715 tests)
+#   • e2e    — playwright smoke (~15-25s wall: build + chromium boot
+#              + the spec). Build step is implicit in webServer.
+#
+# Vercel's auto-deploy on push is INDEPENDENT of these checks today
+# (no "Ignored Build Step" gate wired). If CI starts catching real
+# regressions, the next move is to add a check-status gate in
+# Vercel's project settings so a red main never ships.
+#
+# Caching:
+#   • npm cache via actions/setup-node's built-in `cache: 'npm'`
+#   • Playwright browser binaries via actions/cache keyed on the
+#     pinned playwright version (subsequent runs ~10s vs ~45s cold)
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel older in-flight runs when a fresh commit lands on the same
+# ref. A solo dev push-loop shouldn't burn three concurrent Actions
+# bills for runs that are already stale.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+
+  unit:
+    name: Unit tests (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  e2e:
+    name: E2E smoke (playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+
+      # Pin the Playwright version into the cache key so a bump to
+      # @playwright/test invalidates the browser cache automatically
+      # — Playwright requires browser version match SDK.
+      - name: Resolve Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test'].replace(/^[^\d]*/, '')")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Playwright Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # System deps may still be missing on a cache hit; cheap to
+      # idempotently ensure them.
+      - name: Install Playwright system deps (cache-hit path)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run smoke test
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
