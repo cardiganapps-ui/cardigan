@@ -113,6 +113,69 @@
       ]
     }
     </script>
+    <!-- FAQPage schema mirrors the FAQS array in
+         src/components/landing/LandingPage.jsx so Google can surface
+         rich FAQ snippets directly under the cardigan.mx result.
+         Profession landing pages (/psicologos/, etc.) already carry
+         this; the root page was missing it. Keep these answers in
+         lockstep with the JSX source — drift will confuse crawlers
+         and look sloppy when both versions show up in cache. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Funciona en mi celular?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sí. Cardigan está pensada para usarse desde el celular y se instala como app desde Safari o Chrome. También funciona en computadora."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Mis datos están seguros?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tus notas clínicas viajan cifradas extremo a extremo — solo tú las puedes leer. Tus datos están en servidores en EE.UU. con respaldos diarios y cumplimos con LFPDPPP."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Puedo exportar mis pacientes?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cuando quieras y sin pedir permiso. Descarga un JSON con todo: pacientes, sesiones, pagos y notas. Tus datos siempre son tuyos."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Hay contrato o permanencia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ningún contrato. Pagas mes a mes (o anual con descuento) y cancelas en un toque desde la app cuando ya no la necesites."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Tengo que enseñarle a usarla a mis pacientes?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Cardigan es solo para ti. Tus pacientes nunca entran a la app — solo tú agendas y los recordatorios llegan al horario que elijas."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Y si decido cancelar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tu cuenta se queda intacta. Puedes seguir leyendo todo en modo lectura, exportar tus datos, y reactivar cuando quieras."
+          }
+        }
+      ]
+    }
+    </script>
     <!-- Preconnect + preload Turnstile so the captcha verification on
          signin/signup feels instant. Without these, the script load
          + TLS handshake to challenges.cloudflare.com only starts when
