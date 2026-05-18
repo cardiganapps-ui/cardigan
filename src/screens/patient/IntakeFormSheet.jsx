@@ -267,7 +267,9 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
             </>
           )}
 
-          {/* Privacy consent — required to submit */}
+          {/* Privacy consent — required to submit. White card with
+              a soft border lift (matches the design-system rule:
+              cards on white, never `--cream` as the wrapper). */}
           <label
             style={{
               display: "flex",
@@ -276,7 +278,8 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
               padding: "14px",
               border: "1px solid var(--border-lt)",
               borderRadius: "var(--radius)",
-              background: "var(--cream)",
+              background: "var(--white)",
+              boxShadow: "var(--shadow-sm)",
               marginTop: 6,
               marginBottom: 18,
               cursor: "pointer",

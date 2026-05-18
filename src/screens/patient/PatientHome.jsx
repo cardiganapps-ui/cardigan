@@ -1272,7 +1272,7 @@ function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }) {
   const palette = {
     owe:    { bg: "var(--red-bg)",   fg: "var(--red)",   bar: "var(--red)" },
     credit: { bg: "var(--green-bg)", fg: "var(--green)", bar: "var(--green)" },
-    even:   { bg: theme?.accentPale || "var(--cream)", fg: theme?.accentDark || "var(--charcoal)", bar: theme?.accent || "var(--charcoal)" },
+    even:   { bg: theme?.accentPale || "var(--teal-pale)", fg: theme?.accentDark || "var(--teal-dark)", bar: theme?.accent || "var(--teal)" },
   }[tone];
   const Icon = tone === "even" ? IconCheck : IconDollar;
 

@@ -133,22 +133,27 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
             {t("patientPay.intro", { name: therapistName || t("patientClaim.therapistFallback") })}
           </div>
 
-          {/* Balance reference card */}
+          {/* Balance reference card — teal-pale info band matches
+              the therapist-app pattern for inline context panels (cf.
+              NewSessionSheet rate row). Drops the legacy `--cream`
+              wrapper that was bleeding the AuthScreen aesthetic onto
+              a modernized sheet. */}
           <div
-            className="card"
             style={{
               padding: "12px 14px",
               marginBottom: 16,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "var(--cream)",
+              borderRadius: "var(--radius)",
+              background: "var(--teal-pale)",
+              color: "var(--teal-dark)",
             }}
           >
-            <div style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)" }}>
+            <div style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>
               {t("patientPay.balanceLabel")}
             </div>
-            <div style={{ fontSize: "var(--text-md)", fontWeight: 700, color: "var(--charcoal)" }}>
+            <div style={{ fontSize: "var(--text-md)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
               {formatMXN(Math.round(Number(amountDue) || 0))}
             </div>
           </div>
