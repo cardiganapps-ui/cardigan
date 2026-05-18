@@ -39,7 +39,7 @@ async function handler(req, res) {
     blocked: block,
   });
   if (error) {
-    return res.status(500).json({ error: error.message || "Update failed" });
+    return res.status(500).json({ error: "Update failed" });
   }
   await logAuditEvent(svc, {
     actorId: admin.id,

@@ -51,7 +51,7 @@ async function handler(req, res) {
       { onConflict: "user_id" }
     );
   if (error) {
-    return res.status(500).json({ error: error.message || "Update failed" });
+    return res.status(500).json({ error: "Update failed" });
   }
   await logAuditEvent(svc, {
     actorId: admin.id,

@@ -142,7 +142,7 @@ async function handleList(req, res) {
     .from("influencer_codes")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: "Lookup failed" });
 
   // Per-code usage: how many user_subscriptions rows reference each
   // code (= signup attribution), and how many of those are now in a

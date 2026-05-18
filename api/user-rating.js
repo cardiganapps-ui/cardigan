@@ -59,7 +59,7 @@ async function handler(req, res) {
       { onConflict: "user_id,prompt_kind", ignoreDuplicates: false }
     );
   if (error) {
-    return res.status(500).json({ error: error.message || "Failed to record rating" });
+    return res.status(500).json({ error: "Failed to record rating" });
   }
   return res.status(200).json({ ok: true });
 }

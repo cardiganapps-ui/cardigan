@@ -77,7 +77,7 @@ async function handler(req, res) {
         },
         { onConflict: "user_id", ignoreDuplicates: false }
       );
-    if (error) return res.status(500).json({ error: error.message || "Failed to create token" });
+    if (error) return res.status(500).json({ error: "Failed to create token" });
     // Plaintext + URL go out ONCE — the client must surface them
     // immediately because they're never retrievable again.
     return res.status(200).json({

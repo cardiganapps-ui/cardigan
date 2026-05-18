@@ -84,7 +84,7 @@ async function handler(req, res) {
       .from("user_subscriptions")
       .update(auditFields)
       .eq("user_id", userId);
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: "Grant failed" });
   } else {
     // Brand-new comp-only row. The placeholder customer id is unique
     // (per the table's unique constraint) and intentionally distinct
@@ -96,7 +96,7 @@ async function handler(req, res) {
         stripe_customer_id: `comp_${userId}`,
         ...auditFields,
       });
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: "Grant failed" });
   }
 
   await logAuditEvent(svc, {

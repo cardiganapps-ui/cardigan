@@ -122,7 +122,7 @@ async function handler(req, res) {
   try {
     code = await ensureCode(svc, user.id);
   } catch (err) {
-    return res.status(500).json({ error: err.message || "Failed to generate code" });
+    return res.status(500).json({ error: "Failed to generate code" });
   }
 
   // Re-read to get the rewards count + pending credit alongside the
@@ -132,7 +132,7 @@ async function handler(req, res) {
     .select("referral_rewards_count, pending_credit_amount_cents")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: "Failed to load referral code" });
 
   return res.status(200).json({
     code,
