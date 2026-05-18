@@ -6,7 +6,7 @@ import { useEscape } from "../hooks/useEscape";
 import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
-import { invalidateAvatarUrl, setAvatarUrl } from "../hooks/useAvatarUrl";
+import { invalidateAvatarUrl, setAvatarUrl, useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useCardigan } from "../context/CardiganContext";
 import { AVATAR_PRESETS, presetUrl, isPresetId } from "../data/avatarPresets";
 import { AvatarCropEditor } from "./AvatarCropEditor";
@@ -40,6 +40,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   // not yet uploaded), "uploaded" (current saved image), "remove"
   // (user wants to revert to initials), or "none".
   const [draft, setDraft] = useState(() => fromCurrent(currentAvatar));
+  // Resolved presigned URL for the user's saved uploaded avatar.
+  // fromCurrent stores only the storage path; the preview <img> needs
+  // a real URL, which the cache + signed-URL endpoint provide via this
+  // hook. Without this, the "Foto actual" circle is silently blank
+  // even though the user has a real photo set.
+  const { imageUrl: currentUploadedUrl } = useAvatarUrl(currentAvatar);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -217,13 +223,18 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
     }
   };
 
-  // Preview at the top of the sheet
+  // Preview at the top of the sheet. For the persisted uploaded
+  // avatar we use the resolved URL from useAvatarUrl above —
+  // `draft.imageUrl` was a non-existent field; `fromCurrent` only
+  // carries the storage path, which the <img> can't render directly.
   const previewNode = useMemo(() => {
     if (draft.kind === "uploaded-file") return <img src={draft.previewUrl} alt="" />;
-    if (draft.kind === KIND_UPLOADED) return <img src={draft.imageUrl} alt="" />;
+    if (draft.kind === KIND_UPLOADED) {
+      return currentUploadedUrl ? <img src={currentUploadedUrl} alt="" /> : initial;
+    }
     if (draft.kind === KIND_PRESET) return <img src={presetUrl(draft.id)} alt="" />;
     return initial;
-  }, [draft, initial]);
+  }, [draft, initial, currentUploadedUrl]);
 
   const previewLabel = useMemo(() => {
     if (draft.kind === "uploaded-file") return t("avatar.uploadedPending") || "Foto lista para guardar";
