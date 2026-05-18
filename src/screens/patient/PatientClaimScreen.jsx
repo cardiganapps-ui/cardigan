@@ -120,13 +120,28 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
   };
 
   if (loading) {
+    // Skeleton that mirrors the resolved card shape (logo circle +
+    // two title lines + button) so the swap to real content feels
+    // continuous instead of yanking content in over a bare
+    // "Cargando…" string. Design-system rule: first paint should
+    // feel like the destination.
     return (
       <div className="scroll-bounce" style={wrapperStyle}>
         <div style={innerStyle}>
           <div style={cardStyle}>
-            <div style={{ textAlign: "center", color: "var(--charcoal-md)", fontSize: 14 }}>
-              {t("loading")}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+              <span className="sk-circle" style={{ width: 48, height: 48 }} aria-hidden="true" />
+              <span className="sk-bar sk-bar-lg" style={{ width: "70%" }} aria-hidden="true" />
+              <span className="sk-bar sk-bar-sm" style={{ width: "55%" }} aria-hidden="true" />
+              <span className="sk-bar sk-bar-md" style={{ width: "100%", height: 40, borderRadius: "var(--radius-pill)", marginTop: 6 }} aria-hidden="true" />
             </div>
+            <span
+              role="status"
+              aria-live="polite"
+              style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
+            >
+              {t("loading")}
+            </span>
           </div>
         </div>
       </div>
