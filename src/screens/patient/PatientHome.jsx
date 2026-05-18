@@ -1350,12 +1350,16 @@ function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }) {
       </div>
       {showBar && (
         <div style={{ marginTop: 14 }}>
+          {/* Balance paid-progress bar. Track uses --border-lt (the
+              modern divider token) instead of legacy --cream-dark;
+              fill animates with --dur-base so updates feel snappy
+              rather than syrupy. */}
           <div
             style={{
               position: "relative",
               height: 8,
               borderRadius: 100,
-              background: "var(--cream-dark)",
+              background: "var(--border-lt)",
               overflow: "hidden",
             }}
             aria-hidden="true"
@@ -1367,7 +1371,7 @@ function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }) {
                 width: `${paidPct}%`,
                 background: "var(--green)",
                 borderRadius: 100,
-                transition: "width var(--dur-slower) var(--ease-spring)",
+                transition: "width var(--dur-base) var(--ease-spring)",
               }}
             />
           </div>
