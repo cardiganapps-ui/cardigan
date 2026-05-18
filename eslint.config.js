@@ -57,9 +57,20 @@ export default defineConfig([
   },
   {
     /* Build-tool config files run in Node and read process.env. */
-    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js'],
+    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js', 'playwright.config.js'],
     languageOptions: {
       globals: { ...globals.node },
+    },
+  },
+  {
+    /* Playwright e2e specs use browser + Playwright globals via
+       imports; they run in Node so process is available too. */
+    files: ['e2e/**/*.{js,mjs}'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+    rules: {
+      'no-console': 'off',
     },
   },
 ])

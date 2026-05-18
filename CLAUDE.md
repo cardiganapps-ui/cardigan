@@ -60,10 +60,11 @@ npm run lint             # ESLint (ignores dist/ and scripts/)
 npm run test             # Run vitest once
 npm run test:watch       # Vitest watch mode
 npm run test -- dates    # Run a single test file (matches utils/__tests__/dates.test.js)
+npm run test:e2e         # Playwright smoke test (auto-builds with --mode e2e, serves on :5180)
 npm run bugs -- list     # CLI bug report viewer; also: show <id>, delete <id>, clear
 ```
 
-Tests live in `src/utils/__tests__/` and cover the pure utilities (dates, sessions, contact, files). No component or hook tests exist — don't invent a testing framework for them.
+Unit tests live in `src/utils/__tests__/` and cover the pure utilities (dates, sessions, contact, files). End-to-end smoke tests live in `e2e/` — a single Playwright spec that opens a note in demo mode, types, deletes, and types again. The spec catches bug classes that lint + vitest can't (TDZ at editor mount, stale-closure on rapid type-after-delete, generic "did the editor render?" smoke). Demo mode + `?testMode=1` unlocks the editor's readOnly gate in `vite --mode e2e` builds only — production demo users never see this branch. When adding more flows, mirror the pattern: tiny scope per test, demo data only, no real auth.
 
 The `bugs` script and any `api/` function require `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus R2 and VAPID keys for document/push work. `.env.local` additionally carries admin tokens for full autonomous control — use them freely; the user has accepted the risk and asked they stay in place:
 - `SUPABASE_PAT` — Supabase Management API PAT (DDL, auth config, SMTP settings)

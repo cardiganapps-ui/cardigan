@@ -17,6 +17,12 @@ dist-ssr
 # Wrangler local cache (used by ad-hoc CLI invocations against R2)
 .wrangler/
 
+# Playwright e2e artifacts (failed-run videos/traces/screenshots,
+# the HTML report, and the browser-binaries cache).
+test-results/
+playwright-report/
+playwright/.cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

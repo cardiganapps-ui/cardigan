@@ -782,7 +782,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // Compose read-only: native data-layer flag (admin "view as user")
   // OR trial-expired gate. Both block writes and hide the FAB; the UI
   // distinguishes them via banner copy.
-  const readOnly = data.readOnly || subscription.accessExpired;
+  // Escape hatch for the Playwright smoke test (e2e/notes-editor.spec.js):
+  // demo mode is read-only AND null-user subscription resolves to
+  // "expired", both of which would normally disable typing in the
+  // editor. ?testMode=1 unlocks both — only honored in `vite --mode
+  // e2e` builds, never in production, so end users can never trigger
+  // it. Falls back to the normal compose otherwise.
+  const testModeUnlocked = import.meta.env.MODE === "e2e"
+    && typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).get("testMode") === "1";
+  const readOnly = testModeUnlocked
+    ? false
+    : (data.readOnly || subscription.accessExpired);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
   const [editingPayment, setEditingPayment] = useState(null);
