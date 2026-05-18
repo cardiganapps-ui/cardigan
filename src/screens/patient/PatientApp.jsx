@@ -4,7 +4,7 @@ import { Toast } from "../../components/Toast";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { LogoIcon } from "../../components/LogoMark";
 import { usePatientPortalData } from "../../hooks/usePatientPortalData";
-import { useDemoPatientPortalData } from "../../hooks/useDemoPatientPortalData";
+import { getDemoPatientPortalSnapshot } from "../../hooks/useDemoPatientPortalData";
 import { PatientShell } from "./PatientShell";
 
 /* Sync the I18nProvider's `profession` with the linked therapist's
@@ -38,14 +38,18 @@ function PatientI18nSync({ profession, children }) {
    "nutrición") for the linked professional. */
 
 export function PatientApp({ user, signOut, demo = false }) {
-  // Demo branch: read-only fixture data, no network. The two hook
-  // shapes are kept in lockstep by `useDemoPatientPortalData` so
-  // PatientShell/PatientHome don't need to know which source is
-  // feeding them. Only the e2e patient-portal smoke test sets demo
-  // via App.jsx's testMode+demoRole hatch; production never hits it.
+  // Demo branch: read-only fixture data, no network. The shape is
+  // kept in lockstep with usePatientPortalData by sharing the same
+  // generateDemoData() seed the therapist demo uses. Only the e2e
+  // patient-portal smoke test sets demo via App.jsx's testMode +
+  // demoRole hatch; production never hits it.
+  //
+  // The real hook is called unconditionally (Rules of Hooks) — it
+  // no-ops on null user. The demo snapshot is a plain function call
+  // gated by the `demo` prop, so real users never pay the cost of
+  // generating the fixture data they'd never see.
   const realData = usePatientPortalData(demo ? null : user);
-  const demoData = useDemoPatientPortalData();
-  const data = demo ? demoData : realData;
+  const data = demo ? getDemoPatientPortalSnapshot() : realData;
   const [toasts, setToasts] = useState([]);
   const nextToastIdRef = useRef(0);
 
