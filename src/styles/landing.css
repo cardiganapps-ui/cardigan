@@ -145,6 +145,38 @@
   flex-wrap: wrap;
   animation: lpRise var(--dur-slower) 0.26s var(--ease-spring) both;
 }
+/* Trial reassurance directly under the CTAs. Pulses gently on the
+   dot — subtle motion to catch the eye without dominating. The
+   --teal-dark text + faint teal-pale chip background ride the
+   primary accent so it reads as friendly affordance, not as another
+   CTA competing with the buttons above. */
+.lp-hero-trial {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  animation: lpRise var(--dur-slower) 0.36s var(--ease-spring) both;
+}
+.lp-hero-trial-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green, #4F8A6F);
+  animation: lpTrialPulse 2.4s ease-in-out infinite;
+}
+@keyframes lpTrialPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.86); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-hero-trial-dot { animation: none; }
+}
 .lp-hero-preview > .lp-preview {
   animation: lpRise var(--dur-slower) var(--dur-base) var(--ease-spring) both;
 }

@@ -169,6 +169,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
                 Probar demo
               </CTAButton>
             </div>
+            {/* Trial reassurance directly under the CTAs — was buried
+                in the pricing card four sections down. Surfacing it
+                here flips "should I sign up?" from "do I want to pay
+                $149?" to "do I want 30 free days with no friction?".
+                Cheapest, biggest conversion lever on the page. */}
+            <p className="lp-hero-trial">
+              <span className="lp-hero-trial-dot" aria-hidden="true" />
+              30 días gratis · sin tarjeta · cancela en un toque
+            </p>
           </div>
 
           <div className="lp-hero-preview">
