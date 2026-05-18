@@ -6,6 +6,7 @@
 
 import { getServiceClient, sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -20,6 +21,17 @@ async function handler(req, res) {
     const { data: userData, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !userData?.user) return res.status(401).json({ error: "Invalid session" });
     const userId = userData.user.id;
+
+    // Each call fans out to every push_subscription the user owns and
+    // makes a paid Web Push provider request per subscription. A user
+    // tapping "Send test" twice rapidly is fine; a script hammering
+    // the endpoint would burn provider quota. 10/hour leaves room for
+    // legitimate debugging.
+    const rl = await rateLimit({ endpoint: "push-test", bucket: userId, max: 10, windowSec: 3600 });
+    if (!rl.ok) {
+      res.setHeader("Retry-After", String(rl.retryAfter));
+      return res.status(429).json({ error: "Too many requests" });
+    }
 
     const { data: subs, error: subErr } = await supabase
       .from("push_subscriptions")

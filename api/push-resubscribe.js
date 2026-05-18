@@ -15,9 +15,21 @@
 import crypto from "node:crypto";
 import { getServiceClient, isAllowedPushEndpoint } from "./_push.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit, getClientIp } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // Anonymous (no JWT) so we bucket per-IP. The (oldEndpoint,
+  // resubToken) pair is the real authz check below — this just
+  // caps probing/brute attempts at a layer above the DB. 60/hour is
+  // generous: a real SW only fires `pushsubscriptionchange` once on
+  // browser rotation, which is rare.
+  const ipRl = await rateLimit({ endpoint: "push-resubscribe", bucket: getClientIp(req), max: 60, windowSec: 3600 });
+  if (!ipRl.ok) {
+    res.setHeader("Retry-After", String(ipRl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
+  }
 
   const { oldEndpoint, resubToken, subscription } = req.body || {};
   if (

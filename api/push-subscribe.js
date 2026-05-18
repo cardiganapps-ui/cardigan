@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_push.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -9,6 +10,16 @@ async function handler(req, res) {
   try {
     const user = await getAuthUser(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+    // 30/hour per user: a normal client subscribes once per browser
+    // install + occasionally on SW upgrade. A malicious client could
+    // otherwise flood push_subscriptions with thousands of rotated
+    // endpoints to either bloat the table or hold upsert locks.
+    const rl = await rateLimit({ endpoint: "push-subscribe", bucket: user.id, max: 30, windowSec: 3600 });
+    if (!rl.ok) {
+      res.setHeader("Retry-After", String(rl.retryAfter));
+      return res.status(429).json({ error: "Too many requests" });
+    }
 
     const { subscription } = req.body || {};
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {

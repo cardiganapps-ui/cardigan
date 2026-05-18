@@ -1,6 +1,7 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_push.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -8,6 +9,15 @@ async function handler(req, res) {
   try {
     const user = await getAuthUser(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+    // 60/hour per user — generous since a client can legitimately
+    // unsubscribe on logout / device-clean, but caps any spam loop
+    // that an attacker with a valid JWT might attempt.
+    const rl = await rateLimit({ endpoint: "push-unsubscribe", bucket: user.id, max: 60, windowSec: 3600 });
+    if (!rl.ok) {
+      res.setHeader("Retry-After", String(rl.retryAfter));
+      return res.status(429).json({ error: "Too many requests" });
+    }
 
     const { endpoint } = req.body || {};
     if (!endpoint || typeof endpoint !== "string") {
