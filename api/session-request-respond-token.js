@@ -18,6 +18,7 @@
 
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit, getClientIp } from "./_ratelimit.js";
 import {
   findRequestByToken, applyAccept, applyReject, fetchPartiesForRequest,
 } from "./_rescheduleRequest.js";
@@ -78,6 +79,17 @@ function readField(req, name) {
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // Anonymous endpoint (token IS the auth). Bucket per-IP so a bot
+  // can't sweep tokens at high speed. Tokens are 32-byte CSPRNG so
+  // brute-force is intractable; this caps probing of "is this token
+  // still live?" status. 30/hour matches the typical case of a
+  // therapist clicking once per email, with headroom for retries.
+  const ipRl = await rateLimit({ endpoint: "session-request-respond-token", bucket: getClientIp(req), max: 30, windowSec: 3600 });
+  if (!ipRl.ok) {
+    res.setHeader("Retry-After", String(ipRl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
+  }
 
   const token = readField(req, "token");
   const action = readField(req, "action");

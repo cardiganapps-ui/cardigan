@@ -19,6 +19,7 @@
 import { createHash } from "node:crypto";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit, getClientIp } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -26,6 +27,16 @@ async function handler(req, res) {
   const token = req.query?.token;
   if (typeof token !== "string" || !token) {
     return res.status(400).json({ error: "Invalid token" });
+  }
+
+  // Anonymous endpoint — bucket per-IP. Tokens are 256-bit CSPRNG so
+  // direct brute-force is intractable, but a per-IP cap prevents an
+  // attacker from sweeping a leaked token range and learning which
+  // ones map to live invites.
+  const rl = await rateLimit({ endpoint: "patient-invite-preview", bucket: getClientIp(req), max: 60, windowSec: 3600 });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
   }
 
   const tokenHash = createHash("sha256").update(token).digest("hex");
@@ -37,7 +48,9 @@ async function handler(req, res) {
     .eq("token_hash", tokenHash)
     .maybeSingle();
   if (error) {
-    return res.status(500).json({ error: error.message });
+    // Don't leak Supabase error.message — could disclose schema /
+    // RLS policy names. Sentry has the full error via withSentry.
+    return res.status(500).json({ error: "Lookup failed" });
   }
   if (!invite) {
     return res.status(404).json({ error: "Token not found", code: "not_found" });
