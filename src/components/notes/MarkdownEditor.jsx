@@ -600,14 +600,47 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     // preventDefault'd. e.data here is usually a single typed char,
     // which we apply via our model just like insertText.
 
-    const sel = currentModelSelection(rootRef.current, lineDivsRef.current);
-    if (!sel) return;
-
     // Read from the ref, NOT the closure. Between rapid keystrokes
     // (or delete-then-type) React hasn't re-rendered, so the `lines`
     // closure here is stale by one or more edits. Shadow the binding
     // so the rest of this handler reads the freshest content.
     const lines = linesRef.current;
+
+    // Read selection from the DOM, then CLAMP to the current model
+    // bounds. The DOM lags behind linesRef during rapid input
+    // bursts (iOS predictive text dispatching events synchronously,
+    // autorepeat, etc.) — each beforeinput fires while the DOM
+    // still shows the prior edit's content. Without clamping, the
+    // stale DOM positions point past the end of the freshly-edited
+    // line, and slice math no-ops the delete:
+    //
+    //   user types "Jajxg sa jxs", backspaces twice quickly:
+    //   1st BS: sel.col=12 against 12-char DOM, deletes "s" → "jx"
+    //   2nd BS: sel.col=12 against still-12-char DOM, but linesRef
+    //           is "jx" (11 chars). deleteBackward at col 12 in 11
+    //           chars is a no-op. The second delete never happened.
+    //   user types "x": sel.col=12 against 12-char DOM, linesRef
+    //           "jx" (11 chars). slice(0,12) clamps to "jx" anyway,
+    //           inserts "x" → "jxx". User sees the "s" they thought
+    //           they deleted come back.
+    //
+    // Clamping the sel cols to the current model's line lengths
+    // makes the delete operate at the line's actual end. The 2nd
+    // backspace would then run at col 11 (clamped from 12) and
+    // delete "x" → "j". Same fix repairs the type-after-delete
+    // case symmetrically.
+    const rawSel = currentModelSelection(rootRef.current, lineDivsRef.current);
+    if (!rawSel) return;
+    const clampLine = (l) => Math.max(0, Math.min(l, lines.length - 1));
+    const clampCol = (l, col) => Math.max(0, Math.min(col, (lines[l] || "").length));
+    const startLine = clampLine(rawSel.startLine);
+    const endLine = clampLine(rawSel.endLine);
+    const sel = {
+      startLine,
+      endLine,
+      startCol: clampCol(startLine, rawSel.startCol),
+      endCol: clampCol(endLine, rawSel.endCol),
+    };
 
     switch (e.inputType) {
       case "insertText": {
