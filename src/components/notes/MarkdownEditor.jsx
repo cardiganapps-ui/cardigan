@@ -988,6 +988,21 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     // callback identity churn doesn't matter.
   }, [slashMenu]);
 
+  /* Editor element attributes worth calling out:
+     - spellCheck: ON — keeps the squiggly underlines flagging typos
+       (visual only, no behavioural side effects).
+     - autoCorrect="off": iOS Safari's autocorrect dispatches
+       insertReplacementText with a selection spanning backwards over
+       a "misspelled" word, expecting the editor to swap that range
+       for the correction. For a line-based markdown editor that's
+       catastrophic — user types "haha", deletes the last "a", types
+       "x", and iOS replaces "hah" with "haha" again. The deleted
+       letter reappears and every subsequent keystroke re-triggers
+       the same fight. Bear / Notion / iA Writer all disable this.
+     - autoCapitalize="sentences": first letter of a paragraph still
+       capitalises, but in-word edits aren't second-guessed.
+     - autoComplete="off": belt-and-suspenders for any browser that
+       tries to surface suggestions inside a contenteditable. */
   return (
     <>
       <div
@@ -1002,6 +1017,9 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         data-placeholder={placeholder}
         data-empty={lines.length === 1 && lines[0] === "" ? "true" : "false"}
         spellCheck
+        autoCorrect="off"
+        autoCapitalize="sentences"
+        autoComplete="off"
         onBeforeInput={onBeforeInput}
         onKeyDown={onKeyDown}
         onCompositionStart={onCompositionStart}

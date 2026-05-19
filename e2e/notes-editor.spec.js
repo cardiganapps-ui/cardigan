@@ -56,6 +56,15 @@ test("notes editor: mount + type + delete + type", async ({ page }) => {
   // be "false" and the rest of the test would silently no-op.
   await expect(editor).toHaveAttribute("contenteditable", "true");
 
+  // Lock the autocorrect / autocapitalize attributes in. iOS Safari
+  // sends insertReplacementText events when autocorrect is enabled,
+  // which on a line-based markdown editor reanimates just-deleted
+  // characters and traps the user in a loop. Headless Chromium can't
+  // repro the actual bug (no iOS autocorrect engine), so we guard
+  // the attribute itself — if a future edit drops it, this fails.
+  await expect(editor).toHaveAttribute("autocorrect", "off");
+  await expect(editor).toHaveAttribute("autocapitalize", "sentences");
+
   // Click inside the LAST line of existing content so the caret
   // lands at a known position. Clicking the .mde-root wrapper drops
   // focus on the wrapper, which sometimes lands in odd places on
