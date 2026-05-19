@@ -1,10 +1,18 @@
+import { useEffect, useState } from "react";
 import { useMutationQueue } from "../hooks/useMutationQueue.js";
 
 /* ── OfflineBanner ─ thin strip below the topbar that signals offline
-   state + pending-queue count. Renders nothing when online with an
-   empty queue (the common case). When offline, surfaces a persistent
+   state + pending-queue count. Renders nothing in the common case
+   (online with an empty queue). When offline, surfaces a persistent
    warning. When online with pending entries, shows progress + a
-   "Reintentar" button.
+   "Reintentar" button — but ONLY after a debounce window so the
+   normal write flow (every save enqueues a snapshot that drains in
+   ~200ms) doesn't blink the banner on screen for everything.
+
+   Debounce thresholds:
+     • offline               → show immediately (user must know)
+     • online + flushing     → show after 1.5s (don't flash for fast drains)
+     • online + stuck queue  → show after 4s (true "something's wrong" signal)
 
    Sits above .main-content so it doesn't obscure FABs or sheets.
    Tokens-only — flips automatically in dark mode.
@@ -17,8 +25,30 @@ import { useMutationQueue } from "../hooks/useMutationQueue.js";
 export function OfflineBanner() {
   const { entries, online, flushing, flush } = useMutationQueue();
   const pending = entries.length;
+  // `showSlow` only governs the delayed online+pending reveal. The
+  // offline state shows directly in the render predicate below.
+  const [showSlow, setShowSlow] = useState(false);
 
-  if (online && pending === 0) return null;
+  // Reset showSlow as soon as the queue drains — adjust state during
+  // render rather than in an effect (React-recommended for derived
+  // state; sidesteps the set-state-in-effect rule).
+  if (showSlow && pending === 0) setShowSlow(false);
+
+  // Debounce the reveal so routine drains don't flash the banner.
+  // notes.snapshot / tags / document updates all enqueue + drain in
+  // sub-second windows — invisible to the user with a 1.5s/4s gate.
+  useEffect(() => {
+    if (!online || pending === 0) return;
+    const delay = flushing ? 1500 : 4000;
+    const t = setTimeout(() => setShowSlow(true), delay);
+    return () => clearTimeout(t);
+  }, [online, pending, flushing]);
+
+  // Final visibility: offline state is always visible (user must
+  // know); online state needs both pending entries AND the debounce
+  // to have elapsed.
+  const visible = !online || (pending > 0 && showSlow);
+  if (!visible) return null;
 
   const isOffline = !online;
   const bg = isOffline ? "var(--amber-bg)" : "var(--teal-mist)";
