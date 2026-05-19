@@ -586,9 +586,19 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
 
   const onBeforeInput = (e) => {
     if (readOnly) { e.preventDefault(); return; }
-    // Composition input — let the browser manage the DOM temporarily;
-    // we resync on compositionend.
-    if (composingRef.current || e.inputType === "insertCompositionText") return;
+    // Real IME composition (CJK / dead-key accents on desktop
+    // Spanish): compositionstart fires first → composingRef = true.
+    // Let the browser handle the partial-state DOM updates; we
+    // resync on compositionend. Early-return WITHOUT preventDefault
+    // so the browser's composition machinery proceeds.
+    if (composingRef.current) return;
+    // insertCompositionText WITHOUT an active compositionstart is
+    // iOS predictive text dispatching a "fake composition" to
+    // overwrite recently-typed text with its completion guess —
+    // the bug that reanimates just-deleted characters. Fall through
+    // to the switch so it lands in the default case + gets
+    // preventDefault'd. e.data here is usually a single typed char,
+    // which we apply via our model just like insertText.
 
     const sel = currentModelSelection(rootRef.current, lineDivsRef.current);
     if (!sel) return;
@@ -732,11 +742,23 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         // Handled by onPaste / onCopy / onCut / onDrop dedicated handlers.
         return;
       default: {
-        // Unknown input type — preventDefault and best-effort fall-through.
+        // Unknown input type (often iOS predictive text dispatching
+        // insertCompositionText without a real compositionstart, or
+        // some other browser quirk). preventDefault to block the
+        // browser's mutation; then a best-effort apply via our model.
         e.preventDefault();
-        if (e.data) {
-          applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, e.data));
-        }
+        if (!e.data) return;
+        // iOS predictive-text pattern: a selection spanning backwards
+        // over text the user just typed, combined with a multi-char
+        // .data that's the engine's "completion guess". Applying that
+        // resurrects whatever the user just deleted. Detect + reject:
+        // if the selection has any width AND the data is multi-char,
+        // it's almost certainly a smart-replacement attempt. The
+        // user's actual single keystroke arrives via a subsequent
+        // insertText event.
+        const selWidth = (sel.endLine - sel.startLine) + (sel.endCol - sel.startCol);
+        if (selWidth > 0 && e.data.length > 1) return;
+        applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, e.data));
       }
     }
   };
@@ -998,20 +1020,24 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   }, [slashMenu]);
 
   /* Editor element attributes worth calling out:
-     - spellCheck: ON — keeps the squiggly underlines flagging typos
-       (visual only, no behavioural side effects).
-     - autoCorrect="off": iOS Safari's autocorrect dispatches
-       insertReplacementText with a selection spanning backwards over
-       a "misspelled" word, expecting the editor to swap that range
-       for the correction. For a line-based markdown editor that's
-       catastrophic — user types "haha", deletes the last "a", types
-       "x", and iOS replaces "hah" with "haha" again. The deleted
-       letter reappears and every subsequent keystroke re-triggers
-       the same fight. Bear / Notion / iA Writer all disable this.
-     - autoCapitalize="sentences": first letter of a paragraph still
-       capitalises, but in-word edits aren't second-guessed.
-     - autoComplete="off": belt-and-suspenders for any browser that
-       tries to surface suggestions inside a contenteditable. */
+     - spellCheck={false}: turn off the browser's spellcheck engine
+       entirely. iOS Safari ties autocorrect AND predictive text to
+       the same engine — even with autoCorrect="off", predictive text
+       keeps dispatching insertReplacementText + insertCompositionText
+       events that swap recently-typed text for iOS's "completion
+       guess". The user types "Jajxg sa jxs", deletes "jxs", types
+       "x", and "jxs" reappears after the cursor. We pay the cost of
+       no visual squiggles to make the editor reliable. Bear / Notion
+       / iA Writer all made the same trade.
+     - autoCorrect="off" + autoCapitalize="off" + autoComplete="off":
+       belt-and-suspenders; each disables a slightly different smart
+       feature on different browsers + OS versions.
+     - insertCompositionText handling (see onBeforeInput): we also
+       preventDefault + apply via our model when we're NOT in an
+       active IME composition, so predictive-text "fake compositions"
+       can't pollute the DOM out from under us. Real CJK composition
+       (compositionstart fired first) still works correctly — those
+       fall into the composingRef early-return. */
   return (
     <>
       <div
@@ -1025,9 +1051,9 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         aria-label="Editor de nota"
         data-placeholder={placeholder}
         data-empty={lines.length === 1 && lines[0] === "" ? "true" : "false"}
-        spellCheck
+        spellCheck={false}
         autoCorrect="off"
-        autoCapitalize="sentences"
+        autoCapitalize="off"
         autoComplete="off"
         onBeforeInput={onBeforeInput}
         onKeyDown={onKeyDown}
