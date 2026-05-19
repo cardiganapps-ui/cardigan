@@ -668,12 +668,21 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         return;
       }
       case "insertReplacementText": {
-        // Autocorrect / suggestion replacement. `dataTransfer` holds text.
+        // iOS Safari fires this for BOTH autocorrect AND predictive
+        // text completions, both with a selection that spans backwards
+        // over the user's just-typed text — expecting us to swap that
+        // range for iOS's "correction". autoCorrect="off" stops the
+        // autocorrect path; predictive text bypasses that flag and
+        // keeps dispatching. The symptom: user types "haha", deletes
+        // last "a", types "x" — iOS replaces "hah" with "haha" and
+        // every subsequent keystroke re-triggers the same fight.
+        //
+        // Solution: preventDefault to block the browser's mutation,
+        // and DON'T apply the replacement to the model. The user's
+        // typed text stays exactly as they typed it. Spellcheck
+        // (visual squiggles) still flags typos for manual fix.
+        // Bear / Notion / iA Writer all behave the same way.
         e.preventDefault();
-        const replacement = (e.dataTransfer && e.dataTransfer.getData("text/plain")) || e.data || "";
-        // Range may span multiple text nodes; the browser already moved
-        // selection to the range-to-replace. Use current selection.
-        applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, replacement));
         return;
       }
       case "insertLineBreak":
