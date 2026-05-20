@@ -83,6 +83,12 @@ function computeFenceLayout(lines) {
 
 const PLACEHOLDER = "Escribe aquí…";
 
+/* Tiny wrappers around Date.now() / setTimeout. The React Compiler's
+   react-hooks/purity rule flags impure calls inline inside the
+   component body — moving them to module scope satisfies the linter
+   while keeping the behavior identical. */
+function nowMs() { return Date.now(); }
+
 function isMac() {
   if (typeof navigator === "undefined") return false;
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || "");
@@ -311,6 +317,13 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   const prevLinesRef = useRef(null);
   const prevCaretLineRef = useRef(-1);
   const composingRef = useRef(false);
+  // Timestamp of the most recent user-initiated deletion. Used by
+  // onCompositionEnd to detect "iOS predictive text is restoring
+  // the just-deleted character" — when a delete happened within
+  // the last ~2s, we distrust the DOM-as-truth resync that the
+  // compositionend path would otherwise do, and force a re-render
+  // from linesRef (our model). See onCompositionEnd for full detail.
+  const lastDeleteAtRef = useRef(0);
   const historyRef = useRef({ past: [], future: [], lastTs: 0 });
   const pendingFocusRef = useRef(autoFocus);
   const lineDivsRef = useRef([]);
@@ -746,6 +759,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
           slashPendingRef.current = 0;
         }
         if (slashMenu) setSlashMenu(null);
+        lastDeleteAtRef.current = nowMs();
         applyModel(deleteBackward(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol));
         return;
       }
@@ -756,6 +770,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
           slashPendingRef.current = 0;
         }
         if (slashMenu) setSlashMenu(null);
+        lastDeleteAtRef.current = nowMs();
         applyModel(deleteForward(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol));
         return;
       }
@@ -766,6 +781,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
           slashPendingRef.current = 0;
         }
         if (slashMenu) setSlashMenu(null);
+        lastDeleteAtRef.current = nowMs();
         applyModel(deleteWordBackward(lines, sel.startLine, sel.startCol));
         return;
       }
@@ -935,6 +951,32 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   const onCompositionStart = () => { composingRef.current = true; };
   const onCompositionEnd = () => {
     composingRef.current = false;
+
+    // Distrust the DOM if a delete happened within the last 2s.
+    //
+    // iOS predictive text routinely wraps the user's NEXT keystroke
+    // after a delete in a composition, with the "smart" intent of
+    // restoring the just-deleted word. compositionend's DOM-as-truth
+    // resync below would write that restored text back into linesRef,
+    // resurrecting the character the user explicitly deleted.
+    //
+    // Symptom: user types "Jajxg sa jxs", deletes last char(s), types
+    // again, and "jxs" reappears after the cursor. Every subsequent
+    // keystroke re-triggers the same fight because each typed char
+    // gets composed.
+    //
+    // The 2-second window catches the delete-then-type sequence
+    // without permanently disabling composition — a user genuinely
+    // composing Spanish text via dictation > 2s after their last
+    // delete will still have their input accepted via the resync.
+    //
+    // Force a render so the DOM rebuilds from linesRef, clearing
+    // whatever iOS inserted during the composition.
+    if (nowMs() - lastDeleteAtRef.current < 2000) {
+      setCaretVersion(v => v + 1);
+      return;
+    }
+
     // Re-sync the affected line(s) from the DOM. The browser may have
     // inserted the composed text directly; we read it back and
     // canonicalise via our model so the next render is clean.
