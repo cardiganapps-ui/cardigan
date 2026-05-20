@@ -126,6 +126,30 @@ export function captureException(error, context) {
   }
 }
 
+/* captureMessage — drop-in for Sentry.captureMessage. Used by the
+   editor's "Report typing issue" affordance to ship a Sentry event
+   with recent breadcrumbs so we can see what input events actually
+   fired during a reported bug, without needing the user to also
+   hit a render-time crash. */
+export function captureMessage(message, context) {
+  if (sentryInstance) {
+    sentryInstance.captureMessage(message, context);
+  } else {
+    pendingEvents.push({ error: new Error(message), context });
+  }
+}
+
+/* addBreadcrumb — drop-in for Sentry.addBreadcrumb. Editor input
+   handlers call this on every beforeinput/composition event so a
+   later captureException/Message carries the full event trail. The
+   breadcrumb scrubber in initSentry's beforeBreadcrumb strips PII
+   data fields before they leave the client. */
+export function addBreadcrumb(crumb) {
+  if (sentryInstance) sentryInstance.addBreadcrumb(crumb);
+  // Pre-init crumbs are dropped; Sentry's own ring buffer is what we
+  // care about, and it only matters once init runs.
+}
+
 // Tags every subsequent Sentry event with the active profession + demo
 // flag. Call from AppShell after the profile resolves so issues that
 // only affect (say) nutritionist users are filterable in the Sentry UI.

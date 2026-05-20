@@ -18,6 +18,7 @@ import {
   escapeHtml,
 } from "./markdownModel";
 import { haptic } from "../../utils/haptics";
+import { addBreadcrumb } from "../../lib/sentry";
 
 /* Multi-line code-fence layout pre-pass. Walks `lines` once and
    returns an array of { type, pos } per line:
@@ -598,6 +599,21 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   };
 
   const onBeforeInput = (e) => {
+    // Breadcrumb: every input event into the editor. Data field
+    // truncated to avoid logging large pasted blobs; the bug we're
+    // tracking only needs the inputType + 1-2 chars of data. PII
+    // scrubber in initSentry's beforeSend strips this further before
+    // the event leaves the client.
+    addBreadcrumb({
+      category: "editor.input",
+      level: "info",
+      message: e.inputType || "(unknown)",
+      data: {
+        inputType: e.inputType,
+        dataLen: typeof e.data === "string" ? e.data.length : -1,
+        composing: composingRef.current ? 1 : 0,
+      },
+    });
     if (readOnly) { e.preventDefault(); return; }
     // Real IME composition (CJK / dead-key accents on desktop
     // Spanish): compositionstart fires first → composingRef = true.
@@ -739,6 +755,26 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         // (visual squiggles) still flags typos for manual fix.
         // Bear / Notion / iA Writer all behave the same way.
         e.preventDefault();
+        return;
+      }
+      case "insertCompositionText": {
+        // Fires for iOS predictive text dispatches that DON'T have
+        // an active compositionstart (the composingRef early-return
+        // above catches the real composition case). e.data may be
+        // a single char (user's actual keystroke routed via the
+        // composition pipeline) or a multi-char "completion" (the
+        // bug: iOS resurrecting deleted text).
+        //
+        // Accept ONLY single-char insertions at the caret. Multi-
+        // char data means iOS is being "smart" — refuse. Same goes
+        // for any insertion with a non-collapsed selection. The
+        // user's real typed character will arrive via insertText
+        // in the normal flow eventually.
+        e.preventDefault();
+        if (!e.data || e.data.length > 1) return;
+        const selWidth = (sel.endLine - sel.startLine) + (sel.endCol - sel.startCol);
+        if (selWidth > 0) return;
+        applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, e.data));
         return;
       }
       case "insertLineBreak":
@@ -948,9 +984,36 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     haptic.tap();
   };
 
-  const onCompositionStart = () => { composingRef.current = true; };
+  const onCompositionStart = () => {
+    composingRef.current = true;
+    addBreadcrumb({ category: "editor.comp", message: "start", level: "info" });
+  };
   const onCompositionEnd = () => {
     composingRef.current = false;
+
+    // Diagnostic breadcrumb: length-only diff between DOM and model
+    // so we can see (post-hoc, via Sentry) whether iOS composition
+    // changed line lengths behind our back. No content logged — just
+    // counts, so PII never leaves the client even pre-scrubber.
+    const breadRoot = rootRef.current;
+    if (breadRoot) {
+      const domLens = [];
+      for (const div of breadRoot.children) {
+        if (!div.dataset || div.dataset.line == null) continue;
+        domLens.push(div.textContent.replace(/\u200B/g, "").length);
+      }
+      const modelLens = linesRef.current.map(l => (l || "").length);
+      addBreadcrumb({
+        category: "editor.comp",
+        message: "end",
+        level: "info",
+        data: {
+          recentDelete: nowMs() - lastDeleteAtRef.current < 2000 ? 1 : 0,
+          domLens: domLens.join(","),
+          modelLens: modelLens.join(","),
+        },
+      });
+    }
 
     // Distrust the DOM if a delete happened within the last 2s.
     //

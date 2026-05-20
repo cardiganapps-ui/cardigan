@@ -7,6 +7,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
+import { captureMessage } from "../lib/sentry";
 import { useAttachmentSrc } from "./notes/useAttachmentSrc";
 import { CoverPickerSheet } from "./notes/CoverPickerSheet";
 import { FormatToolbar } from "./notes/FormatToolbar";
@@ -898,6 +899,28 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
                       <span>{t("notes.exportPdf")}</span>
                     </button>
                   )}
+                  <div className="mde-menu-sep" />
+                  {/* "Report typing issue" — captures a Sentry event
+                      stamped with the last ~50 editor input breadcrumbs
+                      so we can see the actual event sequence behind a
+                      typing bug instead of guessing. No PII: breadcrumbs
+                      log inputType + data length + composition state,
+                      never the typed characters themselves. */}
+                  <button
+                    className="mde-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      captureMessage("editor.user-reported-typing-bug", {
+                        level: "warning",
+                        tags: { editor: "notes" },
+                      });
+                      showToast?.(t("notes.reportTypingThanks") || "Gracias — reporte enviado.", "success");
+                    }}
+                  >
+                    <IconEdit size={15} />
+                    <span>{t("notes.reportTyping") || "Reportar problema al escribir"}</span>
+                  </button>
                   {onDelete && (
                     <>
                       <div className="mde-menu-sep" />

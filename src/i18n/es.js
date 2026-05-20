@@ -688,6 +688,8 @@ export default {
     options: "Opciones",
     copyPlain: "Copiar como texto",
     copyMarkdown: "Copiar markdown",
+    reportTyping: "Reportar problema al escribir",
+    reportTypingThanks: "Gracias — reporte enviado.",
     exportMd: "Exportar .md",
     exportPdf: "Exportar PDF",
     pdfExported: "PDF generado",
