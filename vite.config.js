@@ -8,6 +8,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 // the user's tab originated from.
 const VERCEL_DEPLOYMENT_ID = JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID || '')
 
+// Build-time diagnostic: print whether the Sentry DSNs were available
+// at build. The deployed bundle has been missing the DSN for unknown
+// reasons even though the env var is set in Vercel; this log lands in
+// the Vercel build output where I can grep it. Safe to keep around —
+// just prints a single line at build start.
+console.log("[vite.config] VITE_SENTRY_DSN present:", !!process.env.VITE_SENTRY_DSN)
+console.log("[vite.config] SENTRY_DSN present:", !!process.env.SENTRY_DSN)
+console.log("[vite.config] VITE_SUPABASE_URL present:", !!process.env.VITE_SUPABASE_URL)
+console.log("[vite.config] env keys starting with VITE_:", Object.keys(process.env).filter(k => k.startsWith("VITE_")).join(","))
+
 export default defineConfig({
   define: {
     __VERCEL_DEPLOYMENT_ID__: VERCEL_DEPLOYMENT_ID,
