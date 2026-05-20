@@ -80,7 +80,14 @@ export function scrubPII(obj) {
 }
 
 export async function initSentry() {
-  const dsn = import.meta.env.VITE_SENTRY_DSN;
+  // Build-time injected via vite.config.js's `define`. We tried
+  // reading import.meta.env.VITE_SENTRY_DSN here originally, but
+  // empirically on Vercel's build env the auto-substitution was
+  // skipped while leaving other VITE_* vars (e.g. VITE_SUPABASE_URL)
+  // working. The custom __SENTRY_DSN__ global is replaced by Vite's
+  // `define` at build time with the literal string value (declared
+  // in eslint.config.js's globals so no-undef stays quiet).
+  const dsn = typeof __SENTRY_DSN__ === "string" && __SENTRY_DSN__ ? __SENTRY_DSN__ : import.meta.env.VITE_SENTRY_DSN;
   if (!dsn || !import.meta.env.PROD) return;
   // Dynamic import keeps @sentry/react off the eager chunk graph.
   // The SDK chunk fetches in parallel with whatever the user is

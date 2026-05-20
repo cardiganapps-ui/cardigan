@@ -21,7 +21,10 @@ const VITE_SENTRY_DSN = JSON.stringify(process.env.VITE_SENTRY_DSN || '')
 export default defineConfig({
   define: {
     __VERCEL_DEPLOYMENT_ID__: VERCEL_DEPLOYMENT_ID,
-    'import.meta.env.VITE_SENTRY_DSN': VITE_SENTRY_DSN,
+    // Custom global. Defining 'import.meta.env.X' as a key seems to be
+    // clobbered by Vite's own import.meta.env handling at build time —
+    // the substitution never lands. A plain identifier dodges that.
+    __SENTRY_DSN__: VITE_SENTRY_DSN,
   },
   plugins: [
     react(),
