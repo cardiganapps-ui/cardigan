@@ -17,8 +17,6 @@ const VERCEL_DEPLOYMENT_ID = JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID || 
 // the literal value at build time, same trick as VERCEL_DEPLOYMENT_ID
 // above. Empty string fallback so dev builds (no env) still parse.
 const VITE_SENTRY_DSN = JSON.stringify(process.env.VITE_SENTRY_DSN || '')
-console.log("[vite.config] VITE_SENTRY_DSN raw len:", (process.env.VITE_SENTRY_DSN || '').length, "| starts:", (process.env.VITE_SENTRY_DSN || '').slice(0, 20))
-console.log("[vite.config] VITE_SENTRY_DSN stringified:", VITE_SENTRY_DSN.slice(0, 40))
 
 export default defineConfig({
   define: {
