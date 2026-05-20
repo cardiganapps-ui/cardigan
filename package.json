@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps",
-    "build": "vite build",
+    "build": "rm -rf node_modules/.vite dist && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
