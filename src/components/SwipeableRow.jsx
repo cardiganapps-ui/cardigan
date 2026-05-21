@@ -185,8 +185,15 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
       data-swipeable-row
       style={{
         position: "relative",
+        // overflow: hidden hides the action button when the row is
+        // at rest (button sits behind the sliding content with
+        // z-index:1). NO border-radius on the wrapper itself —
+        // the inner .note-card-row owns its own rounding + 1px
+        // border, and stacking two rounded clips with subtly
+        // different metrics (one 3px border-left, the other a
+        // plain box) left a hairline artifact on the inner's left
+        // edge that read as "border cut off".
         overflow: "hidden",
-        borderRadius: "var(--radius)",
         // Exit animation: collapse height + fade. pinnedHeight gets
         // set to the measured row height ONE frame before exiting
         // flips, so the transition has a real px value to interpolate
