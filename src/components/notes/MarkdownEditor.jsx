@@ -754,14 +754,15 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         // Autocorrect / smart-punctuation / "did you mean"
         // suggestion. iOS uses this for legitimate substitutions
         // (double-space → ". ", straight quotes → smart quotes,
-        // common misspellings). Apply the replacement against the
-        // selection — the selection range is what iOS wants
-        // replaced. With native beforeinput now delivering correct
-        // inputType (commit 62e469e), the delete-resurrection
-        // pathway this branch used to enable is gone.
+        // common misspellings) AND to UNDO its own substitutions
+        // when the user presses past the corrected sequence (e.g.
+        // tapping a third space after a smart-punctuation period
+        // → iOS dispatches insertReplacementText with empty data
+        // and a selection spanning the period it wants to remove).
+        // Apply even when the replacement is empty — that's a
+        // legitimate delete-the-selection op.
         e.preventDefault();
         const replacement = (e.dataTransfer && e.dataTransfer.getData("text/plain")) || e.data || "";
-        if (!replacement) return;
         applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, replacement));
         return;
       }
@@ -771,9 +772,10 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         // real IME composition case (CJK / dead-key) is caught by
         // the composingRef early-return above; only "fake" comps
         // (predictive text wrapping a single char) reach here.
+        // Empty data with a non-empty selection = delete; apply.
         e.preventDefault();
-        if (!e.data) return;
-        applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, e.data));
+        const data = e.data || "";
+        applyModel(replaceRange(lines, sel.startLine, sel.startCol, sel.endLine, sel.endCol, data));
         return;
       }
       case "insertLineBreak":
