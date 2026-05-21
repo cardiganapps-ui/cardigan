@@ -56,15 +56,14 @@ test("notes editor: mount + type + delete + type", async ({ page }) => {
   // be "false" and the rest of the test would silently no-op.
   await expect(editor).toHaveAttribute("contenteditable", "true");
 
-  // Lock the smart-input suppression attributes in. iOS ties
-  // autocorrect + predictive text + sentence-capitalize to the
-  // same engine; all three need to be off for the editor to stay
-  // in sync with user input. Headless Chromium can't repro the
-  // actual iOS bugs, so we guard the attributes themselves — if
-  // a future edit drops one, this fails and signals the regression.
-  await expect(editor).toHaveAttribute("autocorrect", "off");
-  await expect(editor).toHaveAttribute("autocapitalize", "off");
-  await expect(editor).toHaveAttribute("spellcheck", "false");
+  // Lock the spellcheck + autocapitalize attributes. These are the
+  // permissive defaults that let iOS's keyboard help users while
+  // still keeping the editor in sync (now safe because the native
+  // beforeinput listener gets the correct inputType — see commit
+  // 62e469e). If a future edit forces these off again to "fix"
+  // some symptom, this lock surfaces the regression in CI.
+  await expect(editor).toHaveAttribute("spellcheck", "true");
+  await expect(editor).toHaveAttribute("autocapitalize", "sentences");
 
   // Click inside the LAST line of existing content so the caret
   // lands at a known position. Clicking the .mde-root wrapper drops
