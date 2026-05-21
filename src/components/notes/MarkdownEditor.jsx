@@ -599,15 +599,16 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   };
 
   const onBeforeInput = (e) => {
-    // React's SyntheticEvent for onBeforeInput doesn't reliably
-    // expose `inputType` — on iOS Safari it comes through as
-    // undefined, leaving the switch below to fall into the default
-    // case for every event (deletes included). Read from the
-    // underlying nativeEvent which always has the spec-compliant
-    // InputEvent.inputType field. Sentry breadcrumbs from a real
-    // bug repro confirmed `e.inputType` was empty across all 15
-    // input events of the user's session.
-    const inputType = e.nativeEvent?.inputType || e.inputType;
+    // Attached via a native addEventListener (see useEffect below),
+    // NOT via React's onBeforeInput prop. React polyfills
+    // onBeforeInput via the legacy DOM3 `textInput` event in some
+    // scenarios — those synthesized events don't carry `inputType`
+    // OR even put it on the nativeEvent. Sentry breadcrumbs from
+    // two consecutive bug repros on iOS Safari confirmed inputType
+    // was empty across every event, including via e.nativeEvent.
+    // A direct addEventListener gets the real InputEvent with
+    // inputType populated per spec.
+    const inputType = e.inputType;
     // Breadcrumb: every input event into the editor. Data field
     // truncated to avoid logging large pasted blobs; the bug we're
     // tracking only needs the inputType + 1-2 chars of data. PII
@@ -619,7 +620,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       message: inputType || "(unknown)",
       data: {
         inputType: inputType || "",
-        rawSynthType: e.inputType || "",
+        eventType: e.type || "",
         dataLen: typeof e.data === "string" ? e.data.length : -1,
         composing: composingRef.current ? 1 : 0,
       },
@@ -857,7 +858,6 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       }
     }
   };
-
   const handleEnter = (sel) => {
     // Read from the ref so rapid Enter-after-edit doesn't operate
     // on stale closure state. Same rationale as onBeforeInput.
@@ -1186,6 +1186,34 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
        can't pollute the DOM out from under us. Real CJK composition
        (compositionstart fired first) still works correctly — those
        fall into the composingRef early-return. */
+
+  // Native beforeinput listener attached directly to the
+  // contenteditable root, bypassing React's onBeforeInput prop.
+  // React polyfills onBeforeInput via legacy textInput events on
+  // some platforms — confirmed via Sentry breadcrumbs that on iOS
+  // Safari those synthesized events arrived with inputType empty
+  // on BOTH the synthetic event and the underlying nativeEvent.
+  // Without inputType the switch in onBeforeInput fell into the
+  // default branch for every event (deletes included), which
+  // preventDefaults and then early-returns on `!e.data`, so
+  // backspace became a no-op and typed chars inserted against the
+  // un-deleted model.
+  //
+  // Re-attaches when onBeforeInput's closure identity changes
+  // (rare — most state used by the handler is via refs, so the
+  // dep only churns when slashMenu state flips).
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.addEventListener("beforeinput", onBeforeInput);
+    return () => root.removeEventListener("beforeinput", onBeforeInput);
+    // onBeforeInput is recreated each render but the re-attach cost
+    // is negligible (single DOM op) compared to the alternative of
+    // adding a useCallback wrapper, which would itself churn on any
+    // referenced state (slashMenu in particular).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onBeforeInput]);
+
   return (
     <>
       <div
@@ -1203,7 +1231,6 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
         autoCorrect="off"
         autoCapitalize="off"
         autoComplete="off"
-        onBeforeInput={onBeforeInput}
         onKeyDown={onKeyDown}
         onCompositionStart={onCompositionStart}
         onCompositionEnd={onCompositionEnd}
