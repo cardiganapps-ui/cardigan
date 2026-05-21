@@ -1,31 +1,31 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { haptic } from "../utils/haptics";
+import { IconTrash } from "./Icons";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 
 const ROW_OWNER_ID = "swipeable-row";
 
 /* ── Swipeable row ──
-   Reveals a 80px-wide action slot to the right of the content when the
-   user swipes left. Tapping the revealed action fires onAction and snaps
-   back. Originally lived inline in Notes.jsx; pulled out so session and
-   payment lists can reuse the same idiom (matches Apple Mail / Notes
-   convention for destructive actions on list rows).
+   Reveals an action slot to the right of the content when the user
+   swipes left. Tapping the revealed action plays a collapse-out
+   animation then fires onAction. Originally lived inline in
+   Notes.jsx; pulled out so session / payment lists reuse the same
+   idiom. Matches Apple Mail / Notes convention.
 
    Usage:
      <SwipeableRow onAction={...} actionLabel="Eliminar" actionTone="danger">
        <div className="row-item">...</div>
      </SwipeableRow> */
 
-const REVEAL_PX = -80;
-const ACTIVATE_PX = -40;
-const HINT_PEEK_PX = -36; // ~half-reveal — enough to see the action, not enough to commit
+const REVEAL_PX = -84;            // resting position when action is revealed
+const ACTIVATE_PX = -42;          // swipe distance that latches the reveal
+const RESISTANCE_LIMIT_PX = -116; // furthest the row can be dragged past reveal
+const HINT_PEEK_PX = -36;
 const HINT_STORAGE_KEY = "cardigan.swipe.hint.shown";
 
 /* Module-level guard so only the FIRST SwipeableRow mounted in a
-   session triggers the discoverability peek. Persists across the
-   session even if the localStorage flag is unset (e.g. private mode);
-   a refresh resets it, but the localStorage flag below covers the
-   normal case so the peek never plays twice for the same user. */
+   session triggers the discoverability peek. localStorage flag is
+   the durable record; the in-memory bool covers private mode. */
 let hintShownThisSession = false;
 
 const TONE_BG = {
@@ -39,35 +39,31 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
   const [swiping, setSwiping] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  // Measured height pinned in state (not a ref) — React Compiler
+  // refuses ref reads during render, and the JSX below needs the
+  // value to set the height inline for the collapse transition.
+  const [pinnedHeight, setPinnedHeight] = useState(0);
   const revealedRef = useRef(false);
+  const rootElRef = useRef(null);
 
   // Keep ref in sync so touch handlers see the latest committed offset
   // without re-binding on every render.
   useEffect(() => { offsetRef.current = offset; }, [offset]);
 
-  /* Discoverability peek. The first SwipeableRow rendered for a user
-     who hasn't seen the hint yet plays a subtle peek-and-snap-back
-     ~600ms after mount: the row shifts left ~36px (just enough to
-     surface the red action slot) then springs back via the existing
-     transform transition. Tells first-time users "you can swipe me"
-     without an explicit tutorial. Persists in localStorage so it
-     never repeats — existing users see it once after the first
-     deploy with this commit, then never again. */
+  /* Discoverability peek. First SwipeableRow rendered for a user who
+     hasn't seen the hint plays a subtle peek-and-snap-back ~700ms
+     after mount: the row shifts left ~36px (just enough to surface
+     the action) then springs back via the transform transition.
+     Persists in localStorage so it never repeats. */
   useEffect(() => {
     if (hintShownThisSession) return;
     let alreadyShown = false;
     try { alreadyShown = localStorage.getItem(HINT_STORAGE_KEY) === "1"; }
     catch { /* private mode */ }
-    if (alreadyShown) {
-      hintShownThisSession = true;
-      return;
-    }
+    if (alreadyShown) { hintShownThisSession = true; return; }
     hintShownThisSession = true;
     try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch { /* ignore */ }
-
-    // Two-stage animation via the existing offset state. The
-    // transform transition (cubic-bezier spring) handles the actual
-    // motion — we just nudge the value.
     const peekIn  = setTimeout(() => setOffset(HINT_PEEK_PX), 700);
     const peekOut = setTimeout(() => setOffset(0), 1300);
     return () => { clearTimeout(peekIn); clearTimeout(peekOut); };
@@ -94,12 +90,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
         // Claim the global horizontal-swipe lock so an ancestor handler
         // (e.g. PatientExpediente's tab-swipe on .expediente-scroll)
         // can't also process this finger and hijack it as a tab change.
-        // If something else already owns (rare — only if the touch
-        // started inside another active swipe), back off cooperatively.
-        if (!trySwipeClaim(ROW_OWNER_ID)) {
-          ref.current = null;
-          return;
-        }
+        if (!trySwipeClaim(ROW_OWNER_ID)) { ref.current = null; return; }
         ref.current.active = true;
         setSwiping(true);
       } else if (Math.abs(dy) > 8 || (!revealed && dx > 5)) {
@@ -108,8 +99,22 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
       } else return;
     }
     if (ref.current.active) {
-      const next = ref.current.startOffset + dx;
-      setOffset(Math.min(0, Math.max(REVEAL_PX, next)));
+      const raw = ref.current.startOffset + dx;
+      // Rubber-band past REVEAL_PX: every extra px of pull only moves
+      // the row half a px, with a hard floor at RESISTANCE_LIMIT_PX.
+      // Gives the iOS-native "this is as far as it goes" feel without
+      // a sudden hard stop.
+      let next;
+      if (raw >= 0) {
+        next = 0;
+      } else if (raw >= REVEAL_PX) {
+        next = raw;
+      } else {
+        const over = REVEAL_PX - raw; // positive
+        const damped = over * 0.5;
+        next = Math.max(RESISTANCE_LIMIT_PX, REVEAL_PX - damped);
+      }
+      setOffset(next);
     }
   }, []);
 
@@ -126,21 +131,12 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
     releaseSwipe(ROW_OWNER_ID);
   }, []);
 
-  // Touch can be system-cancelled (e.g. iOS edge-back gesture). Without
-  // this, a leaked claim would block every subsequent horizontal swipe
-  // app-wide until a fresh row gesture happened to release.
   const onTouchCancel = useCallback(() => {
     ref.current = null;
     setSwiping(false);
     releaseSwipe(ROW_OWNER_ID);
   }, []);
 
-  // Keyboard accessibility: the touch-swipe gesture is unreachable
-  // from a keyboard, so we additionally make the action button
-  // tab-reachable. When it receives focus we auto-reveal the row so
-  // sighted keyboard users (and screen readers reading the row)
-  // understand what action they're about to fire. Blurring or
-  // Escape snaps back. Touch behavior is unchanged.
   const handleActionFocus = useCallback(() => {
     setOffset(REVEAL_PX);
     revealedRef.current = true;
@@ -157,10 +153,52 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
     }
   }, []);
 
+  // Pre-deletion exit animation. The row collapses height → 0 and
+  // fades opacity → 0 over 220ms before onAction fires. Without
+  // this, the deleted row vanished instantly and the list above
+  // jumped up, which read as jarring.
+  const playExitThenAction = useCallback(() => {
+    const el = rootElRef.current;
+    if (!el) { onAction?.(); return; }
+    // Pin the current height, THEN flip the exiting flag on the next
+    // frame so React commits the explicit pixel value before the
+    // transition starts. Without the rAF gap the height jumps from
+    // "auto" straight to 0 with no animation frame.
+    setPinnedHeight(el.getBoundingClientRect().height);
+    requestAnimationFrame(() => {
+      setExiting(true);
+      setTimeout(() => { onAction?.(); }, 240);
+    });
+  }, [onAction]);
+
   const background = TONE_BG[actionTone] || TONE_BG.danger;
 
+  // Activation threshold visual feedback: once the swipe has crossed
+  // ACTIVATE_PX the action chip subtly grows + the label fades in.
+  // Pre-activation the icon is on its own (compact peek); post-
+  // activation it gets the label too.
+  const activated = offset < ACTIVATE_PX;
+
   return (
-    <div data-swipeable-row style={{ position:"relative", overflow:"hidden", borderRadius:"var(--radius)" }}>
+    <div
+      ref={rootElRef}
+      data-swipeable-row
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "var(--radius)",
+        // Exit animation: collapse height + fade. pinnedHeight gets
+        // set to the measured row height ONE frame before exiting
+        // flips, so the transition has a real px value to interpolate
+        // from (height: auto → 0 doesn't tween).
+        height: exiting ? 0 : (pinnedHeight ? `${pinnedHeight}px` : "auto"),
+        opacity: exiting ? 0 : 1,
+        marginBottom: exiting ? 0 : undefined,
+        transition: exiting
+          ? "height 240ms var(--ease-out), opacity 220ms var(--ease-out), margin 240ms var(--ease-out)"
+          : undefined,
+      }}
+    >
       <button
         type="button"
         aria-label={actionLabel}
@@ -169,27 +207,28 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
         onBlur={handleActionBlur}
         onKeyDown={handleActionKey}
         style={{
-          position:"absolute", top:0, right:0, bottom:0, width:80,
-          display:"flex", alignItems:"center", justifyContent:"center",
-          background, color:"var(--white)",
-          fontSize:"var(--text-xs)", fontWeight:700, cursor:"pointer",
-          borderRadius:"0 var(--radius) var(--radius) 0",
-          border:"none", padding:0,
-          // Take focus indicator color from background contrast — white
-          // text on red/green/amber is high-contrast, the native focus
-          // ring will outline the button itself once it's revealed.
-          font:"inherit", fontFamily:"var(--font)",
+          position: "absolute", top: 0, right: 0, bottom: 0, width: 84,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexDirection: "column", gap: 4,
+          background, color: "var(--white)",
+          fontSize: "var(--text-xs)", fontWeight: 700, cursor: "pointer",
+          // Square left edge (against the row), match container radius
+          // on the right so the corner reads as part of the row.
+          borderRadius: "0 var(--radius) var(--radius) 0",
+          border: "none", padding: 0,
+          fontFamily: "var(--font)",
+          // Subtle inner press feel on the icon when the swipe is
+          // committed enough to delete on release.
+          transform: activated ? "scale(1)" : "scale(0.94)",
+          opacity: activated ? 1 : 0.85,
+          transition: "transform var(--dur-base) var(--ease-spring-soft), opacity var(--dur-base) var(--ease-out)",
+          WebkitTapHighlightColor: "transparent",
         }}
         onClick={(e) => {
-          // Keyboard-only courtesy: when the user activates the action
-          // via Enter/Space (e.detail === 0), focus would otherwise
-          // leak to <body> when this row unmounts. Walk to the next
-          // SwipeableRow action button in the same list so keyboard
-          // users land naturally on the next row. For touch / mouse
-          // (e.detail >= 1) we MUST NOT auto-focus the next row —
-          // doing so triggers its onFocus handler which auto-reveals
-          // the action slot, making it look like the app is staging a
-          // second deletion the user never asked for.
+          // Keyboard-only courtesy: when the user activates via
+          // Enter/Space (e.detail === 0), focus would otherwise leak
+          // to <body> when this row unmounts. Walk to the next
+          // SwipeableRow action button in the same list.
           const isKeyboardActivation = e.detail === 0;
           let nextFocus = null;
           if (isKeyboardActivation) {
@@ -209,23 +248,30 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
           }
           setOffset(0);
           revealedRef.current = false;
-          onAction?.();
-          // requestAnimationFrame so the move-focus happens AFTER React
-          // commits the row removal — focusing a node that's about to
-          // unmount would just leak focus back to <body>.
+          playExitThenAction();
           if (nextFocus) {
             requestAnimationFrame(() => {
               try { nextFocus.focus(); } catch { /* node may have unmounted too */ }
             });
           }
         }}>
-        {actionLabel}
+        <IconTrash size={16} />
+        <span style={{ fontSize: 11, lineHeight: 1 }}>{actionLabel}</span>
       </button>
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchCancel}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         style={{
+          // ease-spring-soft (1.3 overshoot) reads as a gentle settle
+          // rather than the prior 1.56 overshoot which felt bouncy.
+          // 280ms is the sweet spot for snap-back: fast enough to feel
+          // responsive, slow enough to read as motion (vs. a snap).
           transform: `translateX(${offset}px)`,
-          transition: swiping ? "none" : "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-          position:"relative", zIndex:1,
+          transition: swiping ? "none" : "transform 280ms var(--ease-spring-soft)",
+          position: "relative", zIndex: 1,
+          willChange: swiping ? "transform" : "auto",
         }}>
         {children}
       </div>
