@@ -599,6 +599,15 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
   };
 
   const onBeforeInput = (e) => {
+    // React's SyntheticEvent for onBeforeInput doesn't reliably
+    // expose `inputType` — on iOS Safari it comes through as
+    // undefined, leaving the switch below to fall into the default
+    // case for every event (deletes included). Read from the
+    // underlying nativeEvent which always has the spec-compliant
+    // InputEvent.inputType field. Sentry breadcrumbs from a real
+    // bug repro confirmed `e.inputType` was empty across all 15
+    // input events of the user's session.
+    const inputType = e.nativeEvent?.inputType || e.inputType;
     // Breadcrumb: every input event into the editor. Data field
     // truncated to avoid logging large pasted blobs; the bug we're
     // tracking only needs the inputType + 1-2 chars of data. PII
@@ -607,9 +616,10 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     addBreadcrumb({
       category: "editor.input",
       level: "info",
-      message: e.inputType || "(unknown)",
+      message: inputType || "(unknown)",
       data: {
-        inputType: e.inputType,
+        inputType: inputType || "",
+        rawSynthType: e.inputType || "",
         dataLen: typeof e.data === "string" ? e.data.length : -1,
         composing: composingRef.current ? 1 : 0,
       },
@@ -671,7 +681,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
       endCol: clampCol(endLine, rawSel.endCol),
     };
 
-    switch (e.inputType) {
+    switch (inputType) {
       case "insertText": {
         e.preventDefault();
         // Markdown autoformat shortcuts. Only fires on single-caret
