@@ -17,7 +17,9 @@ export default {
     open: "Buscar / comandos",
     placeholder: "Buscar comandos, {client.p}\u2026",
     empty: "Sin resultados",
+    newPatient: "Nuevo {client.s}",
   },
+  favorite: "Favorito",
   apply: "Aplicar cambios",
   ok: "OK",
   retry: "Reintentar",
@@ -197,6 +199,7 @@ export default {
   patients: {
     title: "{client.P}",
     newPatient: "Nuevo {client.s}",
+    scheduleFirst: "Agendar primera {session.s}",
     editPatient: "Editar {client.s}",
     searchPlaceholder: "Buscar {client.s}\u2026",
     noPatients: "Sin {client.p}",
@@ -720,6 +723,14 @@ export default {
       update: "La foto se subi\u00f3 pero no se guard\u00f3 tu perfil. Intenta de nuevo.",
       save: "No se pudo guardar. Intenta de nuevo.",
     },
+    crop: {
+      title: "Ajusta tu foto",
+      confirm: "Listo",
+      hint: "Arrastra para mover · pellizca o usa la barra para acercar",
+      zoom: "Acercar",
+      loadFailedTitle: "No pudimos abrir esa imagen",
+      loadFailedBody: "Intenta con otra foto. Si subiste un HEIC, prueba con un JPG o PNG.",
+    },
   },
 
   // ── Documents ──
@@ -765,6 +776,7 @@ export default {
     // Toast feedback after upload attempts
     uploadSuccessOne: "Documento subido",
     uploadSuccessMany: "{count} documentos subidos",
+    uploadFailed: "No se pudo subir el archivo. Intenta de nuevo.",
     uploadFailedOne: "No se pudo subir el documento. Intenta de nuevo.",
     uploadFailedMany: "No se pudieron subir los documentos. Intenta de nuevo.",
     uploadPartial: "Se subieron {ok} de {total} documentos. {failed} no se pudo subir.",
@@ -1238,6 +1250,7 @@ export default {
     rowSubComp: "Acceso gratuito \u00b7 sin cobros",
     rowSubPastDue: "Pro \u00b7 pago pendiente",
     rowSubTrial: "Prueba \u00b7 termina {date}",
+    rowSubTrialEndsToday: "Prueba \u00b7 termina hoy",
     rowSubExpired: "Suscripci\u00f3n vencida \u00b7 suscr\u00edbete",
     statusTrial: "Prueba activa",
     // \u2500\u2500 Charge-clarity sentences \u2014 explicitly answer "will I be
