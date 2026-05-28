@@ -89,6 +89,12 @@ export async function initSentry() {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
+    // Release identifier — matched against the sourcemaps uploaded by
+    // @sentry/vite-plugin in vite.config.js. Vite's `define` bakes the
+    // release string into the bundle at build time so the runtime
+    // doesn't have to guess. When the plugin isn't configured, the
+    // value still works as a free-form release tag for grouping.
+    release: typeof __SENTRY_RELEASE__ !== "undefined" ? __SENTRY_RELEASE__ : undefined,
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,

@@ -19,8 +19,9 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: {
         ...globals.browser,
-        // Compile-time constant baked in by vite.config.js's `define`.
+        // Compile-time constants baked in by vite.config.js's `define`.
         __VERCEL_DEPLOYMENT_ID__: 'readonly',
+        __SENTRY_RELEASE__: 'readonly',
       },
       parserOptions: {
         ecmaVersion: 'latest',
