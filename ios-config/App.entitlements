@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Cardigan iOS entitlements — copied into ios/App/App/App.entitlements
+  by scripts/apply-ios-config.sh after each CI 'npx cap add ios'.
+
+  aps-environment: 'production' = APNs via the production gateway.
+    Sandbox builds (debug-signed) silently fall back to the sandbox
+    gateway regardless of this value, so a single 'production' string
+    covers both TestFlight and App Store.
+
+  com.apple.developer.applesignin: enables Sign in with Apple. Paired
+    with the matching capability on the App ID in Apple Developer
+    Console + the Services ID for the web fallback flow.
+
+  com.apple.developer.associated-domains: applinks:cardigan.mx enables
+    Universal Links via the apple-app-site-association file at
+    https://cardigan.mx/.well-known/apple-app-site-association. The
+    Team ID placeholder in that file must be swapped for the real Team
+    ID before iOS auto-verifies — until then taps fall back to Safari.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>aps-environment</key>
+  <string>production</string>
+  <key>com.apple.developer.applesignin</key>
+  <array>
+    <string>Default</string>
+  </array>
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>applinks:cardigan.mx</string>
+  </array>
+</dict>
+</plist>
