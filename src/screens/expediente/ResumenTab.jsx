@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 import { shortDateToISO, todayISO, parseLocalDate } from "../../utils/dates";
-import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
+import { isTutorSession, getLastTutorSession, getNextTutorSession, derivePatientSchedules } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SetWeeklySlotSheet } from "../../components/sheets/SetWeeklySlotSheet";
-import { DAY_ORDER } from "../../data/seedData";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { usesAnthropometrics, isEpisodic, SCHEDULING_MODE } from "../../data/constants";
@@ -32,61 +31,6 @@ function formatISODateLong(iso) {
   return capitalizeMonth(
     formatDate(parseLocalDate(datePart), "long")
   );
-}
-
-// Derive the patient's active recurring schedule(s) from their
-// non-cancelled sessions. Returns an array of { day, time } pairs sorted
-// Monday→Sunday, time ascending, deduped. Prefers future sessions; falls
-// back to all sessions for ended patients so the historical schedule
-// still shows on the expediente.
-//
-// Manual one-offs (`is_recurring=false`) are excluded — the Horarios
-// row in the Resumen is meant to reflect ONLY the patient's configured
-// recurring schedule, not any extra appointments scheduled via the
-// FAB. Same `=== false` form as computeAutoExtendRows so legacy rows
-// without the column still appear.
-/* Derive the recurring schedule from session rows.
-
-   Source of truth: `is_recurring=true`. Sessions get this flag set
-   ONLY when created from the patient profile flow — initial
-   createPatient, applyScheduleChange, or auto-extend off an
-   already-recurring slot. The "+ session" FAB writes
-   is_recurring=false. Legacy one-offs were corrected by migration
-   028 (uses slot-count signal: any ≤3-session slot on a patient
-   with a real ≥10-session slot elsewhere is a one-off). */
-function derivePatientSchedules(sessions, patientId, includePast) {
-  const today = todayISO();
-  const seen = new Set();
-  const result = [];
-  for (const s of sessions) {
-    if (s.patient_id !== patientId) continue;
-    if (s.status === "cancelled" || s.status === "charged") continue;
-    if (s.is_recurring !== true) continue;
-    if (!includePast) {
-      const iso = shortDateToISO(s.date);
-      if (iso < today) continue;
-    }
-    const key = `${s.day}|${s.time}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    // Carry duration so Horarios can render the end time. Default 60
-    // matches the rest of the codebase (see Agenda.jsx) for legacy rows
-    // without an explicit duration. Frequency falls back to 'weekly'
-    // for pre-migration-044 rows; the column default backfilled all
-    // existing rows so this is just defensive.
-    result.push({
-      day: s.day,
-      time: s.time,
-      duration: s.duration || 60,
-      frequency: s.recurrence_frequency || "weekly",
-    });
-  }
-  result.sort((a, b) => {
-    const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
-    if (di !== 0) return di;
-    return (a.time || "").localeCompare(b.time || "");
-  });
-  return result;
 }
 
 // "14:00" + 60min → "15:00". Returns "" if either input is missing or malformed.

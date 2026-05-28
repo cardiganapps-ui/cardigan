@@ -5,6 +5,7 @@ import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar
 import { haptic } from "../utils/haptics";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, shortDateToISO, parseLocalDate } from "../utils/dates";
+import { deriveSlotProps } from "../utils/sessions";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
@@ -49,23 +50,24 @@ function EditSection({ title, open, onToggle, forceOpen = false, children }) {
   );
 }
 
-/* Read the recurrence frequency of a patient's slot from the most
-   recent scheduled session that's part of the recurring schedule.
-   Every session in a recurring slot carries the same value (set
-   at create / applyScheduleChange time). Pre-migration-044 rows
-   have 'weekly' via the column default, so existing patients show
-   "Semanal" in the edit form — no behavioral change for them. */
-function deriveSlotFrequency(p, sessions) {
-  if (!p?.day || !p?.time) return DEFAULT_RECURRENCE_FREQUENCY;
-  const future = (sessions || []).filter(s =>
-    s.patient_id === p.id
-    && s.day === p.day
-    && s.time === p.time
-    && s.is_recurring !== false
-    && s.recurrence_frequency
-  );
-  if (future.length === 0) return DEFAULT_RECURRENCE_FREQUENCY;
-  return future[0].recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY;
+/* Seed shape for the edit form's "schedule" row. Reads the slot's
+   current duration / modality / frequency from existing sessions via
+   deriveSlotProps so the form dropdowns reflect what the patient
+   actually has configured. The previous shape — hard-coded "1h /
+   presencial" defaults — was silently destructive: a rate-only edit
+   triggered applyScheduleChange with the seed values, which then
+   rewrote every future session to those defaults regardless of the
+   patient's real configuration. The duration string conversion mirrors
+   the <select> value contract (form options are "30" / "60" / "90" / …). */
+function buildEditScheduleSeed(p, sessions) {
+  const { duration, modality, frequency } = deriveSlotProps(p, sessions);
+  return {
+    day: p.day,
+    time: p.time,
+    duration: String(duration),
+    modality,
+    frequency,
+  };
 }
 
 export function Patients() {
@@ -167,10 +169,9 @@ export function Patients() {
     // Seed a sane placeholder ONLY for the form's internal state shape;
     // the schedule UI is hidden for episodic patients (see render gate
     // below), and the save path skips applyScheduleChange entirely.
-    const slotFreq = deriveSlotFrequency(p, upcomingSessions);
     const scheds = isEpisodic(p)
       ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
-      : [{ day: p.day, time: p.time, frequency: slotFreq }];
+      : [buildEditScheduleSeed(p, upcomingSessions)];
     setEditName(p.name);
     setEditIsMinor(!!p.parent);
     setEditParent(p.parent || "");
@@ -598,7 +599,7 @@ export function Patients() {
                 // Same episodic guard as openEditForPatient — see comment there.
                 const scheds = isEpisodic(p)
                   ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
-                  : [{ day: p.day, time: p.time, frequency: deriveSlotFrequency(p, upcomingSessions) }];
+                  : [buildEditScheduleSeed(p, upcomingSessions)];
                 setEditName(p.name);
                 setEditIsMinor(!!p.parent);
                 setEditParent(p.parent || "");
@@ -744,12 +745,12 @@ export function Patients() {
                             </div>
                           </div>
                           {/* Frequency picker — defaults to weekly for
-                              existing patients (deriveSlotFrequency
-                              reads it from current sessions; pre-
-                              migration-044 rows have 'weekly' from
-                              the column default). Changes here are
-                              forward-looking only — they ride the
-                              existing applyScheduleChange path which
+                              existing patients (buildEditScheduleSeed
+                              reads it from current sessions via
+                              deriveSlotProps; pre-migration-044 rows
+                              have 'weekly' from the column default).
+                              Changes here are forward-looking only —
+                              they ride the existing applyScheduleChange path which
                               deletes future sessions ≥ effectiveDate
                               and regenerates at the new cadence. */}
                           <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8 }}>
@@ -1017,7 +1018,7 @@ export function Patients() {
             // Same episodic guard as openEditForPatient — see comment there.
             const scheds = isEpisodic(p)
               ? [{ day: "Lunes", time: "16:00", frequency: DEFAULT_RECURRENCE_FREQUENCY }]
-              : [{ day: p.day, time: p.time, frequency: deriveSlotFrequency(p, upcomingSessions) }];
+              : [buildEditScheduleSeed(p, upcomingSessions)];
             setEditName(p.name);
             setEditIsMinor(!!p.parent);
             setEditParent(p.parent || "");
