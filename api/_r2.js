@@ -110,14 +110,12 @@ export async function getR2() {
   // reuse the same shape).
   if (!_loggedCredsShape) {
     _loggedCredsShape = true;
-    console.log(JSON.stringify({
-      evt: "r2.credentials.shape",
-      mode: HAS_LONG_LIVED_KEYS ? "long-lived" : "temp-creds",
-      keys: Object.keys(credentials),
-      hasSessionToken: !!credentials.sessionToken,
-      sessionTokenLen: credentials.sessionToken?.length || 0,
-      accessKeyIdPrefix: credentials.accessKeyId?.slice(0, 8) || "(none)",
-    }));
+    const mode = HAS_LONG_LIVED_KEYS ? "long-lived" : "temp-creds";
+    const keys = Object.keys(credentials).join(",");
+    console.log(`R2-DIAG mode=${mode}`);
+    console.log(`R2-DIAG keys=${keys}`);
+    console.log(`R2-DIAG hasST=${!!credentials.sessionToken} STlen=${credentials.sessionToken?.length || 0}`);
+    console.log(`R2-DIAG akPrefix=${credentials.accessKeyId?.slice(0, 8) || "(none)"}`);
   }
   const endpoint = `https://${getEndpointAccount()}.r2.cloudflarestorage.com`;
   return new S3Client({
