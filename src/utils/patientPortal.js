@@ -17,10 +17,16 @@ import { sessionCountsTowardBalance } from "./accounting";
    rule mirrors what the therapist app shows so both sides see the
    same picture. */
 
-export function classifySessions(sessions, patientIds) {
+export function classifySessions(sessions, patientIds, nowOverride) {
   const ids = new Set(patientIds || []);
   const filtered = (sessions || []).filter((s) => ids.has(s.patient_id));
-  const now = new Date();
+  // `nowOverride` is a Date-or-undefined; production callers always omit
+  // it (real system clock). Tests pin it so the "scheduled session at
+  // NOW+7 days" assertion stays stable as the calendar advances —
+  // sessionCountsTowardBalance already accepts an injected `now`, so
+  // forwarding the same shape here closes a long-standing gap that
+  // made these tests date-sensitive.
+  const now = nowOverride instanceof Date ? nowOverride : new Date();
   const future = [];
   const past = [];
   for (const s of filtered) {
