@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { isNative, isIOS } from "../lib/platform";
+import { signInWithAppleNative } from "../lib/nativeAppleSignIn";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
 
 // Field/discipline nouns (gender-neutral). The verification email
@@ -257,7 +259,27 @@ export function useAuth() {
   // OAuth providers (Google, Apple) use a full-page redirect to the provider
   // and back to the app. Supabase handles the session exchange on return;
   // the onAuthStateChange listener above picks it up automatically.
+  //
+  // Exception: iOS native + Apple → route through the Capacitor Apple
+  // Sign In plugin (system authorization sheet) and feed the resulting
+  // identity token to supabase.auth.signInWithIdToken. App Store Guideline
+  // 4.8 effectively requires this — the OAuth redirect technically works
+  // but reviewers consistently flag the second-class UX.
   async function signInWithProvider(provider) {
+    if (provider === "apple" && isNative() && isIOS()) {
+      const native = await signInWithAppleNative();
+      if (!native.ok) {
+        if (native.code === "user-cancelled") return {}; // silent — user dismissed
+        return { error: native.error || native.code };
+      }
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: native.identityToken,
+        nonce: native.nonce,
+      });
+      if (error) return { error: error.message };
+      return {};
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin },

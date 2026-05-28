@@ -1197,6 +1197,8 @@ export default {
     statusLoading: "Cargando\u2026",
     expiredExplain: "Suscr\u00edbete para seguir usando Cardigan con todas sus funciones.",
     expiredBanner: "Tu prueba termin\u00f3. Suscr\u00edbete para reanudar.",
+    expiredBannerIOS: "Tu prueba termin\u00f3. Suscr\u00edbete desde tu navegador para reanudar.",
+    iosReaderHint: "Cardigan Pro est\u00e1 disponible desde tu navegador. Inicia sesi\u00f3n en cardigan.mx para suscribirte y se sincroniza autom\u00e1ticamente con esta app.",
     trialDaysLeftBanner: "Tu prueba termina en {n} d\u00edas.",
     trialEndsTodayBanner: "Tu prueba termina hoy.",
     subscribeShort: "Suscribirme",
@@ -1314,6 +1316,12 @@ export default {
     default: {
       title: "Función Cardigan Pro",
       body: "Esta herramienta forma parte de Cardigan Pro. Suscríbete para desbloquearla junto con todas las demás.",
+    },
+    ios: {
+      // Informational only — App Store Guideline 3.1.3(a) forbids
+      // any clickable CTA that links to external purchase. We tell
+      // the user where to subscribe; we don't link them there.
+      readerHint: "Esta función forma parte de Cardigan Pro. Para suscribirte, inicia sesión en cardigan.mx desde tu navegador — tu acceso se activa automáticamente en esta app.",
     },
   },
   payment: {

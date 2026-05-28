@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { isNative, isIOS } from "./lib/platform";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 import EncryptionUnlockGate from "./components/EncryptionUnlockGate.jsx";
 import SubscriptionWelcome from "./components/SubscriptionWelcome.jsx";
@@ -1835,10 +1836,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             without screaming. */}
         {!demo && !viewAsUserId && subscription.accessExpired && (
           <div className="app-banner app-banner--expired">
-            <span className="app-banner-text">{t("subscription.expiredBanner")}</span>
-            <button onClick={() => navigate("settings")} className="app-banner-action">
-              {t("subscription.subscribeShort")}
-            </button>
+            <span className="app-banner-text">
+              {isNative() && isIOS()
+                ? t("subscription.expiredBannerIOS")
+                : t("subscription.expiredBanner")}
+            </span>
+            {/* iOS reader-app: no subscribe CTA. The banner copy above
+                tells the user where to go without an in-app link. */}
+            {!(isNative() && isIOS()) && (
+              <button onClick={() => navigate("settings")} className="app-banner-action">
+                {t("subscription.subscribeShort")}
+              </button>
+            )}
           </div>
         )}
 
