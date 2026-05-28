@@ -18,6 +18,7 @@
     "audit:db": "node --env-file=.env.local scripts/audit-db-health.mjs",
     "audit:orphans": "node --env-file=.env.local scripts/audit-orphan-rows.mjs",
     "audit:signup": "node --env-file=.env.local scripts/verify-signup-flow.mjs",
+    "demo:seed": "node --env-file=.env.local scripts/seed-reviewer-demo.mjs",
     "cap:sync": "npm run build && npx cap sync android",
     "cap:open:android": "npx cap open android",
     "cap:run:android": "npm run build && npx cap run android",
