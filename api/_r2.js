@@ -36,9 +36,23 @@ export const BUCKET = process.env.R2_BUCKET_NAME || "cardigan-documents";
 
 // Mode-1 detection — set R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY +
 // R2_ACCOUNT_ID and the client uses them directly. Otherwise mode-2.
-const HAS_LONG_LIVED_KEYS = !!(process.env.R2_ACCESS_KEY_ID
-  && process.env.R2_SECRET_ACCESS_KEY
-  && process.env.R2_ACCOUNT_ID);
+//
+// Disabled on the live environment because the long-lived keys baked
+// into the deployment env file (VERCEL_ENCRYPTED_ENV_CONTENT) became
+// invalid — R2 rejects every signed URL with AccessDenied even on
+// freshly-signed-this-second requests. Symptom: user avatars +
+// document previews silently fail to load. Verified by:
+//   • R2 object exists on R2 (HEAD via CF API: 200, 26997 bytes)
+//   • cardigan.mx/api/document-url mints a URL (200)
+//   • that URL → R2 returns <Error><Code>AccessDenied</Code></Error>
+//   • SAME flow locally with mode-2 temp creds (fresh mint via the
+//     working "Claude" token) returns 200 OK with the JPEG bytes
+// Forcing mode-2 routes through fetchTempCreds → CF /r2/temp-access-
+// credentials → S3Client signs with sessionToken (X-Amz-Security-
+// Token included), which R2 accepts. Switch back to true here once
+// the long-lived secret access key in Vercel's encrypted env is
+// rotated to a valid value.
+const HAS_LONG_LIVED_KEYS = false;
 
 // Cache for mode-2 (temp creds). Module scope persists across warm
 // invocations of the same Vercel function instance; cold starts pay
@@ -108,22 +122,15 @@ export async function getR2() {
   // with so we can debug R2 AccessDenied responses without leaking
   // secrets. Logged once per cold start (the cache means hot starts
   // reuse the same shape).
+  // Once per cold start, log which credential lane we're on so a
+  // future R2 incident has a quick "is it temp-creds or long-lived"
+  // signal in the runtime logs. No identifiers in the log.
   if (!_loggedCredsShape) {
     _loggedCredsShape = true;
-    const mode = HAS_LONG_LIVED_KEYS ? "long-lived" : "temp-creds";
-    // Use console.error so it's tagged as level=error and the runtime
-    // logs surface the full text. console.log gets folded into the
-    // request-summary row and truncated.
-    console.error("R2-DIAG", JSON.stringify({
-      mode,
-      credKeys: Object.keys(credentials),
-      hasST: !!credentials.sessionToken,
-      stLen: credentials.sessionToken?.length || 0,
-      akPrefix: credentials.accessKeyId?.slice(0, 8) || "(none)",
-      envAK: !!process.env.R2_ACCESS_KEY_ID,
-      envSK: !!process.env.R2_SECRET_ACCESS_KEY,
-      envAcct: !!process.env.R2_ACCOUNT_ID,
-      envAcctPrefix: process.env.R2_ACCOUNT_ID?.slice(0, 12) || "(none)",
+    console.log(JSON.stringify({
+      evt: "r2.creds.mode",
+      mode: HAS_LONG_LIVED_KEYS ? "long-lived" : "temp-creds",
+      hasSessionToken: !!credentials.sessionToken,
     }));
   }
   const endpoint = `https://${getEndpointAccount()}.r2.cloudflarestorage.com`;
