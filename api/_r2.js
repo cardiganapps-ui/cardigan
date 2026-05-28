@@ -111,13 +111,20 @@ export async function getR2() {
   if (!_loggedCredsShape) {
     _loggedCredsShape = true;
     const mode = HAS_LONG_LIVED_KEYS ? "long-lived" : "temp-creds";
-    const keys = Object.keys(credentials).join(",");
-    console.log(`R2-DIAG mode=${mode}`);
-    console.log(`R2-DIAG keys=${keys}`);
-    console.log(`R2-DIAG hasST=${!!credentials.sessionToken} STlen=${credentials.sessionToken?.length || 0}`);
-    console.log(`R2-DIAG akPrefix=${credentials.accessKeyId?.slice(0, 8) || "(none)"}`);
-    console.log(`R2-DIAG envAK=${!!process.env.R2_ACCESS_KEY_ID} envSK=${!!process.env.R2_SECRET_ACCESS_KEY} envAcct=${!!process.env.R2_ACCOUNT_ID}`);
-    console.log(`R2-DIAG envAKlen=${process.env.R2_ACCESS_KEY_ID?.length || 0} envAcctVal=${process.env.R2_ACCOUNT_ID?.slice(0, 12) || "(none)"}`);
+    // Use console.error so it's tagged as level=error and the runtime
+    // logs surface the full text. console.log gets folded into the
+    // request-summary row and truncated.
+    console.error("R2-DIAG", JSON.stringify({
+      mode,
+      credKeys: Object.keys(credentials),
+      hasST: !!credentials.sessionToken,
+      stLen: credentials.sessionToken?.length || 0,
+      akPrefix: credentials.accessKeyId?.slice(0, 8) || "(none)",
+      envAK: !!process.env.R2_ACCESS_KEY_ID,
+      envSK: !!process.env.R2_SECRET_ACCESS_KEY,
+      envAcct: !!process.env.R2_ACCOUNT_ID,
+      envAcctPrefix: process.env.R2_ACCOUNT_ID?.slice(0, 12) || "(none)",
+    }));
   }
   const endpoint = `https://${getEndpointAccount()}.r2.cloudflarestorage.com`;
   return new S3Client({
