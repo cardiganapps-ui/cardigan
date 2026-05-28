@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { shortDateToISO } from "../utils/dates";
 import { openExternal } from "../lib/nativeBrowser";
 import { isNative, isIOS } from "../lib/platform";
+import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
@@ -1065,6 +1066,23 @@ export function Settings({ user, signOut, refreshUser }) {
 
       {/* ── SESIÓN ── */}
       <div className="settings-label">{t("settings.sectionSession")}</div>
+      {/* Diagnostics — visible inside the native shell (where the user
+          is QAing on a real device) and in dev. Hidden in the
+          production web build that regular users see. The sheet
+          surfaces platform/push/haptic state plus test buttons. */}
+      {(isNative() || import.meta.env.DEV) && (
+        <div className="card" style={{ margin:"0 16px", marginBottom: 12 }}>
+          <div className="settings-row" onClick={() => setActiveSheet("diagnostics")}>
+            <div className="settings-row-icon"><IconSmartphone size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">Diagnóstico</div>
+              <div className="settings-row-sub">Plataforma, push y haptics</div>
+            </div>
+            <IconChevron />
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ margin:"0 16px" }}>
         {/* Confirm before signing out — same ConfirmDialog the Drawer
             uses, so the affordance is consistent across both entry
@@ -2527,6 +2545,12 @@ export function Settings({ user, signOut, refreshUser }) {
         destructive
         onConfirm={() => { setConfirmSignOut(false); signOut(); }}
         onCancel={() => setConfirmSignOut(false)}
+      />
+
+      <DiagnosticsSheet
+        open={activeSheet === "diagnostics"}
+        onClose={() => setActiveSheet(null)}
+        notifications={notifications}
       />
     </div>
   );
