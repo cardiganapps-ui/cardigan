@@ -106,9 +106,15 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" 
   };
 
   if (phase === "checking") {
+    // Match the splash visual every other auth-stage gate uses — a
+    // bare "Cargando…" line breaks the brand chrome and reads as a
+    // flash between the PWA splash and the next gate.
     return (
-      <div className="shell" style={{ justifyContent:"center", alignItems:"center" }}>
-        <div style={{ color:"var(--charcoal-md)", fontSize:14 }}>{t("loading")}</div>
+      <div className="shell" style={{ justifyContent:"center", alignItems:"center", gap:12 }}>
+        <span className="cardigan-splash-logo" aria-hidden="true">
+          <LogoIcon size={48} color="var(--teal)" />
+        </span>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.3px" }}>cardigan</div>
       </div>
     );
   }

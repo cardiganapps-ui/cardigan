@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useT } from "../i18n/index";
+import { LogoIcon } from "./LogoMark";
 
 /* ── MFA challenge gate ──
    Renders between sign-in and the main app when the active session is
@@ -84,9 +85,18 @@ export default function MfaChallengeGate({ onResolved, onSignOut }) {
   };
 
   if (phase === "loading") {
+    // Use the same logo + word-mark splash every other auth-stage gate
+    // renders. A bare "Cargando…" line on the blank shell makes the
+    // PWA splash → MFA check → next gate sequence read as a flash
+    // (splash → text-only → splash again) because the brand chrome
+    // disappears for the microsecond this gate is mounted. Matching
+    // the splash visual keeps the chrome continuous.
     return (
-      <div className="shell" style={{ justifyContent:"center", alignItems:"center" }}>
-        <div style={{ color:"var(--charcoal-md)", fontSize:14 }}>{t("loading")}</div>
+      <div className="shell" style={{ justifyContent:"center", alignItems:"center", gap:12 }}>
+        <span className="cardigan-splash-logo" aria-hidden="true">
+          <LogoIcon size={48} color="var(--teal)" />
+        </span>
+        <div style={{ fontFamily:"var(--font-d)", fontSize:22, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.3px" }}>cardigan</div>
       </div>
     );
   }
