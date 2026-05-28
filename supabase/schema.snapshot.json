@@ -2355,6 +2355,60 @@
       "data_type": "uuid",
       "is_nullable": "NO",
       "ordinal_position": 1,
+      "table_name": "sent_tutor_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "sent_tutor_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "sent_tutor_reminders",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "sent_tutor_reminders",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "cycle_anchor_date",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "sent_tutor_reminders",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "sent_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "sent_tutor_reminders",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
       "table_name": "session_reschedule_requests",
       "udt_name": "uuid"
     },
@@ -4308,6 +4362,36 @@
       "table_name": "sent_reminders"
     },
     {
+      "conname": "sent_tutor_reminders_kind_check",
+      "contype": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['tutor_due'::text, 'tutor_overdue_7'::text])))",
+      "table_name": "sent_tutor_reminders"
+    },
+    {
+      "conname": "sent_tutor_reminders_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "sent_tutor_reminders"
+    },
+    {
+      "conname": "sent_tutor_reminders_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "sent_tutor_reminders"
+    },
+    {
+      "conname": "sent_tutor_reminders_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "sent_tutor_reminders"
+    },
+    {
+      "conname": "sent_tutor_reminders_user_id_patient_id_kind_cycle_anchor_d_key",
+      "contype": "u",
+      "definition": "UNIQUE (user_id, patient_id, kind, cycle_anchor_date)",
+      "table_name": "sent_tutor_reminders"
+    },
+    {
       "conname": "session_reschedule_requests_resolved_by_check",
       "contype": "c",
       "definition": "CHECK (((resolved_by IS NULL) OR (resolved_by = ANY (ARRAY['therapist_app'::text, 'therapist_email'::text, 'patient_withdraw'::text, 'auto_expire'::text, 'auto_session_moved'::text]))))",
@@ -5214,6 +5298,26 @@
       "tablename": "sent_reminders"
     },
     {
+      "indexdef": "CREATE INDEX idx_sent_tutor_reminders_patient_id ON public.sent_tutor_reminders USING btree (patient_id)",
+      "indexname": "idx_sent_tutor_reminders_patient_id",
+      "tablename": "sent_tutor_reminders"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_sent_tutor_reminders_user_id ON public.sent_tutor_reminders USING btree (user_id)",
+      "indexname": "idx_sent_tutor_reminders_user_id",
+      "tablename": "sent_tutor_reminders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX sent_tutor_reminders_pkey ON public.sent_tutor_reminders USING btree (id)",
+      "indexname": "sent_tutor_reminders_pkey",
+      "tablename": "sent_tutor_reminders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX sent_tutor_reminders_user_id_patient_id_kind_cycle_anchor_d_key ON public.sent_tutor_reminders USING btree (user_id, patient_id, kind, cycle_anchor_date)",
+      "indexname": "sent_tutor_reminders_user_id_patient_id_kind_cycle_anchor_d_key",
+      "tablename": "sent_tutor_reminders"
+    },
+    {
       "indexdef": "CREATE INDEX idx_reschedule_pending ON public.session_reschedule_requests USING btree (user_id, status, expires_at) WHERE (status = 'pending'::text)",
       "indexname": "idx_reschedule_pending",
       "tablename": "session_reschedule_requests"
@@ -5948,6 +6052,24 @@
     {
       "cmd": "SELECT",
       "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all sent tutor reminders",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "sent_tutor_reminders",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own sent tutor reminders",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "sent_tutor_reminders",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
       "policyname": "Admin reads all reschedule requests",
       "qual": "is_admin()",
       "roles": "{public}",
@@ -6345,6 +6467,10 @@
     },
     {
       "rls_enabled": true,
+      "table_name": "sent_tutor_reminders"
+    },
+    {
+      "rls_enabled": true,
       "table_name": "session_reschedule_requests"
     },
     {
@@ -6481,6 +6607,9 @@
     },
     {
       "table_name": "sent_reminders"
+    },
+    {
+      "table_name": "sent_tutor_reminders"
     },
     {
       "table_name": "session_reschedule_requests"

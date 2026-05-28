@@ -4,11 +4,17 @@ import {
   verifyCronSecret,
   formatShortDate,
   formatShortDateLegacy,
+  isInQuietHours,
   TERMINAL_PUSH_STATUSES,
 } from "./_push.js";
 import { withSentry } from "./_sentry.js";
 import { getFlag } from "./_flags.js";
 import { sendTemplate, toE164MX } from "./_whatsapp.js";
+import {
+  evaluateTutorReminders,
+  buildTutorPushPayload,
+  tzTodayIso,
+} from "./_tutorReminders.js";
 import { sendLifecycleEmail } from "./_lifecycle.js";
 import { fetchPartiesForRequest } from "./_rescheduleRequest.js";
 import { sendRescheduleExpiredEmails } from "./_sessionEmail.js";
@@ -101,6 +107,7 @@ async function handler(req, res) {
     let totalSent = 0;
     let staleRemoved = 0;
     let totalSessionsMatched = 0;
+    let tutorPushesSent = 0;
 
     for (const pref of prefs) {
       const { user_id, reminder_minutes = 30, timezone = "America/Mexico_City" } = pref;
@@ -265,6 +272,22 @@ async function handler(req, res) {
         );
 
         totalSent++;
+      }
+
+      // ── Tutor-session reminders ────────────────────────────────
+      // Therapist-only, opt-in via the same notification_preferences
+      // flag that gates session reminders (one mental model per user
+      // direction). Fires push when a minor patient's tutor session is
+      // due today AND nothing's scheduled, plus a single follow-up at
+      // day 7 overdue. Gated by the polite-hours window so a "due
+      // today" reminder lands during working hours, not at 1am.
+      if (!isPatient && !isInQuietHours(timezone, now)) {
+        try {
+          const tutorSent = await sendTutorReminders({ supabase, userId: user_id, timezone, now });
+          tutorPushesSent += tutorSent;
+        } catch (err) {
+          console.warn(`tutor-reminders: ${user_id} failed:`, err?.message);
+        }
       }
 
       // ── WhatsApp branch ────────────────────────────────────────
@@ -440,10 +463,11 @@ async function handler(req, res) {
       usersScanned: prefs.length,
       sessionsMatched: totalSessionsMatched,
       remindersSent: totalSent,
+      tutorPushesSent,
       subscriptionsCleaned: staleRemoved,
       startedAt,
     });
-    res.status(200).json({ sent: totalSent, staleRemoved });
+    res.status(200).json({ sent: totalSent, tutorPushesSent, staleRemoved });
   } catch (err) {
     console.error("send-session-reminders error:", err);
     res.status(500).json({ error: "Internal error" });
@@ -793,13 +817,127 @@ function toTimezone(date, tz) {
   return new Date(str);
 }
 
-function logRun({ usersScanned, sessionsMatched, remindersSent, subscriptionsCleaned, startedAt }) {
+/* Per-user tutor reminder branch. Pulls the tutor-eligible patients
+   (those with a parent + tutor_frequency), the patient's tutor
+   sessions (session_type='tutor', back to today's anchor at most), and
+   the existing sent_tutor_reminders rows so the pure evaluator can
+   make the decision. Sends push for each tuple it returns and writes
+   a dedupe row per send. A push failure on the sender side does NOT
+   write the dedupe row — the next cron tick will retry.
+
+   Patient-side cron iterations are skipped at the caller (tutor
+   sessions are with the parent, not the patient — sending the patient
+   a "you're overdue" buzz would be a category error). */
+async function sendTutorReminders({ supabase, userId, timezone, now }) {
+  const todayIso = tzTodayIso(timezone, now);
+  let sent = 0;
+
+  // 1. Therapist's tutor-eligible patients. Status filter mirrors
+  //    getTutorReminders in src/utils/sessions.js — only active
+  //    patients with both `parent` and `tutor_frequency` participate.
+  const { data: patients } = await supabase
+    .from("patients")
+    .select("id, name, parent, tutor_frequency, status, start_date, created_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .not("parent", "is", null)
+    .neq("parent", "")
+    .not("tutor_frequency", "is", null);
+  if (!patients || patients.length === 0) return sent;
+
+  const patientIds = patients.map((p) => p.id);
+
+  // 2. Tutor sessions for those patients. We need both completed/
+  //    charged (to anchor the cycle) AND scheduled-future (to know
+  //    whether the therapist has already acted on the reminder). The
+  //    cron's read volume is bounded by the user's patient count, not
+  //    history depth.
+  const { data: tutorSessions } = await supabase
+    .from("sessions")
+    .select("id, patient_id, date, status, session_type, initials")
+    .eq("user_id", userId)
+    .in("patient_id", patientIds)
+    .or("session_type.eq.tutor,initials.like.T·%");
+  const tutorSessionRows = tutorSessions || [];
+
+  // 3. Existing dedupe rows for these patients — read once, filter
+  //    in-memory in the evaluator. Bounded by patient count * 2 kinds.
+  const { data: sentRows } = await supabase
+    .from("sent_tutor_reminders")
+    .select("patient_id, kind, cycle_anchor_date")
+    .eq("user_id", userId)
+    .in("patient_id", patientIds);
+  const alreadySent = new Set(
+    (sentRows || []).map((r) => `${r.patient_id}::${r.kind}::${r.cycle_anchor_date}`)
+  );
+
+  const toSend = evaluateTutorReminders({
+    patients,
+    tutorSessions: tutorSessionRows,
+    alreadySent,
+    todayIso,
+  });
+  if (toSend.length === 0) return sent;
+
+  // 4. Subscriptions — same shape the session reminder branch uses.
+  //    Missing subscriptions = no push; we still write the dedupe row
+  //    afterwards so the user doesn't get pinged immediately when they
+  //    add a subscription mid-cycle (matches session-reminder UX).
+  const { data: subsRaw } = await supabase
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth")
+    .eq("user_id", userId);
+  const subs = subsRaw || [];
+  if (subs.length === 0) return sent;
+
+  for (const tuple of toSend) {
+    const payload = buildTutorPushPayload(tuple);
+    let anyDelivered = false;
+    for (const sub of subs) {
+      try {
+        await sendPush(sub, payload);
+        anyDelivered = true;
+      } catch (err) {
+        if (TERMINAL_PUSH_STATUSES.has(err.statusCode)) {
+          await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        } else {
+          console.error(JSON.stringify({
+            evt: "tutor-push.send.error",
+            endpoint_host: safeHost(sub.endpoint),
+            statusCode: err.statusCode,
+            message: err.message,
+          }));
+        }
+      }
+    }
+    // Mark deduped only when at least one push went out. A total
+    // delivery failure (every sub returned a terminal error) leaves
+    // the row eligible; the next tick will retry once the user
+    // resubscribes.
+    if (anyDelivered) {
+      await supabase.from("sent_tutor_reminders").upsert(
+        {
+          user_id: userId,
+          patient_id: tuple.patient.id,
+          kind: tuple.kind,
+          cycle_anchor_date: tuple.cycleAnchor,
+        },
+        { onConflict: "user_id,patient_id,kind,cycle_anchor_date" }
+      );
+      sent += 1;
+    }
+  }
+  return sent;
+}
+
+function logRun({ usersScanned, sessionsMatched, remindersSent, tutorPushesSent, subscriptionsCleaned, startedAt }) {
   console.log(JSON.stringify({
     evt: "cron.send-session-reminders",
     ts: new Date().toISOString(),
     usersScanned,
     sessionsMatched,
     remindersSent,
+    tutorPushesSent,
     subscriptionsCleaned,
     durationMs: Date.now() - startedAt,
   }));
