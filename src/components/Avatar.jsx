@@ -25,14 +25,22 @@ export function Avatar({ initials, color, size = "md", tutor = false, imageUrl, 
   const dims = size === "lg" ? 52 : size === "sm" ? 36 : 40;
   const fontSize = size === "lg" ? 18 : size === "sm" ? 11 : 13;
 
-  const bg = imageUrl ? "transparent" : (color || (tutor ? "var(--purple)" : "var(--teal)"));
-
   // Track which URL has failed rather than a sticky boolean — otherwise
   // a stale signed URL (e.g. expired upload) that fails once keeps the
   // component on the initials fallback even after the user picks a
   // fresh preset/upload whose URL differs.
   const [failedUrl, setFailedUrl] = useState(null);
   const showImage = imageUrl && failedUrl !== imageUrl;
+
+  // Always paint the colored backing — the `<img>` sits on top with
+  // object-fit: cover when it loads, hiding the color. When the image
+  // FAILS (expired signed URL, 404, transient CORS), showImage flips
+  // to false and the initials fall back; without the colored backing
+  // the initials would be white text on a transparent circle (the
+  // outer .av-settings-avatar / .row-item wrappers have no bg of
+  // their own), and on the white Settings card they read as a
+  // completely invisible avatar.
+  const bg = color || (tutor ? "var(--purple)" : "var(--teal)");
 
   return (
     <div

@@ -104,6 +104,21 @@ function getEndpointAccount() {
    to construct, ensures expired temp creds aren't reused. */
 export async function getR2() {
   const credentials = await getCredentials();
+  // Diagnostic: surface which credential shape the SDK is signing
+  // with so we can debug R2 AccessDenied responses without leaking
+  // secrets. Logged once per cold start (the cache means hot starts
+  // reuse the same shape).
+  if (!_loggedCredsShape) {
+    _loggedCredsShape = true;
+    console.log(JSON.stringify({
+      evt: "r2.credentials.shape",
+      mode: HAS_LONG_LIVED_KEYS ? "long-lived" : "temp-creds",
+      keys: Object.keys(credentials),
+      hasSessionToken: !!credentials.sessionToken,
+      sessionTokenLen: credentials.sessionToken?.length || 0,
+      accessKeyIdPrefix: credentials.accessKeyId?.slice(0, 8) || "(none)",
+    }));
+  }
   const endpoint = `https://${getEndpointAccount()}.r2.cloudflarestorage.com`;
   return new S3Client({
     region: "auto",
@@ -113,6 +128,7 @@ export async function getR2() {
     responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
+let _loggedCredsShape = false;
 
 // Validate file path: must belong to user and contain no traversal.
 //
