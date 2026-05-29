@@ -137,7 +137,7 @@ export function ProUpgradeSheet({ open, feature, onClose }) {
                 background: "var(--charcoal)", color: "var(--white)",
                 fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
                 padding: "3px 7px", borderRadius: 999,
-                boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+                boxShadow: "var(--shadow-sm)",
               }}>PRO</div>
             </div>
             <div style={{

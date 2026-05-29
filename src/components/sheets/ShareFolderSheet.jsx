@@ -334,12 +334,12 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
                 </div>
               )}
               <div
+                className="scroll-bounce"
                 style={{
                   display: "flex",
                   flexDirection: "column",
                   gap: 4,
                   maxHeight: "55vh",
-                  overflowY: "auto",
                 }}
               >
                 {filtered.length === 0 ? (

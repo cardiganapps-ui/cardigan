@@ -24,7 +24,7 @@ export function Toggle({ on, onToggle, pending = false, disabled: disabledProp =
       <div style={{
         width: 20, height: 20, borderRadius: "50%",
         background: "var(--white)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+        boxShadow: "var(--shadow-sm)",
         transform: on ? "translateX(18px)" : "translateX(0)",
         transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -34,7 +34,7 @@ export function Toggle({ on, onToggle, pending = false, disabled: disabledProp =
             aria-hidden="true"
             style={{
               width: 10, height: 10, borderRadius: "50%",
-              border: "2px solid rgba(0,0,0,0.18)",
+              border: "2px solid var(--border)",
               borderTopColor: on ? "var(--teal-dark, #1a7870)" : "var(--charcoal-md, #555)",
               animation: "togglePendingSpin 0.7s linear infinite",
               boxSizing: "border-box",

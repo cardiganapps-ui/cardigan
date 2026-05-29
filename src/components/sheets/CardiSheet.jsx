@@ -179,9 +179,9 @@ export function CardiSheet({ open, onClose }) {
 
         <div
           ref={bodyRef}
+          className="scroll-bounce"
           style={{
             flex: 1,
-            overflowY: "auto",
             padding: showGate ? "8px 20px 8px" : (empty ? "12px 20px 8px" : "12px 16px 8px"),
             display: "flex",
             flexDirection: "column",

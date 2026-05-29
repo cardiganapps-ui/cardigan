@@ -1854,7 +1854,7 @@ export function Settings({ user, signOut, refreshUser }) {
                       <div style={{ width:52, height:52, borderRadius:"50%",
                         display:"flex", alignItems:"center", justifyContent:"center",
                         background:"var(--white)", color:"var(--teal-dark)",
-                        margin:"0 auto 10px", boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
+                        margin:"0 auto 10px", boxShadow:"var(--shadow-sm)" }}>
                         <IconUsers size={22} />
                       </div>
                       <div style={{ fontFamily:"var(--font-d)", fontSize:16, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.2px" }}>

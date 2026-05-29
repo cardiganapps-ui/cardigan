@@ -3,6 +3,7 @@ import { useT } from "../../../i18n/index";
 import { CopyChip } from "./CopyChip";
 import { useEscape } from "../../../hooks/useEscape";
 import { useFocusTrap } from "../../../hooks/useFocusTrap";
+import { useSheetDrag } from "../../../hooks/useSheetDrag";
 
 /* ── CodeCreatedSheet ──
    Lifted verbatim from AdminPanel.jsx (legacy modal). Success sheet
@@ -11,12 +12,16 @@ import { useFocusTrap } from "../../../hooks/useFocusTrap";
    influencer wants. */
 export function CodeCreatedSheet({ code, onClose }) {
   const { t } = useT();
-  // A11y: same sheet conventions as the consumer-side sheets — esc
-  // dismisses, focus stays trapped inside until close. Without these
-  // keyboard users could tab back to the page underneath while the
-  // overlay obscures it.
+  // A11y + gesture: full canonical wiring — esc dismisses, focus
+  // stays trapped inside, drag-down dismisses (the third piece this
+  // sheet was missing). Without useSheetDrag the user has no swipe-
+  // away affordance, inconsistent with every other sheet in the app.
   useEscape(onClose);
   useFocusTrap(true);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
+  // Panel is the scroll container, so wire scrollRef + setPanelEl
+  // onto the same element (mirrors AvatarPicker's pattern).
+  const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
   const link = `https://cardigan.mx/c/${code.code}`;
   const durationLabel =
     code.duration === "once" ? t("admin.codesDurationOnce")
@@ -26,11 +31,13 @@ export function CodeCreatedSheet({ code, onClose }) {
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div
-        className="sheet-panel"
+        className="sheet-panel scroll-bounce"
         role="dialog"
         aria-modal="true"
+        ref={setPanel}
+        {...panelHandlers}
         onClick={e => e.stopPropagation()}
-        style={{ maxHeight: "92vh", overflowY: "auto" }}
+        style={{ maxHeight: "92vh" }}
       >
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

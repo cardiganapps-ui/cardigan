@@ -3,6 +3,7 @@ import { IconX, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
 import { haptic } from "../utils/haptics";
@@ -32,7 +33,12 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   // sheet closes (the optimistic-close flow leaves no UI behind in
   // the AvatarPicker itself for inline error display).
   const { showSuccess, showToast } = useCardigan() || {};
+  // Canonical sheet wiring — esc dismisses, focus stays trapped,
+  // drag-down dismisses. useFocusTrap was missing; without it
+  // keyboard tab order leaked back to the page underneath while
+  // the avatar sheet was open.
   useEscape(onClose);
+  useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 

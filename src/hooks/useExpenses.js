@@ -21,7 +21,7 @@
 
 import { supabase } from "../supabaseClient";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
-import { shortDateToISO } from "../utils/dates";
+import { shortDateToISO, SHORT_MONTHS } from "../utils/dates";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
 
 // Offline queue handlers (Phase 4 of offline support — covers
@@ -419,7 +419,6 @@ export function createExpenseActions({
       return { inserted: 0 };
     }
     const tplById = new Map((recurringExpenses || []).map(t => [t.id, t]));
-    const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
     const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
     const rows = [];
     for (const { recurring_id, year, month } of pendingSlots) {

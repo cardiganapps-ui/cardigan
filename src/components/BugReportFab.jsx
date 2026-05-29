@@ -5,6 +5,7 @@ import { getLogs } from "../utils/logBuffer";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /* ── Bug report sheet ──
    Previously rendered its own floating bottom-left button, which
@@ -33,7 +34,11 @@ export function BugReportSheet({ open, onClose, user, screen }) {
     setDescription("");
     onClose?.();
   };
+  // Canonical sheet wiring — esc + focus trap + drag-down dismiss.
+  // useFocusTrap was missing; keyboard tab order leaked back to the
+  // page underneath while this sheet was open.
   useEscape(open ? closeSheet : null);
+  useFocusTrap(open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(closeSheet, { isOpen: open });
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 

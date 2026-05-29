@@ -67,7 +67,7 @@ export function ProValueWidget() {
       {proSharePct !== null && earnedMxn > 0 && (
         <div style={{
           marginTop: 12, paddingTop: 10,
-          borderTop: "1px solid rgba(0,0,0,0.06)",
+          borderTop: "1px solid var(--border-lt)",
           fontSize: 12, color: "var(--charcoal-md)", lineHeight: 1.5,
         }}>
           {t("subscription.valueShareOfMonth", { pct: proSharePct.toLocaleString("es-MX") })}

@@ -37,7 +37,7 @@ export function BulkActionsBar({ count, onCancelNoCharge, onCancelCharge, onDele
         alignItems: "center",
         gap: 10,
         zIndex: "var(--z-banner, 30)",
-        boxShadow: "0 -6px 18px rgba(0,0,0,0.18)",
+        boxShadow: "var(--shadow-lg)",
       }}
     >
       <button

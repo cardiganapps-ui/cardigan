@@ -5,6 +5,7 @@ import { haptic } from "../../../utils/haptics";
 import { createInfluencerCode } from "../../../hooks/useCardiganData";
 import { useEscape } from "../../../hooks/useEscape";
 import { useFocusTrap } from "../../../hooks/useFocusTrap";
+import { useSheetDrag } from "../../../hooks/useSheetDrag";
 
 /* ── NewCodeSheet ──
    Lifted from AdminPanel.jsx (legacy modal). Modal-style sheet for
@@ -12,10 +13,14 @@ import { useFocusTrap } from "../../../hooks/useFocusTrap";
    page uses this verbatim — no logic changes during the lift. */
 export function NewCodeSheet({ onClose, onCreated }) {
   const { t } = useT();
-  // A11y: trap focus while open + dismiss on esc. Without these the
-  // form fields' tab order leaks back to the page underneath.
+  // A11y + gesture: full canonical sheet wiring — esc dismisses,
+  // focus stays trapped, drag-down dismisses. The third hook was
+  // missing; without it the sheet had no swipe-away affordance,
+  // inconsistent with every other sheet in the app.
   useEscape(onClose);
   useFocusTrap(true);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
+  const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
   const [code, setCode] = useState("");
   const [influencerName, setInfluencerName] = useState("");
   const [percentOff, setPercentOff] = useState("20");
@@ -56,11 +61,13 @@ export function NewCodeSheet({ onClose, onCreated }) {
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div
-        className="sheet-panel"
+        className="sheet-panel scroll-bounce"
         role="dialog"
         aria-modal="true"
+        ref={setPanel}
+        {...panelHandlers}
         onClick={e => e.stopPropagation()}
-        style={{ maxHeight: "92vh", overflowY: "auto" }}
+        style={{ maxHeight: "92vh" }}
       >
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

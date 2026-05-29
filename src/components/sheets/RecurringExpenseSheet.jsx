@@ -126,7 +126,7 @@ export function RecurringExpenseSheet({ onClose }) {
           </button>
         </div>
 
-        <div style={{ padding: "8px 20px 24px", overflowY: "auto" }}>
+        <div className="scroll-bounce" style={{ padding: "8px 20px 24px" }}>
           {sorted.length === 0 && (
             <div className="empty-state">
               <div className="empty-state-icon"><IconRepeat size={20} /></div>

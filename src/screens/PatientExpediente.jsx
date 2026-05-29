@@ -682,7 +682,8 @@ export function PatientExpediente({
         onDragOver={onDragOverArchivo}
         onDragLeave={onDragLeaveArchivo}
         onDrop={onDropArchivo}
-        style={{ flex:1, minHeight:0, overflowY:"scroll", WebkitOverflowScrolling:"touch", overscrollBehaviorY:"contain", background:"var(--white)", borderRadius:0, position:"relative" }}>
+        className="scroll-bounce"
+        style={{ flex:1, minHeight:0, background:"var(--white)", borderRadius:0, position:"relative" }}>
 
         {(() => {
           // Pick a slide-in keyframe based on the index delta from the
