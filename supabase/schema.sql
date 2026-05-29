@@ -1283,3 +1283,409 @@ begin
   return v_next_no;
 end;
 $$;
+
+
+-- ╔══════════════════════════════════════════════════════════════════════╗
+-- ║  Post-baseline tables — schema.sql catch-up                          ║
+-- ╠══════════════════════════════════════════════════════════════════════╣
+-- ║                                                                      ║
+-- ║  The blocks below were created by numbered migrations after this     ║
+-- ║  file's original baseline and never back-ported into schema.sql.     ║
+-- ║  The contract per CLAUDE.md is that schema.sql is canonical; the     ║
+-- ║  drift meant a fresh DB built from schema.sql alone was missing      ║
+-- ║  ~16 tables that production users depend on. Rebuilding from         ║
+-- ║  schema.sql + the migrations folder yields the same final state      ║
+-- ║  thanks to `if not exists` guards on every DDL statement.            ║
+-- ║                                                                      ║
+-- ║  Source migrations (kept as commented headers per block):            ║
+-- ║    012 resend_events · 014 privacy tables · 015 + 026 calendar       ║
+-- ║    tokens · 017 user encryption keys · 019 whatsapp · 030 + 037 +    ║
+-- ║    038 stripe subscriptions · 031 stripe invoices · 032 cron state · ║
+-- ║    033 lifecycle emails · 034 referral credits · 035 trial           ║
+-- ║    extensions · 036 rate limits                                      ║
+-- ║                                                                      ║
+-- ║  Any future change to one of these tables MUST update BOTH the live  ║
+-- ║  migration AND this block, same as the rest of schema.sql. The       ║
+-- ║  schema-drift CI workflow catches divergence against the live DB.    ║
+-- ╚══════════════════════════════════════════════════════════════════════╝
+
+-- ── resend_events (migration 012) ─────────────────────────────────────
+create table if not exists public.resend_events (
+  id                  bigserial primary key,
+  email_id            uuid,
+  type                text not null,
+  event_at            timestamptz not null,
+  email_created_at    timestamptz,
+  to_addr             text,
+  subject             text,
+  seconds_since_send  double precision,
+  raw                 jsonb,
+  inserted_at         timestamptz not null default now()
+);
+
+create index if not exists resend_events_email_id_idx
+  on public.resend_events (email_id);
+create index if not exists resend_events_type_event_at_idx
+  on public.resend_events (type, event_at desc);
+
+alter table public.resend_events enable row level security;
+
+drop policy if exists "admin can read resend_events" on public.resend_events;
+create policy "admin can read resend_events"
+  on public.resend_events
+  for select
+  to authenticated
+  using (public.is_admin());
+
+-- ── user_consents · account_deletions · export_audit (migration 014) ──
+create table if not exists public.user_consents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  policy_version text not null,
+  accepted_at timestamptz not null default now(),
+  unique (user_id, policy_version)
+);
+
+alter table public.user_consents enable row level security;
+
+drop policy if exists "user_consents select own" on public.user_consents;
+create policy "user_consents select own" on public.user_consents
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "user_consents insert own" on public.user_consents;
+create policy "user_consents insert own" on public.user_consents
+  for insert with check (auth.uid() = user_id);
+
+create index if not exists user_consents_user_idx on public.user_consents (user_id);
+
+create table if not exists public.account_deletions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  email text,
+  reason text,
+  deleted_at timestamptz not null default now()
+);
+
+alter table public.account_deletions enable row level security;
+
+drop policy if exists "account_deletions admin select" on public.account_deletions;
+create policy "account_deletions admin select" on public.account_deletions
+  for select using (public.is_admin());
+
+create table if not exists public.export_audit (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  exported_at timestamptz not null default now(),
+  bytes integer
+);
+
+alter table public.export_audit enable row level security;
+
+drop policy if exists "export_audit select own" on public.export_audit;
+create policy "export_audit select own" on public.export_audit
+  for select using (auth.uid() = user_id);
+
+create index if not exists export_audit_user_time_idx
+  on public.export_audit (user_id, exported_at desc);
+
+-- ── user_calendar_tokens (migrations 015 + 026) ───────────────────────
+-- 015 created the table with a plaintext `token` column. 026 hashed
+-- tokens at rest — added token_hash + token_prefix, backfilled, and
+-- dropped the plaintext column. Final-state DDL below folds the two.
+create table if not exists public.user_calendar_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  token_hash text not null,
+  token_prefix text,
+  created_at timestamptz not null default now(),
+  last_accessed_at timestamptz,
+  unique (user_id)
+);
+
+create unique index if not exists uniq_user_calendar_tokens_hash
+  on public.user_calendar_tokens (token_hash);
+
+create index if not exists user_calendar_tokens_user_idx
+  on public.user_calendar_tokens (user_id);
+
+alter table public.user_calendar_tokens enable row level security;
+
+drop policy if exists "user_calendar_tokens select own" on public.user_calendar_tokens;
+create policy "user_calendar_tokens select own" on public.user_calendar_tokens
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "user_calendar_tokens insert own" on public.user_calendar_tokens;
+create policy "user_calendar_tokens insert own" on public.user_calendar_tokens
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "user_calendar_tokens update own" on public.user_calendar_tokens;
+create policy "user_calendar_tokens update own" on public.user_calendar_tokens
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "user_calendar_tokens delete own" on public.user_calendar_tokens;
+create policy "user_calendar_tokens delete own" on public.user_calendar_tokens
+  for delete using (auth.uid() = user_id);
+
+-- ── user_encryption_keys (migration 017) ──────────────────────────────
+create table if not exists public.user_encryption_keys (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  passphrase_wrap text not null,
+  passphrase_salt text not null,
+  passphrase_iv text not null,
+  passphrase_iters int not null default 600000,
+  recovery_wrap text not null,
+  recovery_kid text not null default 'v1',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id)
+);
+
+alter table public.user_encryption_keys enable row level security;
+
+drop policy if exists "user_encryption_keys select own" on public.user_encryption_keys;
+create policy "user_encryption_keys select own" on public.user_encryption_keys
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "user_encryption_keys admin select" on public.user_encryption_keys;
+create policy "user_encryption_keys admin select" on public.user_encryption_keys
+  for select using (public.is_admin());
+
+-- ── whatsapp_audit · whatsapp_events (migration 019) ──────────────────
+create table if not exists public.whatsapp_audit (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  patient_id uuid references public.patients(id) on delete set null,
+  session_id uuid references public.sessions(id) on delete cascade,
+  recipient_phone text not null,
+  template_name text not null,
+  status text not null check (status in ('pending','sent','delivered','read','failed')),
+  meta_message_id text,
+  error_code text,
+  error_reason text,
+  raw_response jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists idx_whatsapp_audit_user_id on public.whatsapp_audit(user_id);
+create index if not exists idx_whatsapp_audit_meta_id on public.whatsapp_audit(meta_message_id);
+
+alter table public.whatsapp_audit enable row level security;
+
+drop policy if exists wa_audit_owner on public.whatsapp_audit;
+create policy wa_audit_owner on public.whatsapp_audit using (auth.uid() = user_id);
+
+create table if not exists public.whatsapp_events (
+  id uuid default gen_random_uuid() primary key,
+  meta_message_id text,
+  event_type text,
+  recipient_phone text,
+  raw jsonb,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_whatsapp_events_meta_id on public.whatsapp_events(meta_message_id);
+
+alter table public.whatsapp_events enable row level security;
+
+drop policy if exists wa_events_admin_read on public.whatsapp_events;
+create policy wa_events_admin_read on public.whatsapp_events for select using (public.is_admin());
+
+-- ── user_subscriptions (migrations 030 + 035 + 037 + 038) ─────────────
+-- 030 created the base table. 035 added trial_extension_days. 037 added
+-- last_stripe_event_at (event-ordering guard). 038 added cancel_at
+-- (Stripe's timestamp-form scheduled cancellation). Final-state below.
+create table if not exists public.user_subscriptions (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  stripe_customer_id text not null unique,
+  stripe_subscription_id text unique,
+  stripe_price_id text,
+  status text,
+  current_period_end timestamptz,
+  cancel_at_period_end boolean default false,
+  cancel_at timestamptz,
+  trial_end timestamptz,
+  trial_extension_days integer not null default 0,
+  latest_invoice_id text,
+  hosted_invoice_url text,
+  default_payment_method text,
+  comp_granted boolean default false,
+  comp_granted_at timestamptz,
+  comp_granted_by text,
+  comp_reason text,
+  referral_code text unique,
+  referred_by text,
+  referral_reward_credited_at timestamptz,
+  referral_rewards_count integer not null default 0,
+  pending_credit_amount_cents integer not null default 0,
+  last_stripe_event_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists idx_user_subscriptions_customer on public.user_subscriptions(stripe_customer_id);
+create index if not exists idx_user_subscriptions_status on public.user_subscriptions(status);
+create index if not exists idx_user_subscriptions_comp_granted on public.user_subscriptions(comp_granted) where comp_granted = true;
+create index if not exists idx_user_subscriptions_referral_code on public.user_subscriptions(referral_code) where referral_code is not null;
+create index if not exists idx_user_subscriptions_referred_by on public.user_subscriptions(referred_by) where referred_by is not null;
+
+alter table public.user_subscriptions enable row level security;
+
+drop policy if exists "Users read own subscription" on public.user_subscriptions;
+create policy "Users read own subscription"
+  on public.user_subscriptions for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Admin reads all subscriptions" on public.user_subscriptions;
+create policy "Admin reads all subscriptions"
+  on public.user_subscriptions for select
+  using (public.is_admin());
+
+-- ── stripe_webhook_events (migration 030) ─────────────────────────────
+create table if not exists public.stripe_webhook_events (
+  event_id text primary key,
+  type text not null,
+  received_at timestamptz not null default now(),
+  payload jsonb
+);
+
+create index if not exists idx_stripe_webhook_events_received_at on public.stripe_webhook_events(received_at desc);
+
+alter table public.stripe_webhook_events enable row level security;
+
+drop policy if exists "Admin reads webhook events" on public.stripe_webhook_events;
+create policy "Admin reads webhook events"
+  on public.stripe_webhook_events for select
+  using (public.is_admin());
+
+-- ── stripe_invoices (migration 031) ───────────────────────────────────
+create table if not exists public.stripe_invoices (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  stripe_customer_id text not null,
+  stripe_subscription_id text,
+  amount_cents integer not null,
+  currency text not null default 'mxn',
+  paid_at timestamptz not null,
+  hosted_invoice_url text,
+  pdf_url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_stripe_invoices_user_paid_at
+  on public.stripe_invoices(user_id, paid_at desc);
+
+alter table public.stripe_invoices enable row level security;
+
+drop policy if exists "Users read own invoices" on public.stripe_invoices;
+create policy "Users read own invoices"
+  on public.stripe_invoices for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Admin reads all invoices" on public.stripe_invoices;
+create policy "Admin reads all invoices"
+  on public.stripe_invoices for select
+  using (public.is_admin());
+
+-- ── cron_state (migration 032) ────────────────────────────────────────
+create table if not exists public.cron_state (
+  job text primary key,
+  last_run_at timestamptz
+);
+
+alter table public.cron_state enable row level security;
+
+drop policy if exists "Admin reads cron state" on public.cron_state;
+create policy "Admin reads cron state"
+  on public.cron_state for select
+  using (public.is_admin());
+
+-- ── lifecycle_emails (migration 033) ──────────────────────────────────
+create table if not exists public.lifecycle_emails (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null,
+  sent_at timestamptz not null default now(),
+  resend_id text,
+  primary key (user_id, kind)
+);
+
+create index if not exists idx_lifecycle_emails_kind_sent
+  on public.lifecycle_emails(kind, sent_at desc);
+
+alter table public.lifecycle_emails enable row level security;
+
+drop policy if exists "Users read own lifecycle emails" on public.lifecycle_emails;
+create policy "Users read own lifecycle emails"
+  on public.lifecycle_emails for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Admin reads lifecycle emails" on public.lifecycle_emails;
+create policy "Admin reads lifecycle emails"
+  on public.lifecycle_emails for select
+  using (public.is_admin());
+
+-- ── referral_credits (migration 034) ──────────────────────────────────
+create table if not exists public.referral_credits (
+  id uuid primary key default gen_random_uuid(),
+  inviter_user_id uuid not null references auth.users(id) on delete cascade,
+  invitee_user_id uuid not null references auth.users(id) on delete cascade,
+  amount_cents integer not null,
+  invoice_id text,
+  credited_at timestamptz not null default now(),
+  unique (inviter_user_id, invitee_user_id)
+);
+
+create index if not exists idx_referral_credits_inviter
+  on public.referral_credits(inviter_user_id, credited_at desc);
+create index if not exists idx_referral_credits_invitee
+  on public.referral_credits(invitee_user_id);
+
+alter table public.referral_credits enable row level security;
+
+drop policy if exists "Users read own referral credits as inviter" on public.referral_credits;
+create policy "Users read own referral credits as inviter"
+  on public.referral_credits for select
+  using (auth.uid() = inviter_user_id);
+
+drop policy if exists "Admin reads all referral credits" on public.referral_credits;
+create policy "Admin reads all referral credits"
+  on public.referral_credits for select
+  using (public.is_admin());
+
+-- ── trial_extensions (migration 035) ──────────────────────────────────
+create table if not exists public.trial_extensions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  days integer not null,
+  reason text not null,
+  granted_at timestamptz not null default now(),
+  unique (user_id, reason)
+);
+
+alter table public.trial_extensions enable row level security;
+
+drop policy if exists "Users read own trial extensions" on public.trial_extensions;
+create policy "Users read own trial extensions"
+  on public.trial_extensions for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Admin reads all trial extensions" on public.trial_extensions;
+create policy "Admin reads all trial extensions"
+  on public.trial_extensions for select
+  using (public.is_admin());
+
+-- ── rate_limits (migration 036) ───────────────────────────────────────
+-- Intentionally policy-less — service-role-only access, documented in
+-- migration 036.
+create table if not exists public.rate_limits (
+  endpoint text not null,
+  bucket   text not null,
+  hit_at   timestamptz not null default now(),
+  primary key (endpoint, bucket, hit_at)
+);
+
+create index if not exists idx_rate_limits_endpoint_bucket
+  on public.rate_limits(endpoint, bucket, hit_at desc);
+
+alter table public.rate_limits enable row level security;
