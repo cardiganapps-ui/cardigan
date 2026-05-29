@@ -728,6 +728,16 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       setMutating(false);
       return true;
     }
+    if (error?.code === "23505") {
+      // Slot collision — another tab/device beat us on at least one
+      // (patient_id, date, time) slot. The whole batch rolled back;
+      // reconcile counters from truth instead of leaving them stale.
+      // Matches the queue handler's swallow (sessions.bulk_insert
+      // replay) so behavior is identical online vs. on drain.
+      setMutating(false);
+      await recalcPatientCounters(patientId);
+      return true;
+    }
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
     // patient.{sessions,billed} are recomputed by the trigger that fires
@@ -847,6 +857,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
 
       if (allRows.length > 0) {
         const { data: sessData, error: sErr } = await supabase.from("sessions").insert(allRows).select();
+        if (sErr?.code === "23505") {
+          // Slot collision (another tab/device, or a retry-after-flake).
+          // The whole bulk rolled back; reconcile counters from truth.
+          // Matches the queue handler's swallow (sessions.apply_schedule_
+          // change replay) so behavior is identical online vs. on drain.
+          await recalcPatientCounters(patientId);
+          setMutating(false);
+          return true;
+        }
         if (sErr) { setMutating(false); setMutationError(sErr.message); return false; }
         // Counters maintained by trigger; replace local rows with the
         // server-assigned shape (real ids, server defaults).

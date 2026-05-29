@@ -707,6 +707,15 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
             // dated (predicate doesn't count them yet).
             const newSessions = patient.sessions + data.length;
             patientUpdates.set(patient.id, { sessions: newSessions });
+          } else if (error?.code === "23505") {
+            // Slot collision — a sibling tab/device already extended
+            // this patient. The whole bulk rolled back; the OTHER tab's
+            // trigger maintained the persisted counters. Skip silently
+            // — next refresh picks up the canonical rows + counters.
+            // Without this branch the loser tab would treat 23505 as
+            // an unhandled error and the patient row would stay with
+            // sessions={old value} locally until the next refresh.
+            continue;
           }
         }
 

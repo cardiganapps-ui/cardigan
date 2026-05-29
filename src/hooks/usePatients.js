@@ -129,6 +129,14 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
           const fixed = await recalcPatientCounters(data.id);
           if (fixed) updatedPatient = { ...newPatient, ...fixed };
         }
+      } else if (sessErr?.code === "23505") {
+        // Slot collision — another tab/device seeded the same patient
+        // concurrently, or this is a retry of a partially-completed
+        // request. The colliding rows are in the DB; reconcile our
+        // counters from truth rather than leaving them pre-stamped.
+        // Next refresh picks up the actual session rows.
+        const fixed = await recalcPatientCounters(data.id);
+        if (fixed) updatedPatient = { ...newPatient, ...fixed };
       } else {
         // Session insert failed — roll the counters back on the patient
         // so amountDue doesn't show a phantom balance.
