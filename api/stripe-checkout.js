@@ -61,9 +61,27 @@ function appOrigin(req) {
   return safeAppOrigin(req);
 }
 
+// Mirror of the client-side FREE_FOR_EVERYONE flag in
+// src/hooks/useSubscription.js. While Cardigan is free for everyone
+// this endpoint refuses to start a new Stripe checkout — even if a
+// stale client somehow renders the old Suscribirme CTA. /api/stripe-
+// portal and /api/stripe-webhook stay live so existing customers
+// can still self-manage. Flip back to false to re-enable.
+const FREE_FOR_EVERYONE = true;
+
 async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (FREE_FOR_EVERYONE) {
+    // 410 Gone — endpoint exists but is no longer accepting requests.
+    // Spanish message so a stale client surfaces the right copy in
+    // the toast it was going to show on a 4xx.
+    return res.status(410).json({
+      error: "Cardigan ahora es gratis para todos. No es necesario suscribirse.",
+      action: "cardigan_is_free",
+    });
   }
 
   const user = await getAuthUser(req);

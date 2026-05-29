@@ -33,6 +33,25 @@ import { isAdmin } from "./useCardiganData";
    maintained by api/stripe-webhook.js (server-side, service-role
    client). The hook only ever does SELECT. */
 
+/* ── FREE-FOR-EVERYONE FLAG ──
+   Cardigan is free for all users for now. This flag short-circuits
+   the access gate (`accessState` → always "active") and the
+   premium-feature gate (`isPro` → always true), so no user ever
+   hits the paywall, the trial countdown, the expired-read-only
+   mode, or the "subscribe" CTA. Existing user_subscriptions rows
+   stay in place and the Stripe webhook still updates them — flip
+   this back to `false` to re-enable monetization without untangling
+   anything else. Companion changes when this is true:
+     • Settings → Suscripción row reads "Gratis para todos"
+     • Settings → Suscripción sheet shows a thank-you note (no Stripe UI)
+     • Settings → Invita y gana row is hidden (referral mechanism was
+       a paid-tier acquisition lever)
+     • /api/stripe-checkout returns 410 so a stale client can't start
+       a new sub
+   /api/stripe-portal and /api/stripe-webhook stay live so any
+   already-billed customer can self-manage. */
+const FREE_FOR_EVERYONE = true;
+
 const TRIAL_DAYS = 30;
 // Statuses that can grant Pro access — but `trialing` is conditional:
 // a sub becomes `trialing` the moment we create it server-side via
@@ -169,6 +188,9 @@ export function useSubscription(user) {
   const accessState = useMemo(() => {
     if (isAdmin(user)) return "active"; // admin shortcut — never gated
     if (loading) return "loading";
+    // FREE_FOR_EVERYONE bypasses every gating branch — no user can
+    // land in "trial" / "expired" while this flag is on.
+    if (FREE_FOR_EVERYONE) return "active";
     if (compGranted) return "active";
     if (subscribedActive) return "active";
     if (trialActive) return "trial";
@@ -182,6 +204,9 @@ export function useSubscription(user) {
   // Admins always pass.
   const isPro = useMemo(() => {
     if (isAdmin(user)) return true;
+    // Premium-only features (uploads, encryption, calendar sync)
+    // are all enabled while Cardigan is free for everyone.
+    if (FREE_FOR_EVERYONE) return true;
     if (compGranted) return true;
     if (subscribedActive) return true;
     return false;
@@ -385,6 +410,10 @@ export function useSubscription(user) {
     subscribedActive,
     compGranted,
     isPro,
+    // Surfaced for the Settings UI so it can swap the row sub-line
+    // and the Suscripción sheet body to free-for-everyone copy
+    // without consumers needing to import the constant directly.
+    freeForEveryone: FREE_FOR_EVERYONE,
     referralInfo,
     referralLoading,
     fetchReferralInfo,

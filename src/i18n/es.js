@@ -1264,6 +1264,12 @@ export default {
     createAccount: "Crear cuenta",
   },
   subscription: {
+    // Free-for-everyone copy. Used while useSubscription's
+    // FREE_FOR_EVERYONE flag is on (see the hook for details).
+    freeRowSub: "Gratis para todos",
+    freeSheetTitle: "Cardigan ahora es gratis",
+    freeSheetBody: "Por ahora, todas las funciones de Cardigan est\u00e1n disponibles sin costo para todos los usuarios. No tienes que hacer nada para activarlas \u2014 ya est\u00e1n listas en tu cuenta.",
+    freeSheetThanks: "Gracias por confiar en Cardigan para tu pr\u00e1ctica.",
     statusActive: "Activa",
     statusActiveTitle: "Cardigan Pro activo",
     statusComp: "Acceso gratuito ilimitado",

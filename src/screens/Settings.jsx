@@ -826,6 +826,10 @@ export function Settings({ user, signOut, refreshUser }) {
             <div className="settings-row-title">{t("settings.subscriptionTitle")}</div>
             <div className="settings-row-sub" style={subscription?.subscription?.status === "past_due" ? { color: "var(--amber)" } : undefined}>{(() => {
               const s = subscription || {};
+              // Free-for-everyone short-circuit (see useSubscription's
+              // FREE_FOR_EVERYONE flag). Always reads "Gratis para
+              // todos" — no trial countdown, no plan label.
+              if (s.freeForEveryone) return t("subscription.freeRowSub");
               // Admin fallthrough: useSubscription returns active for
               // admins without comp/paid sub. rowSubLine doesn't have
               // an admin branch, so handle it here.
@@ -841,7 +845,11 @@ export function Settings({ user, signOut, refreshUser }) {
             findable without going through the Suscripción sheet first. The
             sub-line shows the code (or "Genera tu código…" while the lazy
             fetch is running on first open). Tapping opens a dedicated sheet
-            with the share UI + rewards tally. */}
+            with the share UI + rewards tally. Hidden while Cardigan is
+            free for everyone — referrals were a paid-tier acquisition
+            mechanism and the "win a free month" reward has nothing to
+            credit against. */}
+        {!subscription?.freeForEveryone && (
         <div className="settings-row" onClick={() => openSheet("referral")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
           <div style={{ flex:1 }}>
@@ -859,6 +867,7 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
+        )}
         <div className="settings-row"
           onClick={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
@@ -1475,6 +1484,26 @@ export function Settings({ user, signOut, refreshUser }) {
             <div style={{ padding:"0 20px 22px" }}>
               {(() => {
                 const s = subscription || {};
+                // Free-for-everyone short-circuit. Replaces the entire
+                // billing/portal/checkout body below with a brief
+                // Spanish thank-you note. Everything below stays in
+                // place so flipping FREE_FOR_EVERYONE back off in
+                // useSubscription restores the full panel with no
+                // additional edits here.
+                if (s.freeForEveryone) {
+                  return (
+                    <div className="empty-state" style={{ paddingTop: 16, paddingBottom: 8 }}>
+                      <div className="empty-state-icon" style={{ background: "var(--teal-pale)", color: "var(--teal-dark)" }}>
+                        <IconSparkle size={20} />
+                      </div>
+                      <div className="empty-state-title">{t("subscription.freeSheetTitle")}</div>
+                      <div className="empty-state-body">{t("subscription.freeSheetBody")}</div>
+                      <div className="empty-state-body" style={{ marginTop: 6, color: "var(--charcoal-md)" }}>
+                        {t("subscription.freeSheetThanks")}
+                      </div>
+                    </div>
+                  );
+                }
                 const state = s.accessState || "loading";
                 const isComp = s.compGranted;
                 const isActive = s.subscribedActive;
