@@ -155,6 +155,11 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
     const patch = { title, content: storedContent, encrypted };
+    // Snapshot the prior note shape so a server error doesn't leave
+    // the UI showing an edit the DB rejected. Same revert template
+    // softDeleteNote already uses in this file.
+    const prevNote = notes.find(n => n.id === id);
+    const prevSnapshot = prevNote ? { ...prevNote } : null;
     // Optimistic local update first so the UI can dismiss immediately.
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id
@@ -179,7 +184,11 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      if (prevSnapshot) setNotes(prev => prev.map(n => n.id === id ? prevSnapshot : n));
+      setMutationError(error.message);
+      return false;
+    }
     // Refine the optimistic updated_at with the server-stamped value.
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? { ...n, updated_at: data.updated_at } : n));
@@ -199,6 +208,8 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
   async function updateNoteLink(id, { patientId, sessionId }) {
     setMutationError("");
     const patch = { patient_id: patientId || null, session_id: sessionId || null };
+    const prevNote = notes.find(n => n.id === id);
+    const prevSnapshot = prevNote ? { ...prevNote } : null;
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updated_at: nowIso } : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -218,7 +229,11 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      if (prevSnapshot) setNotes(prev => prev.map(n => n.id === id ? prevSnapshot : n));
+      setMutationError(error.message);
+      return false;
+    }
     if (data?.updated_at) {
       setNotes(prev => prev.map(n => n.id === id ? { ...n, updated_at: data.updated_at } : n));
     }
@@ -228,7 +243,13 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
   async function deleteNotes(ids) {
     if (!ids?.length) return false;
     setMutationError("");
-    setNotes(prev => prev.filter(n => !ids.includes(n.id)));
+    const idSet = new Set(ids);
+    // Snapshot the rows we're about to drop so a server error can
+    // restore them — without this, a failed bulk-delete vanishes the
+    // notes from the UI but they're still in the DB; next refresh
+    // surprises the user.
+    const prevSnapshot = notes.filter(n => idSet.has(n.id));
+    setNotes(prev => prev.filter(n => !idSet.has(n.id)));
     // Strip temp ids — no real rows to delete server-side.
     const realIds = ids.filter(id => !(typeof id === "string" && id.startsWith("temp-")));
     if (realIds.length === 0) return true;
@@ -244,12 +265,18 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
       await enqueue("notes.delete_many", { ids: realIds, userId });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      if (prevSnapshot.length) setNotes(prev => [...prevSnapshot, ...prev]);
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
   async function deleteNote(id) {
     setMutationError("");
+    const prevNote = notes.find(n => n.id === id);
+    const prevSnapshot = prevNote ? { ...prevNote } : null;
     setNotes(prev => prev.filter(n => n.id !== id));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
     if (isOffline()) {
@@ -264,7 +291,11 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
       await enqueue("notes.delete", { id, userId });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      if (prevSnapshot) setNotes(prev => [prevSnapshot, ...prev]);
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
@@ -276,6 +307,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
   async function setNoteCover(id, attachmentId) {
     const note = notes.find(n => n.id === id);
     if (!note) return false;
+    const prevCoverId = note.cover_attachment_id;
     const next = attachmentId || null;
     setMutationError("");
     setNotes(prev => prev.map(n => n.id === id ? { ...n, cover_attachment_id: next } : n));
@@ -292,14 +324,19 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
       await enqueue("notes.update", { id, userId, patch: { cover_attachment_id: next } });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, cover_attachment_id: prevCoverId } : n));
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
   async function togglePinNote(id) {
     const note = notes.find(n => n.id === id);
     if (!note) return false;
-    const pinned = !note.pinned;
+    const prevPinned = note.pinned;
+    const pinned = !prevPinned;
     setMutationError("");
     setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned } : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -315,7 +352,11 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
       await enqueue("notes.update", { id, userId, patch: { pinned } });
       return true;
     }
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned: prevPinned } : n));
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 

@@ -129,6 +129,8 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
 
   async function renameDocument(id, name) {
     setMutationError("");
+    const prevDoc = documents.find(d => d.id === id);
+    const prevSnapshot = prevDoc ? { ...prevDoc } : null;
     const nowIso = new Date().toISOString();
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: nowIso } : d));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -148,7 +150,11 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      if (prevSnapshot) setDocuments(prev => prev.map(d => d.id === id ? prevSnapshot : d));
+      setMutationError(error.message);
+      return false;
+    }
     if (data?.updated_at) {
       setDocuments(prev => prev.map(d => d.id === id ? { ...d, updated_at: data.updated_at } : d));
     }
@@ -157,6 +163,8 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
 
   async function tagDocumentSession(id, sessionId) {
     setMutationError("");
+    const prevDoc = documents.find(d => d.id === id);
+    const prevSnapshot = prevDoc ? { ...prevDoc } : null;
     const next = sessionId || null;
     const nowIso = new Date().toISOString();
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, session_id: next, updated_at: nowIso } : d));
@@ -177,7 +185,11 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      if (prevSnapshot) setDocuments(prev => prev.map(d => d.id === id ? prevSnapshot : d));
+      setMutationError(error.message);
+      return false;
+    }
     if (data?.updated_at) {
       setDocuments(prev => prev.map(d => d.id === id ? { ...d, updated_at: data.updated_at } : d));
     }
@@ -187,6 +199,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
   async function deleteDocument(id) {
     setMutationError("");
     const doc = documents.find(d => d.id === id);
+    const prevSnapshot = doc ? { ...doc } : null;
     const filePath = doc?.file_path;
     // Optimistic removal applies whether we hit the wire, the queue,
     // or just drop a temp-id doc locally.
@@ -208,7 +221,11 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
         });
       }
       const { error } = await supabase.from("documents").delete().eq("id", id).eq("user_id", userId);
-      if (error) { setMutationError(error.message); return false; }
+      if (error) {
+        if (prevSnapshot) setDocuments(prev => [prevSnapshot, ...prev]);
+        setMutationError(error.message);
+        return false;
+      }
       return true;
     } catch {
       await enqueue("documents.delete", { id, userId, filePath });

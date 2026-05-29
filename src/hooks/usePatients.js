@@ -356,6 +356,15 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       .eq("id", id).eq("user_id", userId);
     if (error) { setMutating(false); setMutationError(error.message); return false; }
 
+    // The patients UPDATE already landed server-side. Apply the same
+    // change to local state BEFORE the secondary sessions UPDATE so a
+    // failure on that second step doesn't leave the UI showing the
+    // old status while the DB has the new one (partial-commit
+    // window). Same shape we use when convertPotentialToActive can
+    // half-succeed.
+    setPatients(prev => prev.map(p => p.id === id
+      ? { ...p, status: PATIENT_STATUS.DISCARDED } : p));
+
     // Find scheduled interview rows for this patient via local state,
     // then filter to FUTURE only. Doing the date math client-side
     // sidesteps the "D-MMM" date format which doesn't sort
