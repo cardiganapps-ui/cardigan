@@ -1,6 +1,6 @@
 ---
 name: find-bugs
-description: Sweep the already-shipped codebase for bug classes that lint + vitest can't catch — prime-directive financial-integrity violations, enum/constraint mirror drift, silent UI failures, missing revert paths, auth/RLS gaps, design-system regressions, webhook/cron correctness, and date-format inconsistencies. Fans out parallel Explore agents per category, synthesizes findings into a ranked punch list. Pass a category name to scope (e.g. `/find-bugs financial`), `--effort low|medium|high|max` to tune depth, or `--fix` to apply the high-confidence findings after the report.
+description: Sweep the already-shipped codebase for bug classes that lint + vitest can't catch — prime-directive financial-integrity violations, enum/constraint mirror drift, silent UI failures, missing revert paths, auth/RLS gaps, design-system regressions, webhook/cron correctness, and date-format inconsistencies. Fans out parallel general-purpose agents per category, synthesizes findings into a ranked punch list. Pass a category name to scope (e.g. `/find-bugs financial`), `--effort low|medium|high|max` to tune depth, or `--fix` to apply the high-confidence findings after the report.
 ---
 
 # /find-bugs
@@ -17,7 +17,7 @@ Bug-hunt the **already-merged** code (not the current diff — that's what `/cod
 ## Orchestration
 
 1. **Parse args.** Default = all categories, effort=medium, fix=false.
-2. **Fan out.** For each category in scope, spawn an `Explore` agent in parallel (one tool-call block, multiple `Agent` calls). Each agent receives:
+2. **Fan out.** For each category in scope, spawn a `general-purpose` agent in parallel (one tool-call block, multiple `Agent` calls). Note: do NOT use `Explore` — its description excludes cross-file consistency work, which is what every category here is doing. Each agent receives:
    - The category's checklist (below) verbatim
    - The past-bug example for that category as ground truth
    - Output schema: a JSON array of `{ file, line, pattern, severity, confidence, why, fix_hint }`
