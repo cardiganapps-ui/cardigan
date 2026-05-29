@@ -423,6 +423,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const session = upcomingSessions.find(s => s.id === sessionId);
     setMutationError("");
 
+    // Snapshot before the optimistic mutation so we can revert on a
+    // server-side error. The soft-delete twin already does this; the
+    // hard-delete path used to leave a half-applied state on RLS
+    // denial / FK violation — prime-directive #5 says every mutation
+    // that touches money has a revert path.
+    const prevSession = session ? { ...session } : null;
+    const patient = session?.patient_id ? patients.find(p => p.id === session.patient_id) : null;
+    const prevPatient = patient ? { ...patient } : null;
+
     // Optimistic removal. Apply BEFORE the network branch so the UI
     // updates whether we hit the wire or queue.
     setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
@@ -430,18 +439,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // patient.sessions and patient.billed are recomputed by the trigger
     // (migration 069) on the DELETE. Local React state mirrors the
     // predicate-aware decrement so the UI doesn't lag.
-    if (session?.patient_id) {
-      const patient = patients.find(p => p.id === session.patient_id);
-      if (patient) {
-        const sessRate = session.rate ?? patient.rate ?? 0;
-        const wasBilled = sessionCountsTowardBalance(session);
-        const newSessions = Math.max(0, patient.sessions - 1);
-        const newBilled = wasBilled
-          ? Math.max(0, patient.billed - sessRate)
-          : patient.billed;
-        setPatients(prev => prev.map(p => p.id === patient.id
-          ? { ...p, sessions: newSessions, billed: newBilled } : p));
-      }
+    if (patient) {
+      const sessRate = session.rate ?? patient.rate ?? 0;
+      const wasBilled = sessionCountsTowardBalance(session);
+      const newSessions = Math.max(0, patient.sessions - 1);
+      const newBilled = wasBilled
+        ? Math.max(0, patient.billed - sessRate)
+        : patient.billed;
+      setPatients(prev => prev.map(p => p.id === patient.id
+        ? { ...p, sessions: newSessions, billed: newBilled } : p));
     }
 
     // Skip the wire when offline, or when this is a temp-id row that
@@ -463,7 +469,15 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      // Restore the row and the patient counter — the server rejected
+      // the delete (RLS denied, FK constraint, etc.) so the optimistic
+      // decrement was a lie.
+      if (prevSession) setUpcomingSessions(prev => [prevSession, ...prev]);
+      if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 

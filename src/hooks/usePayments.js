@@ -147,15 +147,21 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     const payment = payments.find(p => p.id === paymentId);
     setMutationError("");
 
+    // Snapshot before the optimistic mutation so we can revert on a
+    // server-side error. The soft-delete twin already does this; the
+    // hard-delete path used to leave a half-applied state on RLS
+    // denial / FK violation — prime-directive #5 says every mutation
+    // that touches money has a revert path.
+    const prevPayment = payment ? { ...payment } : null;
+    const patient = payment?.patient_id ? patients.find(p => p.id === payment.patient_id) : null;
+    const prevPatient = patient ? { ...patient } : null;
+
     // Optimistic removal + patient.paid decrement (trigger reconciles
     // the persisted value on the next refetch).
     setPayments(prev => prev.filter(p => p.id !== paymentId));
-    if (payment?.patient_id) {
-      const patient = patients.find(p => p.id === payment.patient_id);
-      if (patient) {
-        const newPaid = Math.max(0, patient.paid - payment.amount);
-        setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
-      }
+    if (patient) {
+      const newPaid = Math.max(0, patient.paid - payment.amount);
+      setPatients(prev => prev.map(p => p.id === patient.id ? { ...p, paid: newPaid } : p));
     }
 
     // Skip the network call when we know we can't reach it. Deleting
@@ -178,13 +184,23 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       const res = await supabase.from("payments").delete().eq("id", paymentId).eq("user_id", userId);
       error = res.error;
     } catch (e) {
-      // Transport-level failure — queue for retry.
+      // Transport-level failure — queue for retry. Optimistic state
+      // stays applied; the drain will sync the server when network
+      // returns.
       await enqueue("payments.delete", { id: paymentId, userId });
       setMutating(false);
       return true;
     }
     setMutating(false);
-    if (error) { setMutationError(error.message); return false; }
+    if (error) {
+      // Restore the row and the patient counter — the server rejected
+      // the delete (RLS denied, FK constraint, etc.) so the optimistic
+      // decrement was a lie.
+      if (prevPayment) setPayments(prev => [prevPayment, ...prev]);
+      if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
+      setMutationError(error.message);
+      return false;
+    }
     return true;
   }
 
