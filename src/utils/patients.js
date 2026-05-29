@@ -17,10 +17,17 @@ import { sessionCountsTowardBalance } from "./accounting";
  *              disagreed with the live amountDue calc.
  *   paid     = Σ amount over all payment rows for this patient
  *
+ * `tz` is the user's `notification_preferences.timezone`. Without it
+ * the JS predicate falls back to browser-local TZ, which diverges
+ * from the SQL twin near the +1h boundary for any user whose laptop
+ * isn't on their saved tz. Callers in the live UI thread it through
+ * from CardiganContext (`userTz`); the audit script reads it from
+ * notification_preferences per-user.
+ *
  * Returns the corrected { sessions, billed, paid } and persists them.
  * On failure returns null (caller should surface the error).
  */
-export async function recalcPatientCounters(patientId) {
+export async function recalcPatientCounters(patientId, tz) {
   const [{ data: sessRows, error: sErr }, { data: pmtRows, error: pErr }] = await Promise.all([
     // Predicate needs status + date + time for the past-scheduled auto-
     // complete branch. Rate sums into billed when counted.
@@ -34,7 +41,7 @@ export async function recalcPatientCounters(patientId) {
   let billed = 0;
   for (const s of sessRows || []) {
     sessions++;
-    if (sessionCountsTowardBalance(s, now)) {
+    if (sessionCountsTowardBalance(s, now, tz)) {
       billed += s.rate ?? 0;
     }
   }

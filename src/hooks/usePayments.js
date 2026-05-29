@@ -58,11 +58,14 @@ onReplay((entry, result) => {
     : p));
 });
 
-export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
+export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError, helpers) {
   // Refresh the module-level setPayments ref so the once-registered
   // onReplay listener writes into the live state holder. Cheap pointer
   // swap — re-running this per render is fine.
   _setPaymentsRef = setPayments;
+  // userTz governs the accounting predicate that recalcPatientCounters
+  // applies when reconciling on mutation failure (prime-directive #4).
+  const userTz = helpers?.userTz;
 
   // Optimistic: the PaymentModal closes in the same frame the user
   // taps Save. We add a temporary row with a client-side id, apply
@@ -291,7 +294,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
         return p;
       }));
       for (const patientId of patientUpdates.keys()) {
-        recalcPatientCounters(patientId).then((fixed) => {
+        recalcPatientCounters(patientId, userTz).then((fixed) => {
           if (fixed) setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...fixed } : p));
         }).catch(() => {});
       }

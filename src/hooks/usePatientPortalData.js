@@ -122,6 +122,16 @@ export function usePatientPortalData(user) {
   // therapist app uses, so the patient sees the EXACT amount the
   // therapist sees — single source of truth. The prime directive
   // is enforced by reusing the predicate, not by re-implementing.
+  //
+  // TODO: pass the therapist's tz here so the patient's view of the
+  // +1h auto-complete boundary matches what the therapist sees. The
+  // therapist's tz lives in their `notification_preferences.timezone`
+  // — patient-side RLS blocks direct reads, so this needs an RPC
+  // (`get_therapists_for_patient` should grow a `therapist_tz`
+  // column) before threading. Today the patient sees the predicate
+  // in their browser-local TZ, which is the same behavior as before
+  // the prime-directive #4 fix — no regression, but a remaining gap
+  // tracked separately.
   const enrichedPatients = useMemo(
     () => enrichPatientsWithBalance(patients, sessions),
     [patients, sessions]

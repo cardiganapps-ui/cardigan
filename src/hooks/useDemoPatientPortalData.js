@@ -48,7 +48,7 @@ function computeSnapshot() {
   if (!activePatient) return EMPTY;
 
   const ownSessions = seed.sessions.filter(s => s.patient_id === activePatient.id);
-  const enriched = enrichPatientsWithBalance([activePatient], ownSessions);
+  const enriched = enrichPatientsWithBalance([activePatient], ownSessions, undefined, "America/Mexico_City");
   const primaryPatient = enriched[0];
 
   // Synthetic therapist profile — production reads this from a

@@ -153,6 +153,9 @@ export function PatientAgenda({ data }) {
       .filter(s => {
         // Cancelled stays out of the upcoming list (it's not really
         // "upcoming" anymore). Auto-completed past-scheduled also out.
+        // TODO (prime-directive #4): pass therapist's tz once the
+        // get_therapists_for_patient RPC exposes it — see the
+        // matching TODO in usePatientPortalData.
         if (s.status === "cancelled") return false;
         if (sessionCountsTowardBalance(s, now)) return false;
         return s.status === "scheduled";

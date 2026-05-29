@@ -1052,7 +1052,7 @@ function GastosTab({
 // per the docstring on TAX_TREATMENT — keeping a personal Uber off
 // the business P&L while still letting the user keep one ledger.
 
-function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
+function ResumenTab({ payments, expenses, patients, upcomingSessions, userTz }) {
   const { t } = useT();
   const [period, setPeriod] = useState("thisMonth");
 
@@ -1155,7 +1155,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
     const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
     const counts = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
     for (const s of (upcomingSessions || [])) {
-      if (!sessionCountsTowardBalance(s, now)) continue;
+      if (!sessionCountsTowardBalance(s, now, userTz)) continue;
       const d = parseShortDate(s.date);
       if (!d || d < cutoff) continue;
       const dow = (d.getDay() + 6) % 7; // 0=Mon..6=Sun
@@ -1164,7 +1164,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
     const peak = counts.reduce((m, x) => Math.max(m, x), 0) || 1;
     const total = counts.reduce((s, x) => s + x, 0);
     return { counts, peak, total };
-  }, [upcomingSessions]);
+  }, [upcomingSessions, userTz]);
 
   const handleExport = () => {
     const year = new Date().getFullYear();
@@ -1446,6 +1446,7 @@ export function Finances() {
     openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet,
     deleteExpense, generatePendingRecurringExpenses,
     mutating, openExpediente, requestFabAction, readOnly,
+    userTz,
   } = useCardigan();
   const { t } = useT();
   const [tab, setTab] = useState("balances");
@@ -1604,6 +1605,7 @@ export function Finances() {
           expenses={expenses || []}
           patients={patients || []}
           upcomingSessions={upcomingSessions || []}
+          userTz={userTz}
         />
       )}
 

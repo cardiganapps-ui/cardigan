@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { generateDemoData } from "../data/demoData";
-import { parseShortDate } from "../utils/dates";
 import { getTutorReminders } from "../utils/sessions";
-import { enrichPatientsWithBalance } from "../utils/accounting";
+import { enrichPatientsWithBalance, sessionCountsTowardBalance } from "../utils/accounting";
 import { DEFAULT_PROFESSION } from "../data/constants";
 
 const noop = async () => false;
@@ -14,27 +13,29 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
   // a frame. useMemo avoids regen across unrelated re-renders.
   const data = useMemo(() => generateDemoData(profession), [profession]);
 
-  // Enrich sessions (auto-complete past ones)
+  // Enrich sessions (auto-complete past ones). Routes through
+  // sessionCountsTowardBalance with the demo's pinned tz so the UI
+  // label can't disagree with the accounting predicate that drives
+  // enrichedPatients below (prime-directive #4).
   const enrichedSessions = useMemo(() => {
     const now = new Date();
     return data.sessions.map(s => {
       if (s.status !== "scheduled") return s;
-      const d = parseShortDate(s.date);
-      if (s.time) {
-        const [h, m] = s.time.split(":");
-        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+      if (sessionCountsTowardBalance(s, now, "America/Mexico_City")) {
+        return { ...s, status: "completed" };
       }
-      d.setTime(d.getTime() + 60 * 60 * 1000);
-      if (now >= d) return { ...s, status: "completed" };
       return s;
     });
   }, [data.sessions]);
 
   // Mirror useCardiganData: iterate raw DB sessions (data.sessions), NOT
   // the enrichedSessions memo. Auto-completed display state must not
-  // influence accounting — see CLAUDE.md Prime Directive.
+  // influence accounting — see CLAUDE.md Prime Directive. Demo runs in
+  // America/Mexico_City — matches the SQL twin's default, keeps the
+  // demo's "expected" balances stable regardless of the visitor's
+  // browser TZ.
   const enrichedPatients = useMemo(
-    () => enrichPatientsWithBalance(data.patients, data.sessions),
+    () => enrichPatientsWithBalance(data.patients, data.sessions, undefined, "America/Mexico_City"),
     [data.patients, data.sessions]
   );
 
@@ -52,6 +53,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     rescheduleRequests: [], setRescheduleRequests: () => {},
     noteAttachments: [],
     tutorReminders,
+    userTz: "America/Mexico_City",
     loading: false,
     fetchError: "",
     mutating: false,

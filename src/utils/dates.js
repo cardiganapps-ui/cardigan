@@ -105,3 +105,48 @@ export function getInitials(name) {
 export function formatCurrency(n) {
   return `$${(n || 0).toLocaleString()}`;
 }
+
+/**
+ * Convert a wall-clock (year/month/day/hour/minute) interpreted in a
+ * given IANA timezone to a JS Date (a UTC instant). Used by the
+ * accounting predicate to keep the JS twin in lock-step with the SQL
+ * function `public.session_counts_at`, which builds the moment in the
+ * user's `notification_preferences.timezone`. Without this, a
+ * therapist whose browser TZ differs from their saved TZ (traveling,
+ * second device in another zone) would see UI `amountDue` diverge
+ * from the trigger-maintained `patient.billed` by exactly one rate
+ * around the +1h auto-complete boundary.
+ *
+ * Algorithm — no library:
+ *   1. Interpret the wall clock as if it were UTC (wrong by exactly
+ *      the TZ's offset at that moment).
+ *   2. Render that UTC instant in the target TZ via Intl.DateTimeFormat
+ *      to see what wall clock the TZ "sees".
+ *   3. The diff between the TZ's view and our naive UTC interpretation
+ *      is the TZ's offset (handles DST + historical offsets correctly).
+ *   4. The real UTC instant for our wall clock is naiveUTC minus that
+ *      offset.
+ *
+ * monthIdx is 0-based (matches the rest of this module + `Date`).
+ */
+export function wallClockInTzToDate(year, monthIdx, day, hour, minute, tz) {
+  const naiveUTC = Date.UTC(year, monthIdx, day, hour, minute);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date(naiveUTC));
+  const get = (type) => parts.find(p => p.type === type)?.value;
+  const tzYear = +get("year");
+  const tzMonth = +get("month") - 1;
+  const tzDay = +get("day");
+  // Intl reports midnight as "24" in some locales; normalize.
+  let tzHour = +get("hour");
+  if (tzHour === 24) tzHour = 0;
+  const tzMinute = +get("minute");
+  const tzAsUTC = Date.UTC(tzYear, tzMonth, tzDay, tzHour, tzMinute);
+  const offsetMs = tzAsUTC - naiveUTC;
+  return new Date(naiveUTC - offsetMs);
+}

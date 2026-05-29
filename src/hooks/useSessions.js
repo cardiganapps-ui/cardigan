@@ -130,7 +130,12 @@ onReplay((entry, result) => {
 const CONFLICT_MSG = "Esta sesión se editó en otro lugar. Volvimos a cargarla — intenta de nuevo.";
 const MISSING_MSG = "Esta sesión ya no existe.";
 
-export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
+export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, helpers) {
+  // userTz governs the accounting predicate's wall-clock parsing so the
+  // JS twin stays in lock-step with the SQL function `session_counts_at`
+  // (prime-directive #4). Defaults are intentionally absent here — the
+  // caller (useCardiganData) always passes one via `helpers.userTz`.
+  const userTz = helpers?.userTz;
   // Refresh the module-level ref so the once-registered onReplay
   // listener writes into the live state holder.
   _setUpcomingSessionsRef = setUpcomingSessions;
@@ -165,7 +170,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       // truth. The recalc is fire-and-forget because the conflict UX is
       // the primary feedback.
       setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-      recalcPatientCounters(prevPatient.id).then((fixed) => {
+      recalcPatientCounters(prevPatient.id, userTz).then((fixed) => {
         if (fixed) setPatients(prev => prev.map(p => p.id === prevPatient.id ? { ...p, ...fixed } : p));
       }).catch(() => {});
     }
@@ -250,6 +255,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const newSessions = patient.sessions + 1;
     const willCountNew = sessionCountsTowardBalance(
       { status: SESSION_STATUS.SCHEDULED, date: date.trim(), time: time.trim() },
+      undefined, userTz,
     );
     const newBilled = willCountNew ? patient.billed + sessionRate : patient.billed;
 
@@ -338,9 +344,9 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // Shared `now` between before/after probes so a session on the
     // auto-complete boundary doesn't flip mid-decision.
     const now = new Date();
-    const wasCounted = sessionCountsTowardBalance(session, now);
+    const wasCounted = sessionCountsTowardBalance(session, now, userTz);
     const nextShape = { ...session, status: newStatus };
-    const willCount = sessionCountsTowardBalance(nextShape, now);
+    const willCount = sessionCountsTowardBalance(nextShape, now, userTz);
     let targetBilled = null;
     if (patient && wasCounted !== willCount) {
       const sessRate = session.rate ?? patient.rate ?? 0;
@@ -441,7 +447,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // predicate-aware decrement so the UI doesn't lag.
     if (patient) {
       const sessRate = session.rate ?? patient.rate ?? 0;
-      const wasBilled = sessionCountsTowardBalance(session);
+      const wasBilled = sessionCountsTowardBalance(session, undefined, userTz);
       const newSessions = Math.max(0, patient.sessions - 1);
       const newBilled = wasBilled
         ? Math.max(0, patient.billed - sessRate)
@@ -503,7 +509,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     setUpcomingSessions(prev => prev.filter(s => s.id !== sessionId));
     if (patient) {
       const sessRate = session.rate ?? patient.rate ?? 0;
-      const wasBilled = sessionCountsTowardBalance(session);
+      const wasBilled = sessionCountsTowardBalance(session, undefined, userTz);
       const newSessions = Math.max(0, patient.sessions - 1);
       const newBilled = wasBilled
         ? Math.max(0, patient.billed - sessRate)
@@ -574,9 +580,9 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const patient = prevSession.patient_id ? patients.find(p => p.id === prevSession.patient_id) : null;
     const prevPatient = patient ? { ...patient } : null;
     const now = new Date();
-    const wasCounted = sessionCountsTowardBalance(prevSession, now);
+    const wasCounted = sessionCountsTowardBalance(prevSession, now, userTz);
     const nextShape = { ...prevSession, ...patch };
-    const willCount = sessionCountsTowardBalance(nextShape, now);
+    const willCount = sessionCountsTowardBalance(nextShape, now, userTz);
     let targetBilled = null;
     if (patient && wasCounted !== willCount) {
       const sessRate = prevSession.rate ?? patient.rate ?? 0;
@@ -683,7 +689,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     const now = new Date();
     const newSessions = patient.sessions + allRows.length;
     const countedDelta = allRows.reduce((sum, r) => (
-      sum + (sessionCountsTowardBalance(r, now) ? (r.rate ?? patient.rate ?? 0) : 0)
+      sum + (sessionCountsTowardBalance(r, now, userTz) ? (r.rate ?? patient.rate ?? 0) : 0)
     ), 0);
     const newBilled = patient.billed + countedDelta;
 
@@ -735,7 +741,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       // Matches the queue handler's swallow (sessions.bulk_insert
       // replay) so behavior is identical online vs. on drain.
       setMutating(false);
-      await recalcPatientCounters(patientId);
+      await recalcPatientCounters(patientId, userTz);
       return true;
     }
     if (error) { setMutating(false); setMutationError(error.message); return false; }
@@ -803,13 +809,13 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     let adjustedSessions = patient.sessions;
     if (toDelete.length > 0) {
       adjustedBilled -= toDelete.reduce((sum, s) => (
-        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
+        sum + (sessionCountsTowardBalance(s, now, userTz) ? (s.rate ?? patient.rate ?? 0) : 0)
       ), 0);
       adjustedSessions -= toDelete.length;
       setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
     }
     const countedDelta = allRows.reduce((sum, r) => (
-      sum + (sessionCountsTowardBalance(r, now) ? (r.rate ?? newRate ?? 0) : 0)
+      sum + (sessionCountsTowardBalance(r, now, userTz) ? (r.rate ?? newRate ?? 0) : 0)
     ), 0);
     const finalBilled = Math.max(0, adjustedBilled) + countedDelta;
     const finalSessions = Math.max(0, adjustedSessions) + allRows.length;
@@ -862,7 +868,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
           // The whole bulk rolled back; reconcile counters from truth.
           // Matches the queue handler's swallow (sessions.apply_schedule_
           // change replay) so behavior is identical online vs. on drain.
-          await recalcPatientCounters(patientId);
+          await recalcPatientCounters(patientId, userTz);
           setMutating(false);
           return true;
         }
@@ -918,7 +924,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     if (toDelete.length > 0) {
       const now = new Date();
       adjustedBilled -= toDelete.reduce((sum, s) => (
-        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patient.rate ?? 0) : 0)
+        sum + (sessionCountsTowardBalance(s, now, userTz) ? (s.rate ?? patient.rate ?? 0) : 0)
       ), 0);
       adjustedSessions -= toDelete.length;
       // Optimistic removal + status flip in local state.
@@ -1066,7 +1072,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // Optimistic patient.billed update — same predicate the SQL trigger
     // applies after the session UPDATE. The trigger persists; this is
     // purely for UI consistency until the next refetch.
-    if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session)) {
+    if (diff !== 0 && session.patient_id && sessionCountsTowardBalance(session, undefined, userTz)) {
       const patient = patients.find(p => p.id === session.patient_id);
       if (patient) {
         const newBilled = Math.max(0, patient.billed + diff);

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { loadCachedData, saveCachedData } from "../lib/dataCache";
 import { supabase } from "../supabaseClient";
-import { formatShortDate, normalizeShortDate, parseShortDate, toISODate } from "../utils/dates";
+import { formatShortDate, normalizeShortDate, toISODate } from "../utils/dates";
 import {
   ADMIN_EMAIL,
   RECURRENCE_EXTEND_THRESHOLD_DAYS,
@@ -19,8 +19,15 @@ import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
-import { enrichPatientsWithBalance } from "../utils/accounting";
+import { enrichPatientsWithBalance, sessionCountsTowardBalance } from "../utils/accounting";
 import { useFocusRefresh } from "./useFocusRefresh";
+
+// Default tz used until notification_preferences.timezone loads.
+// Matches the SQL function `session_counts_at` fallback so a cold
+// start can't silently drift the predicate. The bulk of users are
+// in Mexico; users on other tz see one render of MX-based balances
+// before the fetch completes and switches them to their saved tz.
+const DEFAULT_USER_TZ = "America/Mexico_City";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
@@ -588,6 +595,11 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   const [fetchError, setFetchError] = useState("");
   const [mutating, setMutating] = useState(false);
   const [mutationError, setMutationError] = useState("");
+  // The saved tz governs how the JS accounting predicate parses
+  // session date+time (must match the SQL twin's interpretation —
+  // prime-directive #4). Defaulted to America/Mexico_City for cold
+  // start; replaced once the notification_preferences fetch lands.
+  const [userTz, setUserTz] = useState(initialCache?.userTz || DEFAULT_USER_TZ);
 
   /* ── DATA FETCH + AUTO-EXTEND ── */
   const refresh = useCallback(async () => {
@@ -619,9 +631,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
     let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
-    let tRes, tlRes, naRes;
+    let tRes, tlRes, naRes, prefsRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, prefsRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -644,6 +656,13 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // Note attachments (Phase 5). Live rows only — the
         // `deleted_at is null` partial index makes this filter cheap.
         q("note_attachments", 2000).is("deleted_at", null).order("created_at", { ascending: false }),
+        // notification_preferences.timezone governs the accounting
+        // predicate (sessionCountsTowardBalance) so the JS twin stays
+        // in lock-step with the SQL function `session_counts_at`.
+        // Tiny payload — single row. maybeSingle() returns null for
+        // users who haven't set notifications yet, falling back to the
+        // module-level default.
+        supabase.from("notification_preferences").select("timezone").eq("user_id", userId).maybeSingle(),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -766,6 +785,12 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       }
     }
 
+    // Adopt the saved timezone if present. Falls back to the default
+    // when the user hasn't enabled notifications or the column was
+    // never written (older accounts).
+    const savedTz = prefsRes?.data?.timezone;
+    if (savedTz) setUserTz(savedTz);
+
     setPatients(pData);
     setUpcomingSessions(sData);
     setPayments(mapRows(pmRes.data));
@@ -841,13 +866,17 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   useFocusRefresh(refresh, { mutating });
 
   /* ── DOMAIN ACTIONS (delegated to focused modules) ── */
-  const helpers = { formatShortDate, getRecurringDates };
+  // `userTz` rides on `helpers` so the action factories (which use
+  // sessionCountsTowardBalance for predicate-aware counter deltas)
+  // stay in lock-step with the SQL twin. Pure helpers (formatShortDate,
+  // getRecurringDates) sit on the same bag for the same reason.
+  const helpers = { formatShortDate, getRecurringDates, userTz };
   const { createPatient, updatePatient, deletePatient, createPotential, discardPotential, convertPotentialToActive } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
   const { createSession, updateSessionStatus, deleteSession, softDeleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason } =
-    createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError);
+    createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError, helpers);
   const { createPayment, deletePayment, softDeletePayment, updatePayment } =
-    createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError);
+    createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError, helpers);
   const { createNote, updateNote, updateNoteLink, togglePinNote, deleteNote, deleteNotes, softDeleteNote, setNoteCover } =
     createNoteActions(userId, notes, setNotes, setMutating, setMutationError, noteCrypto);
   const { upsertTag, deleteTag, linkTag, unlinkTag } =
@@ -871,22 +900,21 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   });
 
   /* ── ENRICHMENT ── */
-  // Auto-complete is display-only — shows past scheduled sessions as "completed"
-  // but does NOT persist to DB. User can override any session status.
+  // Auto-complete is display-only — shows past scheduled sessions as
+  // "completed" but does NOT persist to DB. User can override any
+  // session status. Routes through sessionCountsTowardBalance with the
+  // saved tz so the UI label can't disagree with the accounting
+  // predicate (prime-directive #4).
   const enrichedSessions = useMemo(() => {
     const now = new Date();
     return upcomingSessions.map(s => {
       if (s.status !== SESSION_STATUS.SCHEDULED) return s;
-      const d = parseShortDate(s.date);
-      if (s.time) {
-        const [h, m] = s.time.split(":");
-        d.setHours(parseInt(h) || 0, parseInt(m) || 0);
+      if (sessionCountsTowardBalance(s, now, userTz)) {
+        return { ...s, status: SESSION_STATUS.COMPLETED, _autoCompleted: true };
       }
-      d.setTime(d.getTime() + 60 * 60 * 1000);
-      if (now >= d) return { ...s, status: SESSION_STATUS.COMPLETED, _autoCompleted: true };
       return s;
     });
-  }, [upcomingSessions]);
+  }, [upcomingSessions, userTz]);
 
   // amountDue / credit follow the canonical formula in CLAUDE.md — and
   // CRITICALLY iterate the raw DB sessions (upcomingSessions), not the
@@ -895,8 +923,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // un-maintained scheduled session silently count as "consumed" and
   // inflate balances by months of phantom activity.
   const enrichedPatients = useMemo(
-    () => enrichPatientsWithBalance(patients, upcomingSessions),
-    [patients, upcomingSessions]
+    () => enrichPatientsWithBalance(patients, upcomingSessions, undefined, userTz),
+    [patients, upcomingSessions, userTz]
   );
 
   const tutorReminders = useMemo(() =>
@@ -939,6 +967,12 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     rescheduleRequests, setRescheduleRequests,
     tags, tagLinks,
     noteAttachments,
+    // Exposed for consumers that need the accounting predicate (KPI
+    // tiles, finance screens, patient portal). All use sites must pass
+    // this through to sessionCountsTowardBalance / enrichPatientsWith-
+    // Balance so the JS predicate stays in lock-step with the SQL
+    // function evaluated by the counter triggers.
+    userTz,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),

@@ -22,7 +22,13 @@ import { sessionCountsTowardBalance } from "./accounting";
 // computeConsumedByPatient). Production callers omit it and get real
 // wall-clock time. Without this seam, tests that hardcode session dates
 // silently break once real time drifts past the hardcoded reference.
-export function classifySessions(sessions, patientIds, now = new Date()) {
+//
+// `tz` is the saved timezone (`notification_preferences.timezone`). On
+// the therapist side it threads through from CardiganContext. On the
+// patient side it should ride the therapist's tz (TODO — see the
+// matching note in usePatientPortalData; today this falls back to
+// browser-local TZ).
+export function classifySessions(sessions, patientIds, now = new Date(), tz) {
   const ids = new Set(patientIds || []);
   const filtered = (sessions || []).filter((s) => ids.has(s.patient_id));
   const future = [];
@@ -32,7 +38,7 @@ export function classifySessions(sessions, patientIds, now = new Date()) {
     // completed slots. We use it to decide "this scheduled slot
     // is past" — anything else with status='scheduled' AND
     // un-passed is the actual future bucket.
-    const isStrictlyFuture = s.status === "scheduled" && !sessionCountsTowardBalance(s, now);
+    const isStrictlyFuture = s.status === "scheduled" && !sessionCountsTowardBalance(s, now, tz);
     if (isStrictlyFuture) future.push(s);
     else past.push(s);
   }

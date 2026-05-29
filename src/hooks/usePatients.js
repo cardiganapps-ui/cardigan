@@ -4,7 +4,7 @@ import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
-export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
+export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates, userTz }) {
 
   async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult }) {
     if (!name?.trim()) return false;
@@ -126,7 +126,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         // If the returned row count doesn't match the counters we
         // pre-stamped on the patient, reconcile via recalc.
         if (sessData.length !== seedCount) {
-          const fixed = await recalcPatientCounters(data.id);
+          const fixed = await recalcPatientCounters(data.id, userTz);
           if (fixed) updatedPatient = { ...newPatient, ...fixed };
         }
       } else if (sessErr?.code === "23505") {
@@ -135,12 +135,12 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         // request. The colliding rows are in the DB; reconcile our
         // counters from truth rather than leaving them pre-stamped.
         // Next refresh picks up the actual session rows.
-        const fixed = await recalcPatientCounters(data.id);
+        const fixed = await recalcPatientCounters(data.id, userTz);
         if (fixed) updatedPatient = { ...newPatient, ...fixed };
       } else {
         // Session insert failed — roll the counters back on the patient
         // so amountDue doesn't show a phantom balance.
-        const fixed = await recalcPatientCounters(data.id);
+        const fixed = await recalcPatientCounters(data.id, userTz);
         if (fixed) updatedPatient = { ...newPatient, ...fixed };
       }
     }
@@ -330,7 +330,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     } else {
       // Session insert failed — bring patient counters back in line
       // with truth so amountDue doesn't show a phantom interview.
-      const fixed = await recalcPatientCounters(patientRow.id);
+      const fixed = await recalcPatientCounters(patientRow.id, userTz);
       if (fixed) updatedPatient = { ...newPatient, ...fixed };
     }
 
@@ -394,7 +394,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     // the new truth. Past completed interviews continue to count
     // toward billed (the consultation actually happened); only the
     // newly-cancelled future rows drop out.
-    const fixed = await recalcPatientCounters(id);
+    const fixed = await recalcPatientCounters(id, userTz);
     setPatients(prev => prev.map(p => p.id === id
       ? { ...p, status: PATIENT_STATUS.DISCARDED, ...(fixed || {}) }
       : p
@@ -540,7 +540,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       if (!sessErr && sessData) {
         setUpcomingSessions(prev => [...prev, ...sessData.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
         if (sessData.length !== seedCount) {
-          const fixed = await recalcPatientCounters(id);
+          const fixed = await recalcPatientCounters(id, userTz);
           if (fixed) {
             setPatients(prev => prev.map(p => p.id === id ? { ...updated, colorIdx: updated.color_idx, ...fixed } : p));
             setMutating(false);
@@ -548,7 +548,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
           }
         }
       } else {
-        const fixed = await recalcPatientCounters(id);
+        const fixed = await recalcPatientCounters(id, userTz);
         if (fixed) {
           setPatients(prev => prev.map(p => p.id === id ? { ...updated, colorIdx: updated.color_idx, ...fixed } : p));
           setMutating(false);

@@ -309,3 +309,74 @@ describe("interview sessions (potential patients)", () => {
     expect(out.amountDue).toBe(700);
   });
 });
+
+/* ── Timezone-aware predicate (prime-directive #4) ──
+   The SQL function `public.session_counts_at` evaluates the +1h
+   auto-complete window in the user's `notification_preferences.tz`.
+   The JS predicate used to evaluate it in browser-local TZ, which
+   meant a therapist whose laptop was in (e.g.) Europe/London while
+   their saved tz was America/Mexico_City would see the UI-derived
+   `amountDue` diverge from the trigger-maintained `patient.billed`
+   by exactly one rate near the boundary.
+
+   These tests pin the JS twin's TZ-aware behavior to the same rules
+   the SQL function follows, so a future drift in either direction
+   fails CI before reaching production. */
+describe("sessionCountsTowardBalance with explicit tz", () => {
+  // Pinned instant: 2026-04-24 16:00 UTC = 10:00 in America/Mexico_City
+  // (which is UTC-6 year-round; Mexico abolished DST in 2022).
+  const REF = new Date("2026-04-24T16:00:00Z");
+
+  it("a session ending exactly at REF in the saved tz flips to counted", () => {
+    // 24-Abr 09:00 MX + 1h = 24-Abr 10:00 MX = 16:00 UTC = REF. now >= end.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "24-Abr", time: "09:00" }),
+      REF, "America/Mexico_City",
+    )).toBe(true);
+  });
+
+  it("a session ending one minute after REF in the saved tz is NOT counted", () => {
+    // 24-Abr 09:01 MX + 1h = 24-Abr 10:01 MX = 16:01 UTC. now < end.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "24-Abr", time: "09:01" }),
+      REF, "America/Mexico_City",
+    )).toBe(false);
+  });
+
+  it("same predicate, same instant, different tz → different answer at the boundary", () => {
+    // Session at "24-Abr 09:30". REF = 16:00 UTC.
+    //  • In America/Mexico_City: session-end = 10:30 MX = 16:30 UTC.
+    //    16:00 < 16:30 → NOT counted.
+    //  • In UTC: session-end = 24-Abr 10:30 UTC. 16:00 > 10:30 → counted.
+    // This is the exact failure mode the prime-directive guards against.
+    const s = sess("p", "scheduled", 700, { date: "24-Abr", time: "09:30" });
+    expect(sessionCountsTowardBalance(s, REF, "America/Mexico_City")).toBe(false);
+    expect(sessionCountsTowardBalance(s, REF, "UTC")).toBe(true);
+  });
+
+  it("auto-complete window crosses midnight cleanly in the saved tz", () => {
+    // 23-Abr 23:45 MX + 1h = 24-Abr 00:45 MX = 06:45 UTC. REF = 16:00 UTC.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "23-Abr", time: "23:45" }),
+      REF, "America/Mexico_City",
+    )).toBe(true);
+  });
+
+  it("year-boundary inference (Dec/Jan) uses the saved tz", () => {
+    // REF = 24-Abr-26 in MX. Closest year for "31-Dic" is 2025.
+    // 31-Dic 23:00 MX 2025 + 1h = 1-Ene 00:00 MX 2026 = 06:00 UTC 1-Ene-26.
+    // Well before REF — counted.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "31-Dic", time: "23:00" }),
+      REF, "America/Mexico_City",
+    )).toBe(true);
+  });
+
+  it("explicit year in date string ('1-Ene-27') is honored under tz", () => {
+    // 1-Ene-27 = 2027, well after REF (2026-04). NOT counted.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "1-Ene-27", time: "10:00" }),
+      REF, "America/Mexico_City",
+    )).toBe(false);
+  });
+});
