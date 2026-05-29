@@ -292,7 +292,18 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       setMutating(false);
       return true;
     }
-    if (error) { setMutating(false); setMutationError(error.message); return false; }
+    if (error) {
+      setMutating(false);
+      // 23505 = collision on uniq_sessions_patient_date_time. Surface
+      // a friendly Spanish message instead of the raw Postgres text so
+      // a user who picked an already-booked slot understands the why.
+      if (error.code === "23505") {
+        setMutationError("Ya hay una sesión en ese horario.");
+      } else {
+        setMutationError(error.message);
+      }
+      return false;
+    }
 
     // patient.sessions and patient.billed are maintained server-side
     // by trg_sessions_recalc_counters (migration 069). Local React

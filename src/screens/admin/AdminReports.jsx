@@ -177,7 +177,7 @@ export function AdminReports() {
               background: "rgba(197, 68, 59, 0.10)",
               color: "var(--admin-danger)",
               padding: "10px 14px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               fontSize: 12.5,
               border: "1px solid rgba(197, 68, 59, 0.20)",
             }}

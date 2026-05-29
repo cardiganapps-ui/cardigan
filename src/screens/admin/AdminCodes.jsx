@@ -66,7 +66,7 @@ export function AdminCodes() {
             style={{
               height: 32, padding: "0 12px", fontSize: 12.5,
               background: "var(--admin-text)", color: "var(--admin-surface)",
-              display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8,
+              display: "inline-flex", alignItems: "center", gap: 6, borderRadius: "var(--radius-sm)",
             }}
           >
             <IconPlus size={14} /> {t("admin.codes.newAction")}
@@ -80,7 +80,7 @@ export function AdminCodes() {
               background: "rgba(197, 68, 59, 0.10)",
               color: "var(--admin-danger)",
               padding: "10px 14px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               fontSize: 12.5,
               border: "1px solid rgba(197, 68, 59, 0.20)",
             }}

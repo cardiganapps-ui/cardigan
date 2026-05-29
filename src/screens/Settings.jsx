@@ -1163,7 +1163,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         fontSize:"var(--text-sm)", color:"var(--charcoal)",
                         padding:"6px 8px",
                         background:"rgba(255,255,255,0.55)",
-                        borderRadius:8,
+                        borderRadius:"var(--radius-sm)",
                       }}>
                         <span style={{
                           flexShrink:0, width:20, height:20, borderRadius:"50%",
@@ -1206,7 +1206,7 @@ export function Settings({ user, signOut, refreshUser }) {
                             marginTop:8, height:28, padding:"0 12px",
                             fontSize:12, fontWeight:700,
                             background:"var(--amber)", color:"var(--white)",
-                            border:"none", borderRadius:6, cursor: togglePending ? "default" : "pointer",
+                            border:"none", borderRadius:"var(--radius-sm)", cursor: togglePending ? "default" : "pointer",
                             opacity: togglePending ? 0.7 : 1,
                           }}
                         >
@@ -1538,7 +1538,7 @@ export function Settings({ user, signOut, refreshUser }) {
                       <div style={{ width:56, height:56, borderRadius:"50%",
                         display:"flex", alignItems:"center", justifyContent:"center",
                         background:"var(--white)", color: accentColor, margin:"0 auto 12px",
-                        boxShadow:"0 2px 10px rgba(0,0,0,0.06)" }}>
+                        boxShadow:"var(--shadow-sm)" }}>
                         <HeroIcon size={24} />
                       </div>
                       <div style={{ fontFamily:"var(--font-d)", fontSize:18, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-0.3px", lineHeight:1.2 }}>

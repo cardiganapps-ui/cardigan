@@ -509,7 +509,7 @@ function RatingsBlock({ ratings, t, embedded = false }) {
             style={{
               padding: "10px 12px",
               border: "1px solid var(--admin-border)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               background: "var(--admin-surface)",
             }}
           >

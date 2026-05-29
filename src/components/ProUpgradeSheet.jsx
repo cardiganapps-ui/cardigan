@@ -85,7 +85,7 @@ export function ProUpgradeSheet({ open, feature, onClose }) {
             transform: mounted ? "translateY(0)" : "translateY(28px)",
             transition: "transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)",
             overflow: "hidden",
-            boxShadow: "0 -10px 40px rgba(0,0,0,0.18)",
+            boxShadow: "var(--shadow-lg)",
           }}
         >
           {/* Drag handle so the sheet feels like the rest of Settings. */}
