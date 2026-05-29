@@ -277,6 +277,10 @@ describe("createSession", () => {
   // if two tabs raced. The DB-level unique index now returns 23505. The handler
   // must NOT increment patient counters on an insert error — otherwise the
   // losing tab's counter drifts upward while the DB holds exactly one row.
+  //
+  // The user-facing message was hardened in the /find-bugs sweep: instead of
+  // surfacing the raw Postgres "duplicate key …" text we show a friendly
+  // Spanish message ("Ya hay una sesión en ese horario.").
   it("23505 unique-violation: returns false and does NOT increment patient counter", async () => {
     const ctx = seed();
     mock.enqueue("sessions", { data: null, error: { message: "duplicate key value violates unique constraint", code: "23505" } });
@@ -287,7 +291,7 @@ describe("createSession", () => {
     expect(ctx.patients.get()[0].sessions).toBe(4);
     expect(ctx.patients.get()[0].billed).toBe(4000);
     expect(ctx.upcomingSessions.get()).toHaveLength(0);
-    expect(ctx.mutationError.get()).toContain("duplicate key");
+    expect(ctx.mutationError.get()).toBe("Ya hay una sesión en ese horario.");
   });
 });
 
