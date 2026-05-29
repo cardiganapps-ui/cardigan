@@ -66,6 +66,16 @@
      freeze. */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Contain the native overscroll/rubber-band so a scroll inside the
+     panel can't chain to the page behind the overlay. Without this,
+     touching the panel body and pulling past a scroll edge propagates
+     to .shell / main-content under the scrim; the overlay's
+     backdrop-filter then re-renders against the shifted background
+     and the user sees the dimmed app chrome slide — even though the
+     overlay element itself never moves. Pairs with touch-action:none
+     on .sheet-handle and .sheet-header (pure drag zones) so the same
+     leak can't happen via those surfaces either. */
+  overscroll-behavior: contain;
   /* Layout/style containment isolates the panel's reflows from the
      document. When iOS recomputes layout for the AutoFill bar or a
      focus-induced scroll, the work stops at the panel boundary
