@@ -232,7 +232,7 @@ export function CardiSheet({ open, onClose }) {
             alignItems: "center",
             gap: 6,
             background: "var(--cream)",
-            borderRadius: 22,
+            borderRadius: "var(--radius-lg)",
             padding: "4px 4px 4px 16px",
             minHeight: 44,
           }}>
@@ -407,7 +407,7 @@ function CardiBubble({ message, t, onRetry, pending }) {
           background: "var(--red-bg)",
           color: "var(--red)",
           padding: "10px 14px",
-          borderRadius: 14,
+          borderRadius: "var(--radius)",
           fontSize: 13,
           lineHeight: 1.45,
         }}>

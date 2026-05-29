@@ -45,7 +45,7 @@ export function BulkActionsBar({ count, onCancelNoCharge, onCancelCharge, onDele
         onClick={onExit}
         aria-label={t("close")}
         style={{
-          width: 36, height: 36, borderRadius: 10, border: "none",
+          width: 36, height: 36, borderRadius: "var(--radius-sm)", border: "none",
           background: "rgba(255,255,255,0.12)", color: "var(--white)",
           display: "inline-flex", alignItems: "center", justifyContent: "center",
         }}
@@ -62,7 +62,7 @@ export function BulkActionsBar({ count, onCancelNoCharge, onCancelCharge, onDele
         onClick={onCancelNoCharge}
         disabled={dim}
         style={{
-          height: 36, padding: "0 12px", borderRadius: 10, border: "none",
+          height: 36, padding: "0 12px", borderRadius: "var(--radius-sm)", border: "none",
           background: dim ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.16)",
           color: "var(--white)", fontSize: 13, fontWeight: 700,
           opacity: dim ? 0.5 : 1, cursor: dim ? "default" : "pointer",
@@ -74,7 +74,7 @@ export function BulkActionsBar({ count, onCancelNoCharge, onCancelCharge, onDele
         onClick={onCancelCharge}
         disabled={dim}
         style={{
-          height: 36, padding: "0 12px", borderRadius: 10, border: "none",
+          height: 36, padding: "0 12px", borderRadius: "var(--radius-sm)", border: "none",
           background: dim ? "rgba(255,255,255,0.06)" : "rgba(232,184,108,0.85)",
           color: dim ? "var(--white)" : "var(--charcoal)",
           fontSize: 13, fontWeight: 700,
@@ -88,7 +88,7 @@ export function BulkActionsBar({ count, onCancelNoCharge, onCancelCharge, onDele
         disabled={dim}
         aria-label={t("agenda.bulkDelete")}
         style={{
-          width: 36, height: 36, borderRadius: 10, border: "none",
+          width: 36, height: 36, borderRadius: "var(--radius-sm)", border: "none",
           background: dim ? "rgba(255,255,255,0.06)" : "rgba(217,107,107,0.85)",
           color: "var(--white)",
           display: "inline-flex", alignItems: "center", justifyContent: "center",

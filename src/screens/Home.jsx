@@ -464,10 +464,10 @@ export function Home({ setScreen, userName }) {
             <div style={{ width: "50%", flexShrink: 0 }}>
               <div className="card">
                 {todaySessions.length === 0
-                  ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                      <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                  ? <div className="empty-state">
+                      <div className="empty-state-icon"><IconSun size={20} /></div>
+                      <div className="empty-state-title">{t("sessions.freeDay")}</div>
+                      <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
                     </div>
                   : todaySessions.map(renderSessionRow)
                 }
@@ -477,10 +477,10 @@ export function Home({ setScreen, userName }) {
             <div style={{ width: "50%", flexShrink: 0 }}>
               <div className="card">
                 {nextDaySessions.length === 0
-                  ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                      <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                  ? <div className="empty-state">
+                      <div className="empty-state-icon"><IconSun size={20} /></div>
+                      <div className="empty-state-title">{t("sessions.freeDay")}</div>
+                      <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
                     </div>
                   : nextDaySessions.map(renderSessionRow)
                 }
@@ -513,10 +513,10 @@ export function Home({ setScreen, userName }) {
             <div className="home-panel-meta">{t("sessions.today")} · {todayDayName} {todayStr}</div>
             <div className="card">
               {todaySessions.length === 0
-                ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                    <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                    <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                ? <div className="empty-state">
+                    <div className="empty-state-icon"><IconSun size={20} /></div>
+                    <div className="empty-state-title">{t("sessions.freeDay")}</div>
+                    <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
                   </div>
                 : todaySessions.map(renderSessionRow)
               }
@@ -526,10 +526,10 @@ export function Home({ setScreen, userName }) {
             <div className="home-panel-meta">{nextDayLabel === nextDayName ? <>{nextDayName} {nextDayStr}</> : <>{nextDayLabel} · {nextDayName} {nextDayStr}</>}</div>
             <div className="card">
               {nextDaySessions.length === 0
-                ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                    <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                    <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+                ? <div className="empty-state">
+                    <div className="empty-state-icon"><IconSun size={20} /></div>
+                    <div className="empty-state-title">{t("sessions.freeDay")}</div>
+                    <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
                   </div>
                 : nextDaySessions.map(renderSessionRow)
               }

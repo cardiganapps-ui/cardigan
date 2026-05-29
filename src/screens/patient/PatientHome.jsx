@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
-import { shortDateToISO, formatShortDateWithYear } from "../../utils/dates";
+import { shortDateToISO, formatShortDateWithYear, FULL_MONTHS } from "../../utils/dates";
 import { formatMXN } from "../../utils/format";
 import { classifySessions } from "../../hooks/usePatientPortalData";
 import { usePatientDocuments } from "../../hooks/usePatientDocuments";
@@ -87,7 +87,6 @@ const MODALITY_COLOR = {
 };
 
 const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const MONTH_NAMES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 function dayName(iso) {
   const d = new Date(iso + "T12:00:00");
@@ -164,7 +163,7 @@ function computeJourneyStats(allSessions, patientId) {
     const years = Math.floor(months / 12);
     durationLabel = years === 1 ? "hace un año" : `hace ${years} años`;
   }
-  const startLabel = `${firstDate.getDate()} de ${MONTH_NAMES[firstDate.getMonth()]} de ${firstDate.getFullYear()}`;
+  const startLabel = `${firstDate.getDate()} de ${FULL_MONTHS[firstDate.getMonth()].toLowerCase()} de ${firstDate.getFullYear()}`;
   return { firstSessionDate: startLabel, durationLabel, completedCount };
 }
 

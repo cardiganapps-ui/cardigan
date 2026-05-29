@@ -2,6 +2,13 @@
 
 export const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
+// Full Spanish month names. Lives here alongside SHORT_MONTHS so any
+// future locale fix (accent change, region variant) updates exactly
+// one source. Display surfaces that want them lowercased should do so
+// inline (e.g. "10 de enero de 2026") — keeping the canonical form
+// capitalized matches the i18n strings.months bundle.
+export const FULL_MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
 // Split day/month from either "14-Abr" (canonical) or the legacy "14 Abr"
 // form still present in historical DB rows. Also tolerates an optional
 // third component ("14-Abr-26") which is stripped here — the year carries

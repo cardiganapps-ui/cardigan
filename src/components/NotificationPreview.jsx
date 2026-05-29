@@ -30,7 +30,7 @@ export function NotificationPreview({ upcoming, reminderMinutes }) {
         margin: "10px 14px 14px",
         padding: "12px 14px",
         background: "var(--charcoal-fog, rgba(12, 17, 29, 0.06))",
-        borderRadius: 14,
+        borderRadius: "var(--radius)",
         display: "flex",
         gap: 12,
         alignItems: "flex-start",

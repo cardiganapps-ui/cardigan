@@ -477,13 +477,17 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientN
       <div style={{ padding:"0 16px 12px" }}>
         {daySessions.length === 0
           ? filterPatientName
-            ? <div className="card" style={{ padding:32, textAlign:"center" }}>
-                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+            ? <div className="card">
+                <div className="empty-state">
+                  <div className="empty-state-body">{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+                </div>
               </div>
-            : <div className="card" style={{ padding:32, textAlign:"center" }}>
-                <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
+            : <div className="card">
+                <div className="empty-state">
+                  <div className="empty-state-icon"><IconSun size={20} /></div>
+                  <div className="empty-state-title">{t("sessions.freeDay")}</div>
+                  <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
+                </div>
               </div>
           : <div className="card">
               {daySessions.map(s => (
@@ -1051,12 +1055,16 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
         </div>
         {daySessions.length === 0
           ? filterPatientName
-            ? <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+            ? <div className="card">
+                <div className="empty-state">
+                  <div className="empty-state-body">{t("agenda.noSessionsForPatient", { name: filterPatientName })}</div>
+                </div>
               </div>
-            : <div className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
-                <div style={{ marginBottom:6, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
+            : <div className="card">
+                <div className="empty-state">
+                  <div className="empty-state-icon"><IconSun size={20} /></div>
+                  <div className="empty-state-body">{t("sessions.freeDay")}</div>
+                </div>
               </div>
           : <div className="card">
               {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}

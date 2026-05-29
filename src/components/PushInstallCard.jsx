@@ -95,7 +95,7 @@ export function PushInstallCard() {
             display: "flex", alignItems: "center", gap: 10,
             padding: "8px 10px",
             background: "rgba(255,255,255,0.55)",
-            borderRadius: 10,
+            borderRadius: "var(--radius-sm)",
             fontSize: "var(--text-sm)",
             color: "var(--charcoal)",
           }}>

@@ -614,9 +614,11 @@ function ProyeccionTab({ sessions, patients }) {
       )}
 
       {futureSessions.length === 0 && (
-        <div className="card" style={{ padding:32, textAlign:"center" }}>
-          <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconTrendingUp size={32} /></div>
-          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("finances.forecastNoSessions")}</div>
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon"><IconTrendingUp size={20} /></div>
+            <div className="empty-state-body">{t("finances.forecastNoSessions")}</div>
+          </div>
         </div>
       )}
     </div>
@@ -1503,18 +1505,16 @@ export function Finances() {
             </button>
           </div>
           {noPatients && (
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"32px 24px" }}>
-              <div style={{ width:56, height:56, background:"var(--teal-pale)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, color:"var(--teal)" }}>
-                <IconUsers size={26} />
-              </div>
-              <div style={{ fontFamily:"var(--font-d)", fontSize:17, fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>{t("patients.noPatients")}</div>
-              <div style={{ fontSize:13, color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:18 }}>{t("patients.addFirst")}</div>
+            <div className="empty-state">
+              <div className="empty-state-icon"><IconUsers size={20} /></div>
+              <div className="empty-state-title">{t("patients.noPatients")}</div>
+              <div className="empty-state-body">{t("patients.addFirst")}</div>
               {!readOnly && (
                 <button
                   type="button"
                   onClick={() => requestFabAction?.("patient")}
                   className="btn btn-primary"
-                  style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+                  style={{ marginTop:6, display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
                   <IconPlus size={16} /> {t("patients.addFirstCta")}
                 </button>
               )}
