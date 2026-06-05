@@ -117,10 +117,9 @@ jobs:
       - name: Layer entitlements + Privacy Manifest
         run: bash scripts/apply-ios-config.sh
 
-      - name: Install CocoaPods deps
-        run: |
-          cd ios/App
-          pod install
+      # Capacitor 8 ships with Swift Package Manager by default — no
+      # Podfile, no xcworkspace. xcodebuild resolves SPM deps itself
+      # at -project parse time, so no separate install step is needed.
 
       - name: Decode App Store Connect API key
         env:
@@ -138,7 +137,7 @@ jobs:
           ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
