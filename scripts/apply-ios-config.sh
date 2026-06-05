@@ -35,6 +35,22 @@ if ! /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" "$PLIST" | grep -q "r
   /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes: string remote-notification" "$PLIST"
 fi
 
+# Export compliance — ITSAppUsesNonExemptEncryption = NO bypasses the
+# per-upload compliance questionnaire in App Store Connect. Without
+# this key, every new TestFlight build lands in "Missing Compliance"
+# status until a human clicks Manage and re-answers the export
+# regulations questions. With it, App Store Connect trusts our
+# declaration: Cardigan only uses HTTPS + standard NIST cryptographic
+# algorithms (AES-GCM, RSA-OAEP, PBKDF2 via WebCrypto), all of which
+# qualify for the §740.17(b) mass-market exemption from US export
+# documentation requirements. No proprietary or non-standard
+# encryption is implemented anywhere in the codebase.
+if /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$PLIST" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+else
+  /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+fi
+
 # CFBundleURLTypes for custom-scheme deep links isn't needed —
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.
