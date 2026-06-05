@@ -109,4 +109,5 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
 // Captcha adds no real security inside a signed App Store binary
 // anyway: the request isn't replayable from outside the app context,
 // and the JS that calls Supabase ships only inside the bundle.
+// eslint-disable-next-line react-refresh/only-export-components
 export const TURNSTILE_ENABLED = !!SITE_KEY && !isNative();

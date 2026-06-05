@@ -146,6 +146,8 @@ export default {
 
   // ── Auth ──
   auth: {
+    nativeTagline: "Tu práctica, en orden.",
+    tryDemo: "Probar demo",
     signIn: "Entrar",
     signUp: "Crear cuenta",
     createAccount: "Crear mi cuenta",

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
-import { IconX, IconGoogle, IconApple, IconSparkle } from "../components/Icons";
+import { IconX, IconGoogle, IconApple, IconSparkle, IconLink } from "../components/Icons";
 import { PasswordInput } from "../components/PasswordInput";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { isNative } from "../lib/platform";
 
 /* ── Verification panel ──
    Shown inside the auth sheet when signUp returns pendingVerification
@@ -624,6 +625,26 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
     if (autoOpen === "signup" || autoOpen === "login") openAuth(autoOpen);
   }
 
+  // Native iOS / Android: skip the marketing landing entirely and
+  // render the AuthForm as a full-screen branded experience. Users
+  // installed the app — they don't need the "what is Cardigan" pitch
+  // before they can sign in. The native shell has a Cardigan-branded
+  // header at top, the same AuthForm in the middle, and a discreet
+  // "Probar demo" link in the footer so App Store reviewers still
+  // have a one-tap path into the seeded reviewer account.
+  if (isNative()) {
+    return (
+      <NativeAuthShell
+        onSignIn={onSignIn}
+        onSignUp={onSignUp}
+        onProvider={onProvider}
+        onMagicLink={onMagicLink}
+        onDemo={onDemo}
+        t={t}
+      />
+    );
+  }
+
   return (
     <>
       {/* LandingPage stays mounted across renders so the close
@@ -666,5 +687,108 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
         </div>
       )}
     </>
+  );
+}
+
+/* ── NativeAuthShell ──
+   Full-screen iOS/Android auth surface. Same AuthForm that powers the
+   web sheet, wrapped in a Cardigan-branded shell so the user lands on
+   a real first-launch screen instead of a sheet stacked over a
+   marketing page they didn't ask to see.
+
+   Sections, top → bottom:
+     - Hero: small accent card with the Cardigan link glyph + name +
+       a one-line tagline. No mockups or pitch — they installed the
+       app, they know what it is.
+     - AuthForm: the same component the web sheet uses — handles
+       sign-in / sign-up / reset, OAuth providers (Apple Sign In on
+       iOS native uses the Capacitor plugin), magic link.
+     - Footer: discreet "Probar demo" link so App Store reviewers
+       still have a one-tap path into the seeded reviewer account. */
+function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo, t }) {
+  const [mode, setMode] = useState("login");
+  return (
+    <div
+      style={{
+        minHeight: "100dvh",
+        background: "var(--white)",
+        display: "flex",
+        flexDirection: "column",
+        paddingTop: "calc(var(--sat, env(safe-area-inset-top, 0px)) + 32px)",
+        paddingBottom: "calc(var(--sab, env(safe-area-inset-bottom, 0px)) + 16px)",
+      }}
+    >
+      {/* Branded hero. Compact — no marketing pitch, no screenshot
+          mockup. Just identity so the user knows what app they're in. */}
+      <div style={{ padding: "0 24px 22px", textAlign: "center" }}>
+        <div
+          style={{
+            width: 64, height: 64, borderRadius: "var(--radius-lg)",
+            background: "var(--teal-pale)", color: "var(--teal-dark)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            marginBottom: 14,
+            boxShadow: "0 6px 20px rgba(91,155,175,0.18)",
+          }}
+        >
+          <IconLink size={28} />
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-d)", fontSize: 28, fontWeight: 800,
+            color: "var(--charcoal)", letterSpacing: "-0.4px",
+            lineHeight: 1.1, marginBottom: 6,
+          }}
+        >
+          cardigan
+        </div>
+        <div
+          style={{
+            fontSize: 14, color: "var(--charcoal-md)",
+            lineHeight: 1.45, maxWidth: 320, margin: "0 auto",
+          }}
+        >
+          {t("auth.nativeTagline") || "Tu práctica, en orden."}
+        </div>
+      </div>
+
+      {/* AuthForm — same component as the web sheet. The segmented
+          control inside the form switches between sign-in / sign-up. */}
+      <div
+        style={{
+          flex: 1,
+          padding: "0 20px 8px",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <AuthForm
+          mode={mode}
+          setMode={setMode}
+          onSignIn={onSignIn}
+          onSignUp={onSignUp}
+          onProvider={onProvider}
+          onMagicLink={onMagicLink}
+          t={t}
+        />
+      </div>
+
+      {/* Footer: demo link for App Store reviewers + future privacy ref. */}
+      <div style={{ padding: "8px 24px 0", textAlign: "center" }}>
+        {onDemo && (
+          <button
+            type="button"
+            className="btn-tap"
+            onClick={onDemo}
+            style={{
+              background: "transparent", border: "none", padding: "8px 12px",
+              color: "var(--charcoal-md)", fontSize: 13, fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t("auth.tryDemo") || "Probar demo"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
