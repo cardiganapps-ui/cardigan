@@ -39,4 +39,31 @@ fi
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.
 
+# Patch the project-level Release config to use Apple Distribution.
+# Capacitor's iOS template hardcodes the project-level Release config
+# to CODE_SIGN_IDENTITY = "iPhone Developer" (Apple's legacy name for
+# the Development cert). Archive builds then ask for a Development
+# provisioning profile, which needs registered devices our CI team
+# doesn't have. Patching to "Apple Distribution" routes the
+# -allowProvisioningUpdates request to the Distribution path that
+# App Store / TestFlight uploads actually need.
+#
+# Use python (preinstalled on macOS runner) for surgical regex editing —
+# we only touch the project-level Release block (id 504EC315*) and
+# leave the project-level Debug block (id 504EC314*) and the target-
+# level configs untouched.
+python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
+import re, sys
+p = sys.argv[1]
+src = open(p).read()
+pattern = re.compile(
+    r'(504EC3151FED79650016851F /\* Release \*/ = \{[\s\S]*?CODE_SIGN_IDENTITY = ")iPhone Developer(";[\s\S]*?name = Release;)'
+)
+new, count = pattern.subn(r'\1Apple Distribution\2', src)
+if count != 1:
+    sys.exit(f"expected 1 substitution in pbxproj Release config, got {count}")
+open(p, 'w').write(new)
+print("✓ pbxproj Release config CODE_SIGN_IDENTITY → Apple Distribution")
+PY
+
 echo "✓ iOS config applied to ios/App/App/"
