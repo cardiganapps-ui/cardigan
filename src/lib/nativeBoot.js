@@ -26,6 +26,12 @@ export async function initNativeShell() {
 
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
+    // Overlay mode: WebView extends behind the status bar; the existing
+    // CSS handles vertical clearance via env(safe-area-inset-top). Pairs
+    // with contentInset:"never" in capacitor.config.json — together they
+    // stop iOS from adding its own inset on top of ours (which would
+    // produce a ~300px blank strip above the topbar).
+    await StatusBar.setOverlaysWebView({ overlay: true });
     // Cardigan's shell is white in light mode, charcoal in dark. The
     // status bar overlays the WebView; we toggle icon style to match.
     // Capacitor naming is the opposite of intuitive: Style.Light = LIGHT
