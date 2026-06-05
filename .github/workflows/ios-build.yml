@@ -1,0 +1,187 @@
+# Cardigan iOS → TestFlight pipeline.
+#
+# Runs on push to main (and manual dispatch). Builds the web bundle,
+# generates a fresh ios/ scaffold with Capacitor, layers our custom
+# entitlements + Privacy Manifest on top, archives + exports via
+# xcodebuild, and uploads to TestFlight via the App Store Connect API.
+#
+# The ios/ directory is NEVER committed — it's generated fresh each
+# run. This keeps the repo platform-clean (no Mac-specific Podfile.lock
+# in git) and avoids drift between what you see locally and what CI
+# builds.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#
+#   APPLE_TEAM_ID                     — 10-char Apple Team ID
+#   APP_STORE_CONNECT_API_KEY_ID      — 10-char key id (from App Store Connect)
+#   APP_STORE_CONNECT_API_KEY_ISSUER  — UUID of the issuing team
+#   APP_STORE_CONNECT_API_KEY_BASE64  — base64-encoded .p8 file contents
+#
+#   VITE_SUPABASE_URL                 — same value as production web
+#   VITE_SUPABASE_ANON_KEY            — same
+#   VITE_VAPID_PUBLIC_KEY             — same (used for web push; unused on iOS
+#                                       but read at boot, so non-empty)
+#   VITE_NOTES_RECOVERY_PUBLIC_KEY    — same
+#   VITE_SENTRY_DSN                   — same
+#   VITE_TURNSTILE_SITE_KEY           — same
+#   VITE_STRIPE_PUBLISHABLE_KEY       — same
+#   VITE_STRIPE_PRICE_ID              — same
+#   VITE_STRIPE_PRICE_ID_ANNUAL       — same
+#
+# Until every required secret is present, the workflow exits early
+# with a clear "missing secret X" message rather than failing partway.
+
+name: iOS Build & TestFlight
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'android/**'
+      - 'scripts/**'
+      - '.github/**'
+      - '!.github/workflows/ios-build.yml'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you triggering manually? (logged in run name)'
+        required: false
+        default: 'manual'
+
+concurrency:
+  # One iOS build at a time. Pushes during a build cancel the older.
+  group: ios-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Archive + upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify secrets present
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+          ASC_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=()
+          [ -z "$APPLE_TEAM_ID" ] && missing+=("APPLE_TEAM_ID")
+          [ -z "$ASC_KEY_ID" ]    && missing+=("APP_STORE_CONNECT_API_KEY_ID")
+          [ -z "$ASC_ISSUER" ]    && missing+=("APP_STORE_CONNECT_API_KEY_ISSUER")
+          [ -z "$ASC_KEY" ]       && missing+=("APP_STORE_CONNECT_API_KEY_BASE64")
+          [ -z "$SUPABASE_URL" ]  && missing+=("VITE_SUPABASE_URL")
+          [ -z "$SUPABASE_KEY" ]  && missing+=("VITE_SUPABASE_ANON_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            echo "Add them at Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+          VITE_NOTES_RECOVERY_PUBLIC_KEY: ${{ secrets.VITE_NOTES_RECOVERY_PUBLIC_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PRICE_ID: ${{ secrets.VITE_STRIPE_PRICE_ID }}
+          VITE_STRIPE_PRICE_ID_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_ID_ANNUAL }}
+          VITE_WHATSAPP_UI_ENABLED: ${{ vars.VITE_WHATSAPP_UI_ENABLED }}
+        run: npm run build
+
+      - name: Generate iOS project (cap add ios + sync)
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Layer entitlements + Privacy Manifest
+        run: bash scripts/apply-ios-config.sh
+
+      - name: Install CocoaPods deps
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Decode App Store Connect API key
+        env:
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          echo "$ASC_KEY_BASE64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -destination "generic/platform=iOS" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_ENTITLEMENTS=App/App.entitlements \
+            archive
+
+      - name: Export IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+        run: |
+          cd ios/App
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportPath "$RUNNER_TEMP/ipa" \
+            -exportOptionsPlist ../../ios-config/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER"
+
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+        run: |
+          IPA=$(ls "$RUNNER_TEMP"/ipa/*.ipa | head -1)
+          echo "Uploading $IPA to TestFlight..."
+          xcrun altool --upload-app \
+            -f "$IPA" \
+            -t ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER"
+
+      - name: Clean up API key
+        if: always()
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        run: rm -f "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
