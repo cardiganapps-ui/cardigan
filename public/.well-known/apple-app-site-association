@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["9X58YXW92L.mx.cardigan.app"],
+        "components": [
+          { "/": "/i/*", "comment": "Patient invite tokens" },
+          { "/": "/c/*", "comment": "Referral / influencer codes" },
+          { "/": "/", "comment": "App root + ?billing= Stripe return" }
+        ]
+      }
+    ]
+  }
+}

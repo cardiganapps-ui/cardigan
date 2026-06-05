@@ -2,6 +2,7 @@ import { IconMail } from "./Icons";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { track } from "../lib/analytics";
+import { isSharingSupported, shareContent } from "../lib/nativeShare";
 
 /* Official WhatsApp glyph (SimpleIcons, CC0). The previous icon was
    a hand-rolled approximation that read as a generic chat bubble.
@@ -52,8 +53,11 @@ export function ReferralShareBlock({ code, t: tProp }) {
   const t = tProp || tHook;
   const url = `https://cardigan.mx/?ref=${code}`;
   const text = t("subscription.referralShareText", { code });
-  const canNativeShare = typeof navigator !== "undefined"
-    && typeof navigator.share === "function";
+  // True on iOS Safari, Android Chrome, and inside the native shell on
+  // both platforms (Capacitor Share plugin). Hidden only on older
+  // desktop browsers, where the WhatsApp + Email row below is the
+  // primary share surface.
+  const canNativeShare = isSharingSupported();
 
   const fireTrack = (channel) => {
     track("referral_share", { channel });
@@ -61,20 +65,9 @@ export function ReferralShareBlock({ code, t: tProp }) {
 
   const handleNativeShare = async () => {
     haptic.tap();
-    try {
-      await navigator.share({
-        title: "Cardigan",
-        text,
-        url,
-      });
-      fireTrack("native");
-    } catch (err) {
-      // AbortError fires when the user dismisses the share sheet —
-      // expected, no-op. Anything else is unexpected; log and move on.
-      if (err?.name !== "AbortError") {
-        console.warn("share:", err?.message || err);
-      }
-    }
+    const res = await shareContent({ title: "Cardigan", text, url });
+    if (res.ok) fireTrack("native");
+    else if (!res.aborted && res.error) console.warn("share:", res.error);
   };
 
   const onChannel = (channel) => () => {

@@ -1,6 +1,9 @@
 import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { supabase } from "../supabaseClient";
 import { shortDateToISO } from "../utils/dates";
+import { openExternal } from "../lib/nativeBrowser";
+import { isNative, isIOS } from "../lib/platform";
+import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
@@ -533,7 +536,7 @@ export function Settings({ user, signOut, refreshUser }) {
     const res = await subscription.openPortal();
     setSubBusy(false);
     if (!res.ok) { setSubError(res.error || t("subscription.errorGeneric")); return; }
-    if (res.url) window.location.href = res.url;
+    if (res.url) await openExternal(res.url);
   };
   // Manual reconciliation — pulls live Stripe state and writes to DB.
   // Recovers from delayed/missed cancellation webhooks so the user
@@ -1063,6 +1066,23 @@ export function Settings({ user, signOut, refreshUser }) {
 
       {/* ── SESIÓN ── */}
       <div className="settings-label">{t("settings.sectionSession")}</div>
+      {/* Diagnostics — visible inside the native shell (where the user
+          is QAing on a real device) and in dev. Hidden in the
+          production web build that regular users see. The sheet
+          surfaces platform/push/haptic state plus test buttons. */}
+      {(isNative() || import.meta.env.DEV) && (
+        <div className="card" style={{ margin:"0 16px", marginBottom: 12 }}>
+          <div className="settings-row" onClick={() => setActiveSheet("diagnostics")}>
+            <div className="settings-row-icon"><IconSmartphone size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">Diagnóstico</div>
+              <div className="settings-row-sub">Plataforma, push y haptics</div>
+            </div>
+            <IconChevron />
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ margin:"0 16px" }}>
         {/* Confirm before signing out — same ConfirmDialog the Drawer
             uses, so the affordance is consistent across both entry
@@ -1491,6 +1511,12 @@ export function Settings({ user, signOut, refreshUser }) {
                 // sub so the panel doesn't read as perpetually
                 // loading for the admin.
                 const isAdminAccess = !isComp && !isActive && state === "active";
+                // Reader-app gate: inside the iOS native shell, App Store
+                // Guideline 3.1.3(a) forbids pricing, subscribe CTAs, and
+                // any "purchase via website" call to action. Existing
+                // subscribers can still see status + manage via the
+                // Billing Portal (allowed); only the BUY surfaces hide.
+                const isIOSReader = isNative() && isIOS();
                 // Structured hero summary — drives the icon tone, the
                 // emphasized end-date block, the charge chip, and which
                 // secondary action (pause / reactivate / none) to show.
@@ -1599,7 +1625,7 @@ export function Settings({ user, signOut, refreshUser }) {
 
                       {/* Price line — checkout flow only. Lives inside the
                           hero so the user perceives value + cost together. */}
-                      {!isComp && !isActive && !isAdminAccess && (
+                      {!isComp && !isActive && !isAdminAccess && !isIOSReader && (
                         <div style={{ marginTop:18, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.07)" }}>
                           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:6 }}>
                             <span style={{ fontFamily:"var(--font-d)", fontSize:34, fontWeight:800, color:"var(--charcoal)", letterSpacing:"-1px", lineHeight:1 }}>
@@ -1624,7 +1650,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         Annual carries a small "ahorra 17%" badge underneath so
                         the discount registers without visual clutter on the
                         toggle itself. */}
-                    {!isComp && !isActive && !isAdminAccess && (
+                    {!isComp && !isActive && !isAdminAccess && !isIOSReader && (
                       <div style={{ marginBottom:14 }}>
                         <SegmentedControl
                           items={[
@@ -1671,7 +1697,7 @@ export function Settings({ user, signOut, refreshUser }) {
                         flows through to handleStartCheckout invisibly.
                         Word-of-mouth users (who never hit a ?ref URL)
                         still see the field and can type their code in. */}
-                    {!isComp && !isActive && !isAdminAccess && !inviteCodeFromUrl && (
+                    {!isComp && !isActive && !isAdminAccess && !isIOSReader && !inviteCodeFromUrl && (
                       <div className="input-group" style={{ marginBottom:14 }}>
                         <label className="input-label">{t("subscription.inviteCodeLabel")}</label>
                         <input
@@ -1696,7 +1722,7 @@ export function Settings({ user, signOut, refreshUser }) {
 
                     {/* Primary action — full-width charcoal button on its own row.
                         Active subs swap to "Administrar" pointing at the Stripe portal. */}
-                    {(!isComp && !isActive && !isAdminAccess) && (
+                    {(!isComp && !isActive && !isAdminAccess && !isIOSReader) && (
                       <div style={{ marginBottom:22 }}>
                         <button type="button" className="btn btn-primary"
                           onClick={handleStartCheckout} disabled={subBusy}>
@@ -1705,6 +1731,21 @@ export function Settings({ user, signOut, refreshUser }) {
                         <div style={{ fontSize:11, color:"var(--charcoal-xl)", textAlign:"center", marginTop:8, lineHeight:1.4 }}>
                           {t("subscription.checkoutFooter")}
                         </div>
+                      </div>
+                    )}
+                    {/* iOS reader-app substitute — informational only.
+                        No button, no link, no pricing — strictly what
+                        App Store Guideline 3.1.3(a) permits. */}
+                    {(!isComp && !isActive && !isAdminAccess && isIOSReader) && (
+                      <div style={{
+                        marginBottom: 22,
+                        padding: "14px 16px",
+                        background: "var(--cream)",
+                        borderRadius: "var(--radius)",
+                        fontSize: 13, color: "var(--charcoal-md)",
+                        lineHeight: 1.5, textAlign: "center",
+                      }}>
+                        {t("subscription.iosReaderHint")}
                       </div>
                     )}
                     {isActive && !isComp && (
@@ -2504,6 +2545,12 @@ export function Settings({ user, signOut, refreshUser }) {
         destructive
         onConfirm={() => { setConfirmSignOut(false); signOut(); }}
         onCancel={() => setConfirmSignOut(false)}
+      />
+
+      <DiagnosticsSheet
+        open={activeSheet === "diagnostics"}
+        onClose={() => setActiveSheet(null)}
+        notifications={notifications}
       />
     </div>
   );

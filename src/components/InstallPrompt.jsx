@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useT } from "../i18n/index";
+import { isNative } from "../lib/platform";
 
-// True only for iOS Safari tab mode (not PWA). PWA and every other browser
-// get nothing. This is the one environment where the app can meaningfully
-// nudge toward a full-screen experience.
+// True only for iOS Safari tab mode (not PWA). PWA, every other browser,
+// and the native iOS/Android shells get nothing. This banner exists solely
+// to nudge browser users toward the home-screen install; inside the
+// native app there's nothing to install.
 function isIOSSafariNotInstalled() {
   if (typeof navigator === "undefined" || typeof window === "undefined") return false;
+  if (isNative()) return false;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   if (!isIOS) return false;
   const isStandalone = window.navigator.standalone === true

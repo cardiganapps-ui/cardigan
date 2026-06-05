@@ -8,6 +8,7 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { IconX, IconCheck, IconMail, IconLink } from "../Icons";
 import { WhatsAppGlyph, ShareGlyph } from "../ReferralShareBlock";
 import { haptic } from "../../utils/haptics";
+import { isSharingSupported, shareContent } from "../../lib/nativeShare";
 
 /* ── InvitePatientSheet ───────────────────────────────────────────
    Therapist-side bottom sheet that generates a single-use invite
@@ -127,25 +128,21 @@ export function InvitePatientSheet({ patient, onClose }) {
 
   // Native-share availability — the iOS Safari share sheet (and
   // Android Chrome's equivalent) covers every app the user has
-  // installed. Hidden on browsers without the Web Share API
-  // (mostly older desktop builds).
-  const canNativeShare =
-    typeof navigator !== "undefined" && typeof navigator.share === "function";
+  // installed. Inside the native shell this routes through the
+  // Capacitor Share plugin (consistent across iOS WKWebView and
+  // Android WebView). Hidden only on older desktop browsers.
+  const canNativeShare = isSharingSupported();
 
   const handleNativeShare = async () => {
     if (!inviteUrl) return;
     haptic.tap();
-    try {
-      await navigator.share({
-        title: t("patientInvite.title", { name: patient.name }),
-        text: shareText,
-        url: inviteUrl,
-      });
-    } catch (err) {
-      // AbortError = user dismissed the share sheet, expected.
-      if (err?.name !== "AbortError") {
-        console.warn("invite share:", err?.message || err);
-      }
+    const res = await shareContent({
+      title: t("patientInvite.title", { name: patient.name }),
+      text: shareText,
+      url: inviteUrl,
+    });
+    if (!res.ok && !res.aborted && res.error) {
+      console.warn("invite share:", res.error);
     }
   };
 

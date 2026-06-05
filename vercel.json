@@ -28,6 +28,12 @@
         { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'sha256-Q+6D3VzKZ/o5TkDH8psCjde9Ve04s7qras7m47T1YuI=' https://challenges.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://axyuqfkmifcaupwhzfuw.supabase.co https://*.r2.cloudflarestorage.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://challenges.cloudflare.com https://api.stripe.com; img-src 'self' blob: data: https://*.r2.cloudflarestorage.com https://*.stripe.com; frame-src 'self' blob: https://*.r2.cloudflarestorage.com https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
       ]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" }
+      ]
     }
   ]
 }

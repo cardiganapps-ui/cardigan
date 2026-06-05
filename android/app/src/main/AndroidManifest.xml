@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Android App Links — auto-verified deep-link entry points for
+                cardigan.mx. autoVerify="true" tells Play that this intent
+                filter should be checked against the assetlinks.json file at
+                https://cardigan.mx/.well-known/assetlinks.json. When the
+                file's sha256_cert_fingerprints match the certificate that
+                signed this APK, the OS opens cardigan.mx links directly
+                in the app instead of routing them through Chrome.
+
+                Until the release keystore is generated and its SHA-256
+                lands in assetlinks.json, auto-verify will fail and links
+                continue opening in the browser (no regression vs today).
+                The intent filter still wins user-disambiguation prompts
+                ("Open with Cardigan?"), so a user can manually opt in.
+
+                Path patterns cover the entry points the cold-boot URL
+                parser in src/App.jsx handles: patient invite, influencer
+                code, app root (Stripe billing return arrives at /).
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="cardigan.mx" />
+                <data android:pathPattern="/i/.*" />
+                <data android:pathPattern="/c/.*" />
+                <data android:pathPattern="/" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

@@ -3,6 +3,7 @@ import { IconX, IconSparkle, IconLock, IconCalendar, IconDocument } from "./Icon
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { useCardigan } from "../context/CardiganContext";
+import { isNative, isIOS } from "../lib/platform";
 
 const StripePaymentSheet = lazy(() => import("./StripePaymentSheet"));
 
@@ -168,48 +169,78 @@ export function ProUpgradeSheet({ open, feature, onClose }) {
             </div>
           </div>
 
-          {/* Price + CTA section */}
+          {/* Price + CTA section.
+              iOS reader-app branch: per App Store Guideline 3.1.3(a),
+              we cannot show pricing or a subscribe button inside the
+              iOS app, and we cannot link to cardigan.mx as a CTA. We
+              keep the feature explanation above (the user understands
+              what's gated) and replace the price/CTA with an inert
+              informational line — no button, no link. */}
           <div style={{ padding: "18px 22px 4px" }}>
-            <div style={{
-              padding: "10px 14px",
-              background: "var(--cream)",
-              borderRadius: "var(--radius)",
-              marginBottom: 12,
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              gap: 8,
-            }}>
-              <div style={{ fontSize: 12, color: "var(--charcoal-md)", lineHeight: 1.4 }}>
-                {t("pro.priceNote")}
-              </div>
-              <div style={{
-                fontFamily: "var(--font-d)", fontSize: 17, fontWeight: 800,
-                color: "var(--charcoal)", whiteSpace: "nowrap",
-              }}>
-                $149 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--charcoal-md)" }}>MXN/mes</span>
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSubscribe}
-              >
-                {t("pro.subscribeCta")}
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => onClose?.()}
-              >
-                {t("pro.dismissCta")}
-              </button>
-            </div>
-            <div style={{
-              fontSize: 11, color: "var(--charcoal-xl)",
-              textAlign: "center", marginTop: 12, lineHeight: 1.4,
-            }}>
-              {t("pro.footer")}
-            </div>
+            {isNative() && isIOS() ? (
+              <>
+                <div style={{
+                  padding: "12px 14px",
+                  background: "var(--cream)",
+                  borderRadius: "var(--radius)",
+                  marginBottom: 12,
+                  fontSize: 12, color: "var(--charcoal-md)",
+                  lineHeight: 1.5, textAlign: "center",
+                }}>
+                  {t("pro.ios.readerHint")}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => onClose?.()}
+                >
+                  {t("pro.dismissCta")}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  padding: "10px 14px",
+                  background: "var(--cream)",
+                  borderRadius: "var(--radius)",
+                  marginBottom: 12,
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: 8,
+                }}>
+                  <div style={{ fontSize: 12, color: "var(--charcoal-md)", lineHeight: 1.4 }}>
+                    {t("pro.priceNote")}
+                  </div>
+                  <div style={{
+                    fontFamily: "var(--font-d)", fontSize: 17, fontWeight: 800,
+                    color: "var(--charcoal)", whiteSpace: "nowrap",
+                  }}>
+                    $149 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--charcoal-md)" }}>MXN/mes</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSubscribe}
+                  >
+                    {t("pro.subscribeCta")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => onClose?.()}
+                  >
+                    {t("pro.dismissCta")}
+                  </button>
+                </div>
+                <div style={{
+                  fontSize: 11, color: "var(--charcoal-xl)",
+                  textAlign: "center", marginTop: 12, lineHeight: 1.4,
+                }}>
+                  {t("pro.footer")}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

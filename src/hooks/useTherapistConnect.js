@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "../supabaseClient";
+import { openExternal, openExternalNewTab } from "../lib/nativeBrowser";
 
 /* ── useTherapistConnect ──────────────────────────────────────────
    Therapist-side companion to useSubscription. Tracks the state of
@@ -129,7 +130,7 @@ export function useTherapistConnect(user) {
         console.error("[useTherapistConnect] onboard server error:", res.status, data);
         return { ok: false, error: data.error || `http_${res.status}` };
       }
-      window.location.href = data.url;
+      await openExternal(data.url);
       return { ok: true };
     } catch (err) {
       console.error("[useTherapistConnect] onboard unexpected error:", err);
@@ -137,9 +138,7 @@ export function useTherapistConnect(user) {
     } finally {
       setBusy(false);
     }
-  }, []);
-
-  const openDashboard = useCallback(async () => {
+  }, []);  const openDashboard = useCallback(async () => {
     setBusy(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -160,10 +159,12 @@ export function useTherapistConnect(user) {
         console.error("[useTherapistConnect] dashboard server error:", res.status, data);
         return { ok: false, error: data.error || `http_${res.status}`, code: data.code };
       }
-      // Open in a new tab so the therapist can flip back to Cardigan
-      // — the Stripe dashboard is a multi-tab tool by nature (balance,
-      // payouts, settings).
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      // Open in a new tab on web so the therapist can flip back to
+      // Cardigan — the Stripe dashboard is a multi-tab tool by nature
+      // (balance, payouts, settings). Inside the native shell this
+      // resolves to the Capacitor Browser sheet (single-instance),
+      // which is the right native equivalent.
+      await openExternalNewTab(data.url);
       return { ok: true };
     } catch (err) {
       console.error("[useTherapistConnect] dashboard unexpected error:", err);

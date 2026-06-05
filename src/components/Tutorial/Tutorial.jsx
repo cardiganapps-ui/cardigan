@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useCardigan } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
+import { isNative } from "../../lib/platform";
 import { TutorialSpotlight } from "./TutorialSpotlight";
 import { TutorialTooltip } from "./TutorialTooltip";
 import { TutorialWelcome } from "./TutorialWelcome";
@@ -336,8 +337,11 @@ export function Tutorial() {
   const title = t(step.titleKey);
   const bodyText = t(step.bodyKey);
 
-  // On iOS (not already installed), append install instructions to the last step
+  // On iOS Safari (not already installed), append install instructions to
+  // the last step. Suppressed inside the native shell — there's nothing
+  // to install once the user is already running the App Store build.
   const showInstall = step.showInstall
+    && !isNative()
     && /iPad|iPhone|iPod/.test(navigator.userAgent)
     && !(window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches);
 

@@ -6,7 +6,7 @@ import reactPlugin from 'eslint-plugin-react'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'scripts']),
+  globalIgnores(['dist', 'scripts', 'android']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -22,6 +22,7 @@ export default defineConfig([
         // Compile-time constants baked in by vite.config.js's `define`.
         __VERCEL_DEPLOYMENT_ID__: 'readonly',
         __SENTRY_DSN__: 'readonly',
+        __SENTRY_RELEASE__: 'readonly',
       },
       parserOptions: {
         ecmaVersion: 'latest',
