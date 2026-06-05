@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
+import { isNative } from "../lib/platform";
 
 /* ── Cloudflare Turnstile widget ──
    Renders a Turnstile challenge that produces a single-use token,
@@ -101,4 +102,11 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
 });
 
 /** Whether Turnstile is configured (parent forms can branch UI on this). */
-export const TURNSTILE_ENABLED = !!SITE_KEY;
+// Turnstile is disabled inside the native shell — the widget is
+// configured for the cardigan.mx origin and fails silently in
+// Capacitor's `capacitor://localhost` origin, leaving the token
+// unresolved and locking the AuthScreen's submit await forever.
+// Captcha adds no real security inside a signed App Store binary
+// anyway: the request isn't replayable from outside the app context,
+// and the JS that calls Supabase ships only inside the bundle.
+export const TURNSTILE_ENABLED = !!SITE_KEY && !isNative();
