@@ -6,6 +6,10 @@ import './index.css'
 import App from './App.jsx'
 import { initSentry } from './lib/sentry'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+// nativeFetch MUST come before skewProtection so the URL rewrite
+// happens first; skewProtection then sees the absolute production URL
+// and stamps its header normally.
+import './lib/nativeFetch'
 import './lib/skewProtection'
 import { installBodyScrollLock } from './lib/bodyScrollLock'
 import { isNative } from './lib/platform'

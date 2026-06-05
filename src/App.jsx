@@ -707,6 +707,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // the day-14 lifecycle email's deep link (#rating hash) or by the
   // organic shouldShowDay14Prompt eligibility check below.
   const [ratingSheetOpen, setRatingSheetOpen] = useState(false);
+  // App.jsx mount timestamp — the rating-sheet gate uses this as a
+  // "settle in" cooldown so a fresh sign-in / TestFlight-first-launch
+  // doesn't trigger the ask before the user has done anything in the
+  // current session. Lives in a ref-equivalent useState so its value
+  // is stable across renders without re-firing effects.
+  const [sessionStartedAt] = useState(() => Date.now());
   // Web Share Target receiver state. When the user shares a folder
   // URL into Cardigan from the OS share sheet, the browser routes
   // to /?share_folder=1&url=…&text=…&title=… — we capture the URL
@@ -1106,9 +1112,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       patientsCount: (patients || []).length,
       hasSubmitted,
       hasDismissed,
+      // Seconds since this App.jsx instance mounted — see ratingPrompt's
+      // per-session cooldown rationale. Stops the ask from firing on
+      // first home open for users who satisfy the time/usage gate but
+      // haven't actually engaged with the app in the current session.
+      secondsSinceSessionStart: (Date.now() - sessionStartedAt) / 1000,
     });
     if (eligible) setRatingSheetOpen(true);
-  }, [demo, readOnly, user, subscription.accessState, upcomingSessions, patients, ratingSheetOpen]);
+  }, [demo, readOnly, user, subscription.accessState, upcomingSessions, patients, ratingSheetOpen, sessionStartedAt]);
 
   const tutorial = useTutorial({ user, demo, readOnly, screen });
   const tutorialHidesFab = tutorial?.isActive

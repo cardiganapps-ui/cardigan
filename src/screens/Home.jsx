@@ -338,7 +338,14 @@ export function Home({ setScreen, userName }) {
         </div>
       )}
 
-      <NotificationsPrompt variant="initial" />
+      {/* Initial-variant notification prompt only renders pre-first-
+          patient. Once the user has at least one patient, the
+          post-patient variant below takes over so we never stack
+          both. Eliminates the "two near-identical 'enable
+          notifications' cards" pile-up at first home open. */}
+      {(patients?.length || 0) === 0 && (
+        <NotificationsPrompt variant="initial" />
+      )}
 
       {/* Reschedule requests banner — shown when patients have
           submitted pending requests waiting on this therapist's
