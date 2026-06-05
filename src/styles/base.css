@@ -185,7 +185,21 @@ html, body {
   background: var(--white);
   color: var(--charcoal);
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
+  /* `100%` is meant to mean "use developer-specified sizes, ignore user
+     scaling," but WKWebView (Capacitor) still applies iOS Dynamic Type
+     / Larger Text in some cases — TestFlight build read noticeably
+     bigger than the PWA version of the same page. `none` is the only
+     value that reliably opts out of Dynamic Type across both Safari
+     and WKWebView. Cardigan's design system carries fixed token sizes
+     (--text-xs through --text-2xl); preserving them across browsers is
+     more important than honoring system Larger Text for this surface. */
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  /* Pin the root font-size so rem-based units (currently rare in the
+     codebase but increasing) stay anchored at the design system's
+     14px body size regardless of WKWebView's default. */
+  font-size: 14px;
+  line-height: 1.5;
   height: 100%;
   overflow: hidden;
   touch-action: manipulation;
