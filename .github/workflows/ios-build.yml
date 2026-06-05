@@ -119,6 +119,13 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Generate app icons + splash from assets/
+        # @capacitor/assets reads assets/icon.png (1024×1024) and
+        # assets/splash.png (2732×2732), writes every iOS variant into
+        # ios/App/App/Assets.xcassets/. Without this, every TestFlight
+        # build ships Capacitor's placeholder blue-X icon.
+        run: npx @capacitor/assets generate --ios
+
       - name: Layer entitlements + Privacy Manifest
         run: bash scripts/apply-ios-config.sh
 
