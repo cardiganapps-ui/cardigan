@@ -16,6 +16,12 @@ cp ios-config/App.entitlements ios/App/App/App.entitlements
 # iOS 17+ Privacy Manifest. Required for App Store submission.
 cp ios-config/PrivacyInfo.xcprivacy ios/App/App/PrivacyInfo.xcprivacy
 
+# Firebase iOS app config — bundle id, API key, GCM sender id, etc.
+# Public by design (ships inside the IPA; any user can extract it);
+# safe to commit. Used by the Firebase iOS SDK at runtime for FCM
+# token registration. Without it, push tokens never get minted.
+cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+
 # UIBackgroundModes.remote-notification — needed for background push
 # delivery. Capacitor's default Info.plist doesn't include it; we
 # splice it in via plutil. The -insert with .0 syntax extends an array.
