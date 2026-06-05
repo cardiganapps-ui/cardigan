@@ -130,46 +130,103 @@ jobs:
           echo "$ASC_KEY_BASE64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
+      # Manual signing setup — the App Store Connect API key we have is
+      # App-Manager-scoped, so xcodebuild's -allowProvisioningUpdates with
+      # Automatic signing only created Development certs (and Development
+      # profiles need registered devices we don't have). We pre-created a
+      # Distribution cert + App Store provisioning profile via the API
+      # and stashed them as repo secrets — this step installs them into a
+      # temporary keychain so xcodebuild can sign with them directly.
+      - name: Install distribution certificate + provisioning profile
+        env:
+          P12_BASE64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.BUILD_CERTIFICATE_P12_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.BUILD_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          # Decode artifacts
+          CERT_PATH="$RUNNER_TEMP/build_certificate.p12"
+          PROFILE_PATH="$RUNNER_TEMP/build.mobileprovision"
+          echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
+          echo "$PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+          # Create + unlock a temporary keychain. Default-keychain switch
+          # so codesign reaches into it without needing extra flags.
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PW=$(openssl rand -base64 24)
+          security create-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN_PATH"
+
+          # Import the P12; -A lets any app on the runner read the key
+          # (codesign + xcodebuild). Authorize partition access so
+          # codesign doesn't prompt for the keychain password.
+          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PW" "$KEYCHAIN_PATH"
+
+          # Put the build keychain first in the search list so codesign
+          # finds the cert without scanning the login keychain.
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychain -d user | tr -d '"')
+
+          # Install the provisioning profile under the UUID Xcode expects.
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+          UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
+          cp "$PROFILE_PATH" "$PROFILES_DIR/$UUID.mobileprovision"
+          echo "✓ installed profile UUID=$UUID"
+
+          # Confirm the identity is visible to codesign.
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
       - name: Archive
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
         run: |
           cd ios/App
-          # CODE_SIGN_IDENTITY="Apple Distribution" is set inside the
-          # pbxproj by scripts/apply-ios-config.sh (project-level Release
-          # config). Don't pass it again at the command line — overriding
-          # the inherited value while Automatic signing is on triggers
-          # Xcode's "conflicting provisioning settings" guard.
+          # Manual signing — the cert is in the temp keychain, the profile
+          # is installed under ~/Library/MobileDevice/Provisioning Profiles.
+          # No -allowProvisioningUpdates needed; both artifacts already
+          # exist. The named specifier matches the profile we created via
+          # the App Store Connect API (name = "Cardigan App Store").
           xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -destination "generic/platform=iOS" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="Cardigan App Store" \
             CODE_SIGN_ENTITLEMENTS=App/App.entitlements \
             archive
 
       - name: Export IPA
         env:
-          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd ios/App
+          # Render the export options inline so we can stitch in the team
+          # id + profile mapping that manual signing requires.
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>mx.cardigan.app</key><string>Cardigan App Store</string>
+            </dict>
+            <key>uploadSymbols</key><true/>
+            <key>stripSwiftSymbols</key><true/>
+          </dict>
+          </plist>
+          EOF
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -exportPath "$RUNNER_TEMP/ipa" \
-            -exportOptionsPlist ../../ios-config/ExportOptions.plist \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER"
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
 
       - name: Upload to TestFlight
         env:
