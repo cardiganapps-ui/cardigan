@@ -137,6 +137,14 @@ jobs:
           ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
         run: |
           cd ios/App
+          # Force Distribution signing for the App Store archive. Without
+          # CODE_SIGN_IDENTITY=Apple Distribution, Xcode's automatic signing
+          # tries to mint a Development profile first — which fails when the
+          # Apple Developer team has zero registered devices (which is the
+          # case for any account where you ship to TestFlight without ever
+          # plugging in a Mac). Setting the identity + empty profile
+          # specifier sends -allowProvisioningUpdates straight to the
+          # Distribution path that needs no devices.
           xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
@@ -148,6 +156,8 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             CODE_SIGN_ENTITLEMENTS=App/App.entitlements \
             archive
 
