@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["__APPLE_TEAM_ID__.mx.cardigan.app"],
+        "appIDs": ["9X58YXW92L.mx.cardigan.app"],
         "components": [
           { "/": "/i/*", "comment": "Patient invite tokens" },
           { "/": "/c/*", "comment": "Referral / influencer codes" },
