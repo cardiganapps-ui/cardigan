@@ -1,64 +1,66 @@
-// Native Apple Sign In via the Capacitor community plugin.
+// Native Apple Sign In via the Capawesome Capacitor plugin.
+//
+// We previously used @capacitor-community/apple-sign-in@7.1.0 but that
+// release was pinned to Capacitor 7's Swift PM and didn't resolve
+// against the Capacitor 8 plugin graph (CI build "Could not resolve
+// package dependencies"). Capawesome maintains a Capacitor-8-compatible
+// equivalent (peer dep @capacitor/core >=8.0.0) with the same Apple
+// system-authorization-sheet UX on iOS.
 //
 // On iOS native, Apple Sign In MUST go through the system authorization
-// sheet (UIKit's ASAuthorizationController under the hood). Going through
-// Supabase's OAuth-redirect flow technically works but reads as a
-// second-class iOS experience — Safari opens, the user authenticates,
-// Safari redirects back, and the app re-mounts. The native sheet keeps
-// everything in-app and is what App Store reviewers expect to see.
+// sheet (UIKit's ASAuthorizationController under the hood). Going
+// through Supabase's OAuth-redirect flow technically works but reads
+// as a second-class iOS experience and App Store reviewers consistently
+// flag it.
 //
 // On web and Android we keep using Supabase's OAuth redirect flow
 // (signInWithOAuth({ provider: 'apple' })); only iOS branches here.
 
 import { isNative, isIOS } from "./platform";
 
-const APP_BUNDLE_ID = "mx.cardigan.app";
-
 export async function signInWithAppleNative() {
   if (!isNative() || !isIOS()) return { ok: false, code: "unsupported" };
 
-  let SignInWithApple;
+  let AppleSignIn, SignInScope;
   try {
-    ({ SignInWithApple } = await import("@capacitor-community/apple-sign-in"));
+    ({ AppleSignIn, SignInScope } = await import("@capawesome/capacitor-apple-sign-in"));
   } catch {
     return { ok: false, code: "unsupported" };
   }
 
   try {
-    // clientId: on iOS native the system uses the bundle's Sign-In-with-
-    //   Apple capability, but the plugin still requires the field. Bundle
-    //   ID matches the App ID we registered in Apple Developer Console.
-    // redirectURI: unused for native auth (no redirect happens) but the
-    //   plugin API requires the field. We pass a marker URL anyway.
-    // scopes: 'email name' requests both. Apple may return null for them
-    //   if the user previously authorized this app (they only fire on the
-    //   FIRST auth) — Supabase persists the user record regardless.
-    const result = await SignInWithApple.authorize({
-      clientId: APP_BUNDLE_ID,
-      redirectURI: "https://cardigan.mx/",
-      scopes: "email name",
+    // iOS doesn't require initialize() — the plugin reads the bundle's
+    // Sign-In-with-Apple capability directly. scopes is an enum array,
+    // not the legacy space-separated string. Names + email come back
+    // ONLY on the first authorization for this Apple ID + app pairing;
+    // subsequent sign-ins get null for both (the underlying Apple
+    // record persists in Supabase auth.users either way).
+    const result = await AppleSignIn.signIn({
+      scopes: [SignInScope.Email, SignInScope.FullName],
     });
 
-    const idToken = result?.response?.identityToken;
+    const idToken = result?.idToken;
     if (!idToken) return { ok: false, code: "no-token" };
 
     return {
       ok: true,
       identityToken: idToken,
-      nonce: result?.response?.nonce,
-      // The names are only present on first authorization. We pass them
-      // through so the caller can stash them on the auth user record.
-      givenName: result?.response?.givenName,
-      familyName: result?.response?.familyName,
-      email: result?.response?.email,
+      // Capawesome doesn't surface the iOS nonce directly; the auth flow
+      // doesn't require it since the system already binds the token to
+      // the requesting app. supabase.signInWithIdToken accepts a missing
+      // nonce when the token is valid for the app's audience.
+      nonce: undefined,
+      givenName: result?.fullName?.givenName,
+      familyName: result?.fullName?.familyName,
+      email: result?.email,
     };
   } catch (err) {
-    // 1001 = "Authorization canceled by user" per ASAuthorizationError;
-    // anything else is a real failure worth surfacing to the user.
-    const code = err?.code || err?.error;
-    if (code === "1001" || /cancel/i.test(err?.message || "")) {
+    // ErrorCode.canceled is exported by the plugin for user-dismiss;
+    // anything else is a real failure worth surfacing.
+    const msg = err?.message || String(err || "");
+    if (/cancel/i.test(msg) || err?.code === "canceled") {
       return { ok: false, code: "user-cancelled" };
     }
-    return { ok: false, code: "failed", error: err?.message || String(err) };
+    return { ok: false, code: "failed", error: msg };
   }
 }
