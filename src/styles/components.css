@@ -14,7 +14,12 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  padding-bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) - 14px), 8px) + 8px);
+  /* Reserve bottom space for the floating Liquid Glass pill:
+       pill bottom offset (sab + 10) + pill height (var(--bottom-tabs-h))
+       + 16px visual gap above the pill.
+     This keeps the last scrollable row above the bar instead of being
+     half-hidden behind it. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 26px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -165,61 +170,114 @@
    attempt at an in-flow bar collided with an iOS PWA quirk where
    100dvh excludes env(safe-area-inset-bottom), which pushed the bar
    34px up into the FAB's zone. */
+/* ── Bottom tab bar — Liquid Glass pill ──
+   Floating, translucent, blurred. Modeled on iOS 26 system bars and
+   WhatsApp's redesigned chat tab strip: a single rounded capsule that
+   sits a few pixels above the bottom edge, with content scrolling
+   visibly through its frosted glass behind it.
+
+   Implementation notes:
+   - position:fixed + lateral margins so the pill never touches the
+     screen edges (premium ≠ edge-to-edge here, it's the gap that
+     reads as floating).
+   - backdrop-filter does the heavy lifting. Without it the bar would
+     look like a flat panel with low alpha; WITH it, every pixel
+     beneath gains the characteristic glass desaturation + blur.
+   - --bottom-tabs-h kept at 40 — that's the bar's INNER content
+     height. Outer height (incl. padding + sab clearance) is
+     computed when other surfaces (FAB, scroll containers) reserve
+     bottom space. */
 :root { --bottom-tabs-h: 40px; }
 .bottom-tabs {
-  position: fixed; left: 0; right: 0;
-  bottom: 0;
-  /* Aggressive: half the sab (~17px on iPhone) instead of the full 34px.
-     Icons sit just barely above the home-indicator gesture area, so the
-     bar reads as anchored-to-the-bottom instead of floating. */
-  padding-bottom: max(calc(var(--sab) / 2), 10px);
-  height: calc(var(--bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
-  background: var(--white);
+  position: fixed;
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  height: var(--bottom-tabs-h);
   display: flex; align-items: stretch;
   z-index: 40;
+
+  /* Pill shape — a continuous capsule that reads as one object. */
+  border-radius: 999px;
+  padding: 4px;
+
+  /* Glass. The `saturate(180%)` is the iOS trick — bumping chroma
+     before blurring is what makes the surface feel "warm" rather than
+     muddy on photographic content. */
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+
+  /* Two-tone border: bright top edge mimics the spec highlight on
+     iOS Liquid Glass, charcoal-tinted everywhere else for definition
+     against pale page backgrounds. */
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 8px 24px -6px rgba(46, 46, 46, 0.18),
+    0 2px 8px -2px rgba(46, 46, 46, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
-/* Separate fixed fill strip locked to the viewport bottom. iOS PWA
-   sometimes renders `bottom: 0` at the top of the home-indicator area
-   (not the physical bottom), leaving the last ~34px as a strip where
-   page content can bleed through during scroll bounce. This element
-   sits permanently at the true viewport bottom, painted white, so
-   nothing leaks through regardless of where the tab bar itself lands. */
-.bottom-tabs-safezone {
-  position: fixed; left: 0; right: 0; bottom: 0;
-  height: env(safe-area-inset-bottom);
-  background: var(--white);
-  z-index: 39;
-  pointer-events: none;
+/* Safari < 17 + Firefox fall back gracefully — solid white if the
+   browser can't render the blur. The glass effect is enhancement,
+   not foundational. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bottom-tabs { background: var(--white); }
 }
+/* The safezone div is no longer needed — the pill is detached from
+   the bottom edge by design, so there's nothing to "fill". Keep the
+   class but make it a no-op so we don't break existing JSX. */
+.bottom-tabs-safezone { display: none; }
+
 .bottom-tab {
   flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-end; gap: 3px;
-  background: none; border: none; cursor: pointer; padding: 2px 0 0;
-  color: var(--charcoal-xl); font-family: var(--font);
+  align-items: center; justify-content: center; gap: 2px;
+  background: none; border: none; cursor: pointer; padding: 0;
+  color: var(--charcoal-md); font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
-  transition: color var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring);
-  min-height: 44px;
+  border-radius: 999px;
+  position: relative;
+  transition:
+    color var(--dur-slow) ease,
+    transform var(--dur-fast) var(--ease-spring),
+    background var(--dur-base) ease;
+  min-height: 0;
 }
 .bottom-tab-icon {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 28px; border-radius: var(--radius-pill);
-  transition: background var(--dur-slow) ease, color var(--dur-slow) ease;
+  width: 44px; height: 24px; border-radius: var(--radius-pill);
+  transition: color var(--dur-slow) ease;
 }
 .bottom-tab-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
   line-height: 1;
 }
 .bottom-tab:active { transform: scale(0.92); }
-.bottom-tab--active { color: var(--teal-dark); }
-.bottom-tab--active .bottom-tab-icon {
-  background: var(--teal-pale); color: var(--teal-dark);
+/* Active tab — a darker glass capsule sits behind the whole pill.
+   The rgba teal blends with the bar's frosted background to give a
+   soft tinted halo, matching how iOS 26 highlights the selected
+   item in segmented Liquid Glass controls. */
+.bottom-tab--active {
+  color: var(--teal-dark);
+  background: rgba(91, 155, 175, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(91, 155, 175, 0.12);
+}
+.bottom-tab--active .bottom-tab-icon { color: var(--teal-dark); }
+
+/* Reduced motion: drop the press scale, keep the color transition. */
+@media (prefers-reduced-motion: reduce) {
+  .bottom-tab, .bottom-tab:active { transform: none; }
 }
 
 /* FAB — teal gradient pill with a soft diffused glow for emphasis.
    Floats 24px above the bottom tab bar so it's clearly a floating
    action, not another tab. */
 .fab {
-  position: fixed; bottom: calc(var(--sab) + var(--bottom-tabs-h) + 24px); right: 20px;
+  /* Floats above the new Liquid Glass pill (which itself sits ~10px
+     above sab). Reserve enough room for the pill height + a 20px
+     visual gap, so the FAB never overlaps the tab labels. */
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 30px);
+  right: 20px;
   width: 54px; height: 54px;
   background: radial-gradient(circle at 30% 25%, var(--teal-light) 0%, var(--teal) 55%, var(--teal-dark) 100%);
   border-radius: 50%;

@@ -261,9 +261,16 @@ a[href^="tel:"], a[href^="mailto:"] {
 .main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: clip; }
 .status-bar { height: var(--sat); background: var(--white); flex-shrink: 0; }
 
-/* TOPBAR — minimal white bar matching the landing .lp-nav */
+/* TOPBAR — Liquid Glass strip matching the floating bottom-tab pill.
+   Translucent + backdrop-blurred so scroll content fades behind it
+   instead of hitting a hard white edge. The 1px hairline border-
+   bottom stays as a structural cue, but it's now tinted (not pure
+   --border-lt) so it doesn't read as a heavy line against the
+   blurred background. */
 .topbar {
-  background: var(--white);
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   /* Lateral env() keeps the hamburger / avatar out from under the
      rounded-corner curve in iPad landscape. Vertical safe-area is
      handled by the sibling .status-bar spacer (height: var(--sat))
@@ -272,8 +279,11 @@ a[href^="tel:"], a[href^="mailto:"] {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   position: relative;
-  border-bottom: 1px solid var(--border-lt);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  border-bottom: 1px solid rgba(46, 46, 46, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar { background: var(--white); }
 }
 .topbar-brand { display: flex; align-items: center; gap: 6px; font-family: var(--font-d); font-size: 16px; font-weight: 800; color: var(--charcoal); letter-spacing: -0.3px; position: absolute; left: 50%; transform: translateX(-50%); transition: background var(--dur-base) ease, color var(--dur-base) ease, transform var(--dur-slow) var(--ease-spring); -webkit-tap-highlight-color: transparent; user-select: none; padding: 4px 12px; border-radius: var(--radius-pill); }
 .topbar-brand:active { background: var(--teal-pale); color: var(--teal-dark); transform: translateX(-50%) scale(0.88); }
@@ -600,7 +610,10 @@ body:has(.mde-attach-lightbox) .bottom-tabs { display: none !important; }
   top: 0;
   left: 100%;
   width: 40px;
-  bottom: calc(var(--bottom-tabs-h) + max(calc(var(--sab) / 2), 10px));
+  /* Stops above the floating Liquid Glass pill — pill bottom offset
+     (sab + 10) + pill height — so the drawer shadow doesn't bleed
+     over the bar. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 16px);
   background: linear-gradient(to right, rgba(0,0,0,0.22), rgba(0,0,0,0));
   pointer-events: none;
   opacity: 0;
