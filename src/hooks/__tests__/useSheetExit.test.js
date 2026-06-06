@@ -78,4 +78,50 @@ describe("useSheetExit", () => {
     act(() => vi.advanceTimersByTime(SHEET_EXIT_MS));
     expect(onClose).toHaveBeenCalledWith("hi", 42, { tag: "x" });
   });
+
+  it("cancels the timer on unmount so onClose can't fire against a stale parent", () => {
+    // Regression: without the cleanup, a sheet that unmounts mid-
+    // exit (parent's state ripped it out via an unrelated path)
+    // would call onClose 260ms later against a now-gone tree, plus
+    // try setExiting(false) on a dead component.
+    const onClose = vi.fn();
+    const { result, unmount } = renderHook(() => useSheetExit(true, onClose));
+    act(() => result.current.animatedClose());
+    unmount();
+    act(() => vi.advanceTimersByTime(SHEET_EXIT_MS * 2));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("cancels the timer when open flips false externally", () => {
+    // Regression: parent decides to close the sheet without routing
+    // through animatedClose (network event invalidated the displayed
+    // entity, admin takeover, etc.). The in-flight exit timer must
+    // be cancelled — otherwise onClose fires seconds after the sheet
+    // is already gone.
+    const onClose = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ open }) => useSheetExit(open, onClose),
+      { initialProps: { open: true } }
+    );
+    act(() => result.current.animatedClose());
+    expect(result.current.exiting).toBe(true);
+    rerender({ open: false });
+    expect(result.current.exiting).toBe(false);
+    act(() => vi.advanceTimersByTime(SHEET_EXIT_MS * 2));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("resets exiting when open re-toggles after a cancelled exit", () => {
+    // Without resetting on open=false, a re-opened sheet would
+    // render in the "exiting" state immediately — broken visual.
+    const onClose = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ open }) => useSheetExit(open, onClose),
+      { initialProps: { open: true } }
+    );
+    act(() => result.current.animatedClose());
+    rerender({ open: false });
+    rerender({ open: true });
+    expect(result.current.exiting).toBe(false);
+  });
 });

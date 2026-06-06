@@ -98,13 +98,22 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   const liveRole = isInterrupt ? "alert" : "status";
   const liveness = isInterrupt ? "assertive" : "polite";
 
+  // Swipe-up-to-dismiss bypasses the toastOut keyframe path. The
+  // gesture already slides the toast off-screen with its own inline
+  // transform animation; calling `dismiss()` would set leaving=true
+  // and re-trigger the toastOut keyframe starting from translateY(0),
+  // visibly snapping the toast back to its slot before fading out.
+  // `forceRemove` skips the leaving step and just yanks it from the
+  // tree once the inline slide finishes.
+  const forceRemove = () => { setVisible(false); onDismiss?.(); };
+
   return (
     <SwipeDismissToast
       scale={scale}
       opacity={opacity}
       top={top}
       leaving={leaving}
-      onDismiss={dismiss}
+      onSwipeRemove={forceRemove}
       liveRole={liveRole}
       liveness={liveness}>
       <div className={`toast-panel toast-panel--${type}`} data-type={type}>
@@ -155,25 +164,28 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
      - While dragging, the entrance/exit CSS animation and the
        stack-promotion transition are suspended — the finger is the
        source of truth for position. Restored on release. */
-function SwipeDismissToast({ scale, opacity, top, leaving, onDismiss, liveRole, liveness, children }) {
+function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRole, liveness, children }) {
   const wrapperRef = useRef(null);
   const dragRef = useRef({ startY: 0, dy: 0, dragging: false });
 
   const SETTLE = "transform 0.32s cubic-bezier(0.34, 1.4, 0.6, 1)";
   const STACK_TRANSITION = "top var(--dur-slow) var(--ease-spring), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)";
+  const SLIDE_OUT_MS = 240;
 
   const restingTransform = `scale(${scale})`;
 
+  // touchstart only records the starting position. We deliberately do
+  // NOT kill the entrance/exit animation here, because the gesture
+  // may turn out to be a tap (no drag) and killing the animation
+  // would visibly clobber the in-flight entrance. The kill happens
+  // in onTouchMove once we've crossed the engagement threshold and
+  // know the user is actually dragging.
   const onTouchStart = useCallback((e) => {
     const el = wrapperRef.current;
     if (!el || leaving) return;
     const t = e.touches[0];
     if (!t) return;
     dragRef.current = { startY: t.clientY, dy: 0, dragging: false };
-    // Hold position via inline style so the entrance keyframe doesn't
-    // fight the gesture. Restored on touchend.
-    el.style.animation = "none";
-    el.style.transition = "none";
   }, [leaving]);
 
   const onTouchMove = useCallback((e) => {
@@ -184,7 +196,11 @@ function SwipeDismissToast({ scale, opacity, top, leaving, onDismiss, liveRole, 
     const dy = t.clientY - dragRef.current.startY;
     if (!dragRef.current.dragging) {
       if (Math.abs(dy) < 6) return;
+      // Engaged — NOW kill the entrance/stack transitions and let
+      // our inline transform drive position 1:1 with the finger.
       dragRef.current.dragging = true;
+      el.style.animation = "none";
+      el.style.transition = "none";
     }
     // Upward freely; downward dampened to 30% so the toast feels
     // grounded but not locked.
@@ -199,38 +215,58 @@ function SwipeDismissToast({ scale, opacity, top, leaving, onDismiss, liveRole, 
     const { dy, dragging } = dragRef.current;
     dragRef.current.dragging = false;
     if (!dragging) {
-      // It was a tap, not a drag — restore the live styles so any
-      // in-flight entrance keyframe and stack-promotion transition
-      // continue from where they were.
-      el.style.animation = "";
-      el.style.transition = STACK_TRANSITION;
-      el.style.transform = restingTransform;
+      // It was a tap (or below the engage threshold). We never killed
+      // the entrance animation, so there's nothing to restore.
       return;
     }
     if (dy < -50) {
       haptic.tap?.();
-      // Slide out the rest of the way + fade.
-      el.style.transition = "transform 240ms cubic-bezier(0.4, 0, 1, 1), opacity 240ms ease";
+      // Slide out the rest of the way + fade. The setTimeout fires
+      // onSwipeRemove which yanks the toast from the parent's stack
+      // WITHOUT going through internal dismiss() — that would set
+      // leaving=true and re-trigger the toastOut keyframe starting
+      // from translateY(0), visibly snapping the toast back to its
+      // slot before fading out.
+      el.style.transition = `transform ${SLIDE_OUT_MS}ms cubic-bezier(0.4, 0, 1, 1), opacity ${SLIDE_OUT_MS}ms ease`;
       el.style.transform = `scale(${scale}) translateY(-${Math.abs(dy) + 60}px)`;
       el.style.opacity = "0";
-      setTimeout(onDismiss, 200);
+      // Match the transition duration exactly so the unmount fires
+      // as the slide completes — not mid-flight. +20ms buffer for
+      // browser repaint quirks.
+      setTimeout(onSwipeRemove, SLIDE_OUT_MS + 20);
       return;
     }
     // Below threshold — springy snap back to rest.
     el.style.transition = SETTLE;
     el.style.transform = restingTransform;
     setTimeout(() => {
-      if (wrapperRef.current === el) el.style.transition = STACK_TRANSITION;
+      if (wrapperRef.current === el) {
+        el.style.transition = STACK_TRANSITION;
+        // Clear the animation override too so any subsequent
+        // re-render (e.g. parent's setLeaving) can re-apply via
+        // React's style prop.
+        el.style.animation = "";
+      }
     }, 340);
-  }, [scale, restingTransform, STACK_TRANSITION, onDismiss]);
+  }, [scale, restingTransform, STACK_TRANSITION, onSwipeRemove]);
 
   const onTouchCancel = useCallback(() => {
     const el = wrapperRef.current;
     if (!el) return;
+    if (!dragRef.current.dragging) {
+      dragRef.current = { startY: 0, dy: 0, dragging: false };
+      return;
+    }
     dragRef.current.dragging = false;
     el.style.transition = SETTLE;
     el.style.transform = restingTransform;
-  }, [restingTransform, SETTLE]);
+    setTimeout(() => {
+      if (wrapperRef.current === el) {
+        el.style.transition = STACK_TRANSITION;
+        el.style.animation = "";
+      }
+    }, 340);
+  }, [restingTransform, SETTLE, STACK_TRANSITION]);
 
   return (
     <div

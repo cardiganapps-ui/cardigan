@@ -257,8 +257,16 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
               onClick={(e) => {
                 e.stopPropagation();
                 closeRow();
-                // Let the close settle visually before mutating.
-                setTimeout(() => a.onAction?.(), 80);
+                // Let the close settle visually before mutating. The
+                // commit-swipe path on the same component already
+                // try/catches the action; mirror that here so a
+                // synchronous throw doesn't escape the setTimeout
+                // boundary (which would otherwise hit window.onerror
+                // unhandled — the UI is already closed by that
+                // point).
+                setTimeout(() => {
+                  try { a.onAction?.(); } catch { /* swallow */ }
+                }, 80);
               }}
               className="swipe-reveal-action btn-tap"
               style={{
