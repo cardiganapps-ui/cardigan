@@ -9,6 +9,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Avatar } from "../components/Avatar";
 import { SwipeableRow } from "../components/SwipeableRow";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 import { EmptyState } from "../components/EmptyState";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../i18n/index";
@@ -534,12 +535,12 @@ function ProyeccionTab({ sessions, patients }) {
       <div className="fin-stats-grid" style={{ padding:0, marginBottom:16 }}>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastGross")}</div>
-          <div className="stat-tile-val">{formatMXN(gross)}</div>
+          <div className="stat-tile-val"><AnimatedNumber value={gross} format={formatMXN} /></div>
           <div className="stat-tile-sub">{t("finances.forecastScheduled", { count: futureSessions.length, plural: futureSessions.length !== 1 ? "es" : "" })}</div>
         </div>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastNet")}</div>
-          <div className="stat-tile-val" style={{ color:"var(--green)" }}>{formatMXN(net)}</div>
+          <div className="stat-tile-val" style={{ color:"var(--green)" }}><AnimatedNumber value={net} format={formatMXN} /></div>
           <div className="stat-tile-sub">-{Math.round(cancelRate * 100)}% {t("finances.forecastCancelRateLower")}</div>
         </div>
       </div>
@@ -547,12 +548,12 @@ function ProyeccionTab({ sessions, patients }) {
       <div className="fin-stats-grid" style={{ padding:0, marginBottom:16 }}>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastPerWeek")}</div>
-          <div className="stat-tile-val">{formatMXN(perWeek)}</div>
+          <div className="stat-tile-val"><AnimatedNumber value={perWeek} format={formatMXN} /></div>
           <div className="stat-tile-sub">{t("finances.forecastActivePatients", { count: activeContributing, plural: activeContributing !== 1 ? "s" : "" })}</div>
         </div>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("finances.forecastAvgSession")}</div>
-          <div className="stat-tile-val">{formatMXN(avgRate)}</div>
+          <div className="stat-tile-val"><AnimatedNumber value={avgRate} format={formatMXN} /></div>
           <div className="stat-tile-sub">{t("expediente.perSession")}</div>
         </div>
       </div>
@@ -778,14 +779,14 @@ function GastosTab({
         <div className="stat-tile">
           <div className="stat-tile-label">{t("gastos.thisMonth")}</div>
           <div className="stat-tile-val" style={{ color: "var(--charcoal)", fontVariantNumeric: "tabular-nums" }}>
-            −{formatMXN(totalThisMonth)}
+            −<AnimatedNumber value={totalThisMonth} format={formatMXN} />
           </div>
           <div className="stat-tile-sub">{t("gastos.expensesKpi")}</div>
         </div>
         <div className="stat-tile">
           <div className="stat-tile-label">{t("gastos.thisYear")}</div>
           <div className="stat-tile-val" style={{ color: "var(--charcoal)", fontVariantNumeric: "tabular-nums" }}>
-            −{formatMXN(totalYTD)}
+            −<AnimatedNumber value={totalYTD} format={formatMXN} />
           </div>
           <div className="stat-tile-sub">{t("gastos.expensesKpi")}</div>
         </div>
@@ -1200,7 +1201,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             {t("gastos.incomeKpi")}
           </div>
           <div className="stat-tile-val" style={{ color: "var(--green)", fontVariantNumeric: "tabular-nums" }}>
-            +{formatMXN(income)}
+            +<AnimatedNumber value={income} format={formatMXN} />
           </div>
         </div>
         <div className="stat-tile">
@@ -1209,7 +1210,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             {t("gastos.expensesKpi")}
           </div>
           <div className="stat-tile-val" style={{ color: "var(--charcoal)", fontVariantNumeric: "tabular-nums" }}>
-            −{formatMXN(egresos)}
+            −<AnimatedNumber value={egresos} format={formatMXN} />
           </div>
         </div>
         <div className="stat-tile">
@@ -1218,7 +1219,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             color: profit >= 0 ? "var(--teal-dark)" : "var(--amber)",
             fontVariantNumeric: "tabular-nums",
           }}>
-            {profit >= 0 ? "+" : "−"}{formatMXN(Math.abs(profit))}
+            {profit >= 0 ? "+" : "−"}<AnimatedNumber value={Math.abs(profit)} format={formatMXN} />
           </div>
         </div>
       </div>
@@ -1490,14 +1491,14 @@ export function Finances() {
               onClick={() => setBalanceFilter(balanceFilter === "owing" ? null : "owing")}
               className={`stat-tile stat-tile-clickable ${balanceFilter === "owing" ? "stat-tile-selected" : ""}`}>
               <div className="stat-tile-label">{t("finances.outstanding")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--red)" }}>{formatMXN(totalOwed)}</div>
+              <div className="stat-tile-val" style={{ color:"var(--red)" }}><AnimatedNumber value={totalOwed} format={formatMXN} /></div>
               <div className="stat-tile-sub">{t("finances.patientCount", { count: owingPatients.length })}</div>
             </button>
             <button type="button"
               onClick={() => setBalanceFilter(balanceFilter === "paid" ? null : "paid")}
               className={`stat-tile stat-tile-clickable ${balanceFilter === "paid" ? "stat-tile-selected" : ""}`}>
               <div className="stat-tile-label">{t("patients.upToDate")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)" }}>{regularPatients.filter(p=>p.amountDue<=0).length}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)" }}><AnimatedNumber value={regularPatients.filter(p=>p.amountDue<=0).length} /></div>
               <div className="stat-tile-sub">{t("finances.patientsLabel")}</div>
             </button>
           </div>

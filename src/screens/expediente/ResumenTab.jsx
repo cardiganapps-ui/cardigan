@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { shortDateToISO, todayISO, parseLocalDate } from "../../utils/dates";
 import { isTutorSession, getLastTutorSession, getNextTutorSession } from "../../utils/sessions";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SetWeeklySlotSheet } from "../../components/sheets/SetWeeklySlotSheet";
 import { DAY_ORDER } from "../../data/seedData";
@@ -576,7 +577,7 @@ export function ResumenTab({
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8, alignItems:"stretch" }}>
         <div className="stat-tile" style={{ textAlign:"center", padding:"10px 14px" }}>
           <div className="stat-tile-label">{t("finances.collected")}</div>
-          <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-lg)" }}>{formatMXN(patient.paid)}</div>
+          <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-lg)" }}><AnimatedNumber value={patient.paid} format={formatMXN} /></div>
         </div>
         <div className="stat-tile" style={{ textAlign:"center", padding:"10px 14px" }}>
           {/* When a patient has overpaid (credit > 0), the tile flips
@@ -588,12 +589,12 @@ export function ResumenTab({
           {patient.credit > 0 ? (
             <>
               <div className="stat-tile-label">{t("finances.credit")}</div>
-              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-lg)" }}>+{formatMXN(patient.credit)}</div>
+              <div className="stat-tile-val" style={{ color:"var(--green)", fontSize:"var(--text-lg)" }}>+<AnimatedNumber value={patient.credit} format={formatMXN} /></div>
             </>
           ) : (
             <>
               <div className="stat-tile-label">{t("finances.balance")}</div>
-              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-lg)" }}>{formatMXN(patient.amountDue)}</div>
+              <div className="stat-tile-val" style={{ color: patient.amountDue > 0 ? "var(--red)" : "var(--green)", fontSize:"var(--text-lg)" }}><AnimatedNumber value={patient.amountDue} format={formatMXN} /></div>
             </>
           )}
         </div>

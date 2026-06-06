@@ -20,6 +20,7 @@ import { isPotentialOrDiscarded, SESSION_STATUS } from "../data/constants";
 import { haptic } from "../utils/haptics";
 import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import { IconCheck } from "../components/Icons";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 
 /* ── Free-day empty state ──
    Positive "you have no sessions today" surface. Reuses the canonical
@@ -460,22 +461,22 @@ export function Home({ setScreen, userName }) {
       <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>
           <div className="kpi-label">{t("home.sessionsToday")}</div>
-          <div className="kpi-value">{todaySessions.length}</div>
+          <div className="kpi-value"><AnimatedNumber value={todaySessions.length} /></div>
           <div className="kpi-meta">{todayDayName} {todayStr}</div>
         </button>
         <button type="button" className="kpi-card" onClick={() => setScreen("patients")}>
           <div className="kpi-label">{t("patients.title")}</div>
-          <div className="kpi-value">{activeCount}</div>
+          <div className="kpi-value"><AnimatedNumber value={activeCount} /></div>
           <div className="kpi-meta">{activeCount === 0 ? t("patients.noPatients").toLowerCase() : t("patients.active").toLowerCase()}</div>
         </button>
         <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
           <div className="kpi-label">{t("finances.monthlyCollected")}</div>
-          <div className="kpi-value">{formatMXN(cobradoMes)}</div>
+          <div className="kpi-value"><AnimatedNumber value={cobradoMes} format={formatMXN} /></div>
           <div className="kpi-meta">{strings.months[TODAY.getMonth()]}</div>
         </button>
         <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
           <div className="kpi-label">{t("finances.outstanding")}</div>
-          <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}>{formatMXN(totalOwed)}</div>
+          <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}><AnimatedNumber value={totalOwed} format={formatMXN} /></div>
           <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
         </button>
       </div>
