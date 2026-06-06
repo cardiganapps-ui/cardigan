@@ -91,11 +91,27 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
     };
   }, [open, closeRow]);
 
-  // Release the global lock if we unmount mid-gesture.
+  // Track in-flight setTimeouts (commit-swipe slide-off + action
+  // button delay) so unmount can cancel them. Without this, a row
+  // that gets unmounted mid-commit (e.g. the action triggered
+  // another mutation that removed the row from its parent list)
+  // would still fire its setTimeout, calling setOpen/setDx on a
+  // dead component and running the action against stale closure
+  // values.
+  const commitTimerRef = useRef(null);
+  const actionTimerRef = useRef(null);
+  const cancelPendingTimers = useCallback(() => {
+    if (commitTimerRef.current) { clearTimeout(commitTimerRef.current); commitTimerRef.current = null; }
+    if (actionTimerRef.current) { clearTimeout(actionTimerRef.current); actionTimerRef.current = null; }
+  }, []);
+
+  // Release the global lock + cancel pending timers if we unmount
+  // mid-gesture or mid-commit.
   useEffect(() => () => {
+    cancelPendingTimers();
     release(OWNER_ID);
     releaseReveal(id);
-  }, [id]);
+  }, [id, cancelPendingTimers]);
 
   const onTouchStart = useCallback((e) => {
     if (disabled) return;
@@ -168,7 +184,8 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
       haptic.success?.();
       // Settle delay so the slide-off animates BEFORE the action
       // mutates state / removes the row.
-      setTimeout(() => {
+      commitTimerRef.current = setTimeout(() => {
+        commitTimerRef.current = null;
         try { actions[0].onAction?.(); } catch { /* swallow — UI already closed */ }
         // Most commit actions remove the row (delete / cancel) or
         // transition it to a new status (complete). If the row is
@@ -264,7 +281,8 @@ export function SwipeRevealRow({ actions = [], children, onClick, disabled = fal
                 // boundary (which would otherwise hit window.onerror
                 // unhandled — the UI is already closed by that
                 // point).
-                setTimeout(() => {
+                actionTimerRef.current = setTimeout(() => {
+                  actionTimerRef.current = null;
                   try { a.onAction?.(); } catch { /* swallow */ }
                 }, 80);
               }}

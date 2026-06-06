@@ -123,4 +123,44 @@ describe("useLongPress", () => {
     act(() => result.current.bind.onClickCapture(clickEvent));
     expect(clickEvent.stopPropagation).not.toHaveBeenCalled();
   });
+
+  it("does not swallow keyboard activations long after a fired long-press", () => {
+    // Regression: the hook previously kept a boolean firedRef that
+    // only cleared inside onClickCapture or the next touchstart.
+    // When preventDefault on touchend successfully suppressed the
+    // synthetic click, the flag stayed true — and a later keyboard
+    // activation (Enter/Space) within the same wrapper hit
+    // onClickCapture and got swallowed too. The timestamp-based
+    // scheme only suppresses clicks inside CLICK_SUPPRESS_MS (300ms);
+    // anything later passes through.
+    vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0));
+    const cb = vi.fn();
+    const { result } = renderHook(() => useLongPress(cb, { ms: 100 }));
+    act(() => result.current.bind.onTouchStart(touchEvent([{ x: 10, y: 20 }])));
+    act(() => vi.advanceTimersByTime(100));
+    expect(cb).toHaveBeenCalledTimes(1);
+    // touchend with cancelable=false — preventDefault is a no-op, so
+    // the synthetic click WILL fire (the case the bug fix targets).
+    const endEvent = { cancelable: false, preventDefault: vi.fn() };
+    act(() => result.current.bind.onTouchEnd(endEvent));
+    // Synthetic click right after — within the 300ms suppression
+    // window, should be swallowed.
+    const earlyClick = { stopPropagation: vi.fn(), preventDefault: vi.fn() };
+    act(() => result.current.bind.onClickCapture(earlyClick));
+    expect(earlyClick.stopPropagation).toHaveBeenCalled();
+    expect(earlyClick.preventDefault).toHaveBeenCalled();
+    // Advance system time past the suppression window. (vi.setSystemTime
+    // shifts Date.now() forward; the hook reads Date.now() at the click
+    // moment, so this puts us "400ms later" without any real wait.)
+    vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0, 500));
+    // Simulate a keyboard activation: a click event arrives via Enter
+    // or Space, hits onClickCapture. The early-window's resetting of
+    // firedAtRef in the swallowed click means firedAtRef is back to 0
+    // already, but even if it weren't, the time gate would block
+    // suppression.
+    const lateClick = { stopPropagation: vi.fn(), preventDefault: vi.fn() };
+    act(() => result.current.bind.onClickCapture(lateClick));
+    expect(lateClick.stopPropagation).not.toHaveBeenCalled();
+    expect(lateClick.preventDefault).not.toHaveBeenCalled();
+  });
 });

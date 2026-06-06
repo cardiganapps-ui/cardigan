@@ -25,15 +25,31 @@ import { haptic } from "../utils/haptics";
    already shows a system-level long-press affordance (text selection,
    image save) on certain elements; suppressing it globally would
    feel wrong. Callers can preventDefault inside their callback if
-   they need to. */
+   they need to.
+
+   Click suppression after a fired long-press:
+     We track the fire TIMESTAMP, not a boolean flag. Earlier this
+     hook used `firedRef.current = true` and only reset it inside
+     onClickCapture or the next touchstart. That left the flag stuck
+     when preventDefault on touchend successfully suppressed the
+     synthetic click — keyboard activations (Enter/Space) within the
+     same wrapper would then hit onClickCapture and get swallowed
+     too. The timestamp scheme swallows clicks only within
+     CLICK_SUPPRESS_MS of the fire; after that window, any click
+     (keyboard or otherwise) passes through normally. */
 
 const LONG_PRESS_MS = 450;
 const MOVE_TOLERANCE = 10;
+// Window after a fired long-press during which a synthetic click is
+// suppressed. iOS fires the synthetic click within ~50ms of touchend;
+// 300ms is comfortably past that. Keyboard activations (Enter/Space)
+// outside this window pass through normally.
+const CLICK_SUPPRESS_MS = 300;
 
 export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS } = {}) {
   const timerRef = useRef(null);
   const startRef = useRef(null);
-  const firedRef = useRef(false);
+  const firedAtRef = useRef(0);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -49,11 +65,11 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
     const t = e.touches[0];
     if (!t) return;
     startRef.current = { x: t.clientX, y: t.clientY };
-    firedRef.current = false;
+    firedAtRef.current = 0;
     clearTimer();
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
-      firedRef.current = true;
+      firedAtRef.current = Date.now();
       haptic.warn?.();
       onLongPress(startRef.current.x, startRef.current.y);
     }, ms);
@@ -74,11 +90,13 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
 
   const onTouchEnd = useCallback((e) => {
     clearTimer();
-    // If the long-press already fired, swallow the synthetic click
-    // that follows (otherwise the row's onClick handler runs right on
-    // top of the context menu and the menu's tap-outside listener
-    // closes the menu immediately).
-    if (firedRef.current && e?.cancelable) {
+    // If the long-press already fired AND the touchend event is still
+    // cancelable, preventDefault suppresses the synthetic click iOS
+    // would otherwise dispatch microseconds later. The CLICK_SUPPRESS
+    // window below handles the case where preventDefault was a no-op
+    // (e.g. cancelable was already false because something earlier
+    // in the gesture chain called preventDefault).
+    if (firedAtRef.current && e?.cancelable) {
       e.preventDefault();
     }
     startRef.current = null;
@@ -87,14 +105,17 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
   const onTouchCancel = useCallback(() => {
     clearTimer();
     startRef.current = null;
-    firedRef.current = false;
+    firedAtRef.current = 0;
   }, [clearTimer]);
 
-  // Suppress the click that follows a fired long-press — capture-phase
-  // so it runs before the row's onClick.
+  // Capture-phase suppression: stop the click only if it falls inside
+  // the CLICK_SUPPRESS_MS window after a fired long-press. Outside
+  // that window, the click passes through — important for keyboard
+  // users who activate buttons via Enter/Space, which would otherwise
+  // get permanently silenced after the first long-press on the row.
   const onClickCapture = useCallback((e) => {
-    if (firedRef.current) {
-      firedRef.current = false;
+    if (firedAtRef.current && Date.now() - firedAtRef.current < CLICK_SUPPRESS_MS) {
+      firedAtRef.current = 0;
       e.stopPropagation();
       e.preventDefault();
     }
@@ -102,6 +123,6 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
 
   return {
     bind: enabled ? { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onClickCapture } : {},
-    didFire: () => firedRef.current,
+    didFire: () => firedAtRef.current > 0,
   };
 }

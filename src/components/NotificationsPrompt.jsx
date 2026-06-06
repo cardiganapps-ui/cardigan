@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { IconBell, IconX } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -48,6 +48,19 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
     return () => clearTimeout(id);
   }, [exiting]);
 
+  // Guard against setState after unmount in handleEnable's await.
+  // notifications.enable() can take 1–2s (OS prompt + push subscribe
+  // + DB upsert). If the user navigates away during that window, the
+  // parent unmounts this component but the in-flight promise still
+  // resolves and tries setBusy/setExiting on a dead instance —
+  // generates a React dev warning at minimum, and on older React
+  // versions could leak update queues.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+  const safeSet = useCallback((fn) => {
+    if (mountedRef.current) fn();
+  }, []);
+
   // Keep the banner hidden once the user enables push, regardless of
   // dismissal state — no reason to keep showing it if they're
   // already opted in. Adjust-state-during-render pattern on the
@@ -91,19 +104,19 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
     if (busy) return;
     setBusy(true);
     const res = await notifications.enable();
-    setBusy(false);
+    safeSet(() => setBusy(false));
     if (res?.ok) {
       // No success toast — the prompt dismisses itself and the
       // Settings toggle (when reachable) renders as enabled. Toast
       // would be redundant on a flow that already animates away.
       markDismissed(variant);
-      setExiting(true);
+      safeSet(() => setExiting(true));
     } else if (res?.code === "permission-denied") {
       showToast(t("notifications.toastPermissionDenied"), "warning");
       // Hide the banner — user actively chose "Block", no point
       // offering the prompt again on every Home visit.
       markDismissed(variant);
-      setExiting(true);
+      safeSet(() => setExiting(true));
     } else {
       showToast(t("notifications.toastSubscribeFailed"), "error");
       // Keep banner visible so user can retry.

@@ -174,6 +174,23 @@ function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRo
 
   const restingTransform = `scale(${scale})`;
 
+  // If the auto-dismiss timer fires while the user is mid-drag,
+  // `leaving` flips true and React re-applies the toastOut keyframe
+  // via the inline style prop. The keyframe starts from
+  // translateY(0) and would override our drag-position transform —
+  // the toast would visibly snap back to its slot mid-flight and
+  // then fade out. Detect the transition, abort the drag, and clear
+  // our inline overrides so the keyframe runs cleanly.
+  useEffect(() => {
+    if (!leaving) return;
+    const el = wrapperRef.current;
+    if (!el || !dragRef.current.dragging) return;
+    dragRef.current = { startY: 0, dy: 0, dragging: false };
+    el.style.transform = "";
+    el.style.transition = "";
+    el.style.animation = "";
+  }, [leaving]);
+
   // touchstart only records the starting position. We deliberately do
   // NOT kill the entrance/exit animation here, because the gesture
   // may turn out to be a tap (no drag) and killing the animation
