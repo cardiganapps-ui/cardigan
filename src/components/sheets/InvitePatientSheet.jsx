@@ -5,6 +5,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX, IconCheck, IconMail, IconLink } from "../Icons";
 import { WhatsAppGlyph, ShareGlyph } from "../ReferralShareBlock";
 import { haptic } from "../../utils/haptics";
@@ -49,7 +50,8 @@ export function InvitePatientSheet({ patient, onClose }) {
     setPanelEl(el);
   };
 
-  useEscape(patient ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(!!patient, onClose);
+  useEscape(patient ? animatedClose : null);
 
   useEffect(() => {
     if (!patient) return;
@@ -147,10 +149,10 @@ export function InvitePatientSheet({ patient, onClose }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("patientInvite.title", { name: patient.name })}
@@ -165,7 +167,7 @@ export function InvitePatientSheet({ patient, onClose }) {
           <button
             type="button"
             className="sheet-close"
-            onClick={onClose}
+            onClick={animatedClose}
             aria-label={t("close")}
           >
             <IconX size={14} />

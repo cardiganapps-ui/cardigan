@@ -5,6 +5,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { formatMXN } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import {
@@ -33,8 +34,10 @@ export function RecurringExpenseSheet({ onClose }) {
   } = useCardigan();
   const { t } = useT();
 
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
   const safeClose = mutating ? null : onClose;
-  useEscape(safeClose);
+  const safeAnimatedClose = mutating ? null : animatedClose;
+  useEscape(safeAnimatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: true });
   const setPanel = (el) => {
@@ -114,14 +117,14 @@ export function RecurringExpenseSheet({ onClose }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={safeClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true"
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
         style={{ maxHeight: "min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("gastos.recurringTitle")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={safeClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose}>
             <IconX size={14} />
           </button>
         </div>

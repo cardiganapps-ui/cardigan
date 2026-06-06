@@ -3,6 +3,7 @@ import { useT } from "../../i18n/index.jsx";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX, IconCheck } from "../Icons";
 import { haptic } from "../../utils/haptics";
 
@@ -23,8 +24,10 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
   const { t } = useT();
   const [busy, setBusy] = useState(false);
 
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
   const safeClose = busy ? null : onClose;
-  useEscape(open ? safeClose : null);
+  const safeAnimatedClose = busy ? null : animatedClose;
+  useEscape(open ? safeAnimatedClose : null);
   const panelRef = useFocusTrap(!!open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: open });
   const setPanel = useCallback((el) => {
@@ -39,11 +42,11 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
     try {
       await onPick?.(attachmentId);
       haptic.success();
-      onClose?.();
+      animatedClose();
     } finally {
       setBusy(false);
     }
-  }, [busy, onPick, onClose]);
+  }, [busy, onPick, animatedClose]);
 
   const clear = useCallback(async () => {
     if (busy) return;
@@ -51,11 +54,11 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
     try {
       await onClear?.();
       haptic.tap();
-      onClose?.();
+      animatedClose();
     } finally {
       setBusy(false);
     }
-  }, [busy, onClear, onClose]);
+  }, [busy, onClear, animatedClose]);
 
   if (!open) return null;
 
@@ -63,10 +66,10 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
   const hasAnyAttachments = (attachmentRows || []).length > 0;
 
   return (
-    <div className="sheet-overlay" onClick={safeClose || undefined}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("notes.cover.title")}
@@ -79,7 +82,7 @@ export function CoverPickerSheet({ open, onClose, attachmentRows, tiles, current
           <button
             type="button"
             className="sheet-close"
-            onClick={() => safeClose?.()}
+            onClick={() => safeAnimatedClose?.()}
             disabled={busy}
             aria-label={t("close")}
           >

@@ -4,6 +4,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX } from "../Icons";
 import { haptic } from "../../utils/haptics";
 
@@ -52,8 +53,10 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
 
   const isEmpty = !title.trim() && !content.trim();
 
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
   const safeClose = busy ? null : onClose;
-  useEscape(open ? safeClose : null);
+  const safeAnimatedClose = busy ? null : animatedClose;
+  useEscape(open ? safeAnimatedClose : null);
   const panelRef = useFocusTrap(!!open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: open });
   const setPanel = useCallback((el) => {
@@ -66,7 +69,7 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
     if (busy) return;
     if (isEmpty && !openInEditor) {
       // Closing on empty is just a dismiss — no row written.
-      onClose?.();
+      animatedClose();
       return;
     }
     setBusy(true);
@@ -85,13 +88,13 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
       }
       haptic.success();
       onSaved?.(note, { openInEditor: !!openInEditor });
-      onClose?.();
+      animatedClose();
     } catch {
       haptic.warn();
       showToast?.(t("notes.saveFailed"), "error");
       setBusy(false);
     }
-  }, [busy, isEmpty, createNote, title, content, onSaved, onClose, showToast, t]);
+  }, [busy, isEmpty, createNote, title, content, onSaved, animatedClose, showToast, t]);
 
   // ⌘/Ctrl+Enter saves. Most therapists are typing on phone, but on
   // desktop tablet/laptop they expect this shortcut.
@@ -105,10 +108,10 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
   if (!open) return null;
 
   return (
-    <div className="sheet-overlay" onClick={safeClose || undefined}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("notes.quickCapture.title")}
@@ -121,7 +124,7 @@ export function QuickCaptureSheet({ open, onClose, onSaved }) {
           <button
             type="button"
             className="sheet-close"
-            onClick={() => safeClose?.()}
+            onClick={() => safeAnimatedClose?.()}
             disabled={busy}
             aria-label={t("close")}
           >

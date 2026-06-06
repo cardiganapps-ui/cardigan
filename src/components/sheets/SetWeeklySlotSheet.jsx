@@ -4,6 +4,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardigan } from "../../context/CardiganContext";
 import { todayISO } from "../../utils/dates";
 import { DAY_ORDER } from "../../data/seedData";
@@ -32,7 +33,8 @@ import { haptic } from "../../utils/haptics";
 export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
   const { t } = useT();
   const { profession, updatePatient, generateRecurringSessions, showSuccess } = useCardigan();
-  useEscape(onClose);
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: true });
   const setPanel = (el) => {
@@ -103,7 +105,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
       showSuccess?.(t("scheduling.modeChangedRecurring"));
       haptic.success();
       onSwitched?.();
-      onClose();
+      animatedClose();
     } catch (ex) {
       setError(ex?.message || t("scheduling.errors.writeFailed"));
       setSubmitting(false);
@@ -111,10 +113,10 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={submitting ? undefined : onClose} role="presentation">
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose} role="presentation">
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="set-slot-title"
@@ -139,7 +141,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
             type="button"
             className="sheet-close"
             aria-label={t("close")}
-            onClick={onClose}
+            onClick={animatedClose}
             disabled={submitting}>
             <IconX size={14} />
           </button>
@@ -224,7 +226,7 @@ export function SetWeeklySlotSheet({ patient, onClose, onSwitched }) {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={onClose}
+              onClick={animatedClose}
               disabled={submitting}>
               {t("cancel")}
             </button>

@@ -4,6 +4,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { useCardigan } from "../../context/CardiganContext";
 import { useCardiChat } from "../../hooks/useCardiChat";
@@ -33,10 +34,11 @@ export function CardiSheet({ open, onClose }) {
   // privacy-policy consent in ConsentBanner). Only checked while the
   // sheet is open so we don't fire the lookup on every drawer render.
   const consent = useCardiConsent({ user, enabled: open });
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  useLayer(open ? "cardi" : null, onClose);
+  useLayer(open ? "cardi" : null, animatedClose);
 
   // patientCount surfaces in cardiKnowledge.js as "Pacientes activos".
   // Filter to status='active' so the figure matches the label — and so
@@ -125,10 +127,10 @@ export function CardiSheet({ open, onClose }) {
   const showLoading = consent.state === "unknown";
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("cardi.title")}
@@ -171,7 +173,7 @@ export function CardiSheet({ open, onClose }) {
                 <IconRefresh size={15} />
               </button>
             )}
-            <button className="sheet-close" aria-label={t("close")} onClick={onClose}>
+            <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}>
               <IconX size={14} />
             </button>
           </div>
@@ -191,7 +193,7 @@ export function CardiSheet({ open, onClose }) {
           {showLoading ? null : showGate ? (
             <CardiConsentGate
               onAccept={consent.accept}
-              onCancel={onClose}
+              onCancel={animatedClose}
               submitting={consent.submitting}
               error={consent.error}
             />
