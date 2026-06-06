@@ -77,16 +77,40 @@
      the sheet's visible bottom). Style + layout still give us most
      of the containment perf without that side-effect. */
   contain: layout style;
-  animation: slideUp var(--dur-slower) var(--ease-spring);
+  /* Physical-settle rise. Three-stage curve replaces a flat slide:
+       0%   100%         start below the viewport
+       58%  -8px         rise past the resting position
+       80%  +3px         settle back below it
+       100% 0            damped rest
+     The visible 8px overshoot + 3px dip is the moment that reads
+     as "this surface has weight" rather than CSS auto-tween. Pair
+     with --ease-out (no curve overshoot) because the bounce is
+     baked into the keyframes — using --ease-spring on top would
+     produce a double-bounce that feels cartoonish.
+     The opacity ramps from 0.94 → 1 so a tiny fade-in covers the
+     visual "snap" of the panel entering the layout when it first
+     mounts; without it, the sheet pops in solid then animates,
+     which on slower devices is perceptible as a one-frame stutter. */
+  animation: sheetRiseIn 520ms var(--ease-out) both;
 }
 /* Focus trap parks focus on the panel itself (tabindex=-1) so no inner
    button looks pre-selected when the sheet opens — hide the default
    outline on that container-level focus. Inner buttons still get the
    normal :focus-visible treatment for keyboard navigation. */
 .sheet-panel:focus, .sheet-panel:focus-visible { outline: none; }
+@keyframes sheetRiseIn {
+  0%   { transform: translateY(100%); opacity: 0.94; }
+  58%  { transform: translateY(-8px); opacity: 1; }
+  80%  { transform: translateY(3px); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+/* Legacy alias — some screens reference `slideUp` directly. Map to
+   the new keyframe so a one-line search-replace later isn't needed. */
 @keyframes slideUp {
-  0%   { transform: translateY(100%); }
-  100% { transform: translateY(0); }
+  0%   { transform: translateY(100%); opacity: 0.94; }
+  58%  { transform: translateY(-8px); opacity: 1; }
+  80%  { transform: translateY(3px); }
+  100% { transform: translateY(0); opacity: 1; }
 }
 @keyframes sheetScaleIn {
   0%   { opacity: 0; transform: scale(0.9); }
