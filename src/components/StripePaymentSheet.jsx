@@ -4,6 +4,7 @@ import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { getStripe } from "../lib/stripe";
 import { formatMXN } from "../utils/format";
+import { useSheetExit } from "../hooks/useSheetExit";
 
 /* ── StripePaymentSheet ───────────────────────────────────────────────
    Native checkout — Stripe Elements `PaymentElement` mounted inside
@@ -87,6 +88,7 @@ export default function StripePaymentSheet({
   plan = "monthly",
 }) {
   const { t } = useT();
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
   // Stage state machine — each transitions to the next on success and
   // can fall back to "error" on any failure.
   //   loading → ready → submitting → done
@@ -242,7 +244,7 @@ export default function StripePaymentSheet({
 
   return (
     <div
-      className="sheet-overlay"
+      className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`}
       // The Stripe payment sheet must render ABOVE any sheet that
       // launched it (Settings → Suscripción → Suscribirme being the
       // canonical case). All sheets share `--z-sheet`, so without an
@@ -251,10 +253,10 @@ export default function StripePaymentSheet({
       // +1 keeps us above peer sheets without colliding with the
       // higher-tier overlays (note editor, expediente).
       style={{ zIndex: "calc(var(--z-sheet) + 1)" }}
-      onClick={() => stage !== "submitting" && onClose?.()}
+      onClick={() => stage !== "submitting" && animatedClose()}
     >
       <div
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -265,7 +267,7 @@ export default function StripePaymentSheet({
           <button
             className="sheet-close"
             aria-label={t("close")}
-            onClick={() => stage !== "submitting" && onClose?.()}
+            onClick={() => stage !== "submitting" && animatedClose()}
             disabled={stage === "submitting"}
           >
             <IconX size={14} />
@@ -403,7 +405,7 @@ export default function StripePaymentSheet({
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => onClose?.()}
+            onClick={() => animatedClose()}
             disabled={stage === "submitting"}
           >
             {t("cancel")}

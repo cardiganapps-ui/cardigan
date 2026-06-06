@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEscape } from "../../hooks/useEscape";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { isNative, getPlatform } from "../../lib/platform";
 import { haptic } from "../../utils/haptics";
 import { checkNativePermission } from "../../lib/nativePush";
@@ -19,7 +20,8 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
   const [launchUrl, setLaunchUrl] = useState(null);
   const [testResult, setTestResult] = useState(null);
 
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
 
   useEffect(() => {
     if (!open) return;
@@ -63,9 +65,9 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Diagnóstico"
@@ -77,7 +79,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
           <button
             type="button"
             className="sheet-close"
-            onClick={onClose}
+            onClick={animatedClose}
             aria-label="Cerrar"
           >×</button>
         </div>

@@ -4,6 +4,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardigan } from "../../context/CardiganContext";
 import { parseInBodyCSV, parseInBodyXLSX } from "../../utils/inbody";
 import { haptic } from "../../utils/haptics";
@@ -29,7 +30,8 @@ import { haptic } from "../../utils/haptics";
 export function InBodyImportSheet({ open, patient, onClose, onImported }) {
   const { t } = useT();
   const { measurements, bulkCreateMeasurements, showSuccess } = useCardigan();
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = (el) => {
@@ -166,7 +168,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
       showSuccess?.(msg);
       haptic.success();
       onImported?.(result);
-      onClose();
+      animatedClose();
     } else {
       setParseError(t("measurements.import.errors.writeFailed"));
       setStep("preview");
@@ -174,10 +176,10 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose} role="presentation">
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose} role="presentation">
       <div
         ref={setPanel}
-        className="sheet-panel inbody-import-sheet"
+        className={`sheet-panel inbody-import-sheet ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="inbody-import-title"
@@ -192,7 +194,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
             type="button"
             className="sheet-close"
             aria-label={t("close")}
-            onClick={onClose}>
+            onClick={animatedClose}>
             <IconX size={14} />
           </button>
         </div>

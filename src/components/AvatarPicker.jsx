@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { IconX, IconUpload } from "./Icons";
 import { useT } from "../i18n/index";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useSheetExit } from "../hooks/useSheetExit";
 import { useEscape } from "../hooks/useEscape";
 import { avatarPath } from "../utils/imageUpload";
 import { supabase } from "../supabaseClient";
@@ -32,7 +33,8 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   // sheet closes (the optimistic-close flow leaves no UI behind in
   // the AvatarPicker itself for inline error display).
   const { showSuccess, showToast } = useCardigan() || {};
-  useEscape(onClose);
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 
@@ -140,7 +142,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
       // hard reload re-fetches the real R2 URL — which is fine
       // because the upload has long since completed).
       setAvatarUrl(path, localBlobUrl);
-      onClose();
+      animatedClose();
       showSuccess?.(t("avatar.saving") || "Guardando avatar…");
 
       (async () => {
@@ -187,7 +189,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
         if (currentAvatar?.kind === KIND_UPLOADED) invalidateAvatarUrl(currentAvatar.value);
         nextAvatar = { kind: KIND_PRESET, value: draft.id };
       } else {
-        onClose();
+        animatedClose();
         return;
       }
 
@@ -205,7 +207,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
 
       haptic.success();
       onSaved?.(nextAvatar, updData?.user || null);
-      onClose();
+      animatedClose();
     } catch (err) {
       console.error("[avatar] save failed", {
         stage: err?.stage,
@@ -247,10 +249,10 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
   const selectedPresetId = draft.kind === KIND_PRESET ? draft.id : null;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("avatar.title") || "Cambiar foto"}
@@ -264,7 +266,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
               ? (t("avatar.crop.title") || "Ajusta tu foto")
               : (t("avatar.title") || "Cambiar foto")}
           </span>
-          <button className="sheet-close" aria-label={t("close") || "Cerrar"} onClick={onClose}>
+          <button className="sheet-close" aria-label={t("close") || "Cerrar"} onClick={animatedClose}>
             <IconX size={14} />
           </button>
         </div>
@@ -363,7 +365,7 @@ export function AvatarPicker({ user, currentAvatar, onClose, onSaved }) {
           {error && <div className="av-picker-error" role="alert">{error}</div>}
 
           <div className="av-picker-actions">
-            <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            <button className="btn btn-secondary" onClick={animatedClose} disabled={saving}>
               {t("cancel") || "Cancelar"}
             </button>
             <button className="btn btn-primary-teal" onClick={save} disabled={!isDirty || saving}>

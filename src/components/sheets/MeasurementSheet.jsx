@@ -5,6 +5,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { haptic } from "../../utils/haptics";
 
 /* ── MeasurementSheet ────────────────────────────────────────────
@@ -22,7 +23,8 @@ import { haptic } from "../../utils/haptics";
    stateless about which patient it's editing for. */
 export function MeasurementSheet({ open, measurement, onSave, onClose }) {
   const { t } = useT();
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = (el) => {
@@ -63,10 +65,10 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose} role="presentation">
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose} role="presentation">
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="measurement-sheet-title"
@@ -81,7 +83,7 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }) {
             type="button"
             className="sheet-close"
             aria-label={t("close")}
-            onClick={onClose}>
+            onClick={animatedClose}>
             <IconX size={14} />
           </button>
         </div>
@@ -167,7 +169,7 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }) {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={onClose}
+              onClick={animatedClose}
               disabled={busy}>
               {t("cancel")}
             </button>

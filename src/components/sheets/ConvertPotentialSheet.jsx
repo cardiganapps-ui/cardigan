@@ -8,6 +8,7 @@ import { SegmentedControl } from "../SegmentedControl";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useLayer } from "../../hooks/useLayer";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
@@ -44,10 +45,11 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
-  useEscape(onClose);
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  useLayer("convert-potential", onClose);
+  useLayer("convert-potential", animatedClose);
   const setPanel = (el) => {
     panelRef.current = el;
     scrollRef.current = el;
@@ -111,7 +113,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!potential) { onClose(); return; }
+    if (!potential) { animatedClose(); return; }
     if (rate === "" || Number.isNaN(Number(rate))) { setErr(t("patients.enterRate")); return; }
     if (!isEpisodicMode && internalConflictRows.length > 0) { setErr(t("patients.duplicateSchedule")); return; }
     setErr("");
@@ -142,7 +144,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
 
     try {
       const ok = await onSubmit(potential.id, payload);
-      if (ok) onClose();
+      if (ok) animatedClose();
     } catch (ex) {
       setErr(ex?.message || "Error al guardar");
     }
@@ -151,12 +153,12 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
   if (!potential) return null;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("patients.convertingTitle")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}><IconX size={14} /></button>
         </div>
 
         <form onSubmit={submit} style={{ padding:"0 20px 0" }}>

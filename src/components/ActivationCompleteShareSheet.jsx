@@ -4,6 +4,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useSheetExit } from "../hooks/useSheetExit";
 import { ReferralShareBlock } from "./ReferralShareBlock";
 import { IconCheck, IconX } from "./Icons";
 import { track } from "../lib/analytics";
@@ -40,7 +41,8 @@ export function ActivationCompleteShareSheet({ open, onClose, code }) {
     if (open) track("activation_share_opened");
   }, [open]);
 
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = (el) => {
@@ -52,10 +54,10 @@ export function ActivationCompleteShareSheet({ open, onClose, code }) {
   if (!open) return null;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("activationShare.title")}
@@ -67,7 +69,7 @@ export function ActivationCompleteShareSheet({ open, onClose, code }) {
           <button
             type="button"
             className="sheet-close"
-            onClick={onClose}
+            onClick={animatedClose}
             aria-label={t("close")}>
             <IconX size={14} />
           </button>
@@ -124,7 +126,7 @@ export function ActivationCompleteShareSheet({ open, onClose, code }) {
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={animatedClose}
             style={{
               width: "100%",
               marginTop: 18,

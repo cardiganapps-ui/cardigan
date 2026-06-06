@@ -5,6 +5,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useSheetExit } from "../hooks/useSheetExit";
 import { IconX, IconStar } from "./Icons";
 import { track } from "../lib/analytics";
 import { haptic } from "../utils/haptics";
@@ -64,7 +65,8 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) 
     return () => setHideFab?.(false);
   }, [open, setHideFab]);
 
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = (el) => {
@@ -87,7 +89,7 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) 
       try { localStorage.setItem(dismissKey(promptKind, userId), "1"); } catch { /* ignore */ }
       track("rating_dismissed", { prompt_kind: promptKind, stars });
     }
-    onClose?.();
+    animatedClose();
   };
 
   const submit = async () => {
@@ -134,7 +136,7 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) 
       // copy registers; promoter (5★) variant gets a longer window
       // because it surfaces the referral CTA inline.
       const dwell = stars === 5 ? 5000 : 2500;
-      setTimeout(() => onClose?.(), dwell);
+      setTimeout(() => animatedClose(), dwell);
     } catch {
       showToast(t("rating.sendError"), "error");
     } finally {
@@ -143,10 +145,10 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) 
   };
 
   return (
-    <div className="sheet-overlay" onClick={dismiss}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={dismiss}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("rating.title")}

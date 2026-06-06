@@ -5,6 +5,7 @@ import { getLogs } from "../utils/logBuffer";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useSheetExit } from "../hooks/useSheetExit";
 
 /* ── Bug report sheet ──
    Previously rendered its own floating bottom-left button, which
@@ -25,7 +26,9 @@ export function BugReportSheet({ open, onClose, user, screen }) {
   useEffect(() => () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
   }, []);
-  const closeSheet = () => {
+  // Raw close — used by useSheetDrag (which owns its own anim) and
+  // as the underlying handler that animatedClose defers to.
+  const rawClose = () => {
     if (successTimerRef.current) {
       clearTimeout(successTimerRef.current);
       successTimerRef.current = null;
@@ -33,8 +36,9 @@ export function BugReportSheet({ open, onClose, user, screen }) {
     setDescription("");
     onClose?.();
   };
-  useEscape(open ? closeSheet : null);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(closeSheet, { isOpen: open });
+  const { exiting, animatedClose } = useSheetExit(open, rawClose);
+  useEscape(open ? animatedClose : null);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(rawClose, { isOpen: open });
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 
   const submit = async (e) => {
@@ -56,7 +60,7 @@ export function BugReportSheet({ open, onClose, user, screen }) {
         successTimerRef.current = null;
         setSent(false);
         setDescription("");
-        onClose?.();
+        animatedClose();
       }, 1200);
     } catch (err) {
       // Without this, an insert failure (RLS, network, schema mismatch)
@@ -70,12 +74,12 @@ export function BugReportSheet({ open, onClose, user, screen }) {
   if (!open) return null;
 
   return (
-    <div className="sheet-overlay" onClick={closeSheet}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("bugReport.title")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={closeSheet}>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}>
             <IconX size={14} />
           </button>
         </div>

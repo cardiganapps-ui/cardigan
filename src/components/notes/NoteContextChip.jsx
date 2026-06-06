@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { IconUser, IconCalendar, IconChevron, IconX } from "../Icons";
 import { useT } from "../../i18n/index";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useEscape } from "../../hooks/useEscape";
 
 /* ── Cardigan notes — patient/session chip ──────────────────────────
@@ -15,7 +16,11 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  useEscape(open ? close : null);
+  // useSheetDrag stays on raw close — owns its own anim. Other close
+  // paths (escape, X, overlay) go through animatedClose so the panel
+  // plays its exit before disappearing.
+  const { exiting, animatedClose } = useSheetExit(open, close);
+  useEscape(open ? animatedClose : null);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(close, { isOpen: open });
   const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
 
@@ -55,10 +60,10 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
       </button>
 
       {open && !readOnly && (
-        <div className="sheet-overlay" onClick={close}>
+        <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
           <div
             ref={setPanel}
-            className="sheet-panel"
+            className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-label={t("notes.linkToPatient")}
@@ -68,7 +73,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span className="sheet-title">{t("notes.context") || "Vincular nota"}</span>
-              <button className="sheet-close" aria-label={t("close") || "Cerrar"} onClick={close}>
+              <button className="sheet-close" aria-label={t("close") || "Cerrar"} onClick={animatedClose}>
                 <IconX size={14} />
               </button>
             </div>
@@ -102,7 +107,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
                 </div>
               )}
               <div style={{ marginTop: 14 }}>
-                <button className="btn btn-primary-teal" style={{ width: "100%" }} onClick={close}>
+                <button className="btn btn-primary-teal" style={{ width: "100%" }} onClick={animatedClose}>
                   {t("done") || "Listo"}
                 </button>
               </div>

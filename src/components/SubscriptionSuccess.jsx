@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
 import { IconCheck, IconDocument, IconLock, IconCalendar, IconX } from "./Icons";
+import { useSheetExit } from "../hooks/useSheetExit";
 
 /* ── SubscriptionSuccess ──────────────────────────────────────────────
    Celebration modal that fires once per user on the very first
@@ -19,6 +20,7 @@ import { IconCheck, IconDocument, IconLock, IconCalendar, IconX } from "./Icons"
 export function SubscriptionSuccess({ open, onClose }) {
   const { t } = useT();
   const canvasRef = useRef(null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
 
   // Track the open prop to drive the entrance animation. We update
   // `mounted` in a one-shot rAF on open (so the initial styles paint
@@ -103,8 +105,8 @@ export function SubscriptionSuccess({ open, onClose }) {
 
   return (
     <div
-      className="sheet-overlay"
-      onClick={onClose}
+      className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`}
+      onClick={animatedClose}
       style={{
         opacity: mounted ? 1 : 0,
         transition: "opacity 0.28s ease",
@@ -119,7 +121,7 @@ export function SubscriptionSuccess({ open, onClose }) {
         }}
       />
       <div
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -136,7 +138,7 @@ export function SubscriptionSuccess({ open, onClose }) {
           <button
             className="sheet-close"
             aria-label={t("close")}
-            onClick={onClose}
+            onClick={animatedClose}
           >
             <IconX size={14} />
           </button>
@@ -192,7 +194,7 @@ export function SubscriptionSuccess({ open, onClose }) {
           <button
             type="button"
             className="btn btn-primary"
-            onClick={onClose}
+            onClick={animatedClose}
           >
             {t("subscriptionSuccess.cta")}
           </button>

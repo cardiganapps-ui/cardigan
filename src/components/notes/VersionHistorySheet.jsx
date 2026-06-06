@@ -5,6 +5,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { IconX } from "../Icons";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { diffLines, diffSummary } from "../../lib/noteDiff";
@@ -101,7 +102,8 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
     return () => setHideFab?.(false);
   }, [open, setHideFab]);
 
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = useCallback((el) => {
@@ -120,7 +122,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
       // editor underneath now shows the restored content, which is
       // self-evident feedback. A toast on top would be redundant
       // noise on a screen the user is already focused on.
-      onClose?.();
+      animatedClose();
     } catch (err) {
       haptic.warn();
       const key = err?.message === "locked"
@@ -131,7 +133,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
       setRestoringId(null);
       setPendingRestore(null);
     }
-  }, [restoringId, onRestore, onClose, showToast, t]);
+  }, [restoringId, onRestore, animatedClose, showToast, t]);
 
   const requestRestore = useCallback((version) => {
     if (restoreBlockedByLock) {
@@ -144,10 +146,10 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
   if (!open) return null;
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("notes.historyTitle")}
@@ -161,7 +163,7 @@ export function VersionHistorySheet({ open, onClose, note, onRestore }) {
           <button
             type="button"
             className="sheet-close"
-            onClick={onClose}
+            onClick={animatedClose}
             aria-label={t("close")}
           >
             <IconX size={14} />

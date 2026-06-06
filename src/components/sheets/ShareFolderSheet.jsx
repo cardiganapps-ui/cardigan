@@ -8,6 +8,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { haptic } from "../../utils/haptics";
 import { parseFolderLink, shortenForDisplay } from "../../utils/folderLinks";
 
@@ -49,7 +50,8 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
     setPanelEl(el);
   };
 
-  useEscape(open ? onClose : null);
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
 
   useEffect(() => {
     if (!open) return;
@@ -108,7 +110,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
     if (ok) {
       showToast(t("expediente.folder.shareLinkedToast", { name: patient.name }), "success");
       onLinked?.(patient);
-      onClose?.();
+      animatedClose();
       // Land the user on the patient's expediente — they came in via
       // a system share, the natural next step is "see what just got
       // linked." openExpediente sets up the navigation so closing
@@ -139,10 +141,10 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
   // retry from the source app.
   if (!parsed.valid) {
     return (
-      <div className="sheet-overlay" onClick={onClose}>
+      <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
         <div
           ref={setPanel}
-          className="sheet-panel"
+          className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
           role="dialog"
           aria-modal="true"
           aria-label={t("expediente.folder.shareSheetTitle")}
@@ -152,7 +154,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
           <div className="sheet-handle" />
           <div className="sheet-header">
             <span className="sheet-title">{t("expediente.folder.shareSheetTitle")}</span>
-            <button className="sheet-close" aria-label={t("close")} onClick={onClose}>
+            <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}>
               <IconX size={14} />
             </button>
           </div>
@@ -173,7 +175,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={onClose}
+              onClick={animatedClose}
               style={{ width: "100%", marginTop: 14 }}
             >
               {t("close")}
@@ -185,10 +187,10 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
   }
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("expediente.folder.shareSheetTitle")}
@@ -199,7 +201,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("expediente.folder.shareSheetTitle")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}>
             <IconX size={14} />
           </button>
         </div>

@@ -5,6 +5,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { haptic } from "../../utils/haptics";
 import {
   IconX, IconCheck, IconChevronRight,
@@ -32,8 +33,10 @@ export function SessionRequestsSheet({ onClose }) {
   const [actingId, setActingId] = useState(null);
   const [rowError, setRowError] = useState({});
 
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
   const safeClose = actingId ? null : onClose;
-  useEscape(safeClose);
+  const safeAnimatedClose = actingId ? null : animatedClose;
+  useEscape(safeAnimatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: true });
   const setPanel = (el) => {
@@ -86,14 +89,14 @@ export function SessionRequestsSheet({ onClose }) {
   const patientNameById = new Map((patients || []).map(p => [p.id, p.name]));
 
   return (
-    <div className="sheet-overlay" onClick={safeClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true"
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
         style={{ maxHeight: "min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessionRequests.title")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={safeClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose}>
             <IconX size={14} />
           </button>
         </div>
