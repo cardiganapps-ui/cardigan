@@ -51,6 +51,23 @@ else
   /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
 fi
 
+# Camera + photo library usage strings — required by iOS the FIRST time
+# the app touches AVCaptureDevice or PHPhotoLibrary (receipt OCR in
+# gastos, plus avatar capture). Without these the system kills the
+# process with an unhandled exception instead of prompting the user.
+# Copy is short on purpose — Apple's reviewer wants the *purpose*, not
+# the feature list.
+if /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$PLIST" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'Cardigan usa la cámara para escanear recibos y tomar fotos de perfil.'" "$PLIST"
+else
+  /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Cardigan usa la cámara para escanear recibos y tomar fotos de perfil.'" "$PLIST"
+fi
+if /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$PLIST" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'Cardigan accede a tus fotos para adjuntar recibos y documentos.'" "$PLIST"
+else
+  /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Cardigan accede a tus fotos para adjuntar recibos y documentos.'" "$PLIST"
+fi
+
 # CFBundleURLTypes for custom-scheme deep links isn't needed —
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.

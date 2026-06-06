@@ -14,6 +14,8 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { haptic } from "../../utils/haptics";
 import { formatMXN } from "../../utils/format";
 import { supabase } from "../../supabaseClient";
+import { isNative } from "../../lib/platform";
+import { takePhoto } from "../../lib/nativeCamera";
 
 const LAST_CATEGORY_KEY = "cardigan.lastExpenseCategory";
 
@@ -429,7 +431,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
                 capture="environment"
                 style={{ display: "none" }}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
-              {!receiptDocId && (
+              {!receiptDocId && !isNative() && (
                 <button type="button" className="btn btn-secondary btn-tap"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
@@ -437,6 +439,31 @@ export function ExpenseSheet({ editingExpense, onClose }) {
                   <IconPaperclip size={16} />
                   <span>{uploading ? t("gastos.receiptUploading") : t("gastos.receiptUpload")}</span>
                 </button>
+              )}
+              {/* Native: Tomar foto (Camera plugin) + Galería/Archivo (file
+                  input, still works in WKWebView and gives access to PDFs
+                  + Files app). The Camera path is the headline action
+                  because most therapists photograph paper receipts on the
+                  spot; the secondary button covers the rare PDF case. */}
+              {!receiptDocId && isNative() && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" className="btn btn-secondary btn-tap"
+                    onClick={async () => {
+                      const file = await takePhoto({ quality: 80 });
+                      if (file) handleFile(file);
+                    }}
+                    disabled={uploading}
+                    style={{ flex: 1, height: 44, gap: 6 }}>
+                    <IconPaperclip size={14} />
+                    <span>{uploading ? t("gastos.receiptUploading") : t("gastos.receiptTakePhoto")}</span>
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-tap"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{ flex: 1, height: 44, gap: 6 }}>
+                    <span>{t("gastos.receiptFromLibrary")}</span>
+                  </button>
+                </div>
               )}
               {receiptDocId && (
                 <div style={{
