@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Home-screen shortcut icon — "Nuevo paciente".
+    Mirrors public/shortcut-patient.svg so the PWA and native APK
+    show the same teal circle + white person silhouette.
+
+    Vector format (vs raster) keeps the icon crisp at any launcher
+    density without needing per-dpi PNGs.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="192dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    <!-- Teal circle background -->
+    <path
+        android:fillColor="#5B9BAF"
+        android:pathData="M0,96 a96,96 0 0,1 192,0 a96,96 0 0,1 -192,0 z" />
+    <!-- White person silhouette (head + shoulders).
+         Translate (48,48) + scale 4 = same transform as the SVG. -->
+    <group
+        android:translateX="48"
+        android:translateY="48"
+        android:scaleX="4"
+        android:scaleY="4">
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M12,8 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 z M4,21 v-1 a8,8 0 0,1 16,0 v1" />
+    </group>
+</vector>

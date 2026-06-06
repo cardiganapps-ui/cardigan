@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Home-screen shortcut icon — "Hoy".
+    Mirrors public/shortcut-today.svg: teal circle + white calendar
+    glyph (frame + two strap tabs + the top day-row divider line).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="192dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    <path
+        android:fillColor="#5B9BAF"
+        android:pathData="M0,96 a96,96 0 0,1 192,0 a96,96 0 0,1 -192,0 z" />
+    <group
+        android:translateX="48"
+        android:translateY="48"
+        android:scaleX="4"
+        android:scaleY="4">
+        <!-- Calendar body — rectangle rendered as a closed path with
+             corner radii baked in. (rx="2" doesn't map directly so
+             we use small curve segments at each corner.) -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M5,4 h14 a2,2 0 0,1 2,2 v14 a2,2 0 0,1 -2,2 h-14 a2,2 0 0,1 -2,-2 v-14 a2,2 0 0,1 2,-2 z M16,2 v4 M8,2 v4 M3,10 h18" />
+    </group>
+</vector>

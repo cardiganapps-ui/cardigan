@@ -48,21 +48,21 @@
       "short_name": "Paciente",
       "description": "Registrar un nuevo paciente",
       "url": "/?fab=patient",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "/shortcut-patient.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Hoy",
       "short_name": "Hoy",
       "description": "Sesiones de hoy",
       "url": "/?screen=agenda",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "/shortcut-today.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Cobrar pago",
       "short_name": "Cobrar",
       "description": "Registrar un pago de un paciente",
       "url": "/?fab=payment",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "/shortcut-payment.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <!-- Cardigan-teal circle background, identical radius to the other
+       two shortcut icons so the launcher menu feels consistent. -->
+  <circle cx="96" cy="96" r="96" fill="#5B9BAF"/>
+  <!-- Person silhouette: head + shoulders.
+       Stroked white with rounded joins to match the rest of the
+       Cardigan icon set (1.8px stroke at 24×24 base, scaled to 96×96
+       here → strokeWidth 7.2). -->
+  <g transform="translate(48 48) scale(4)" fill="none" stroke="#FFFFFF"
+     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4 21v-1a8 8 0 0116 0v1"/>
+  </g>
+</svg>

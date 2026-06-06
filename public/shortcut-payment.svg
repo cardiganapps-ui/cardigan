@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <circle cx="96" cy="96" r="96" fill="#5B9BAF"/>
+  <!-- Dollar sign — vertical stroke + S-curve. Matches IconDollar
+       in src/components/Icons.jsx. -->
+  <g transform="translate(48 48) scale(4)" fill="none" stroke="#FFFFFF"
+     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2v20"/>
+    <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+  </g>
+</svg>

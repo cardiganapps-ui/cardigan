@@ -9,10 +9,11 @@
   comment) drains the fab=/screen= params and fires the matching
   action.
 
-  Icons all reuse @mipmap/ic_launcher for now — a per-shortcut icon
-  set would require new vector drawables per shortcut. The label is
-  the prominent affordance in the long-press menu, so the icon
-  duplication is acceptable for v1.
+  Icons live in res/drawable/shortcut_*.xml as vector drawables —
+  one per shortcut so the long-press menu doesn't read as three
+  copies of the same app icon. Each drawable mirrors the
+  public/shortcut-*.svg used by the PWA manifest so launcher
+  surfaces stay visually consistent across install paths.
 
   Keep in sync with the `shortcuts` array in public/manifest.json so
   the PWA + native install surfaces present the same three actions.
@@ -22,7 +23,7 @@
     <shortcut
         android:shortcutId="new_patient"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/shortcut_patient"
         android:shortcutShortLabel="@string/shortcut_new_patient_short"
         android:shortcutLongLabel="@string/shortcut_new_patient_long">
         <intent
@@ -36,7 +37,7 @@
     <shortcut
         android:shortcutId="today"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/shortcut_today"
         android:shortcutShortLabel="@string/shortcut_today_short"
         android:shortcutLongLabel="@string/shortcut_today_long">
         <intent
@@ -50,7 +51,7 @@
     <shortcut
         android:shortcutId="record_payment"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/shortcut_payment"
         android:shortcutShortLabel="@string/shortcut_payment_short"
         android:shortcutLongLabel="@string/shortcut_payment_long">
         <intent

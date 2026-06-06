@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Home-screen shortcut icon — "Cobrar".
+    Mirrors public/shortcut-payment.svg: teal circle + white dollar
+    sign (vertical bar + S-curve).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="192dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    <path
+        android:fillColor="#5B9BAF"
+        android:pathData="M0,96 a96,96 0 0,1 192,0 a96,96 0 0,1 -192,0 z" />
+    <group
+        android:translateX="48"
+        android:translateY="48"
+        android:scaleX="4"
+        android:scaleY="4">
+        <!-- Vertical bar through the dollar sign -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M12,2 v20" />
+        <!-- S-curve (top + bottom serifs of the $) -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M17,5 H9.5 a3.5,3.5 0 0,0 0,7 h5 a3.5,3.5 0 0,1 0,7 H6" />
+    </group>
+</vector>
