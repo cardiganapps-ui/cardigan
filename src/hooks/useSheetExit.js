@@ -46,12 +46,15 @@ const EXIT_MS = 260;
 export function useSheetExit(open, onClose) {
   const [exiting, setExiting] = useState(false);
 
-  const animatedClose = useCallback(() => {
+  const animatedClose = useCallback((...args) => {
     if (!onClose) return;
     if (exiting) return;
     setExiting(true);
     setTimeout(() => {
-      onClose();
+      // Forward args so call sites that pass a success message
+      // (e.g. PaymentModal: onClose(`Pago registrado: ...`)) still
+      // work after the swap to animatedClose.
+      onClose(...args);
       // Reset for any case where the parent keeps the sheet rendered
       // (rare) — without resetting we'd be stuck in exiting=true on
       // next open. The parent's natural unmount will throw the state

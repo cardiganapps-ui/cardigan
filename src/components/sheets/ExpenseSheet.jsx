@@ -11,6 +11,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { haptic } from "../../utils/haptics";
 import { formatMXN } from "../../utils/format";
 import { supabase } from "../../supabaseClient";
@@ -40,8 +41,14 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   const { t } = useT();
   const isEditing = !!editingExpense;
 
+  // Animated close — see useSheetExit / SessionSheet for the pattern.
+  // safeClose gates escape / overlay / X behind the mutation lock
+  // (no closing while a save is in flight); useSheetDrag stays on
+  // raw onClose because it owns its own slide-down anim.
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
   const safeClose = mutating ? null : onClose;
-  useEscape(safeClose);
+  const safeAnimatedClose = mutating ? null : animatedClose;
+  useEscape(safeAnimatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: true });
   const setPanel = (el) => {
@@ -234,7 +241,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     try {
       if (isEditing) {
         const ok = await updateExpense(editingExpense.id, payload);
-        if (ok) { haptic.success(); onClose(`${t("gastos.updated")}: −${formatMXN(parsedAmount)}`); }
+        if (ok) { haptic.success(); animatedClose(`${t("gastos.updated")}: −${formatMXN(parsedAmount)}`); }
       } else {
         // When the user toggled "Make recurring", we MUST create the
         // template FIRST and link the just-created expense to its
@@ -272,7 +279,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
           return;
         }
         haptic.success();
-        onClose(`${t("gastos.saved")}: −${formatMXN(parsedAmount)}`);
+        animatedClose(`${t("gastos.saved")}: −${formatMXN(parsedAmount)}`);
       }
     } catch (ex) {
       setFormError(ex?.message || "Error al guardar");
@@ -283,18 +290,18 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     if (!isEditing) return;
     if (!window.confirm(t("gastos.deleteConfirm") + "\n\n" + t("gastos.deleteWarning"))) return;
     const ok = await deleteExpense(editingExpense.id);
-    if (ok) { haptic.success(); onClose(t("gastos.deleted")); }
+    if (ok) { haptic.success(); animatedClose(t("gastos.deleted")); }
   };
 
   return (
-    <div className="sheet-overlay" onClick={safeClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true"
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
         style={{ maxHeight: "min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("gastos.edit") : t("gastos.record")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={safeClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose}>
             <IconX size={14} />
           </button>
         </div>

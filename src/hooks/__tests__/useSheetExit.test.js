@@ -68,4 +68,14 @@ describe("useSheetExit", () => {
     act(() => vi.advanceTimersByTime(SHEET_EXIT_MS * 2));
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("forwards arguments through to onClose", () => {
+    // PaymentModal calls onClose("Pago registrado: ...") to show a
+    // success toast; the hook must not swallow that argument.
+    const onClose = vi.fn();
+    const { result } = renderHook(() => useSheetExit(true, onClose));
+    act(() => result.current.animatedClose("hi", 42, { tag: "x" }));
+    act(() => vi.advanceTimersByTime(SHEET_EXIT_MS));
+    expect(onClose).toHaveBeenCalledWith("hi", 42, { tag: "x" });
+  });
 });

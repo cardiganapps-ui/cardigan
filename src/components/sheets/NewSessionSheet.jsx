@@ -7,6 +7,7 @@ import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, isEpisodic } from "../../data/constants";
 import { formatMXN } from "../../utils/format";
 
@@ -31,7 +32,9 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
-  useEscape(onClose);
+  // Animated close — see useSheetExit / SessionSheet for the pattern.
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => {
@@ -99,19 +102,19 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
     }
     try {
       const ok = await onSubmit(params);
-      if (ok) onClose();
+      if (ok) animatedClose();
     } catch (ex) {
       setErr(ex?.message || "Error al guardar");
     }
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessions.schedule")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
           <div>

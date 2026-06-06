@@ -4,6 +4,7 @@ import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardigan } from "../../context/CardiganContext";
 import { todayISO, isoToShortDate, parseShortDate } from "../../utils/dates";
 import { getModalitiesForProfession, MODALITY_I18N_KEY } from "../../data/constants";
@@ -55,7 +56,9 @@ function isoOffsetDays(days) {
 export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
   const { t } = useT();
   const { upcomingSessions, createSession, profession, showSuccess } = useCardigan();
-  useEscape(onClose);
+  // Animated close — see useSheetExit / SessionSheet for the pattern.
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: true });
   const setPanel = (el) => {
@@ -129,7 +132,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
         showSuccess?.(t("scheduling.scheduledToast"));
         haptic.success();
         onScheduled?.({ date: selectedDate, time: selectedTime });
-        onClose();
+        animatedClose();
       } else {
         setError(t("scheduling.errors.writeFailed"));
         setSubmitting(false);
@@ -141,10 +144,10 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
   };
 
   return (
-    <div className="sheet-overlay" onClick={submitting ? undefined : onClose} role="presentation">
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose} role="presentation">
       <div
         ref={setPanel}
-        className="sheet-panel"
+        className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="quick-schedule-title"
@@ -174,7 +177,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
             type="button"
             className="sheet-close"
             aria-label={t("close")}
-            onClick={onClose}
+            onClick={animatedClose}
             disabled={submitting}>
             <IconX size={14} />
           </button>
@@ -281,7 +284,7 @@ export function QuickScheduleSheet({ patient, onClose, onScheduled }) {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={onClose}
+              onClick={animatedClose}
               disabled={submitting}>
               {t("cancel")}
             </button>

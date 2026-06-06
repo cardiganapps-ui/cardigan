@@ -8,6 +8,7 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useSheetExit } from "../hooks/useSheetExit";
 import { haptic } from "../utils/haptics";
 import { formatMXN } from "../utils/format";
 
@@ -15,7 +16,9 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   const { patients, createPayment, updatePayment, mutating } = useCardigan();
   const { t } = useT();
   const isEditing = !!editingPayment;
-  useEscape(open ? onClose : null);
+  // Animated close — see useSheetExit / SessionSheet for the pattern.
+  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(open);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
   const setPanel = (el) => {
@@ -98,7 +101,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           date: isoToShortDate(date),
           note: paymentNote.trim(),
         });
-        if (ok) { haptic.success(); onClose(`Pago actualizado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
+        if (ok) { haptic.success(); animatedClose(`Pago actualizado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
       } else {
         const ok = await createPayment({
           patientName: patientName.trim(),
@@ -107,7 +110,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
           date: isoToShortDate(date),
           note: paymentNote.trim(),
         });
-        if (ok) { haptic.success(); onClose(`Pago registrado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
+        if (ok) { haptic.success(); animatedClose(`Pago registrado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
       }
     } catch (ex) {
       setFormError(ex?.message || "Error al guardar");
@@ -115,12 +118,12 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("finances.editPayment") : t("finances.recordPayment")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}><IconX size={14} /></button>
         </div>
         <form onSubmit={submit} style={{ padding:"0 20px 0" }}>
           <div>
