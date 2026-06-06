@@ -124,7 +124,12 @@ jobs:
         # assets/splash.png (2732×2732), writes every iOS variant into
         # ios/App/App/Assets.xcassets/. Without this, every TestFlight
         # build ships Capacitor's placeholder blue-X icon.
-        run: npx @capacitor/assets generate --ios
+        # --splashBackgroundColor pins the LaunchScreen storyboard's
+        # surrounding canvas to the exact Cardigan teal so the seam
+        # between the scaleAspectFit splash image and the surrounding
+        # storyboard background disappears (matches the splash plugin
+        # backgroundColor configured in capacitor.config.json).
+        run: npx @capacitor/assets generate --ios --splashBackgroundColor "#5B9BAF" --splashBackgroundColorDark "#5B9BAF"
 
       - name: Layer entitlements + Privacy Manifest
         run: bash scripts/apply-ios-config.sh

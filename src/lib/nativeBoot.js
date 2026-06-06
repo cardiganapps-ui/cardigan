@@ -28,10 +28,12 @@ export async function initNativeShell() {
 
   try {
     const { SplashScreen } = await import("@capacitor/splash-screen");
-    // Hide as soon as React has painted. The 200ms delay lets the first
+    // Hide as soon as React has painted. The 120ms delay lets the first
     // frame settle so the user sees content, not a flash of empty
-    // background, between splash and app.
-    setTimeout(() => { SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {}); }, 200);
+    // background, between splash and app. Pairs with the 220ms fadeOut
+    // configured in capacitor.config.json so the cross-fade lands on
+    // the React surface, not a flash of teal.
+    setTimeout(() => { SplashScreen.hide({ fadeOutDuration: 220 }).catch(() => {}); }, 120);
   } catch { /* ignore */ }
 
   try {

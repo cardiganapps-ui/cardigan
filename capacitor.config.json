@@ -2,13 +2,26 @@
   "appId": "mx.cardigan.app",
   "appName": "Cardigan",
   "webDir": "dist",
-  "backgroundColor": "#FFFFFF",
+  "backgroundColor": "#5B9BAF",
   "android": {
     "allowMixedContent": false,
     "captureInput": true
   },
   "ios": {
     "contentInset": "never",
-    "preferredContentMode": "mobile"
+    "preferredContentMode": "mobile",
+    "backgroundColor": "#5B9BAF"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 220,
+      "backgroundColor": "#5B9BAF",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
   }
 }
