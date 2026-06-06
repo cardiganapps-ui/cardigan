@@ -10,6 +10,7 @@ import { SegmentedControl } from "../SegmentedControl";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { parseFolderLink } from "../../utils/folderLinks";
@@ -51,7 +52,10 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
-  useEscape(onClose);
+  // Animated close — same pattern as SessionSheet. useSheetDrag
+  // stays on raw onClose because it owns its own slide-down anim.
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => {
@@ -327,7 +331,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
             modality: firstConsultModality,
           },
         });
-        if (ok) onClose();
+        if (ok) animatedClose();
         else setSubmitting(false);
       } catch (ex) {
         flash(ex?.message || "Error al guardar");
@@ -381,7 +385,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           modality: firstConsultModality,
         } : null,
       });
-      if (ok) onClose();
+      if (ok) animatedClose();
       else setSubmitting(false);
     } catch (ex) {
       flash(ex?.message || "Error al guardar");
@@ -402,7 +406,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     : "minmax(86px, 1.1fr) minmax(64px, 0.85fr) minmax(48px, 0.6fr) minmax(94px, 1.2fr)";
 
   return (
-    <div className="sheet-overlay" onClick={submitting ? undefined : onClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose}>
       {/* maxHeight clamps to leave the status bar / Dynamic Island
           uncovered. The previous 92vh value didn't subtract the safe-
           area-inset-top, so on notched iPhones the sheet pushed up
@@ -417,7 +421,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           overflow/containment combinations differ enough across iOS
           Safari versions that a flex-pinned footer is the only
           bulletproof option. */}
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
         {submitting && (
           <div role="status" aria-live="polite"
             style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,
@@ -455,7 +459,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
               </div>
             )}
           </div>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose} disabled={submitting}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose} disabled={submitting}><IconX size={14} /></button>
         </div>
 
         <form onSubmit={submit} style={{ padding:"0 20px 0", display:"flex", flexDirection:"column", flex:"1 1 auto", minHeight:0 }}>

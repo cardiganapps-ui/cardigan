@@ -9,6 +9,7 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useSheetExit } from "../hooks/useSheetExit";
 import { useCardigan } from "../context/CardiganContext";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SESSION_STATUS } from "../data/constants";
 import { formatMXN } from "../utils/format";
@@ -17,7 +18,12 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
   const { t } = useT();
   const { openExpediente, profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
-  useEscape(session ? onClose : null);
+  // Animated close — see useSheetExit for the pattern. Drag-to-
+  // dismiss (useSheetDrag) keeps its own raw onClose because it
+  // owns its own slide-down animation and would double-animate
+  // through animatedClose.
+  const { exiting, animatedClose } = useSheetExit(!!session, onClose);
+  useEscape(session ? animatedClose : null);
   const panelRef = useFocusTrap(!!session);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   const setPanel = (el) => {
@@ -80,7 +86,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
       // back on the screen that opened it instead of staring at a
       // now-stale session mid-sheet.
       setRescheduling(false);
-      onClose();
+      animatedClose();
     }
   };
 
@@ -99,25 +105,25 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
       // (Home, Agenda, Patient expediente, etc.) instead of staring at
       // the now-cancelled session mid-sheet.
       setCancelling(false);
-      onClose();
+      animatedClose();
     }
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose}>
-      <div ref={setPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title" style={{ display:"flex", alignItems:"center", gap:8 }}>
             {t("sessions.session")}
             <span className={`session-status ${statusClass(session.status)}`}>{statusLbl}</span>
           </span>
-          <button className="sheet-close" aria-label={t("close")} onClick={onClose}><IconX size={14} /></button>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose}><IconX size={14} /></button>
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20, position:"relative" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"inherit", flex:1, minWidth:0, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
-              onClick={() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { onClose(); openExpediente(p); } }}>
+              onClick={() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { animatedClose(); openExpediente(p); } }}>
               <Avatar initials={displayInitials}
                 color={isInterview ? "var(--rose)" : isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
               <div style={{ flex:1, minWidth:0 }}>
@@ -241,7 +247,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
           {confirmDelete ? (
             <div style={{ textAlign:"center" }}>
               <div style={{ fontSize:14, fontWeight:600, color:"var(--charcoal)", marginBottom:14 }}>{t("sessions.deleteConfirm")}</div>
-              <button className="btn btn-danger" style={{ marginBottom:10 }} onClick={async () => { await onDelete(session.id); onClose(); }} disabled={mutating}>
+              <button className="btn btn-danger" style={{ marginBottom:10 }} onClick={async () => { await onDelete(session.id); animatedClose(); }} disabled={mutating}>
                 {mutating ? t("patients.deleting") : t("sessions.yesDelete")}
               </button>
               <button className="btn btn-secondary w-full" onClick={() => setConfirmDelete(false)}>{t("cancel")}</button>
@@ -351,7 +357,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                   onClick={async () => {
                     haptic.success();
                     const ok = await onMarkCompleted(session);
-                    if (ok) onClose();
+                    if (ok) animatedClose();
                   }}>
                   <IconCheck size={16} /> {t("sessions.markCompleted")}
                 </button>
@@ -369,7 +375,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                   onClick={async () => {
                     haptic.tap();
                     const ok = await onMarkCompleted(session, SESSION_STATUS.SCHEDULED);
-                    if (ok) onClose();
+                    if (ok) animatedClose();
                   }}>
                   <IconRefresh size={15} /> {t("sessions.revertScheduled")}
                 </button>
@@ -390,7 +396,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                   onClick={async () => {
                     haptic.tap();
                     const ok = await onMarkCompleted(session, SESSION_STATUS.SCHEDULED);
-                    if (ok) onClose();
+                    if (ok) animatedClose();
                   }}>
                   <IconRefresh size={14} /> {t("sessions.revertScheduled")}
                 </button>

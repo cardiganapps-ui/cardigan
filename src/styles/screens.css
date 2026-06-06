@@ -112,6 +112,37 @@
   80%  { transform: translateY(3px); }
   100% { transform: translateY(0); opacity: 1; }
 }
+
+/* ── Sheet exit animation ──
+   Applied via the .sheet-panel--exit / .sheet-overlay--exit modifier
+   classes by useSheetExit. The hook keeps the sheet mounted for
+   EXIT_MS (260ms — matches the CSS duration here) before calling the
+   parent's onClose, so the panel can play its fall-down animation
+   on the way out.
+
+   Asymmetric to the open animation by design: open uses a 520ms
+   damped settle (sheet has weight, lands carefully); exit is a fast
+   linear-ish fall (sheet drops out of frame). iOS Mail / Messages
+   use this same asymmetry — the entrance is "felt" but the exit
+   should get out of the user's way. */
+@keyframes sheetFallOut {
+  0%   { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0.92; }
+}
+.sheet-panel--exit {
+  animation: sheetFallOut 260ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes scrimFadeOut {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.sheet-overlay--exit {
+  /* Scrim fades slightly faster than the panel falls so the user
+     sees the world behind reveal first, then the panel clears the
+     viewport — the inverse of the open sequencing where the scrim
+     completes before the panel settles. */
+  animation: scrimFadeOut 200ms ease both;
+}
 @keyframes sheetScaleIn {
   0%   { opacity: 0; transform: scale(0.9); }
   70%  { opacity: 1; transform: scale(1.02); }
