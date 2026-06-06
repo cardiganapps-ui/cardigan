@@ -1728,6 +1728,79 @@ html[data-theme="dark"] .update-prompt-spinner--inline {
   visibility: hidden;
 }
 
+/* ── Notifications soft-ask card ──
+   Polished entrance + bell ring + soft halo on the icon. The card
+   itself lives on Home and replaces the bare OS notification prompt
+   with a Cardigan-branded explanation that fires BEFORE the system
+   dialog. Industry pattern: filters out users who would have denied
+   the OS prompt, preserving the opt-in pool (a denied OS prompt
+   can never be re-shown, but the soft-ask can).
+
+   Inline styles in NotificationsPrompt.jsx own the layout; this
+   block owns the animations so they can be expressed as keyframes
+   (impossible inline). */
+.notif-prompt {
+  animation: notifPromptIn 520ms var(--ease-spring) both;
+}
+.notif-prompt--exiting {
+  animation: notifPromptOut 260ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes notifPromptIn {
+  0%   { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  60%  { opacity: 1; transform: translateY(2px) scale(1.005); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes notifPromptOut {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-6px) scale(0.97); }
+}
+
+/* Bell icon halo — radial glow behind the teal circle that breathes
+   slowly to draw a glance without being aggressive. */
+.notif-prompt-bell {
+  position: relative;
+}
+.notif-prompt-bell::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91, 155, 175, 0.32) 0%, transparent 70%);
+  z-index: -1;
+  animation: notifBellHalo 2.8s ease-in-out infinite;
+}
+@keyframes notifBellHalo {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1.0; transform: scale(1.08); }
+}
+
+/* Bell glyph itself — a one-shot "ring" animation on mount (the
+   doorbell-getting-hit motion). */
+.notif-prompt-bell-glyph {
+  display: inline-flex;
+  transform-origin: 50% 4px;
+  animation: notifBellRing 1.4s var(--ease-spring-soft) 200ms both;
+}
+@keyframes notifBellRing {
+  0%   { transform: rotate(0); }
+  15%  { transform: rotate(-22deg); }
+  30%  { transform: rotate(18deg); }
+  45%  { transform: rotate(-12deg); }
+  60%  { transform: rotate(8deg); }
+  75%  { transform: rotate(-4deg); }
+  100% { transform: rotate(0); }
+}
+
+/* Reduced-motion: drop the halo + ring animations entirely. The
+   global rule in responsive.css zeroes durations, but the halo's
+   transform: scale(1.08) at 50% would otherwise leave the bell
+   slightly enlarged. Override here to neutralize. */
+@media (prefers-reduced-motion: reduce) {
+  .notif-prompt, .notif-prompt--exiting { animation: none; }
+  .notif-prompt-bell::before { animation: none; opacity: 0.7; transform: scale(1); }
+  .notif-prompt-bell-glyph { animation: none; transform: none; }
+}
+
 /* ── Slash command menu (notes) — Liquid Glass floating menu ──
    Appears at the caret when the user types "/" inside the note
    editor. The floating glass surface mirrors CommandPalette + HelpTip

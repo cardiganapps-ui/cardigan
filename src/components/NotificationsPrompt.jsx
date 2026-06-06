@@ -36,6 +36,17 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
   const { notifications, showToast, readOnly } = useCardigan();
   const [hidden, setHidden] = useState(() => isDismissed(variant));
   const [busy, setBusy] = useState(false);
+  // Two-stage close: setExiting(true) plays the exit keyframe; an
+  // effect below unmounts after EXIT_MS. Without this, dismiss/accept
+  // would yank the card out of the layout instantly — the entry was
+  // already polished, so the exit being a snap felt jarring.
+  const [exiting, setExiting] = useState(false);
+  const EXIT_MS = 260;
+  useEffect(() => {
+    if (!exiting) return;
+    const id = setTimeout(() => { setHidden(true); setExiting(false); }, EXIT_MS);
+    return () => clearTimeout(id);
+  }, [exiting]);
 
   // Keep the banner hidden once the user enables push, regardless of
   // dismissal state — no reason to keep showing it if they're
@@ -86,13 +97,13 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
       // Settings toggle (when reachable) renders as enabled. Toast
       // would be redundant on a flow that already animates away.
       markDismissed(variant);
-      setHidden(true);
+      setExiting(true);
     } else if (res?.code === "permission-denied") {
       showToast(t("notifications.toastPermissionDenied"), "warning");
       // Hide the banner — user actively chose "Block", no point
       // offering the prompt again on every Home visit.
       markDismissed(variant);
-      setHidden(true);
+      setExiting(true);
     } else {
       showToast(t("notifications.toastSubscribeFailed"), "error");
       // Keep banner visible so user can retry.
@@ -101,7 +112,7 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
 
   const handleDismiss = () => {
     markDismissed(variant);
-    setHidden(true);
+    setExiting(true);
   };
 
   const promptTitle = variant === "post_patient"
@@ -115,6 +126,7 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
     <div
       role="region"
       aria-label={promptTitle}
+      className={`notif-prompt${exiting ? " notif-prompt--exiting" : ""}`}
       style={{
         margin: "12px 16px 0",
         padding: "14px 14px 14px 14px",
@@ -124,9 +136,8 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
         display: "flex",
         gap: 12,
         alignItems: "flex-start",
-        animation: "fadeIn 0.25s ease",
       }}>
-      <div style={{
+      <div className="notif-prompt-bell" style={{
         flexShrink: 0,
         width: 36, height: 36,
         borderRadius: "50%",
@@ -134,7 +145,9 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
         color: "var(--white)",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <IconBell size={18} />
+        <span className="notif-prompt-bell-glyph">
+          <IconBell size={18} />
+        </span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "var(--font-d)", fontWeight: 800, fontSize: "var(--text-md)", color: "var(--charcoal)" }}>
