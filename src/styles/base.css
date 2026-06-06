@@ -212,6 +212,26 @@ html, body {
 }
 #root { height: 100%; }
 
+/* WKWebView (Capacitor on iOS) renders 14–17% larger than Safari for
+   the same CSS, even with text-size-adjust:none. We can't disable that
+   from the CSS layer — it's a WebKit/system decision. So when the
+   native shell flags itself with .cap-native (see lib/nativeBoot.js),
+   we (a) shrink the design-system text scale and (b) apply a global
+   `zoom` to catch every inline `fontSize: 22`, `padding: 20`, etc. that
+   isn't routed through --text-scale. Net effect: text density on
+   TestFlight finally matches the PWA. Both rules are scoped to
+   .cap-native so the web build is untouched.
+
+   `zoom` is a WebKit/Blink-supported non-standard property that
+   rescales an element's layout box AND its descendants — unlike
+   transform:scale, which only affects the visual layer and leaves
+   layout boxes the original size. Safe here because the PWA / desktop
+   web build never hits this branch. */
+html.cap-native {
+  --text-scale: 0.88;
+  zoom: 0.88;
+}
+
 /* Opt-in: re-enable native text selection + the iOS magnifier for
    content where copying is plausible (note bodies, free-form text, etc.). */
 .selectable,

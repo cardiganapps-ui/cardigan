@@ -8,6 +8,7 @@
     "captureInput": true
   },
   "ios": {
-    "contentInset": "never"
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
   }
 }
