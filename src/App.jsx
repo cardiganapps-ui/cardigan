@@ -1536,6 +1536,58 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   }, [isTablet]);
 
   const [pendingFabAction, setPendingFabAction] = useState(null);
+
+  // ── PWA / native app shortcuts receiver ──
+  // The web app manifest's `shortcuts` array (public/manifest.json)
+  // and the Android AndroidManifest.xml's <shortcut> entries both
+  // launch the app at /?fab=patient|session|payment (or /?screen=…
+  // for nav-only shortcuts). This effect drains those params on
+  // mount, fires the matching action, and strips them from the URL
+  // so a refresh / screenshot doesn't replay the shortcut.
+  //
+  // Sits after pendingFabAction's useState because it calls the
+  // setter directly. Read-only / demo / unauth users have the params
+  // stripped but the action no-ops downstream (requestFabAction /
+  // setScreen are safe-by-default in those modes). Stripping happens
+  // unconditionally so a later state flip doesn't surprise the user
+  // with a stale intent.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fab = params.get("fab");
+    const target = params.get("screen");
+    if (!fab && !target) return;
+    params.delete("fab");
+    params.delete("screen");
+    const newUrl = window.location.pathname
+      + (params.toString() ? `?${params.toString()}` : "")
+      + window.location.hash;
+    window.history.replaceState({}, "", newUrl);
+    if (target && typeof target === "string") {
+      // For the "Hoy" shortcut (target=agenda), nudge the agenda's
+      // pending view ref to "day" so the user lands on the day strip
+      // showing today's sessions even if their last visit left them
+      // in week/month view. Agenda's consumeAgendaView() drains it
+      // on mount.
+      if (target === "agenda") pendingAgendaViewRef.current = "day";
+      setScreen(target);
+    }
+    if (fab && typeof fab === "string") {
+      // requestFabAction is the same coordinator the FAB itself uses;
+      // QuickActions watches pendingFabAction and opens the matching
+      // sheet (patient, session, payment, note, document). Routing
+      // through it instead of opening a sheet directly keeps the
+      // entry-point logic in one place and respects the existing
+      // pro-gate / readOnly checks downstream.
+      setPendingFabAction(fab);
+    }
+  // First mount only — the URL params are drained immediately and a
+  // navigation away rewrites window.location, so re-running would
+  // either find an empty URL (no-op) or re-fire a stale intent. The
+  // share-target effect above uses the same pattern.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [paletteOpen, setPaletteOpen] = useState(false);
   useKeyboardShortcuts({
     "meta+k": () => setPaletteOpen(true),

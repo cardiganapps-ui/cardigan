@@ -48,6 +48,22 @@
                 <data android:pathPattern="/c/.*" />
                 <data android:pathPattern="/" />
             </intent-filter>
+
+            <!--
+                Home-screen long-press shortcuts (Android 7.1+). The
+                shortcut entries live in res/xml/shortcuts.xml; each
+                fires a deep-link intent at MainActivity with a
+                query-string flag the embedded webview translates
+                into an in-app action via App.jsx's shortcut receiver.
+
+                Keep this list in sync with the PWA manifest's
+                `shortcuts` array (public/manifest.json) so the same
+                three actions surface on Capacitor APK installs and
+                browser PWA installs.
+            -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <provider

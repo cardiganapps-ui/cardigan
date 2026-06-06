@@ -4,4 +4,18 @@
     <string name="title_activity_main">Cardigan</string>
     <string name="package_name">mx.cardigan.app</string>
     <string name="custom_url_scheme">mx.cardigan.app</string>
+
+    <!--
+        Home-screen shortcut labels (res/xml/shortcuts.xml). Short
+        label is what the launcher menu actually renders; long label
+        is a fallback if there's more room. Keep both Spanish-only —
+        UI text in the rest of Cardigan is Spanish per project
+        convention.
+    -->
+    <string name="shortcut_new_patient_short">Nuevo paciente</string>
+    <string name="shortcut_new_patient_long">Registrar un nuevo paciente</string>
+    <string name="shortcut_today_short">Hoy</string>
+    <string name="shortcut_today_long">Ver sesiones de hoy</string>
+    <string name="shortcut_payment_short">Cobrar</string>
+    <string name="shortcut_payment_long">Registrar un pago</string>
 </resources>

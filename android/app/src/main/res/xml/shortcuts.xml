@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android home-screen long-press shortcuts. These appear when the user
+  long-presses the Cardigan app icon on the home screen / launcher.
+
+  Each shortcut launches MainActivity with a deep-link URI; the URI's
+  query string is forwarded to the embedded webview, where App.jsx's
+  shortcut-receiver effect (see "PWA / native app shortcuts receiver"
+  comment) drains the fab=/screen= params and fires the matching
+  action.
+
+  Icons all reuse @mipmap/ic_launcher for now — a per-shortcut icon
+  set would require new vector drawables per shortcut. The label is
+  the prominent affordance in the long-press menu, so the icon
+  duplication is acceptable for v1.
+
+  Keep in sync with the `shortcuts` array in public/manifest.json so
+  the PWA + native install surfaces present the same three actions.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="new_patient"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new_patient_short"
+        android:shortcutLongLabel="@string/shortcut_new_patient_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="mx.cardigan.app"
+            android:targetClass="mx.cardigan.app.MainActivity"
+            android:data="https://cardigan.mx/?fab=patient" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="today"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_today_short"
+        android:shortcutLongLabel="@string/shortcut_today_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="mx.cardigan.app"
+            android:targetClass="mx.cardigan.app.MainActivity"
+            android:data="https://cardigan.mx/?screen=agenda" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="record_payment"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_payment_short"
+        android:shortcutLongLabel="@string/shortcut_payment_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="mx.cardigan.app"
+            android:targetClass="mx.cardigan.app.MainActivity"
+            android:data="https://cardigan.mx/?fab=payment" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+</shortcuts>
