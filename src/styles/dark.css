@@ -279,6 +279,43 @@ html[data-theme="dark"] .toast-icon:not(.toast-panel--success .toast-icon):not(.
   color: var(--white);
 }
 
+/* Liquid Glass HelpTip — charcoal-tinted glass keeps tip text legible
+   on dark page surfaces without flattening into the background. */
+html[data-theme="dark"] .help-tip {
+  background: rgba(28, 28, 30, 0.78);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 12px 28px -6px rgba(0, 0, 0, 0.5),
+    0 3px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Sheet drag handle — dark mode flips the two-tone gradient to use
+   lighter neutrals so the pill stays visible against a dark sheet
+   panel. The inset highlight reads as a subtle gloss at the top. */
+html[data-theme="dark"] .sheet-handle {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.32));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+/* App banners — dark mode tunes alphas slightly for inset edge
+   visibility on the darker page background. Color tints already
+   carry their own opacity. */
+html[data-theme="dark"] .app-banner {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .app-banner--trial {
+  background: rgba(60, 50, 30, 0.86);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .app-banner--trial .app-banner-text { color: rgba(255, 240, 200, 0.92); }
+html[data-theme="dark"] .app-banner--trial .app-banner-action {
+  background: var(--white);
+  color: var(--charcoal);
+}
+
 /* ── Admin dashboard dark overrides ──
    Superseded by `admin-tokens.css`, which owns the entire admin
    palette via scoped --admin-* tokens (cool-gray dark in

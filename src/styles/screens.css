@@ -98,7 +98,20 @@
   100% { transform: translateY(0); }
 }
 @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-.sheet-handle { width: 40px; height: 5px; background: var(--cream-deeper); border-radius: 3px; margin: 12px auto 4px; }
+/* Drag handle — premium two-tone pill. A flat band (the original
+   --cream-deeper) reads as decorative; the inset highlight + soft
+   underlying shadow gives the handle physical lift, signalling
+   "grab me" through depth rather than just shape. Dimensions kept
+   identical to preserve thumb-reach for the existing drag gesture. */
+.sheet-handle {
+  width: 40px; height: 5px;
+  background: linear-gradient(180deg, rgba(46, 46, 46, 0.16), rgba(46, 46, 46, 0.22));
+  border-radius: 999px;
+  margin: 10px auto 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 1px 1px rgba(46, 46, 46, 0.04);
+}
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 16px; gap: 10px; }
 /* The title takes the available row width and truncates rather than
    wrapping to a second line — keeps the sheet header height
