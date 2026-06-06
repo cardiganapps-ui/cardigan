@@ -41,3 +41,32 @@ export async function openExternalNewTab(url) {
   }
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
+// "Open in a different app" via URL scheme. tel:, mailto:, webcal:,
+// whatsapp:, maps:, twitter:, anything iOS knows how to hand off.
+//
+// Web:    window.open(url, "_blank") — browser handles the scheme,
+//         either launching the registered app or 404ing gracefully.
+// Native: Capacitor AppLauncher.openUrl({ url }) — explicit OS hand-off.
+//         Anchor-tag navigations to non-HTTP schemes are sometimes
+//         silently dropped by WKWebView's navigation delegate; the
+//         plugin path is reliable.
+//
+// Use this anywhere we want to launch the user into a different app
+// (Apple Calendar, Phone, Mail, WhatsApp, Maps). For HTTP URLs prefer
+// openExternal() above — that opens in the in-app browser sheet,
+// which is the right native equivalent of target="_blank".
+export async function launchUrl(url) {
+  if (!url) return false;
+  if (isNative()) {
+    const { AppLauncher } = await import("@capacitor/app-launcher");
+    try {
+      await AppLauncher.openUrl({ url });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
+}

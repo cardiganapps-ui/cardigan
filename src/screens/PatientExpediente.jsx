@@ -1,7 +1,9 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { getClientColor } from "../data/seedData";
 import { shortDateToISO, todayISO, isoToShortDateWithYear } from "../utils/dates";
-import { phoneHref, emailHref } from "../utils/contact";
+import { phoneHref, emailHref, phoneDigits } from "../utils/contact";
+import { isNative } from "../lib/platform";
+import { launchUrl } from "../lib/nativeBrowser";
 import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconLink, IconCheck } from "../components/Icons";
 import { InvitePatientSheet } from "../components/sheets/InvitePatientSheet";
 import { NoteEditor } from "../components/NoteEditor";
@@ -577,14 +579,36 @@ export function PatientExpediente({
           <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
             {patient.phone && (
               <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
-                onClick={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation();
+                  if (isNative()) { e.preventDefault(); launchUrl(phoneHref(patient.phone)); }
+                }}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                 <IconPhone size={16} />
               </a>
             )}
+            {patient.whatsapp_enabled && patient.phone && (() => {
+              const d = phoneDigits(patient.phone);
+              const wa = `whatsapp://send?phone=${d.length === 10 ? "52" : ""}${d}`;
+              return (
+                <a href={wa} aria-label="WhatsApp"
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (isNative()) { e.preventDefault(); launchUrl(wa); }
+                  }}
+                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19.05 4.91A9.82 9.82 0 0 0 12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.91-7.01zM12.04 20.15h-.01a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.12.82.83-3.04-.19-.31a8.2 8.2 0 0 1-1.26-4.39c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.17 0-.43.06-.66.31-.23.25-.86.84-.86 2.05s.89 2.37 1.01 2.54c.12.17 1.74 2.66 4.22 3.73.59.25 1.05.41 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29z"/>
+                  </svg>
+                </a>
+              );
+            })()}
             {patient.email && (
               <a href={emailHref(patient.email)} aria-label={t("settings.email")}
-                onClick={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation();
+                  if (isNative()) { e.preventDefault(); launchUrl(emailHref(patient.email)); }
+                }}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                 <IconMail size={16} />
               </a>

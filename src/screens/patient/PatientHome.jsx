@@ -12,6 +12,8 @@ import { haptic } from "../../utils/haptics";
 import { IntakeFormSheet } from "./IntakeFormSheet";
 import { PayBalanceSheet } from "./PayBalanceSheet";
 import { RescheduleSessionSheet } from "./RescheduleSessionSheet";
+import { isNative } from "../../lib/platform";
+import { launchUrl } from "../../lib/nativeBrowser";
 
 /* ── PatientHome ──────────────────────────────────────────────────
    The single-screen patient view. Top to bottom:
@@ -885,6 +887,9 @@ function TherapistHero({ theme, name, professionWord, email, phone, t }) {
           {email && (
             <a
               href={`mailto:${email}`}
+              onClick={(e) => {
+                if (isNative()) { e.preventDefault(); launchUrl(`mailto:${email}`); }
+              }}
               className="btn-tap"
               style={{
                 display: "flex",
@@ -909,6 +914,9 @@ function TherapistHero({ theme, name, professionWord, email, phone, t }) {
           {phone && (
             <a
               href={`tel:${phone}`}
+              onClick={(e) => {
+                if (isNative()) { e.preventDefault(); launchUrl(`tel:${phone}`); }
+              }}
               className="btn-tap"
               style={{
                 display: "flex",

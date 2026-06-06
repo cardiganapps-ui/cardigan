@@ -8,8 +8,10 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useLayer } from "../../hooks/useLayer";
 import { SESSION_STATUS } from "../../data/constants";
 import { statusClass, statusLabel, railClass } from "../../utils/sessions";
-import { formatPhoneMX } from "../../utils/contact";
+import { formatPhoneMX, phoneHref, emailHref, phoneDigits } from "../../utils/contact";
 import { formatMXN } from "../../utils/format";
+import { isNative } from "../../lib/platform";
+import { launchUrl } from "../../lib/nativeBrowser";
 
 /* ── PotentialProfileSheet ────────────────────────────────────────
    Slim profile for a 'potential' patient. Deliberately NOT the full
@@ -147,18 +149,33 @@ export function PotentialProfileSheet({
                 </div>
               </div>
 
-              {/* Contact strip — only when there's something to show */}
+              {/* Contact strip — only when there's something to show.
+                  Each line is a tappable link: tel:/mailto: on web, and
+                  routed through Capacitor AppLauncher on native (WKWebView
+                  silently drops some anchor scheme navigations). */}
               {(patient.phone || patient.email) && (
                 <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:16 }}>
                   {patient.phone && (
-                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:"var(--text-sm)", color:"var(--charcoal-md)" }}>
-                      <IconPhone size={14} /> <span>{formatPhoneMX(patient.phone)}</span>
-                    </div>
+                    <ContactLink
+                      href={phoneHref(patient.phone)}
+                      icon={<IconPhone size={14} />}
+                      label={formatPhoneMX(patient.phone)}
+                    />
+                  )}
+                  {patient.whatsapp_enabled && patient.phone && (
+                    <ContactLink
+                      href={`whatsapp://send?phone=${phoneDigits(patient.phone).length === 10 ? "52" : ""}${phoneDigits(patient.phone)}`}
+                      icon={<IconPhone size={14} />}
+                      label="WhatsApp"
+                    />
                   )}
                   {patient.email && (
-                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:"var(--text-sm)", color:"var(--charcoal-md)" }}>
-                      <IconMail size={14} /> <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{patient.email}</span>
-                    </div>
+                    <ContactLink
+                      href={emailHref(patient.email)}
+                      icon={<IconMail size={14} />}
+                      label={patient.email}
+                      truncate
+                    />
                   )}
                 </div>
               )}
@@ -283,5 +300,32 @@ export function PotentialProfileSheet({
         </div>
       </div>
     </div>
+  );
+}
+
+function ContactLink({ href, icon, label, truncate = false }) {
+  if (!href) return null;
+  const onClick = (e) => {
+    if (isNative()) {
+      e.preventDefault();
+      launchUrl(href);
+    }
+  };
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      style={{
+        display:"flex", alignItems:"center", gap:8,
+        fontSize:"var(--text-sm)", color:"var(--charcoal-md)",
+        textDecoration:"none",
+        WebkitTapHighlightColor:"transparent",
+        minHeight:32,
+      }}>
+      {icon}
+      <span style={truncate ? { overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 } : undefined}>
+        {label}
+      </span>
+    </a>
   );
 }
