@@ -108,15 +108,11 @@ export function SlashCommandMenu({ open, anchorRect, onSelect, onClose }) {
       ref={ref}
       role="menu"
       aria-label={t("notes.options")}
+      className="slash-menu"
       style={{
         position: "fixed",
         top, left,
         width: MENU_WIDTH,
-        background: "var(--white)",
-        border: "1px solid var(--border-lt)",
-        borderRadius: "var(--radius-lg)",
-        boxShadow: "var(--shadow-lg)",
-        padding: 6,
         zIndex: "var(--z-install)",
         animation: "slashMenuIn var(--dur-base) var(--ease-spring-soft)",
         fontFamily: "var(--font)",

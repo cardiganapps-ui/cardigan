@@ -19,6 +19,22 @@ import { formatMXN } from "../utils/format";
 import { isPotentialOrDiscarded } from "../data/constants";
 import { haptic } from "../utils/haptics";
 
+/* ── Free-day empty state ──
+   Positive "you have no sessions today" surface. Reuses the canonical
+   .empty-state structure with the --day variant for the premium warm
+   icon + gentle float. Promoted out of the JSX because it was repeated
+   four times across the Today/Mañana carousel + desktop side-by-side
+   panels — keeps the copy and styling in one place to avoid drift. */
+function FreeDayEmptyState({ t }) {
+  return (
+    <div className="empty-state empty-state--day">
+      <div className="empty-state-icon"><IconSun size={32} /></div>
+      <div className="empty-state-title">{t("sessions.freeDay")}</div>
+      <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
+    </div>
+  );
+}
+
 /* ── Compute next working day for the "Mañana" carousel panel ── */
 function getNextDay(today, sessions) {
   const tomorrow = new Date(today);
@@ -471,11 +487,7 @@ export function Home({ setScreen, userName }) {
             <div style={{ width: "50%", flexShrink: 0 }}>
               <div className="card">
                 {todaySessions.length === 0
-                  ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                      <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
-                    </div>
+                  ? <FreeDayEmptyState t={t} />
                   : todaySessions.map(renderSessionRow)
                 }
               </div>
@@ -484,11 +496,7 @@ export function Home({ setScreen, userName }) {
             <div style={{ width: "50%", flexShrink: 0 }}>
               <div className="card">
                 {nextDaySessions.length === 0
-                  ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                      <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                      <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                      <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
-                    </div>
+                  ? <FreeDayEmptyState t={t} />
                   : nextDaySessions.map(renderSessionRow)
                 }
               </div>
@@ -520,11 +528,7 @@ export function Home({ setScreen, userName }) {
             <div className="home-panel-meta">{t("sessions.today")} · {todayDayName} {todayStr}</div>
             <div className="card">
               {todaySessions.length === 0
-                ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                    <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                    <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
-                  </div>
+                ? <FreeDayEmptyState t={t} />
                 : todaySessions.map(renderSessionRow)
               }
             </div>
@@ -533,11 +537,7 @@ export function Home({ setScreen, userName }) {
             <div className="home-panel-meta">{nextDayLabel === nextDayName ? <>{nextDayName} {nextDayStr}</> : <>{nextDayLabel} · {nextDayName} {nextDayStr}</>}</div>
             <div className="card">
               {nextDaySessions.length === 0
-                ? <div style={{ padding:"28px 20px", textAlign:"center" }}>
-                    <div style={{ marginBottom:10, color:"var(--teal-light)" }}><IconSun size={32} /></div>
-                    <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>{t("sessions.freeDay")}</div>
-                    <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDayMessage")}</div>
-                  </div>
+                ? <FreeDayEmptyState t={t} />
                 : nextDaySessions.map(renderSessionRow)
               }
             </div>

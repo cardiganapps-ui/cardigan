@@ -1398,13 +1398,25 @@ button.kpi-card:active {
 .cmdp-panel {
   width: min(640px, 92vw);
   max-height: 70vh;
-  background: var(--white);
-  border: 1px solid var(--border-lt);
+  /* Liquid Glass — translucent white card that lets the page hint
+     through behind. Saturate-before-blur keeps text content readable
+     against busy backgrounds (e.g. cmd-K invoked over Agenda month
+     view with colored event chips). */
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 24px 56px -16px rgba(46, 46, 46, 0.28),
+    0 6px 18px -4px rgba(46, 46, 46, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
   display: flex; flex-direction: column;
   overflow: hidden;
   animation: cmdpIn 0.32s var(--ease-spring);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cmdp-panel { background: var(--white); border-color: var(--border-lt); }
 }
 @keyframes cmdpIn {
   0%   { opacity: 0; transform: translateY(-8px) scale(0.97); }
@@ -1413,7 +1425,7 @@ button.kpi-card:active {
 .cmdp-search {
   display: flex; align-items: center; gap: 10px;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--border-lt);
+  border-bottom: 1px solid rgba(46, 46, 46, 0.08);
   color: var(--charcoal-xl);
   flex-shrink: 0;
 }
@@ -1662,6 +1674,26 @@ html[data-theme="dark"] .update-prompt-spinner--inline {
   visibility: hidden;
 }
 
+/* ── Slash command menu (notes) — Liquid Glass floating menu ──
+   Appears at the caret when the user types "/" inside the note
+   editor. The floating glass surface mirrors CommandPalette + HelpTip
+   so every floating menu in the app shares one visual language. */
+.slash-menu {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 14px 32px -8px rgba(46, 46, 46, 0.22),
+    0 4px 12px -2px rgba(46, 46, 46, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  padding: 6px;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .slash-menu { background: var(--white); border-color: var(--border-lt); }
+}
+
 /* ── .empty-state ──
    Canonical empty / orphan / "nothing here yet" surface. Centered
    column with a 44×44 token-cream-dark icon circle, font-d title,
@@ -1699,4 +1731,37 @@ html[data-theme="dark"] .update-prompt-spinner--inline {
   color: var(--charcoal-md);
   line-height: 1.55;
   max-width: 320px;
+}
+
+/* ── .empty-state--day ──
+   "Día libre" / free-day variant. Positive empty state (the user has
+   no sessions because the day is open, not because of an error), so
+   the surface should feel like a warm, restful moment instead of an
+   absence. The icon sits on a soft warm-teal radial gradient with a
+   subtle inner glow that catches sunlight; the title gets a touch
+   more letter-spacing for a confident, headline-y feel.
+
+   Variant is composable: <div class="empty-state empty-state--day">. */
+.empty-state--day .empty-state-icon {
+  width: 64px; height: 64px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 247, 224, 0.9) 0%, rgba(213, 230, 232, 0.85) 60%, rgba(91, 155, 175, 0.18) 100%);
+  color: var(--teal);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 12px rgba(255, 234, 178, 0.4),
+    0 6px 18px -4px rgba(91, 155, 175, 0.22);
+  margin-bottom: 4px;
+  /* Gentle float — 3px lift over 4s ease-in-out. Telegraphs "this is
+     a quiet moment", not a static "nothing here" badge. Suppressed
+     by prefers-reduced-motion via the system-wide rule in
+     responsive.css that zeroes all animation durations. */
+  animation: emptyDayFloat 4s var(--ease-in-out) infinite;
+}
+@keyframes emptyDayFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+.empty-state--day .empty-state-title {
+  letter-spacing: -0.1px;
 }
