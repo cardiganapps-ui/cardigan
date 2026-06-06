@@ -476,8 +476,21 @@
   /* Layered soft shadow gives the cards presence and signals they're
      interactive rather than flat static tiles. */
   box-shadow: 0 1px 2px rgba(46,46,46,0.04), 0 4px 14px rgba(46,46,46,0.06);
-  transition: background var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring),
-              border-color var(--dur-slow) ease, box-shadow var(--dur-slow) ease;
+  /* Press feedback split into two arcs:
+       - Press-down: fast (var(--dur-fast)) so the finger feels heard
+         immediately, with --ease-spring-soft so the snap doesn't
+         look mechanical.
+       - Release: longer, springier — the card overshoots back to
+         resting size with a small wobble (--ease-spring), which is
+         the moment that reads as "premium tactile".
+     Hover/color transitions stay on the slower base curve so they
+     don't flicker between rapid press-release cycles. */
+  transition:
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-spring);
+  will-change: transform;
 }
 button.kpi-card { cursor: pointer; }
 @media (hover: hover) {
@@ -488,10 +501,22 @@ button.kpi-card { cursor: pointer; }
   }
 }
 button.kpi-card:active {
-  transform: scale(0.96);
+  /* Slightly deeper press (0.94 vs the previous 0.96) and a faster
+     curve on the way down so the press feels immediate. The release
+     re-uses the resting-state spring transition above for the
+     wobble-back. */
+  transform: scale(0.94);
   background: var(--teal-mist);
   border-color: var(--teal-light);
-  box-shadow: 0 1px 2px rgba(46,46,46,0.04), 0 2px 6px rgba(46,46,46,0.06);
+  /* Shadow collapses tight under the card to read as "pressed into
+     the surface" — depth comes from the contrast with the resting
+     state shadow above, not from the absolute values. */
+  box-shadow: 0 1px 2px rgba(46,46,46,0.06), 0 1px 3px rgba(46,46,46,0.04);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-spring-soft);
 }
 .kpi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--charcoal-xl); margin-bottom: 6px; }
 /* Tabular numerals — every dashboard number aligns column-style so a
@@ -1130,6 +1155,15 @@ button.kpi-card:active {
   font-size: var(--text-xs); font-weight: 700;
   display: inline-flex; align-items: center; gap: 6px;
   line-height: 1.2;
+  /* Cross-fade colors when the session's status changes (e.g. after
+     swipe-to-complete). Without this, the pill snaps from teal to
+     green which reads as a brand-new pill replacing the old one;
+     with the transition, the pill smoothly morphs and the user
+     reads the state change as continuous. The ::before dot inherits
+     currentColor so it transitions in lockstep. */
+  transition:
+    background var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
 }
 .session-status::before {
   content: "";
@@ -1137,6 +1171,7 @@ button.kpi-card:active {
   width: 6px; height: 6px; border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
+  transition: background var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 /* Cancelled: solid filled "X" feel — replace the dot with a hollow
    ring so the eye reads "marked off" without losing alignment with
@@ -1159,8 +1194,15 @@ button.kpi-card:active {
 
 /* SESSION ROW RAIL — 3px status-colored accent on the left edge.
    Used on .row-item instances that represent a session, applied via
-   --rail-color so status border stays consistent across screens. */
-.row-item.session-row { border-left: 3px solid var(--rail-color, var(--teal)); }
+   --rail-color so status border stays consistent across screens.
+   The border-left-color transition lets the rail smoothly morph
+   from teal → green when a swipe-to-complete optimistically flips
+   the status. Without this transition the rail snapped between
+   colors and the row visually "blinked" mid-mutation. */
+.row-item.session-row {
+  border-left: 3px solid var(--rail-color, var(--teal));
+  transition: border-left-color var(--dur-base) var(--ease-out);
+}
 .row-item.session-row.rail-scheduled { --rail-color: var(--teal); }
 .row-item.session-row.rail-completed { --rail-color: var(--green); }
 .row-item.session-row.rail-cancelled { --rail-color: var(--charcoal-xl); }

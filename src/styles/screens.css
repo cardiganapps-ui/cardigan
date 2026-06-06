@@ -338,8 +338,27 @@ html[data-theme="dark"] .agenda-calendar-link {
   font-family: inherit; color: inherit; text-align: left;
 }
 button.stat-tile { cursor: pointer; min-height: 0; }
-.stat-tile-clickable { transition: background var(--dur-slow) ease, transform var(--dur-slow) var(--ease-spring), border-color var(--dur-slow) ease; -webkit-tap-highlight-color: transparent; user-select: none; }
-.stat-tile-clickable:active { transform: scale(0.95); }
+.stat-tile-clickable {
+  /* Matches the .kpi-card press feedback rhythm so KPI tiles across
+     screens (Home .kpi-card + Finances .stat-tile) feel like one
+     family. See .kpi-card for the two-arc reasoning. */
+  transition:
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-spring);
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.stat-tile-clickable:active {
+  transform: scale(0.94);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-spring-soft);
+}
 .stat-tile-selected { background: var(--cream); border-color: var(--charcoal-xxl, var(--border)); }
 .modality-toggle:active { transform: scale(0.96); }
 .stat-tile-label { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--charcoal-xl); margin-bottom:5px; }
