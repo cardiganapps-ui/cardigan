@@ -368,6 +368,20 @@ create table if not exists sent_reminders (
   unique(session_id, user_id)
 );
 
+-- Tutor-reminder dedupe ledger. Mirrors sent_reminders but keyed on
+-- (user, patient, kind, cycle_anchor_date) — one row per "tutor_due" /
+-- "tutor_overdue_7" event so the 5-min cron in send-session-reminders
+-- doesn't re-notify the tutor on every tick. Created in migration 075.
+create table if not exists sent_tutor_reminders (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  patient_id uuid not null references patients(id) on delete cascade,
+  kind text not null check (kind in ('tutor_due', 'tutor_overdue_7')),
+  cycle_anchor_date text not null,
+  sent_at timestamptz default now(),
+  unique (user_id, patient_id, kind, cycle_anchor_date)
+);
+
 -- Anthropometric measurements (nutritionist + trainer). One row per
 -- visit/check-in. Schema mirrors migration 024_measurements.sql.
 create table if not exists measurements (
@@ -526,6 +540,8 @@ create index if not exists idx_push_subscriptions_user_id on push_subscriptions(
 create index if not exists idx_notification_preferences_user_id on notification_preferences(user_id);
 create index if not exists idx_sent_reminders_user_id on sent_reminders(user_id);
 create index if not exists idx_sent_reminders_session_id on sent_reminders(session_id);
+create index if not exists idx_sent_tutor_reminders_user_id on sent_tutor_reminders(user_id);
+create index if not exists idx_sent_tutor_reminders_patient_id on sent_tutor_reminders(patient_id);
 create index if not exists idx_user_profiles_profession on user_profiles(profession);
 create index if not exists idx_measurements_patient on measurements(patient_id, taken_at desc);
 create index if not exists idx_measurements_user_id on measurements(user_id);
@@ -553,6 +569,7 @@ alter table bug_reports enable row level security;
 alter table push_subscriptions enable row level security;
 alter table notification_preferences enable row level security;
 alter table sent_reminders enable row level security;
+alter table sent_tutor_reminders enable row level security;
 alter table user_profiles enable row level security;
 alter table measurements enable row level security;
 alter table note_tags enable row level security;
@@ -570,6 +587,7 @@ create policy "Users manage own recurring expenses" on recurring_expenses for al
 create policy "Users manage own push subscriptions" on push_subscriptions for all using (auth.uid() = user_id);
 create policy "Users manage own notification preferences" on notification_preferences for all using (auth.uid() = user_id);
 create policy "Users read own sent reminders" on sent_reminders for select using (auth.uid() = user_id);
+create policy "Users read own sent tutor reminders" on sent_tutor_reminders for select using (auth.uid() = user_id);
 create policy "Users read own profile"   on user_profiles for select using (auth.uid() = user_id);
 create policy "Users insert own profile" on user_profiles for insert with check (auth.uid() = user_id);
 create policy "Users update own profile" on user_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -632,6 +650,7 @@ create policy "Admin reads all reschedule requests"
 create policy "Admin manages all bug reports" on bug_reports for all using (is_admin());
 create policy "Admin reads all push subscriptions" on push_subscriptions for select using (is_admin());
 create policy "Admin reads all notification preferences" on notification_preferences for select using (is_admin());
+create policy "Admin reads all sent tutor reminders" on sent_tutor_reminders for select using (is_admin());
 create policy "Admin reads all profiles" on user_profiles for select using (is_admin());
 create policy "Admin updates all profiles" on user_profiles for update using (is_admin()) with check (is_admin());
 create policy "Admin reads all measurements" on measurements for select using (is_admin());
