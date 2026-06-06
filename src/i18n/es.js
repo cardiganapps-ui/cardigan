@@ -225,6 +225,7 @@ export default {
     onlyActive: "Activos",
     statusPotential: "Potencial",
     statusDiscarded: "Descartado",
+    swipePay: "Cobrar",
     newPotential: "Nuevo {prospect.s}",
     addPotentialFirst: "Agrega un {prospect.s} para registrar una {intake.s} antes de comprometerte con el horario completo.",
     // Mode toggle inside NewPatientSheet — same FAB action handles both
@@ -378,6 +379,7 @@ export default {
     cancelWithCharge: "Cancelar con cobro",
     cancelWithoutCharge: "Cancelar sin cobro",
     markCompleted: "Marcar completada",
+    swipeComplete: "Completar",
     markCancelled: "Cancelar {session.s}",
     revertScheduled: "Revertir a agendada",
     cancelReason: "Raz\u00f3n de cancelaci\u00f3n (opcional)",

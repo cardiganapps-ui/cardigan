@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
 import { haptic } from "../utils/haptics";
+import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
@@ -532,12 +533,19 @@ export function Patients() {
               const isPotential = p.status === PATIENT_STATUS.POTENTIAL;
               const isDiscarded = p.status === PATIENT_STATUS.DISCARDED;
               const isInterviewLane = isPotential || isDiscarded;
-              return (
+              // Swipe-reveal enabled only for active patients in the
+              // main lane. Interview lane (potential/discarded) and
+              // the "owes" filter view stay tap-only — the latter
+              // because that view's primary affordance is the chevron
+              // showing balance owed, and swipe overlay would clash
+              // visually with the red amount.
+              const swipeEnabled = !readOnly && !isInterviewLane && p.status === PATIENT_STATUS.ACTIVE;
+              const rowClick = isInterviewLane ? () => setPotentialProfile(p) : () => openDetail(p);
+              const rowBody = (
                 <div
                   className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
                   style={{ "--stagger-i": Math.min(i, 12) }}
-                  key={p.id}
-                  onClick={() => isInterviewLane ? setPotentialProfile(p) : openDetail(p)}
+                  onClick={swipeEnabled ? undefined : rowClick}
                   onContextMenu={(e) => isInterviewLane ? null : openPatientContextMenu(e, p)}>
                   <Avatar initials={p.initials} color={isInterviewLane ? "var(--rose)" : getClientColor(i)} size="md" />
                   <div className="row-content">
@@ -564,6 +572,21 @@ export function Patients() {
                   </div>
                   <span className="row-chevron">›</span>
                 </div>
+              );
+              if (!swipeEnabled) return <div key={p.id}>{rowBody}</div>;
+              return (
+                <SwipeRevealRow
+                  key={p.id}
+                  onClick={rowClick}
+                  actions={[{
+                    key: "payment",
+                    icon: <IconDollar size={20} />,
+                    label: t("patients.swipePay"),
+                    color: "var(--green)",
+                    onAction: () => openRecordPaymentModal(p),
+                  }]}>
+                  {rowBody}
+                </SwipeRevealRow>
               );
             })
           }

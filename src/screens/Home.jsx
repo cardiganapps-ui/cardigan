@@ -16,8 +16,10 @@ import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
 import { useT } from "../i18n/index";
 import { formatMXN } from "../utils/format";
-import { isPotentialOrDiscarded } from "../data/constants";
+import { isPotentialOrDiscarded, SESSION_STATUS } from "../data/constants";
 import { haptic } from "../utils/haptics";
+import { SwipeRevealRow } from "../components/SwipeRevealRow";
+import { IconCheck } from "../components/Icons";
 
 /* ── Free-day empty state ──
    Positive "you have no sessions today" surface. Reuses the canonical
@@ -234,8 +236,12 @@ export function Home({ setScreen, userName }) {
     const avatarBg = interview ? "var(--rose)" : tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
     const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
     const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
-    return (
-      <div className={`row-item session-row ${railClass(s.status)}`} key={s.id} onClick={() => setSelectedSession(s)}>
+    // Swipe-reveal enabled only for actionable rows: scheduled, non-
+    // interview, not in read-only mode. Other statuses still open the
+    // sheet on tap so users keep full access to revert / re-mark.
+    const swipeEnabled = !readOnly && !interview && s.status === SESSION_STATUS.SCHEDULED;
+    const rowBody = (
+      <div className={`row-item session-row ${railClass(s.status)}`} onClick={swipeEnabled ? undefined : () => setSelectedSession(s)}>
         <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
         <div className="row-content">
           <div className="row-title">
@@ -278,6 +284,21 @@ export function Home({ setScreen, userName }) {
           <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
         </div>
       </div>
+    );
+    if (!swipeEnabled) return <div key={s.id}>{rowBody}</div>;
+    return (
+      <SwipeRevealRow
+        key={s.id}
+        onClick={() => setSelectedSession(s)}
+        actions={[{
+          key: "complete",
+          icon: <IconCheck size={20} />,
+          label: t("sessions.swipeComplete"),
+          color: "var(--green)",
+          onAction: () => onMarkCompleted?.(s),
+        }]}>
+        {rowBody}
+      </SwipeRevealRow>
     );
   };
 
