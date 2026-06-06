@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useT } from "../i18n/index";
 import { IconCheck, IconX } from "./Icons";
+import { haptic } from "../utils/haptics";
 
 /* Inline alert glyph for warning + error toasts. Stroke-2 to match
    the rest of the icon family. */
@@ -98,21 +99,14 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   const liveness = isInterrupt ? "assertive" : "polite";
 
   return (
-    <div
-      role={liveRole}
-      aria-live={liveness}
-      aria-atomic="true"
-      style={{
-        position:"fixed", top, left:12, right:12,
-        zIndex:"var(--z-install)", pointerEvents:"auto",
-        animation: leaving
-          ? "toastOut 560ms var(--ease-in-out) forwards"
-          : "toastIn var(--dur-slower) var(--ease-spring)",
-        opacity,
-        transform: `scale(${scale})`,
-        transformOrigin: "top center",
-        transition: "top var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)",
-      }}>
+    <SwipeDismissToast
+      scale={scale}
+      opacity={opacity}
+      top={top}
+      leaving={leaving}
+      onDismiss={dismiss}
+      liveRole={liveRole}
+      liveness={liveness}>
       <div className={`toast-panel toast-panel--${type}`} data-type={type}>
         {Icon && (
           <span className="toast-icon" aria-hidden>
@@ -139,6 +133,128 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
           </button>
         )}
       </div>
+    </SwipeDismissToast>
+  );
+}
+
+/* ── SwipeDismissToast ──
+   The outer wrapper that owns the toast's positioning, entrance/exit
+   animation, AND a swipe-up-to-dismiss gesture. Extracted as its own
+   component so the gesture refs + direct DOM mutation (used to keep
+   60fps during the drag) don't bloat the Toast render path.
+
+   Gesture rules:
+     - Engage only after the finger moves ≥ 6px vertically — small
+       wiggles during a tap don't activate.
+     - Upward motion follows the finger 1:1. Downward motion is
+       damped at 0.3× so the toast resists going "down past its slot"
+       without feeling locked.
+     - Release past 50px upward → dismiss (with a tap haptic).
+     - Release under threshold → springy snap back with --ease-spring,
+       same curve the bottom sheet uses for its settle.
+     - While dragging, the entrance/exit CSS animation and the
+       stack-promotion transition are suspended — the finger is the
+       source of truth for position. Restored on release. */
+function SwipeDismissToast({ scale, opacity, top, leaving, onDismiss, liveRole, liveness, children }) {
+  const wrapperRef = useRef(null);
+  const dragRef = useRef({ startY: 0, dy: 0, dragging: false });
+
+  const SETTLE = "transform 0.32s cubic-bezier(0.34, 1.4, 0.6, 1)";
+  const STACK_TRANSITION = "top var(--dur-slow) var(--ease-spring), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)";
+
+  const restingTransform = `scale(${scale})`;
+
+  const onTouchStart = useCallback((e) => {
+    const el = wrapperRef.current;
+    if (!el || leaving) return;
+    const t = e.touches[0];
+    if (!t) return;
+    dragRef.current = { startY: t.clientY, dy: 0, dragging: false };
+    // Hold position via inline style so the entrance keyframe doesn't
+    // fight the gesture. Restored on touchend.
+    el.style.animation = "none";
+    el.style.transition = "none";
+  }, [leaving]);
+
+  const onTouchMove = useCallback((e) => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const t = e.touches[0];
+    if (!t) return;
+    const dy = t.clientY - dragRef.current.startY;
+    if (!dragRef.current.dragging) {
+      if (Math.abs(dy) < 6) return;
+      dragRef.current.dragging = true;
+    }
+    // Upward freely; downward dampened to 30% so the toast feels
+    // grounded but not locked.
+    const clamped = dy < 0 ? dy : dy * 0.3;
+    dragRef.current.dy = clamped;
+    el.style.transform = `scale(${scale}) translateY(${clamped}px)`;
+  }, [scale]);
+
+  const onTouchEnd = useCallback(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const { dy, dragging } = dragRef.current;
+    dragRef.current.dragging = false;
+    if (!dragging) {
+      // It was a tap, not a drag — restore the live styles so any
+      // in-flight entrance keyframe and stack-promotion transition
+      // continue from where they were.
+      el.style.animation = "";
+      el.style.transition = STACK_TRANSITION;
+      el.style.transform = restingTransform;
+      return;
+    }
+    if (dy < -50) {
+      haptic.tap?.();
+      // Slide out the rest of the way + fade.
+      el.style.transition = "transform 240ms cubic-bezier(0.4, 0, 1, 1), opacity 240ms ease";
+      el.style.transform = `scale(${scale}) translateY(-${Math.abs(dy) + 60}px)`;
+      el.style.opacity = "0";
+      setTimeout(onDismiss, 200);
+      return;
+    }
+    // Below threshold — springy snap back to rest.
+    el.style.transition = SETTLE;
+    el.style.transform = restingTransform;
+    setTimeout(() => {
+      if (wrapperRef.current === el) el.style.transition = STACK_TRANSITION;
+    }, 340);
+  }, [scale, restingTransform, STACK_TRANSITION, onDismiss]);
+
+  const onTouchCancel = useCallback(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    dragRef.current.dragging = false;
+    el.style.transition = SETTLE;
+    el.style.transform = restingTransform;
+  }, [restingTransform, SETTLE]);
+
+  return (
+    <div
+      ref={wrapperRef}
+      role={liveRole}
+      aria-live={liveness}
+      aria-atomic="true"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      style={{
+        position: "fixed", top, left: 12, right: 12,
+        zIndex: "var(--z-install)", pointerEvents: "auto",
+        animation: leaving
+          ? "toastOut 560ms var(--ease-in-out) forwards"
+          : "toastIn var(--dur-slower) var(--ease-spring)",
+        opacity,
+        transform: restingTransform,
+        transformOrigin: "top center",
+        touchAction: "pan-x", // allow horizontal page scroll, hijack vertical
+        transition: STACK_TRANSITION,
+      }}>
+      {children}
     </div>
   );
 }

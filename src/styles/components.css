@@ -319,6 +319,18 @@
   flex-shrink: 0;
   background: var(--charcoal);
   color: var(--white);
+  /* Icon arrives a beat after the panel — the panel's toastIn keyframe
+     runs from 0 → ~80% of its duration without the chip, then the chip
+     pops in with its own spring. Reads as "the panel arrived; then the
+     glyph stamped itself onto it" — same rhythm Apple uses for the
+     Activity Ring ticks and successful payment glyphs. Suppressed by
+     prefers-reduced-motion globally via responsive.css. */
+  animation: toastIconPop 460ms 220ms var(--ease-spring) both;
+}
+@keyframes toastIconPop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 .toast-panel--success .toast-icon { background: var(--green); }
 .toast-panel--error   .toast-icon { background: var(--red); }
