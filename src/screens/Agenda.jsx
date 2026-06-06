@@ -12,6 +12,8 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 import { formatShortDate, toISODate } from "../utils/dates";
 import { isCancelledStatus, statusClass, isTutorSession, isInterviewSession, tutorDisplayInitials, shortName, railClass } from "../utils/sessions";
+import { SESSION_STATUS } from "../data/constants";
+import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import { Avatar } from "../components/Avatar";
 import { useSwipe } from "../hooks/useSwipe";
 import { useViewport } from "../hooks/useViewport";
@@ -380,7 +382,7 @@ function buildMonthGrid(year, month) {
    in the parent's selected set instead of opening the session detail.
    The row gets a subtle selected highlight + a check pill replaces the
    chevron so the affordance is unambiguous. */
-function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSelect }) {
+function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSelect, onSwipeComplete }) {
   const { t } = useT();
   const tutor = isTutorSession(s);
   const interview = isInterviewSession(s);
@@ -396,11 +398,16 @@ function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSele
     if (selectionMode) onToggleSelect?.(s);
     else onClick?.(s);
   };
-  return (
+  // Swipe-reveal eligibility — same predicate as Home so the gesture
+  // is consistent across surfaces: scheduled, non-interview, and the
+  // parent has wired a complete handler (i.e. not readOnly). Selection
+  // mode disables the gesture because taps in that mode toggle a
+  // checkbox; swipe would compete and confuse.
+  const swipeEnabled = !!onSwipeComplete && !selectionMode && !interview && s.status === SESSION_STATUS.SCHEDULED;
+  const rowBody = (
     <div
       className={`row-item session-row ${railClass(s.status)}`}
-      key={s.id}
-      onClick={handleClick}
+      onClick={swipeEnabled ? undefined : handleClick}
       style={selectionMode && selected ? { background: "var(--teal-pale)" } : undefined}
     >
       <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
@@ -458,10 +465,24 @@ function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSele
       ) : !compact ? <span className="row-chevron">›</span> : null}
     </div>
   );
+  if (!swipeEnabled) return rowBody;
+  return (
+    <SwipeRevealRow
+      onClick={handleClick}
+      actions={[{
+        key: "complete",
+        icon: <IconCheck size={20} />,
+        label: t("sessions.swipeComplete"),
+        color: "var(--green)",
+        onAction: () => onSwipeComplete?.(s),
+      }]}>
+      {rowBody}
+    </SwipeRevealRow>
+  );
 }
 
 /* ── DAY PANEL (just one day's session list, no week strip) ── */
-function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect }) {
+function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const dateStr = formatShortDate(panelDate);
@@ -490,7 +511,8 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientN
                 <SessionRow key={s.id} s={s} onClick={onSelectSession}
                   selectionMode={selectionMode}
                   selected={selectedSet?.has(s.id)}
-                  onToggleSelect={onToggleSelect} />
+                  onToggleSelect={onToggleSelect}
+                  onSwipeComplete={onSwipeComplete} />
               ))}
             </div>
         }
@@ -515,7 +537,7 @@ function HeaderLabel({ children, isCurrent, onJumpToday, t }) {
 }
 
 /* ── DAY VIEW ── */
-function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect }) {
+function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
@@ -531,7 +553,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
   const prevDay = addDays(selectedDate, -1);
   const nextDay = addDays(selectedDate, 1);
-  const shared = { onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect };
+  const shared = { onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete };
 
   const weekDays = getWeekDays(selectedDate);
   const prevWeekDays = getWeekDays(addDays(selectedDate, -7));
@@ -991,7 +1013,7 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
 }
 
 /* ── MONTH VIEW ── */
-function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName, onMoveDay, canMoveDay }) {
+function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName, onMoveDay, canMoveDay, onSwipeComplete }) {
   const { t, strings } = useT();
   const MONTH_NAMES = strings.months;
   const DOW = strings.daysShort;
@@ -1059,7 +1081,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
                 <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
               </div>
           : <div className="card">
-              {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact />)}
+              {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact onSwipeComplete={onSwipeComplete} />)}
             </div>
         }
       </div>
@@ -1332,9 +1354,9 @@ export function Agenda() {
           </div>
         )}
       </div>
-      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} />}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
-      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} onSwipeComplete={readOnly ? undefined : onMarkCompleted} />}
       {upcomingSessions.length === 0 && (() => {
         // Two flavours of "no sessions": brand-new user with zero
         // patients, or an existing user whose calendar is genuinely

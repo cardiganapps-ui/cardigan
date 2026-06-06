@@ -4,6 +4,7 @@ import { getClientColor, DAY_ORDER } from "../data/seedData";
 import { IconSearch, IconX, IconUsers, IconTrash, IconPlus, IconEdit, IconDollar } from "../components/Icons";
 import { haptic } from "../utils/haptics";
 import { SwipeRevealRow } from "../components/SwipeRevealRow";
+import { useLongPress } from "../hooks/useLongPress";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { todayISO, shortDateToISO, parseLocalDate } from "../utils/dates";
 import { formatPhoneMX, phoneDigits } from "../utils/contact";
@@ -67,6 +68,73 @@ function deriveSlotFrequency(p, sessions) {
   );
   if (future.length === 0) return DEFAULT_RECURRENCE_FREQUENCY;
   return future[0].recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY;
+}
+
+/* ── PatientRow ──
+   Extracted from the .map() inside the main render so per-row hooks
+   (useLongPress) have a stable owner. Wraps the row body in a long-
+   press detector that opens the same context menu desktop users get
+   via right-click — surfacing Editar / Eliminar on mobile, where
+   neither swipe-to-pay nor the chevron tap currently exposes them.
+
+   The long-press handlers sit on a wrapping div around SwipeRevealRow
+   (or the bare row). Both gesture systems get the raw touch events
+   because neither stops propagation; SwipeRevealRow bails out the
+   moment vertical motion dominates, while long-press bails out the
+   moment ANY motion exceeds 10px. A still hold-for-450ms triggers the
+   menu, suppressing the synthetic click that would otherwise reach
+   the row's onClick. */
+function PatientRow({ p, i, swipeEnabled, isInterviewLane, isPotential, isDiscarded, filter, splitMode, expediente, rowClick, openCtxMenu, onPay, t }) {
+  const longPress = useLongPress(
+    openCtxMenu ? (x, y) => openCtxMenu(x, y, p) : null,
+    { enabled: !!openCtxMenu }
+  );
+  const rowBody = (
+    <div
+      className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
+      style={{ "--stagger-i": Math.min(i, 12) }}
+      onClick={swipeEnabled ? undefined : rowClick}
+      onContextMenu={(e) => isInterviewLane ? null : openCtxMenu?.(e.clientX, e.clientY, p, e)}>
+      <Avatar initials={p.initials} color={isInterviewLane ? "var(--rose)" : getClientColor(i)} size="md" />
+      <div className="row-content">
+        <div className="row-title">{p.name}</div>
+        <div className="row-sub">
+          {p.parent && (
+            <>
+              <span style={{ color:"var(--purple)", fontWeight:700 }}>{t("sessions.tutor")}: {p.parent}</span>
+              {" · "}
+            </>
+          )}
+          {formatMXN(p.rate)} {t("expediente.perSession")}
+        </div>
+      </div>
+      <div style={{ flexShrink:0 }}>
+        {filter === "owes"
+          ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>{formatMXN(p.amountDue)}</span>
+          : isPotential
+            ? <span className="badge badge-rose">{t("patients.statusPotential")}</span>
+            : isDiscarded
+              ? <span className="badge badge-gray">{t("patients.statusDiscarded")}</span>
+              : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
+        }
+      </div>
+      <span className="row-chevron">›</span>
+    </div>
+  );
+  const inner = swipeEnabled
+    ? <SwipeRevealRow
+        onClick={rowClick}
+        actions={[{
+          key: "payment",
+          icon: <IconDollar size={20} />,
+          label: t("patients.swipePay"),
+          color: "var(--green)",
+          onAction: () => onPay(p),
+        }]}>
+        {rowBody}
+      </SwipeRevealRow>
+    : rowBody;
+  return <div {...longPress.bind}>{inner}</div>;
 }
 
 export function Patients() {
@@ -149,9 +217,14 @@ export function Patients() {
   // Right-click menu for patient rows. Desktop-only affordance —
   // contextmenu events don't fire for normal mobile long-presses so
   // the mobile long-press/swipe gestures are untouched.
-  const openPatientContextMenu = (e, p) => {
+  const openPatientContextMenu = (x, y, p, e) => {
     if (readOnly) return;
-    ctxMenu.openAt(e, [
+    if (e?.preventDefault) e.preventDefault();
+    // openAt expects an event-shaped object so it can call
+    // preventDefault + read clientX/Y. Synthesize one for the mobile
+    // long-press path; pass through directly on desktop right-click.
+    const syntheticEvent = e || { preventDefault: () => {}, clientX: x, clientY: y };
+    ctxMenu.openAt(syntheticEvent, [
       { key: "open",    label: t("patients.viewExpediente") || "Ver expediente", icon: <IconUsers size={15} />, onSelect: () => openDetail(p) },
       { key: "payment", label: t("finances.recordPayment"), icon: <IconDollar size={15} />, onSelect: () => openRecordPaymentModal(p) },
       { divider: true },
@@ -541,52 +614,23 @@ export function Patients() {
               // visually with the red amount.
               const swipeEnabled = !readOnly && !isInterviewLane && p.status === PATIENT_STATUS.ACTIVE;
               const rowClick = isInterviewLane ? () => setPotentialProfile(p) : () => openDetail(p);
-              const rowBody = (
-                <div
-                  className={`row-item list-entry-stagger ${splitMode && expediente?.id === p.id ? "row-item--selected" : ""} ${isInterviewLane ? "row-potential" : ""} ${isDiscarded ? "row-discarded" : ""}`}
-                  style={{ "--stagger-i": Math.min(i, 12) }}
-                  onClick={swipeEnabled ? undefined : rowClick}
-                  onContextMenu={(e) => isInterviewLane ? null : openPatientContextMenu(e, p)}>
-                  <Avatar initials={p.initials} color={isInterviewLane ? "var(--rose)" : getClientColor(i)} size="md" />
-                  <div className="row-content">
-                    <div className="row-title">{p.name}</div>
-                    <div className="row-sub">
-                      {p.parent && (
-                        <>
-                          <span style={{ color:"var(--purple)", fontWeight:700 }}>{t("sessions.tutor")}: {p.parent}</span>
-                          {" · "}
-                        </>
-                      )}
-                      {formatMXN(p.rate)} {t("expediente.perSession")}
-                    </div>
-                  </div>
-                  <div style={{ flexShrink:0 }}>
-                    {filter === "owes"
-                      ? <span style={{ fontSize:"var(--text-sm)", fontWeight:800, fontFamily:"var(--font-d)", color:"var(--red)" }}>{formatMXN(p.amountDue)}</span>
-                      : isPotential
-                        ? <span className="badge badge-rose">{t("patients.statusPotential")}</span>
-                        : isDiscarded
-                          ? <span className="badge badge-gray">{t("patients.statusDiscarded")}</span>
-                          : <span className={`badge ${p.status==="active"?"badge-teal":"badge-gray"}`}>{p.status==="active"?t("patients.statusActive"):t("patients.statusEnded")}</span>
-                    }
-                  </div>
-                  <span className="row-chevron">›</span>
-                </div>
-              );
-              if (!swipeEnabled) return <div key={p.id}>{rowBody}</div>;
               return (
-                <SwipeRevealRow
+                <PatientRow
                   key={p.id}
-                  onClick={rowClick}
-                  actions={[{
-                    key: "payment",
-                    icon: <IconDollar size={20} />,
-                    label: t("patients.swipePay"),
-                    color: "var(--green)",
-                    onAction: () => openRecordPaymentModal(p),
-                  }]}>
-                  {rowBody}
-                </SwipeRevealRow>
+                  p={p}
+                  i={i}
+                  swipeEnabled={swipeEnabled}
+                  isInterviewLane={isInterviewLane}
+                  isPotential={isPotential}
+                  isDiscarded={isDiscarded}
+                  filter={filter}
+                  splitMode={splitMode}
+                  expediente={expediente}
+                  rowClick={rowClick}
+                  openCtxMenu={isInterviewLane ? null : openPatientContextMenu}
+                  onPay={openRecordPaymentModal}
+                  t={t}
+                />
               );
             })
           }
