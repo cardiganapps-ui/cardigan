@@ -64,7 +64,13 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
 
   if (!visible || !message) return null;
 
-  const bg = type === "error" ? "var(--red)" : type === "success" ? "var(--green)" : type === "warning" ? "var(--amber)" : "var(--charcoal)";
+  // Toast type is conveyed by:
+  //   • A 4px tinted stripe on the leading edge of the glass panel.
+  //   • The icon chip's accent color.
+  //   • Screen-reader role/liveness (above).
+  // Text stays charcoal-on-glass for legibility — the previous
+  // white-on-color chrome was punchy but felt heavy next to the new
+  // Liquid Glass tab bar / topbar.
   const dismiss = () => { setLeaving(true); setTimeout(() => { setVisible(false); onDismiss?.(); }, DISMISS_MS); };
 
   // Type-specific icon — the message text alone left the toast feeling
@@ -107,34 +113,19 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
         transformOrigin: "top center",
         transition: "top var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)",
       }}>
-      <div
-        style={{
-          background: bg, color:"var(--white)", padding:"12px 16px", borderRadius:"var(--radius)",
-          fontSize:"var(--text-md)", fontWeight:600, fontFamily:"var(--font)",
-          boxShadow:"var(--shadow-lg)",
-          display:"flex", alignItems:"center", gap:12,
-        }}>
+      <div className={`toast-panel toast-panel--${type}`} data-type={type}>
         {Icon && (
-          <span style={{
-            display:"inline-flex", alignItems:"center", justifyContent:"center",
-            width:24, height:24, borderRadius:"50%",
-            background:"rgba(255,255,255,0.22)", color:"var(--white)",
-            flexShrink:0,
-          }} aria-hidden>
+          <span className="toast-icon" aria-hidden>
             <Icon size={14} />
           </span>
         )}
         <span role="button" tabIndex={0} onClick={dismiss}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dismiss(); } }}
           aria-label={t("close")}
-          style={{ flex:1, cursor:"pointer", lineHeight:1.4 }}>{message}</span>
+          className="toast-message">{message}</span>
         {onRetry && (
           <button onClick={(e) => { e.stopPropagation(); onRetry(); dismiss(); }}
-            style={{
-              background:"rgba(255,255,255,0.22)", color:"var(--white)", border:"none",
-              borderRadius:"var(--radius-pill)", padding:"4px 12px", fontSize:"var(--text-sm)", fontWeight:700,
-              fontFamily:"var(--font)", cursor:"pointer", flexShrink:0, minHeight:0,
-            }}>
+            className="toast-action">
             {actionLabel || t("retry")}
           </button>
         )}
@@ -143,12 +134,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
         {!onRetry && (
           <button onClick={(e) => { e.stopPropagation(); dismiss(); }}
             aria-label={t("close")}
-            style={{
-              background:"transparent", color:"rgba(255,255,255,0.85)", border:"none",
-              padding:4, cursor:"pointer", flexShrink:0, minHeight:0,
-              display:"inline-flex", alignItems:"center", justifyContent:"center",
-              borderRadius:"50%",
-            }}>
+            className="toast-close">
             <IconX size={14} />
           </button>
         )}

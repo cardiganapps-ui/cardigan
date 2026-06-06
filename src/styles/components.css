@@ -268,6 +268,90 @@
   .bottom-tab, .bottom-tab:active { transform: none; }
 }
 
+/* ── Toast — Liquid Glass with a type-tinted edge stripe ──
+   Replaces the old solid-color chrome (white-on-red / white-on-green
+   pills) with a translucent panel that reads as part of the same
+   visual family as the tab bar + topbar. Type is communicated by:
+     • a 4px stripe on the leading edge (red/green/amber/charcoal)
+     • the icon chip's accent color
+     • the screen-reader role+liveness (assertive vs polite)
+   Text is charcoal — colored text on glass would compete with the
+   stripe and lose legibility on busy page content. */
+.toast-panel {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px 12px 18px;
+  border-radius: var(--radius);
+  font-family: var(--font); font-size: var(--text-md); font-weight: 600;
+  color: var(--charcoal);
+
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 12px 28px -8px rgba(46, 46, 46, 0.22),
+    0 3px 10px rgba(46, 46, 46, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* Type stripe — a 4px tinted band on the leading edge, just inside
+     the panel's rounded corner. The pseudo-element sits behind the
+     content so flex alignment doesn't have to account for it. */
+  overflow: hidden;
+}
+.toast-panel::before {
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--charcoal);
+  border-radius: 4px 0 0 4px;
+}
+.toast-panel--success::before { background: var(--green); }
+.toast-panel--error::before   { background: var(--red);   }
+.toast-panel--warning::before { background: var(--amber); }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Solid fallback. Stripe still conveys type. */
+  .toast-panel { background: var(--white); }
+}
+.toast-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--charcoal);
+  color: var(--white);
+}
+.toast-panel--success .toast-icon { background: var(--green); }
+.toast-panel--error   .toast-icon { background: var(--red); }
+.toast-panel--warning .toast-icon { background: var(--amber); }
+.toast-message {
+  flex: 1; cursor: pointer; line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+.toast-action {
+  flex-shrink: 0; min-height: 0;
+  background: rgba(46, 46, 46, 0.08);
+  color: var(--charcoal);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-family: var(--font);
+  font-size: var(--text-sm); font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring);
+}
+.toast-action:active { background: rgba(46, 46, 46, 0.14); transform: scale(0.94); }
+.toast-close {
+  flex-shrink: 0; min-height: 0; padding: 4px;
+  background: transparent; border: none;
+  color: var(--charcoal-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.toast-close:active { color: var(--charcoal); }
+
 /* FAB — teal gradient pill with a soft diffused glow for emphasis.
    Floats 24px above the bottom tab bar so it's clearly a floating
    action, not another tab. */
@@ -279,25 +363,43 @@
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 30px);
   right: 20px;
   width: 54px; height: 54px;
-  background: radial-gradient(circle at 30% 25%, var(--teal-light) 0%, var(--teal) 55%, var(--teal-dark) 100%);
+  /* Liquid Glass FAB — translucent teal-tinted disc. The radial bias
+     keeps the spec highlight in the top-left (where light would catch
+     a real glass dome), and the layered shadow gives the disc lift
+     off the surface below. backdrop-filter does the desaturation +
+     blur of whatever scrolls beneath. */
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.42) 0%, rgba(91,155,175,0.55) 50%, rgba(48,108,124,0.78) 100%);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
   border-radius: 50%;
-  border: none; display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  display: flex; align-items: center; justify-content: center;
   color: white;
   padding: 0;
   box-shadow:
-    0 10px 28px -6px rgba(91,155,175,0.55),
-    0 4px 12px rgba(46,46,46,0.12),
-    inset 0 1px 0 rgba(255,255,255,0.3);
+    0 14px 32px -10px rgba(48, 108, 124, 0.6),
+    0 4px 14px rgba(46, 46, 46, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
   cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;
   transition: transform var(--dur-slower) var(--ease-spring), box-shadow var(--dur-slow) ease;
 }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Browsers without backdrop-filter (Firefox iOS, older WebKit) fall
+     back to the previous solid teal-gradient — same shape, no glass. */
+  .fab {
+    background: radial-gradient(circle at 30% 25%, var(--teal-light) 0%, var(--teal) 55%, var(--teal-dark) 100%);
+    border-color: transparent;
+  }
+}
 .fab:active {
   transform: scale(0.88);
   box-shadow:
-    0 6px 16px -4px rgba(91,155,175,0.5),
-    0 2px 6px rgba(46,46,46,0.12),
-    inset 0 1px 0 rgba(255,255,255,0.3);
+    0 8px 20px -6px rgba(48, 108, 124, 0.55),
+    0 2px 6px rgba(46, 46, 46, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 .fab.fab-open { transform: rotate(45deg); }
 .fab.fab-open:active { transform: rotate(45deg) scale(0.88); }

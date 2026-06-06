@@ -231,6 +231,54 @@ html[data-theme="dark"] .bottom-tab--active .bottom-tab-icon {
   color: var(--teal-light);
 }
 
+/* Liquid Glass FAB — dark mode keeps the radial teal tint but on a
+   charcoal-tinted glass base so it doesn't glow against the dark
+   page background. */
+html[data-theme="dark"] .fab {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.16) 0%, rgba(91,155,175,0.42) 50%, rgba(40,90,105,0.78) 100%);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 14px 32px -10px rgba(0, 0, 0, 0.65),
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* Liquid Glass Toast — dark mode panel uses charcoal-tinted glass.
+   Text flips to off-white for legibility; type stripes keep their
+   accent colors since they're already saturated enough to read on
+   either background. */
+html[data-theme="dark"] .toast-panel {
+  background: rgba(28, 28, 30, 0.72);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  box-shadow:
+    0 14px 32px -8px rgba(0, 0, 0, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .toast-panel--default::before,
+html[data-theme="dark"] .toast-panel::before {
+  /* The default-type stripe (charcoal in light mode) needs to flip to
+     a lighter neutral in dark so it doesn't disappear. Type-specific
+     stripes are saturated enough to read either way. */
+}
+html[data-theme="dark"] .toast-panel:not(.toast-panel--success):not(.toast-panel--error):not(.toast-panel--warning)::before {
+  background: rgba(255, 255, 255, 0.55);
+}
+html[data-theme="dark"] .toast-action {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--white);
+}
+html[data-theme="dark"] .toast-action:active { background: rgba(255, 255, 255, 0.18); }
+html[data-theme="dark"] .toast-close { color: rgba(255, 255, 255, 0.55); }
+html[data-theme="dark"] .toast-close:active { color: var(--white); }
+html[data-theme="dark"] .toast-icon:not(.toast-panel--success .toast-icon):not(.toast-panel--error .toast-icon):not(.toast-panel--warning .toast-icon) {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--white);
+}
+
 /* ── Admin dashboard dark overrides ──
    Superseded by `admin-tokens.css`, which owns the entire admin
    palette via scoped --admin-* tokens (cool-gray dark in
