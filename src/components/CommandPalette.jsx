@@ -6,6 +6,7 @@ import { useViewport } from "../hooks/useViewport";
 import { useT } from "../i18n/index";
 import { fetchAllAccounts } from "../hooks/useCardiganData";
 import { useAdminCommands, recordAdminRecent } from "../screens/admin/parts/useAdminCommands";
+import { isNative } from "../lib/platform";
 import { supabase } from "../supabaseClient";
 import { tokenize, matches, buildExcerpt } from "../utils/noteSearch";
 
@@ -63,6 +64,11 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   // Magic Keyboard / external BT keyboard is common there.
   const { isTablet } = useViewport();
   const { navigate, patients, notes, requestFabAction, openExpediente, openNoteById, noteCrypto, isAdminUser, showToast } = useCardigan();
+  // Admin features are web-only — see the rationale on the topbar
+  // admin button in App.jsx. The palette's admin commands (Open
+  // user / Grant comp / View as / etc.) operate on routes that
+  // don't exist on native, so suppress them entirely on Capacitor.
+  const adminAvailable = isAdminUser && !isNative();
   // Admin account list — lazy-fetched the first time the palette opens
   // for an admin so non-admin sessions never make this round-trip.
   const [adminAccounts, setAdminAccounts] = useState([]);
@@ -95,12 +101,12 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   // First-open lazy fetch of every account so the admin can jump to
   // any user's detail page from the palette. Skipped for non-admins.
   useEffect(() => {
-    if (!open || !isAdminUser || adminFetchedRef.current) return;
+    if (!open || !adminAvailable || adminFetchedRef.current) return;
     adminFetchedRef.current = true;
     fetchAllAccounts()
       .then((rows) => setAdminAccounts(rows || []))
       .catch(() => { adminFetchedRef.current = false; });
-  }, [open, isAdminUser]);
+  }, [open, adminAvailable]);
 
   // Admin-only type-to-act parser + recent items. Returns synthetic
   // commands prefixed by verb (block/comp/view as/etc.) plus a recent
@@ -108,7 +114,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   const adminCmds = useAdminCommands({
     query,
     adminAccounts,
-    isAdminUser,
+    isAdminUser: adminAvailable,
     navigate,
     onClose,
     showToast,
@@ -197,10 +203,10 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
         run: () => { openNoteById?.(n.id); onClose(); },
       };
     });
-    const adminNavCmds = isAdminUser
+    const adminNavCmds = adminAvailable
       ? ADMIN_COMMANDS.map((c) => ({ ...c, run: () => { navigate(c.target); onClose(); } }))
       : [];
-    const adminAccountCmds = isAdminUser
+    const adminAccountCmds = adminAvailable
       ? adminAccounts.map((a) => ({
           id: `adminUser:${a.userId}`,
           group: "Admin · usuarios",
@@ -225,7 +231,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
       ...patientCmds,
       ...adminAccountCmds,
     ];
-  }, [patients, query, noteHits, t, navigate, requestFabAction, openExpediente, openNoteById, onClose, isAdminUser, adminAccounts, adminCmds]);
+  }, [patients, query, noteHits, t, navigate, requestFabAction, openExpediente, openNoteById, onClose, adminAvailable, adminAccounts, adminCmds]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) {

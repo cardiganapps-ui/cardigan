@@ -1381,6 +1381,18 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const screenSlidingRef = useRef(false);
   useEffect(() => { drawerOpenRef.current = drawerOpen; }, [drawerOpen]);
   useEffect(() => { screenSlidingRef.current = !!direction; }, [direction]);
+
+  // Native admin redirect — if the user lands on #admin from a stale
+  // deep link, the URL bar (web only), or a sticky bookmark, send
+  // them straight back to home. The admin chunk wouldn't render
+  // anyway (the SCREEN_MAP entry returns null on native), so this
+  // prevents the user from sitting on a blank screen.
+  useEffect(() => {
+    if (screen === "admin" && isNative()) {
+      navigate("home");
+    }
+  }, [screen, navigate]);
+
   const [swipeProgress, setSwipeProgress] = useState(0);
 
   useEffect(() => {
@@ -1857,7 +1869,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     archivo: <Archivo />,
     settings: <Settings user={user} signOut={signOut} refreshUser={refreshUser} />,
     privacy: <PrivacyPolicy />,
-    admin: admin && !readOnly ? (
+    // Native-gated: admin only renders on web. On native the topbar
+    // admin button opens cardigan.mx in Safari instead, so this
+    // branch is unreachable in normal use — but the gate stops a
+    // deep-link / hash-typing edge case from rendering a broken
+    // surface and prevents the admin chunk from being downloaded.
+    admin: admin && !readOnly && !isNative() ? (
       <AdminLayout
         currentAdminId={user?.id}
         onOpenPalette={() => setPaletteOpen(true)}
@@ -2235,7 +2252,32 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
               <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
             </Tooltip>
             {admin && !readOnly && (
-              <button className="admin-btn" onClick={() => navigate("admin")}>
+              <button
+                className="admin-btn"
+                onClick={async () => {
+                  // Admin lives on the web only. On native (iOS /
+                  // Android Capacitor) the button hands off to Safari
+                  // / Chrome via AppLauncher — the user's existing
+                  // session there means they land directly in the
+                  // admin view without re-authenticating. Rationale:
+                  // (1) admin is one-user, never used by regular
+                  // therapists — it doesn't justify the bundle weight
+                  // or attack surface on every install;
+                  // (2) admin features (impersonation, encryption
+                  // recovery, billing grants) are sensitive enough
+                  // that keeping them off the mobile binary is
+                  // defensive both for App Store review and against
+                  // IPA reverse-engineering;
+                  // (3) admin operations are deliberate / desk-shaped
+                  // work, not "while walking around" work — the phone
+                  // isn't the natural surface.
+                  if (isNative()) {
+                    const { launchUrl } = await import("./lib/nativeBrowser");
+                    await launchUrl("https://cardigan.mx/#admin");
+                  } else {
+                    navigate("admin");
+                  }
+                }}>
                 Admin
               </button>
             )}
