@@ -209,6 +209,24 @@ jobs:
           # with ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE. github.run_number
           # is the natural source of truth: monotonically increasing per
           # workflow, easy to trace back to a specific run.
+          #
+          # IMPORTANT: CODE_SIGN_ENTITLEMENTS is NOT passed as a CLI
+          # override here. xcodebuild applies CLI build settings to
+          # EVERY target in the project graph — and on path-valued
+          # settings like entitlements, that resolves to each
+          # target's own SRCROOT. For the App target, "App/App.entitlements"
+          # resolves to ios/App/App/App.entitlements (correct). For
+          # SPM dependencies like ion-ios-camera, it resolves to
+          # SourcePackages/checkouts/ion-ios-camera/App/App.entitlements
+          # (doesn't exist → build fails).
+          #
+          # The App target's pbxproj already has
+          #   CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+          # set by the Capacitor template, scoped correctly to that
+          # target. Code signing works without the CLI override.
+          # Identity / profile / team settings stay on the CLI because
+          # they're identifier-valued (not path-valued) so they don't
+          # break SPM targets.
           xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
@@ -218,7 +236,6 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE_SPECIFIER="Cardigan App Store" \
-            CODE_SIGN_ENTITLEMENTS=App/App.entitlements \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             archive
 

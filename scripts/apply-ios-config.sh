@@ -51,6 +51,23 @@ else
   /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
 fi
 
+# Marketing version (CFBundleShortVersionString) — the human-readable
+# version users see in Settings > General > iPhone Storage > Cardigan
+# and on the App Store / TestFlight invite. CFBundleVersion (the build
+# number) is set per-archive via xcodebuild's CURRENT_PROJECT_VERSION
+# = github.run_number; that's monotonically increasing for the
+# duplicate-rejection requirement. MARKETING_VERSION should bump
+# manually per release — when iterating UI work fast, the build
+# number tells you which CI run, the marketing version tells the user
+# which feature wave they're testing.
+MARKETING_VERSION="20.0"
+if /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$PLIST"
+else
+  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $MARKETING_VERSION" "$PLIST"
+fi
+echo "✓ marketing version pinned to $MARKETING_VERSION"
+
 # Camera + photo library usage strings — required by iOS the FIRST time
 # the app touches AVCaptureDevice or PHPhotoLibrary (receipt OCR in
 # gastos, plus avatar capture). Without these the system kills the
