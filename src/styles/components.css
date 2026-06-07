@@ -187,7 +187,13 @@
      height. Outer height (incl. padding + sab clearance) is
      computed when other surfaces (FAB, scroll containers) reserve
      bottom space. */
-:root { --bottom-tabs-h: 40px; }
+/* Bottom tabs inner content height. 52px is the iOS-native tab-bar
+   feel — the previous 40px crammed the 24px icon + 10px label
+   together with almost no breathing room (32px content area for
+   24+2+10 = 36px of content, which overlapped). 52px gives a 40px
+   content area: comfortable icon-above-label spacing without
+   pushing the FAB up unnecessarily. */
+:root { --bottom-tabs-h: 52px; }
 .bottom-tabs {
   position: fixed;
   left: max(14px, env(safe-area-inset-left));
@@ -199,7 +205,10 @@
 
   /* Pill shape — a continuous capsule that reads as one object. */
   border-radius: 999px;
-  padding: 4px;
+  /* 6px inner padding lets the active-tab capsule sit with ~2px of
+     gap inside the outer pill at the new 52px height. 4px (previous)
+     made the capsule kiss the outer pill's edge. */
+  padding: 6px;
 
   /* Glass. The `saturate(180%)` is the iOS trick — bumping chroma
      before blurring is what makes the surface feel "warm" rather than
@@ -230,7 +239,10 @@
 
 .bottom-tab {
   flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 2px;
+  /* Slightly more breathing room between icon and label at the new
+     52px outer height — the previous 2px gap was a "no choice"
+     value when the pill was 40px tall. */
+  align-items: center; justify-content: center; gap: 4px;
   background: none; border: none; cursor: pointer; padding: 0;
   color: var(--charcoal-md); font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
@@ -368,43 +380,39 @@
    Floats 24px above the bottom tab bar so it's clearly a floating
    action, not another tab. */
 .fab {
-  /* Floats above the new Liquid Glass pill (which itself sits ~10px
-     above sab). Reserve enough room for the pill height + a 20px
-     visual gap, so the FAB never overlaps the tab labels. */
+  /* Floats above the bottom tab pill. Reserve enough room for the
+     pill height + a 20px visual gap so the FAB never overlaps the
+     tab labels. */
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 30px);
   right: 20px;
   width: 54px; height: 54px;
-  /* Liquid Glass FAB — translucent teal-tinted disc. The radial bias
-     keeps the spec highlight in the top-left (where light would catch
-     a real glass dome), and the layered shadow gives the disc lift
-     off the surface below. backdrop-filter does the desaturation +
-     blur of whatever scrolls beneath. */
+  /* SOLID teal disc with a layered white spec highlight at the top-
+     left. Earlier this used rgba(91,155,175,0.55) as the base with
+     backdrop-filter to do the Liquid Glass effect — works beautifully
+     on photographic content, falls completely apart on a white page
+     background because backdrop-filter has nothing to blur. The
+     resulting color read as muddy grey-beige, not Cardigan teal.
+     The two-layer gradient below replicates the spec-highlight feel
+     without depending on what's behind: the outer radial paints the
+     teal sphere, the inner radial overlays a white glint where light
+     would catch a real glass dome (top-left at 30% 25%). */
   background:
-    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.42) 0%, rgba(91,155,175,0.55) 50%, rgba(48,108,124,0.78) 100%);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 45%),
+    radial-gradient(circle at 50% 60%, var(--teal-light) 0%, var(--teal) 50%, var(--teal-dark) 100%);
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(48, 108, 124, 0.35);
   display: flex; align-items: center; justify-content: center;
   color: white;
   padding: 0;
   box-shadow:
-    0 14px 32px -10px rgba(48, 108, 124, 0.6),
-    0 4px 14px rgba(46, 46, 46, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    0 14px 32px -10px rgba(48, 108, 124, 0.55),
+    0 4px 14px rgba(46, 46, 46, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
   cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;
   transition: transform var(--dur-slower) var(--ease-spring), box-shadow var(--dur-slow) ease;
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  /* Browsers without backdrop-filter (Firefox iOS, older WebKit) fall
-     back to the previous solid teal-gradient — same shape, no glass. */
-  .fab {
-    background: radial-gradient(circle at 30% 25%, var(--teal-light) 0%, var(--teal) 55%, var(--teal-dark) 100%);
-    border-color: transparent;
-  }
 }
 .fab:active {
   transform: scale(0.88);
