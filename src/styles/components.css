@@ -263,8 +263,46 @@
   pointer-events: none;
   z-index: 0;
 }
+/* Edge bounce — when the slider lands on the first or last tab,
+   --ease-spring's overshoot would poke past the outer pill. Swap
+   the transition to a flat ease-out (no overshoot) AND run a
+   scaleX squish keyframe anchored to the hit wall, so the slider
+   still reads as having momentum — it just compresses against
+   the wall instead of overflowing. Mirror of the SegmentedControl
+   edge-bounce above. */
+.bottom-tab-indicator--edge-left,
+.bottom-tab-indicator--edge-right {
+  transition:
+    left var(--dur-slow) var(--ease-out),
+    background var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+.bottom-tab-indicator--edge-left {
+  transform-origin: left center;
+  animation: bottomTabSquishLeft var(--dur-slower) var(--ease-spring-soft) both;
+}
+.bottom-tab-indicator--edge-right {
+  transform-origin: right center;
+  animation: bottomTabSquishRight var(--dur-slower) var(--ease-spring-soft) both;
+}
+@keyframes bottomTabSquishLeft {
+  0%   { transform: scaleX(1); }
+  48%  { transform: scaleX(1); }
+  68%  { transform: scaleX(0.88); }
+  84%  { transform: scaleX(1.03); }
+  100% { transform: scaleX(1); }
+}
+@keyframes bottomTabSquishRight {
+  0%   { transform: scaleX(1); }
+  48%  { transform: scaleX(1); }
+  68%  { transform: scaleX(0.88); }
+  84%  { transform: scaleX(1.03); }
+  100% { transform: scaleX(1); }
+}
 @media (prefers-reduced-motion: reduce) {
   .bottom-tab-indicator { transition: none; }
+  .bottom-tab-indicator--edge-left,
+  .bottom-tab-indicator--edge-right { animation: none; }
 }
 /* The safezone div is no longer needed — the pill is detached from
    the bottom edge by design, so there's nothing to "fill". Keep the
