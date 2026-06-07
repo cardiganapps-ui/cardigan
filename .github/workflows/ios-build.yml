@@ -40,6 +40,11 @@ on:
       - '**.md'
       - 'android/**'
       - 'scripts/**'
+      # apply-ios-config.sh IS in scripts/ but is on the iOS critical
+      # path — changes to it (entitlements, signing-pbxproj patch,
+      # marketing version, etc.) MUST trigger a new build. Re-include
+      # via the negation prefix.
+      - '!scripts/apply-ios-config.sh'
       - '.github/**'
       - '!.github/workflows/ios-build.yml'
   workflow_dispatch:
