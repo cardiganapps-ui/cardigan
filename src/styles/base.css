@@ -577,15 +577,24 @@ body:has(.mde-attach-lightbox) .bottom-tabs { display: none !important; }
 
 /* DRAWER PANEL */
 .drawer {
-  position: fixed; top: 0; left: 0;
-  width: 100%;
-  height: 100dvh;
+  /* inset:0 anchors all four edges so the drawer fills the entire
+     viewport regardless of dynamic-viewport shenanigans. Earlier
+     this used `height: 100dvh` which on iOS WKWebView reported a
+     value short of the actual visible area when env(safe-area-
+     inset-bottom) was present — the drawer panel ended above the
+     home-indicator zone, leaving the page background (and the
+     bottom-tab bar) visible behind it. inset:0 sidesteps the
+     dvh/lvh dance entirely. */
+  position: fixed; inset: 0;
   display: flex; flex-direction: column;
   pointer-events: none;
   z-index: var(--z-drawer);
 }
 .drawer-panel {
-  position: absolute; top: 0; left: 0;
+  /* Anchor to top + bottom (not `height: 100%`) so the panel always
+     reaches the home indicator regardless of how the parent's
+     height is computed. Same root cause as the .drawer fix above. */
+  position: absolute; top: 0; bottom: 0; left: 0;
   /* Trimmed for iPhone, then nudged back up after 220px felt
      cramped. 68% / 240px matches the admin drawer and gives the
      avatar header + "Cerrar sesión" footer button a comfortable
@@ -593,7 +602,6 @@ body:has(.mde-attach-lightbox) .bottom-tabs { display: none !important; }
      desktop widths (240px / 260px) live in responsive.css and stay
      unchanged. */
   width: 68%; max-width: 240px;
-  height: 100%;
   background: var(--nav-bg);
   pointer-events: all;
   display: flex; flex-direction: column;
