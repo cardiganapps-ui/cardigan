@@ -476,9 +476,30 @@ export async function deleteBugReport(id) {
    requireAdmin in the Vercel function). */
 export async function fetchUserDetail(uid) {
   const headers = await authHeaders();
-  const res = await fetch(`/api/admin-user-detail?uid=${encodeURIComponent(uid)}`, { method: "GET", headers });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j.error || "Fetch failed");
+  // TEMP DIAGNOSTIC (v20.x): the user reports "Load failed" on the
+  // admin user-detail screen on iOS Capacitor, but the endpoint
+  // returns 200 OK when tested with a fresh admin JWT from a server.
+  // Surface enough context in the thrown error to identify whether
+  // it's a network reject, an auth issue, or a server response —
+  // the error message lands in the AdminUserDetail empty-state UI
+  // (String(error)) so the user can read it on-device. Remove this
+  // diag block once we have a confirmed diagnosis.
+  const url = `/api/admin-user-detail?uid=${encodeURIComponent(uid)}`;
+  const hasAuth = !!(headers.Authorization && headers.Authorization !== "Bearer undefined");
+  let res;
+  try {
+    res = await fetch(url, { method: "GET", headers });
+  } catch (e) {
+    throw new Error(`network reject @ ${url} | auth=${hasAuth ? "Y" : "N"} | ${e?.name || "Error"}: ${e?.message || String(e)}`);
+  }
+  let bodyText = "";
+  try { bodyText = await res.text(); } catch { /* ignore */ }
+  let j = {};
+  try { j = bodyText ? JSON.parse(bodyText) : {}; } catch { /* leave as {} */ }
+  if (!res.ok) {
+    const snippet = bodyText.slice(0, 200).replace(/\s+/g, " ").trim();
+    throw new Error(`HTTP ${res.status} @ ${url} | auth=${hasAuth ? "Y" : "N"} | body: ${snippet || "(empty)"}`);
+  }
   return j;
 }
 
