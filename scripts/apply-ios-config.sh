@@ -51,22 +51,13 @@ else
   /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
 fi
 
-# Marketing version (CFBundleShortVersionString) — the human-readable
-# version users see in Settings > General > iPhone Storage > Cardigan
-# and on the App Store / TestFlight invite. CFBundleVersion (the build
-# number) is set per-archive via xcodebuild's CURRENT_PROJECT_VERSION
-# = github.run_number; that's monotonically increasing for the
-# duplicate-rejection requirement. MARKETING_VERSION should bump
-# manually per release — when iterating UI work fast, the build
-# number tells you which CI run, the marketing version tells the user
-# which feature wave they're testing.
-MARKETING_VERSION="20.0"
-if /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" >/dev/null 2>&1; then
-  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$PLIST"
-else
-  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $MARKETING_VERSION" "$PLIST"
-fi
-echo "✓ marketing version pinned to $MARKETING_VERSION"
+# Marketing version (CFBundleShortVersionString) is set via the
+# pbxproj patch below — Capacitor's Info.plist uses the
+# `$(MARKETING_VERSION)` variable for CFBundleShortVersionString, so
+# setting MARKETING_VERSION on the App target's Release config flows
+# through correctly at build time. Setting CFBundleShortVersionString
+# directly here with PlistBuddy works too but breaks Capacitor's
+# variable-substitution model.
 
 # Camera + photo library usage strings — required by iOS the FIRST time
 # the app touches AVCaptureDevice or PHPhotoLibrary (receipt OCR in
@@ -126,50 +117,81 @@ if [ -z "$APPLE_TEAM_ID" ]; then
   echo "APPLE_TEAM_ID env var required for pbxproj signing patch"
   exit 1
 fi
-APPLE_TEAM_ID="$APPLE_TEAM_ID" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
+MARKETING_VERSION="${MARKETING_VERSION:-20.0}"
+APPLE_TEAM_ID="$APPLE_TEAM_ID" MARKETING_VERSION="$MARKETING_VERSION" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
 import re, sys, os
 p = sys.argv[1]
 team_id = os.environ["APPLE_TEAM_ID"]
+marketing_version = os.environ["MARKETING_VERSION"]
 src = open(p).read()
 
+# Capacitor 8's iOS template uses stable IDs in its pbxproj. These two
+# are the well-known constants for, respectively, the project-level
+# Release config and the App-target Release config:
+#   504EC3151FED79650016851F = project-level Release
+#   504EC3181FED79650016851F = App-target Release
+# Same IDs in every fresh `npx cap add ios` run (verified via probe).
+# If a future Capacitor version randomizes these, the patch fails
+# loudly with the specific id it couldn't find — which is preferable
+# to a silent half-applied patch.
+
 # Edit 1: project-level Release — strip "iPhone Developer" identity.
+# Capacitor's template hardcodes this at the project level, which
+# SPM dependency targets would otherwise inherit and try to sign with.
 proj_pattern = re.compile(
     r'(504EC3151FED79650016851F /\* Release \*/ = \{[\s\S]*?)\n\s*CODE_SIGN_IDENTITY = "iPhone Developer";'
 )
-src, count = proj_pattern.subn(r'\1', src)
-if count != 1:
-    sys.exit(f"expected 1 strip of project-level CODE_SIGN_IDENTITY, got {count}")
+src, n = proj_pattern.subn(r'\1', src)
+# n=0 acceptable: re-running against a pbxproj that's already been
+# stripped (local dev, manual re-apply). n>1 would mean Capacitor
+# duplicated the line, which we'd want to know about.
+if n > 1:
+    sys.exit(f"expected ≤1 strip of project-level CODE_SIGN_IDENTITY, got {n}")
 
-# Edit 2: App target Release block — inject manual signing.
-# The App target Release config is the only XCBuildConfiguration with
-# `name = Release;` that has CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-# inside its buildSettings (Capacitor template). Match the block,
-# inject signing settings just before the closing brace of
-# buildSettings. Idempotent on the "already injected" path.
-target_pattern = re.compile(
-    r'(/\* Release \*/ = \{\s*isa = XCBuildConfiguration;\s*buildSettings = \{)'
-    r'([^}]*?CODE_SIGN_ENTITLEMENTS = App/App\.entitlements;[^}]*?)'
+# Edit 2: App target Release config — inject manual signing +
+# entitlements + marketing version.
+#
+# Strategy: match the App target Release block by its stable Capacitor
+# ID, then strip any pre-existing copies of the keys we're about to
+# set (so the patch is idempotent and survives Capacitor template
+# changes), then inject our version of those keys at the top of the
+# buildSettings block.
+#
+# Why we set all of these at the target level rather than the project
+# level: anything we set on the project leaks to SPM dependency
+# targets (ion-ios-camera et al.), which either fail outright
+# (PROVISIONING_PROFILE_SPECIFIER) or resolve paths against the wrong
+# SRCROOT (CODE_SIGN_ENTITLEMENTS). Target-level settings stay scoped.
+app_pattern = re.compile(
+    r'(504EC3181FED79650016851F /\* Release \*/ = \{\s*'
+    r'isa = XCBuildConfiguration;\s*'
+    r'buildSettings = \{)'
+    r'([\s\S]*?)'
     r'(\s*\};\s*name = Release;)',
-    re.DOTALL,
 )
-def inject(m):
+def patch_app_release(m):
     head, body, tail = m.group(1), m.group(2), m.group(3)
-    if "PROVISIONING_PROFILE_SPECIFIER" in body:
-        return m.group(0)  # already injected; no-op
-    addition = (
-        "\n\t\t\t\tCODE_SIGN_STYLE = Manual;"
+    # Strip pre-existing entries we're about to set.
+    for key in ("CODE_SIGN_STYLE", "CODE_SIGN_IDENTITY",
+                "CODE_SIGN_ENTITLEMENTS", "DEVELOPMENT_TEAM",
+                "PROVISIONING_PROFILE_SPECIFIER", "MARKETING_VERSION"):
+        body = re.sub(rf'\n\s*{key} = [^;]+;', '', body)
+    injection = (
+        "\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App/App.entitlements;"
         "\n\t\t\t\tCODE_SIGN_IDENTITY = \"Apple Distribution\";"
+        "\n\t\t\t\tCODE_SIGN_STYLE = Manual;"
         f"\n\t\t\t\tDEVELOPMENT_TEAM = {team_id};"
+        f"\n\t\t\t\tMARKETING_VERSION = {marketing_version};"
         "\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = \"Cardigan App Store\";"
     )
-    return head + body + addition + tail
+    return head + injection + body + tail
 
-src, count = target_pattern.subn(inject, src, count=1)
-if count != 1:
-    sys.exit(f"expected 1 App-target Release block (containing CODE_SIGN_ENTITLEMENTS = App/App.entitlements), got {count}")
+src, n = app_pattern.subn(patch_app_release, src, count=1)
+if n != 1:
+    sys.exit(f"expected 1 match for App-target Release config (id 504EC3181FED79650016851F), got {n}")
 
 open(p, 'w').write(src)
-print(f"✓ pbxproj patched: project-level identity stripped + App target Release manual signing injected (team {team_id})")
+print(f"✓ pbxproj patched: project-level identity stripped + App target Release manual signing + entitlements + MARKETING_VERSION={marketing_version} (team {team_id})")
 PY
 
 echo "✓ iOS config applied to ios/App/App/"
