@@ -103,19 +103,34 @@ export function CalendarLinkPanel({ readOnly = false }) {
 
   // ── State 1: not enabled ──
   if (!hasToken) {
+    // Explicit wrapping div (not a Fragment) with display:flex /
+    // gap so the description and the Activar button are GUARANTEED
+    // to be part of the same layout box, in stack order. The user
+    // reported the button silently missing on iOS Capacitor; the
+    // Fragment + sibling stack in flow had no obvious render bug
+    // but the only thing structurally distinct from the rest of
+    // the app was the Fragment. Explicit container removes the
+    // ambiguity. min-height keeps the panel tall enough that even
+    // if the zoom:0.88 rule on html rounds dimensions down, the
+    // button stays visible without scroll.
     return (
-      <>
-        <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12 }}>
-          <div style={{ color:"var(--teal-dark)", marginTop:2 }}><IconCalendar size={18} /></div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 160 }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+          <div style={{ color:"var(--teal-dark)", marginTop:2, flexShrink: 0 }}><IconCalendar size={18} /></div>
           <div style={{ flex:1 }}>
             <div className="settings-row-title" style={{ marginBottom:4 }}>{t("settings.calendarTitle")}</div>
             <div className="settings-row-sub" style={{ lineHeight:1.5 }}>{t("settings.calendarDescription")}</div>
           </div>
         </div>
-        <button className="btn btn-primary" type="button" onClick={enable} disabled={busy || readOnly}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={enable}
+          disabled={busy || readOnly}
+          style={{ flexShrink: 0 }}>
           {busy ? t("loading") : t("settings.calendarEnable")}
         </button>
-      </>
+      </div>
     );
   }
 
