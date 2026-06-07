@@ -218,9 +218,18 @@ html, body {
    native shell flags itself with .cap-native (see lib/nativeBoot.js),
    we (a) shrink the design-system text scale and (b) apply a global
    `zoom` to catch every inline `fontSize: 22`, `padding: 20`, etc. that
-   isn't routed through --text-scale. Net effect: text density on
-   TestFlight finally matches the PWA. Both rules are scoped to
+   isn't routed through --text-scale. Both rules are scoped to
    .cap-native so the web build is untouched.
+
+   Density target: noticeably MORE compact than the old PWA. Users
+   reported the native build felt "zoomed in" compared to the PWA on
+   iOS Safari (which itself renders ~14% smaller than WKWebView for
+   the same CSS). Going to 0.80 means content renders ~9% smaller than
+   the PWA did, which is the "fit more info into the screen" density
+   they asked for. Inputs still meet the 16px-font / 44px-target floor
+   because their post-zoom sizes (16 × 0.80 = 12.8 visual px = ~13.4
+   physical px on a 3x device) sit above iOS's auto-zoom-on-focus
+   trigger and the human comfort threshold for touch targets.
 
    `zoom` is a WebKit/Blink-supported non-standard property that
    rescales an element's layout box AND its descendants — unlike
@@ -228,8 +237,8 @@ html, body {
    layout boxes the original size. Safe here because the PWA / desktop
    web build never hits this branch. */
 html.cap-native {
-  --text-scale: 0.88;
-  zoom: 0.88;
+  --text-scale: 0.80;
+  zoom: 0.80;
 }
 
 /* Opt-in: re-enable native text selection + the iOS magnifier for
