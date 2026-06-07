@@ -22,10 +22,28 @@ export function BottomTabs() {
   const { screen, navigate } = useCardigan();
   const { t } = useT();
 
+  // Active index drives the sliding indicator's position via CSS
+  // variable. -1 (no match — e.g. user is on Settings or Archivo)
+  // hides the indicator entirely via the conditional render below.
+  const activeIndex = TABS.findIndex(tab => tab.key === screen);
+  const showIndicator = activeIndex >= 0;
+
   return (
     <>
-      <nav className="bottom-tabs" aria-label={t("nav.menu")}>
-        {TABS.map(tab => {
+      <nav
+        className="bottom-tabs"
+        aria-label={t("nav.menu")}
+        style={{ "--active-i": activeIndex, "--tab-count": TABS.length }}>
+        {/* Sliding "active" capsule. One absolutely-positioned element
+            that translates between tab slots with --ease-spring —
+            visibly smoother than the previous per-tab class swap,
+            which painted the capsule instantly at the new position
+            with no motion. The transform-via-CSS-variable pattern
+            keeps the slide on the compositor (no per-frame React
+            renders) and means the indicator's position survives
+            re-renders that don't change the active tab. */}
+        {showIndicator && <span className="bottom-tab-indicator" aria-hidden="true" />}
+        {TABS.map((tab, i) => {
           const active = screen === tab.key;
           return (
             <button
@@ -33,6 +51,7 @@ export function BottomTabs() {
               type="button"
               aria-current={active ? "page" : undefined}
               className={`bottom-tab ${active ? "bottom-tab--active" : ""}`}
+              data-tab-i={i}
               onClick={() => {
                 if (!active) haptic.tap();
                 navigate(tab.key);
