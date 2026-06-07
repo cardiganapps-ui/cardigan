@@ -16,10 +16,13 @@
   overscroll-behavior-y: auto;
   /* Reserve bottom space for the floating Liquid Glass pill:
        pill bottom offset (sab + 10) + pill height (var(--bottom-tabs-h))
-       + 16px visual gap above the pill.
-     This keeps the last scrollable row above the bar instead of being
-     half-hidden behind it. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 26px);
+       = sab + 74. We add 0 visual buffer above the pill so the last
+       scrollable row sits flush at the top of the bar (not floating in
+       a dead band above it). Users perceive any extra buffer as "blank
+       space blocking content" — the floating pill is already visually
+       detached from the screen edge, so no extra gap is needed for
+       breathing. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 10px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
