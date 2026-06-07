@@ -187,13 +187,11 @@
      height. Outer height (incl. padding + sab clearance) is
      computed when other surfaces (FAB, scroll containers) reserve
      bottom space. */
-/* Bottom tabs inner content height. 52px is the iOS-native tab-bar
-   feel — the previous 40px crammed the 24px icon + 10px label
-   together with almost no breathing room (32px content area for
-   24+2+10 = 36px of content, which overlapped). 52px gives a 40px
-   content area: comfortable icon-above-label spacing without
-   pushing the FAB up unnecessarily. */
-:root { --bottom-tabs-h: 52px; }
+/* Bottom tabs inner content height. 64px gives the bar real
+   presence — comparable to native iOS tab bars after factoring in
+   their internal padding. Previous iterations (40 → 52 → 60) were
+   each improvements but still read as slim. */
+:root { --bottom-tabs-h: 64px; }
 .bottom-tabs {
   position: fixed;
   left: max(14px, env(safe-area-inset-left));
@@ -445,29 +443,31 @@
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 30px);
   right: 20px;
   width: 54px; height: 54px;
-  /* SOLID teal disc with a layered white spec highlight at the top-
-     left. Earlier this used rgba(91,155,175,0.55) as the base with
-     backdrop-filter to do the Liquid Glass effect — works beautifully
-     on photographic content, falls completely apart on a white page
-     background because backdrop-filter has nothing to blur. The
-     resulting color read as muddy grey-beige, not Cardigan teal.
-     The two-layer gradient below replicates the spec-highlight feel
-     without depending on what's behind: the outer radial paints the
-     teal sphere, the inner radial overlays a white glint where light
-     would catch a real glass dome (top-left at 30% 25%). */
+  /* Solid Cardigan teal — same exact color as .btn-primary-teal so
+     the FAB reads as the same "brand action" object users see on
+     primary CTAs throughout the app. Previous iterations layered a
+     radial gradient that put the LIGHTEST teal at the bottom-middle
+     and the DARKEST at the edges — most of the visible 54px disc
+     ended up in the dark-edge zone, reading as muted blue-grey
+     rather than vibrant teal.
+     The white spec highlight is now a TIGHT, subtle ellipse at the
+     top (8% → fades by 30%), not a broad wash. Just enough to
+     suggest dimensionality without bleaching out the brand color. */
   background:
-    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 45%),
-    radial-gradient(circle at 50% 60%, var(--teal-light) 0%, var(--teal) 50%, var(--teal-dark) 100%);
+    radial-gradient(ellipse 70% 35% at 50% 12%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 70%),
+    var(--teal);
   border-radius: 50%;
-  border: 1px solid rgba(48, 108, 124, 0.35);
+  border: none;
   display: flex; align-items: center; justify-content: center;
   color: white;
   padding: 0;
+  /* Layered shadow: teal-tinted ambient glow (lifts the disc off the
+     page with brand color) + soft neutral shadow for depth + inset
+     bottom edge that hints at sphere curvature. */
   box-shadow:
-    0 14px 32px -10px rgba(48, 108, 124, 0.55),
-    0 4px 14px rgba(46, 46, 46, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+    0 10px 28px -8px rgba(91, 155, 175, 0.55),
+    0 4px 12px rgba(46, 46, 46, 0.14),
+    inset 0 -2px 6px rgba(48, 108, 124, 0.35);
   cursor: pointer; z-index: var(--z-fab);
   -webkit-tap-highlight-color: transparent;
   transition: transform var(--dur-slower) var(--ease-spring), box-shadow var(--dur-slow) ease;
@@ -666,6 +666,22 @@ button.kpi-card:active {
   position: absolute; top: 3px; bottom: 3px;
   border-radius: var(--radius-pill);
   background: var(--white); box-shadow: var(--shadow-sm);
+  /* Position computed from --active-i (0-based) and --tab-count set
+     by the React component on the parent. All buttons in this
+     control share `flex: 1 1 0` so they're equal width — we can
+     derive the slider's slot purely arithmetically without
+     touching the DOM.
+       slot-w = (100% - 2*padding - (N-1)*gap) / N
+       slider-left = padding + active-i * (slot-w + gap)
+       slider-width = slot-w
+     This replaces the previous getBoundingClientRect()-based
+     measurement, which produced slot-off-by-one slider positions
+     on iOS WKWebView when measurement timing raced layout. */
+  --pad: 3px;
+  --gap: 2px;
+  --slot-w: calc((100% - 2 * var(--pad) - (var(--tab-count) - 1) * var(--gap)) / var(--tab-count));
+  left: calc(var(--pad) + var(--active-i, 0) * (var(--slot-w) + var(--gap)));
+  width: var(--slot-w);
   transition: left var(--dur-slow) var(--ease-spring), width var(--dur-slow) var(--ease-spring);
   pointer-events: none; z-index: 0;
 }

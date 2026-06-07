@@ -1,7 +1,19 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
-
 /**
  * Shared pill segmented control with animated slider.
+ *
+ * The slider's position is driven by CSS variables (--active-i,
+ * --tab-count) on the container — see .segmented-slider in
+ * components.css. Earlier this component measured each button's
+ * getBoundingClientRect() and applied the result as inline
+ * `style={{ left, width }}` on the slider. That approach was
+ * unreliable on iOS WKWebView under certain layout timings: the
+ * measurement could capture button positions before flex layout
+ * stabilized post-mount, producing a slider that visually landed
+ * one slot off from the active button. Since all buttons in this
+ * control share `flex: 1 1 0` (equal width), the position can be
+ * computed purely from `active-index / total-count` via CSS calc
+ * — no measurement, no timing windows, deterministic across every
+ * render path.
  *
  * Props:
  *   items   — [{ k, l }] where k is the value, l is the label
@@ -10,21 +22,18 @@ import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react
  *   size    — "sm" (default) | "md" — md uses heavier font for primary tabs
  *   dataTour, role, ariaLabel — optional pass-through
  */
+import { useEffect, useState } from "react";
+
 export function SegmentedControl({ items, value, onChange, size = "sm", dataTour, role = "tablist", ariaLabel, style }) {
-  const containerRef = useRef(null);
-  const btnRefs = useRef({});
-  const [slider, setSlider] = useState(null);
-  // Track which edge (if any) the slider just arrived at so we can
-  // play a momentum-squish animation anchored to that wall. The
-  // bouncy transition on left/width overshoots the container when
-  // the target is the first or last tab — instead of clipping the
-  // overflow, we swap to a softer slide + compress the slider
-  // against the wall, then spring back to shape. Nulled out after
-  // the animation duration so repeating the same selection replays.
-  const [edgeBounce, setEdgeBounce] = useState(null); // 'left' | 'right' | null
-  // Adjust-state-during-render: tag the slider with the edge class the
-  // moment `value` arrives at either end so the bounce animation plays
-  // in sync with the slider move.
+  const activeIndex = items.findIndex(it => it.k === value);
+  const showSlider = activeIndex >= 0;
+
+  // Edge bounce — same intent as before: when the slider lands on
+  // the first or last tab, swap the easing to a momentum-squish
+  // anchored to that wall so the spring overshoot doesn't poke
+  // past the container. Tracked locally; nulled out after the
+  // animation duration so repeating the same selection replays.
+  const [edgeBounce, setEdgeBounce] = useState(null);
   const [prevValue, setPrevValue] = useState(value);
   if (value !== prevValue) {
     setPrevValue(value);
@@ -34,34 +43,6 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
       else setEdgeBounce(null);
     }
   }
-
-  const measure = useCallback(() => {
-    const container = containerRef.current;
-    const btn = btnRefs.current[value];
-    if (!container || !btn) { setSlider(null); return; }
-    const cRect = container.getBoundingClientRect();
-    const bRect = btn.getBoundingClientRect();
-    setSlider({
-      left: bRect.left - cRect.left,
-      width: bRect.width,
-    });
-  }, [value]);
-
-  // DOM measurement on mount, value change, or item-list change. The
-  // slider position is derived from layout, so it can't be computed
-  // without reading the rendered DOM — this is the canonical
-  // useLayoutEffect + setState pattern (measure-then-render).
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useLayoutEffect(() => { measure(); }, [measure, items]);
-
-  // Re-measure on resize (handles orientation changes, font load, etc.)
-  useEffect(() => {
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [measure]);
-
-  // Clear the edge flag after the animation finishes so the next
-  // selection (including re-selecting the same tab) re-arms it.
   useEffect(() => {
     if (!edgeBounce) return;
     const id = setTimeout(() => setEdgeBounce(null), 620);
@@ -76,23 +57,16 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
 
   return (
     <div
-      ref={containerRef}
       className={`segmented segmented--${size}`}
       role={role}
       aria-label={ariaLabel}
       data-tour={dataTour}
-      style={style}
+      style={{ "--active-i": activeIndex, "--tab-count": items.length, ...style }}
     >
-      {slider && (
-        <span
-          className={sliderClass}
-          style={{ left: slider.left, width: slider.width }}
-        />
-      )}
+      {showSlider && <span className={sliderClass} aria-hidden="true" />}
       {items.map(it => (
         <button
           key={it.k}
-          ref={el => { btnRefs.current[it.k] = el; }}
           role={role === "tablist" ? "tab" : undefined}
           aria-selected={role === "tablist" ? value === it.k : undefined}
           className={`segmented-btn ${value === it.k ? "active" : ""}`}
