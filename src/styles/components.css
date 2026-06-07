@@ -309,22 +309,6 @@
    class but make it a no-op so we don't break existing JSX. */
 .bottom-tabs-safezone { display: none; }
 
-/* Hide the floating bottom-tabs pill while any modal-style overlay
-   is open (sheet / drawer / confirm-dialog). The bodyScrollLock
-   global observer adds `is-scroll-locked` to <body> exactly when
-   one of these surfaces mounts; pairing the visibility toggle to
-   the same flag keeps a single source of truth.
-   Why: on Capacitor iOS, the floating pill's backdrop-filter +
-   position:fixed combination composites ABOVE the sheet-overlay
-   despite the z-index ordering (sheet-overlay z=350 vs tabs z=40).
-   The visible symptom was a dark glassy band cutting through sheet
-   CTAs ("Registrar pago", "Activar") and leaving a confusing
-   blank-looking strip at the bottom of every sheet. Hiding the
-   pill while a sheet is up removes the collision and reads more
-   naturally — bottom-tabs are nav chrome, irrelevant during a
-   modal interaction. */
-body.is-scroll-locked .bottom-tabs { display: none; }
-
 .bottom-tab {
   flex: 1; display: flex; flex-direction: column;
   /* Slightly more breathing room between icon and label at the new
