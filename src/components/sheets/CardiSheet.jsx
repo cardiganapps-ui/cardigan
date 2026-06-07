@@ -136,7 +136,7 @@ export function CardiSheet({ open, onClose }) {
         aria-label={t("cardi.title")}
         onClick={e => e.stopPropagation()}
         {...panelHandlers}
-        style={{ maxHeight: "min(92dvh, calc(100dvh - var(--sat) - 16px))", display: "flex", flexDirection: "column" }}
+        style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))", display: "flex", flexDirection: "column" }}
       >
         <div className="sheet-handle" />
         <div className="sheet-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

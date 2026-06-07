@@ -120,7 +120,7 @@ export function RecurringExpenseSheet({ onClose }) {
     <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
-        style={{ maxHeight: "min(92dvh, calc(100dvh - var(--sat) - 16px))" }}>
+        style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("gastos.recurringTitle")}</span>

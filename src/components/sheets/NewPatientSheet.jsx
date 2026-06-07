@@ -421,7 +421,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
           overflow/containment combinations differ enough across iOS
           Safari versions that a flex-pinned footer is the only
           bulletproof option. */}
-      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92dvh, calc(100dvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
         {submitting && (
           <div role="status" aria-live="polite"
             style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,
