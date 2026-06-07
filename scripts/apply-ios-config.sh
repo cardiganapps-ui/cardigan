@@ -89,38 +89,87 @@ fi
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.
 
-# Remove the hardcoded CODE_SIGN_IDENTITY from the project-level Release
-# config so Xcode's automatic signing picks the right identity itself.
-# Capacitor's iOS template hardcodes
-#   CODE_SIGN_IDENTITY = "iPhone Developer";
-# at the project-level Release config (id 504EC315*). The App target's
-# Release config has CODE_SIGN_STYLE = Automatic with no explicit
-# identity, so it inherits "iPhone Developer" from the project — and
-# Xcode then either (a) requests a Development provisioning profile
-# from Apple (which fails when the team has no registered devices) or
-# (b) refuses to honor a command-line "Apple Distribution" override
-# because Automatic signing treats any explicit identity as a manual
-# conflict.
+# Two surgical edits to project.pbxproj so manual signing scopes to
+# the App target only — NOT to the SPM dependency targets.
 #
-# Solution: delete the line entirely. With CODE_SIGN_STYLE = Automatic
-# and no inherited identity, Xcode picks Apple Distribution for the
-# archive action and Apple Development for build/run — exactly what
-# the App Store + TestFlight flow needs.
+# Why this matters:
+#   xcodebuild CLI build settings (DEVELOPMENT_TEAM, CODE_SIGN_STYLE,
+#   CODE_SIGN_IDENTITY, PROVISIONING_PROFILE_SPECIFIER, etc.) apply
+#   to EVERY target in the project graph. For SPM dependencies like
+#   ion-ios-camera, this surfaces two distinct failures:
+#     1. CODE_SIGN_ENTITLEMENTS=App/App.entitlements resolves against
+#        each target's SRCROOT → SPM checkout has no such file →
+#        archive fails with "The file could not be opened".
+#     2. PROVISIONING_PROFILE_SPECIFIER="Cardigan App Store" on a
+#        static library target → "X does not support provisioning
+#        profiles, but provisioning profile Y has been manually
+#        specified".
 #
-# We only touch the project-level Release block (id 504EC315*); the
-# Debug block, target-level configs, and Pods stay untouched.
-python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
-import re, sys
+#   Both errors are about CLI overrides leaking into SPM targets.
+#   Fix: don't pass signing settings via CLI at all. Set them
+#   directly on the App target's Release config in pbxproj, where
+#   they stay scoped to that one target. SPM targets fall back to
+#   their package-defined config (no signing — they're embedded).
+#
+# Edit 1 — project-level Release config (id 504EC3151FED79650016851F):
+#   Strip the hardcoded `CODE_SIGN_IDENTITY = "iPhone Developer"`
+#   that Capacitor templates inherit. Without this, SPM targets
+#   inherit the dev identity even when our App target overrides it.
+#
+# Edit 2 — App target Release config (identified by it being the only
+# Release block that already contains CODE_SIGN_ENTITLEMENTS = App/...):
+#   Inject the four manual-signing settings. APPLE_TEAM_ID flows in
+#   from the workflow env. Idempotent — if the settings are already
+#   present (re-run from a half-applied state), leave them alone.
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-}"
+if [ -z "$APPLE_TEAM_ID" ]; then
+  echo "APPLE_TEAM_ID env var required for pbxproj signing patch"
+  exit 1
+fi
+APPLE_TEAM_ID="$APPLE_TEAM_ID" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
+import re, sys, os
 p = sys.argv[1]
+team_id = os.environ["APPLE_TEAM_ID"]
 src = open(p).read()
-pattern = re.compile(
+
+# Edit 1: project-level Release — strip "iPhone Developer" identity.
+proj_pattern = re.compile(
     r'(504EC3151FED79650016851F /\* Release \*/ = \{[\s\S]*?)\n\s*CODE_SIGN_IDENTITY = "iPhone Developer";'
 )
-new, count = pattern.subn(r'\1', src)
+src, count = proj_pattern.subn(r'\1', src)
 if count != 1:
-    sys.exit(f"expected 1 substitution in pbxproj Release config, got {count}")
-open(p, 'w').write(new)
-print("✓ pbxproj Release config CODE_SIGN_IDENTITY removed (auto-sign picks Distribution)")
+    sys.exit(f"expected 1 strip of project-level CODE_SIGN_IDENTITY, got {count}")
+
+# Edit 2: App target Release block — inject manual signing.
+# The App target Release config is the only XCBuildConfiguration with
+# `name = Release;` that has CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+# inside its buildSettings (Capacitor template). Match the block,
+# inject signing settings just before the closing brace of
+# buildSettings. Idempotent on the "already injected" path.
+target_pattern = re.compile(
+    r'(/\* Release \*/ = \{\s*isa = XCBuildConfiguration;\s*buildSettings = \{)'
+    r'([^}]*?CODE_SIGN_ENTITLEMENTS = App/App\.entitlements;[^}]*?)'
+    r'(\s*\};\s*name = Release;)',
+    re.DOTALL,
+)
+def inject(m):
+    head, body, tail = m.group(1), m.group(2), m.group(3)
+    if "PROVISIONING_PROFILE_SPECIFIER" in body:
+        return m.group(0)  # already injected; no-op
+    addition = (
+        "\n\t\t\t\tCODE_SIGN_STYLE = Manual;"
+        "\n\t\t\t\tCODE_SIGN_IDENTITY = \"Apple Distribution\";"
+        f"\n\t\t\t\tDEVELOPMENT_TEAM = {team_id};"
+        "\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = \"Cardigan App Store\";"
+    )
+    return head + body + addition + tail
+
+src, count = target_pattern.subn(inject, src, count=1)
+if count != 1:
+    sys.exit(f"expected 1 App-target Release block (containing CODE_SIGN_ENTITLEMENTS = App/App.entitlements), got {count}")
+
+open(p, 'w').write(src)
+print(f"✓ pbxproj patched: project-level identity stripped + App target Release manual signing injected (team {team_id})")
 PY
 
 echo "✓ iOS config applied to ios/App/App/"

@@ -132,6 +132,12 @@ jobs:
         run: npx @capacitor/assets generate --ios --splashBackgroundColor "#5B9BAF" --splashBackgroundColorDark "#5B9BAF"
 
       - name: Layer entitlements + Privacy Manifest
+        env:
+          # Used by the pbxproj patch inside apply-ios-config.sh to set
+          # DEVELOPMENT_TEAM on the App target's Release config —
+          # because passing it as an xcodebuild CLI arg leaks to
+          # SPM dependency targets that don't support signing.
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: bash scripts/apply-ios-config.sh
 
       # Capacitor 8 ships with Swift Package Manager by default — no
@@ -195,47 +201,31 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
       - name: Archive
-        env:
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd ios/App
-          # Manual signing — the cert is in the temp keychain, the profile
-          # is installed under ~/Library/MobileDevice/Provisioning Profiles.
-          # No -allowProvisioningUpdates needed; both artifacts already
-          # exist. The named specifier matches the profile we created via
-          # the App Store Connect API (name = "Cardigan App Store").
-          # CURRENT_PROJECT_VERSION (build number) must monotonically
-          # increase per TestFlight upload — Apple rejects duplicates
-          # with ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE. github.run_number
-          # is the natural source of truth: monotonically increasing per
-          # workflow, easy to trace back to a specific run.
+          # Signing settings live in the App target's Release config in
+          # project.pbxproj (injected by apply-ios-config.sh). NOT
+          # passed via CLI — xcodebuild CLI build settings apply to
+          # every target in the project graph, and SPM dependency
+          # targets (ion-ios-camera, etc.) fail when handed
+          # signing-related settings they don't support:
+          #   * CODE_SIGN_ENTITLEMENTS resolves against the wrong
+          #     SRCROOT → "file could not be opened"
+          #   * PROVISIONING_PROFILE_SPECIFIER on a static library →
+          #     "X does not support provisioning profiles"
           #
-          # IMPORTANT: CODE_SIGN_ENTITLEMENTS is NOT passed as a CLI
-          # override here. xcodebuild applies CLI build settings to
-          # EVERY target in the project graph — and on path-valued
-          # settings like entitlements, that resolves to each
-          # target's own SRCROOT. For the App target, "App/App.entitlements"
-          # resolves to ios/App/App/App.entitlements (correct). For
-          # SPM dependencies like ion-ios-camera, it resolves to
-          # SourcePackages/checkouts/ion-ios-camera/App/App.entitlements
-          # (doesn't exist → build fails).
-          #
-          # The App target's pbxproj already has
-          #   CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-          # set by the Capacitor template, scoped correctly to that
-          # target. Code signing works without the CLI override.
-          # Identity / profile / team settings stay on the CLI because
-          # they're identifier-valued (not path-valued) so they don't
-          # break SPM targets.
+          # The only CLI build setting still passed here is
+          # CURRENT_PROJECT_VERSION — it's a number, applies uniformly
+          # to all targets without breakage, and Apple requires it to
+          # monotonically increase per TestFlight upload
+          # (ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE otherwise).
+          # github.run_number is the natural source: monotonic per
+          # workflow run, trivially traceable.
           xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -destination "generic/platform=iOS" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="Cardigan App Store" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             archive
 
