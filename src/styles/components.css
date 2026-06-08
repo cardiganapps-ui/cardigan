@@ -14,17 +14,14 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Padding-bottom EXACTLY matches the floating pill's envelope
-     (sab + 8 bottom offset + 56 pill height = sab + 64). When the
-     user is at scroll end, the padding area is precisely the
-     region the pill is sitting over — so the pill covers all of
-     it visually, no visible band of dead .page above the pill.
-     Any extra buffer (the +20 I had before) immediately reads
-     as a fat band of empty viewport.
-     For SHORT-content screens where space-between activates,
-     this puts the last section's bottom edge right at the pill's
-     top edge — clean. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 8px);
+  /* Padding-bottom equals the tab bar envelope EXACTLY — sab + pill
+     height + the 8px floating gap above the safe area. With the new
+     anchored-pill positioning below (left/right/bottom: 0, height
+     includes sab), this means content's bottom edge sits flush with
+     the pill's top edge. Zero visible gap between content end and
+     pill — the user circled this band 8 times and the floating-
+     offset 8px buffer was its source. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h));
 
   /* Flex column with `space-between` so short-content pages distribute
      their sections vertically — first section anchors top, last
@@ -221,22 +218,25 @@
 :root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
   position: fixed;
-  /* Floating pill — detached from the screen edges so it reads as a
-     premium iOS Liquid-Glass element. Uses --white token so the dark-
-     mode flip works automatically (the prior hardcoded rgba was the
-     source of the dark-mode "white line" bug, and a hardcoded glass
-     opacity over a dark page becomes washed-out grey instead of
-     frosted dark). color-mix lets the same rule render as 78% white
-     on light and 78% charcoal on dark — true theme-aware glass. */
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
-  height: var(--bottom-tabs-h);
+  /* Anchored at the screen bottom edge. The previous floating-pill
+     positioning (14px side margins + 8px gap above safe area) read
+     as a small element floating in a band of dead viewport — the
+     user circled that band over and over. Anchoring the pill to
+     bottom: 0 with sab absorbed as inner padding means the bar
+     covers the entire bottom envelope; .page padding-bottom matches
+     it exactly so content ends flush with the pill's top edge.
+     Zero visible empty space between content and chrome. */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--bottom-tabs-h) + env(safe-area-inset-bottom, 0px));
+  padding: 6px 6px env(safe-area-inset-bottom, 0px);
   display: flex; align-items: stretch;
   z-index: 40;
 
-  /* Pill shape — a continuous capsule that reads as one object. */
-  border-radius: 999px;
+  /* Rounded top corners only — bottom corners flush with screen edge
+     (we're now anchored, not floating). */
+  border-radius: 24px 24px 0 0;
   /* 6px inner padding gives the active-tab indicator a 2px gap inside
      the outer pill at the 56px height. */
   padding: 6px;
@@ -251,14 +251,11 @@
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
-  /* Border + drop shadow use tokens / black-rgba so dark mode flips
-     correctly. The previous hardcoded `rgba(255,255,255,0.55)` border
-     became visible as a faint white outline against a dark frosted
-     pill in dark mode — that was the second "white line" complaint. */
-  border: 1px solid var(--border-lt);
-  box-shadow:
-    0 8px 24px -6px rgba(0, 0, 0, 0.18),
-    0 2px 8px -2px rgba(0, 0, 0, 0.08);
+  /* Anchored bar — top border + UPWARD shadow for separation from
+     content above. Dropped the bottom corners and downward drop
+     shadow since the bar now sits flush at the screen edge. */
+  border-top: 1px solid var(--border-lt);
+  box-shadow: 0 -2px 12px -4px rgba(0, 0, 0, 0.12);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
    browser can't render the blur. The glass effect is enhancement,
