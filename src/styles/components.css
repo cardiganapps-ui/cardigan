@@ -14,24 +14,12 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill so the
-     last scrollable row sits just above it (not hidden under it).
-     Padding = pill bottom offset (sab + 4) + pill height (--bottom-tabs-h).
-     No additional breathing buffer — the floating pill is already
-     visually detached and any extra band reads as "blank space
-     blocking content". */
+  /* Reserve bottom space for the anchored bottom-tabs bar. The bar is
+     flush at the screen bottom with sab as inner padding for the
+     home indicator, so total bar height is sab + --bottom-tabs-h.
+     Add 4px breathing so the last content row doesn't kiss the
+     bar's top border. */
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 4px);
-  /* Flex column with `safe space-between` so short-content screens
-     (Home, Settings, etc.) distribute their sections across the
-     available height instead of stacking at the top with a fat band
-     of empty .page background below. `safe` falls back to flex-start
-     when content overflows, so long screens (Agenda Week, patient
-     lists, finances chart) still scroll normally from the top.
-     This is the "fill the screen" fix: no more dead space when a
-     screen has only a few cards. */
-  display: flex;
-  flex-direction: column;
-  justify-content: safe space-between;
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -206,38 +194,35 @@
 :root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
   position: fixed;
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
-  height: var(--bottom-tabs-h);
+  /* Full-width, flush at the safe-area bottom. Previous floating-pill
+     positioning (left/right: 14px, bottom: sab + 4) read as a small
+     element floating in a band of empty white above the home
+     indicator — users perceived everything above it as "dead space".
+     Anchoring the bar to the screen edges makes the bottom area
+     read as standard nav chrome (Settings / Mail / Photos pattern),
+     so empty .page area above just reads as normal content space. */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--bottom-tabs-h) + env(safe-area-inset-bottom, 0px));
+  padding: 6px 6px calc(env(safe-area-inset-bottom, 0px) + 0px);
   display: flex; align-items: stretch;
   z-index: 40;
 
-  /* Pill shape — a continuous capsule that reads as one object. */
-  border-radius: 999px;
-  /* 6px inner padding lets the active-tab capsule sit with ~2px of
-     gap inside the outer pill at the new 52px height. 4px (previous)
-     made the capsule kiss the outer pill's edge. */
-  padding: 6px;
+  /* Rounded top corners only — bottom corners flush with screen edge. */
+  border-radius: 20px 20px 0 0;
 
-  /* Glass. The `saturate(180%)` is the iOS trick — bumping chroma
-     before blurring is what makes the surface feel "warm" rather than
-     muddy on photographic content. Dropped opacity 0.72 → 0.55 so
-     content visibly scrolls UNDER the pill (paired with .page padding-
-     bottom dropping to safe-area only). Tab labels stay readable
-     because the saturate+blur boost still creates a frosted lens
-     effect against any content beneath. */
-  background: rgba(255, 255, 255, 0.55);
+  /* Mostly opaque so the area underneath reads as nav chrome, not
+     "floating in white". The blur+saturate still gives it a frosted
+     feel against any content scrolling beneath. */
+  background: rgba(255, 255, 255, 0.92);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
-  /* Two-tone border: bright top edge mimics the spec highlight on
-     iOS Liquid Glass, charcoal-tinted everywhere else for definition
-     against pale page backgrounds. */
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  /* Top border + soft shadow for visual separation from content. */
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow:
-    0 8px 24px -6px rgba(46, 46, 46, 0.18),
-    0 2px 8px -2px rgba(46, 46, 46, 0.08),
+    0 -2px 12px -4px rgba(46, 46, 46, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
