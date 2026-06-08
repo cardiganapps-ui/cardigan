@@ -21,17 +21,6 @@
      visually detached and any extra band reads as "blank space
      blocking content". */
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 4px);
-  /* Flex column with `safe space-between` so short-content screens
-     (Home, Settings, etc.) distribute their sections across the
-     available height instead of stacking at the top with a fat band
-     of empty .page background below. `safe` falls back to flex-start
-     when content overflows, so long screens (Agenda Week, patient
-     lists, finances chart) still scroll normally from the top.
-     This is the "fill the screen" fix: no more dead space when a
-     screen has only a few cards. */
-  display: flex;
-  flex-direction: column;
-  justify-content: safe space-between;
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
