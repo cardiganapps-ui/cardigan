@@ -316,6 +316,19 @@ curl -X POST "https://api.vercel.com/v1/log-drains?teamId=team_0rR9OfIKmnJ8xFDrO
 ```
 Until then, runtime logs are visible only in the Vercel dashboard's Functions tab and live for 24h.
 
+### iOS → TestFlight builds (Capacitor + GitHub Actions)
+The native iOS app is built and shipped to TestFlight by `.github/workflows/ios-build.yml` (macOS runner: `npm run build` → `cap add ios` + `cap sync` → archive → export IPA → `xcrun altool --upload-app`). The `ios/` dir is generated fresh each run, never committed.
+
+**Triggers:** push to `main` touching app code (the workflow ignores `**.md`, `android/**`, `scripts/**` except `apply-ios-config.sh`, and `.github/**` except itself), or a manual `workflow_dispatch` on `ios-build.yml`. The build number is `github.run_number` (monotonic — Apple requires each upload's `CURRENT_PROJECT_VERSION` to strictly increase).
+
+**⚠️ Apple's daily upload limit is the real constraint — BATCH your pushes to `main`.** App Store Connect caps TestFlight uploads per app per rolling ~24h. When exhausted, the build still **compiles, archives, and exports the IPA successfully** — only the final upload step fails with:
+```
+ERROR: Upload limit reached. ... Please wait 1 day and try again. (90382)
+```
+Because a build fires on **every** push to `main` that touches app code, a string of small commits in one day (e.g. iterating on a UI fix) silently burns the quota, and the *next* genuinely-important build can't reach testers until the window resets (~24h from the uploads). So: **only push to `main` when you actually want a TestFlight build.** Stack the work on a branch, verify via the web app first (`main` auto-deploys to https://cardigan.mx on Vercel, so every change is testable in iPhone Safari immediately — no upload cap there), and push to `main` once when it's build-worthy.
+
+**Diagnosing a "failed" run:** distinguish a *code* failure (build/archive/export step red → real bug, fix it) from an *upload throttle* (90382 at the `Upload to TestFlight` step → not our code; wait for the limit to reset, then re-trigger by pushing to `main` or re-dispatching the workflow). Check via `mcp__github__get_job_logs` with `failed_only:true`. Note the session-scoped GitHub MCP integration **cannot dispatch or cancel workflow runs** (403 "Resource not accessible by integration") — use a valid `GITHUB_TOKEN` from `.env.local` against the REST API instead, and rotate the token if it 401s.
+
 ## Conventions
 - **Spanish** for all user-visible text (use `useT()` from `src/i18n`).
 - **Currency MXN**, formatted with `.toLocaleString()`.
@@ -344,6 +357,6 @@ The therapist app sets the bar for every other surface (patient portal, marketin
 - **Tabular numerals everywhere money is shown.** `font-variant-numeric: tabular-nums` on KPI cards, balance rows, payment amounts, session counters. Without it, numbers visually "dance" between renders and the financial copy looks sloppy.
 - **Drawing outside these lines.** If a screen genuinely needs a new pattern (a chart, a calendar grid, a media-rich surface), ship it — but bring it up in `components.css` or a screen-scoped CSS file as a named class so the next person sees it as a deliberate addition, not a one-off inline-style snowflake. The codebase has zero TypeScript and zero UI library; the styles ARE the design system, and they only stay coherent if you keep adding to them in the same vocabulary.
 - **Conventional commits** (`feat:`, `fix:`, `refactor:`, `style:`, `chore:`).
-- **Don't deploy on every commit** — Vercel free tier caps at 100 deploys/day (resets midnight UTC). Batch changes and push when asked.
+- **Don't deploy on every commit** — Vercel free tier caps at 100 deploys/day (resets midnight UTC). More importantly, every push to `main` that touches app code also fires an iOS→TestFlight build, and Apple throttles TestFlight uploads to a daily per-app limit (error 90382). Batch changes and push to `main` only when you actually want a build/deploy — see "iOS → TestFlight builds" under Ops.
 - When adding or changing a session status / payment method / patient lifecycle value, update `data/constants.js` AND the DB check constraint in `supabase/schema.sql` (plus a migration).
 - **Profession enum** (`PROFESSION` in `data/constants.js`) is mirrored in three other places that must stay in sync: the `user_profiles.profession` check constraint in `supabase/schema.sql` / migration `021_user_profiles.sql`, the `ALLOWED` set in `api/admin-update-profession.js`, and the keys in `src/i18n/vocabulary.js`. Adding a profession requires touching all four. Profession is locked at sign-up (chosen via `src/screens/ProfessionOnboarding.jsx`); only admin can change it afterwards via `AdminPanel`. The active profession flows through `CardiganContext` (`useCardigan().profession`) and is also pushed into `I18nProvider` so `t("…{client.s}…")`-style placeholders resolve to the right vocabulary (`src/i18n/vocabulary.js`).
