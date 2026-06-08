@@ -14,16 +14,13 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* App Store / Apple Music pattern: content scrolls UNDER the floating
-     Liquid Glass pill instead of stopping above it. The pill stays
-     visually translucent so the content fading through reads correctly.
-     We only reserve the home-indicator safe area + a small breathing
-     gap — no extra space for the pill. When the user reaches the
-     bottom of a list, the last 1–2 rows fade into the glass blur
-     rather than parking in a dead band of whitespace above it.
-     Pair this with .page::before below (gradient mask) so the fade
-     into the pill region reads as intentional, not "cut off". */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  /* Reserve bottom space for the floating Liquid Glass pill so the
+     last scrollable row sits just above it (not hidden under it).
+     Padding = pill bottom offset (sab + 4) + pill height (--bottom-tabs-h).
+     No additional breathing buffer — the floating pill is already
+     visually detached and any extra band reads as "blank space
+     blocking content". */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 4px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -195,12 +192,12 @@
    presence — comparable to native iOS tab bars after factoring in
    their internal padding. Previous iterations (40 → 52 → 60) were
    each improvements but still read as slim. */
-:root { --bottom-tabs-h: 64px; }
+:root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
   position: fixed;
   left: max(14px, env(safe-area-inset-left));
   right: max(14px, env(safe-area-inset-right));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
   height: var(--bottom-tabs-h);
   display: flex; align-items: stretch;
   z-index: 40;
