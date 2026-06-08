@@ -14,13 +14,16 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill so the
-     last scrollable row sits just above it (not hidden under it).
-     Padding = pill bottom offset (sab + 4) + pill height (--bottom-tabs-h).
-     No additional breathing buffer — the floating pill is already
-     visually detached and any extra band reads as "blank space
-     blocking content". */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 4px);
+  /* Flex column so a margin-top:auto on the BottomTabs portal slot
+     pushes it to the bottom of .page (= viewport bottom when content
+     is shorter than viewport). For long content, the tabs sit at the
+     natural end of content and sticky-clamp to viewport bottom while
+     scrolling. Either way, no dead band of empty .page background
+     visible between content and tabs.
+     Padding-bottom is gone — the sticky BottomTabs portal slot now
+     reserves its own space inline. */
+  display: flex;
+  flex-direction: column;
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -193,11 +196,34 @@
    their internal padding. Previous iterations (40 → 52 → 60) were
    each improvements but still read as slim. */
 :root { --bottom-tabs-h: 56px; }
-.bottom-tabs {
-  position: fixed;
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
+/* Sticky portal slot inside .page. App-level <StickyBottomTabs />
+   uses ReactDOM.createPortal to inject <BottomTabs /> into this slot,
+   so every screen automatically gets tabs without per-screen JSX.
+   Pushed to the BOTTOM of .page via margin-top:auto (.page is a flex
+   column); sticky bottom: sab + 4 keeps tabs at viewport bottom while
+   the user scrolls. Net effect: tabs HUG the content end on short
+   screens (no dead band of empty .page above the tabs), and stick at
+   viewport bottom on long screens — the iOS native pattern. */
+.bottom-tabs-host {
+  margin-top: auto;
+  position: sticky;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+  z-index: 40;
+  /* Reserve the pill's outer width in the host so the sticky slot
+     occupies a sensible flow box. The actual pill is constrained by
+     its own left/right via flex; the host just provides positioning. */
+  padding: 0 max(14px, env(safe-area-inset-left)) 0 max(14px, env(safe-area-inset-right));
+  /* Belt-and-braces: short pages need a tiny gap between the last
+     content row and the top of the pill so the pill doesn't kiss
+     the last item. Tall pages get the same gap via natural flow. */
+  margin-bottom: 0;
+  padding-top: 8px;
+  pointer-events: none;
+}
+.bottom-tabs-host > .bottom-tabs { pointer-events: auto; }
+.bottom-tabs {
+  position: relative;
+  width: 100%;
   height: var(--bottom-tabs-h);
   display: flex; align-items: stretch;
   z-index: 40;
