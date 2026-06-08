@@ -16,19 +16,31 @@
   overscroll-behavior-y: auto;
   /* CONTENT-FIRST padding: just clear the home indicator safe area
      plus a small breathing gap. The floating pill sits ABOVE this
-     padding zone and is opaque enough to hide the bare .page
-     background underneath it — so when the user reaches the bottom
-     of a list, the next-to-last rows sit visibly above the pill
-     and the very last row can be brought above the pill via a
-     small over-scroll (iOS rubber-band). Net visual: no dead band
-     of empty viewport between last content and the pill. */
+     padding zone and is opaque enough (92%) to hide the bare .page
+     background underneath it. */
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+
+  /* Flex column with safe space-between so short-content pages
+     distribute their sections vertically — first section at top,
+     last at bottom, gaps in between absorb what would otherwise
+     read as dead space below the last row. `safe` keyword falls
+     back to flex-start when content overflows, so long pages
+     (Settings, Agenda Week, patient lists) scroll normally from
+     the top. Children get flex-shrink: 0 so they never compress
+     below their natural height — that was the bug that
+     collapsed Settings cards into thin pills in the earlier
+     attempt at this pattern. */
+  display: flex;
+  flex-direction: column;
+  justify-content: safe space-between;
+
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
      promoting `.page` itself to a positioned element is safe. */
   position: relative;
 }
+.page > * { flex-shrink: 0; }
 .page::-webkit-scrollbar { display: none; }
 /* iOS rubber-band guarantee. The naive in-flow `1px` spacer below
    only generates overflow on pages whose natural content already
