@@ -64,7 +64,17 @@ export function PatientShell({ user, signOut, data }) {
         // means the page itself never scrolls — every screen has to
         // manage its own scrollable container, same pattern the
         // therapist .shell + .main-content classes use.
-        height: "100dvh",
+        //
+        // `100%` — NOT `100dvh`. iOS WKWebView/standalone underreport
+        // `100dvh` when env(safe-area-inset-bottom) is present, so this
+        // overflow:hidden box ended SHORT of the visible viewport and
+        // clipped the inner scroll content at a line above the true
+        // bottom, while the position:fixed .bottom-tabs anchored to the
+        // real viewport and floated below the clip — the same "dead
+        // band" the therapist .shell had. `100%` resolves against the
+        // already-correct #root height:100% chain (the visible
+        // viewport / ICB the fixed bar uses). Do NOT use a viewport unit.
+        height: "100%",
         background: "var(--white)",
         display: "flex",
         flexDirection: "column",

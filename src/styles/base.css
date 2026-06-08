@@ -262,7 +262,27 @@ a[href^="tel:"], a[href^="mailto:"] {
 
 .shell {
   display: flex; flex-direction: column;
-  height: 100dvh;
+  /* height: 100% — NOT 100dvh.
+     iOS WKWebView (and standalone PWAs) underreport `100dvh` when
+     env(safe-area-inset-bottom) is present: the value comes back SHORT
+     of the actual visible area. Because `.shell` also has `overflow:
+     clip`, that short height clipped ALL in-flow content (the scrolling
+     `.page`) at a precise line a little above the true bottom — while
+     the `position: fixed` bottom-tab pill and FAB anchor to the real
+     visual viewport and so floated BELOW that clip line. The result was
+     a "dead band" near the bottom that swallowed real content and
+     blocked sheet/panel buttons sitting in that zone.
+
+     This is the exact same dvh/lvh defect already documented and fixed
+     for `.drawer` (it switched to inset:0). Here we keep `.shell` in
+     normal flow (position: relative — no new stacking context, so the
+     body-portaled overlays keep their paint order) and simply source the
+     height from the already-correct `html → body → #root` chain, all of
+     which use `height: 100%` and therefore resolve against the initial
+     containing block = the true visible viewport, the SAME reference the
+     fixed pill/FAB use. Content and the fixed bars now share one bottom
+     edge: no clip, no dead band. Do NOT revert this to a viewport unit. */
+  height: 100%;
   width: 100%;
   background: var(--white);
   position: relative; overflow: clip;
