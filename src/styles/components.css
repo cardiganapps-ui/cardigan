@@ -31,29 +31,6 @@
   position: relative;
 }
 .page::-webkit-scrollbar { display: none; }
-/* Soft fade into the glass tabs region. The mask is fixed to the .page
-   viewport (not scroll position), so any content reaching the bottom of
-   the visible area fades smoothly into the floating pill above rather
-   than being cut off by an opaque tab background. Matches App Store /
-   Apple Music's "scrolls under the bar" feel. The fade height covers
-   the pill (sab + 74) so the entire under-pill zone gets the gradient.
-   We skip the mask on screens that already have no overlap (no
-   bottom-tabs, e.g. admin) by reading --bottom-tabs-h — a 0 fallback
-   value via @supports collapses the gradient to pass-through. */
-.page {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    black 0,
-    black calc(100% - var(--bottom-tabs-h) - env(safe-area-inset-bottom, 0px) - 24px),
-    rgba(0,0,0,0.55) calc(100% - env(safe-area-inset-bottom, 0px))
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    black 0,
-    black calc(100% - var(--bottom-tabs-h) - env(safe-area-inset-bottom, 0px) - 24px),
-    rgba(0,0,0,0.55) calc(100% - env(safe-area-inset-bottom, 0px))
-  );
-}
 /* iOS rubber-band guarantee. The naive in-flow `1px` spacer below
    only generates overflow on pages whose natural content already
    meets or exceeds the viewport — short pages (empty states, single
