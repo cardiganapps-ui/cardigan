@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
-import { createPortal } from "react-dom";
 import { useAuth } from "./hooks/useAuth";
 import { isNative, isIOS } from "./lib/platform";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
@@ -31,7 +30,7 @@ import { useCardiganData, isAdmin } from "./hooks/useCardiganData";
 import { haptic } from "./utils/haptics";
 import { useDemoData } from "./hooks/useDemoData";
 import { useNavigation } from "./hooks/useNavigation";
-import { CardiganProvider, useCardigan } from "./context/CardiganContext";
+import { CardiganProvider } from "./context/CardiganContext";
 import { I18nProvider, useT } from "./i18n/index";
 // Lazy-load the conditionally-rendered surfaces. Each only mounts in
 // response to a user action (open drawer, record payment, open command
@@ -161,53 +160,6 @@ const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 // Now all three frames are visually identical teal-on-white-logo, so
 // the boot reads as a single continuous splash that crossfades into
 // the app the moment data lands.
-/* ── StickyBottomTabs ──
-   Renders <BottomTabs /> via portal into a sticky slot at the end of
-   the currently-rendered .page. On short screens the tabs hug the end
-   of content (no dead band of empty viewport above them); on long
-   screens they sticky-clamp to the bottom of the viewport while the
-   user scrolls — the iOS native pattern.
-
-   Why portal instead of editing every screen: there are ~6 screens
-   that render `<div className="page">…</div>` (Home, Agenda, Patients,
-   Finances, Archivo, Settings). Touching each one to add the tabs
-   inline is invasive and easy to miss on future screens. The portal
-   approach makes the wiring automatic — any new .page picks up tabs
-   for free.
-
-   Why MutationObserver instead of relying on the screen key: lazy-
-   loaded screens (Suspense) swap the .page node mid-render; the
-   observer catches the swap and re-points the portal at the new
-   node before React reaches paint. */
-function StickyBottomTabs() {
-  const { screen } = useCardigan();
-  const [page, setPage] = useState(null);
-
-  useEffect(() => {
-    const find = () => {
-      const pages = document.querySelectorAll(".page");
-      const p = pages[pages.length - 1] || null;
-      setPage(prev => (prev === p ? prev : p));
-    };
-    find();
-    // Catch screen swaps (Suspense lazy-load) without polling.
-    const observer = new MutationObserver(find);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [screen]);
-
-  if (!page) return null;
-  // Portal the host + tabs as a child of .page. React owns the entire
-  // tree we're injecting, so reconciliation can't accidentally delete
-  // our host on the screen's next re-render.
-  return createPortal(
-    <div className="bottom-tabs-host">
-      <BottomTabs />
-    </div>,
-    page,
-  );
-}
-
 function AuthSplash() {
   if (isNative()) {
     return (
@@ -2417,7 +2369,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           </Suspense>
         )}
         {!readOnly && !hideFab && <QuickActions />}
-        {!hideBottomTabs && <StickyBottomTabs />}
+        {!hideBottomTabs && <BottomTabs />}
         <Suspense fallback={null}>
           <CommandPalette
             open={paletteOpen}
