@@ -14,25 +14,32 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* CONTENT-FIRST padding: just clear the home indicator safe area
-     plus a small breathing gap. The floating pill sits ABOVE this
-     padding zone and is opaque enough (92%) to hide the bare .page
-     background underneath it. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  /* Reserve bottom space for the floating Liquid Glass pill so the
+     last distributed section sits just above it (not hidden under it).
+     Pill envelope: sab + 8 (bottom offset) + --bottom-tabs-h (height)
+     + 12px buffer above the pill so the last section's bottom edge
+     reads clearly distinct from the chrome. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 20px);
 
-  /* Flex column with safe space-between so short-content pages
-     distribute their sections vertically — first section at top,
-     last at bottom, gaps in between absorb what would otherwise
-     read as dead space below the last row. `safe` keyword falls
-     back to flex-start when content overflows, so long pages
-     (Settings, Agenda Week, patient lists) scroll normally from
-     the top. Children get flex-shrink: 0 so they never compress
-     below their natural height — that was the bug that
-     collapsed Settings cards into thin pills in the earlier
-     attempt at this pattern. */
+  /* Flex column with `space-between` so short-content pages distribute
+     their sections vertically — first section anchors top, last
+     anchors bottom (just above the pill), gaps absorb what would
+     otherwise read as dead viewport below the last row. In flex
+     layout, `space-between` naturally falls back to `flex-start`
+     when there's no positive free space (content overflows) — long
+     pages (Settings, Patients, Agenda Week) scroll normally from
+     the top with no distribution applied. The earlier attempt used
+     `safe space-between` which is INVALID syntax (the `safe`
+     keyword only modifies <content-position>, not <content-
+     distribution>) so the entire rule was ignored — that's why no
+     prior commit moved the needle.
+     `.page > * { flex-shrink: 0 }` keeps real children at their
+     natural height so long-page content (Settings cards, etc.)
+     can't be compressed into thin pills the way they were when
+     this pattern was first attempted. */
   display: flex;
   flex-direction: column;
-  justify-content: safe space-between;
+  justify-content: space-between;
 
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
