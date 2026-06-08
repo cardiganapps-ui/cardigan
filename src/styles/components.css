@@ -16,11 +16,9 @@
   overscroll-behavior-y: auto;
   /* Reserve bottom space for the floating Liquid Glass pill so the
      last scrollable row sits just above it (not hidden under it).
-     Padding = pill bottom offset (sab + 4) + pill height (--bottom-tabs-h).
-     No additional breathing buffer — the floating pill is already
-     visually detached and any extra band reads as "blank space
-     blocking content". */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 4px);
+     Pill envelope: sab + 8 (bottom offset) + --bottom-tabs-h (height)
+     + 12px buffer so the last row doesn't kiss the pill's top edge. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 20px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -195,43 +193,73 @@
 :root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
   position: fixed;
-  /* Anchored bottom bar — flush at screen edges and bottom. The previous
-     floating-pill positioning (14px side margins + 4px gap below) read
-     as a small element floating in a band of empty white above the
-     home indicator; users perceived everything above it as "dead
-     space blocking content". An anchored bar (Settings / Mail /
-     Photos pattern) makes the bottom area read as standard nav chrome
-     so empty .page area above just reads as normal content space. */
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: calc(var(--bottom-tabs-h) + env(safe-area-inset-bottom, 0px));
-  /* sab as inner bottom padding so tab labels clear the home indicator. */
-  padding: 6px 6px calc(env(safe-area-inset-bottom, 0px) + 0px);
+  /* Floating pill — detached from the screen edges so it reads as a
+     premium iOS Liquid-Glass element. Uses --white token so the dark-
+     mode flip works automatically (the prior hardcoded rgba was the
+     source of the dark-mode "white line" bug, and a hardcoded glass
+     opacity over a dark page becomes washed-out grey instead of
+     frosted dark). color-mix lets the same rule render as 78% white
+     on light and 78% charcoal on dark — true theme-aware glass. */
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  height: var(--bottom-tabs-h);
   display: flex; align-items: stretch;
   z-index: 40;
 
-  /* Rounded top corners only — bottom corners flush with screen edge. */
-  border-radius: 20px 20px 0 0;
+  /* Pill shape — a continuous capsule that reads as one object. */
+  border-radius: 999px;
+  /* 6px inner padding gives the active-tab indicator a 2px gap inside
+     the outer pill at the 56px height. */
+  padding: 6px;
 
-  /* Mostly opaque so the bar reads as substantial chrome rather than a
-     transparent overlay. The blur+saturate still gives the frosted
-     glass feel against any content scrolling beneath. */
-  background: var(--white);
+  background: color-mix(in srgb, var(--white) 78%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
-  /* Top border + soft shadow for visual separation from content. */
-  border-top: 1px solid var(--border-lt);
+  /* Border + drop shadow use tokens / black-rgba so dark mode flips
+     correctly. The previous hardcoded `rgba(255,255,255,0.55)` border
+     became visible as a faint white outline against a dark frosted
+     pill in dark mode — that was the second "white line" complaint. */
+  border: 1px solid var(--border-lt);
   box-shadow:
-    0 -2px 12px -4px rgba(46, 46, 46, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 8px 24px -6px rgba(0, 0, 0, 0.18),
+    0 2px 8px -2px rgba(0, 0, 0, 0.08);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
    browser can't render the blur. The glass effect is enhancement,
    not foundational. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .bottom-tabs { background: var(--white); }
+}
+
+/* CRITICAL: hide the floating tabs while any modal-style overlay
+   is open. The pill is z-index 40 and sheets are z-index 350, so
+   normally sheets render above; but with backdrop-filter on both
+   surfaces, WebKit composites them out of z-index order under
+   certain conditions, leaving the pill visible OVER sheet CTAs
+   ("Activar" on calendar, theme picker rows, "Registrar pago").
+   Worse: the pill's footprint corresponds to the sheet's bottom
+   rows, so users perceive the pill as "blocking" mandatory sheet
+   actions.
+
+   Using :has() rather than a JS-managed `.is-scroll-locked` class
+   on <body> — the previous JS approach stuck the class on after
+   sheet close (race between MutationObserver and React unmount),
+   leaving the tabs permanently hidden on the home screen. :has()
+   is purely declarative against the live DOM; no race possible.
+
+   :has() ships in iOS Safari 15.4+ (= every device we ship to).
+   The selector matches when a sheet/drawer/confirm-dialog overlay
+   is present and NOT in its exit animation — so the pill comes
+   back the moment the close animation starts, before the sheet
+   actually unmounts. Feels snappier than waiting for unmount. */
+body:has(
+  .sheet-overlay:not(.sheet-overlay--exit),
+  .drawer-overlay:not(.drawer-overlay--exit),
+  .confirm-dialog-overlay
+) .bottom-tabs {
+  display: none;
 }
 
 /* ── Sliding active-tab indicator ──
@@ -253,8 +281,13 @@
   left: calc(6px + var(--active-i, 0) * (100% - 12px) / var(--tab-count, 4));
   width: calc((100% - 12px) / var(--tab-count, 4));
   border-radius: 999px;
-  background: rgba(91, 155, 175, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(91, 155, 175, 0.14);
+  /* Token-driven so dark mode renders the indicator at the same
+     visual weight (dark.css redefines --teal-pale to a darker tint).
+     The previous hardcoded rgba(91,155,175,...) sat at a fixed
+     opacity that read as too washed-out against the dark frosted
+     pill in dark mode — the "selecting shading is wrong" complaint. */
+  background: var(--teal-pale);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 22%, transparent);
   /* Spring slide. --dur-slow (400ms) is long enough to read the
      motion clearly without feeling sluggish; --ease-spring's tiny
      overshoot is what makes it feel like a "settled" arrival vs

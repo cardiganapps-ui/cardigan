@@ -277,7 +277,14 @@ a[href^="tel:"], a[href^="mailto:"] {
    --border-lt) so it doesn't read as a heavy line against the
    blurred background. */
 .topbar {
-  background: rgba(255, 255, 255, 0.72);
+  /* color-mix lets the same rule render as 72% white in light mode
+     and 72% charcoal in dark mode — true theme-aware glass. The
+     previous hardcoded `rgba(255, 255, 255, 0.72)` rendered as a
+     washed-out grey overlay against the dark page in dark mode,
+     and the `inset 0 1px 0 rgba(255,255,255,0.5)` highlight became
+     a visible white line below the topbar — both root causes of
+     the "weird dark-mode line" complaint. */
+  background: color-mix(in srgb, var(--white) 72%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   /* Lateral env() keeps the hamburger / avatar out from under the
@@ -288,8 +295,10 @@ a[href^="tel:"], a[href^="mailto:"] {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   position: relative;
-  border-bottom: 1px solid rgba(46, 46, 46, 0.06);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  /* Token-driven border so dark mode gets the dark divider, not the
+     hardcoded dark-with-low-alpha that was barely visible on the
+     dark page. */
+  border-bottom: 1px solid var(--border-lt);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .topbar { background: var(--white); }
