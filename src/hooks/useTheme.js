@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { applyStatusBarStyle } from "../lib/nativeBoot";
 
 const LS_KEY = "cardigan-theme";
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -15,6 +16,9 @@ function apply(resolved) {
   }
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = resolved === "dark" ? "#1A1A1A" : "#FFFFFF";
+  // Keep the native iOS status-bar glyphs legible over the new
+  // background. No-op on web; fire-and-forget on native.
+  applyStatusBarStyle(resolved === "dark");
 }
 
 export function useTheme() {

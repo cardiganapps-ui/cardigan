@@ -37,22 +37,44 @@ export async function initNativeShell() {
   } catch { /* ignore */ }
 
   try {
-    const { StatusBar, Style } = await import("@capacitor/status-bar");
+    const { StatusBar } = await import("@capacitor/status-bar");
     // Overlay mode: WebView extends behind the status bar; the existing
     // CSS handles vertical clearance via env(safe-area-inset-top). Pairs
     // with contentInset:"never" in capacitor.config.json — together they
     // stop iOS from adding its own inset on top of ours (which would
     // produce a ~300px blank strip above the topbar).
     await StatusBar.setOverlaysWebView({ overlay: true });
-    // Cardigan's shell is white in light mode, charcoal in dark. The
-    // status bar overlays the WebView; we toggle icon style to match.
-    // Capacitor naming is the opposite of intuitive: Style.Light = LIGHT
-    // text (visible on dark bg); Style.Dark = DARK text (visible on
-    // light bg). data-theme is set synchronously by the boot script in
-    // index.html, so it's already correct here.
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark"
-      || (document.documentElement.getAttribute("data-theme") !== "light"
-          && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    await StatusBar.setStyle({ style: isDark ? Style.Light : Style.Dark });
+    // Set the initial icon style to match the theme already resolved by
+    // the boot script in index.html. useTheme keeps it in sync after any
+    // runtime theme change (see applyStatusBarStyle below).
+    await applyStatusBarStyle(currentThemeIsDark());
+  } catch { /* ignore */ }
+}
+
+// True when the document is currently in dark mode — reads the
+// synchronously-applied data-theme attribute, falling back to the OS
+// preference when the user hasn't pinned a theme.
+function currentThemeIsDark() {
+  const t = document.documentElement.getAttribute("data-theme");
+  if (t === "dark") return true;
+  if (t === "light") return false;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+// Update the native status-bar icon/text color to stay legible over the
+// theme's background. No-op on web. Called at boot AND on every runtime
+// theme change (from useTheme) so the clock/battery/wifi glyphs never
+// end up dark-on-dark.
+//
+// ⚠️ Capacitor's Style enum is named after the BACKGROUND, not the text:
+//   Style.Dark  → LIGHT (white) text — use on a DARK background
+//   Style.Light → DARK  (black) text — use on a LIGHT background
+// (The previous code had this inverted, which left the status bar
+// black-on-charcoal — invisible — in dark mode.)
+export async function applyStatusBarStyle(isDark) {
+  if (!isNative()) return;
+  try {
+    const { StatusBar, Style } = await import("@capacitor/status-bar");
+    await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
   } catch { /* ignore */ }
 }
