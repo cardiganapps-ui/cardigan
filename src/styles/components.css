@@ -14,13 +14,15 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill so the
-     last scrollable row sits just above it (not hidden under it).
-     Pill envelope: sab + 8 (bottom offset) + --bottom-tabs-h (height)
-     = sab + 64. No additional breathing — the pill already has the
-     8px gap above the safe area; another 20px on top of that read
-     as a fat band of dead space at the bottom of every screen. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 8px);
+  /* CONTENT-FIRST padding: just clear the home indicator safe area
+     plus a small breathing gap. The floating pill sits ABOVE this
+     padding zone and is opaque enough to hide the bare .page
+     background underneath it — so when the user reaches the bottom
+     of a list, the next-to-last rows sit visibly above the pill
+     and the very last row can be brought above the pill via a
+     small over-scroll (iOS rubber-band). Net visual: no dead band
+     of empty viewport between last content and the pill. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -215,7 +217,15 @@
      the outer pill at the 56px height. */
   padding: 6px;
 
-  background: color-mix(in srgb, var(--white) 78%, transparent);
+  /* Glass-but-opaque: 92% var(--white) so the bare .page background
+     behind the pill is hidden (content scrolling beneath at the
+     bottom of long lists is faintly visible through the residual
+     transparency for an iOS Liquid Glass feel, but the pill reads
+     as solid enough chrome that the user doesn't perceive empty
+     viewport BELOW the last visible content). The previous 78%
+     opacity made the bare .page background show through clearly,
+     which read as "tabs floating in dead space". */
+  background: color-mix(in srgb, var(--white) 92%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
