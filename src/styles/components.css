@@ -14,15 +14,16 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill:
-       pill bottom offset (sab + 10) + pill height (var(--bottom-tabs-h))
-       = sab + 74. We add 0 visual buffer above the pill so the last
-       scrollable row sits flush at the top of the bar (not floating in
-       a dead band above it). Users perceive any extra buffer as "blank
-       space blocking content" — the floating pill is already visually
-       detached from the screen edge, so no extra gap is needed for
-       breathing. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 10px);
+  /* App Store / Apple Music pattern: content scrolls UNDER the floating
+     Liquid Glass pill instead of stopping above it. The pill stays
+     visually translucent so the content fading through reads correctly.
+     We only reserve the home-indicator safe area + a small breathing
+     gap — no extra space for the pill. When the user reaches the
+     bottom of a list, the last 1–2 rows fade into the glass blur
+     rather than parking in a dead band of whitespace above it.
+     Pair this with .page::before below (gradient mask) so the fade
+     into the pill region reads as intentional, not "cut off". */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -30,6 +31,29 @@
   position: relative;
 }
 .page::-webkit-scrollbar { display: none; }
+/* Soft fade into the glass tabs region. The mask is fixed to the .page
+   viewport (not scroll position), so any content reaching the bottom of
+   the visible area fades smoothly into the floating pill above rather
+   than being cut off by an opaque tab background. Matches App Store /
+   Apple Music's "scrolls under the bar" feel. The fade height covers
+   the pill (sab + 74) so the entire under-pill zone gets the gradient.
+   We skip the mask on screens that already have no overlap (no
+   bottom-tabs, e.g. admin) by reading --bottom-tabs-h — a 0 fallback
+   value via @supports collapses the gradient to pass-through. */
+.page {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - var(--bottom-tabs-h) - env(safe-area-inset-bottom, 0px) - 24px),
+    rgba(0,0,0,0.55) calc(100% - env(safe-area-inset-bottom, 0px))
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - var(--bottom-tabs-h) - env(safe-area-inset-bottom, 0px) - 24px),
+    rgba(0,0,0,0.55) calc(100% - env(safe-area-inset-bottom, 0px))
+  );
+}
 /* iOS rubber-band guarantee. The naive in-flow `1px` spacer below
    only generates overflow on pages whose natural content already
    meets or exceeds the viewport — short pages (empty states, single
@@ -213,8 +237,12 @@
 
   /* Glass. The `saturate(180%)` is the iOS trick — bumping chroma
      before blurring is what makes the surface feel "warm" rather than
-     muddy on photographic content. */
-  background: rgba(255, 255, 255, 0.72);
+     muddy on photographic content. Dropped opacity 0.72 → 0.55 so
+     content visibly scrolls UNDER the pill (paired with .page padding-
+     bottom dropping to safe-area only). Tab labels stay readable
+     because the saturate+blur boost still creates a frosted lens
+     effect against any content beneath. */
+  background: rgba(255, 255, 255, 0.55);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
