@@ -14,12 +14,17 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill so the
-     last distributed section sits just above it (not hidden under it).
-     Pill envelope: sab + 8 (bottom offset) + --bottom-tabs-h (height)
-     + 12px buffer above the pill so the last section's bottom edge
-     reads clearly distinct from the chrome. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 20px);
+  /* Padding-bottom EXACTLY matches the floating pill's envelope
+     (sab + 8 bottom offset + 56 pill height = sab + 64). When the
+     user is at scroll end, the padding area is precisely the
+     region the pill is sitting over — so the pill covers all of
+     it visually, no visible band of dead .page above the pill.
+     Any extra buffer (the +20 I had before) immediately reads
+     as a fat band of empty viewport.
+     For SHORT-content screens where space-between activates,
+     this puts the last section's bottom edge right at the pill's
+     top edge — clean. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 8px);
 
   /* Flex column with `space-between` so short-content pages distribute
      their sections vertically — first section anchors top, last
@@ -236,15 +241,13 @@
      the outer pill at the 56px height. */
   padding: 6px;
 
-  /* Glass-but-opaque: 92% var(--white) so the bare .page background
-     behind the pill is hidden (content scrolling beneath at the
-     bottom of long lists is faintly visible through the residual
-     transparency for an iOS Liquid Glass feel, but the pill reads
-     as solid enough chrome that the user doesn't perceive empty
-     viewport BELOW the last visible content). The previous 78%
-     opacity made the bare .page background show through clearly,
-     which read as "tabs floating in dead space". */
-  background: color-mix(in srgb, var(--white) 92%, transparent);
+  /* Solid var(--white) so NOTHING shows through the pill — no faint
+     ghost of .page padding or content behind it. The cost is losing
+     the Liquid Glass see-through feel, but with the padding-bottom
+     now exactly matching the pill envelope there's no perceived
+     dead space, which the user explicitly prioritized over the
+     glass aesthetic ("fix it at all costs"). */
+  background: var(--white);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
