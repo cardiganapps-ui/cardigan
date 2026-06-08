@@ -195,38 +195,36 @@
 :root { --bottom-tabs-h: 56px; }
 .bottom-tabs {
   position: fixed;
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
-  height: var(--bottom-tabs-h);
+  /* Anchored bottom bar — flush at screen edges and bottom. The previous
+     floating-pill positioning (14px side margins + 4px gap below) read
+     as a small element floating in a band of empty white above the
+     home indicator; users perceived everything above it as "dead
+     space blocking content". An anchored bar (Settings / Mail /
+     Photos pattern) makes the bottom area read as standard nav chrome
+     so empty .page area above just reads as normal content space. */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--bottom-tabs-h) + env(safe-area-inset-bottom, 0px));
+  /* sab as inner bottom padding so tab labels clear the home indicator. */
+  padding: 6px 6px calc(env(safe-area-inset-bottom, 0px) + 0px);
   display: flex; align-items: stretch;
   z-index: 40;
 
-  /* Pill shape — a continuous capsule that reads as one object. */
-  border-radius: 999px;
-  /* 6px inner padding lets the active-tab capsule sit with ~2px of
-     gap inside the outer pill at the new 52px height. 4px (previous)
-     made the capsule kiss the outer pill's edge. */
-  padding: 6px;
+  /* Rounded top corners only — bottom corners flush with screen edge. */
+  border-radius: 20px 20px 0 0;
 
-  /* Glass. The `saturate(180%)` is the iOS trick — bumping chroma
-     before blurring is what makes the surface feel "warm" rather than
-     muddy on photographic content. Dropped opacity 0.72 → 0.55 so
-     content visibly scrolls UNDER the pill (paired with .page padding-
-     bottom dropping to safe-area only). Tab labels stay readable
-     because the saturate+blur boost still creates a frosted lens
-     effect against any content beneath. */
-  background: rgba(255, 255, 255, 0.55);
+  /* Mostly opaque so the bar reads as substantial chrome rather than a
+     transparent overlay. The blur+saturate still gives the frosted
+     glass feel against any content scrolling beneath. */
+  background: var(--white);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 
-  /* Two-tone border: bright top edge mimics the spec highlight on
-     iOS Liquid Glass, charcoal-tinted everywhere else for definition
-     against pale page backgrounds. */
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  /* Top border + soft shadow for visual separation from content. */
+  border-top: 1px solid var(--border-lt);
   box-shadow:
-    0 8px 24px -6px rgba(46, 46, 46, 0.18),
-    0 2px 8px -2px rgba(46, 46, 46, 0.08),
+    0 -2px 12px -4px rgba(46, 46, 46, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
