@@ -14,33 +14,29 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill:
-     sab + 8 (pill bottom offset) + pill height + 8 (small breathing
-     above the pill). With `.page > :last-child { margin-top: auto }`
-     below, the last section anchors to the bottom of this content
-     area — just above the pill's top edge with the 8px breathing
-     buffer. No visible dead viewport between last content and pill. */
+  /* Reserve bottom space for the floating Liquid Glass pill so the
+     last row clears it: sab + pill height + 16px breathing room. */
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 16px);
 
-  /* Flex column with `space-between` so short-content pages distribute
-     their sections vertically — first section anchors top, last
-     anchors bottom (just above the pill), gaps absorb what would
-     otherwise read as dead viewport below the last row. In flex
-     layout, `space-between` naturally falls back to `flex-start`
-     when there's no positive free space (content overflows) — long
-     pages (Settings, Patients, Agenda Week) scroll normally from
-     the top with no distribution applied. The earlier attempt used
-     `safe space-between` which is INVALID syntax (the `safe`
-     keyword only modifies <content-position>, not <content-
-     distribution>) so the entire rule was ignored — that's why no
-     prior commit moved the needle.
+  /* Content flows from the TOP, top-down, like every normal screen.
+     `justify-content: flex-start` (the default) stacks children from
+     the top; short pages simply leave empty space below the last row
+     (above the pill) instead of floating their content to the middle
+     or bottom of the viewport.
+
+     History note — do NOT reintroduce `space-between` /
+     `margin-top: auto` here. A chain of earlier commits added them to
+     "absorb dead viewport below the last row," but that dead viewport
+     was a SYMPTOM of `.shell` sizing itself with `100dvh` (which iOS
+     underreports — see base.css `.shell`). With the shell now sized
+     correctly, distributing sections pushed real content into the
+     bottom half and left a large gap at the top (Agenda / Finanzas /
+     Pacientes / Notas). Top-anchored flow is the fix.
      `.page > * { flex-shrink: 0 }` keeps real children at their
-     natural height so long-page content (Settings cards, etc.)
-     can't be compressed into thin pills the way they were when
-     this pattern was first attempted. */
+     natural height so long-page content can't be compressed. */
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
 
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
@@ -49,16 +45,6 @@
   position: relative;
 }
 .page > * { flex-shrink: 0; }
-/* Push the LAST direct child of .page to the bottom of the available
-   space. In a flex column, margin-top: auto on the last item absorbs
-   all free space above it — so on short-content screens, the last
-   section anchors flush to the bottom (just above the tab bar)
-   instead of stacking at the top with dead viewport below.
-   Works WITHOUT space-between's overflow caveat (which degrades to
-   flex-start when content > container). For LONG content, free
-   space is negative; auto resolves to 0 and the last item sits at
-   its natural position — scrolling unchanged. */
-.page > :last-child { margin-top: auto; }
 .page::-webkit-scrollbar { display: none; }
 /* iOS rubber-band guarantee. The naive in-flow `1px` spacer below
    only generates overflow on pages whose natural content already
