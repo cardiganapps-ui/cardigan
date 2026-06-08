@@ -206,11 +206,14 @@
      height. Outer height (incl. padding + sab clearance) is
      computed when other surfaces (FAB, scroll containers) reserve
      bottom space. */
-/* Bottom tabs inner content height. 64px gives the bar real
-   presence — comparable to native iOS tab bars after factoring in
-   their internal padding. Previous iterations (40 → 52 → 60) were
-   each improvements but still read as slim. */
-:root { --bottom-tabs-h: 56px; }
+/* Bottom tabs height — the full height of the floating glass pill.
+   66px gives the bar real, native-iOS presence (Apple's tab bars sit
+   ~49pt + safe area; a floating capsule reads taller). Earlier
+   iterations (40 → 52 → 56) all still read as slim. This token
+   cascades: the FAB offset and every scroll container's padding-bottom
+   are computed from it, so bumping here keeps the whole bottom zone in
+   proportion automatically. */
+:root { --bottom-tabs-h: 66px; }
 .bottom-tabs {
   position: fixed;
   /* Floating pill — detached from the screen edges so it reads as a
@@ -225,31 +228,37 @@
   right: max(14px, env(safe-area-inset-right));
   bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   height: var(--bottom-tabs-h);
-  padding: 6px;
   display: flex; align-items: stretch;
   z-index: 40;
 
-  /* Pill shape — fully rounded capsule. */
+  /* Pill shape — fully rounded capsule. 7px inner padding sets the
+     gap between the outer glass edge and the active-tab indicator. */
   border-radius: 999px;
-  /* 6px inner padding gives the active-tab indicator a 2px gap inside
-     the outer pill at the 56px height. */
-  padding: 6px;
+  padding: 7px;
 
-  /* Solid var(--white) so NOTHING shows through the pill — no faint
-     ghost of .page padding or content behind it. The cost is losing
-     the Liquid Glass see-through feel, but with the padding-bottom
-     now exactly matching the pill envelope there's no perceived
-     dead space, which the user explicitly prioritized over the
-     glass aesthetic ("fix it at all costs"). */
-  background: var(--white);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
+  /* ── Liquid Glass (iOS 26) ──
+     Translucent + heavily blurred so the page content desaturates and
+     softens behind the bar instead of hitting a flat white panel. The
+     earlier "solid white" workaround was only there to hide a ghost of
+     the page padding caused by the `100dvh` shell bug — that bug is
+     fixed now (see base.css `.shell`), so the real glass is back.
+     `color-mix` renders as ~70% white in light mode and auto-flips in
+     dark mode via dark.css, which redefines --white.
+     Showing OVER sheet CTAs is prevented by the
+     `:has(.sheet-overlay)` display:none rule below — restoring
+     translucency does not reintroduce that bug. */
+  background: color-mix(in srgb, var(--white) 70%, transparent);
+  -webkit-backdrop-filter: saturate(185%) blur(30px);
+  backdrop-filter: saturate(185%) blur(30px);
 
-  /* Floating pill — full border + drop shadow on all sides. */
-  border: 1px solid var(--border-lt);
+  /* Floating pill — hairline edge + layered drop shadow for lift, plus
+     an inset top sheen that reads as the specular highlight on a pane
+     of glass. (Dark mode supplies its own shadow stack in dark.css.) */
+  border: 1px solid color-mix(in srgb, var(--charcoal) 8%, transparent);
   box-shadow:
-    0 8px 24px -6px rgba(0, 0, 0, 0.18),
-    0 2px 8px -2px rgba(0, 0, 0, 0.08);
+    0 10px 30px -8px rgba(0, 0, 0, 0.20),
+    0 3px 10px -3px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
    browser can't render the blur. The glass effect is enhancement,
@@ -294,27 +303,36 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
    active tab. */
 .bottom-tab-indicator {
   position: absolute;
-  top: 6px;          /* matches .bottom-tabs padding */
-  bottom: 6px;
+  top: 7px;          /* matches .bottom-tabs padding */
+  bottom: 7px;
   /* Each tab slot is (100% - 2*padding) / N wide. Indicator left =
      padding + active-index * slot-width. Use --active-i = 0..N-1
      set by the BottomTabs component. */
-  left: calc(6px + var(--active-i, 0) * (100% - 12px) / var(--tab-count, 4));
-  width: calc((100% - 12px) / var(--tab-count, 4));
+  left: calc(7px + var(--active-i, 0) * (100% - 14px) / var(--tab-count, 4));
+  width: calc((100% - 14px) / var(--tab-count, 4));
   border-radius: 999px;
   /* Token-driven so dark mode renders the indicator at the same
      visual weight (dark.css redefines --teal-pale to a darker tint).
-     The previous hardcoded rgba(91,155,175,...) sat at a fixed
-     opacity that read as too washed-out against the dark frosted
-     pill in dark mode — the "selecting shading is wrong" complaint. */
-  background: var(--teal-pale);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 22%, transparent);
-  /* Spring slide. --dur-slow (400ms) is long enough to read the
-     motion clearly without feeling sluggish; --ease-spring's tiny
-     overshoot is what makes it feel like a "settled" arrival vs
-     "mechanical glide". */
+     A faint top-down gloss + inset hairline + soft teal glow make the
+     capsule itself read as a smaller pane of tinted glass sitting on
+     the bar — the "liquid glass within glass" iOS 26 look. */
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      transparent 55%),
+    var(--teal-pale);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--teal) 24%, transparent),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+    0 2px 8px -2px color-mix(in srgb, var(--teal) 35%, transparent);
+  /* Springy slide. The bouncier --ease-spring overshoot + the slightly
+     longer --dur-slow budget make the capsule feel like it has weight
+     and "settles" into place rather than gliding mechanically. The
+     scaleX squish keyframes (edge classes below) absorb the overshoot
+     at the first/last tab so it never pokes past the pill. */
   transition:
     left var(--dur-slow) var(--ease-spring),
+    width var(--dur-slow) var(--ease-spring),
     background var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out);
   pointer-events: none;
@@ -368,10 +386,8 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 
 .bottom-tab {
   flex: 1; display: flex; flex-direction: column;
-  /* Slightly more breathing room between icon and label at the new
-     52px outer height — the previous 2px gap was a "no choice"
-     value when the pill was 40px tall. */
-  align-items: center; justify-content: center; gap: 4px;
+  /* 5px icon→label gap suits the taller 66px pill. */
+  align-items: center; justify-content: center; gap: 5px;
   background: none; border: none; cursor: pointer; padding: 0;
   color: var(--charcoal-md); font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
@@ -389,45 +405,53 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 }
 .bottom-tab-icon {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 24px; border-radius: var(--radius-pill);
+  width: 46px; height: 26px; border-radius: var(--radius-pill);
   transition: color var(--dur-slow) var(--ease-out);
-  /* Promote to a transform layer so the active-pop animation below
+  /* Promote to a transform layer so the active-hop animation below
      stays on the compositor and doesn't trigger layout/paint each
      frame. */
   will-change: transform;
 }
 .bottom-tab-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.01em;
   line-height: 1;
+  /* Active label scales up a hair, springing in alongside the icon hop. */
+  transition: transform var(--dur-slow) var(--ease-spring);
 }
-.bottom-tab:active { transform: scale(0.94); transition: transform var(--dur-fast) var(--ease-spring-soft); }
+.bottom-tab:active { transform: scale(0.92); transition: transform var(--dur-fast) var(--ease-spring-soft); }
 /* Active tab text + icon: the colored sweep that pairs with the
    sliding indicator behind. Background is OWNED by the sliding
    .bottom-tab-indicator now — don't paint a background here or the
    active state would composite over the indicator. */
 .bottom-tab--active { color: var(--teal-dark); }
+.bottom-tab--active .bottom-tab-label {
+  transform: scale(1.04);
+}
 .bottom-tab--active .bottom-tab-icon {
   color: var(--teal-dark);
-  /* One-shot pop on activation: the icon scales up 12% with a soft
-     spring overshoot, then settles. Reads as a tiny confirmation of
-     "your tap registered, you're here now" — same rhythm Apple uses
-     on the Music tab bar selection. The animation only runs when
-     .bottom-tab--active is freshly applied (CSS animations rerun
-     when the trigger class is added), so it doesn't loop on re-
-     renders that didn't change the active tab. */
-  animation: bottomTabIconPop 480ms var(--ease-spring) both;
+  /* One-shot bouncy hop on activation: the icon springs UP and scales
+     out, dips slightly, then settles — a little more lively and
+     "physical" than a flat scale pop. Reads as a tactile confirmation
+     of "you're here now," the rhythm Apple uses on the Music/Photos
+     tab bars. The animation only runs when .bottom-tab--active is
+     freshly applied (CSS animations rerun when the trigger class is
+     added), so it doesn't loop on re-renders that didn't change the
+     active tab. */
+  animation: bottomTabIconHop 560ms var(--ease-spring) both;
 }
-@keyframes bottomTabIconPop {
-  0%   { transform: scale(1); }
-  45%  { transform: scale(1.18); }
-  100% { transform: scale(1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bottom-tab--active .bottom-tab-icon { animation: none; }
+@keyframes bottomTabIconHop {
+  0%   { transform: translateY(0)    scale(1); }
+  32%  { transform: translateY(-4px) scale(1.22); }
+  62%  { transform: translateY(1px)  scale(0.95); }
+  82%  { transform: translateY(0)    scale(1.04); }
+  100% { transform: translateY(0)    scale(1); }
 }
 
-/* Reduced motion: drop the press scale, keep the color transition. */
 @media (prefers-reduced-motion: reduce) {
+  .bottom-tab--active .bottom-tab-icon { animation: none; }
+  .bottom-tab--active .bottom-tab-label { transform: none; }
+  .bottom-tab-label { transition: none; }
+  /* Reduced motion: drop the press scale, keep the color transition. */
   .bottom-tab, .bottom-tab:active { transform: none; }
 }
 

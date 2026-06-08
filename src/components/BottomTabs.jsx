@@ -84,7 +84,7 @@ export function BottomTabs() {
                 if (!active) haptic.tap();
                 navigate(tab.key);
               }}>
-              <span className="bottom-tab-icon" aria-hidden="true"><tab.Icon size={20} /></span>
+              <span className="bottom-tab-icon" aria-hidden="true"><tab.Icon size={22} /></span>
               <span className="bottom-tab-label">{t(tab.tKey)}</span>
             </button>
           );

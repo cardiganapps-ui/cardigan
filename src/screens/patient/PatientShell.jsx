@@ -195,7 +195,7 @@ export function PatientShell({ user, signOut, data }) {
                 if (!active) { haptic.tap(); setScreen(tab.key); }
               }}
             >
-              <span className="bottom-tab-icon"><Icon size={20} /></span>
+              <span className="bottom-tab-icon"><Icon size={22} /></span>
               <span className="bottom-tab-label">{t(tab.tKey)}</span>
             </button>
           );
