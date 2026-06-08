@@ -17,8 +17,10 @@
   /* Reserve bottom space for the floating Liquid Glass pill so the
      last scrollable row sits just above it (not hidden under it).
      Pill envelope: sab + 8 (bottom offset) + --bottom-tabs-h (height)
-     + 12px buffer so the last row doesn't kiss the pill's top edge. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 20px);
+     = sab + 64. No additional breathing — the pill already has the
+     8px gap above the safe area; another 20px on top of that read
+     as a fat band of dead space at the bottom of every screen. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 8px);
   /* Anchors the absolutely-positioned `::after` rubber-band sentinel
      below. The descendant chain inside `.page` already establishes its
      own positioning context wherever it needs absolute children, so
@@ -233,32 +235,28 @@
   .bottom-tabs { background: var(--white); }
 }
 
-/* CRITICAL: hide the floating tabs while any modal-style overlay
-   is open. The pill is z-index 40 and sheets are z-index 350, so
-   normally sheets render above; but with backdrop-filter on both
-   surfaces, WebKit composites them out of z-index order under
-   certain conditions, leaving the pill visible OVER sheet CTAs
-   ("Activar" on calendar, theme picker rows, "Registrar pago").
-   Worse: the pill's footprint corresponds to the sheet's bottom
-   rows, so users perceive the pill as "blocking" mandatory sheet
-   actions.
+/* CRITICAL: hide the floating tabs while any BOTTOM-SHEET is open.
+   The pill is z-index 40 and sheets are z-index 350, so normally
+   sheets render above; but with backdrop-filter on both surfaces,
+   WebKit composites them out of z-index order under certain
+   conditions, leaving the pill visible OVER sheet CTAs (Activar on
+   calendar, theme picker rows, Registrar pago). The pill's footprint
+   corresponds to the sheet's bottom rows, so users perceive the pill
+   as "blocking" mandatory sheet actions.
 
-   Using :has() rather than a JS-managed `.is-scroll-locked` class
-   on <body> — the previous JS approach stuck the class on after
-   sheet close (race between MutationObserver and React unmount),
-   leaving the tabs permanently hidden on the home screen. :has()
-   is purely declarative against the live DOM; no race possible.
+   Scoped tightly: ONLY .sheet-overlay (bottom sheets). The Drawer's
+   .drawer-overlay is mounted permanently with opacity:0 when closed,
+   so matching it here would hide the tabs on every screen forever —
+   exactly the bug shipped in the prior attempt. The Drawer slides
+   in from the LEFT and doesn't overlap the bottom tabs visually
+   anyway, so no fix needed there. ConfirmDialog is centered and
+   doesn't sit on top of the tabs either.
 
-   :has() ships in iOS Safari 15.4+ (= every device we ship to).
-   The selector matches when a sheet/drawer/confirm-dialog overlay
-   is present and NOT in its exit animation — so the pill comes
-   back the moment the close animation starts, before the sheet
-   actually unmounts. Feels snappier than waiting for unmount. */
-body:has(
-  .sheet-overlay:not(.sheet-overlay--exit),
-  .drawer-overlay:not(.drawer-overlay--exit),
-  .confirm-dialog-overlay
-) .bottom-tabs {
+   Using :has() rather than a JS-managed class on <body> — the prior
+   JS approach stuck the class on after sheet close (race between
+   MutationObserver and React unmount), leaving the tabs hidden on
+   home. :has() is purely declarative against the live DOM; no race. */
+body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
   display: none;
 }
 
