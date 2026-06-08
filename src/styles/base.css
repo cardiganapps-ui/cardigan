@@ -633,13 +633,13 @@ body:has(.mde-attach-lightbox) .bottom-tabs { display: none !important; }
      reaches the home indicator regardless of how the parent's
      height is computed. Same root cause as the .drawer fix above. */
   position: absolute; top: 0; bottom: 0; left: 0;
-  /* Trimmed for iPhone, then nudged back up after 220px felt
-     cramped. 68% / 240px matches the admin drawer and gives the
-     avatar header + "Cerrar sesión" footer button a comfortable
-     resting width without burning half the screen. Persistent-rail
-     desktop widths (240px / 260px) live in responsive.css and stay
-     unchanged. */
-  width: 68%; max-width: 240px;
+  /* 75% of the viewport so the panel fills most of the phone and long
+     items ("Reportar problema", "Acceso gratuito ilimitado") never
+     wrap. The max-width cap is generous (320px) so it only kicks in on
+     the largest phones / small tablets before the ≥768px breakpoint
+     swaps to the persistent rail. Persistent-rail desktop widths
+     (240px / 260px) live in responsive.css and stay unchanged. */
+  width: 75%; max-width: 320px;
   background: var(--nav-bg);
   pointer-events: all;
   display: flex; flex-direction: column;
