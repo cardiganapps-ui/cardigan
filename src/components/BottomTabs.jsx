@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { IconHome, IconCalendar, IconUsers, IconDollar } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
@@ -29,33 +28,6 @@ export function BottomTabs() {
   const activeIndex = TABS.findIndex(tab => tab.key === screen);
   const showIndicator = activeIndex >= 0;
 
-  // Edge bounce — the slider's transition uses --ease-spring (tiny
-  // overshoot for premium feel). On EDGE tabs (first / last), that
-  // overshoot would visibly poke past the container's outer pill
-  // before springing back. Detect edge transitions, swap to a
-  // non-overshoot ease, and run a wall-squish keyframe so the
-  // motion still feels momentumful — it just compresses against
-  // the wall instead of overflowing. Mirrors the SegmentedControl
-  // edge-bounce pattern.
-  const [edgeBounce, setEdgeBounce] = useState(null); // 'left' | 'right' | null
-  const [prevIndex, setPrevIndex] = useState(activeIndex);
-  if (activeIndex !== prevIndex) {
-    setPrevIndex(activeIndex);
-    if (activeIndex === 0) setEdgeBounce("left");
-    else if (activeIndex === TABS.length - 1) setEdgeBounce("right");
-    else setEdgeBounce(null);
-  }
-  useEffect(() => {
-    if (!edgeBounce) return;
-    const id = setTimeout(() => setEdgeBounce(null), 620);
-    return () => clearTimeout(id);
-  }, [edgeBounce]);
-  const indicatorClass = `bottom-tab-indicator${
-    edgeBounce === "left" ? " bottom-tab-indicator--edge-left"
-      : edgeBounce === "right" ? " bottom-tab-indicator--edge-right"
-      : ""
-  }`;
-
   return (
     <>
       <nav
@@ -70,7 +42,7 @@ export function BottomTabs() {
             keeps the slide on the compositor (no per-frame React
             renders) and means the indicator's position survives
             re-renders that don't change the active tab. */}
-        {showIndicator && <span className={indicatorClass} aria-hidden="true" />}
+        {showIndicator && <span className="bottom-tab-indicator" aria-hidden="true" />}
         {TABS.map((tab, i) => {
           const active = screen === tab.key;
           return (

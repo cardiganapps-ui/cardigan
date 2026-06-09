@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
 import { AvatarContent } from "../../components/Avatar";
@@ -39,28 +39,9 @@ export function PatientShell({ user, signOut, data }) {
   const [screen, setScreen] = useState("home");
 
   // Sliding active-tab indicator — parity with the therapist BottomTabs.
-  // --active-i drives the capsule's position; the edge-bounce swap keeps
-  // the spring overshoot from poking past the outer pill at the first/
-  // last tab (both tabs are edges when there are only two).
+  // --active-i drives the capsule's translateX; the pill's overflow:hidden
+  // clips the spring overshoot, so no edge special-casing is needed.
   const activeIndex = TABS.findIndex(tab => tab.key === screen);
-  const [edgeBounce, setEdgeBounce] = useState(null); // 'left' | 'right' | null
-  const [prevIndex, setPrevIndex] = useState(activeIndex);
-  if (activeIndex !== prevIndex) {
-    setPrevIndex(activeIndex);
-    if (activeIndex === 0) setEdgeBounce("left");
-    else if (activeIndex === TABS.length - 1) setEdgeBounce("right");
-    else setEdgeBounce(null);
-  }
-  useEffect(() => {
-    if (!edgeBounce) return;
-    const id = setTimeout(() => setEdgeBounce(null), 620);
-    return () => clearTimeout(id);
-  }, [edgeBounce]);
-  const indicatorClass = `bottom-tab-indicator${
-    edgeBounce === "left" ? " bottom-tab-indicator--edge-left"
-      : edgeBounce === "right" ? " bottom-tab-indicator--edge-right"
-      : ""
-  }`;
 
   // Patient display name — sourced in priority order:
   //   1. The therapist's record of the patient (patients.name) —
@@ -206,7 +187,7 @@ export function PatientShell({ user, signOut, data }) {
         aria-label={t("patientShell.nav")}
         style={{ "--active-i": activeIndex, "--tab-count": TABS.length }}
       >
-        {activeIndex >= 0 && <span className={indicatorClass} aria-hidden="true" />}
+        {activeIndex >= 0 && <span className="bottom-tab-indicator" aria-hidden="true" />}
         {TABS.map(tab => {
           const active = screen === tab.key;
           const Icon = tab.Icon;

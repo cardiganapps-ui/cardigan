@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useT } from "../i18n/index";
+import { AuthSplash } from "./AuthSplash";
 
 /* ── MFA challenge gate ──
    Renders between sign-in and the main app when the active session is
@@ -84,11 +85,12 @@ export default function MfaChallengeGate({ onResolved, onSignOut }) {
   };
 
   if (phase === "loading") {
-    return (
-      <div className="shell" style={{ justifyContent:"center", alignItems:"center" }}>
-        <div style={{ color:"var(--charcoal-md)", fontSize:14 }}>{t("loading")}</div>
-      </div>
-    );
+    // Render the same brand splash the auth/role gates use — NOT a bare
+    // "Cargando" line. The MFA check sits between two AuthSplash frames
+    // during boot; a different layout here flashed for a fraction of a
+    // second on every cold start (and for users with no MFA enrolled,
+    // that's everyone). Reusing AuthSplash keeps the boot continuous.
+    return <AuthSplash />;
   }
   if (phase === "done") return null;
 

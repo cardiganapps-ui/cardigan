@@ -232,9 +232,15 @@
   z-index: 40;
 
   /* Pill shape — fully rounded capsule. 7px inner padding sets the
-     gap between the outer glass edge and the active-tab indicator. */
+     gap between the outer glass edge and the active-tab indicator.
+     overflow:hidden clips the sliding indicator's spring overshoot to
+     the rounded edge so it can bounce on every transition without
+     poking past the capsule. (Doesn't affect the drop shadow — box-
+     shadow paints outside the border box — and the active-icon hop
+     stays well within the inner height.) */
   border-radius: 999px;
   padding: 7px;
+  overflow: hidden;
 
   /* ── Liquid Glass (iOS 26) ──
      Translucent + heavily blurred so the page content desaturates and
@@ -293,23 +299,25 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 }
 
 /* ── Sliding active-tab indicator ──
-   One absolutely-positioned capsule that translates between tab
-   slots via the --active-i CSS variable set on the parent nav.
-   Replaces the previous per-tab background swap (which painted the
-   active state instantly at the new tab with no motion). The
-   transform-via-variable pattern keeps the slide on the compositor
-   layer — no per-frame React re-renders, no layout thrash, and the
-   indicator's position survives re-renders that don't change the
-   active tab. */
+   One absolutely-positioned capsule that slides between tab slots via
+   the --active-i CSS variable set on the parent nav. */
 .bottom-tab-indicator {
   position: absolute;
   top: 7px;          /* matches .bottom-tabs padding */
   bottom: 7px;
-  /* Each tab slot is (100% - 2*padding) / N wide. Indicator left =
-     padding + active-index * slot-width. Use --active-i = 0..N-1
-     set by the BottomTabs component. */
-  left: calc(7px + var(--active-i, 0) * (100% - 14px) / var(--tab-count, 4));
+  left: 7px;
   width: calc((100% - 14px) / var(--tab-count, 4));
+  /* Position via translateX — NOT `left`/`width`. Animating `left`
+     relayouts the element every frame AND forces the pill's
+     backdrop-filter to recomposite the blurred region each tick, which
+     is exactly what made the slide feel juddery. translateX of the
+     indicator's OWN width (= one tab slot) snaps it to the active slot
+     and runs entirely on the compositor — buttery on every device. The
+     parent's `overflow: hidden` clips the spring overshoot to the pill's
+     rounded edge, so the capsule can bounce on EVERY transition (no
+     special-casing the first/last tab) without ever poking out. */
+  transform: translateX(calc(var(--active-i, 0) * 100%));
+  will-change: transform;
   border-radius: 999px;
   /* Token-driven so dark mode renders the indicator at the same
      visual weight (dark.css redefines --teal-pale to a darker tint).
@@ -325,59 +333,19 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
     inset 0 0 0 1px color-mix(in srgb, var(--teal) 24%, transparent),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
     0 2px 8px -2px color-mix(in srgb, var(--teal) 35%, transparent);
-  /* Springy slide. The bouncier --ease-spring overshoot + the slightly
-     longer --dur-slow budget make the capsule feel like it has weight
-     and "settles" into place rather than gliding mechanically. The
-     scaleX squish keyframes (edge classes below) absorb the overshoot
-     at the first/last tab so it never pokes past the pill. */
+  /* Springy slide. --ease-spring's overshoot gives the capsule weight
+     so it "settles" into place rather than gliding mechanically; the
+     overshoot is clipped by the pill, so it reads as a confident bounce
+     against the edge on the outer tabs too. */
   transition:
-    left var(--dur-slow) var(--ease-spring),
-    width var(--dur-slow) var(--ease-spring),
+    transform var(--dur-slow) var(--ease-spring),
     background var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out);
   pointer-events: none;
   z-index: 0;
 }
-/* Edge bounce — when the slider lands on the first or last tab,
-   --ease-spring's overshoot would poke past the outer pill. Swap
-   the transition to a flat ease-out (no overshoot) AND run a
-   scaleX squish keyframe anchored to the hit wall, so the slider
-   still reads as having momentum — it just compresses against
-   the wall instead of overflowing. Mirror of the SegmentedControl
-   edge-bounce above. */
-.bottom-tab-indicator--edge-left,
-.bottom-tab-indicator--edge-right {
-  transition:
-    left var(--dur-slow) var(--ease-out),
-    background var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out);
-}
-.bottom-tab-indicator--edge-left {
-  transform-origin: left center;
-  animation: bottomTabSquishLeft var(--dur-slower) var(--ease-spring-soft) both;
-}
-.bottom-tab-indicator--edge-right {
-  transform-origin: right center;
-  animation: bottomTabSquishRight var(--dur-slower) var(--ease-spring-soft) both;
-}
-@keyframes bottomTabSquishLeft {
-  0%   { transform: scaleX(1); }
-  48%  { transform: scaleX(1); }
-  68%  { transform: scaleX(0.88); }
-  84%  { transform: scaleX(1.03); }
-  100% { transform: scaleX(1); }
-}
-@keyframes bottomTabSquishRight {
-  0%   { transform: scaleX(1); }
-  48%  { transform: scaleX(1); }
-  68%  { transform: scaleX(0.88); }
-  84%  { transform: scaleX(1.03); }
-  100% { transform: scaleX(1); }
-}
 @media (prefers-reduced-motion: reduce) {
   .bottom-tab-indicator { transition: none; }
-  .bottom-tab-indicator--edge-left,
-  .bottom-tab-indicator--edge-right { animation: none; }
 }
 /* The safezone div is no longer needed — the pill is detached from
    the bottom edge by design, so there's nothing to "fill". Keep the
