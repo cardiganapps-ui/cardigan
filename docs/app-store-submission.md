@@ -1,0 +1,142 @@
+# Cardigan — App Store Submission Kit
+
+Practical, copy-paste-ready material for submitting the iOS app for public
+App Store review. Derived from the actual codebase (privacy policy,
+auth/subscription gating, analytics, encryption). Keep this in sync when
+those change.
+
+> Status of the big blockers (already handled in code — do not "fix"):
+> - **In-App Purchase (3.1.1 / 3.1.3a):** Stripe is gated OFF iOS. `ProUpgradeSheet`
+>   shows no pricing, no subscribe button, no external link on native iOS
+>   (reader-app pattern). ✅
+> - **Sign in with Apple (4.8):** implemented for native iOS (`useAuth.js`). ✅
+> - **Account deletion (5.1.1 v):** Ajustes → Zona peligrosa → Eliminar mi cuenta. ✅
+> - **Permission usage strings:** camera + photo library set in Info.plist. ✅
+> - **Admin** is web-only on native; **encryption export flag** is set. ✅
+
+---
+
+## 1. App Review Information (paste into App Store Connect → "Notes")
+
+```
+Cardigan is a practice-management tool for independent health & education
+professionals (psychologists, nutritionists, tutors, music teachers, personal
+trainers) to manage their own patients/clients, sessions, payments, notes and
+documents. All UI text is Spanish (es-MX).
+
+HOW TO REVIEW WITHOUT AN ACCOUNT
+On the login screen, tap "Ver demo" to enter a fully-populated read-only demo
+with sample data — no sign-up required. This is the fastest way to see every
+screen (Inicio, Agenda, Pacientes, Finanzas, notes, documents).
+
+TEST ACCOUNT (full read/write)
+  Email:    <REVIEWER TEST EMAIL — create a dedicated reviewer account>
+  Password: <REVIEWER TEST PASSWORD>
+This account is on an active trial/comp so all features are available.
+
+SIGN IN WITH APPLE
+Sign in with Apple is supported on the login screen and completes natively.
+
+SUBSCRIPTION MODEL (why there is no in-app purchase)
+Cardigan is a multiplatform business service. The optional "Cardigan Pro"
+subscription is sold and managed only on our website (cardigan.mx) and via
+other platforms — it is NOT offered, priced, or linked inside the iOS app, in
+line with App Store Review Guideline 3.1.3(a). The iOS app shows an
+informational line only; there is no purchase UI to review. Existing
+subscribers simply sign in and their account already has access.
+
+PUSH NOTIFICATIONS
+Used only for optional session reminders, requested with context (after the
+user opts in), never required to use the app.
+
+CONTACT
+privacy@cardigan.mx
+```
+
+> ⚠️ Replace the test-account placeholders before submitting — Apple rejects
+> submissions where the provided credentials don't work. Even though demo mode
+> exists, supply a real account too (some reviewers won't find the demo button).
+
+---
+
+## 2. Privacy "Nutrition Labels" (App Store Connect → App Privacy)
+
+Cardigan **does collect** data and most of it **is linked to the user's
+identity**. **Nothing is "Used to Track You"** — there is no advertising SDK,
+no IDFA, no data brokers, and analytics is first-party (Vercel) with a PII
+denylist. Answer Apple's "Used to track you?" = **No** for every type.
+
+| Apple data type | Collected? | Linked to user? | Used for tracking? | Source in app |
+|---|---|---|---|---|
+| **Contact Info — Name** | Yes | Yes | No | Account holder name; patient/client/tutor names entered by the user |
+| **Contact Info — Email** | Yes | Yes | No | Account email; payer email via Stripe checkout |
+| **Contact Info — Phone** | Yes | Yes | No | Patient/tutor phone numbers entered by the user |
+| **Health & Fitness — Health** | Yes | Yes | No | Clinical notes, body measurements, dietary/medical history (psychology/nutrition/training) |
+| **Financial Info — Payment Info** | Yes | Yes | No | Card data collected **by Stripe's SDK** (never touches Cardigan servers) |
+| **Financial Info — Other** | Yes | Yes | No | Session rates, payment amounts/methods, balances, business expenses |
+| **User Content — Photos/Videos** | Yes | Yes | No | Avatar photos, receipt images, uploaded document images |
+| **User Content — Other** | Yes | Yes | No | Professional notes, uploaded PDFs/documents, patient records |
+| **Identifiers — User ID** | Yes | Yes | No | Account user_id (also stamped on analytics events) |
+| **Identifiers — Device ID** | Yes | Yes | No | Web-push subscription token (only if reminders enabled) |
+| **Usage Data — Product Interaction** | Yes | Yes | No | Vercel Analytics conversion events (trial/checkout/etc.), PII-scrubbed |
+| **Diagnostics — Crash Data** | Yes | No* | No | Sentry — PII fields scrubbed before leaving the device |
+| **Diagnostics — Performance Data** | Yes | No* | No | Sentry |
+
+\* Sentry events are scrubbed of PII via a denylist; mark "Not Linked" unless
+you intentionally attach user identity in Sentry (verify current Sentry config).
+
+**Not collected:** precise location, biometrics, browsing history, contacts,
+search history, sensitive demographic data, advertising data.
+
+> Third-party processors (for your records / privacy review, not the labels):
+> Supabase (DB/auth), Cloudflare R2 (documents), Vercel (hosting + analytics),
+> Resend (transactional email), Sentry (diagnostics), Stripe (payments),
+> Anthropic (the optional "Cardi" assistant + receipt OCR — Pro only),
+> Apple/Google (push delivery). All enumerated in `src/data/privacy.js` §6.
+
+---
+
+## 3. Export Compliance (encryption)
+
+`scripts/apply-ios-config.sh` sets `ITSAppUsesNonExemptEncryption = false`, so
+each build skips the export-docs upload. Assessment of whether that's correct:
+
+- **Transport:** HTTPS/TLS only — exempt.
+- **At rest (opt-in note encryption):** implemented with **standard WebCrypto
+  algorithms only** — AES-256-GCM, PBKDF2-SHA256, RSA-OAEP-2048
+  (`src/lib/cryptoNotes.js`). No proprietary crypto.
+
+Because the app's encryption is limited to **standard algorithms used to
+protect user data**, the `= NO` answer is the commonly-accepted classification
+and is defensible. Caveat: apps that *implement* encryption (even standard) can
+still fall under U.S. self-classification (ECCN 5D992) and may owe an annual
+self-classification report to BIS and a French encryption declaration. This is
+a legal/compliance question, not an Apple-review blocker — flag it to counsel,
+but keep `= NO` for the App Store answer.
+
+---
+
+## 4. Remaining App-Store-Connect tasks (not code — you, with my help)
+
+- [ ] **Privacy policy URL** — must be public + reachable. Confirm
+      `https://cardigan.mx` exposes the policy at a stable URL for the metadata field.
+- [ ] **App Privacy** answers — transcribe the table in §2.
+- [ ] **Reviewer notes + working test account** — §1 (replace placeholders).
+- [ ] **Screenshots** (required sizes), description, keywords, support URL,
+      marketing URL, **age rating** questionnaire.
+- [ ] **Category** — Medical or Business (Business is the safer fit; it's a
+      practice-management tool, not a medical device — avoids stricter Medical review).
+- [ ] **Device family decision** — currently ships universal (iPhone+iPad). Either
+      confirm the responsive layout holds on iPad or set iPhone-only (see "iPad
+      readiness" task) to avoid iPad-UI rejections.
+- [ ] **Legal review** — LFPDPPP counsel pass (esp. nutrition/trainer health data
+      per the TODO in `privacy.js`) before public marketing.
+
+---
+
+## 5. Things still worth doing in code before submit (optional polish)
+
+- Accessibility pass (VoiceOver/aria-labels on icon buttons).
+- Native bug sweep (Apple-sign-in end-to-end, offline/error states, push prompt
+  timing) — in progress.
+- Offline/airplane-mode behavior (reviewers test this).
