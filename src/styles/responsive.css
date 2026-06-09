@@ -141,9 +141,14 @@
   }
   .sheet-handle { display: none; }
 
-  /* KPI grid: 4 columns on desktop, highlight card spans 2 */
-  .kpi-grid-desktop { grid-template-columns: repeat(4, 1fr) !important; }
-  .kpi-card--highlight { grid-column: span 2 !important; }
+  /* KPI grid: stays 2-up on the narrow tablet tier (768-1023, where the
+     240px sidebar leaves only ~528-580px of content) so large currency
+     values ("$104,850") never overflow + clip inside a too-narrow card.
+     Goes 4-up only at >=1024 where each card has room. */
+  @media (min-width: 1024px) {
+    .kpi-grid-desktop { grid-template-columns: repeat(4, 1fr) !important; }
+    .kpi-card--highlight { grid-column: span 2 !important; }
+  }
 
   /* Desktop topbar: light, warm */
   .topbar {
