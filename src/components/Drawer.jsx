@@ -160,33 +160,49 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     setDragOffset(0);
   }, []);
 
-  // Calculate panel position
+  // Calculate panel position.
+  //
+  // The CLOSED + animating-closed states translate by a PERCENTAGE
+  // (translateX(-101%), relative to the panel's OWN width) rather than a
+  // pixel value. A px translate has to equal the rendered panel width to
+  // fully clear it off-screen — but that width is hard to know from JS:
+  // the panel is `width:75%; max-width:320px`, and the native shell wraps
+  // everything in `html.cap-native { zoom: 0.80 }`, so window.innerWidth
+  // (device px, unzoomed) and the CSS/transform coordinate space (zoomed)
+  // disagree. That mismatch under-translated the panel and left a sliver
+  // on the edge in the native app. A percentage is coordinate-system
+  // independent: -101% is always fully off-screen. Live drag / swipe keep
+  // px since they track the finger; getPanelWidth() drives their ratios.
   const PANEL_WIDTH = getPanelWidth();
-  let translateX, overlayOpacity, transition, visible;
+  let transformCss, overlayOpacity, transition, visible;
+  const CLOSE_SPRING = `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)`;
 
   if (dragging) {
     // Dragging to close — follow finger
-    translateX = dragOffset;
+    transformCss = `translateX(${dragOffset}px)`;
     overlayOpacity = Math.max(0, 1 + dragOffset / PANEL_WIDTH);
     transition = "none";
     visible = true;
   } else if (open) {
-    // Fully open or animating closed
-    translateX = dragOffset; // 0 when static, -PANEL_WIDTH when animating close
+    // Fully open (dragOffset 0) or animating closed after a release
+    // (dragOffset !== 0) — the latter goes fully off-screen via % so it
+    // lands flush, then the parent flips `open` false into the closed
+    // branch below (same -101%), with no end-of-animation jump.
+    transformCss = dragOffset === 0 ? "translateX(0)" : "translateX(-101%)";
     overlayOpacity = dragOffset === 0 ? 1 : 0;
-    transition = `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+    transition = CLOSE_SPRING;
     visible = true;
   } else if (swipeProgress > 0) {
     // Edge swipe opening — follow finger
-    translateX = Math.min(swipeProgress, PANEL_WIDTH) - PANEL_WIDTH;
+    transformCss = `translateX(${Math.min(swipeProgress, PANEL_WIDTH) - PANEL_WIDTH}px)`;
     overlayOpacity = Math.min(swipeProgress / PANEL_WIDTH, 1);
     transition = "none";
     visible = true;
   } else {
-    // Fully closed
-    translateX = -PANEL_WIDTH;
+    // Fully closed — % keeps it off-screen regardless of zoom / max-width.
+    transformCss = "translateX(-101%)";
     overlayOpacity = 0;
-    transition = `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+    transition = CLOSE_SPRING;
     visible = false;
   }
 
@@ -229,7 +245,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
         onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove}
         onTouchEnd={onPanelTouchEnd} onTouchCancel={onPanelTouchCancel}>
         <div className={`drawer-panel${visible ? " drawer-panel--visible" : ""}`} onClick={e => e.stopPropagation()}
-          style={{ transform: `translateX(${translateX}px)`, transition }}>
+          style={{ transform: transformCss, transition }}>
           <div className="drawer-header">
             <div className="drawer-logo"><LogoIcon size={24} color="var(--teal-light)" /><span>cardigan</span></div>
             <div className="drawer-user" role="button" tabIndex={0}
