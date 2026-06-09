@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps",
+    "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps && node scripts/gen-privacy-page.mjs",
     "build": "rm -rf node_modules/.vite dist && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

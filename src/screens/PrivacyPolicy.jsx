@@ -1,8 +1,10 @@
 import { POLICY_SECTIONS, POLICY_PUBLISHED, POLICY_VERSION } from "../data/privacy";
 import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
 
 export function PrivacyPolicy() {
   const { navigate } = useCardigan();
+  const { t } = useT();
   return (
     <div className="page">
       <div className="section" style={{ paddingTop: 16 }}>
@@ -25,14 +27,14 @@ export function PrivacyPolicy() {
         {POLICY_SECTIONS.map((s) => (
           <section key={s.title} style={{ marginBottom: 24 }}>
             <h2 style={{ fontFamily: "var(--font-d)", fontSize: "var(--text-base)", fontWeight: 800, color: "var(--charcoal)", marginBottom: 6 }}>
-              {s.title}
+              {t(s.title)}
             </h2>
             {s.body.split("\n\n").map((para, i) => (
               <p
                 key={i}
                 style={{ fontSize: "var(--text-sm)", color: "var(--charcoal-md)", lineHeight: 1.6, margin: i === 0 ? 0 : "10px 0 0" }}
               >
-                {para}
+                {t(para)}
               </p>
             ))}
           </section>
