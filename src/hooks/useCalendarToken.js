@@ -97,6 +97,24 @@ export function refreshCalendarToken() {
   return fetchToken();
 }
 
+/* ── Calendar-prompt dismissal (shared) ──────────────────────────────────
+   The "link your calendar" nudge surfaces in two places — the Home
+   discovery card (CalendarLinkPromptCard) and the slim Agenda CTA pill.
+   They share ONE userId-scoped localStorage flag so dismissing it in
+   either place hides it everywhere (it's the same nudge). */
+const calendarPromptDismissKey = (userId) =>
+  `cardigan.calendarPrompt.dismissed.${userId || "anon"}`;
+
+export function isCalendarPromptDismissed(userId) {
+  try { return localStorage.getItem(calendarPromptDismissKey(userId)) === "1"; }
+  catch { return false; }
+}
+
+export function dismissCalendarPrompt(userId) {
+  try { localStorage.setItem(calendarPromptDismissKey(userId), "1"); }
+  catch { /* private mode / quota — non-fatal */ }
+}
+
 export function useCalendarToken() {
   const [state, setState] = useState(cache);
   useEffect(() => {

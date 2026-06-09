@@ -5,7 +5,7 @@ import { SessionSheet } from "../components/SessionSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { CalendarLinkSheet } from "../components/sheets/CalendarLinkSheet";
-import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconChevron, IconPlus } from "../components/Icons";
+import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconPlus } from "../components/Icons";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
 import { BulkActionsBar } from "../components/BulkActionsBar";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -17,7 +17,7 @@ import { SwipeRevealRow } from "../components/SwipeRevealRow";
 import { Avatar } from "../components/Avatar";
 import { useSwipe } from "../hooks/useSwipe";
 import { useViewport } from "../hooks/useViewport";
-import { useCalendarToken } from "../hooks/useCalendarToken";
+import { useCalendarToken, isCalendarPromptDismissed, dismissCalendarPrompt } from "../hooks/useCalendarToken";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { Toggle } from "../components/Toggle";
@@ -1091,7 +1091,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction } = useCardigan();
+  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, user } = useCardigan();
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -1172,7 +1172,11 @@ export function Agenda() {
   // too — flashing it in for one frame before hiding it again would
   // be more disruptive than waiting a beat.
   const calendarFeed = useCalendarToken();
-  const showCalendarCTA = !readOnly && calendarFeed.loaded && !calendarFeed.hasToken;
+  // Dismissible: the user can hide the sync nudge. Shares the same flag as
+  // the Home discovery card, so dismissing it in either place hides it
+  // everywhere (it's the same nudge).
+  const [calendarCtaDismissed, setCalendarCtaDismissed] = useState(() => isCalendarPromptDismissed(user?.id));
+  const showCalendarCTA = !readOnly && calendarFeed.loaded && !calendarFeed.hasToken && !calendarCtaDismissed;
 
   // "Ahora" tick — re-render every minute so the now-line stays current
   const [now, setNow] = useState(() => new Date());
@@ -1298,16 +1302,25 @@ export function Agenda() {
       <div style={{ paddingTop:16 }}>
         {showCalendarCTA && (
           <div style={{ padding:"0 16px 12px" }}>
-            <button
-              type="button"
-              className="agenda-calendar-link"
-              onClick={() => setCalendarSheetOpen(true)}
-              aria-label={t("agenda.calendarSyncCTA")}
-            >
-              <span className="agenda-calendar-link-icon"><IconCalendar size={16} /></span>
-              <span className="agenda-calendar-link-label">{t("agenda.calendarSyncCTA")}</span>
-              <IconChevron />
-            </button>
+            <div className="agenda-calendar-link">
+              <button
+                type="button"
+                className="agenda-calendar-link-main"
+                onClick={() => setCalendarSheetOpen(true)}
+                aria-label={t("agenda.calendarSyncCTA")}
+              >
+                <span className="agenda-calendar-link-icon"><IconCalendar size={16} /></span>
+                <span className="agenda-calendar-link-label">{t("agenda.calendarSyncCTA")}</span>
+              </button>
+              <button
+                type="button"
+                className="agenda-calendar-link-dismiss"
+                onClick={() => { dismissCalendarPrompt(user?.id); setCalendarCtaDismissed(true); }}
+                aria-label={t("agenda.calendarSyncDismiss")}
+              >
+                <IconX size={16} />
+              </button>
+            </div>
           </div>
         )}
         <div style={{ padding:"0 16px 14px" }}>

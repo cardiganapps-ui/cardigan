@@ -348,6 +348,7 @@ export default {
     emptyHint: "Agenda tu primera {session.s} para verla aquí.",
     emptyHintNoPatients: "Agrega tu primer {client.s} para empezar a usar la agenda.",
     calendarSyncCTA: "Sincroniza con Apple o Google Calendar",
+    calendarSyncDismiss: "Ocultar",
     bulkSelectCta: "Seleccionar varias",
     bulkBarAriaLabel: "Acciones masivas",
     bulkBarHint: "Toca {session.p} para seleccionarlas",

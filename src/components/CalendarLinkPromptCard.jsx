@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import { IconCalendar, IconX } from "./Icons";
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
-import { useCalendarToken, setCalendarToken } from "../hooks/useCalendarToken";
+import { useCalendarToken, setCalendarToken, isCalendarPromptDismissed, dismissCalendarPrompt } from "../hooks/useCalendarToken";
 import { track } from "../lib/analytics";
 
 /* ── CalendarLinkPromptCard ──────────────────────────────────────────
@@ -26,22 +26,12 @@ import { track } from "../lib/analytics";
      - dismissed via the userId-scoped localStorage flag
      - user has zero patients AND zero sessions (parent gates this) */
 
-function dismissKey(userId) {
-  return `cardigan.calendarPrompt.dismissed.${userId || "anon"}`;
-}
-function isDismissed(userId) {
-  try { return localStorage.getItem(dismissKey(userId)) === "1"; }
-  catch { return false; }
-}
-function markDismissed(userId) {
-  try { localStorage.setItem(dismissKey(userId), "1"); } catch { /* ignore */ }
-}
 
 export function CalendarLinkPromptCard() {
   const { t } = useT();
   const { showToast, readOnly, user } = useCardigan();
   const { hasToken, url, loaded } = useCalendarToken();
-  const [hidden, setHidden] = useState(() => isDismissed(user?.id));
+  const [hidden, setHidden] = useState(() => isCalendarPromptDismissed(user?.id));
   const [busy, setBusy] = useState(false);
   // Synchronous guard against rapid double-clicks. React state lags
   // a render cycle behind, so the closure that fires from a quick
@@ -112,7 +102,7 @@ export function CalendarLinkPromptCard() {
   };
 
   const handleDismiss = () => {
-    markDismissed(user?.id);
+    dismissCalendarPrompt(user?.id);
     setHidden(true);
     track("calendar_prompt_dismissed");
   };
