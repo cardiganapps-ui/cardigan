@@ -257,17 +257,39 @@
      `:has(.sheet-overlay)` display:none rule below — restoring
      translucency does not reintroduce that bug. */
   background: color-mix(in srgb, var(--white) 55%, transparent);
-  -webkit-backdrop-filter: saturate(200%) blur(36px);
-  backdrop-filter: saturate(200%) blur(36px);
+  -webkit-backdrop-filter: saturate(200%) brightness(1.06) blur(36px);
+  backdrop-filter: saturate(200%) brightness(1.06) blur(36px);
 
-  /* Floating pill — hairline edge + layered drop shadow for lift, plus
-     an inset top sheen that reads as the specular highlight on a pane
-     of glass. (Dark mode supplies its own shadow stack in dark.css.) */
+  /* Floating pill — hairline edge + layered drop shadow for lift, an
+     inset top sheen (specular highlight) PLUS a faint full inner ring
+     that reads as the light refracting at the glass's edge. (Dark mode
+     supplies its own shadow stack in dark.css.) */
   border: 1px solid color-mix(in srgb, var(--charcoal) 8%, transparent);
   box-shadow:
     0 10px 30px -8px rgba(0, 0, 0, 0.20),
     0 3px 10px -3px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+}
+/* Static specular reflection — a diagonal gloss across the top-left of
+   the pill, like light catching a pane of glass. Deliberately STATIC:
+   an infinite shimmer would repaint over the backdrop-filter every
+   frame (battery + jank) and read as gimmicky; the authentic "moving"
+   highlight would be gyroscope-driven, a later add. Clipped to the pill
+   by the parent's overflow:hidden, and painted UNDER the tabs +
+   indicator (z-index 0, first in DOM order) so it never washes the
+   active capsule or the labels. */
+.bottom-tabs::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(150deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0.05) 18%,
+    transparent 42%);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
    browser can't render the blur. The glass effect is enhancement,
