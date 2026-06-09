@@ -31,47 +31,72 @@ import { useSheetExit } from "../hooks/useSheetExit";
 
 const PAYMENT_ELEMENT_NODE_ID = "cardigan-payment-element";
 
-// Cardigan-themed Stripe Elements appearance. The PaymentElement
-// inherits these tokens so the card field, postal-code dropdown, and
-// any wallet pills blend with the rest of the sheet rather than
-// landing as a generic Stripe widget.
-const elementsAppearance = {
-  theme: "stripe",
-  variables: {
-    colorPrimary: "#5B9BAF",
-    colorText: "#2E2E2E",
-    colorTextSecondary: "#555",
-    colorBackground: "#FFFFFF",
-    colorDanger: "#D96B6B",
-    fontFamily: "var(--font, system-ui, -apple-system, sans-serif)",
-    fontSizeBase: "15px",
-    spacingUnit: "4px",
-    borderRadius: "12px",
-  },
-  rules: {
-    ".Input": {
-      border: "1px solid #E3DBD1",
-      boxShadow: "none",
+// Cardigan-themed Stripe Elements appearance. Built per mount so it can
+// track the active light/dark theme — the PaymentElement renders inside
+// a cross-origin iframe and CANNOT read our CSS variables, so the colors
+// have to be passed in explicitly. Without the dark branch, dark mode
+// rendered the card field as dark-charcoal text + light-tan borders on a
+// white box, sitting inside the dark sheet panel — invisible labels and
+// a jarring white block.
+function isDarkTheme() {
+  const t = document.documentElement.getAttribute("data-theme");
+  if (t === "dark") return true;
+  if (t === "light") return false;
+  return (typeof window !== "undefined"
+    && window.matchMedia?.("(prefers-color-scheme: dark)").matches) || false;
+}
+
+const TEAL = "#5B9BAF";
+
+function buildElementsAppearance(isDark) {
+  if (isDark) {
+    const border = "rgba(255,255,255,0.14)";
+    return {
+      // Stripe's built-in dark base; our variables/rules layer Cardigan
+      // teal + the dark sheet's surface colors on top.
+      theme: "night",
+      variables: {
+        colorPrimary: TEAL,
+        colorText: "rgba(255,255,255,0.92)",
+        colorTextSecondary: "rgba(255,255,255,0.6)",
+        colorBackground: "#242426",
+        colorDanger: "#E08A8A",
+        fontFamily: "var(--font, system-ui, -apple-system, sans-serif)",
+        fontSizeBase: "15px",
+        spacingUnit: "4px",
+        borderRadius: "12px",
+      },
+      rules: {
+        ".Input": { border: `1px solid ${border}`, boxShadow: "none" },
+        ".Input:focus": { borderColor: TEAL, boxShadow: "0 0 0 3px rgba(91,155,175,0.25)" },
+        ".Label": { fontWeight: "600", fontSize: "13px", color: "rgba(255,255,255,0.6)" },
+        ".Tab": { border: `1px solid ${border}`, boxShadow: "none" },
+        ".Tab--selected": { borderColor: TEAL, boxShadow: "none" },
+      },
+    };
+  }
+  return {
+    theme: "stripe",
+    variables: {
+      colorPrimary: TEAL,
+      colorText: "#2E2E2E",
+      colorTextSecondary: "#555",
+      colorBackground: "#FFFFFF",
+      colorDanger: "#D96B6B",
+      fontFamily: "var(--font, system-ui, -apple-system, sans-serif)",
+      fontSizeBase: "15px",
+      spacingUnit: "4px",
+      borderRadius: "12px",
     },
-    ".Input:focus": {
-      borderColor: "#5B9BAF",
-      boxShadow: "0 0 0 3px rgba(91,155,175,0.13)",
+    rules: {
+      ".Input": { border: "1px solid #E3DBD1", boxShadow: "none" },
+      ".Input:focus": { borderColor: TEAL, boxShadow: "0 0 0 3px rgba(91,155,175,0.13)" },
+      ".Label": { fontWeight: "600", fontSize: "13px", color: "#555" },
+      ".Tab": { border: "1px solid #E3DBD1", boxShadow: "none" },
+      ".Tab--selected": { borderColor: TEAL, boxShadow: "none" },
     },
-    ".Label": {
-      fontWeight: "600",
-      fontSize: "13px",
-      color: "#555",
-    },
-    ".Tab": {
-      border: "1px solid #E3DBD1",
-      boxShadow: "none",
-    },
-    ".Tab--selected": {
-      borderColor: "#5B9BAF",
-      boxShadow: "none",
-    },
-  },
-};
+  };
+}
 
 // Pricing constants kept in sync with the Stripe Prices behind
 // STRIPE_PRICE_ID and STRIPE_PRICE_ID_ANNUAL. If we ever change the
@@ -144,7 +169,7 @@ export default function StripePaymentSheet({
 
         const elements = stripe.elements({
           clientSecret: subResp.client_secret,
-          appearance: elementsAppearance,
+          appearance: buildElementsAppearance(isDarkTheme()),
           locale: "es",
         });
         elementsRef.current = elements;
