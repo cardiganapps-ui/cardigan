@@ -19,7 +19,15 @@ const NAV_ICONS = {
   sparkle: IconSparkle,
 };
 
-const PANEL_WIDTH = 300;
+// The panel's rendered width MUST mirror the CSS (`.drawer-panel`:
+// width: 75%; max-width: 320px). The closed state translates the panel
+// fully off-screen by exactly this width, and the drag/overlay math is
+// expressed as ratios of it — so a hardcoded value that's smaller than
+// the actual panel leaves a sliver poking out on wide phones (where the
+// 320px cap applies). Compute it at call time so it tracks the viewport
+// and rotation.
+const getPanelWidth = () =>
+  Math.min((typeof window !== "undefined" ? window.innerWidth : 360) * 0.75, 320);
 const OPEN_THRESHOLD = 100;
 const CLOSE_THRESHOLD = 80;
 const VELOCITY_THRESHOLD = 0.3;
@@ -130,7 +138,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
 
     // Close if dragged far enough left or fast enough leftward
     if (dx < -CLOSE_THRESHOLD || (dx < -10 && velocity > VELOCITY_THRESHOLD)) {
-      setDragOffset(-PANEL_WIDTH);
+      setDragOffset(-getPanelWidth());
       // Cancel any prior close timer (rapid swipe-then-swipe should
       // not stack two timers either) before queueing the close.
       cancelCloseTimer();
@@ -153,6 +161,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   }, []);
 
   // Calculate panel position
+  const PANEL_WIDTH = getPanelWidth();
   let translateX, overlayOpacity, transition, visible;
 
   if (dragging) {

@@ -50,13 +50,11 @@ const paymentModalImport = () => import("./components/PaymentModal");
 const expenseSheetImport = () => import("./components/sheets/ExpenseSheet");
 const recurringExpenseSheetImport = () => import("./components/sheets/RecurringExpenseSheet");
 const commandPaletteImport = () => import("./components/CommandPalette");
-const installPromptImport = () => import("./components/InstallPrompt");
 const Drawer = lazy(() => drawerImport().then(m => ({ default: m.Drawer })));
 const PaymentModal = lazy(() => paymentModalImport().then(m => ({ default: m.PaymentModal })));
 const ExpenseSheet = lazy(() => expenseSheetImport().then(m => ({ default: m.ExpenseSheet })));
 const RecurringExpenseSheet = lazy(() => recurringExpenseSheetImport().then(m => ({ default: m.RecurringExpenseSheet })));
 const CommandPalette = lazy(commandPaletteImport);
-const InstallPrompt = lazy(() => installPromptImport().then(m => ({ default: m.InstallPrompt })));
 import { QuickActions } from "./components/QuickActions";
 import TopbarActions from "./components/TopbarActions";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -2029,11 +2027,12 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       <div className="main-content" id="main-content" tabIndex={-1}>
         <div className="status-bar" />
 
-        {/* iOS Safari-only install nudge. Hidden in PWA mode, demo mode,
-            and readonly mode. Dismissed state persists in localStorage. */}
-        {!demo && !readOnly && (
-          <Suspense fallback={null}><InstallPrompt /></Suspense>
-        )}
+        {/* The old "Instala Cardigan" home-screen install nudge was
+            removed once the native iOS/Android app shipped — iOS Safari
+            now shows its own Smart App Banner ("Open in the Cardigan
+            app"), so a second PWA-install prompt was redundant and
+            confusing. (Component kept in the tree as InstallPrompt.jsx
+            in case we ever want a non-iOS install nudge.) */}
 
         {/* Demo banner */}
         {demo && (
