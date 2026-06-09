@@ -6,6 +6,7 @@
    handler. */
 
 import * as Sentry from "@sentry/node";
+import { applyCors } from "./_cors.js";
 
 const PII_FIELDS = new Set([
   "patient",
@@ -54,6 +55,15 @@ const EXPECTED_STATUSES = new Set([400, 401, 403, 404, 405, 409, 413, 429]);
 
 export function withSentry(handler, { name } = {}) {
   return async function wrapped(req, res) {
+    // CORS first: the native app calls /api/* cross-origin
+    // (capacitor://localhost → cardigan.mx). Set the headers on every
+    // response and short-circuit the preflight OPTIONS with a 204 — the
+    // handler's own auth check still gates the real request. Without this
+    // the preflight 401s and native calendar/push/Stripe calls never fire.
+    if (applyCors(req, res)) {
+      res.status(204).end();
+      return;
+    }
     ensureInit();
     const dsn = process.env.SENTRY_DSN;
     if (!dsn) return handler(req, res);
