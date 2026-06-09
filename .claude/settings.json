@@ -8,6 +8,11 @@
             "type": "command",
             "command": "git -C /home/user/cardigan fetch origin main --quiet >/dev/null 2>&1 && git -C /home/user/cardigan branch -f main origin/main >/dev/null 2>&1 || true",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "[ -n \"$GITHUB_TOKEN\" ] && ! grep -q '^GITHUB_TOKEN=' /home/user/cardigan/.env.local 2>/dev/null && echo \"GITHUB_TOKEN=$GITHUB_TOKEN\" >> /home/user/cardigan/.env.local || true",
+            "timeout": 10
           }
         ]
       }
