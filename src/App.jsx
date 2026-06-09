@@ -602,12 +602,15 @@ function LoadingSkeleton({ screen = "home" }) {
               {Array.from({ length: 3 }).map((_, i) => skeletonRow(i))}
             </div>
           </div>
-          {/* iPad landscape / desktop: today + tomorrow side-by-side */}
-          <div className="home-two-panel-desktop">
+          {/* Tablet/desktop: Hoy + Mañana stacked section cards */}
+          <div className="home-schedule-desktop">
             {Array.from({ length: 2 }).map((_, p) => (
-              <div key={p}>
-                <div className="home-panel-meta">
-                  <div className="sk-bar sk-bar-xs" style={{ width:"40%" }} />
+              <div key={p} className="section">
+                <div className="section-header">
+                  <div className="section-headline">
+                    <div className="sk-bar sk-bar-sm" style={{ width:80, marginBottom:5 }} />
+                    <div className="sk-bar sk-bar-xs" style={{ width:64 }} />
+                  </div>
                 </div>
                 <div className="card">
                   {Array.from({ length: 3 }).map((_, i) => skeletonRow(i))}
@@ -618,7 +621,7 @@ function LoadingSkeleton({ screen = "home" }) {
         </div>
         <div className="home-col-side">
           {Array.from({ length: 2 }).map((_, s) => (
-            <div key={s} className="section" style={{ padding:"16px 16px 0" }}>
+            <div key={s} className="section">
               <div className="section-header">
                 <div className="sk-bar sk-bar-sm" style={{ width:"40%" }} />
               </div>

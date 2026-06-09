@@ -543,11 +543,18 @@ export function Home({ setScreen, userName }) {
         </div>
         </div>
 
-        {/* Desktop (≥1024px): side-by-side static panels, no carousel */}
-        <div className="home-two-panel-desktop" style={{ position:"relative" }}>
-          <button className="see-all home-two-panel-see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
-          <div>
-            <div className="home-panel-meta">{t("sessions.today")} · {todayDayName} {todayStr}</div>
+        {/* Tablet/desktop (≥768px): Today + Tomorrow as stacked, unified
+            section cards — identical treatment to the rail sections below.
+            Replaces the old two-panel grid + absolute "see-all" link. */}
+        <div className="home-schedule-desktop">
+          <div className="section">
+            <div className="section-header">
+              <div className="section-headline">
+                <span className="section-title">{t("sessions.today")}</span>
+                <span className="section-sub">{todayDayName} {todayStr}</span>
+              </div>
+              <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+            </div>
             <div className="card">
               {todaySessions.length === 0
                 ? <FreeDayEmptyState t={t} />
@@ -555,8 +562,14 @@ export function Home({ setScreen, userName }) {
               }
             </div>
           </div>
-          <div>
-            <div className="home-panel-meta">{nextDayLabel === nextDayName ? <>{nextDayName} {nextDayStr}</> : <>{nextDayLabel} · {nextDayName} {nextDayStr}</>}</div>
+          <div className="section">
+            <div className="section-header">
+              <div className="section-headline">
+                <span className="section-title">{nextDayLabel}</span>
+                <span className="section-sub">{nextDayName} {nextDayStr}</span>
+              </div>
+              <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+            </div>
             <div className="card">
               {nextDaySessions.length === 0
                 ? <FreeDayEmptyState t={t} />
@@ -592,7 +605,7 @@ export function Home({ setScreen, userName }) {
 
       {/* Tutor reminders — only shown when at least one minor has tutor_frequency set */}
       {patients.some(p => p.tutor_frequency) && (
-      <div className="section" style={{ paddingTop:20, paddingBottom:0 }}>
+      <div className="section">
         <div className="section-header">
           <span className="section-title">{t("home.tutorReminders")}</span>
           {tutorReminders.length > 3 && <button className="see-all" onClick={() => setScreen("patients")}>{t("home.seeAll")}</button>}
@@ -651,7 +664,7 @@ export function Home({ setScreen, userName }) {
       </div>
       )}
 
-      <div className="section" style={{ paddingTop:20, paddingBottom:12 }}>
+      <div className="section">
         <div className="section-header">
           <span className="section-title">{t("home.recentNotes")}</span>
           <button className="see-all" onClick={() => setScreen("archivo")}>{t("home.seeAll")}</button>

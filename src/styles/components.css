@@ -645,7 +645,12 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 .section { padding: 16px 16px 0; }
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .section-title { font-family: var(--font-d); font-size: 15px; font-weight: 800; color: var(--charcoal); }
-.see-all { font-size: 13px; font-weight: 600; color: var(--teal-dark); background: none; border: none; cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent; }
+/* Title + muted date stacked on the left of a section header (Hoy / Mañana
+   on the iPad home). Lets the title stay a single bold line with the date
+   as a small eyebrow beneath — never a wrapped two-line title. */
+.section-headline { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.section-sub { font-family: var(--font); font-size: var(--text-xs); font-weight: 600; color: var(--charcoal-xl); letter-spacing: 0.01em; }
+.see-all { font-size: 13px; font-weight: 600; color: var(--teal-dark); background: none; border: none; cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
 
 .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-lt); overflow: hidden; }
 
