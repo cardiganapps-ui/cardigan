@@ -5,6 +5,67 @@ App Store review. Derived from the actual codebase (privacy policy,
 auth/subscription gating, analytics, encryption). Keep this in sync when
 those change.
 
+## 0. Store metadata (es-MX) — paste into App Store Connect → "App Information" + the version page
+
+- **Privacy Policy URL:** `https://cardigan.mx/privacidad/`  ← public static page (no login)
+- **Support URL:** `https://cardigan.mx`
+- **Marketing URL:** `https://cardigan.mx`
+- **Primary language:** Spanish (Mexico)
+- **Primary category:** Business · **Secondary:** Productivity *(avoid "Medical" — it triggers stricter review and this is a record-keeping tool, not a medical device)*
+- **Price:** Free *(the Pro subscription is sold off-App-Store on the web; iOS shows no purchase UI per the reader-app model — see §1)*
+
+**App name (≤30):**
+```
+Cardigan
+```
+**Subtitle (≤30):**
+```
+Agenda, pagos y expedientes
+```
+**Promotional text (≤170, editable without review):**
+```
+Lleva tu consulta en una sola app: agenda, expedientes, pagos y notas, con recordatorios automáticos y cifrado opcional. 30 días gratis, sin tarjeta.
+```
+**Keywords (≤100, comma-separated):**
+```
+psicologo,terapeuta,nutriologo,agenda,citas,pacientes,expediente,consultorio,honorarios,notas,consulta
+```
+**Description (≤4000):**
+```
+Cardigan es la app de gestión para profesionales independientes que atienden personas: psicólogos, nutriólogos, profesores particulares, maestros de música y entrenadores. Reúne tu agenda, tus pacientes, tus pagos y tus notas en un solo lugar, diseñado para ser rápido y bonito.
+
+QUÉ PUEDES HACER
+• Agenda — vista de día, semana y mes. Sesiones recurrentes, cancelaciones y reagendados en segundos.
+• Pacientes y expedientes — contacto, tarifa por sesión, historial y documentos, organizados por persona.
+• Pagos y finanzas — registra cobros, ve cuánto te deben y cuánto llevas en el mes. Saldos pendientes siempre a la vista.
+• Notas profesionales — clínicas, de progreso o de sesión, con cifrado opcional en reposo para máxima privacidad.
+• Recordatorios — recibe avisos de tus próximas sesiones por notificación.
+• Sincroniza tu calendario — suscribe tus sesiones a Apple Calendar, Google Calendar o iCloud.
+• Documentos — adjunta PDFs e imágenes (recibos, estudios) por paciente.
+
+HECHO PARA TU PRÁCTICA
+Cardigan se adapta a tu profesión: el vocabulario y los campos cambian según seas psicólogo, nutriólogo, tutor, maestro de música o entrenador.
+
+PRIVACIDAD
+Tus datos están aislados por cuenta. Las notas pueden cifrarse con una contraseña que nunca sale de tu dispositivo. Cumplimos con la LFPDPPP. Aviso: https://cardigan.mx/privacidad/
+
+PRUEBA GRATIS
+Empieza con 30 días gratis, sin tarjeta. Después, Cardigan Pro está disponible por suscripción (se gestiona desde cardigan.mx).
+
+¿Dudas? Escríbenos a privacy@cardigan.mx.
+```
+**What's New (this version):**
+```
+• Rediseñamos la pantalla de inicio en iPad: más limpia, espaciada y elegante.
+• Barra de navegación con acabado "liquid glass" y transiciones más suaves.
+• Sincronización de calendario corregida y mejor inicio de sesión con Apple.
+• Decenas de detalles pulidos en modo claro y oscuro.
+```
+
+**Screenshots:** generated at the exact required sizes — iPhone 6.9" (1290×2796) and iPad 12.9" (2048×2732), 4 each (Inicio / Agenda / Pacientes / Finanzas). See "screenshots" delivery.
+
+**Age rating:** answer the questionnaire all **None** → **4+**. Note: the app opens specific external links (Stripe portal, calendar feed) in an in-app browser — that is NOT "Unrestricted Web Access", so keep that answer **No** (stays 4+).
+
 > Status of the big blockers (already handled in code — do not "fix"):
 > - **In-App Purchase (3.1.1 / 3.1.3a):** Stripe is gated OFF iOS. `ProUpgradeSheet`
 >   shows no pricing, no subscribe button, no external link on native iOS
