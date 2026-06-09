@@ -35,6 +35,7 @@ export default {
   required: "Obligatorio",
   offline: "Sin conexi\u00f3n",
   offlineHint: "Los cambios no se guardar\u00e1n hasta que vuelva la conexi\u00f3n.",
+  loadFailed: "No pudimos cargar tus datos. Revisa tu conexi\u00f3n.",
   updateAvailable: "Actualizaci\u00f3n disponible",
   updateNow: "Actualizar",
   update: {

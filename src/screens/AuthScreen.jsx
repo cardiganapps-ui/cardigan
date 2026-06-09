@@ -554,7 +554,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
         {error && <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{error}</div>}
         {mode === "login" && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 14, marginTop: -6 }}>
-            {onMagicLink ? (
+            {/* Magic link is hidden on native: the email redirect targets
+                window.location.origin, which is capacitor://localhost in
+                the app — the link can't deep-link back, so sign-in could
+                never complete. Native users have email/password, Apple,
+                and Google instead. */}
+            {onMagicLink && !isNative() ? (
               <button
                 type="button"
                 className="btn btn-ghost btn-tap"

@@ -272,12 +272,22 @@ export function useAuth() {
         if (native.code === "user-cancelled") return {}; // silent — user dismissed
         return { error: native.error || native.code };
       }
-      const { error } = await supabase.auth.signInWithIdToken({
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
         token: native.identityToken,
         nonce: native.nonce,
       });
       if (error) return { error: error.message };
+      // Apple returns the user's name ONLY on the very first authorization
+      // for this Apple ID + app — it's gone forever after. Persist it now
+      // or the greeting / avatar initial render blank for every Apple
+      // signup. Cosmetic, so failures here are non-fatal.
+      const fullName = [native.givenName, native.familyName]
+        .filter(Boolean).join(" ").trim();
+      if (fullName && !data?.user?.user_metadata?.full_name) {
+        try { await supabase.auth.updateUser({ data: { full_name: fullName } }); }
+        catch { /* non-fatal */ }
+      }
       return {};
     }
     const { error } = await supabase.auth.signInWithOAuth({

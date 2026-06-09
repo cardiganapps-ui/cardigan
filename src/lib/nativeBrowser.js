@@ -19,27 +19,42 @@
 
 import { isNative } from "./platform";
 
+// Returns true if the URL was opened, false if it failed — callers can
+// toast on false. On native, Browser.open can reject (plugin not loaded,
+// malformed URL); without this guard that rejection propagated as an
+// unhandled promise rejection and the flow (e.g. Stripe Portal) silently
+// dead-ended with no feedback.
 export async function openExternal(url) {
-  if (!url) return;
+  if (!url) return false;
   if (isNative()) {
-    const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url });
-    return;
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url });
+      return true;
+    } catch {
+      return false;
+    }
   }
   window.location.href = url;
+  return true;
 }
 
 // "Open in new tab" variant. On native, identical to openExternal — the
 // in-app browser sheet IS the equivalent of a new tab. On web, opens in
 // a new window so the user can keep Cardigan open in the original tab.
 export async function openExternalNewTab(url) {
-  if (!url) return;
+  if (!url) return false;
   if (isNative()) {
-    const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url });
-    return;
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url });
+      return true;
+    } catch {
+      return false;
+    }
   }
   window.open(url, "_blank", "noopener,noreferrer");
+  return true;
 }
 
 // "Open in a different app" via URL scheme. tel:, mailto:, webcal:,

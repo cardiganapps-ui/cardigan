@@ -18,6 +18,24 @@
 
 import { isNative, isIOS } from "./platform";
 
+// Random URL-safe nonce. Apple binds the returned identity token to the
+// nonce we send, which defeats token-replay attacks.
+function randomNonce(length = 32) {
+  const charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-._";
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  let out = "";
+  for (let i = 0; i < length; i++) out += charset[bytes[i] % charset.length];
+  return out;
+}
+
+async function sha256Hex(input) {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export async function signInWithAppleNative() {
   if (!isNative() || !isIOS()) return { ok: false, code: "unsupported" };
 
@@ -29,6 +47,19 @@ export async function signInWithAppleNative() {
   }
 
   try {
+    // Nonce handshake (the documented Supabase native-Apple pattern):
+    //   1. generate a raw nonce
+    //   2. send its SHA-256 hash to Apple as the request nonce — Apple
+    //      echoes that hash into the identity token's `nonce` claim
+    //   3. hand the RAW nonce to supabase.auth.signInWithIdToken, which
+    //      re-hashes it and matches it against the token's claim.
+    // Passing `undefined` (the previous behaviour) only worked if Apple
+    // happened to omit the claim; any mismatch fails token validation and
+    // breaks the "Sign in with Apple" button — an automatic App Store
+    // rejection. Doing the handshake explicitly removes that risk.
+    const rawNonce = randomNonce();
+    const hashedNonce = await sha256Hex(rawNonce);
+
     // iOS doesn't require initialize() — the plugin reads the bundle's
     // Sign-In-with-Apple capability directly. scopes is an enum array,
     // not the legacy space-separated string. Names + email come back
@@ -37,6 +68,7 @@ export async function signInWithAppleNative() {
     // record persists in Supabase auth.users either way).
     const result = await AppleSignIn.signIn({
       scopes: [SignInScope.Email, SignInScope.FullName],
+      nonce: hashedNonce,
     });
 
     const idToken = result?.idToken;
@@ -45,11 +77,7 @@ export async function signInWithAppleNative() {
     return {
       ok: true,
       identityToken: idToken,
-      // Capawesome doesn't surface the iOS nonce directly; the auth flow
-      // doesn't require it since the system already binds the token to
-      // the requesting app. supabase.signInWithIdToken accepts a missing
-      // nonce when the token is valid for the app's audience.
-      nonce: undefined,
+      nonce: rawNonce,
       givenName: result?.fullName?.givenName,
       familyName: result?.fullName?.familyName,
       email: result?.email,

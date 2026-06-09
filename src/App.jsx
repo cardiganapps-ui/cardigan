@@ -775,7 +775,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
      into context via `...data` spread in ctxValue below. */
   const {
     patients, upcomingSessions,
-    loading, mutationError, clearMutationError,
+    loading, mutationError, clearMutationError, fetchError,
     updateSessionStatus,
     refresh,
   } = data;
@@ -918,6 +918,26 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         : prev);
     }
   }, [mutationError, showToast, refresh]);
+  // Surface a FAILED initial data load (e.g. launched in airplane mode,
+  // or the network dropped during the parallel fetch). Without this the
+  // app paints empty "no data yet" states with no hint that the load
+  // failed and no way to retry — which reads as a broken app (and App
+  // Store reviewers test offline launches). Mirrors the mutationError
+  // toast: persistent, retry-able, de-duped by key. fetchError resets to
+  // "" at the start of each fetch, so a successful refresh clears it.
+  useEffect(() => {
+    if (fetchError) {
+      showToast(t("loadFailed"), "error", {
+        persistent: true,
+        onRetry: refresh,
+        key: "fetch-error",
+      });
+    } else {
+      setToasts(prev => prev.some(entry => entry.key === "fetch-error")
+        ? prev.filter(entry => entry.key !== "fetch-error")
+        : prev);
+    }
+  }, [fetchError, showToast, refresh, t]);
   // Online/offline state — useConnectivity is the canonical hook now
   // (also consumed by OfflineBanner). Kept in the App-level context
   // for any consumer that branches on it (e.g. action gating).
