@@ -100,6 +100,14 @@
     position: static !important; width: 240px; max-width: none;
     transform: none !important; transition: none !important;
     animation: none !important;
+    /* Fill the full viewport height. `.drawer` (flex column) stretches to
+       the shell height, but the panel was `position: static` with no
+       height, so its dark background was only as tall as its content —
+       leaving a white gap below the nav on iPad/desktop ("sidebar cut off
+       at the bottom"). flex:1 grows it to fill; min-height:0 lets the
+       inner nav scroll instead of overflowing. */
+    flex: 1 1 auto;
+    min-height: 0;
   }
   /* Right-edge slide-out shadow is for the overlay drawer on mobile;
      in persistent mode it reads as a stray drop-shadow next to the
