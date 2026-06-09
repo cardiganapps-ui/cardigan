@@ -248,17 +248,20 @@
      earlier "solid white" workaround was only there to hide a ghost of
      the page padding caused by the `100dvh` shell bug — that bug is
      fixed now (see base.css `.shell`), so the real glass is back.
-     `color-mix` renders as ~55% white in light mode and auto-flips in
+     `color-mix` renders as ~44% white in light mode and auto-flips in
      dark mode via dark.css, which redefines --white. The alpha is kept
-     low + the blur high so the page content reads clearly THROUGH the
-     bar (WhatsApp-style liquid glass) while the heavy blur + saturation
-     keep the tab labels legible over whatever scrolls behind.
+     low + the blur moderate so the page content reads clearly THROUGH
+     the bar (WhatsApp-style frosted glass) instead of washing out to a
+     flat white pill — the previous 55% white + brightness(1.06) lifted
+     it almost to solid white over a white page. saturate keeps the
+     colours behind it vivid; the moderate blur keeps shapes recognisable
+     while the tab labels stay legible.
      Showing OVER sheet CTAs is prevented by the
      `:has(.sheet-overlay)` display:none rule below — restoring
      translucency does not reintroduce that bug. */
-  background: color-mix(in srgb, var(--white) 55%, transparent);
-  -webkit-backdrop-filter: saturate(200%) brightness(1.06) blur(36px);
-  backdrop-filter: saturate(200%) brightness(1.06) blur(36px);
+  background: color-mix(in srgb, var(--white) 44%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(26px);
+  backdrop-filter: saturate(180%) blur(26px);
 
   /* Floating pill — hairline edge + layered drop shadow for lift, an
      inset top sheen (specular highlight) PLUS a faint full inner ring
