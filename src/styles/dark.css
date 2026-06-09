@@ -229,14 +229,15 @@ html[data-theme="dark"] .topbar {
   border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 html[data-theme="dark"] .bottom-tabs {
-  /* Liquid Glass, dark: a touch more translucent than before so the
-     page genuinely shows through the blur, with a faint top gloss +
-     brighter inset edge for the iOS 26 specular-glass read. */
+  /* Liquid Glass, dark: low alpha so the page clearly shows through the
+     blur (WhatsApp-style), with a faint top gloss + brighter inset edge
+     for the iOS 26 specular-glass read. The heavy blur + saturation in
+     components.css keep the tab labels legible despite the transparency. */
   background:
     linear-gradient(180deg,
       rgba(255, 255, 255, 0.06) 0%,
       transparent 40%),
-    rgba(28, 28, 30, 0.56);
+    rgba(28, 28, 30, 0.42);
   border-color: rgba(255, 255, 255, 0.10);
   box-shadow:
     0 10px 30px -8px rgba(0, 0, 0, 0.6),
