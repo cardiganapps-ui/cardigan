@@ -260,28 +260,32 @@
      `:has(.sheet-overlay)` display:none rule below — restoring
      translucency does not reintroduce that bug. */
   background: color-mix(in srgb, var(--white) 44%, transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(26px);
-  backdrop-filter: saturate(180%) blur(26px);
+  -webkit-backdrop-filter: saturate(188%) brightness(1.05) blur(28px);
+  backdrop-filter: saturate(188%) brightness(1.05) blur(28px);
 
-  /* Floating pill — hairline edge + layered drop shadow for lift, an
-     inset top sheen (specular highlight) PLUS a faint full inner ring
-     that reads as the light refracting at the glass's edge. (Dark mode
-     supplies its own shadow stack in dark.css.) */
-  border: 1px solid color-mix(in srgb, var(--charcoal) 8%, transparent);
+  /* Floating glass pill. The shadow stack is what sells "real glass":
+       1-2. layered drop shadow → it floats above the page
+       3.   bright crisp TOP rim (the primary specular highlight)
+       4.   faint full edge rim → light gathering at the lens edge
+       5.   bottom inner shadow → the glass has THICKNESS / depth
+       6.   faint bottom catch-light → light passing through the pane
+     (Dark mode supplies its own stack in dark.css.) */
+  border: 1px solid color-mix(in srgb, var(--charcoal) 6%, transparent);
   box-shadow:
-    0 10px 30px -8px rgba(0, 0, 0, 0.20),
-    0 3px 10px -3px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+    0 12px 34px -10px rgba(0, 0, 0, 0.22),
+    0 5px 14px -6px rgba(0, 0, 0, 0.10),
+    inset 0 1.5px 0.5px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -10px 16px -12px rgba(38, 56, 66, 0.18),
+    inset 0 -1px 0.5px 0 rgba(255, 255, 255, 0.30);
 }
-/* Static specular reflection — a diagonal gloss across the top-left of
-   the pill, like light catching a pane of glass. Deliberately STATIC:
-   an infinite shimmer would repaint over the backdrop-filter every
-   frame (battery + jank) and read as gimmicky; the authentic "moving"
-   highlight would be gyroscope-driven, a later add. Clipped to the pill
-   by the parent's overflow:hidden, and painted UNDER the tabs +
-   indicator (z-index 0, first in DOM order) so it never washes the
-   active capsule or the labels. */
+/* Edge-lensing highlight: a bright rim-light hugging the top edge that
+   fades fast, plus a soft top-center bloom — mimicking how light gathers
+   and refracts at the upper lip of a real glass pane. Static by design
+   (an always-on shimmer would repaint over the backdrop-filter every
+   frame); the authentic motion-reactive glint is gyroscope-driven, a
+   separate opt-in. Clipped to the pill by overflow:hidden, painted UNDER
+   the tabs + indicator (z-index 0) so it never washes labels. */
 .bottom-tabs::before {
   content: "";
   position: absolute;
@@ -289,10 +293,14 @@
   border-radius: inherit;
   pointer-events: none;
   z-index: 0;
-  background: linear-gradient(150deg,
-    rgba(255, 255, 255, 0.20) 0%,
-    rgba(255, 255, 255, 0.05) 18%,
-    transparent 42%);
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.08) 9%,
+      transparent 28%),
+    radial-gradient(135% 78% at 50% -12%,
+      rgba(255, 255, 255, 0.20) 0%,
+      transparent 56%);
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
    browser can't render the blur. The glass effect is enhancement,

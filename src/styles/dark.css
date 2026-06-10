@@ -240,10 +240,24 @@ html[data-theme="dark"] .bottom-tabs {
     rgba(28, 28, 30, 0.42);
   border-color: rgba(255, 255, 255, 0.10);
   box-shadow:
-    0 10px 30px -8px rgba(0, 0, 0, 0.6),
-    0 3px 10px -3px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    0 12px 34px -10px rgba(0, 0, 0, 0.62),
+    0 5px 14px -6px rgba(0, 0, 0, 0.45),
+    inset 0 1.5px 0.5px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 -10px 16px -12px rgba(0, 0, 0, 0.40),
+    inset 0 -1px 0.5px 0 rgba(255, 255, 255, 0.08);
+}
+/* Dark mode: soften the shared ::before top rim so it reads as a glint,
+   not a white bar, on the dark glass. */
+html[data-theme="dark"] .bottom-tabs::before {
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.04) 9%,
+      transparent 28%),
+    radial-gradient(135% 78% at 50% -12%,
+      rgba(255, 255, 255, 0.10) 0%,
+      transparent 56%);
 }
 html[data-theme="dark"] .bottom-tab { color: rgba(255, 255, 255, 0.5); }
 html[data-theme="dark"] .bottom-tab--active {
