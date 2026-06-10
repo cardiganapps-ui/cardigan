@@ -785,15 +785,25 @@ button.kpi-card:active {
    .auth-toggle/.auth-tab) all alias to this block so older markup keeps
    working while new code uses <SegmentedControl />. */
 .segmented, .segment, .view-toggle, .fin-tab-row, .auth-toggle {
-  display: flex; background: var(--cream-dark);
+  display: flex; background: var(--teal-pale);
   border-radius: var(--radius-pill);
   padding: 3px; gap: 2px;
   position: relative;
 }
+/* AuthScreen keeps the intentional cream aesthetic (see CLAUDE.md) — its
+   toggle has no sliding thumb, so the cool teal track would read oddly
+   against the cream surface. */
+.auth-toggle { background: var(--cream-dark); }
 .segmented-slider {
   position: absolute; top: 3px; bottom: 3px;
   border-radius: var(--radius-pill);
-  background: var(--white); box-shadow: var(--shadow-sm);
+  /* White floating thumb on the pale-teal track. The crisp 1px ring +
+     soft drop reads as an elevated pill (the iOS "floating thumb" cue)
+     even though thumb and track are both near-white — separation comes
+     from the ring/shadow, not fill contrast. Ring uses color-mix off
+     --charcoal so it flips correctly in dark mode. */
+  background: var(--white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--charcoal) 7%, transparent), var(--shadow-sm);
   /* Position computed from --active-i (0-based) and --tab-count set
      by the React component on the parent. All buttons in this
      control share `flex: 1 1 0` so they're equal width — we can
@@ -853,7 +863,7 @@ button.kpi-card:active {
   flex: 1 1 0; padding: 7px 8px;
   font-size: var(--text-sm); font-weight: 600;
   border-radius: var(--radius-pill); border: none; cursor: pointer;
-  font-family: var(--font); color: var(--charcoal-lt); background: transparent;
+  font-family: var(--font); color: var(--charcoal-md); background: transparent;
   transition: color var(--dur-slow); -webkit-tap-highlight-color: transparent;
   min-height: 34px; white-space: nowrap;
   /* min-width:0 + overflow:hidden + ellipsis lets a 5+ tab control
