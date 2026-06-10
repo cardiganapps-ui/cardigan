@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
 import { IconX, IconGoogle, IconApple, IconSparkle, IconLink } from "../components/Icons";
 import { PasswordInput } from "../components/PasswordInput";
+import { SegmentedControl } from "../components/SegmentedControl";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -435,10 +436,14 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
   return (
     <>
       {mode !== "reset" && (
-        <div className="auth-toggle" role="tablist">
-          <button role="tab" aria-selected={mode === "login"} className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => switchMode("login")}>{t("auth.signIn")}</button>
-          <button role="tab" aria-selected={mode === "signup"} className={`auth-tab ${mode === "signup" ? "active" : ""}`} onClick={() => switchMode("signup")}>{t("auth.signUp")}</button>
-        </div>
+        <SegmentedControl
+          size="md"
+          ariaLabel={`${t("auth.signIn")} / ${t("auth.signUp")}`}
+          items={[{ k: "login", l: t("auth.signIn") }, { k: "signup", l: t("auth.signUp") }]}
+          value={mode}
+          onChange={switchMode}
+          style={{ marginBottom: 4 }}
+        />
       )}
       {mode === "reset" && (
         <div style={{ marginBottom: 20 }}>

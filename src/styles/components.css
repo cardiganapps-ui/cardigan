@@ -784,16 +784,12 @@ button.kpi-card:active {
    (.segment/.seg-btn, .view-toggle/.view-btn, .fin-tab-row/.fin-tab,
    .auth-toggle/.auth-tab) all alias to this block so older markup keeps
    working while new code uses <SegmentedControl />. */
-.segmented, .segment, .view-toggle, .fin-tab-row, .auth-toggle {
+.segmented, .segment, .view-toggle, .fin-tab-row {
   display: flex; background: var(--teal-pale);
   border-radius: var(--radius-pill);
   padding: 3px; gap: 2px;
   position: relative;
 }
-/* AuthScreen keeps the intentional cream aesthetic (see CLAUDE.md) — its
-   toggle has no sliding thumb, so the cool teal track would read oddly
-   against the cream surface. */
-.auth-toggle { background: var(--cream-dark); }
 .segmented-slider {
   position: absolute; top: 3px; bottom: 3px;
   border-radius: var(--radius-pill);
@@ -859,7 +855,7 @@ button.kpi-card:active {
   84%  { transform: scaleX(1.04); }
   100% { transform: scaleX(1); }
 }
-.segmented-btn, .seg-btn, .view-btn, .fin-tab, .auth-tab {
+.segmented-btn, .seg-btn, .view-btn, .fin-tab {
   flex: 1 1 0; padding: 7px 8px;
   font-size: var(--text-sm); font-weight: 600;
   border-radius: var(--radius-pill); border: none; cursor: pointer;
@@ -882,11 +878,7 @@ button.kpi-card:active {
 .segment .seg-btn.active, .view-toggle .view-btn.active, .fin-tab-row .fin-tab.active {
   background: var(--white); box-shadow: var(--shadow-sm);
 }
-.auth-tab.active {
-  background: var(--white); color: var(--charcoal);
-  box-shadow: var(--shadow-sm); font-family: var(--font-d);
-}
-.segmented-btn:active, .seg-btn:active, .view-btn:active, .fin-tab:active, .auth-tab:active {
+.segmented-btn:active, .seg-btn:active, .view-btn:active, .fin-tab:active {
   opacity: 0.7;
 }
 /* Size variant — "md" uses display font + heavier weight, for primary tabs */
@@ -1516,10 +1508,6 @@ button.kpi-card:active {
   background: var(--teal-mist);
   box-shadow: inset 0 0 0 2px var(--teal);
 }
-
-/* AUTH: auth-tab inherits shared .segmented-btn visuals (above). */
-.auth-toggle { margin-bottom: 24px; }
-.auth-tab { padding: 10px; font-size: var(--text-md); font-weight: 700; font-family: var(--font-d); }
 
 /* ── OAUTH BUTTONS ──
    Social-login CTAs shown above the email form. The Google variant

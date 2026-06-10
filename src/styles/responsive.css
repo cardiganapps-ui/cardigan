@@ -429,10 +429,11 @@
   .session-row:hover { background: var(--teal-mist); }
   .note-card:hover { background: var(--teal-mist); border-color: var(--teal-pale); }
   .fin-tab:hover:not(.active) { background: var(--cream); }
-  .auth-tab:hover:not(.active) { background: var(--cream); }
+  /* Subtle teal wash on hover — matches the modernized teal-pale track
+     (a warm cream hover would clash with the cool track). */
   .seg-btn:hover:not(.active),
   .segmented-btn:hover:not(.active),
-  .view-btn:hover:not(.active) { background: var(--cream); }
+  .view-btn:hover:not(.active) { background: color-mix(in srgb, var(--teal) 13%, transparent); }
   .see-all:hover { color: var(--teal); text-decoration: underline; }
   .cmdp-item:hover { background: var(--teal-mist); }
   .topbar-search-btn:hover { background: var(--cream); border-color: var(--teal-light); }
