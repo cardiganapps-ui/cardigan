@@ -119,7 +119,7 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
         </div>
       )}
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button className="btn btn-primary" type="button" onClick={onGoToLogin}>
+        <button className="btn btn-primary-teal" type="button" onClick={onGoToLogin}>
           {t("auth.verifyGoToLogin")}
         </button>
         <button className="btn btn-ghost" type="button" onClick={resend} disabled={resending || pendingResend || cooling}>
@@ -406,7 +406,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320 }}>
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary-teal"
             onClick={() => { setDuplicateEmail(null); switchMode("login"); }}
           >
             {t("auth.duplicateLoginCta")}
@@ -428,7 +428,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
       <div style={{ textAlign: "center", paddingTop: 8 }}>
         <div style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, color: "var(--charcoal)", marginBottom: 12 }}>{t("done")}</div>
         <div style={{ fontSize: 14, color: "var(--charcoal-lt)", lineHeight: 1.6, marginBottom: 24 }}>{message}</div>
-        <button className="btn btn-primary" onClick={() => switchMode("login")}>{t("auth.signIn")}</button>
+        <button className="btn btn-primary-teal" onClick={() => switchMode("login")}>{t("auth.signIn")}</button>
       </div>
     );
   }
@@ -588,7 +588,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
             <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
           </div>
         )}
-        <button className="btn btn-primary" type="submit" disabled={submitting || pendingSubmit}>
+        <button className="btn btn-primary-teal" type="submit" disabled={submitting || pendingSubmit}>
           {(submitting || pendingSubmit) ? t("loading") : mode === "login" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
         </button>
       </form>
@@ -683,14 +683,31 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
           <div ref={setAuthPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...authPanelHandlers}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <span className="sheet-title">
-                {authMode === "login" ? t("auth.signIn") : authMode === "signup" ? t("auth.signUp") : t("auth.resetPassword")}
+              {/* Brand lockup replaces the redundant mode-name title — the
+                  toggle below conveys login vs signup. Mirrors the native
+                  shell's identity so the web auth sheet feels like a real
+                  branded sign-in, not a generic form. */}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+                <span style={{
+                  width: 32, height: 32, borderRadius: "var(--radius-sm)",
+                  background: "var(--teal-pale)", color: "var(--teal-dark)",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <IconLink size={18} />
+                </span>
+                <span style={{ fontFamily: "var(--font-d)", fontSize: 18, fontWeight: 800, color: "var(--charcoal)", letterSpacing: "-0.3px" }}>
+                  cardigan
+                </span>
               </span>
               <button className="sheet-close" aria-label={t("close")} onClick={() => setShowAuth(false)}>
                 <IconX size={14} />
               </button>
             </div>
             <div style={{ padding: "0 20px 22px" }}>
+              <div style={{ fontSize: 13, color: "var(--charcoal-md)", lineHeight: 1.5, marginTop: -4, marginBottom: 16 }}>
+                {t("auth.nativeTagline")}
+              </div>
               <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} onMagicLink={onMagicLink} t={t} />
             </div>
           </div>
