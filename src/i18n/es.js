@@ -1863,8 +1863,9 @@ export default {
 
   // ── Install prompt ──
   install: {
-    title: "Instala Cardigan",
-    addToHome: "Agrega Cardigan a tu pantalla de inicio para acceder m\u00e1s r\u00e1pido:",
+    title: "Pantalla completa",
+    fullscreenHint: "Quita la barra del navegador \u2014 a\u00f1ade Cardigan a tu inicio",
+    addToHome: "Agrega Cardigan a tu pantalla de inicio para usarla a pantalla completa, sin la barra del navegador:",
     tapButton: "Toca el botón",
     safariButton: "de Safari",
     selectLabel: "Selecciona",

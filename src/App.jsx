@@ -63,6 +63,7 @@ import { DRAWER_EDGE_BAND, release as releaseSwipe, tryClaim as trySwipeClaim } 
 import { PullToRefresh } from "./components/PullToRefresh";
 import { BottomTabs } from "./components/BottomTabs";
 import { OfflineBanner } from "./components/OfflineBanner";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { useConnectivity } from "./hooks/useConnectivity";
 import { LogoIcon } from "./components/LogoMark";
 import { AuthSplash } from "./components/AuthSplash";
@@ -2050,12 +2051,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       <div className="main-content" id="main-content" tabIndex={-1}>
         <div className="status-bar" />
 
-        {/* The old "Instala Cardigan" home-screen install nudge was
-            removed once the native iOS/Android app shipped — iOS Safari
-            now shows its own Smart App Banner ("Open in the Cardigan
-            app"), so a second PWA-install prompt was redundant and
-            confusing. (Component kept in the tree as InstallPrompt.jsx
-            in case we ever want a non-iOS install nudge.) */}
+        {/* Dismissible, one-time iOS-Safari hint pointing users to the
+            home-screen PWA — the only way to escape Safari's bottom
+            toolbar (a website can't hide it). Renders nothing in the
+            installed PWA, the native shell, on Android, or once dismissed
+            (localStorage). Self-gated; safe to mount unconditionally. */}
+        <InstallPrompt />
+
 
         {/* Demo banner */}
         {demo && (
