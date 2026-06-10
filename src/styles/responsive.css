@@ -303,6 +303,12 @@
   .kpi-card { padding: 18px 20px; }
   .kpi-value { font-size: 24px; }
   .row-item { padding: 14px 18px; min-height: 66px; }
+  /* Home list rows must read as cleanly separated on the big iPad canvas:
+     the default --border-lt divider all but vanishes there, so patient /
+     session rows look like one undifferentiated block. Use the stronger
+     --border for a visible hairline and add a little more vertical air so
+     rows breathe instead of crowding. Scoped to the home columns. */
+  .home-columns .row-item { padding-top: 16px; padding-bottom: 16px; border-bottom-color: var(--border); }
   .section-title { font-size: 16px; }
 
   /* Appointment card color accents on desktop */
