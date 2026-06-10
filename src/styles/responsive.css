@@ -309,6 +309,16 @@
      --border for a visible hairline and add a little more vertical air so
      rows breathe instead of crowding. Scoped to the home columns. */
   .home-columns .row-item { padding-top: 16px; padding-bottom: 16px; border-bottom-color: var(--border); }
+  /* Schedule slots: the full-height status rail (border-left) collides with
+     the card's rounded corners and the row dividers, so the left edge reads
+     as choppy stacked bars. Swap it for a clean inset rounded accent — a
+     deliberate little status tab, vertically centered, clear of both the
+     corners and the hairline dividers. */
+  .home-columns .row-item.session-row { border-left: none; position: relative; }
+  .home-columns .row-item.session-row::before {
+    content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px;
+    border-radius: 0 4px 4px 0; background: var(--rail-color, var(--teal));
+  }
   .section-title { font-size: 16px; }
 
   /* Appointment card color accents on desktop */
