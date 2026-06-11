@@ -130,17 +130,17 @@ export const POLICY_SECTIONS = [
       "diagnóstico (los errores se filtran de cualquier dato personal o de paciente antes de salir del " +
       "navegador).\n" +
       "• Anthropic PBC (Estados Unidos de América) — procesamiento de las preguntas que envíes al asistente " +
-      "Cardi (función Pro). Si autorizas a Cardi a consultar tus datos al abrirlo, se transmitirán: " +
+      "Cardi. Si autorizas a Cardi a consultar tus datos al abrirlo, se transmitirán: " +
       "nombre y estado de tus {client.p}, honorarios, balance pendiente y crédito a favor, montos y métodos " +
       "de pagos recibidos, fechas y estados de sesiones (asistencia, cancelaciones, modalidad), horarios " +
       "recurrentes, y los gastos de tu negocio (categoría, monto, descripción, fecha). NO se envían: notas " +
       "clínicas (cifradas o no), teléfonos, correos electrónicos, fechas de nacimiento, alergias, " +
       "condiciones médicas, ni datos antropométricos. Adicionalmente, cuando adjuntas una foto o PDF de un " +
       "recibo de gasto, esa imagen se envía a Anthropic para extraer monto, fecha, vendedor y categoría " +
-      "(función OCR de recibos, Pro). Anthropic procesa la información únicamente para generar la respuesta " +
+      "(función OCR de recibos). Anthropic procesa la información únicamente para generar la respuesta " +
       "y no la utiliza para entrenar modelos.\n" +
       "• Stripe Payments Mexico, S. de R.L. de C.V. y Stripe, Inc. (Estados Unidos de América) — " +
-      "procesamiento de pagos en línea, tanto para tu suscripción a Cardigan Pro como para los pagos que " +
+      "procesamiento de los pagos en línea que " +
       "tus {client.p} te realicen a través de la aplicación. Cuando un {client.s} paga su saldo en la " +
       "aplicación, Stripe recibe: monto del pago, moneda, correo electrónico y datos de tarjeta del " +
       "{client.s}, identificadores anónimos de tu cuenta y de la {client.s}. Los datos de tarjeta nunca " +
