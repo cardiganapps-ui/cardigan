@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { MONETIZATION_ENABLED } from "../../config/monetization";
 import { LogoIcon } from "../LogoMark";
 import { ProductPreview } from "./ProductPreview";
 import { MiniSessions, MiniPatients, MiniFinances } from "./MiniMocks";
@@ -67,15 +68,11 @@ const FAQS = [
   },
   {
     q: "¿Hay contrato o permanencia?",
-    a: "Ningún contrato. Pagas mes a mes (o anual con descuento) y cancelas en un toque desde la app cuando ya no la necesites.",
+    a: "Ninguno. Cardigan es gratis y tus datos son tuyos: puedes exportarlos cuando quieras.",
   },
   {
     q: "¿Tengo que enseñarle a usarla a mis pacientes?",
     a: "No. Cardigan es solo para ti. Tus pacientes nunca entran a la app — solo tú agendas y los recordatorios llegan al horario que elijas.",
-  },
-  {
-    q: "¿Y si decido cancelar?",
-    a: "Tu cuenta se queda intacta. Puedes seguir leyendo todo en modo lectura, exportar tus datos, y reactivar cuando quieras.",
   },
 ];
 
@@ -176,7 +173,9 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
                 Cheapest, biggest conversion lever on the page. */}
             <p className="lp-hero-trial">
               <span className="lp-hero-trial-dot" aria-hidden="true" />
-              30 días gratis · sin tarjeta · cancela en un toque
+              {MONETIZATION_ENABLED
+                ? "30 días gratis · sin tarjeta · cancela en un toque"
+                : "Gratis · sin tarjeta · listo en un minuto"}
             </p>
           </div>
 
@@ -268,7 +267,11 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
         </div>
       </section>
 
-      {/* 6. Pricing teaser. */}
+      {/* 6. Closing CTA. While monetization is off Cardigan is free, so
+          this is a plain "start free" band instead of a price card. The
+          paid pricing teaser returns automatically when MONETIZATION_ENABLED
+          flips back on. */}
+      {MONETIZATION_ENABLED ? (
       <section id="pricing" className="lp-section lp-pricing" aria-labelledby="lp-pricing-title">
         <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 }}>
           <div className="lp-pricing-eyebrow">Cardigan Pro</div>
@@ -294,6 +297,22 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
           </div>
         </div>
       </section>
+      ) : (
+      <section className="lp-section lp-pricing" aria-labelledby="lp-pricing-title">
+        <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 }}>
+          <h2 id="lp-pricing-title" className="lp-pricing-title">Tu práctica, en orden.</h2>
+          <p className="lp-pricing-sub">Gratis. Sin tarjeta. Empieza en un minuto.</p>
+          <div className="lp-pricing-ctas">
+            <CTAButton variant="primary" onClick={onPrimary}>
+              Comenzar gratis
+            </CTAButton>
+            <CTAButton variant="secondary" onClick={onSecondary}>
+              Probar demo
+            </CTAButton>
+          </div>
+        </div>
+      </section>
+      )}
 
       {/* 7. FAQ — native disclosure widget, no JS state needed. */}
       <section id="faq" className="lp-section lp-faq" aria-labelledby="lp-faq-title">
@@ -331,7 +350,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
               <div className="lp-footer-col-title">Producto</div>
               <a href="#hero" className="lp-footer-link">Inicio</a>
               <a href="#features" className="lp-footer-link">Funciones</a>
-              <a href="#pricing" className="lp-footer-link">Precios</a>
+              {MONETIZATION_ENABLED && <a href="#pricing" className="lp-footer-link">Precios</a>}
               <button type="button" className="lp-footer-link lp-footer-link--btn" onClick={onSecondary}>
                 Probar demo
               </button>

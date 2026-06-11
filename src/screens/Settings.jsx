@@ -9,6 +9,7 @@ import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
 import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument, IconCreditCard } from "../components/Icons";
 import { ProValueWidget } from "../components/ProValueWidget";
+import { MONETIZATION_ENABLED } from "../config/monetization";
 
 // Spanish "hace X" relative time for the referral leaderboard. Days
 // rounded down so "hace 1 día" doesn't slip to "hace 0 días" on the
@@ -823,6 +824,7 @@ export function Settings({ user, signOut, refreshUser }) {
       {/* ── CUENTA ── */}
       <div className="settings-label">{t("settings.sectionAccount")}</div>
       <div className="card" style={{ margin:"0 16px" }}>
+        {MONETIZATION_ENABLED && (
         <div className="settings-row" onClick={() => openSheet("plan")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconSparkle size={18} /></div>
           <div style={{ flex:1 }}>
@@ -840,11 +842,13 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
+        )}
         {/* Referral row — surface the user's invite code directly so it's
             findable without going through the Suscripción sheet first. The
             sub-line shows the code (or "Genera tu código…" while the lazy
             fetch is running on first open). Tapping opens a dedicated sheet
             with the share UI + rewards tally. */}
+        {MONETIZATION_ENABLED && (
         <div className="settings-row" onClick={() => openSheet("referral")}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
           <div style={{ flex:1 }}>
@@ -862,6 +866,7 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
+        )}
         <div className="settings-row"
           onClick={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}>
           <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>

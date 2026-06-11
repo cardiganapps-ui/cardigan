@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { isAdmin } from "./useCardiganData";
+import { MONETIZATION_ENABLED } from "../config/monetization";
 
 /* ── useSubscription ──────────────────────────────────────────────────
    Tracks the SaaS billing state for the current Cardigan user.
@@ -167,6 +168,10 @@ export function useSubscription(user) {
   const compGranted = !!subscription?.comp_granted;
 
   const accessState = useMemo(() => {
+    // Monetization disabled → Cardigan is fully free: every user always
+    // has full access, no trial countdown, no expiry, no read-only lock.
+    // (Apple Guideline 3.1.1 — no paid subscription exists in the app.)
+    if (!MONETIZATION_ENABLED) return "active";
     if (isAdmin(user)) return "active"; // admin shortcut — never gated
     if (loading) return "loading";
     if (compGranted) return "active";
@@ -181,6 +186,10 @@ export function useSubscription(user) {
   // NOT get premium features unless they've subscribed or been comp'd.
   // Admins always pass.
   const isPro = useMemo(() => {
+    // Free-for-all while monetization is off → every premium feature
+    // (document uploads, note encryption, calendar sync) is unlocked and
+    // no "upgrade to Pro" prompt can fire.
+    if (!MONETIZATION_ENABLED) return true;
     if (isAdmin(user)) return true;
     if (compGranted) return true;
     if (subscribedActive) return true;

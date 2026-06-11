@@ -7,6 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useT } from "../i18n/index";
 import { useCardigan } from "../context/CardiganContext";
+import { MONETIZATION_ENABLED } from "../config/monetization";
 
 const NAV_ICONS = {
   home: IconHome,
@@ -288,6 +289,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
               onCancel={() => setConfirmSignOut(false)}
             />
           </nav>
+          {MONETIZATION_ENABLED && (
           <div className="drawer-footer">
             {(() => {
               // Plan card variants: comp / active / trial / expired /
@@ -336,6 +338,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
               );
             })()}
           </div>
+          )}
         </div>
       </div>
     </>
