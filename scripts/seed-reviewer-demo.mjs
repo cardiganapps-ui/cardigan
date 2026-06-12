@@ -266,7 +266,7 @@ async function seedNotes(userId, patients) {
     {
       user_id: userId,
       patient_id: patients[1].id,
-      title: "Plan de sesiones",
+      title: "Bitácora de sesiones",
       content: "Acordamos pausa de 1 semana por viaje del paciente. Retomar terapia el siguiente martes a la hora habitual.",
       encrypted: false,
       pinned: false,
