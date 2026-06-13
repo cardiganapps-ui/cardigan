@@ -63,9 +63,9 @@ export const NUTRITIONIST_TEMPLATES = [
   },
   {
     id: "mealplan",
-    name: "Plan alimenticio",
+    name: "Minuta alimenticia",
     icon: "document",
-    title: "Plan alimenticio",
+    title: "Minuta alimenticia",
     content: `# Distribución diaria
 - Calorías objetivo:
 - Macros (P / G / C):

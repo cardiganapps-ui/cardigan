@@ -206,7 +206,7 @@ const TRAINER_NOTE_TOPICS = [
   { title: "Rutina de hoy — pierna", content: "Calentamiento 8 min cardio + movilidad. Sentadilla 4x8 @ 60 kg. Peso muerto rumano 4x10 @ 50 kg. Press de pierna 3x12 @ 100 kg. Curl femoral 3x12. Pantorrillas 4x15. Cardio LISS 10 min." },
   { title: "Mediciones — semana 4", content: "Peso 76.2 kg (-1.8). Cintura 84 cm (-3 cm). Sentadilla subió de 60 kg a 70 kg @ 8 reps. Buena adherencia, 11 de 12 sesiones cumplidas." },
   { title: "Reporte de progreso (1er bloque)", content: "Cierre del primer bloque de 12 semanas. Objetivos cumplidos: -5 kg, sentadilla 80 kg @ 5RM. Continuamos con bloque de hipertrofia próximas 8 semanas." },
-  { title: "Ajuste de plan", content: "El cliente reporta dolor lumbar leve después de peso muerto convencional. Cambiamos a peso muerto rumano + extensión lumbar. Reducir carga 20% por 2 semanas y reevaluar." },
+  { title: "Ajuste de rutina", content: "El cliente reporta dolor lumbar leve después de peso muerto convencional. Cambiamos a peso muerto rumano + extensión lumbar. Reducir carga 20% por 2 semanas y reevaluar." },
   { title: "Comunicación con cliente", content: "Mensaje breve: confirmar sesión del miércoles 7 am, recordatorio de comer 60 min antes y traer agua. Acordar día de medición la próxima semana." },
 ];
 
@@ -255,9 +255,9 @@ const TUTOR_NOTE_TOPICS = [
 
 const NUTRITIONIST_NOTE_TOPICS = [
   { title: "Consulta inicial", content: "Primer encuentro. Peso 78 kg, estatura 1.68 m. Objetivo: bajar 6 kg en 4 meses con plan equilibrado, sin dietas restrictivas. Se acordó seguimiento quincenal." },
-  { title: "Plan alimenticio entregado", content: "Se entregó plan de 1700 kcal/día con macros 30P / 30G / 40C. El paciente prefiere desayuno frío y comidas con tortilla 1-2 veces por semana." },
+  { title: "Minuta de alimentación entregada", content: "Se entregó una minuta de 1700 kcal/día con macros 30P / 30G / 40C. El paciente prefiere desayuno frío y comidas con tortilla 1-2 veces por semana." },
   { title: "Seguimiento semana 4", content: "Pérdida de 1.8 kg desde la primera consulta. Cintura -2 cm. Adherencia ~85%. Reporta más energía y mejor digestión. Mantenemos plan, ajustamos colaciones." },
-  { title: "Apego al plan", content: "Reporta dificultad con la cena entre semana por horarios laborales. Propuse alternativas listas en 10 min. Acordamos preparar 2 días por adelantado el domingo." },
+  { title: "Apego a la pauta", content: "Reporta dificultad con la cena entre semana por horarios laborales. Propuse alternativas listas en 10 min. Acordamos preparar 2 días por adelantado el domingo." },
   { title: "Revisión de objetivos", content: "A 8 semanas, el paciente bajó 4.2 kg. Ajustamos el objetivo a -3 kg adicionales antes del verano y agregamos 2 sesiones de actividad física semanales." },
   { title: "Cierre de etapa", content: "Logró el peso meta. Se entregó plan de mantenimiento con 200 kcal adicionales. Próxima consulta en 1 mes para revisar adherencia post-meta." },
 ];
@@ -906,7 +906,7 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     {
       id: "demo-exp-2", user_id: "demo",
       amount: 1199, category: "software",
-      description: "Suscripción Cardigan Pro",
+      description: "Suscripción software de agenda",
       date: `5-${SHORT_MONTHS[_m - 1]}`,
       payment_method: "Tarjeta", tax_treatment: "deductible",
       recurring_id: null, receipt_document_id: null,

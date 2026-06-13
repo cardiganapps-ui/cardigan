@@ -9,6 +9,7 @@ import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useSheetDrag } from "../hooks/useSheetDrag";
 import { isNative } from "../lib/platform";
+import { MONETIZATION_ENABLED } from "../config/monetization";
 
 /* ── Verification panel ──
    Shown inside the auth sheet when signUp returns pendingVerification
@@ -478,7 +479,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
           </div>
         </>
       )}
-      {influencerCode && mode === "signup" && (
+      {MONETIZATION_ENABLED && influencerCode && mode === "signup" && (
         <div style={{
           display:"flex", alignItems:"center", gap:10,
           background:"var(--teal-pale)",
