@@ -18,7 +18,12 @@ export function I18nProvider({ children }) {
 
   const t = useCallback((key, vars) => {
     const val = lookupKey(strings, key);
-    if (typeof val !== "string") return Array.isArray(val) ? val : key;
+    // Arrays (e.g. help-tip bullet lists) get each string element resolved
+    // too — otherwise vocab placeholders like {client.s} render raw.
+    if (Array.isArray(val)) {
+      return val.map((v) => (typeof v === "string" ? resolveTemplate(v, vars, vocab) : v));
+    }
+    if (typeof val !== "string") return key;
     return resolveTemplate(val, vars, vocab);
   }, [strings, vocab]);
 
