@@ -47,6 +47,13 @@ export function isAdmin(user) {
   return user?.email === ADMIN_EMAIL;
 }
 
+// Test-only surface. `mapRows` is the read-path normalizer documented in
+// CLAUDE.md (date "D-MMM" canonicalization, color_idx→colorIdx, modality
+// default) — a landmine the rest of the app trusts implicitly, so it gets
+// pinned by unit tests via this handle. Mirrors the `_internals` pattern in
+// api/_calendar.js. Not part of the public hook surface.
+export const _internals = { mapRows };
+
 export async function fetchAllAccounts() {
   // Three indexed reads run in parallel — sequential awaits added a
   // visible "page is loading" delay on the admin Users tab even on
