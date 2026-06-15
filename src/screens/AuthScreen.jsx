@@ -236,9 +236,15 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
     setError("");
     setProviderBusy(provider);
     const result = await onProvider(provider);
-    // On success Supabase redirects away, so we only reach here on failure.
+    // On success Supabase redirects away (web OAuth) or the auth-state
+    // listener picks up the native session, so we only reach here on
+    // failure. Always show the localized generic message — provider/
+    // plugin failures (Apple ASAuthorization codes, OAuth init errors)
+    // are opaque to users and a raw "failed"/plugin string on the auth
+    // screen reads as a broken app to an App Store reviewer. We still
+    // clear providerBusy so the button doesn't stay stuck "loading".
     if (result?.error) {
-      setError(result.error || t("auth.providerError"));
+      setError(t("auth.providerError"));
       setProviderBusy(null);
     }
   };
