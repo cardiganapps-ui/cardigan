@@ -41,7 +41,7 @@ import { sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 import { sendRescheduleRequestEmails } from "./_sessionEmail.js";
 import { withSentry } from "./_sentry.js";
 import {
-  isoToShort, shortToTimestampMs, computeExpiresAt, mintTokens,
+  isoToShort, isoSlotToMs, shortToTimestampMs, computeExpiresAt, mintTokens,
   withdrawPendingForSession,
 } from "./_rescheduleRequest.js";
 
@@ -89,10 +89,13 @@ async function handler(req, res) {
     cleanNote = note.trim().slice(0, MAX_NOTE_LEN);
   }
 
-  // The proposed slot must be in the future. Same year-fuzz the
-  // cancel endpoint uses → consistent answers across the two paths
-  // that touch the same shape.
-  const newSlotMs = shortToTimestampMs(newShortDate, new_time);
+  // The proposed slot must be in the future. Validate against the
+  // year-bearing ISO `new_date` (NOT the year-less round-trip) so a
+  // far-future date that crosses the calendar year doesn't fold back
+  // into the current year and get mis-flagged as "past" — see
+  // isoSlotToMs for the full rationale. The past / horizon checks need
+  // the real year; storage (newShortDate) stays year-less afterwards.
+  const newSlotMs = isoSlotToMs(new_date, new_time);
   if (newSlotMs == null || newSlotMs <= Date.now()) {
     return res.status(403).json({ error: "New slot is in the past", code: "past_target" });
   }

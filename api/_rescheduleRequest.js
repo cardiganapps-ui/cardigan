@@ -53,6 +53,33 @@ export function shortToTimestampMs(shortDate, time) {
   return new Date(year, month, day, Number(h) || 0, Number(mi) || 0).getTime();
 }
 
+// ISO "yyyy-mm-dd" (+ "HH:MM") → absolute timestamp ms, KEEPING the
+// caller-supplied year. Use this to validate an inbound ISO date (the
+// proposed slot's past / horizon checks).
+//
+// Why a separate helper instead of shortToTimestampMs(isoToShort(iso)):
+// the round-trip through the year-less "D-MMM" storage form makes
+// shortToTimestampMs RE-INFER the year within ±180 days of now. For a
+// date genuinely >180 days out that crosses the calendar-year boundary
+// (e.g. today=15-Jun-2026, new_date=01-Jan-2027), the inference folds it
+// back to THIS year (01-Jan-2026, in the past) — so the handler answered
+// "403 past_target" when it should have answered "400 too_far". Checking
+// against the real year removes that ambiguity; storage can still use the
+// year-less form afterwards because the horizon cap guarantees the slot
+// is ≤180 days out, where the year-less round-trip is unambiguous.
+export function isoSlotToMs(iso, time) {
+  if (!iso || typeof iso !== "string") return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.slice(0, 10));
+  if (!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  // Reject impossible dates (Feb 30, Apr 31, …) via round-trip overflow.
+  const probe = new Date(y, mo - 1, d, 12, 0, 0);
+  if (probe.getFullYear() !== y || probe.getMonth() !== mo - 1 || probe.getDate() !== d) return null;
+  const [h = "0", mi = "0"] = (time || "00:00").split(":");
+  return new Date(y, mo - 1, d, Number(h) || 0, Number(mi) || 0).getTime();
+}
+
 // Compute expires_at: 1h before the EARLIEST of (original session
 // time, proposed new time). After that point, leaving a request
 // pending is pointless — the patient would not have time to
