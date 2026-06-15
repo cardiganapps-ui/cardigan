@@ -11,6 +11,17 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { isNative } from "../lib/platform";
 import { MONETIZATION_ENABLED } from "../config/monetization";
 
+// Google OAuth is gated behind an explicit env flag because the provider
+// is NOT configured in Supabase (external_google_enabled=false, no client
+// id/secret). Rendering "Continuar con Google" while the provider is
+// disabled produces an "Unsupported provider" error on tap — a reviewer-
+// reachable App Review 2.1 performance bug. Keep it hidden until Google
+// OAuth is actually wired (Google Cloud OAuth client + Supabase provider
+// enable + redirect URL), then set VITE_GOOGLE_OAUTH_ENABLED=true in
+// Vercel. Apple Sign In IS configured (external_apple_enabled=true) and
+// stays always-on.
+const GOOGLE_OAUTH_ENABLED = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true";
+
 /* ── Verification panel ──
    Shown inside the auth sheet when signUp returns pendingVerification
    (email verification is required) or when a signIn attempt is rejected
@@ -459,15 +470,17 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
       {mode !== "reset" && onProvider && (
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, marginBottom: 18 }}>
-            <button
-              type="button"
-              className="btn btn-oauth btn-oauth-google"
-              disabled={!!providerBusy}
-              onClick={() => handleProvider("google")}
-            >
-              <IconGoogle size={18} />
-              <span>{t("auth.continueWithGoogle")}</span>
-            </button>
+            {GOOGLE_OAUTH_ENABLED && (
+              <button
+                type="button"
+                className="btn btn-oauth btn-oauth-google"
+                disabled={!!providerBusy}
+                onClick={() => handleProvider("google")}
+              >
+                <IconGoogle size={18} />
+                <span>{t("auth.continueWithGoogle")}</span>
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-oauth btn-oauth-apple"
