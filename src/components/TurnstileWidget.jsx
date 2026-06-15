@@ -109,5 +109,16 @@ export const TurnstileWidget = forwardRef(function TurnstileWidget({ onToken, th
 // Captcha adds no real security inside a signed App Store binary
 // anyway: the request isn't replayable from outside the app context,
 // and the JS that calls Supabase ships only inside the bundle.
+//
+// ⚠️ HARD INVARIANT — Supabase `security_captcha_enabled` MUST stay
+// FALSE. Because this widget cannot run in the native webview, the
+// native shell sends NO captcha token; if Supabase enforces captcha
+// server-side, every native sign-up / sign-in is rejected with a 400
+// and the user just sees a red error. That is the App Review 2.1(a)
+// rejection of build 86 (June 2026, iPad). Web bot-protection is
+// carried by the Vercel firewall rate limit instead. If you ever
+// re-enable server-side enforcement, you MUST first give native a
+// captcha-free auth path (e.g. a service-role signup endpoint) — see
+// CLAUDE.md › Ops › "Auth captcha".
 // eslint-disable-next-line react-refresh/only-export-components
 export const TURNSTILE_ENABLED = !!SITE_KEY && !isNative();

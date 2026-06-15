@@ -27,10 +27,14 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
   const [resending, setResending] = useState(false);
   const [resentAt, setResentAt] = useState(0);
   const [resendError, setResendError] = useState("");
-  // Captcha for resend(). Mirrors AuthForm's pattern — Supabase
-  // requires a token on resend now that captcha is enforced for
-  // signup. The widget is invisible on trusted browsers (managed →
-  // non-interactive mode + appearance:"interaction-only").
+  // Captcha for resend(). Mirrors AuthForm's pattern — when the
+  // Turnstile widget is configured on web it supplies a token here.
+  // Server-side enforcement is intentionally OFF (see TurnstileWidget
+  // TURNSTILE_ENABLED + CLAUDE.md › Ops › "Auth captcha") so the
+  // native shell, which can't mount the widget, isn't blocked; the
+  // token is simply ignored by Supabase when present. The widget is
+  // invisible on trusted browsers (managed → non-interactive mode +
+  // appearance:"interaction-only").
   const [captchaToken, setCaptchaToken] = useState(null);
   // pendingResend defers a click while the invisible Turnstile
   // widget is still resolving on a cold render. Without it the
