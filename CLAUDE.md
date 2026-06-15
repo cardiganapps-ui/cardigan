@@ -188,20 +188,25 @@ Transactional auth mail flows: Supabase Auth → SMTP (`smtp.resend.com:465`, us
 - `mailer_autoconfirm: false` — new signups must click "Verificar mi correo" before they can sign in. The `AuthScreen`'s `VerifyPendingPanel` surfaces this (same panel is reused when an unverified user tries to sign in).
 - Canonical custom domain CNAMEs (apex + www) point at `cname.vercel-dns.com`, proxied=false so Vercel SSL issuance doesn't bounce off Cloudflare's proxy.
 
-### Auth captcha (Cloudflare Turnstile) — enforcement MUST stay off
-The web AuthScreen mounts a Cloudflare Turnstile widget (`src/components/TurnstileWidget.jsx`, gated on `VITE_TURNSTILE_SITE_KEY`) and passes a token to every Supabase auth call. **But Supabase's server-side `security_captcha_enabled` MUST remain `false`.** The widget cannot run inside the Capacitor native webview (`capacitor://localhost` is not an allowed Turnstile origin and the token never resolves), so `TURNSTILE_ENABLED = !!SITE_KEY && !isNative()` deliberately disables it on native. If server enforcement is ON, the native shell sends no token and **every native sign-up / sign-in is rejected with a 400 — the user just sees a red error.** That was the App Review 2.1(a) rejection of build 86 (June 2026, iPad): "the app produced an error when we attempted to register a new account." It's a server-side fix — disabling enforcement unblocks the existing binary with no new TestFlight upload.
+### Auth emails go through Resend SMTP — the Resend key IS the Supabase `smtp_pass`
+With `mailer_autoconfirm: false`, **every sign-up first sends a confirmation email**, so if Supabase Auth can't reach Resend the entire signup fails with `500 unexpected_failure / "Error sending confirmation email"` — the user sees a generic error and no account is created. This is the App Review 2.1(a) rejection of build 86 (June 2026, iPad: "the app produced an error when we attempted to register a new account"). It is **not platform-specific** — it fails for every new user, which is why a reviewer reliably hits it.
+
+The trap: the Supabase Auth `smtp_pass` is a **Resend API key**, and Supabase hashes it on read-back so you can't see drift. Rotating/deleting the Resend key in the Resend dashboard **silently breaks all auth email** (signup confirmation, password reset, magic link) until `smtp_pass` is re-set to the new key. That's exactly what happened here — Supabase held a deleted key.
 
 ```
-# disable enforcement (auth config is live immediately — no redeploy)
+# re-point Supabase Auth SMTP at the current Resend key (live immediately, no redeploy)
 curl -X PATCH "https://api.supabase.com/v1/projects/{ref}/config/auth" \
   -H "Authorization: Bearer $SUPABASE_PAT" -H "Content-Type: application/json" \
-  -d '{"security_captcha_enabled": false}'
-# verify → should print false
-curl -s "https://api.supabase.com/v1/projects/{ref}/config/auth" \
-  -H "Authorization: Bearer $SUPABASE_PAT" | jq '.security_captcha_enabled'
+  -d "{\"smtp_pass\": \"$RESEND_API_KEY\"}"
+# verify by REPRODUCING a signup (smtp_pass can't be read back) — a 500 here is the bug:
+curl -s -w '\n%{http_code}\n' -X POST "https://{ref}.supabase.co/auth/v1/signup" \
+  -H "apikey: <anon-key>" -H "Content-Type: application/json" \
+  -d '{"email":"you+test@gmail.com","password":"TestPassw0rd!2026"}'
 ```
+**Whenever you rotate the Resend key, update `smtp_pass` in the same step** and re-run the signup probe. Confirm Resend itself can send first (`POST https://api.resend.com/emails`) to isolate a bad key from a bad Supabase config.
 
-This is config, not in version control, so it can silently drift back on (a project restore or a dashboard toggle re-enables it). Web bot-protection is carried by the Vercel firewall `/api/*` rate limit instead. **Before ever turning enforcement back on, native needs a captcha-free auth path first** (e.g. a service-role signup endpoint under `api/`), otherwise native auth breaks again.
+### Auth captcha (Cloudflare Turnstile) — enforcement MUST stay off
+The web AuthScreen mounts a Cloudflare Turnstile widget (`src/components/TurnstileWidget.jsx`, gated on `VITE_TURNSTILE_SITE_KEY`) and passes a token to every Supabase auth call. **Supabase's server-side `security_captcha_enabled` MUST remain `false`** (it currently is). The widget cannot run inside the Capacitor native webview (`capacitor://localhost` is not an allowed Turnstile origin and the token never resolves), so `TURNSTILE_ENABLED = !!SITE_KEY && !isNative()` deliberately disables it on native. If server enforcement is ever turned ON, the native shell sends no token and **every native sign-up / sign-in would be rejected with a 400** — the user just sees a red error. Web bot-protection is carried by the Vercel firewall `/api/*` rate limit instead. This is config (not in version control), so it can drift on via a dashboard toggle or project restore. **Before ever turning enforcement on, native needs a captcha-free auth path first** (e.g. a service-role signup endpoint under `api/`).
 
 ### Vercel serverless routes (`api/`)
 Files under `api/*.js` become `/api/*` routes — but **files with names starting with `_` or `__` are NOT exposed as routes** (which is why `_admin.js` / `_push.js` / `_r2.js` / `_sentry.js` work as helpers). Diagnostic endpoints need a plain name like `cron-debug.js` to be reachable.
