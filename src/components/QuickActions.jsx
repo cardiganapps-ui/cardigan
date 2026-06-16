@@ -79,7 +79,6 @@ export function QuickActions() {
       )}
       <button
         className={`fab ${menuOpen ? "fab-open" : ""}`}
-        data-tour="fab"
         onClick={() => { haptic.tap(); setMenuOpen(o => !o); }}
         aria-label={menuOpen ? t("close") : t("add")}
       >

@@ -213,7 +213,6 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
       <button
         key={item.id}
         className={`drawer-item ${screen===item.id?"active":""}`}
-        data-tour={`nav-${item.id}`}
         onClick={() => handleNav(item.id)}
         aria-current={screen === item.id ? "page" : undefined}
       >

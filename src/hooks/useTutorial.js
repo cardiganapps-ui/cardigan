@@ -1,34 +1,16 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { TUTORIAL_STEPS } from "../components/Tutorial/tutorialSteps";
 
 // ── Persistence helpers ──────────────────────────────────────────────
 const LS_DONE_PREFIX = "cardigan-tutorial-done-";
-const LS_PROGRESS_PREFIX = "cardigan-tutorial-progress-";
 
 function localDoneKey(userId) { return LS_DONE_PREFIX + (userId || "anon"); }
-function localProgressKey(userId) { return LS_PROGRESS_PREFIX + (userId || "anon"); }
 
 function readLocalDone(userId) {
   try { return !!localStorage.getItem(localDoneKey(userId)); } catch { return false; }
 }
 function writeLocalDone(userId) {
   try { localStorage.setItem(localDoneKey(userId), "1"); } catch { /* private mode / quota — non-fatal */ }
-}
-function readLocalProgress(userId) {
-  try {
-    const raw = localStorage.getItem(localProgressKey(userId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed?.stepIndex === "number") return parsed;
-    return null;
-  } catch { return null; }
-}
-function writeLocalProgress(userId, stepIndex) {
-  try { localStorage.setItem(localProgressKey(userId), JSON.stringify({ stepIndex })); } catch { /* private mode / quota — non-fatal */ }
-}
-function clearLocalProgress(userId) {
-  try { localStorage.removeItem(localProgressKey(userId)); } catch { /* non-fatal */ }
 }
 
 async function writeMetadataDone() {
@@ -41,33 +23,26 @@ async function writeMetadataDone() {
 
 // ── Reducer ──────────────────────────────────────────────────────────
 // states: "idle" | "welcome" | "running" | "done"
-const initial = { state: "idle", stepIndex: 0 };
+//
+// The carousel owns its own slide index; the hook is a pure on/off +
+// persistence machine. App.jsx reads `state` ("running"/"done") to
+// coordinate the Welcome-to-Pro prompt, so the string values are stable.
+const initial = { state: "idle" };
 
 function reducer(s, a) {
   switch (a.type) {
-    case "showWelcome": return { state: "welcome", stepIndex: 0 };
-    case "start":       return { state: "running", stepIndex: a.stepIndex ?? 0 };
-    case "next": {
-      const nextIdx = s.stepIndex + 1;
-      if (nextIdx >= TUTORIAL_STEPS.length) return { state: "done", stepIndex: 0 };
-      return { state: "running", stepIndex: nextIdx };
-    }
-    case "prev": {
-      if (s.state !== "running") return s;
-      return { state: "running", stepIndex: Math.max(0, s.stepIndex - 1) };
-    }
-    case "setIndex": return { state: "running", stepIndex: a.stepIndex };
-    case "finish":   return { state: "done", stepIndex: 0 };
-    case "close":    return { state: "done", stepIndex: 0 };
+    case "showWelcome": return { state: "welcome" };
+    case "start":       return { state: "running" };
+    case "finish":      return { state: "done" };
+    case "close":       return { state: "done" };
     default: return s;
   }
 }
 
 /**
  * Tutorial state hook.
- * Owns persistence (localStorage + Supabase user metadata).
- * The consumer (Tutorial orchestrator) is responsible for screen navigation
- * and spotlight measurement based on the `step` returned here.
+ * Owns persistence (localStorage + Supabase user metadata) and the
+ * first-login gate. The consumer (Tutorial carousel) drives the UI.
  */
 export function useTutorial({ user, demo, readOnly, screen } = {}) {
   const [state, dispatch] = useReducer(reducer, initial);
@@ -104,8 +79,6 @@ export function useTutorial({ user, demo, readOnly, screen } = {}) {
       return;
     }
 
-    // Check if we have an in-progress run to resume after a reload.
-    const progress = readLocalProgress(userId);
     const timer = setTimeout(() => {
       // Re-check done status right before firing — avoids a race where
       // another tab / the auth metadata refreshed in the meantime.
@@ -114,22 +87,11 @@ export function useTutorial({ user, demo, readOnly, screen } = {}) {
       // the 800ms warmup doesn't permanently disable the welcome for
       // this session.
       gateCheckedRef.current = userId;
-      if (progress && progress.stepIndex > 0 && progress.stepIndex < TUTORIAL_STEPS.length) {
-        dispatch({ type: "start", stepIndex: progress.stepIndex });
-      } else {
-        dispatch({ type: "showWelcome" });
-      }
+      dispatch({ type: "showWelcome" });
     }, 800);
 
     return () => clearTimeout(timer);
   }, [disabled, userId, user?.user_metadata?.tutorial_completed_at, screen]);
-
-  // ── Persist progress while running ──
-  useEffect(() => {
-    if (state.state === "running" && userId) {
-      writeLocalProgress(userId, state.stepIndex);
-    }
-  }, [state.state, state.stepIndex, userId]);
 
   // ── Mark done on entering "done" ──
   const markedDoneRef = useRef(false);
@@ -137,56 +99,35 @@ export function useTutorial({ user, demo, readOnly, screen } = {}) {
     if (state.state === "done" && !markedDoneRef.current) {
       markedDoneRef.current = true;
       writeLocalDone(userId);
-      clearLocalProgress(userId);
       writeMetadataDone();
     }
     if (state.state !== "done") markedDoneRef.current = false;
   }, [state.state, userId]);
 
   // ── Actions ──
-  const start = useCallback(() => dispatch({ type: "start", stepIndex: 0 }), []);
-  const next = useCallback(() => dispatch({ type: "next" }), []);
-  const prev = useCallback(() => dispatch({ type: "prev" }), []);
+  const start = useCallback(() => dispatch({ type: "start" }), []);
   const skip = useCallback(() => dispatch({ type: "close" }), []);
   const finish = useCallback(() => dispatch({ type: "finish" }), []);
-  const setIndex = useCallback((i) => dispatch({ type: "setIndex", stepIndex: i }), []);
 
-  // Called from Settings → "Tutorial" row. Clears persistence and starts again.
+  // Called from Settings → "Tutorial" row. Clears persistence and starts
+  // the carousel directly (skips the welcome gate).
   const reset = useCallback(() => {
     try {
       localStorage.removeItem(localDoneKey(userId));
-      localStorage.removeItem(localProgressKey(userId));
     } catch { /* non-fatal */ }
     markedDoneRef.current = false;
     // Best-effort: clear the metadata flag so other devices also re-prompt.
     supabase.auth.updateUser({ data: { tutorial_completed_at: null } }).catch(() => {});
-    dispatch({ type: "start", stepIndex: 0 });
+    dispatch({ type: "start" });
   }, [userId]);
-
-  const step = useMemo(() => {
-    if (state.state !== "running") return null;
-    return TUTORIAL_STEPS[state.stepIndex] || null;
-  }, [state.state, state.stepIndex]);
-
-  const totalSteps = TUTORIAL_STEPS.length;
-  const isFirst = state.stepIndex === 0;
-  const isLast = state.stepIndex === totalSteps - 1;
 
   return {
     state: state.state,
-    stepIndex: state.stepIndex,
-    totalSteps,
-    step,
     isActive: state.state === "running",
     isWelcome: state.state === "welcome",
-    isFirst,
-    isLast,
     start,
-    next,
-    prev,
     skip,
     finish,
     reset,
-    setIndex,
   };
 }

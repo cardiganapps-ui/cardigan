@@ -20,11 +20,11 @@
  *   value   — currently selected key
  *   onChange(key)
  *   size    — "sm" (default) | "md" — md uses heavier font for primary tabs
- *   dataTour, role, ariaLabel — optional pass-through
+ *   role, ariaLabel — optional pass-through
  */
 import { useEffect, useState } from "react";
 
-export function SegmentedControl({ items, value, onChange, size = "sm", dataTour, role = "tablist", ariaLabel, style }) {
+export function SegmentedControl({ items, value, onChange, size = "sm", role = "tablist", ariaLabel, style }) {
   const activeIndex = items.findIndex(it => it.k === value);
   const showSlider = activeIndex >= 0;
 
@@ -60,7 +60,6 @@ export function SegmentedControl({ items, value, onChange, size = "sm", dataTour
       className={`segmented segmented--${size}`}
       role={role}
       aria-label={ariaLabel}
-      data-tour={dataTour}
       style={{ "--active-i": activeIndex, "--tab-count": items.length, ...style }}
     >
       {showSlider && <span className={sliderClass} aria-hidden="true" />}

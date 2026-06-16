@@ -74,7 +74,6 @@ import Tooltip from "./components/Tooltip";
 // from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
 // the main bundle for users who already finished it.
 const Tutorial = lazy(() => import("./components/Tutorial/Tutorial").then(m => ({ default: m.Tutorial })));
-import { STEP_IDS_REQUIRING_FAB } from "./components/Tutorial/tutorialSteps";
 import { useTutorial } from "./hooks/useTutorial";
 import { ToastStack } from "./components/Toast";
 import { QuickScheduleSheet } from "./components/sheets/QuickScheduleSheet";
@@ -1122,8 +1121,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   }, [demo, readOnly, user, subscription.accessState, upcomingSessions, patients, ratingSheetOpen, sessionStartedAt]);
 
   const tutorial = useTutorial({ user, demo, readOnly, screen });
-  const tutorialHidesFab = tutorial?.isActive
-    && !(tutorial?.step && STEP_IDS_REQUIRING_FAB.has(tutorial.step.id));
+  // The carousel is a full-screen overlay with its own scrim, so the FAB
+  // just hides while the tutorial (welcome gate or carousel) is up.
+  const tutorialHidesFab = tutorial?.isActive || tutorial?.isWelcome;
   // Admin owns its own chrome (sidebar + header) and covers the
   // topbar / FAB / BottomTabs via the fixed `.admin-shell` overlay.
   // Privacy hides the FAB because the page is text-only and a
@@ -1138,12 +1138,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // rules in base.css handle the "any sheet / drawer is open" case
   // for both at once.
   //
-  // Tutorial: hides the FAB on every step except the "fab" spotlight
-  // step (otherwise the FAB sits above the dim and competes with the
-  // step content). BottomTabs stay visible — the tut-blocker divs
-  // already disable taps on the dimmed chrome, and a sudden empty
-  // bottom strip during a centered card step reads like a broken
-  // screen. Keep them dimmed-but-present.
+  // Tutorial: the carousel overlay covers the whole viewport, so the FAB
+  // is hidden while it (or its welcome gate) is open.
   const hideFab = localHideFab
     || tutorialHidesFab
     || screen === "admin"
@@ -2213,7 +2209,6 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         <div className="topbar">
           <button
             className={`hamburger ${drawerOpen?"open":""}`}
-            data-tour="hamburger"
             onClick={() => setDrawerOpen(o=>!o)}
             onMouseEnter={drawerImport}
             onFocus={drawerImport}

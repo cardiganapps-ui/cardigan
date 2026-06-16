@@ -440,7 +440,7 @@ export function Patients() {
   // Empty state
   if (patients.length === 0) {
     return (
-      <div className="page" data-tour="patients-list" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+      <div className="page" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
         <EmptyState
           kind="patients"
           title={t("patients.noPatients")}
@@ -640,7 +640,7 @@ export function Patients() {
   );
 
   return (
-    <div className={isTabletSplit ? "patients-split-view" : "page"} data-tour="patients-list">
+    <div className={isTabletSplit ? "patients-split-view" : "page"}>
       {isTabletSplit ? (
         <div className="patients-list-pane">{listJSX}</div>
       ) : listJSX}

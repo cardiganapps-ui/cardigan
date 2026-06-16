@@ -1298,7 +1298,7 @@ export function Agenda() {
         onClose={() => setEditingNote(null)}
       />
     )}
-    <div className="page" data-tour="agenda-section">
+    <div className="page">
       <div style={{ paddingTop:16 }}>
         {showCalendarCTA && (
           <div style={{ padding:"0 16px 12px" }}>
@@ -1325,7 +1325,6 @@ export function Agenda() {
         )}
         <div style={{ padding:"0 16px 14px" }}>
           <SegmentedControl
-            dataTour="agenda-toggle"
             value={view}
             onChange={setView}
             items={[

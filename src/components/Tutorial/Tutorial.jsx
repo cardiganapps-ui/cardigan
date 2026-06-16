@@ -1,473 +1,85 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useCardigan } from "../../context/CardiganContext";
 import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
-import { isNative } from "../../lib/platform";
-import { TutorialSpotlight } from "./TutorialSpotlight";
-import { TutorialTooltip } from "./TutorialTooltip";
-import { TutorialWelcome } from "./TutorialWelcome";
-import { STEP_IDS_REQUIRING_FAB, STEP_IDS_WITH_DRAWER, TUTORIAL_STEPS } from "./tutorialSteps";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { LogoIcon } from "../LogoMark";
+import { TutorialCarousel } from "./TutorialCarousel";
 
-// Viewport padding around the tooltip so it never hugs the edge.
-const EDGE_PAD = 12;
-// Time for the drawer open/close animation to settle before measuring.
-// Drawer transition is 600ms cubic-bezier with spring overshoot; the
-// measure happens +60ms after settling=false (see useLayoutEffect).
-// We need settle + 60ms ≥ 600ms + cushion so the rect we capture
-// reflects the post-overshoot resting position. ResizeObserver only
-// fires on size changes (not transform-driven position drift), so a
-// stale rect would stay stale until the user resizes the window —
-// the cushion is what keeps the spotlight aligned on cardi/etc.
-const DRAWER_SETTLE_MS = 580;
-// Same logic for screen transitions: screenSlide is 0.5s with spring
-// overshoot; settle + 60ms ≥ 500ms + cushion.
-const NAV_SETTLE_MS = 480;
-
-function computeTooltipStyle(rect, placement, tooltipEl) {
-  // Center fallback: place tooltip in the middle of the viewport.
-  if (!rect || placement === "center") {
-    return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-  }
-  const vw = window.innerWidth;
-  // Prefer visualViewport when available — on iOS Safari it gives the actual
-  // visible area (excluding overlaying browser chrome), so the clamp below
-  // keeps the tooltip clear of the bottom bar.
-  const vh = (typeof window !== "undefined" && window.visualViewport?.height)
-    || window.innerHeight;
-  // Use `||` (not `??`) so a measured height/width of 0 falls back to defaults.
-  const tooltipH = tooltipEl?.offsetHeight || 180;
-  const tooltipW = tooltipEl?.offsetWidth || Math.min(vw - 24, 320);
-
-  // Auto-flip: if preferred placement doesn't fit, flip.
-  let actual = placement;
-  if (placement === "bottom" && rect.bottom + tooltipH + 16 > vh - EDGE_PAD) {
-    actual = rect.top - tooltipH - 16 > EDGE_PAD ? "top" : "bottom";
-  } else if (placement === "top" && rect.top - tooltipH - 16 < EDGE_PAD) {
-    actual = rect.bottom + tooltipH + 16 < vh - EDGE_PAD ? "bottom" : "top";
-  }
-
-  let top;
-  if (actual === "top") {
-    top = rect.top - tooltipH - 14;
-  } else {
-    top = rect.bottom + 14;
-  }
-  top = Math.max(EDGE_PAD, Math.min(top, vh - tooltipH - EDGE_PAD));
-
-  // Horizontally center on target, clamp to viewport.
-  let left = rect.left + rect.width / 2 - tooltipW / 2;
-  left = Math.max(EDGE_PAD, Math.min(left, vw - tooltipW - EDGE_PAD));
-
-  return { top, left };
-}
-
-function intersects(rect, bubbleTop, bubbleLeft, bubbleH, bubbleW) {
-  if (!rect) return false;
-  return !(
-    bubbleLeft + bubbleW < rect.left ||
-    bubbleLeft > rect.right ||
-    bubbleTop + bubbleH < rect.top ||
-    bubbleTop > rect.bottom
+// ── Welcome gate ──
+// Asks consent before launching the carousel, so a brand-new user isn't
+// dumped straight into a 6-slide tour. "Ahora no" is the cheap escape that
+// marks the tutorial done. Bypassed on Settings replay (reset() goes
+// straight to the running state).
+function TutorialWelcome({ onAccept, onDecline }) {
+  const { t } = useT();
+  const trapRef = useFocusTrap(true);
+  return (
+    <div
+      className="tut-carousel-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tut-welcome-title"
+      ref={trapRef}
+    >
+      <div className="tut-carousel-card tut-carousel-card--welcome">
+        <div className="tut-carousel-hero" aria-hidden="true">
+          <LogoIcon size={30} color="currentColor" />
+        </div>
+        <div id="tut-welcome-title" className="tut-carousel-title">
+          {t("tutorial.welcomeTitle")}
+        </div>
+        <div className="tut-carousel-body">{t("tutorial.welcomeBody")}</div>
+        <div className="tut-carousel-actions tut-carousel-actions--stack">
+          <button type="button" className="tut-btn tut-btn-primary" onClick={onAccept}>
+            {t("tutorial.welcomeYes")}
+          </button>
+          <button type="button" className="tut-btn tut-btn-ghost" onClick={onDecline}>
+            {t("tutorial.welcomeNo")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
-// ── Reconcile position:fixed space with getBoundingClientRect space ──
-//
-// The spotlight + tooltip are position:fixed; targets are measured with
-// getBoundingClientRect. On the web those two coordinate spaces are
-// identical, but inside the Capacitor iOS webview (contentInset:"never"
-// + viewport-fit=cover) a fixed element's origin and getBoundingClientRect
-// coordinates differ by the top safe-area inset. That made the cutout land
-// ~the-safe-area too HIGH on every step (KPIs framed the row above, the FAB
-// spotlight floated mid-screen). Measure the delta with a throwaway fixed
-// (0,0) probe and subtract it from every measured rect so the fixed overlay
-// lands exactly on the target. Delta is 0 on web/Android → no-op there.
-function measureFixedOrigin() {
-  if (typeof document === "undefined") return { x: 0, y: 0 };
-  const probe = document.createElement("div");
-  probe.style.cssText =
-    "position:fixed;top:0;left:0;width:0;height:0;margin:0;padding:0;border:0;pointer-events:none;visibility:hidden;";
-  document.body.appendChild(probe);
-  const r = probe.getBoundingClientRect();
-  document.body.removeChild(probe);
-  return { x: r.left, y: r.top };
-}
-
 /**
- * Main tutorial orchestrator.
- * - Reads tutorial state + actions from CardiganContext.
- * - Navigates between screens and opens the drawer as steps require.
- * - Measures target elements via getBoundingClientRect + ResizeObserver +
- *   scroll/resize/orientationchange listeners.
- * - Renders spotlight + tooltip (or welcome card) via a portal to document.body.
+ * Tutorial entry point.
+ *
+ * A thin shell over the carousel — it reads tutorial state from context,
+ * portals to document.body, and wires Escape-to-skip. There is no DOM
+ * measurement, screen navigation, or z-index juggling here anymore; the
+ * carousel is fully self-contained.
  */
 export function Tutorial() {
-  const {
-    tutorial,
-    navigate,
-    screen,
-    drawerOpen,
-    setDrawerOpen,
-  } = useCardigan();
-  const { t } = useT();
-
-  const [rect, setRect] = useState(null);
-  const [tooltipStyle, setTooltipStyle] = useState(null);
-  const [centered, setCentered] = useState(false);
-  const [ready, setReady] = useState(false);
-  // True while the drawer is animating open/closed or the screen is
-  // transitioning — suppresses spotlight/tooltip until settled.
-  const [settling, setSettling] = useState(false);
-  const tooltipRef = useRef(null);
-  const retryRef = useRef(0);
-  // Live position:fixed ↔ getBoundingClientRect delta (see
-  // measureFixedOrigin). Kept in a ref so measure()/the rAF tracker read
-  // the current value without re-subscribing. Re-measured on resize /
-  // orientation (safe-area insets change on rotate).
-  const fixedOriginRef = useRef({ x: 0, y: 0 });
-
-  const step = tutorial?.step || null;
-  const isActive = tutorial?.isActive;
+  const { tutorial } = useCardigan();
   const isWelcome = tutorial?.isWelcome;
-  const isDrawerStep = step && STEP_IDS_WITH_DRAWER.has(step.id);
+  const isActive = tutorial?.isActive;
 
-  // Stable refs for values used in effects that shouldn't retrigger.
-  const navigateRef = useRef(navigate);
-  navigateRef.current = navigate;
-  const screenRef = useRef(screen);
-  screenRef.current = screen;
-  const setDrawerOpenRef = useRef(setDrawerOpen);
-  setDrawerOpenRef.current = setDrawerOpen;
-  const drawerOpenRef = useRef(drawerOpen);
-  drawerOpenRef.current = drawerOpen;
+  useEscape(isWelcome || isActive ? tutorial.skip : null);
 
-  // ── Open/close drawer and navigate for each step ──
-  //
-  // Drawer steps:     open the drawer, wait for animation, then measure.
-  // Non-drawer steps: close the drawer (if open), navigate to screen, wait, measure.
-  useEffect(() => {
-    if (!isActive || !step) { setSettling(false); return; }
-    // Strip any leftover target class from the previous step so the
-    // settle-phase dim doesn't show two highlighted drawer items at
-    // once. measure() will re-tag the new target once it resolves.
-    document.querySelectorAll(".tut-target").forEach(n => n.classList.remove("tut-target"));
-    const timers = [];
+  if (!tutorial || (!isWelcome && !isActive)) return null;
 
-    if (step.openDrawer) {
-      // Drawer step: open the drawer and wait for it to settle.
-      if (!drawerOpenRef.current) {
-        setSettling(true);
-        setDrawerOpenRef.current(true);
-        timers.push(setTimeout(() => setSettling(false), DRAWER_SETTLE_MS));
-      } else {
-        setSettling(false);
-      }
-    } else {
-      // Non-drawer step: close drawer if open, navigate if needed.
-      const needsClose = drawerOpenRef.current;
-      const needsNav = step.screen && step.screen !== screenRef.current;
-
-      if (needsClose || needsNav) {
-        setSettling(true);
-        if (needsClose) setDrawerOpenRef.current(false);
-        // Navigate after drawer closes (or immediately if drawer wasn't open).
-        // Trimmed from 500ms to 320ms — same logic as the other settle
-        // constants: the drawer-close transform is well past its
-        // visible end before the old timer fired.
-        const navDelay = needsClose ? 320 : 0;
-        if (needsNav) {
-          timers.push(setTimeout(() => navigateRef.current(step.screen), navDelay));
-        }
-        // Wait for close + screen slide to settle.
-        const totalDelay = navDelay + (needsNav ? NAV_SETTLE_MS : needsClose ? 320 : 0);
-        timers.push(setTimeout(() => setSettling(false), totalDelay));
-      } else {
-        setSettling(false);
-      }
-    }
-
-    return () => timers.forEach(clearTimeout);
-    // `step?.id` is the canonical key for a tutorial step — including the
-    // full `step` object would re-run the effect on parent re-renders
-    // even when the user hasn't advanced.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, step?.id]);
-
-  // ── Boost FAB z-index above the tutorial overlay on the FAB step ──
-  //
-  // The FAB's visibility is driven upstream (App.jsx derives `hideFab`
-  // from tutorial state directly), so here we only manage the z-index
-  // boost class — no setState that would run on tutorial unmount and
-  // cause a one-frame lag where the overlay is gone but BottomTabs
-  // haven't remounted yet.
-  useEffect(() => {
-    if (!isActive || !step) return;
-    const needFab = STEP_IDS_REQUIRING_FAB.has(step.id);
-    if (needFab) document.body.classList.add("tut-fab-active");
-    else document.body.classList.remove("tut-fab-active");
-    return () => document.body.classList.remove("tut-fab-active");
-  }, [isActive, step]);
-
-  // ── Boost drawer z-index above tutorial overlay during drawer steps ──
-  useEffect(() => {
-    if (!isActive || !step) return;
-    if (isDrawerStep) document.body.classList.add("tut-drawer-active");
-    else document.body.classList.remove("tut-drawer-active");
-    return () => document.body.classList.remove("tut-drawer-active");
-  }, [isActive, step, isDrawerStep]);
-
-  // ── Keep the fixed↔rect delta current ──
-  useEffect(() => {
-    if (!isActive && !isWelcome) return;
-    const update = () => { fixedOriginRef.current = measureFixedOrigin(); };
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-    };
-  }, [isActive, isWelcome]);
-
-  // ── Measure target element ──
-  const measure = useCallback(() => {
-    if (!step) { setRect(null); return; }
-    if (!step.selector) { setRect(null); setReady(true); return; }
-    const el = document.querySelector(step.selector);
-    if (!el) {
-      // Retry a few times for elements that mount late after a screen switch.
-      if (retryRef.current < 6) {
-        retryRef.current += 1;
-        setTimeout(measure, 200);
-        return;
-      }
-      // Give up and auto-skip to the next step.
-      if (import.meta.env.DEV && typeof window !== "undefined" && window.console) {
-        console.warn(`[Tutorial] Target not found for step "${step.id}": ${step.selector}`);
-      }
-      tutorial.next();
-      return;
-    }
-    retryRef.current = 0;
-    // Tag the matched element so CSS can highlight it. The drawer is
-    // z-index-boosted above the tutorial dim during drawer steps, which
-    // would otherwise leave every drawer-item at full brightness — the
-    // user couldn't tell which one the tooltip was pointing at. We
-    // strip the marker off the previous target before re-tagging.
-    document.querySelectorAll(".tut-target").forEach(n => {
-      if (n !== el) n.classList.remove("tut-target");
-    });
-    el.classList.add("tut-target");
-    const r = el.getBoundingClientRect();
-    const o = fixedOriginRef.current;
-    setRect({
-      top: r.top - o.y, left: r.left - o.x, right: r.right - o.x, bottom: r.bottom - o.y,
-      width: r.width, height: r.height,
-    });
-    setReady(true);
-  }, [step, tutorial]);
-
-  // Initial measurement for each step — wait for settling to clear first.
-  useLayoutEffect(() => {
-    if (!isActive || !step) { setReady(false); setRect(null); return; }
-    if (settling) { setReady(false); setRect(null); return; }
-    setReady(false);
-    retryRef.current = 0;
-    const timer = setTimeout(measure, 60);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, step?.id, settling]);
-
-  // ── Track the target's LIVE position every frame ──
-  //
-  // getBoundingClientRect can change without firing resize / scroll /
-  // ResizeObserver events. Three drivers move the target AFTER the initial
-  // measure, and the old listener-based approach missed all of them, so
-  // the cutout froze on a stale rect and pointed at empty space:
-  //   • late-mounting content — the Home "No pierdas ninguna sesión"
-  //     banner mounts and pushes the KPI grid down;
-  //   • entrance animations — the FAB scales in at the bottom-right;
-  //   • the screen-slide spring settling after navigation.
-  // ResizeObserver only fires on SIZE changes, not position drift. A rAF
-  // loop reads the live rect and updates state only when it actually moved
-  // (>0.5px), so the spotlight follows the element to its resting place;
-  // the CSS transition on .tut-spotlight makes that glide smoothly. Once
-  // the target is stable the loop does no work (no setState).
-  useEffect(() => {
-    if (!isActive || !step || !step.selector || settling) return;
-    let raf = 0;
-    let prev = null;
-    const EPS = 0.5;
-    const tick = () => {
-      const el = document.querySelector(step.selector);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        // Ignore a collapsed/detached 0×0 rect (mid-transition) — keep the
-        // last good position rather than snapping the cutout to the corner.
-        if (r.width > 0 || r.height > 0) {
-          if (
-            !prev ||
-            Math.abs(r.top - prev.top) > EPS ||
-            Math.abs(r.left - prev.left) > EPS ||
-            Math.abs(r.width - prev.width) > EPS ||
-            Math.abs(r.height - prev.height) > EPS
-          ) {
-            prev = r;
-            if (!el.classList.contains("tut-target")) el.classList.add("tut-target");
-            const o = fixedOriginRef.current;
-            setRect({ top: r.top - o.y, left: r.left - o.x, right: r.right - o.x, bottom: r.bottom - o.y, width: r.width, height: r.height });
-          }
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, step?.id, step?.selector, settling]);
-
-  // ── Compute tooltip position once rect + tooltip are available ──
-  useLayoutEffect(() => {
-    if (!isActive || !step) { setTooltipStyle(null); setCentered(false); return; }
-    if (step.placement === "center" || !rect) {
-      setCentered(true);
-      setTooltipStyle(null);
-      return;
-    }
-    const style = computeTooltipStyle(rect, step.placement, tooltipRef.current);
-    // Narrow-screen fallback: if the tooltip would overlap the spotlight, center it.
-    const vw = window.innerWidth;
-    // `||` so a measured 0 (e.g. pre-mount) falls back to defaults.
-    const bubbleW = tooltipRef.current?.offsetWidth || Math.min(vw - 24, 320);
-    const bubbleH = tooltipRef.current?.offsetHeight || 180;
-    if (
-      typeof style.top === "number" &&
-      typeof style.left === "number" &&
-      intersects(rect, style.top, style.left, bubbleH, bubbleW)
-    ) {
-      setCentered(true);
-      setTooltipStyle(null);
-    } else {
-      setCentered(false);
-      setTooltipStyle(style);
-    }
-  }, [isActive, step, rect, ready]);
-
-  // ── ESC to skip ──
-  const onEscape = useCallback(() => {
-    if (isActive) tutorial.skip();
-    else if (isWelcome) tutorial.skip();
-  }, [isActive, isWelcome, tutorial]);
-  useEscape(isActive || isWelcome ? onEscape : null);
-
-  // ── Pause while drawer is open — but NOT during drawer steps ──
-  const paused = isActive && !!drawerOpen && !isDrawerStep;
-
-  // ── Hard cleanup on unmount / finish ──
-  useEffect(() => {
-    if (isActive || isWelcome) return;
-    // Close drawer if left open by a drawer step.
-    if (drawerOpenRef.current) setDrawerOpenRef.current(false);
-    // Defer one frame so React's own portal cleanup runs first.
-    const raf = requestAnimationFrame(() => {
-      document.querySelectorAll(".tut-dim, .tut-blocker, .tut-spotlight, .tut-nav-chip").forEach(el => el.remove());
-      document.querySelectorAll(".tut-nav-pulse").forEach(el => el.classList.remove("tut-nav-pulse"));
-      document.querySelectorAll(".tut-target").forEach(el => el.classList.remove("tut-target"));
-      document.body.classList.remove("tut-drawer-active", "tut-fab-active");
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [isActive, isWelcome]);
-
-  if (!tutorial) return null;
-
-  // Welcome modal
   if (isWelcome) {
     return createPortal(
-      <TutorialWelcome
-        onAccept={() => tutorial.start()}
-        onDecline={() => tutorial.skip()}
-      />,
-      document.body
-    );
-  }
-
-  if (!isActive || !step || paused) return null;
-
-  const title = t(step.titleKey);
-  const bodyText = t(step.bodyKey);
-
-  // On iOS Safari (not already installed), append install instructions to
-  // the last step. Suppressed inside the native shell — there's nothing
-  // to install once the user is already running the App Store build.
-  const showInstall = step.showInstall
-    && !isNative()
-    && /iPad|iPhone|iPod/.test(navigator.userAgent)
-    && !(window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches);
-
-  const body = showInstall ? (
-    <>
-      <div>{bodyText}</div>
-      <div style={{ borderTop:"1px solid var(--border-lt)", marginTop:12, paddingTop:12 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", marginBottom:8 }}>{t("install.title")}</div>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-          <div style={{ width:20, height:20, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>1</div>
-          <span style={{ fontSize:12, color:"var(--charcoal)" }}>
-            {t("install.tapButton")}{" "}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign:"middle" }}>
-              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-            </svg>
-            {" "}{t("install.safariButton")}
-          </span>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>2</div>
-          <span style={{ fontSize:12, color:"var(--charcoal)" }}>
-            {t("install.selectLabel")} <strong>"{t("install.selectAdd")}"</strong>
-          </span>
-        </div>
-      </div>
-    </>
-  ) : bodyText;
-
-  // While settling (drawer opening / screen switching), show a dim overlay.
-  if (settling) {
-    return createPortal(
-      <div className="tut-dim tut-dim--transition" />,
+      <TutorialWelcome onAccept={tutorial.start} onDecline={tutorial.skip} />,
       document.body
     );
   }
 
   return createPortal(
-    <>
-      {/* During drawer steps the panel is z-boosted above the spotlight,
-          which means the spotlight's rectangular cutout + animated ring
-          render behind the drawer and create visible artifacts (the
-          1.6 s top-animation, the pulsing ::after ring, etc.). The
-          drawer-item itself is highlighted via the .tut-target CSS rule
-          in tutorial.css, so we only need a flat full-viewport dim
-          here for the right-side screen content. */}
-      {isDrawerStep
-        ? <div className="tut-dim" />
-        : <TutorialSpotlight key={step.id} rect={rect} padding={step.padding} />}
-      <TutorialTooltip
-        key={step.id}
-        ref={tooltipRef}
-        title={title}
-        body={body}
-        iconName={step.icon}
-        stepIndex={tutorial.stepIndex}
-        totalSteps={tutorial.totalSteps}
-        isFirst={tutorial.isFirst}
-        isLast={tutorial.isLast}
-        onPrev={tutorial.prev}
-        onNext={tutorial.next}
-        onSkip={tutorial.skip}
-        style={tooltipStyle || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
-        centered={centered}
-        placement={step.placement}
-      />
-    </>,
+    <CarouselWithTrap onSkip={tutorial.skip} onFinish={tutorial.finish} />,
     document.body
+  );
+}
+
+// Focus trap lives on a wrapper so the carousel component itself stays a
+// pure presentational pager.
+function CarouselWithTrap({ onSkip, onFinish }) {
+  const trapRef = useFocusTrap(true);
+  return (
+    <div ref={trapRef}>
+      <TutorialCarousel onSkip={onSkip} onFinish={onFinish} />
+    </div>
   );
 }
