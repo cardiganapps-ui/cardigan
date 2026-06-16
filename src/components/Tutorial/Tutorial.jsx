@@ -24,12 +24,6 @@ const DRAWER_SETTLE_MS = 580;
 // overshoot; settle + 60ms ≥ 500ms + cushion.
 const NAV_SETTLE_MS = 480;
 
-// TEMPORARY on-device diagnostic. Renders the raw measurements for the
-// current step so a single TestFlight screenshot reveals exactly how the
-// iOS webview's getBoundingClientRect relates to the visible target.
-// Remove once the spotlight alignment is confirmed.
-const DEBUG_TUTORIAL = true;
-
 function computeTooltipStyle(rect, placement, tooltipEl) {
   // Center fallback: place tooltip in the middle of the viewport.
   if (!rect || placement === "center") {
@@ -446,31 +440,6 @@ export function Tutorial() {
 
   return createPortal(
     <>
-      {DEBUG_TUTORIAL && step?.selector && (() => {
-        const el = document.querySelector(step.selector);
-        const r = el?.getBoundingClientRect();
-        const o = fixedOriginRef.current;
-        const vv = typeof window !== "undefined" ? window.visualViewport : null;
-        const line = (label, v) => `${label}: ${v}`;
-        const txt = [
-          line("step", `${step.id} [${step.selector}] found=${!!el}`),
-          line("rawRect", r ? `t=${r.top.toFixed(0)} l=${r.left.toFixed(0)} w=${r.width.toFixed(0)} h=${r.height.toFixed(0)} b=${r.bottom.toFixed(0)}` : "—"),
-          line("spotRect", rect ? `t=${rect.top.toFixed(0)} l=${rect.left.toFixed(0)} w=${rect.width.toFixed(0)} h=${rect.height.toFixed(0)}` : "—"),
-          line("probe(fixed0,0)", `x=${o.x.toFixed(1)} y=${o.y.toFixed(1)}`),
-          line("window", `iw=${window.innerWidth} ih=${window.innerHeight}`),
-          line("visualVP", vv ? `w=${vv.width.toFixed(0)} h=${vv.height.toFixed(0)} offTop=${vv.offsetTop.toFixed(1)} pageTop=${vv.pageTop.toFixed(1)} scale=${vv.scale}` : "—"),
-          line("scroll", `winY=${window.scrollY} docTop=${document.documentElement.scrollTop} bodyTop=${document.body.style.top || "—"}`),
-          line("sat", getComputedStyle(document.documentElement).getPropertyValue("--sat").trim()),
-        ].join("\n");
-        return (
-          <div style={{
-            position: "fixed", top: 0, left: 0, right: 0, zIndex: 2147483647,
-            background: "rgba(0,0,0,0.9)", color: "#3f6",
-            font: "11px/1.35 ui-monospace,monospace", padding: "6px 8px",
-            whiteSpace: "pre-wrap", pointerEvents: "none",
-          }}>{txt}</div>
-        );
-      })()}
       {/* During drawer steps the panel is z-boosted above the spotlight,
           which means the spotlight's rectangular cutout + animated ring
           render behind the drawer and create visible artifacts (the
@@ -480,7 +449,7 @@ export function Tutorial() {
           here for the right-side screen content. */}
       {isDrawerStep
         ? <div className="tut-dim" />
-        : <TutorialSpotlight rect={rect} padding={step.padding} />}
+        : <TutorialSpotlight key={step.id} rect={rect} padding={step.padding} />}
       <TutorialTooltip
         key={step.id}
         ref={tooltipRef}

@@ -25,11 +25,15 @@
     0 0 0 1px rgba(255, 255, 255, 0.08) inset;
   z-index: var(--z-tutorial);
   pointer-events: none;
-  transition: top 520ms var(--ease-spring),
-              left 520ms var(--ease-spring),
-              width 520ms var(--ease-spring),
-              height 520ms var(--ease-spring);
-  animation: tutSpotlightIn 520ms var(--ease-spring);
+  /* NO position transition. The cutout is positioned from a live
+     getBoundingClientRect tracked every frame; a transition here made the
+     spotlight CHASE the target — when a step's element is still animating
+     (e.g. the FAB's 600ms transform spring on mount) the rect keeps moving
+     and the slow spring transition never caught up, stranding the cutout
+     mid-screen. Snapping to the measured rect each frame keeps it locked
+     onto the element. The per-step scale-in below still gives a polished
+     entrance (the spotlight is re-keyed per step in Tutorial.jsx). */
+  animation: tutSpotlightIn 320ms var(--ease-spring);
 }
 @keyframes tutSpotlightIn {
   from { opacity: 0; transform: scale(0.96); }
