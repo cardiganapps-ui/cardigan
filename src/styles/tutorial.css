@@ -1,225 +1,167 @@
-/* ── TUTORIAL / ONBOARDING TOUR ──
-   Designed to feel like a polished product tour: snappy entrance,
-   subtle backdrop blur, calm pulse on the spotlight ring, and a
-   tooltip that lands with spring-easing instead of dragging in. */
+/* ── ONBOARDING CAROUSEL ──
+   A self-contained, swipeable walkthrough. No spotlight, no DOM
+   measurement, no z-index juggling — the carousel owns a full-screen
+   overlay and pages between cards via native CSS scroll-snap so iOS
+   Safari handles the momentum/rubber-band physics itself. */
 
-.tut-dim {
+.tut-carousel-overlay {
   position: fixed; inset: 0;
-  background: rgba(15, 17, 22, 0.55);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
   z-index: var(--z-tutorial);
-  animation: tutDimIn 380ms var(--ease-out);
-  pointer-events: auto;
+  background: var(--scrim-bg);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--sat) + 16px) 16px calc(var(--sab) + 16px);
+  animation: tutCarouselFade 320ms var(--ease-out);
 }
-@keyframes tutDimIn {
-  from { opacity: 0; -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); }
+@keyframes tutCarouselFade {
+  from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-.tut-spotlight {
-  position: fixed;
-  border-radius: var(--radius-lg);
-  box-shadow:
-    0 0 0 9999px rgba(15, 17, 22, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-  z-index: var(--z-tutorial);
-  pointer-events: none;
-  /* NO position transition. The cutout is positioned from a live
-     getBoundingClientRect tracked every frame; a transition here made the
-     spotlight CHASE the target — when a step's element is still animating
-     (e.g. the FAB's 600ms transform spring on mount) the rect keeps moving
-     and the slow spring transition never caught up, stranding the cutout
-     mid-screen. Snapping to the measured rect each frame keeps it locked
-     onto the element. The per-step scale-in below still gives a polished
-     entrance (the spotlight is re-keyed per step in Tutorial.jsx). */
-  animation: tutSpotlightIn 320ms var(--ease-spring);
-}
-@keyframes tutSpotlightIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-/* Transparent click-blockers around the spotlight cutout. They intercept
-   taps on everything except the highlighted element, so the user can only
-   interact with the feature being showcased. */
-.tut-blocker {
-  position: fixed;
-  background: transparent;
-  z-index: var(--z-tutorial);
-  pointer-events: auto;
-}
-
-/* Calm, slow ring around the spotlight — enough to draw the eye but
-   not distracting. Lower amplitude than the previous pulse, slightly
-   slower cadence, fades in after the initial spotlight reveal. */
-.tut-spotlight::after {
-  content: ""; position: absolute; inset: -3px;
-  border-radius: calc(var(--radius-lg) + 3px);
-  border: 1.5px solid rgba(255, 255, 255, 0.55);
-  pointer-events: none;
-  opacity: 0;
-  animation: tutRingFadeIn 320ms var(--ease-out) 420ms forwards,
-             tutRingPulse 2.6s ease-in-out 740ms infinite;
-}
-@keyframes tutRingFadeIn {
-  to { opacity: 0.55; }
-}
-@keyframes tutRingPulse {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50%      { opacity: 0.85; transform: scale(1.02); }
-}
-
-/* ── Tooltip bubble ── */
-.tut-bubble {
-  position: fixed;
-  z-index: calc(var(--z-tutorial) + 1);
+.tut-carousel-card {
+  position: relative;
   background: var(--white);
   border-radius: var(--radius-lg);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 12px 38px rgba(15, 17, 22, 0.28),
-    0 2px 8px rgba(15, 17, 22, 0.12);
-  padding: 18px 18px 14px;
-  max-width: min(320px, calc(100vw - 24px));
-  width: calc(100vw - 24px);
-  transition: top 480ms var(--ease-spring),
-              left 480ms var(--ease-spring);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 380px;
+  padding: 20px 0 18px;
+  display: flex;
+  flex-direction: column;
+  animation: tutCarouselIn 480ms var(--ease-spring) both;
 }
-
-/* Directional entrance animations — the tooltip slides from the side of the
-   spotlight so the connection between element and tooltip feels deliberate.
-   Snappier than before (520ms vs 1.6s) so it never feels sluggish. */
-.tut-bubble--enter-from-above {
-  animation: tutBubbleFromAbove 520ms var(--ease-spring) both;
-}
-.tut-bubble--enter-from-below {
-  animation: tutBubbleFromBelow 520ms var(--ease-spring) both;
-}
-.tut-bubble--enter-center {
-  animation: tutBubbleCenter 520ms var(--ease-spring) both;
-}
-@keyframes tutBubbleFromAbove {
-  from { opacity: 0; transform: translateY(-10px) scale(0.985); }
+@keyframes tutCarouselIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes tutBubbleFromBelow {
-  from { opacity: 0; transform: translateY(10px) scale(0.985); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes tutBubbleCenter {
-  from { opacity: 0; transform: translate(-50%, calc(-50% + 6px)) scale(0.96); }
-  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-/* Centered variant: the translate is part of the anchor, so override the
-   enter animation to use a center-scale form. */
-.tut-bubble--center {
-  left: 50% !important; top: 50% !important;
-  transform: translate(-50%, -50%);
-  max-width: min(340px, calc(100vw - 32px));
-  animation: tutBubbleCenter 520ms var(--ease-spring) both;
+.tut-carousel-card--welcome {
+  padding: 28px 24px 20px;
+  text-align: center;
+  align-items: stretch;
 }
 
-/* Optional hero icon at the top of card-style steps — a soft teal
-   badge containing the feature's icon. Used for "feature spotlight"
-   steps (Gastos, Resumen, Cardi, Portal) so the user gets a visual
-   anchor instead of a wall of text. */
-.tut-bubble-icon {
-  width: 44px; height: 44px;
+/* Skip — top-right text button, out of the footer so the actions row
+   always holds Atrás + Siguiente without wrapping. */
+.tut-carousel-skip {
+  position: absolute;
+  top: 10px; right: 12px;
+  height: 30px; min-height: 30px;
+  padding: 0 10px;
+  border: none; background: transparent;
+  color: var(--charcoal-xl);
+  font-family: var(--font-d);
+  font-size: var(--text-sm); font-weight: 700;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease, transform var(--dur-fast) ease;
+  z-index: 1;
+}
+.tut-carousel-skip:active { transform: scale(0.94); color: var(--charcoal-md); }
+@media (hover: hover) {
+  .tut-carousel-skip:hover { color: var(--charcoal-md); background: var(--cream); }
+}
+
+/* Horizontal scroll-snap pager. The browser owns the swipe physics. */
+.tut-carousel-track {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.tut-carousel-track::-webkit-scrollbar { display: none; }
+
+.tut-carousel-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 24px 4px;
+  box-sizing: border-box;
+}
+
+/* Soft teal-tinted icon badge — the "hero" of each slide. */
+.tut-carousel-hero {
+  width: 64px; height: 64px;
   border-radius: 50%;
   background: var(--teal-pale);
   color: var(--teal-dark);
   display: flex; align-items: center; justify-content: center;
-  margin: 4px auto 12px;
-  animation: tutIconIn 560ms var(--ease-spring) 80ms both;
+  margin: 4px auto 16px;
+  box-shadow: 0 6px 18px rgba(91, 155, 175, 0.22);
+  animation: tutHeroIn 560ms var(--ease-spring) 80ms both;
 }
-@keyframes tutIconIn {
+@keyframes tutHeroIn {
   from { opacity: 0; transform: scale(0.7) rotate(-6deg); }
   to   { opacity: 1; transform: scale(1) rotate(0); }
 }
-.tut-bubble--center .tut-bubble-title { text-align: center; padding-right: 0; }
-.tut-bubble--center .tut-bubble-body  { text-align: center; }
 
-.tut-bubble-title {
+.tut-carousel-title {
   font-family: var(--font-d);
-  font-size: 16px; font-weight: 800;
+  font-size: var(--text-xl); font-weight: 800;
   color: var(--charcoal);
-  margin-bottom: 6px;
-  letter-spacing: -0.2px;
-  padding-right: 26px; /* room for the × close button */
+  letter-spacing: -0.3px;
+  margin-bottom: 8px;
 }
-.tut-bubble-body {
+.tut-carousel-body {
   font-size: var(--text-md);
   line-height: 1.55;
   color: var(--charcoal-md);
-  margin-bottom: 14px;
 }
 
-/* Close / skip — top-right icon button. Takes the Skip action out of the
-   footer row so the progress dots + Atrás + Siguiente always fit. */
-.tut-bubble-close {
-  position: absolute;
-  top: 12px; right: 12px;
-  width: 26px; height: 26px; min-height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: var(--cream);
-  color: var(--charcoal-lt);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) ease;
-  padding: 0;
-}
-.tut-bubble-close:active {
-  background: var(--cream-dark);
-  color: var(--charcoal-md);
-  transform: scale(0.92);
-}
-@media (hover: hover) {
-  .tut-bubble-close:hover {
-    background: var(--cream-dark);
-    color: var(--charcoal-md);
-  }
-}
-
-/* Dot-based progress — replaces the "Paso X de Y" text so the footer can
-   hold buttons without wrapping. */
-.tut-bubble-dots {
+/* Dot pager. */
+.tut-carousel-dots {
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: center;
   justify-content: center;
-  margin: 2px 0 12px;
+  margin: 18px 0 14px;
 }
-.tut-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--cream-dark);
-  transition: width 320ms var(--ease-spring),
-              background 240ms ease;
-}
-.tut-dot--done {
-  background: var(--teal-light);
-}
-.tut-dot--active {
-  width: 18px;
+.tut-carousel-dot {
+  width: 7px; height: 7px; min-height: 7px; min-width: 7px;
+  padding: 0;
+  border: none;
   border-radius: 100px;
+  background: var(--cream-dark);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: width 320ms var(--ease-spring), background 240ms ease;
+}
+.tut-carousel-dot--active {
+  width: 20px;
   background: var(--teal);
 }
 
-.tut-bubble-actions {
+.tut-carousel-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 0 24px;
 }
+.tut-carousel-actions--stack {
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+}
+.tut-carousel-actions--stack .tut-btn { width: 100%; height: 44px; }
+
+/* Pill buttons — shared by the carousel + welcome gate. */
 .tut-btn {
-  height: 38px; padding: 0 18px;
+  height: 40px; padding: 0 20px;
   border-radius: var(--radius-pill);
   border: none; cursor: pointer;
   font-family: var(--font-d);
-  font-size: 13px; font-weight: 700;
+  font-size: var(--text-md); font-weight: 700;
   transition: transform var(--dur-fast) ease,
               background var(--dur-fast) ease,
               box-shadow var(--dur-fast) ease;
@@ -228,12 +170,11 @@
 }
 .tut-btn-primary {
   background: var(--teal); color: var(--white);
-  box-shadow: 0 4px 14px rgba(91,155,175,0.38);
+  box-shadow: 0 4px 14px rgba(91, 155, 175, 0.38);
 }
-.tut-btn-primary:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(91,155,175,0.32); }
+.tut-btn-primary:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(91, 155, 175, 0.32); }
 .tut-btn-ghost {
   background: var(--cream); color: var(--charcoal-md);
-  padding: 0 16px;
 }
 .tut-btn-ghost:active { transform: scale(0.96); }
 @media (hover: hover) {
@@ -241,143 +182,17 @@
   .tut-btn-ghost:hover   { background: var(--cream-dark); }
 }
 
-/* ── Screen-change chip ──
-   Shown full-bleed-centered while the Tutorial orchestrator switches
-   screens or opens the drawer. Slightly lighter dim than the active
-   step so the transition feels like a quick wipe rather than a full
-   blackout. */
-.tut-dim--transition {
-  background: rgba(15, 17, 22, 0.42);
-  animation: tutDimIn 280ms var(--ease-out);
-  pointer-events: auto;
-}
-
-.tut-welcome-overlay {
-  position: fixed; inset: 0;
-  background: rgba(15, 17, 22, 0.5);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  z-index: var(--z-tutorial);
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-  animation: tutDimIn 360ms var(--ease-out);
-}
-.tut-welcome-card {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 16px 48px rgba(15, 17, 22, 0.28),
-    0 4px 12px rgba(15, 17, 22, 0.12);
-  padding: 28px 22px 20px;
-  max-width: 340px; width: 100%;
-  text-align: center;
-  animation: tutWelcomeIn 600ms var(--ease-spring) both;
-}
-@keyframes tutWelcomeIn {
-  from { opacity: 0; transform: translateY(14px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-.tut-welcome-logo {
-  width: 60px; height: 60px;
-  border-radius: 50%;
-  background: var(--teal-pale);
-  color: var(--teal-dark);
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 16px;
-  animation: tutIconIn 600ms var(--ease-spring) 120ms both;
-  box-shadow: 0 6px 18px rgba(91,155,175,0.22);
-}
-.tut-welcome-title {
-  font-family: var(--font-d);
-  font-size: 20px; font-weight: 800;
-  color: var(--charcoal);
-  margin-bottom: 8px;
-  letter-spacing: -0.3px;
-}
-.tut-welcome-body {
-  font-size: var(--text-md);
-  line-height: 1.55;
-  color: var(--charcoal-md);
-  margin-bottom: 22px;
-}
-.tut-welcome-actions {
-  display: flex; flex-direction: column; gap: 8px;
-}
-
-/* ── FAB z-index boost during tutorial ──
-   The FAB sits at z-index 52, far below the tutorial overlay at 700.
-   When the tutorial spotlights the FAB, we boost it above the overlay
-   so it's visible through the spotlight cutout. */
-body.tut-fab-active .fab {
-  z-index: calc(var(--z-tutorial) + 1) !important;
-}
-
-/* ── Dim the home-indicator strip while a tutorial step is active ──
-   `.bottom-tabs-safezone` is a white sliver fixed at the very bottom
-   of the viewport (see components.css) that fills the iOS home-indicator
-   region so page content can't bleed through during scroll bounce.
-   The tutorial dim's `bottom: 0` stops at the top of that region on
-   iOS PWA — the dim covers the bottom-tabs themselves but leaves the
-   safezone glowing white. Recolor it to match the dim color so the
-   strip reads as continuous instead of a bright break. */
-body:has(.tut-dim) .bottom-tabs-safezone,
-body:has(.tut-spotlight) .bottom-tabs-safezone,
-body:has(.tut-welcome-overlay) .bottom-tabs-safezone {
-  background: rgba(15, 17, 22, 0.55);
-  transition: background 280ms var(--ease-out);
-}
-
-/* ── Drawer z-index boost during tutorial drawer steps ──
-   The drawer (z-index 201) sits below the tutorial overlay (700).
-   During drawer navigation steps, boost both the drawer panel and its
-   overlay above the tutorial layer so the nav items are interactive
-   through the spotlight cutout. */
-body.tut-drawer-active .drawer {
-  z-index: calc(var(--z-tutorial) + 1) !important;
-}
-body.tut-drawer-active .drawer-overlay {
-  z-index: var(--z-tutorial) !important;
-  /* Let the tutorial dim handle the backdrop instead */
-  background: transparent !important;
-  backdrop-filter: none !important;
-  pointer-events: none !important;
-}
-/* Because the drawer is rendered ABOVE the tutorial dim during drawer
-   steps, the spotlight's box-shadow cutout can't visually distinguish
-   which drawer-item the tooltip is pointing at. Dim the non-target
-   items in JS-painted drawer chrome and brighten the matched one. */
-body.tut-drawer-active .drawer-item:not(.tut-target) {
-  opacity: 0.32;
-  transition: opacity 320ms ease;
-}
-body.tut-drawer-active .drawer-item.tut-target {
-  opacity: 1;
-  background: rgba(91, 155, 175, 0.22);
-  box-shadow: inset 3px 0 0 var(--teal-light);
-  transition: background 320ms ease, opacity 320ms ease;
-}
-body.tut-drawer-active .drawer-section-label {
-  opacity: 0.45;
-}
-
-/* Reduced-motion: keep entrance fades but kill scale + transform pulses
-   so the tour respects user preference. responsive.css already neutralizes
-   transition durations globally; this just makes sure the spotlight pulse
-   doesn't hammer the GPU under reduce-motion. */
+/* Reduced-motion: keep fades, drop the spring/scale entrances. The
+   programmatic scrolls already pass behavior:'auto' from JS. */
 @media (prefers-reduced-motion: reduce) {
-  .tut-spotlight::after { animation: none; opacity: 0.55; }
-  .tut-bubble--enter-from-above,
-  .tut-bubble--enter-from-below,
-  .tut-bubble--enter-center,
-  .tut-bubble--center {
+  .tut-carousel-card,
+  .tut-carousel-hero {
     animation: tutFadeOnly 200ms ease both;
   }
   @keyframes tutFadeOnly {
     from { opacity: 0; }
     to   { opacity: 1; }
   }
-  .tut-bubble-icon { animation: tutFadeOnly 200ms ease both; }
 }
 
 /* ── CONTEXTUAL HELP TIPS ── */

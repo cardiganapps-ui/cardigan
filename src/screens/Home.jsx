@@ -458,7 +458,7 @@ export function Home({ setScreen, userName }) {
         <CalendarLinkPromptCard />
       )}
 
-      <div className="kpi-grid-desktop" data-tour="kpis" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      <div className="kpi-grid-desktop" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>
           <div className="kpi-label">{t("home.sessionsToday")}</div>
           <div className="kpi-value"><AnimatedNumber value={todaySessions.length} /></div>
