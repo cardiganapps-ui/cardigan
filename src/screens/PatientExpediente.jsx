@@ -581,7 +581,7 @@ export function PatientExpediente({
               <a href={phoneHref(patient.phone)} aria-label={t("patients.phone")}
                 onClick={e => {
                   e.stopPropagation();
-                  if (isNative()) { e.preventDefault(); launchUrl(phoneHref(patient.phone)); }
+                  if (isNative()) { e.preventDefault(); launchUrl(phoneHref(patient.phone)).then(ok => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
                 }}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                 <IconPhone size={16} />
@@ -594,7 +594,7 @@ export function PatientExpediente({
                 <a href={wa} aria-label="WhatsApp"
                   onClick={e => {
                     e.stopPropagation();
-                    if (isNative()) { e.preventDefault(); launchUrl(wa); }
+                    if (isNative()) { e.preventDefault(); launchUrl(wa).then(ok => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
                   }}
                   style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -607,7 +607,7 @@ export function PatientExpediente({
               <a href={emailHref(patient.email)} aria-label={t("settings.email")}
                 onClick={e => {
                   e.stopPropagation();
-                  if (isNative()) { e.preventDefault(); launchUrl(emailHref(patient.email)); }
+                  if (isNative()) { e.preventDefault(); launchUrl(emailHref(patient.email)).then(ok => { if (!ok) showToast?.(t("patients.contactOpenError"), "error"); }); }
                 }}
                 style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:36, height:36, minWidth:36, minHeight:36, borderRadius:"50%", background:"var(--teal-pale)", color:"var(--teal-dark)", textDecoration:"none", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
                 <IconMail size={16} />

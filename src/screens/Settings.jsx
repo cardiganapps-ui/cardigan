@@ -537,7 +537,14 @@ export function Settings({ user, signOut, refreshUser }) {
     const res = await subscription.openPortal();
     setSubBusy(false);
     if (!res.ok) { setSubError(res.error || t("subscription.errorGeneric")); return; }
-    if (res.url) await openExternal(res.url);
+    // openExternal returns false when the in-app browser can't launch
+    // (plugin not loaded, malformed URL). Without feedback the button
+    // silently dead-ends; surface the generic error so it doesn't read
+    // as broken.
+    if (res.url) {
+      const opened = await openExternal(res.url);
+      if (!opened) setSubError(t("subscription.errorGeneric"));
+    }
   };
   // Manual reconciliation — pulls live Stripe state and writes to DB.
   // Recovers from delayed/missed cancellation webhooks so the user

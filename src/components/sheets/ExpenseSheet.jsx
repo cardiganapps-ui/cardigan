@@ -36,7 +36,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     createExpense, updateExpense, deleteExpense,
     createRecurringTemplate, mutating, mutationError,
     uploadDocument, deleteDocument, getDocumentUrl,
-    documents = [], subscription,
+    documents = [], subscription, showToast,
   } = useCardigan();
   const { t } = useT();
   const isEditing = !!editingExpense;
@@ -456,8 +456,14 @@ export function ExpenseSheet({ editingExpense, onClose }) {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="button" className="btn btn-secondary btn-tap"
                     onClick={async () => {
-                      const file = await takePhoto({ quality: 80 });
-                      if (file) handleFile(file);
+                      try {
+                        const file = await takePhoto({ quality: 80 });
+                        if (file) handleFile(file);
+                      } catch {
+                        // Real camera failure (permission/hardware) — a
+                        // user cancel returns null and never reaches here.
+                        showToast?.(t("gastos.receiptCameraError"), "error");
+                      }
                     }}
                     disabled={uploading}
                     style={{ flex: 1, height: 44, gap: 6 }}>

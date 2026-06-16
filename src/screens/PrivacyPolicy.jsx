@@ -42,7 +42,13 @@ export function PrivacyPolicy() {
 
         <div style={{ fontSize: 12, color: "var(--charcoal-xl)", marginTop: 32, marginBottom: 40 }}>
           Para solicitudes relacionadas con este aviso o el ejercicio de tus derechos ARCO,
-          contáctanos en privacy@cardigan.mx.
+          contáctanos en{" "}
+          <a
+            href="mailto:privacy@cardigan.mx"
+            style={{ color: "var(--teal-dark)", textDecoration: "underline" }}
+          >
+            privacy@cardigan.mx
+          </a>.
         </div>
       </div>
     </div>

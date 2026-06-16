@@ -17,6 +17,15 @@
 
 import { isNative } from "./platform";
 
+// The Capacitor Camera plugin signals a user dismiss by throwing an
+// error whose message contains "cancel" (iOS: "User cancelled photos
+// app"; Android: similar). Everything else (permission denied, no
+// camera, encode failure) is a real error worth surfacing.
+function isCancel(err) {
+  const msg = (err?.message || (typeof err === "string" ? err : "") || "").toLowerCase();
+  return msg.includes("cancel");
+}
+
 async function dataUrlToFile(dataUrl, filename) {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
@@ -40,10 +49,14 @@ export async function takePhoto({ quality = 80 } = {}) {
     if (!photo?.dataUrl) return null;
     const ext = photo.format || "jpg";
     return await dataUrlToFile(photo.dataUrl, `photo-${Date.now()}.${ext}`);
-  } catch {
-    // User cancelled, denied permission, or hardware error — caller
-    // surfaces a generic toast if needed.
-    return null;
+  } catch (err) {
+    // Distinguish a user cancel (return null silently — toasting on a
+    // deliberate dismiss is annoying) from a real failure (permission
+    // denied / hardware), which we re-throw so the caller can surface
+    // feedback instead of a dead-feeling button. The plugin throws a
+    // message containing "cancel" on dismiss.
+    if (isCancel(err)) return null;
+    throw err;
   }
 }
 
@@ -61,7 +74,8 @@ export async function pickFromLibrary({ quality = 80 } = {}) {
     if (!photo?.dataUrl) return null;
     const ext = photo.format || "jpg";
     return await dataUrlToFile(photo.dataUrl, `image-${Date.now()}.${ext}`);
-  } catch {
-    return null;
+  } catch (err) {
+    if (isCancel(err)) return null;
+    throw err;
   }
 }
