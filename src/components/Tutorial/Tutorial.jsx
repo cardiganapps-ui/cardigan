@@ -72,6 +72,28 @@ function intersects(rect, bubbleTop, bubbleLeft, bubbleH, bubbleW) {
   );
 }
 
+// ── Reconcile position:fixed space with getBoundingClientRect space ──
+//
+// The spotlight + tooltip are position:fixed; targets are measured with
+// getBoundingClientRect. On the web those two coordinate spaces are
+// identical, but inside the Capacitor iOS webview (contentInset:"never"
+// + viewport-fit=cover) a fixed element's origin and getBoundingClientRect
+// coordinates differ by the top safe-area inset. That made the cutout land
+// ~the-safe-area too HIGH on every step (KPIs framed the row above, the FAB
+// spotlight floated mid-screen). Measure the delta with a throwaway fixed
+// (0,0) probe and subtract it from every measured rect so the fixed overlay
+// lands exactly on the target. Delta is 0 on web/Android → no-op there.
+function measureFixedOrigin() {
+  if (typeof document === "undefined") return { x: 0, y: 0 };
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;width:0;height:0;margin:0;padding:0;border:0;pointer-events:none;visibility:hidden;";
+  document.body.appendChild(probe);
+  const r = probe.getBoundingClientRect();
+  document.body.removeChild(probe);
+  return { x: r.left, y: r.top };
+}
+
 /**
  * Main tutorial orchestrator.
  * - Reads tutorial state + actions from CardiganContext.
@@ -99,6 +121,11 @@ export function Tutorial() {
   const [settling, setSettling] = useState(false);
   const tooltipRef = useRef(null);
   const retryRef = useRef(0);
+  // Live position:fixed ↔ getBoundingClientRect delta (see
+  // measureFixedOrigin). Kept in a ref so measure()/the rAF tracker read
+  // the current value without re-subscribing. Re-measured on resize /
+  // orientation (safe-area insets change on rotate).
+  const fixedOriginRef = useRef({ x: 0, y: 0 });
 
   const step = tutorial?.step || null;
   const isActive = tutorial?.isActive;
@@ -190,6 +217,19 @@ export function Tutorial() {
     return () => document.body.classList.remove("tut-drawer-active");
   }, [isActive, step, isDrawerStep]);
 
+  // ── Keep the fixed↔rect delta current ──
+  useEffect(() => {
+    if (!isActive && !isWelcome) return;
+    const update = () => { fixedOriginRef.current = measureFixedOrigin(); };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, [isActive, isWelcome]);
+
   // ── Measure target element ──
   const measure = useCallback(() => {
     if (!step) { setRect(null); return; }
@@ -220,8 +260,9 @@ export function Tutorial() {
     });
     el.classList.add("tut-target");
     const r = el.getBoundingClientRect();
+    const o = fixedOriginRef.current;
     setRect({
-      top: r.top, left: r.left, right: r.right, bottom: r.bottom,
+      top: r.top - o.y, left: r.left - o.x, right: r.right - o.x, bottom: r.bottom - o.y,
       width: r.width, height: r.height,
     });
     setReady(true);
@@ -274,7 +315,8 @@ export function Tutorial() {
           ) {
             prev = r;
             if (!el.classList.contains("tut-target")) el.classList.add("tut-target");
-            setRect({ top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width, height: r.height });
+            const o = fixedOriginRef.current;
+            setRect({ top: r.top - o.y, left: r.left - o.x, right: r.right - o.x, bottom: r.bottom - o.y, width: r.width, height: r.height });
           }
         }
       }
