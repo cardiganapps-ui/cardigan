@@ -238,34 +238,52 @@ export function Tutorial() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, step?.id, settling]);
 
-  // Re-measure on resize/scroll/orientation change, throttled via rAF.
+  // ── Track the target's LIVE position every frame ──
+  //
+  // getBoundingClientRect can change without firing resize / scroll /
+  // ResizeObserver events. Three drivers move the target AFTER the initial
+  // measure, and the old listener-based approach missed all of them, so
+  // the cutout froze on a stale rect and pointed at empty space:
+  //   • late-mounting content — the Home "No pierdas ninguna sesión"
+  //     banner mounts and pushes the KPI grid down;
+  //   • entrance animations — the FAB scales in at the bottom-right;
+  //   • the screen-slide spring settling after navigation.
+  // ResizeObserver only fires on SIZE changes, not position drift. A rAF
+  // loop reads the live rect and updates state only when it actually moved
+  // (>0.5px), so the spotlight follows the element to its resting place;
+  // the CSS transition on .tut-spotlight makes that glide smoothly. Once
+  // the target is stable the loop does no work (no setState).
   useEffect(() => {
-    if (!isActive || !step || !step.selector) return;
+    if (!isActive || !step || !step.selector || settling) return;
     let raf = 0;
-    const handler = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(measure);
+    let prev = null;
+    const EPS = 0.5;
+    const tick = () => {
+      const el = document.querySelector(step.selector);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        // Ignore a collapsed/detached 0×0 rect (mid-transition) — keep the
+        // last good position rather than snapping the cutout to the corner.
+        if (r.width > 0 || r.height > 0) {
+          if (
+            !prev ||
+            Math.abs(r.top - prev.top) > EPS ||
+            Math.abs(r.left - prev.left) > EPS ||
+            Math.abs(r.width - prev.width) > EPS ||
+            Math.abs(r.height - prev.height) > EPS
+          ) {
+            prev = r;
+            if (!el.classList.contains("tut-target")) el.classList.add("tut-target");
+            setRect({ top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width, height: r.height });
+          }
+        }
+      }
+      raf = requestAnimationFrame(tick);
     };
-    window.addEventListener("resize", handler);
-    window.addEventListener("orientationchange", handler);
-    window.addEventListener("scroll", handler, true);
-
-    let observer;
-    const el = document.querySelector(step.selector);
-    if (el && typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(handler);
-      observer.observe(el);
-      if (document.body) observer.observe(document.body);
-    }
-
-    return () => {
-      window.removeEventListener("resize", handler);
-      window.removeEventListener("orientationchange", handler);
-      window.removeEventListener("scroll", handler, true);
-      cancelAnimationFrame(raf);
-      if (observer) observer.disconnect();
-    };
-  }, [isActive, step, measure]);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, step?.id, step?.selector, settling]);
 
   // ── Compute tooltip position once rect + tooltip are available ──
   useLayoutEffect(() => {
