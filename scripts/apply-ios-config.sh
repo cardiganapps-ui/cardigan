@@ -76,6 +76,43 @@ else
   /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Cardigan accede a tus fotos para adjuntar recibos y documentos.'" "$PLIST"
 fi
 
+# ── Push: forward APNs registration callbacks to Capacitor ──
+# Capacitor 6+ DROPPED the remote-notification handlers from the default
+# AppDelegate template. Without them, UIApplication delivers the APNs device
+# token to the AppDelegate but nothing forwards it to the
+# @capacitor/push-notifications plugin, so PushNotifications.register()
+# silently times out with no 'registration' event (and no error). That was
+# the root cause of "no iOS push token ever registers". Inject the two
+# handlers that re-post the system callbacks as the Capacitor notifications
+# the plugin observes. Idempotent (skips if already present). The
+# Notification.Name constants live in `import Capacitor`, already imported
+# by the template AppDelegate.
+APPDELEGATE="ios/App/App/AppDelegate.swift"
+if [ -f "$APPDELEGATE" ] && ! grep -q "didRegisterForRemoteNotificationsWithDeviceToken" "$APPDELEGATE"; then
+  python3 - "$APPDELEGATE" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+methods = (
+    "\n"
+    "    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n"
+    "        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n"
+    "    }\n"
+    "\n"
+    "    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n"
+    "        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n"
+    "    }\n"
+)
+idx = s.rstrip().rfind("}")  # final brace = AppDelegate class close
+if idx == -1:
+    sys.exit("AppDelegate.swift: no closing brace found")
+open(p, "w").write(s[:idx] + methods + s[idx:])
+print("✓ AppDelegate patched with APNs registration forwarding")
+PY
+else
+  echo "AppDelegate push handlers already present (or file missing) — skipping"
+fi
+
 # CFBundleURLTypes for custom-scheme deep links isn't needed —
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.
