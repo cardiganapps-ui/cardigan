@@ -77,6 +77,45 @@ export function groupOccurrences(group, sessions, now = new Date()) {
   return occs;
 }
 
+/* Collapse a (time-sorted) list of session rows so that the N member rows
+   of one group occurrence become a single synthetic tile. Non-group rows
+   pass through untouched and in place. The synthetic item is keyed on
+   (group_id, date, time) and carries its attendee rows + a derived status,
+   so Agenda/Home can render one consolidated "group tile" instead of N rows.
+   Order is preserved: the tile lands at the position of the occurrence's
+   first row. groupsById maps group_id → group (for name/color). */
+export function collapseGroupOccurrences(sessions, groupsById, now = new Date()) {
+  const out = [];
+  const seen = new Set();
+  const byKey = new Map();
+  for (const s of (sessions || [])) {
+    if (!s.group_id) continue;
+    const key = `${s.group_id}|${s.date}|${s.time}`;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(s);
+  }
+  for (const s of (sessions || [])) {
+    if (!s.group_id) { out.push(s); continue; }
+    const key = `${s.group_id}|${s.date}|${s.time}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const attendees = byKey.get(key);
+    out.push({
+      _groupOccurrence: true,
+      id: `grp-${key}`,
+      group_id: s.group_id,
+      group: groupsById?.get?.(s.group_id) || null,
+      date: s.date,
+      time: s.time,
+      duration: s.duration,
+      attendees,
+      count: attendees.length,
+      status: deriveOccurrenceStatus(attendees, now),
+    });
+  }
+  return out;
+}
+
 /* Per-member finances rollup for a group. Consumed is Σ rate over the
    member's rows that count toward balance (reusing the canonical predicate,
    so it always agrees with amountDue). `paid` here is the member's share of

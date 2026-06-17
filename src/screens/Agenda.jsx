@@ -2,6 +2,9 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { getClientColor, TODAY } from "../data/seedData";
 import { haptic } from "../utils/haptics";
 import { SessionSheet } from "../components/SessionSheet";
+import { GroupSessionRow } from "../components/GroupSessionRow";
+import { GroupOccurrenceSheet } from "../components/sheets/GroupOccurrenceSheet";
+import { collapseGroupOccurrences } from "../utils/groups";
 import { NoteEditor } from "../components/NoteEditor";
 import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { CalendarLinkSheet } from "../components/sheets/CalendarLinkSheet";
@@ -482,11 +485,14 @@ function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSele
 }
 
 /* ── DAY PANEL (just one day's session list, no week strip) ── */
-function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete }) {
+function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete, groupsById }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const dateStr = formatShortDate(panelDate);
-  const daySessions = sortByTime(upcomingSessions.filter(s => s.date === dateStr));
+  const daySessionsRaw = sortByTime(upcomingSessions.filter(s => s.date === dateStr));
+  // Collapse group occurrences into one tile each — except in bulk-select
+  // mode, where per-session rows are needed for individual selection.
+  const daySessions = selectionMode ? daySessionsRaw : collapseGroupOccurrences(daySessionsRaw, groupsById);
   const dayName = DOW[(panelDate.getDay() + 6) % 7];
 
   return (
@@ -508,11 +514,13 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientN
               </div>
           : <div className="card">
               {daySessions.map(s => (
-                <SessionRow key={s.id} s={s} onClick={onSelectSession}
-                  selectionMode={selectionMode}
-                  selected={selectedSet?.has(s.id)}
-                  onToggleSelect={onToggleSelect}
-                  onSwipeComplete={onSwipeComplete} />
+                s._groupOccurrence
+                  ? <GroupSessionRow key={s.id} occ={s} onClick={() => onSelectSession(s)} />
+                  : <SessionRow key={s.id} s={s} onClick={onSelectSession}
+                      selectionMode={selectionMode}
+                      selected={selectedSet?.has(s.id)}
+                      onToggleSelect={onToggleSelect}
+                      onSwipeComplete={onSwipeComplete} />
               ))}
             </div>
         }
@@ -537,7 +545,7 @@ function HeaderLabel({ children, isCurrent, onJumpToday, t }) {
 }
 
 /* ── DAY VIEW ── */
-function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete }) {
+function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete, groupsById }) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
   const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
@@ -553,7 +561,7 @@ function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessi
   );
   const prevDay = addDays(selectedDate, -1);
   const nextDay = addDays(selectedDate, 1);
-  const shared = { onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete };
+  const shared = { onSelectSession, upcomingSessions, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete, groupsById };
 
   const weekDays = getWeekDays(selectedDate);
   const prevWeekDays = getWeekDays(addDays(selectedDate, -7));
@@ -1091,7 +1099,8 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, user } = useCardigan();
+  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, user } = useCardigan();
+  const groupsById = useMemo(() => new Map((groups || []).map(g => [g.id, g])), [groups]);
   const { t } = useT();
   const { isTabletSplit } = useViewport();
   // Default to week view on desktop (more horizontal room) and day view on
@@ -1102,6 +1111,7 @@ export function Agenda() {
   const [view, setView] = useState(() => consumeAgendaView?.() || (isTabletSplit ? "week" : "day"));
   const [selectedDate, setSelectedDate] = useState(new Date(TODAY));
   const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedGroupOcc, setSelectedGroupOcc] = useState(null);
   // Bulk selection mode — only the day view participates today (the
   // place a therapist actually goes to "cancel everything next week").
   // Week + Month would require richer hit-testing on the event chips
@@ -1366,7 +1376,7 @@ export function Agenda() {
           </div>
         )}
       </div>
-      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} />}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={(item) => item?._groupOccurrence ? setSelectedGroupOcc(item) : setSelectedSession(item)} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
       {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
       {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} onSwipeComplete={readOnly ? undefined : onMarkCompleted} />}
       {upcomingSessions.length === 0 && (() => {
@@ -1405,6 +1415,13 @@ export function Agenda() {
           mutating={mutating}
           initialDate={newSessionPrefill.date}
           initialTime={newSessionPrefill.time}
+        />
+      )}
+      {selectedGroupOcc && selectedGroupOcc.group && (
+        <GroupOccurrenceSheet
+          group={selectedGroupOcc.group}
+          occurrence={selectedGroupOcc}
+          onClose={() => setSelectedGroupOcc(null)}
         />
       )}
       {calendarSheetOpen && (

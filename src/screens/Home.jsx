@@ -14,6 +14,9 @@ import { SessionRequestsSheet } from "../components/sheets/SessionRequestsSheet"
 import { CalendarLinkPromptCard } from "../components/CalendarLinkPromptCard";
 import { NoteEditor } from "../components/NoteEditor";
 import { Avatar } from "../components/Avatar";
+import { GroupSessionRow } from "../components/GroupSessionRow";
+import { GroupOccurrenceSheet } from "../components/sheets/GroupOccurrenceSheet";
+import { collapseGroupOccurrences } from "../utils/groups";
 import { useT } from "../i18n/index";
 import { formatMXN } from "../utils/format";
 import { isPotentialOrDiscarded, SESSION_STATUS } from "../data/constants";
@@ -72,7 +75,8 @@ function getNextDay(today, sessions) {
 }
 
 export function Home({ setScreen, userName }) {
-  const { patients, upcomingSessions, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
+  const { patients, upcomingSessions, groups, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
+  const groupsById = useMemo(() => new Map((groups || []).map(g => [g.id, g])), [groups]);
   const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
   const { t, strings } = useT();
   const todayStr     = formatShortDate(TODAY);
@@ -99,10 +103,13 @@ export function Home({ setScreen, userName }) {
     [patients]
   );
   const todaySessions = useMemo(
-    () => upcomingSessions
-      .filter(s => s.date === todayStr)
-      .sort((a, b) => (a.time || "").localeCompare(b.time || "")),
-    [upcomingSessions, todayStr]
+    () => collapseGroupOccurrences(
+      upcomingSessions
+        .filter(s => s.date === todayStr)
+        .sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+      groupsById
+    ),
+    [upcomingSessions, todayStr, groupsById]
   );
 
   // Next-day carousel data
@@ -110,8 +117,11 @@ export function Home({ setScreen, userName }) {
   const nextDayStr = formatShortDate(nextDay);
   const nextDayName = DAY_ORDER[(nextDay.getDay() + 6) % 7];
   const nextDaySessions = useMemo(() =>
-    upcomingSessions.filter(s => s.date === nextDayStr).sort((a, b) => (a.time || "").localeCompare(b.time || "")),
-    [upcomingSessions, nextDayStr]
+    collapseGroupOccurrences(
+      upcomingSessions.filter(s => s.date === nextDayStr).sort((a, b) => (a.time || "").localeCompare(b.time || "")),
+      groupsById
+    ),
+    [upcomingSessions, nextDayStr, groupsById]
   );
   // Label: "Mañana" if it's actually tomorrow, otherwise the day name
   const diffDays = Math.round((nextDay - TODAY) / 86400000);
@@ -181,6 +191,7 @@ export function Home({ setScreen, userName }) {
 
   const [selected, setSelected] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedGroupOcc, setSelectedGroupOcc] = useState(null);
   const [tutorBooking, setTutorBooking] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
   const closeSelected = useCallback(() => setSelected(null), [setSelected]);
@@ -226,6 +237,9 @@ export function Home({ setScreen, userName }) {
   );
 
   const renderSessionRow = (s) => {
+    if (s._groupOccurrence) {
+      return <GroupSessionRow key={s.id} occ={s} onClick={() => setSelectedGroupOcc(s)} />;
+    }
     const tutor = isTutorSession(s);
     const interview = isInterviewSession(s);
     const isVirtual = s.modality === "virtual";
@@ -699,6 +713,14 @@ export function Home({ setScreen, userName }) {
           mutating={mutating}
           initialPatientName={tutorBooking.name}
           initialSessionType="tutor"
+        />
+      )}
+
+      {selectedGroupOcc && selectedGroupOcc.group && (
+        <GroupOccurrenceSheet
+          group={selectedGroupOcc.group}
+          occurrence={selectedGroupOcc}
+          onClose={() => setSelectedGroupOcc(null)}
         />
       )}
 
