@@ -173,7 +173,27 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
     ...vtimezoneBlock(timezone),
   ];
 
-  for (const s of sessions || []) {
+  // Collapse group occurrences (N member rows sharing group_id/date/time)
+  // into ONE event so a class shows as a single calendar block, not N
+  // overlapping events. Only on the therapist feed (no subjectOverride) —
+  // a patient feed already contains just the viewer's own member row per
+  // occurrence. The representative carries a member count + the group name.
+  const eventRows = [];
+  if (subjectOverride) {
+    eventRows.push(...(sessions || []));
+  } else {
+    const seen = new Map();
+    for (const s of sessions || []) {
+      if (!s.group_id) { eventRows.push(s); continue; }
+      const key = `${s.group_id}|${s.date}|${s.time}`;
+      if (seen.has(key)) { seen.get(key)._groupCount += 1; continue; }
+      const rep = { ...s, _groupCount: 1, _groupName: s.groups?.name || null };
+      seen.set(key, rep);
+      eventRows.push(rep);
+    }
+  }
+
+  for (const s of eventRows) {
     const parsed = parseShortDate(s.date, ref);
     if (!parsed) continue;
     const durationMinutes = Number(s.duration) > 0 ? Number(s.duration) : 60;
@@ -202,12 +222,16 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
     // notification when a calendar client surfaces upcoming events,
     // which matters for the unusual times interviews tend to land at.
     const interviewSession = s.session_type === "interview";
-    const summaryPrefix = interviewSession ? "Entrevista" : "Sesión";
+    const isGroupEvent = !subjectOverride && s.group_id;
+    const summaryPrefix = interviewSession ? "Entrevista" : isGroupEvent ? "Sesión grupal" : "Sesión";
     // subjectOverride: patient-side feed uses "con {therapist}";
-    // therapist-side feed retains the patient's name as today.
+    // therapist-side feed retains the patient's name (or the group name +
+    // member count for a collapsed group occurrence).
     const summarySubject = subjectOverride
       ? `con ${escapeText(subjectOverride)}`
-      : `- ${escapeText(s.patient || s.initials || "?")}`;
+      : isGroupEvent
+        ? `- ${escapeText(s._groupName || "Grupo")} (${s._groupCount})`
+        : `- ${escapeText(s.patient || s.initials || "?")}`;
     const summary = `${summaryPrefix} ${summarySubject}`;
     const descParts = [];
     if (s.modality) descParts.push(`Modalidad: ${s.modality}`);
@@ -217,7 +241,9 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
 
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${s.id}@cardigan.mx`,
+      // Stable per-occurrence UID for group events so the same class keeps
+      // one calendar entry across refreshes even as member rows change.
+      `UID:${isGroupEvent ? `group-${s.group_id}-${s.date}-${s.time}` : s.id}@cardigan.mx`,
       `DTSTAMP:${dtstamp}`,
       `DTSTART;TZID=${timezone}:${dtStart}`,
       `DTEND;TZID=${timezone}:${endLocal}`,

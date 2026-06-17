@@ -63,13 +63,15 @@ async function handler(req, res) {
     });
   }
 
-  const [patients, sessions, payments, notes, documents, consents] = await Promise.all([
+  const [patients, sessions, payments, notes, documents, consents, groups, groupMembers] = await Promise.all([
     svc.from("patients").select("*").eq("user_id", user.id),
     svc.from("sessions").select("*").eq("user_id", user.id),
     svc.from("payments").select("*").eq("user_id", user.id),
     svc.from("notes").select("*").eq("user_id", user.id),
     svc.from("documents").select("*").eq("user_id", user.id),
     svc.from("user_consents").select("*").eq("user_id", user.id),
+    svc.from("groups").select("*").eq("user_id", user.id),
+    svc.from("group_members").select("*").eq("user_id", user.id),
   ]);
 
   // Document download links — 1-hour presigns. If the link list fails
@@ -98,6 +100,8 @@ async function handler(req, res) {
     notes: notes.data || [],
     documents: (documents.data || []).map((d) => ({ ...d, _downloadUrl: docLinks[d.id] || null })),
     consents: consents.data || [],
+    groups: groups.data || [],
+    group_members: groupMembers.data || [],
   };
   const body = JSON.stringify(payload, null, 2);
 

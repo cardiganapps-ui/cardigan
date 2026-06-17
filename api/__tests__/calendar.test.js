@@ -95,6 +95,31 @@ describe("generateICS", () => {
     expect(ics).not.toContain("SUMMARY:Sesión - Ana López");
   });
 
+  it("collapses a group occurrence into ONE event on the therapist feed", () => {
+    const ics = generateICS({
+      sessions: [
+        { id: "g-1", date: "8-Abr", time: "10:00", duration: 60, status: "scheduled", patient: "Ana", group_id: "grp1", groups: { name: "Clase de piano" } },
+        { id: "g-2", date: "8-Abr", time: "10:00", duration: 60, status: "scheduled", patient: "Beto", group_id: "grp1", groups: { name: "Clase de piano" } },
+        { id: "g-3", date: "8-Abr", time: "10:00", duration: 60, status: "scheduled", patient: "Caro", group_id: "grp1", groups: { name: "Clase de piano" } },
+      ],
+    });
+    // One VEVENT, not three; SUMMARY names the group + count; stable UID.
+    expect((ics.match(/BEGIN:VEVENT/g) || []).length).toBe(1);
+    expect(ics).toContain("SUMMARY:Sesión grupal - Clase de piano (3)");
+    expect(ics).toContain("UID:group-grp1-8-Abr-10:00@cardigan.mx");
+    expect(ics).not.toContain("SUMMARY:Sesión - Ana");
+  });
+
+  it("does NOT collapse group rows on a patient feed (subjectOverride)", () => {
+    const ics = generateICS({
+      sessions: [
+        { id: "g-1", date: "8-Abr", time: "10:00", duration: 60, status: "scheduled", patient: "Ana", group_id: "grp1", groups: { name: "Clase de piano" } },
+      ],
+      subjectOverride: "Dra. Ramírez",
+    });
+    expect(ics).toContain("SUMMARY:Sesión con Dra. Ramírez");
+  });
+
   it("marks cancelled sessions as STATUS:CANCELLED so clients render strikethroughs", () => {
     const ics = generateICS({
       sessions: [

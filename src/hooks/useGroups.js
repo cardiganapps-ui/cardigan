@@ -260,11 +260,27 @@ export function createGroupActions(
     if (!group) return false;
     const dbPatch = { ...patch };
     if ("colorIdx" in dbPatch) { dbPatch.color_idx = dbPatch.colorIdx; delete dbPatch.colorIdx; }
+    const prevVersion = group.version ?? null;
     setMutationError("");
-    setGroups(prev => prev.map(g => g.id === id ? { ...g, ...patch, ...(("colorIdx" in patch) ? { colorIdx: patch.colorIdx } : {}) } : g));
+    // Optimistic local patch + local version bump (mirrors the server-side
+    // bump_version_on_update trigger from migration 076).
+    setGroups(prev => prev.map(g => g.id === id
+      ? { ...g, ...patch, ...(("colorIdx" in patch) ? { colorIdx: patch.colorIdx } : {}), version: (g.version ?? 0) + 1 }
+      : g));
     try {
-      const { error } = await supabase.from("groups").update(dbPatch).eq("id", id).eq("user_id", userId);
+      // Optimistic concurrency: gate the write on the version we read. A
+      // concurrent edit from another device already bumped it, so this
+      // matches 0 rows → surface a conflict instead of silently clobbering.
+      // Offline replay (the catch's enqueue) is intentionally last-write-
+      // wins, same tradeoff as sessions (migration 066).
+      let q = supabase.from("groups").update(dbPatch).eq("id", id).eq("user_id", userId);
+      if (prevVersion != null) q = q.eq("version", prevVersion);
+      const { data, error } = await q.select("id");
       if (error) { setMutationError(error.message); return false; }
+      if (prevVersion != null && (!data || data.length === 0)) {
+        setMutationError("Este grupo se modificó en otro dispositivo. Recarga para ver los cambios.");
+        return false;
+      }
     } catch {
       await enqueue("groups.update", { id, userId, patch: dbPatch });
     }

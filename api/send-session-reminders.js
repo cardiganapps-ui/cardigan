@@ -136,7 +136,7 @@ async function handler(req, res) {
       // WhatsApp branch below applies only to therapists (the patient
       // already gets a direct push, so we skip the patient-→-patient
       // WhatsApp loop to avoid double-buzzing).
-      const baseSelect = "id, patient_id, patient, time, initials, modality, user_id, session_type";
+      const baseSelect = "id, patient_id, patient, time, initials, modality, user_id, session_type, group_id, groups(name)";
       const sessionsQuery = isPatient
         ? supabase
             .from("sessions")
@@ -248,9 +248,49 @@ async function handler(req, res) {
             };
       };
 
+      // Collapse a list of sessions into notification UNITS. A group
+      // occurrence (N member rows sharing group_id + time) becomes ONE unit
+      // so the therapist gets a single buzz per class, not N. Solo sessions
+      // are their own unit. Each unit carries every member session id so the
+      // sent_reminders dedupe stays consistent (we mark them all as sent).
+      const toUnits = (list) => {
+        const byKey = new Map();
+        for (const s of list) {
+          const key = s.group_id ? `g:${s.group_id}|${s.time}` : `s:${s.id}`;
+          if (!byKey.has(key)) byKey.set(key, { rep: s, ids: [], count: 0, isGroup: !!s.group_id, groupName: s.groups?.name || null });
+          const u = byKey.get(key);
+          u.ids.push(s.id);
+          u.count += 1;
+        }
+        return [...byKey.values()];
+      };
+      // Therapist-facing payload for a group occurrence: one banner naming the
+      // group + member count, collapsing repeats via a per-occurrence tag.
+      const payloadForUnit = (unit) => {
+        if (!isPatient && unit.isGroup && unit.count > 1) {
+          const s = unit.rep;
+          const [sh, sm] = String(s.time || "").split(":").map(Number);
+          const minutesUntil = Math.max(1, (sh || 0) * 60 + (sm || 0) - nowMinutes);
+          return {
+            title: "Recordatorio de sesión grupal",
+            body: `${unit.groupName || "Sesión grupal"} a las ${s.time} · ${unit.count} alumnos — en ${minutesUntil} min`,
+            url: "/#agenda",
+            tag: `group-${s.group_id}-${s.time}`,
+            actions: [{ action: "open", title: "Ver agenda" }],
+          };
+        }
+        return payloadFor(unit.rep);
+      };
+      const markUnitSent = async (unit, channel) => {
+        await supabase.from("sent_reminders").upsert(
+          unit.ids.map((id) => ({ session_id: id, user_id, channel })),
+          { onConflict: "session_id,user_id,channel" }
+        );
+      };
+
       // 7a. Web push.
-      for (const session of (webSubs.length > 0 ? newPushSessions : [])) {
-        const payload = payloadFor(session);
+      for (const unit of (webSubs.length > 0 ? toUnits(newPushSessions) : [])) {
+        const payload = payloadForUnit(unit);
         for (const sub of webSubs) {
           try {
             await sendPush(sub, payload);
@@ -271,10 +311,7 @@ async function handler(req, res) {
             }
           }
         }
-        await supabase.from("sent_reminders").upsert(
-          { session_id: session.id, user_id, channel: "push" },
-          { onConflict: "session_id,user_id,channel" }
-        );
+        await markUnitSent(unit, "push");
         totalSent++;
       }
 
@@ -287,8 +324,8 @@ async function handler(req, res) {
           ["android", androidSubs, newAndroidSessions],
         ]) {
           if (platformSubs.length === 0 || platformSessions.length === 0) continue;
-          for (const session of platformSessions) {
-            const payload = payloadFor(session);
+          for (const unit of toUnits(platformSessions)) {
+            const payload = payloadForUnit(unit);
             for (const sub of platformSubs) {
               const result = await sendFCM({
                 token: sub.endpoint,
@@ -303,10 +340,7 @@ async function handler(req, res) {
                 staleRemoved++;
               }
             }
-            await supabase.from("sent_reminders").upsert(
-              { session_id: session.id, user_id, channel: platform },
-              { onConflict: "session_id,user_id,channel" }
-            );
+            await markUnitSent(unit, platform);
             totalSent++;
           }
         }

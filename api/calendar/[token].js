@@ -89,7 +89,7 @@ async function handler(req, res) {
   const isPatient = (linkedPatients?.length || 0) > 0;
   const linkedPatientIds = (linkedPatients || []).map((p) => p.id);
 
-  const sessionsBaseSelect = "id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type";
+  const sessionsBaseSelect = "id, date, time, duration, status, patient, initials, modality, cancel_reason, session_type, group_id, groups(name)";
   const sessionsQuery = isPatient
     ? svc
         .from("sessions")

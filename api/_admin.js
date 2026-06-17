@@ -154,6 +154,8 @@ export async function deleteUserCascade({ svc, r2Client, bucket, userId, tombsto
     "notes",
     "payments",
     "sessions",
+    "group_members",
+    "groups",
     "patients",
     "bug_reports",
   ];

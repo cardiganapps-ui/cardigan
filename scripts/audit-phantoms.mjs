@@ -76,7 +76,7 @@ today.setHours(0, 0, 0, 0);
 const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
 const sessions = (await q(`
-  select id, user_id, patient_id, patient, day, time, date, status, session_type, rate
+  select id, user_id, patient_id, patient, day, time, date, status, session_type, rate, group_id
   from sessions
   where status = 'scheduled'
 `)).flat();
@@ -92,6 +92,12 @@ const byPatient = new Map();
 for (const s of sessions) {
   if (s.session_type === "tutor") continue;
   if (s.session_type === "interview") continue;
+  // Group sessions follow the GROUP's schedule, not the patient's own
+  // weekly slot, so a past group row on a slot the patient doesn't use
+  // individually is NOT a phantom — same one-off rationale as tutor/
+  // interview. Excluding them prevents a false "inflated consumed" flag
+  // that could trick someone into deleting legitimate group history.
+  if (s.group_id) continue;
   const e = byPatient.get(s.patient_id) || { futureSlots: new Set(), past: [] };
   const iso = shortDateToISO(s.date, today);
   if (iso >= todayISO) {

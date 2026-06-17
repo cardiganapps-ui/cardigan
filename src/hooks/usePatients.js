@@ -4,7 +4,7 @@ import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
-export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates }) {
+export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates, setGroupMembers }) {
 
   async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult }) {
     if (!name?.trim()) return false;
@@ -202,6 +202,10 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     setUpcomingSessions(prev => prev.filter(s => s.patient_id !== id));
     setPayments?.(prev => prev.filter(p => p.patient_id !== id));
     setDocuments?.(prev => prev.filter(d => d.patient_id !== id));
+    // group_members cascades via the patient_id FK on the server; prune
+    // local state too so a deleted patient doesn't linger as a ghost in any
+    // open group roster until the next refresh.
+    setGroupMembers?.(prev => prev.filter(m => m.patient_id !== id));
     return true;
   }
 

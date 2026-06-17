@@ -902,7 +902,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   useFocusRefresh(refresh, { mutating });
 
   /* ── DOMAIN ACTIONS (delegated to focused modules) ── */
-  const helpers = { formatShortDate, getRecurringDates };
+  const helpers = { formatShortDate, getRecurringDates, setGroupMembers };
   const { createPatient, updatePatient, deletePatient, createPotential, discardPotential, convertPotentialToActive } =
     createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, helpers);
   const { createSession, updateSessionStatus, deleteSession, softDeleteSession, rescheduleSession, generateRecurringSessions, applyScheduleChange, finalizePatient, updateSessionModality, updateSessionRate, updateSessionVisitType, updateCancelReason } =
