@@ -43,6 +43,9 @@ on:
       # bundle (vite builds src/ → dist/), so api/ changes must not burn an
       # iOS build — Apple's daily TestFlight upload cap is the constraint.
       - 'api/**'
+      # Likewise the database layer (migrations, schema.sql, the drift
+      # snapshot) is never bundled into the app — never trigger a build.
+      - 'supabase/**'
       - 'scripts/**'
       # apply-ios-config.sh IS in scripts/ but is on the iOS critical
       # path — changes to it (entitlements, signing-pbxproj patch,

@@ -1572,6 +1572,96 @@
       "data_type": "uuid",
       "is_nullable": "NO",
       "ordinal_position": 1,
+      "table_name": "notifications",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "notifications",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "'reminder'::text",
+      "column_name": "kind",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "notifications",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "notifications",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "''::text",
+      "column_name": "body",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 5,
+      "table_name": "notifications",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'/'::text",
+      "column_name": "url",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "notifications",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "notifications",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "notifications",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "false",
+      "column_name": "read",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "ordinal_position": 9,
+      "table_name": "notifications",
+      "udt_name": "bool"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "notifications",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
       "table_name": "patient_invites",
       "udt_name": "uuid"
     },
@@ -4356,6 +4446,36 @@
       "table_name": "notification_preferences"
     },
     {
+      "conname": "notifications_kind_check",
+      "contype": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['reminder'::text, 'system'::text])))",
+      "table_name": "notifications"
+    },
+    {
+      "conname": "notifications_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL",
+      "table_name": "notifications"
+    },
+    {
+      "conname": "notifications_session_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL",
+      "table_name": "notifications"
+    },
+    {
+      "conname": "notifications_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "notifications"
+    },
+    {
+      "conname": "notifications_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "notifications"
+    },
+    {
       "conname": "patient_invites_patient_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
@@ -5495,6 +5615,26 @@
       "tablename": "notification_preferences"
     },
     {
+      "indexdef": "CREATE INDEX idx_notifications_unread ON public.notifications USING btree (user_id) WHERE (read = false)",
+      "indexname": "idx_notifications_unread",
+      "tablename": "notifications"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_notifications_user_created ON public.notifications USING btree (user_id, created_at DESC)",
+      "indexname": "idx_notifications_user_created",
+      "tablename": "notifications"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)",
+      "indexname": "notifications_pkey",
+      "tablename": "notifications"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_notifications_reminder ON public.notifications USING btree (user_id, session_id) WHERE ((kind = 'reminder'::text) AND (session_id IS NOT NULL))",
+      "indexname": "uniq_notifications_reminder",
+      "tablename": "notifications"
+    },
+    {
       "indexdef": "CREATE INDEX idx_patient_invites_patient ON public.patient_invites USING btree (patient_id)",
       "indexname": "idx_patient_invites_patient",
       "tablename": "patient_invites"
@@ -6291,6 +6431,42 @@
       "with_check": null
     },
     {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all notifications",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "notifications",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users delete own notifications",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "notifications",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users read own notifications",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "notifications",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users update own notifications",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "notifications",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
       "cmd": "INSERT",
       "permissive": "PERMISSIVE",
       "policyname": "Therapists create invites for their patients",
@@ -6838,6 +7014,10 @@
     },
     {
       "rls_enabled": true,
+      "table_name": "notifications"
+    },
+    {
+      "rls_enabled": true,
       "table_name": "patient_invites"
     },
     {
@@ -6994,6 +7174,9 @@
     },
     {
       "table_name": "notification_preferences"
+    },
+    {
+      "table_name": "notifications"
     },
     {
       "table_name": "patient_invites"
