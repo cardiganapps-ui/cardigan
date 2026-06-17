@@ -1366,3 +1366,40 @@ begin
   return v_next_no;
 end;
 $$;
+
+-- ── notifications: in-app inbox (durable record of push notifications) ──
+-- Written server-side only (cron reminders + admin/system via service role);
+-- no user INSERT policy so clients can't fabricate rows. See migration
+-- 077_notifications.sql for the full rationale.
+create table if not exists notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  kind        text not null default 'reminder'
+                check (kind in ('reminder','system')),
+  title       text not null,
+  body        text not null default '',
+  url         text default '/',
+  session_id  uuid references sessions(id) on delete set null,
+  patient_id  uuid references patients(id) on delete set null,
+  read        boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_notifications_user_created
+  on notifications(user_id, created_at desc);
+create index if not exists idx_notifications_unread
+  on notifications(user_id) where read = false;
+create unique index if not exists uniq_notifications_reminder
+  on notifications(user_id, session_id)
+  where kind = 'reminder' and session_id is not null;
+
+alter table notifications enable row level security;
+
+create policy "Users read own notifications" on notifications
+  for select using (auth.uid() = user_id);
+create policy "Users update own notifications" on notifications
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own notifications" on notifications
+  for delete using (auth.uid() = user_id);
+create policy "Admin reads all notifications" on notifications
+  for select using (is_admin());

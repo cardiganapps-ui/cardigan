@@ -19,6 +19,7 @@ import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
 const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
 const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet.jsx").then(m => ({ default: m.ProUpgradeSheet })));
 const CardiSheet = lazy(() => import("./components/sheets/CardiSheet.jsx").then(m => ({ default: m.CardiSheet })));
+const InboxSheet = lazy(() => import("./components/sheets/InboxSheet.jsx").then(m => ({ default: m.InboxSheet })));
 const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt.jsx"));
 // Lazy because it pulls a small confetti renderer + a celebration
 // modal that 99% of users see once or never. No reason to bundle it
@@ -68,7 +69,7 @@ import { useConnectivity } from "./hooks/useConnectivity";
 import { LogoIcon } from "./components/LogoMark";
 import { AuthSplash } from "./components/AuthSplash";
 import { HelpTip } from "./components/HelpTip";
-import { IconRefresh, IconSearch } from "./components/Icons";
+import { IconRefresh, IconSearch, IconBell } from "./components/Icons";
 import Tooltip from "./components/Tooltip";
 // Tutorial only runs on first sign-in (and on user-triggered replay
 // from Settings). Lazy so the ~30 KB tutorial chunk doesn't sit in
@@ -800,6 +801,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     patients, upcomingSessions,
     loading, mutationError, clearMutationError, fetchError,
     updateSessionStatus,
+    inboxUnread = 0,
     refresh,
   } = data;
   // Compose read-only: native data-layer flag (admin "view as user")
@@ -1238,6 +1240,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // nav id through `handleDrawerNav` below, which gates on isPro and
   // either opens the sheet or bumps the user to ProUpgradeSheet.
   const [cardiOpen, setCardiOpen] = useState(false);
+  const [inboxOpen, setInboxOpen] = useState(false);
   const handleDrawerNav = useCallback((id) => {
     if (id === "cardi") {
       if (!subscription.isPro) {
@@ -1973,6 +1976,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           <CardiSheet open={cardiOpen} onClose={() => setCardiOpen(false)} />
         )}
       </Suspense>
+      {/* In-app notification inbox — bell in the topbar opens it. Lazy so
+          the sheet bundle only ships when first opened. */}
+      <Suspense fallback={null}>
+        {inboxOpen && <InboxSheet onClose={() => setInboxOpen(false)} />}
+      </Suspense>
       {/* Trial reminder — fires once per day at 15/10/5/3/2/1 days left.
           The dedicated payment sheet next to it stays mounted so the
           subscribe path keeps working even after the reminder closes. */}
@@ -2267,6 +2275,24 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           <h1 className="topbar-screen-name" aria-live="polite">{t(`nav.${screen}`)}</h1>
           <div className="topbar-right">
             {!readOnly && <TopbarActions onOpenPalette={() => setPaletteOpen(true)} />}
+            <Tooltip label={t("inbox.title")} placement="bottom">
+              <button
+                type="button"
+                className="topbar-refresh-btn"
+                onClick={() => setInboxOpen(true)}
+                aria-label={t("inbox.open")}
+                style={{ position: "relative" }}
+              >
+                <IconBell size={16} />
+                {inboxUnread > 0 && (
+                  <span aria-hidden style={{
+                    position: "absolute", top: 3, right: 3,
+                    width: 9, height: 9, borderRadius: 999,
+                    background: "var(--red)", border: "1.5px solid var(--white)",
+                  }} />
+                )}
+              </button>
+            </Tooltip>
             <Tooltip label={t("retry")} placement="bottom">
               <button className="topbar-refresh-btn" onClick={refresh} aria-label={t("retry")}><IconRefresh size={16} /></button>
             </Tooltip>

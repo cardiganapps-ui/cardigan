@@ -1174,6 +1174,24 @@ export default {
     promptDismiss: "Ahora no",
   },
 
+  // ── Inbox (in-app notification center) ──
+  inbox: {
+    title: "Notificaciones",
+    open: "Ver notificaciones",
+    empty: "Sin notificaciones",
+    emptyBody: "Aquí aparecerán tus recordatorios de sesión y avisos.",
+    markAllRead: "Marcar todo como leído",
+    clearAll: "Limpiar todo",
+    clearConfirm: "¿Eliminar todas las notificaciones?",
+    delete: "Eliminar",
+    unreadOne: "1 sin leer",
+    unreadMany: "{count} sin leer",
+    justNow: "ahora",
+    minutesAgo: "hace {count} min",
+    hoursAgo: "hace {count} h",
+    daysAgo: "hace {count} d",
+  },
+
   // ── Calendar prompt (Home discovery card for the iCal feed) ──
   calendarPrompt: {
     title: "Sincroniza con tu calendario",

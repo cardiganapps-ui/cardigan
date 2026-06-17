@@ -289,6 +289,33 @@ async function handler(req, res) {
         );
       };
 
+      // 7·inbox. Durable in-app inbox record (therapist only) — one row per
+      // due reminder so the user can read it later regardless of whether a
+      // push was actually delivered. Deduped per (user, session) by the
+      // uniq_notifications_reminder partial index, so cron re-runs no-op on
+      // 23505. Runs independently of push subscriptions. Copy is timeless
+      // (no "en X min") since the row persists.
+      if (!isPatient) {
+        for (const unit of toUnits(sessionsToNotify)) {
+          const s = unit.rep;
+          const grouped = unit.isGroup && unit.count > 1;
+          const { error: inboxErr } = await supabase.from("notifications").insert({
+            user_id,
+            kind: "reminder",
+            title: grouped ? "Recordatorio de sesión grupal" : "Recordatorio de sesión",
+            body: grouped
+              ? `${unit.groupName || "Sesión grupal"} · ${s.time} · ${unit.count} alumnos`
+              : `${s.patient || s.initials || "Sesión"} · ${s.time}`,
+            url: "/#agenda",
+            session_id: unit.ids[0],
+            patient_id: grouped ? null : (s.patient_id || null),
+          });
+          if (inboxErr && inboxErr.code !== "23505") {
+            console.error(JSON.stringify({ evt: "inbox.insert.error", session_id: unit.ids[0], message: inboxErr.message }));
+          }
+        }
+      }
+
       // 7a. Web push.
       for (const unit of (webSubs.length > 0 ? toUnits(newPushSessions) : [])) {
         const payload = payloadForUnit(unit);

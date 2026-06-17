@@ -43,6 +43,16 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     [enrichedPatients, enrichedSessions]
   );
 
+  // A few inbox fixtures so the bell + sheet are populated in demo mode.
+  const demoNotifications = useMemo(() => {
+    const iso = (mins) => new Date(new Date().getTime() - mins * 60000).toISOString();
+    return [
+      { id: "demo-n1", kind: "reminder", title: "Recordatorio de sesión", body: "Ana López · 17:00", url: "/#agenda", session_id: null, patient_id: null, read: false, created_at: iso(25) },
+      { id: "demo-n2", kind: "reminder", title: "Recordatorio de sesión", body: "Carlos Ruiz · 12:30", url: "/#agenda", session_id: null, patient_id: null, read: false, created_at: iso(180) },
+      { id: "demo-n3", kind: "system", title: "Te damos la bienvenida", body: "Aquí aparecerán tus recordatorios de sesión y avisos.", url: "/", session_id: null, patient_id: null, read: true, created_at: iso(1440) },
+    ];
+  }, []);
+
   return {
     patients: enrichedPatients,
     upcomingSessions: enrichedSessions,
@@ -53,6 +63,8 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     noteAttachments: [],
     groups: data.groups || [],
     groupMembers: data.groupMembers || [],
+    inbox: demoNotifications,
+    inboxUnread: demoNotifications.filter((n) => !n.read).length,
     tutorReminders,
     loading: false,
     fetchError: "",
@@ -90,6 +102,8 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     updateRecurringTemplate: noop, deleteRecurringTemplate: noop,
     generateRecurringExpenses: async () => ({ inserted: 0, pending: 0 }),
     generatePendingRecurringExpenses: async () => ({ inserted: 0 }),
+    markNotificationRead: noop, markAllNotificationsRead: noop,
+    deleteNotification: noop, clearNotifications: noop,
     createGroup: noop, updateGroup: noop, deleteGroup: noop, endGroup: noop,
     addMember: noop, addMembers: noop, removeMember: noop,
     generateGroupSessions: noop, applyGroupScheduleChange: noop, cancelGroupOccurrence: noop,

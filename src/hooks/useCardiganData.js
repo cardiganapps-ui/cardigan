@@ -18,6 +18,7 @@ import { createDocumentActions } from "./useDocuments";
 import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
 import { createGroupActions } from "./useGroups";
+import { createInboxActions } from "./useInbox";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { computeGroupAutoExtendRows } from "../utils/groupRecurrence";
@@ -597,6 +598,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // group_id — these two arrays are just the template + membership.
   const [groups, setGroups] = useState(initialCache?.groups || []);
   const [groupMembers, setGroupMembers] = useState(initialCache?.groupMembers || []);
+  const [notifications, setNotifications] = useState(initialCache?.notifications || []);
   // Skeleton stays hidden when we hydrated from cache — the user
   // sees their data immediately. Skeleton fires only on a true cold
   // start (no cache, fresh login, or after the cache aged out).
@@ -635,9 +637,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
     let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
-    let tRes, tlRes, naRes, gRes, gmRes;
+    let tRes, tlRes, naRes, gRes, gmRes, nfRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -664,6 +666,10 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // small (a handful of groups, a few members each) so no window.
         q("groups", 500).order("created_at"),
         q("group_members", 5000),
+        // In-app notification inbox (migration 077). Newest-first; a
+        // generous window since rows are small and the inbox shows recent
+        // activity. Read/cleared via the inbox actions below.
+        q("notifications", 200).order("created_at", { ascending: false }),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -862,6 +868,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     setNoteAttachments(naRes?.data || []);
     setGroups(gData);
     setGroupMembers(gmData);
+    setNotifications(nfRes?.data || []);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -884,6 +891,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       noteAttachments: naRes?.data || [],
       groups: gData,
       groupMembers: gmData,
+      notifications: nfRes?.data || [],
     });
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
@@ -941,6 +949,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     deleteDocument,
     setMutating, setMutationError,
   });
+  const { markNotificationRead, markAllNotificationsRead, deleteNotification, clearNotifications } =
+    createInboxActions(userId, notifications, setNotifications, setMutationError);
 
   /* ── ENRICHMENT ── */
   // Auto-complete is display-only — shows past scheduled sessions as "completed"
@@ -1026,6 +1036,11 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     tags, tagLinks,
     noteAttachments,
     groups, groupMembers,
+    // Inbox key is deliberately `inbox` (not `notifications`) — App.jsx
+    // already exposes a `notifications` object (the PUSH subscription hook)
+    // in context, which would shadow this array.
+    inbox: notifications,
+    inboxUnread: notifications.reduce((n, x) => n + (x.read ? 0 : 1), 0),
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
@@ -1066,6 +1081,10 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     deleteRecurringTemplate: guard(deleteRecurringTemplate),
     generateRecurringExpenses: guard(generateRecurringExpenses),
     generatePendingRecurringExpenses: guard(generatePendingRecurringExpenses),
+    markNotificationRead: guard(markNotificationRead),
+    markAllNotificationsRead: guard(markAllNotificationsRead),
+    deleteNotification: guard(deleteNotification),
+    clearNotifications: guard(clearNotifications),
     refresh,
   };
 }
