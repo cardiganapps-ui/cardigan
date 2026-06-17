@@ -388,6 +388,15 @@
       "udt_name": "text"
     },
     {
+      "column_default": null,
+      "column_name": "group_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
+      "table_name": "documents",
+      "udt_name": "uuid"
+    },
+    {
       "column_default": "gen_random_uuid()",
       "column_name": "id",
       "data_type": "uuid",
@@ -584,6 +593,195 @@
       "ordinal_position": 4,
       "table_name": "export_audit",
       "udt_name": "int4"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "group_members",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "group_members",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "group_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "group_members",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "patient_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 4,
+      "table_name": "group_members",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "joined_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "group_members",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": null,
+      "column_name": "left_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "group_members",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "group_members",
+      "udt_name": "timestamptz"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 1,
+      "table_name": "groups",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "ordinal_position": 2,
+      "table_name": "groups",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 3,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "0",
+      "column_name": "color_idx",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 4,
+      "table_name": "groups",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "day",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 5,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "time",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 6,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "60",
+      "column_name": "duration",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 7,
+      "table_name": "groups",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "rate",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "ordinal_position": 8,
+      "table_name": "groups",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "'presencial'::text",
+      "column_name": "modality",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 9,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'weekly'::text",
+      "column_name": "recurrence_frequency",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 10,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'recurring'::text",
+      "column_name": "scheduling_mode",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 11,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'active'::text",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "ordinal_position": 12,
+      "table_name": "groups",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "1",
+      "column_name": "version",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 13,
+      "table_name": "groups",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 14,
+      "table_name": "groups",
+      "udt_name": "timestamptz"
     },
     {
       "column_default": "gen_random_uuid()",
@@ -1302,6 +1500,15 @@
       "data_type": "uuid",
       "is_nullable": "YES",
       "ordinal_position": 12,
+      "table_name": "notes",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
+      "column_name": "group_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 13,
       "table_name": "notes",
       "udt_name": "uuid"
     },
@@ -2765,6 +2972,15 @@
     },
     {
       "column_default": null,
+      "column_name": "group_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "ordinal_position": 23,
+      "table_name": "sessions",
+      "udt_name": "uuid"
+    },
+    {
+      "column_default": null,
       "column_name": "id",
       "data_type": "text",
       "is_nullable": "NO",
@@ -3762,6 +3978,12 @@
       "table_name": "documents"
     },
     {
+      "conname": "documents_group_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL",
+      "table_name": "documents"
+    },
+    {
       "conname": "documents_patient_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
@@ -3862,6 +4084,84 @@
       "contype": "p",
       "definition": "PRIMARY KEY (id)",
       "table_name": "export_audit"
+    },
+    {
+      "conname": "group_members_group_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE",
+      "table_name": "group_members"
+    },
+    {
+      "conname": "group_members_patient_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
+      "table_name": "group_members"
+    },
+    {
+      "conname": "group_members_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "group_members"
+    },
+    {
+      "conname": "group_members_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "group_members"
+    },
+    {
+      "conname": "groups_duration_check",
+      "contype": "c",
+      "definition": "CHECK ((duration > 0))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_modality_check",
+      "contype": "c",
+      "definition": "CHECK ((modality = ANY (ARRAY['presencial'::text, 'virtual'::text, 'telefonica'::text, 'a-domicilio'::text])))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_name_nonempty",
+      "contype": "c",
+      "definition": "CHECK ((length(btrim(name)) > 0))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_rate_check",
+      "contype": "c",
+      "definition": "CHECK (((rate IS NULL) OR (rate >= 0)))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_recurrence_frequency_check",
+      "contype": "c",
+      "definition": "CHECK ((recurrence_frequency = ANY (ARRAY['weekly'::text, 'biweekly'::text, 'monthly'::text])))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_scheduling_mode_check",
+      "contype": "c",
+      "definition": "CHECK ((scheduling_mode = ANY (ARRAY['recurring'::text, 'episodic'::text])))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'ended'::text])))",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_user_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "groups"
+    },
+    {
+      "conname": "groups_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "groups"
     },
     {
       "conname": "influencer_codes_check",
@@ -4005,6 +4305,12 @@
       "conname": "notes_cover_attachment_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (cover_attachment_id) REFERENCES note_attachments(id) ON DELETE SET NULL",
+      "table_name": "notes"
+    },
+    {
+      "conname": "notes_group_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL",
       "table_name": "notes"
     },
     {
@@ -4488,6 +4794,12 @@
       "table_name": "sessions"
     },
     {
+      "conname": "sessions_group_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL",
+      "table_name": "sessions"
+    },
+    {
       "conname": "sessions_patient_id_fkey",
       "contype": "f",
       "definition": "FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE",
@@ -4963,6 +5275,11 @@
       "tablename": "documents"
     },
     {
+      "indexdef": "CREATE INDEX idx_documents_group_id ON public.documents USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "indexname": "idx_documents_group_id",
+      "tablename": "documents"
+    },
+    {
       "indexdef": "CREATE INDEX idx_documents_uploaded_by ON public.documents USING btree (uploaded_by_user_id) WHERE (uploaded_by_user_id IS NOT NULL)",
       "indexname": "idx_documents_uploaded_by",
       "tablename": "documents"
@@ -5006,6 +5323,41 @@
       "indexdef": "CREATE INDEX export_audit_user_time_idx ON public.export_audit USING btree (user_id, exported_at DESC)",
       "indexname": "export_audit_user_time_idx",
       "tablename": "export_audit"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX group_members_pkey ON public.group_members USING btree (id)",
+      "indexname": "group_members_pkey",
+      "tablename": "group_members"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_group_members_group_id ON public.group_members USING btree (group_id)",
+      "indexname": "idx_group_members_group_id",
+      "tablename": "group_members"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_group_members_patient_id ON public.group_members USING btree (patient_id)",
+      "indexname": "idx_group_members_patient_id",
+      "tablename": "group_members"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_group_members_user_id ON public.group_members USING btree (user_id)",
+      "indexname": "idx_group_members_user_id",
+      "tablename": "group_members"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX uniq_group_member_active ON public.group_members USING btree (group_id, patient_id) WHERE (left_at IS NULL)",
+      "indexname": "uniq_group_member_active",
+      "tablename": "group_members"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX groups_pkey ON public.groups USING btree (id)",
+      "indexname": "groups_pkey",
+      "tablename": "groups"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_groups_user_id ON public.groups USING btree (user_id)",
+      "indexname": "idx_groups_user_id",
+      "tablename": "groups"
     },
     {
       "indexdef": "CREATE UNIQUE INDEX influencer_codes_code_key ON public.influencer_codes USING btree (code)",
@@ -5105,6 +5457,11 @@
     {
       "indexdef": "CREATE INDEX idx_notes_cover_attachment ON public.notes USING btree (cover_attachment_id) WHERE (cover_attachment_id IS NOT NULL)",
       "indexname": "idx_notes_cover_attachment",
+      "tablename": "notes"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_notes_group_id ON public.notes USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "indexname": "idx_notes_group_id",
       "tablename": "notes"
     },
     {
@@ -5343,6 +5700,16 @@
       "tablename": "session_reschedule_requests"
     },
     {
+      "indexdef": "CREATE INDEX idx_sessions_group_id ON public.sessions USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "indexname": "idx_sessions_group_id",
+      "tablename": "sessions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_sessions_group_occurrence ON public.sessions USING btree (group_id, date, \"time\") WHERE (group_id IS NOT NULL)",
+      "indexname": "idx_sessions_group_occurrence",
+      "tablename": "sessions"
+    },
+    {
       "indexdef": "CREATE INDEX idx_sessions_session_type ON public.sessions USING btree (session_type)",
       "indexname": "idx_sessions_session_type",
       "tablename": "sessions"
@@ -5363,7 +5730,7 @@
       "tablename": "sessions"
     },
     {
-      "indexdef": "CREATE UNIQUE INDEX uniq_sessions_user_slot ON public.sessions USING btree (user_id, date, \"time\") WHERE (status = 'scheduled'::text)",
+      "indexdef": "CREATE UNIQUE INDEX uniq_sessions_user_slot ON public.sessions USING btree (user_id, date, \"time\") WHERE ((status = 'scheduled'::text) AND (group_id IS NULL))",
       "indexname": "uniq_sessions_user_slot",
       "tablename": "sessions"
     },
@@ -5760,6 +6127,42 @@
       "roles": "{public}",
       "tablename": "export_audit",
       "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all group members",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "group_members",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own group members",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "group_members",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admin reads all groups",
+      "qual": "is_admin()",
+      "roles": "{public}",
+      "tablename": "groups",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users manage own groups",
+      "qual": "(auth.uid() = user_id)",
+      "roles": "{public}",
+      "tablename": "groups",
+      "with_check": "(auth.uid() = user_id)"
     },
     {
       "cmd": "SELECT",
@@ -6391,6 +6794,14 @@
     },
     {
       "rls_enabled": true,
+      "table_name": "group_members"
+    },
+    {
+      "rls_enabled": true,
+      "table_name": "groups"
+    },
+    {
+      "rls_enabled": true,
       "table_name": "influencer_codes"
     },
     {
@@ -6552,6 +6963,12 @@
       "table_name": "export_audit"
     },
     {
+      "table_name": "group_members"
+    },
+    {
+      "table_name": "groups"
+    },
+    {
       "table_name": "influencer_codes"
     },
     {
@@ -6661,6 +7078,13 @@
       "event_manipulation": "UPDATE",
       "table_name": "admin_saved_views",
       "trigger_name": "admin_saved_views_set_updated_at_trg"
+    },
+    {
+      "action_statement": "EXECUTE FUNCTION bump_version_on_update()",
+      "action_timing": "BEFORE",
+      "event_manipulation": "UPDATE",
+      "table_name": "groups",
+      "trigger_name": "groups_bump_version"
     },
     {
       "action_statement": "EXECUTE FUNCTION bump_version_on_update()",

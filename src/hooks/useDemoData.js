@@ -51,6 +51,8 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     tags: [], tagLinks: [],
     rescheduleRequests: [], setRescheduleRequests: () => {},
     noteAttachments: [],
+    groups: data.groups || [],
+    groupMembers: data.groupMembers || [],
     tutorReminders,
     loading: false,
     fetchError: "",
@@ -88,6 +90,9 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     updateRecurringTemplate: noop, deleteRecurringTemplate: noop,
     generateRecurringExpenses: async () => ({ inserted: 0, pending: 0 }),
     generatePendingRecurringExpenses: async () => ({ inserted: 0 }),
+    createGroup: noop, updateGroup: noop, deleteGroup: noop, endGroup: noop,
+    addMember: noop, addMembers: noop, removeMember: noop,
+    generateGroupSessions: noop, applyGroupScheduleChange: noop, cancelGroupOccurrence: noop,
     refresh: async () => {},
   };
 }

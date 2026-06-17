@@ -448,6 +448,66 @@ create table if not exists influencer_codes (
 );
 
 -- ============================================================
+-- Groups (Grupos) — group sessions / classes (migration 076)
+-- ============================================================
+-- A group is a recurring schedule template (`groups`) plus a roster
+-- (`group_members`). A group occurrence FANS OUT into one ordinary
+-- `sessions` row per ACTIVE member, all sharing (group_id, date, time),
+-- each carrying the flat group rate. Group sessions are ordinary sessions
+-- in every accounting respect (real patient_id + rate), so the entire money
+-- pipeline folds them in with zero changes. Groups carry no denormalized
+-- financial counters; group finances are a derived rollup only.
+create table if not exists groups (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  color_idx integer default 0,
+  -- Recurring slot template (nullable day/time for episodic / one-off groups).
+  day text,
+  time text,
+  duration integer default 60 check (duration > 0),
+  -- Flat group rate applied to every member; null falls back to patient.rate.
+  rate integer check (rate is null or rate >= 0),
+  modality text default 'presencial'
+    check (modality in ('presencial', 'virtual', 'telefonica', 'a-domicilio')),
+  recurrence_frequency text not null default 'weekly'
+    check (recurrence_frequency in ('weekly', 'biweekly', 'monthly')),
+  scheduling_mode text not null default 'recurring'
+    check (scheduling_mode in ('recurring', 'episodic')),
+  status text not null default 'active' check (status in ('active', 'ended')),
+  -- Optimistic locking via the shared bump_version_on_update trigger.
+  version integer not null default 1,
+  created_at timestamptz default now(),
+  constraint groups_name_nonempty check (length(btrim(name)) > 0)
+);
+
+drop trigger if exists groups_bump_version on groups;
+create trigger groups_bump_version
+  before update on groups
+  for each row execute function public.bump_version_on_update();
+
+-- Roster. Pure relationship data (no money) so both FKs cascade. Session
+-- rows survive group/patient deletion via their own ON DELETE SET NULL —
+-- that asymmetry protects financial history. left_at null = active member.
+create table if not exists group_members (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  group_id uuid not null references groups(id) on delete cascade,
+  patient_id uuid not null references patients(id) on delete cascade,
+  joined_at timestamptz default now(),
+  left_at timestamptz default null,
+  created_at timestamptz default now()
+);
+
+-- Group tag on sessions / notes / documents. ON DELETE SET NULL everywhere
+-- so deleting a group detaches but never destroys. Added via alter because
+-- the referenced `groups` table is defined in this section, after the
+-- sessions/notes/documents create-table blocks above.
+alter table sessions   add column if not exists group_id uuid references groups(id) on delete set null;
+alter table notes       add column if not exists group_id uuid references groups(id) on delete set null;
+alter table documents   add column if not exists group_id uuid references groups(id) on delete set null;
+
+-- ============================================================
 -- Constraint hardening (migration 067)
 -- ============================================================
 -- Invariants that already live in JS — moved into the schema so a buggy
@@ -509,9 +569,12 @@ create unique index if not exists uniq_sessions_patient_date_time
 -- exact slot. Closes the TOCTOU race in the patient-reschedule and
 -- therapist-agenda paths; cancelled / completed / charged rows are
 -- intentionally outside the partial WHERE clause so historical
--- collisions stay legal.
+-- collisions stay legal. Group rows (group_id IS NOT NULL) are excluded
+-- because a group occurrence deliberately puts N members on one slot
+-- (migration 076) — member-level dedup is covered by
+-- uniq_sessions_patient_date_time.
 create unique index if not exists uniq_sessions_user_slot
-  on sessions(user_id, date, time) where status = 'scheduled';
+  on sessions(user_id, date, time) where status = 'scheduled' and group_id is null;
 create index if not exists idx_payments_user_id on payments(user_id);
 create index if not exists idx_payments_patient_id on payments(patient_id);
 create index if not exists idx_notes_user_id on notes(user_id);
@@ -528,6 +591,21 @@ create index if not exists idx_notes_cover_attachment on notes(cover_attachment_
 create index if not exists idx_documents_user_id on documents(user_id);
 create index if not exists idx_documents_patient_id on documents(patient_id);
 create index if not exists idx_documents_user_kind on documents(user_id, kind);
+-- Groups (migration 076)
+create index if not exists idx_groups_user_id on groups(user_id);
+create index if not exists idx_group_members_group_id   on group_members(group_id);
+create index if not exists idx_group_members_patient_id on group_members(patient_id);
+create index if not exists idx_group_members_user_id     on group_members(user_id);
+create unique index if not exists uniq_group_member_active
+  on group_members (group_id, patient_id) where left_at is null;
+create index if not exists idx_sessions_group_id
+  on sessions(group_id) where group_id is not null;
+create index if not exists idx_sessions_group_occurrence
+  on sessions(group_id, date, time) where group_id is not null;
+create index if not exists idx_notes_group_id
+  on notes(group_id) where group_id is not null;
+create index if not exists idx_documents_group_id
+  on documents(group_id) where group_id is not null;
 create unique index if not exists uniq_expenses_recurring_period
   on expenses(recurring_id, period_year, period_month)
   where recurring_id is not null;
@@ -576,6 +654,8 @@ alter table note_tags enable row level security;
 alter table note_tag_links enable row level security;
 alter table note_versions enable row level security;
 alter table note_attachments enable row level security;
+alter table groups enable row level security;
+alter table group_members enable row level security;
 
 create policy "Users manage own patients" on patients for all using (auth.uid() = user_id);
 create policy "Users manage own sessions" on sessions for all using (auth.uid() = user_id);
@@ -592,6 +672,8 @@ create policy "Users read own profile"   on user_profiles for select using (auth
 create policy "Users insert own profile" on user_profiles for insert with check (auth.uid() = user_id);
 create policy "Users update own profile" on user_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage own measurements" on measurements for all using (auth.uid() = user_id);
+create policy "Users manage own groups" on groups for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users manage own group members" on group_members for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Note tags (migration 071). Link table's owner is derived from the
 -- referenced tag, which is owned by auth.uid() — keeps the RLS shape
@@ -637,6 +719,8 @@ create policy "Admin reads all notes" on notes for select using (is_admin());
 create policy "Admin reads all documents" on documents for select using (is_admin());
 create policy "Admin reads all expenses" on expenses for select using (is_admin());
 create policy "Admin reads all recurring expenses" on recurring_expenses for select using (is_admin());
+create policy "Admin reads all groups" on groups for select using (is_admin());
+create policy "Admin reads all group members" on group_members for select using (is_admin());
 create policy "Therapist reads own reschedule requests"
   on session_reschedule_requests for select using (auth.uid() = user_id);
 create policy "Patient reads requests for own patient row"

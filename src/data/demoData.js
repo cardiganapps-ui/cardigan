@@ -950,5 +950,88 @@ export function generateDemoData(profession = DEFAULT_PROFESSION) {
     },
   ];
 
-  return { patients, sessions, payments, notes, measurements, expenses, recurringExpenses };
+  // ── Demo group (Grupos) ──
+  // A single recurring group so the Grupos tab + the consolidated Agenda
+  // tile render with content out of the box. We pick a few existing ACTIVE
+  // recurring patients as members and fan out weekly group sessions (past →
+  // completed, future → scheduled) tagged with group_id. Because demo
+  // accounting iterates data.sessions, these rows fold into each member's
+  // balance automatically — no counter bookkeeping needed here.
+  const groups = [];
+  const groupMembers = [];
+  const GROUP_NAMES = {
+    psychologist: "Grupo de habilidades sociales",
+    nutritionist: "Taller de nutrición grupal",
+    tutor: "Clase grupal de matemáticas",
+    music_teacher: "Ensamble grupal",
+    trainer: "Entrenamiento funcional grupal",
+  };
+  const candidateMembers = patients.filter(p => p.status === "active" && p.day).slice(0, 4);
+  if (candidateMembers.length >= 2) {
+    const groupId = uuid();
+    const groupRate = profession === "tutor" ? 350 : 500;
+    const groupColorIdx = 3;
+    groups.push({
+      id: groupId,
+      user_id: demoUserId,
+      name: GROUP_NAMES[profession] || GROUP_NAMES.psychologist,
+      color_idx: groupColorIdx,
+      colorIdx: groupColorIdx,
+      day: "Sábado",
+      time: "10:00",
+      duration: 60,
+      rate: groupRate,
+      modality: "presencial",
+      recurrence_frequency: "weekly",
+      scheduling_mode: "recurring",
+      status: "active",
+      version: 1,
+      created_at: new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString(),
+    });
+    candidateMembers.forEach(p => {
+      groupMembers.push({
+        id: uuid(),
+        user_id: demoUserId,
+        group_id: groupId,
+        patient_id: p.id,
+        joined_at: new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString(),
+        left_at: null,
+        created_at: new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString(),
+      });
+    });
+    // Weekly occurrences from ~6 weeks ago to ~4 weeks ahead.
+    let occ = getNextDay("Sábado", new Date(now.getFullYear(), now.getMonth(), now.getDate() - 42));
+    const occEnd = addWeeks(now, 4);
+    while (occ <= occEnd) {
+      const isPast = occ < now;
+      candidateMembers.forEach((p, mi) => {
+        sessions.push({
+          id: uuid(),
+          user_id: demoUserId,
+          group_id: groupId,
+          patient_id: p.id,
+          patient: p.name,
+          initials: p.initials,
+          time: "10:00",
+          day: "Sábado",
+          date: dateStr(occ),
+          duration: 60,
+          rate: groupRate,
+          status: isPast ? "completed" : "scheduled",
+          cancel_reason: null,
+          modality: "presencial",
+          session_type: "regular",
+          is_recurring: true,
+          recurrence_frequency: "weekly",
+          color_idx: groupColorIdx,
+          colorIdx: groupColorIdx,
+          created_at: occ.toISOString(),
+        });
+        void mi;
+      });
+      occ = addWeeks(occ, 1);
+    }
+  }
+
+  return { patients, sessions, payments, notes, measurements, expenses, recurringExpenses, groups, groupMembers };
 }

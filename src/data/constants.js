@@ -25,6 +25,15 @@ export const PATIENT_STATUS = Object.freeze({
   DISCARDED: "discarded",
 });
 
+// Group (Grupos) lifecycle. Groups have no interview/potential lane —
+// they're either active or ended. Mirrors the groups.status CHECK
+// constraint in supabase/schema.sql + migration 076.
+export const GROUP_STATUS = Object.freeze({
+  ACTIVE: "active",
+  ENDED:  "ended",
+});
+export const GROUP_STATUSES = [GROUP_STATUS.ACTIVE, GROUP_STATUS.ENDED];
+
 // "Regular" patient statuses — those that should appear in the main
 // KPIs, lists, and accounting derivations. The Patients-screen filter
 // chips for 'all' / 'active' / 'ended' / 'owes' / 'paid' all restrict

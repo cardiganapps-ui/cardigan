@@ -1,0 +1,486 @@
+import { supabase } from "../supabaseClient";
+import {
+  GROUP_STATUS, SCHEDULING_MODE, SESSION_STATUS,
+  RECURRENCE_WINDOW_WEEKS, DEFAULT_RECURRENCE_FREQUENCY,
+} from "../data/constants";
+import { parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
+import { sessionCountsTowardBalance } from "../utils/accounting";
+import { computeGroupSessionRows } from "../utils/groupRecurrence";
+import { enqueue, registerHandler } from "../lib/mutationQueue.js";
+
+/* ── Group (Grupos) domain actions ──
+
+   Factory mirroring createSessionActions. A group is a recurring schedule
+   template (`groups`) plus a roster (`group_members`). Group occurrences
+   fan out into ordinary `sessions` rows — one per active member — so all
+   accounting flows through the existing per-patient pipeline unchanged.
+
+   All session-fan-out writes reuse the `sessions.bulk_insert` 23505-as-
+   success semantics (see useSessions) so re-runs / offline replays are
+   idempotent against uniq_sessions_patient_date_time.
+*/
+
+// ── Offline queue handlers (registered once at module load) ──
+registerHandler("groups.insert", async ({ row }) => {
+  return await supabase.from("groups").insert(row).select().single();
+});
+
+registerHandler("groups.update", async ({ id, userId, patch }) => {
+  return await supabase.from("groups").update(patch).eq("id", id).eq("user_id", userId);
+});
+
+registerHandler("groups.delete", async ({ id, userId }) => {
+  return await supabase.from("groups").delete().eq("id", id).eq("user_id", userId);
+});
+
+registerHandler("group_members.insert", async ({ rows }) => {
+  const result = await supabase.from("group_members").insert(rows).select();
+  if (result.error?.code === "23505") return { data: [], error: null };
+  return result;
+});
+
+registerHandler("group_members.update", async ({ id, userId, patch }) => {
+  return await supabase.from("group_members").update(patch).eq("id", id).eq("user_id", userId);
+});
+
+registerHandler("group_members.delete", async ({ id, userId }) => {
+  return await supabase.from("group_members").delete().eq("id", id).eq("user_id", userId);
+});
+
+// Fan-out bulk insert (group session generation / member backfill / extend).
+// Idempotent via the 23505 swallow — a prior drain that already inserted the
+// rows trips uniq_sessions_patient_date_time and we treat it as success.
+registerHandler("groups.generate_sessions", async ({ rows }) => {
+  const result = await supabase.from("sessions").insert(rows).select();
+  if (result.error?.code === "23505") return { data: [], error: null };
+  return result;
+});
+
+// Group schedule change: delete future group rows + update group + bulk
+// insert. Each step idempotent on retry (delete-by-id no-ops, group patch is
+// the same value, bulk insert swallows 23505).
+registerHandler("groups.apply_schedule_change", async ({ groupId, userId, toDeleteIds, groupPatch, newRows }) => {
+  if (toDeleteIds?.length > 0) {
+    const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+    if (r1.error) return r1;
+  }
+  const r2 = await supabase.from("groups").update(groupPatch).eq("id", groupId).eq("user_id", userId);
+  if (r2.error) return r2;
+  if (newRows?.length > 0) {
+    const r3 = await supabase.from("sessions").insert(newRows).select();
+    if (r3.error?.code === "23505") return { data: [], error: null };
+    return r3;
+  }
+  return { error: null };
+});
+
+// Whole-occurrence cancel: one bulk UPDATE over all scheduled member rows
+// for (group, date, time). Idempotent — re-running the same status set is a
+// no-op once the rows have moved off 'scheduled'.
+registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time, status, reason }) => {
+  return await supabase.from("sessions")
+    .update({ status, cancel_reason: reason ?? null })
+    .eq("user_id", userId).eq("group_id", groupId)
+    .eq("date", date).eq("time", time)
+    .eq("status", SESSION_STATUS.SCHEDULED);
+});
+
+// End a group: status flip + delete future scheduled group rows. Idempotent.
+registerHandler("groups.end", async ({ groupId, userId, toDeleteIds }) => {
+  if (toDeleteIds?.length > 0) {
+    const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+    if (r1.error) return r1;
+  }
+  return await supabase.from("groups").update({ status: GROUP_STATUS.ENDED }).eq("id", groupId).eq("user_id", userId);
+});
+
+function isOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+function tempId(prefix = "temp") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function defaultWindow(startDate) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = startDate ? parseLocalDate(startDate) : today;
+  const startISO = toISODate(start < today ? today : start);
+  const endISO = toISODate(new Date(today.getTime() + RECURRENCE_WINDOW_WEEKS * 7 * 86400000));
+  return { startISO, endISO };
+}
+
+export function createGroupActions(
+  userId, patients, setPatients,
+  groups, setGroups, groupMembers, setGroupMembers,
+  upcomingSessions, setUpcomingSessions,
+  setMutating, setMutationError,
+) {
+  const patientsById = new Map((patients || []).map(p => [p.id, p]));
+
+  // Apply optimistic per-patient counter deltas for a freshly-built set of
+  // fan-out rows + push the rows into local session state. Mirrors the
+  // counter bookkeeping in useSessions.generateRecurringSessions; the DB
+  // trigger reconciles to truth on the next fetch.
+  function applyFanoutOptimistic(rows, { asTemp } = {}) {
+    if (rows.length === 0) return;
+    const now = new Date();
+    const deltas = new Map(); // patient_id → { sessions, billed }
+    for (const r of rows) {
+      const d = deltas.get(r.patient_id) || { sessions: 0, billed: 0 };
+      d.sessions += 1;
+      if (sessionCountsTowardBalance(r, now)) d.billed += r.rate ?? patientsById.get(r.patient_id)?.rate ?? 0;
+      deltas.set(r.patient_id, d);
+    }
+    const localRows = rows.map(r => ({
+      ...r,
+      id: asTemp ? tempId() : r.id,
+      status: SESSION_STATUS.SCHEDULED,
+      colorIdx: r.color_idx,
+      ...(asTemp ? { _optimistic: true } : {}),
+    }));
+    setUpcomingSessions(prev => [...prev, ...localRows]);
+    setPatients(prev => prev.map(p => {
+      const d = deltas.get(p.id);
+      return d ? { ...p, sessions: (p.sessions || 0) + d.sessions, billed: (p.billed || 0) + d.billed } : p;
+    }));
+  }
+
+  // Build the dedup set of slots a set of patients already occupy.
+  function existingSlotsFor(patientIds) {
+    const ids = patientIds instanceof Set ? patientIds : new Set(patientIds);
+    return new Set(
+      (upcomingSessions || [])
+        .filter(s => ids.has(s.patient_id))
+        .map(s => `${s.patient_id}|${s.date}|${s.time}`)
+    );
+  }
+
+  async function generateGroupSessions(groupId, { startDate, endDate, onlyPatientIds } = {}) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group || !group.day || !group.time) return false;
+    const members = (groupMembers || []).filter(m => m.group_id === groupId && m.left_at == null);
+    if (members.length === 0) return false;
+    if (group.scheduling_mode === SCHEDULING_MODE.EPISODIC) return false;
+
+    const { startISO, endISO } = defaultWindow(startDate);
+    const memberIds = new Set(members.map(m => m.patient_id));
+    const rows = computeGroupSessionRows({
+      group, members, patientsById,
+      startISO, endISO: endDate || endISO,
+      existingSlots: existingSlotsFor(memberIds),
+      userId,
+      onlyPatientIds: onlyPatientIds ? new Set(onlyPatientIds) : undefined,
+    });
+    if (rows.length === 0) return false;
+
+    setMutationError("");
+    if (isOffline()) {
+      applyFanoutOptimistic(rows, { asTemp: true });
+      await enqueue("groups.generate_sessions", { rows });
+      return true;
+    }
+
+    setMutating(true);
+    try {
+      const { data, error } = await supabase.from("sessions").insert(rows).select();
+      if (error && error.code !== "23505") { setMutating(false); setMutationError(error.message); return false; }
+      applyFanoutOptimistic(
+        (data || []).map(r => ({ ...r })),
+        { asTemp: false }
+      );
+      setMutating(false);
+      return true;
+    } catch {
+      applyFanoutOptimistic(rows, { asTemp: true });
+      await enqueue("groups.generate_sessions", { rows });
+      setMutating(false);
+      return true;
+    }
+  }
+
+  async function createGroup(payload) {
+    const {
+      name, colorIdx = 0, day = null, time = null, duration = 60, rate = null,
+      modality = "presencial", frequency = DEFAULT_RECURRENCE_FREQUENCY,
+      schedulingMode = SCHEDULING_MODE.RECURRING, memberPatientIds = [],
+      startDate, endDate, generate = true,
+    } = payload || {};
+    if (!name || !name.trim()) return false;
+
+    const row = {
+      user_id: userId, name: name.trim(), color_idx: colorIdx,
+      day, time, duration: Number(duration) > 0 ? Number(duration) : 60,
+      rate: rate == null || rate === "" ? null : Number(rate),
+      modality, recurrence_frequency: frequency, scheduling_mode: schedulingMode,
+      status: GROUP_STATUS.ACTIVE,
+    };
+
+    setMutationError("");
+    setMutating(true);
+    let group;
+    try {
+      const { data, error } = await supabase.from("groups").insert(row).select().single();
+      if (error) { setMutating(false); setMutationError(error.message); return false; }
+      group = { ...data, colorIdx: data.color_idx };
+    } catch {
+      setMutating(false); setMutationError("No se pudo crear el grupo (sin conexión)."); return false;
+    }
+    setGroups(prev => [...prev, group]);
+
+    // Members
+    let memberRows = [];
+    if (memberPatientIds.length > 0) {
+      memberRows = memberPatientIds.map(pid => ({ user_id: userId, group_id: group.id, patient_id: pid }));
+      const { data: mData, error: mErr } = await supabase.from("group_members").insert(memberRows).select();
+      if (!mErr && mData) setGroupMembers(prev => [...prev, ...mData]);
+    }
+    setMutating(false);
+
+    if (generate && group.day && group.time && schedulingMode !== SCHEDULING_MODE.EPISODIC && memberPatientIds.length > 0) {
+      await generateGroupSessions(group.id, { startDate, endDate });
+    }
+    return group.id;
+  }
+
+  async function updateGroup(id, patch) {
+    const group = groups.find(g => g.id === id);
+    if (!group) return false;
+    const dbPatch = { ...patch };
+    if ("colorIdx" in dbPatch) { dbPatch.color_idx = dbPatch.colorIdx; delete dbPatch.colorIdx; }
+    setMutationError("");
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, ...patch, ...(("colorIdx" in patch) ? { colorIdx: patch.colorIdx } : {}) } : g));
+    try {
+      const { error } = await supabase.from("groups").update(dbPatch).eq("id", id).eq("user_id", userId);
+      if (error) { setMutationError(error.message); return false; }
+    } catch {
+      await enqueue("groups.update", { id, userId, patch: dbPatch });
+    }
+    return true;
+  }
+
+  async function addMembers(groupId, patientIds) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group || !patientIds?.length) return false;
+    // Skip patients already active in the group.
+    const activeIds = new Set(groupMembers.filter(m => m.group_id === groupId && m.left_at == null).map(m => m.patient_id));
+    const toAdd = patientIds.filter(pid => !activeIds.has(pid));
+    if (toAdd.length === 0) return false;
+    const rows = toAdd.map(pid => ({ user_id: userId, group_id: groupId, patient_id: pid }));
+
+    setMutationError("");
+    try {
+      const { data, error } = await supabase.from("group_members").insert(rows).select();
+      if (error && error.code !== "23505") { setMutationError(error.message); return false; }
+      if (data) setGroupMembers(prev => [...prev, ...data]);
+    } catch {
+      setGroupMembers(prev => [...prev, ...rows.map(r => ({ ...r, id: tempId("gm"), _optimistic: true }))]);
+      await enqueue("group_members.insert", { rows });
+    }
+    // Backfill FUTURE occurrences for the new members only (never past).
+    if (group.day && group.time && group.scheduling_mode !== SCHEDULING_MODE.EPISODIC) {
+      await generateGroupSessions(groupId, { onlyPatientIds: toAdd });
+    }
+    return true;
+  }
+
+  function addMember(groupId, patientId) { return addMembers(groupId, [patientId]); }
+
+  async function removeMember(groupId, patientId) {
+    const member = groupMembers.find(m => m.group_id === groupId && m.patient_id === patientId && m.left_at == null);
+    if (!member) return false;
+    const leftAt = new Date().toISOString();
+
+    // Delete the member's FUTURE scheduled group rows (date >= today); past
+    // rows are financial history and stay.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const futureRows = upcomingSessions.filter(s =>
+      s.group_id === groupId && s.patient_id === patientId &&
+      s.status === SESSION_STATUS.SCHEDULED && parseShortDate(s.date) >= today
+    );
+    const toDeleteIds = futureRows.map(s => s.id).filter(id => !(typeof id === "string" && id.startsWith("temp")));
+    const deletedIds = new Set(futureRows.map(s => s.id));
+
+    setMutationError("");
+    // Optimistic local: stamp left_at, drop future rows, decrement counters.
+    setGroupMembers(prev => prev.map(m => m.id === member.id ? { ...m, left_at: leftAt } : m));
+    if (futureRows.length > 0) {
+      const now = new Date();
+      const billedDelta = futureRows.reduce((sum, s) =>
+        sum + (sessionCountsTowardBalance(s, now) ? (s.rate ?? patientsById.get(patientId)?.rate ?? 0) : 0), 0);
+      setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+      setPatients(prev => prev.map(p => p.id === patientId
+        ? { ...p, sessions: Math.max(0, (p.sessions || 0) - futureRows.length), billed: Math.max(0, (p.billed || 0) - billedDelta) }
+        : p));
+    }
+
+    try {
+      const { error } = await supabase.from("group_members").update({ left_at: leftAt }).eq("id", member.id).eq("user_id", userId);
+      if (error) { setMutationError(error.message); }
+      if (toDeleteIds.length > 0) {
+        await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+      }
+    } catch {
+      await enqueue("group_members.update", { id: member.id, userId, patch: { left_at: leftAt } });
+    }
+    return true;
+  }
+
+  async function cancelGroupOccurrence(groupId, date, time, { status = SESSION_STATUS.CANCELLED, reason = null } = {}) {
+    const rows = upcomingSessions.filter(s =>
+      s.group_id === groupId && s.date === date && s.time === time && s.status === SESSION_STATUS.SCHEDULED);
+    if (rows.length === 0) return false;
+
+    setMutationError("");
+    // Optimistic: flip statuses + adjust counters (charged starts counting,
+    // cancelled removes any prior counted amount for a past-scheduled row).
+    const now = new Date();
+    setUpcomingSessions(prev => prev.map(s =>
+      (s.group_id === groupId && s.date === date && s.time === time && s.status === SESSION_STATUS.SCHEDULED)
+        ? { ...s, status, cancel_reason: reason } : s));
+    const billedDeltas = new Map();
+    for (const s of rows) {
+      const wasCounted = sessionCountsTowardBalance(s, now);
+      const nowCounted = sessionCountsTowardBalance({ ...s, status }, now);
+      if (wasCounted !== nowCounted) {
+        const amt = s.rate ?? patientsById.get(s.patient_id)?.rate ?? 0;
+        billedDeltas.set(s.patient_id, (billedDeltas.get(s.patient_id) || 0) + (nowCounted ? amt : -amt));
+      }
+    }
+    if (billedDeltas.size > 0) {
+      setPatients(prev => prev.map(p => billedDeltas.has(p.id)
+        ? { ...p, billed: Math.max(0, (p.billed || 0) + billedDeltas.get(p.id)) } : p));
+    }
+
+    try {
+      const { error } = await supabase.from("sessions")
+        .update({ status, cancel_reason: reason })
+        .eq("user_id", userId).eq("group_id", groupId)
+        .eq("date", date).eq("time", time)
+        .eq("status", SESSION_STATUS.SCHEDULED);
+      if (error) { setMutationError(error.message); return false; }
+    } catch {
+      await enqueue("groups.cancel_occurrence", { groupId, userId, date, time, status, reason });
+    }
+    return true;
+  }
+
+  async function endGroup(groupId, finishDate) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return false;
+    const cutoff = finishDate ? parseLocalDate(finishDate) : (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+    const futureRows = upcomingSessions.filter(s =>
+      s.group_id === groupId && s.status === SESSION_STATUS.SCHEDULED && parseShortDate(s.date) >= cutoff);
+    const toDeleteIds = futureRows.map(s => s.id).filter(id => !(typeof id === "string" && id.startsWith("temp")));
+    const deletedIds = new Set(futureRows.map(s => s.id));
+
+    setMutationError("");
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, status: GROUP_STATUS.ENDED } : g));
+    if (futureRows.length > 0) {
+      const counts = new Map();
+      futureRows.forEach(s => counts.set(s.patient_id, (counts.get(s.patient_id) || 0) + 1));
+      setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+      setPatients(prev => prev.map(p => counts.has(p.id)
+        ? { ...p, sessions: Math.max(0, (p.sessions || 0) - counts.get(p.id)) } : p));
+    }
+    try {
+      if (toDeleteIds.length > 0) await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+      const { error } = await supabase.from("groups").update({ status: GROUP_STATUS.ENDED }).eq("id", groupId).eq("user_id", userId);
+      if (error) { setMutationError(error.message); return false; }
+    } catch {
+      await enqueue("groups.end", { groupId, userId, toDeleteIds });
+    }
+    return true;
+  }
+
+  async function applyGroupScheduleChange(groupId, { day, time, duration, modality, frequency, rate, effectiveDate, endDate } = {}) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group || !effectiveDate) return false;
+    const effDate = parseLocalDate(effectiveDate);
+
+    const members = groupMembers.filter(m => m.group_id === groupId && m.left_at == null);
+    const memberIds = new Set(members.map(m => m.patient_id));
+
+    // Delete future scheduled group rows from the effective date.
+    const toDelete = upcomingSessions.filter(s =>
+      s.group_id === groupId && s.status === SESSION_STATUS.SCHEDULED && parseShortDate(s.date) >= effDate);
+    const toDeleteIds = toDelete.map(s => s.id).filter(id => !(typeof id === "string" && id.startsWith("temp")));
+    const deletedIds = new Set(toDelete.map(s => s.id));
+
+    const groupPatch = {
+      ...(day != null ? { day } : {}),
+      ...(time != null ? { time } : {}),
+      ...(duration != null ? { duration: Number(duration) > 0 ? Number(duration) : 60 } : {}),
+      ...(modality != null ? { modality } : {}),
+      ...(frequency != null ? { recurrence_frequency: frequency } : {}),
+      ...(rate !== undefined ? { rate: rate == null || rate === "" ? null : Number(rate) } : {}),
+    };
+    const newGroup = { ...group, ...groupPatch };
+
+    const { endISO } = defaultWindow(effectiveDate);
+    const existingSlots = new Set(
+      upcomingSessions
+        .filter(s => memberIds.has(s.patient_id) && !deletedIds.has(s.id))
+        .map(s => `${s.patient_id}|${s.date}|${s.time}`)
+    );
+    const newRows = computeGroupSessionRows({
+      group: newGroup, members, patientsById,
+      startISO: toISODate(effDate), endISO: endDate || endISO,
+      existingSlots, userId,
+    });
+
+    setMutationError("");
+    // Optimistic group + session state.
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...groupPatch, ...(("color_idx" in groupPatch) ? {} : {}) } : g));
+    if (toDelete.length > 0) setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+    applyFanoutOptimistic(newRows, { asTemp: true });
+
+    if (isOffline()) {
+      await enqueue("groups.apply_schedule_change", { groupId, userId, toDeleteIds, groupPatch, newRows });
+      return true;
+    }
+    setMutating(true);
+    try {
+      if (toDeleteIds.length > 0) {
+        const { error } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
+        if (error) { setMutating(false); setMutationError(error.message); return false; }
+      }
+      const { error: gErr } = await supabase.from("groups").update(groupPatch).eq("id", groupId).eq("user_id", userId);
+      if (gErr) { setMutating(false); setMutationError(gErr.message); return false; }
+      if (newRows.length > 0) {
+        const { error: sErr } = await supabase.from("sessions").insert(newRows).select();
+        if (sErr && sErr.code !== "23505") { setMutating(false); setMutationError(sErr.message); return false; }
+      }
+      setMutating(false);
+      return true;
+    } catch {
+      await enqueue("groups.apply_schedule_change", { groupId, userId, toDeleteIds, groupPatch, newRows });
+      setMutating(false);
+      return true;
+    }
+  }
+
+  async function deleteGroup(groupId) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return false;
+    setMutationError("");
+    // Optimistic: remove group + its memberships locally. Session rows stay
+    // (DB sets group_id NULL); detach them locally too so the UI is consistent.
+    setGroups(prev => prev.filter(g => g.id !== groupId));
+    setGroupMembers(prev => prev.filter(m => m.group_id !== groupId));
+    setUpcomingSessions(prev => prev.map(s => s.group_id === groupId ? { ...s, group_id: null } : s));
+    try {
+      const { error } = await supabase.from("groups").delete().eq("id", groupId).eq("user_id", userId);
+      if (error) { setMutationError(error.message); return false; }
+    } catch {
+      await enqueue("groups.delete", { id: groupId, userId });
+    }
+    return true;
+  }
+
+  return {
+    createGroup, updateGroup, deleteGroup, endGroup,
+    addMember, addMembers, removeMember,
+    generateGroupSessions, applyGroupScheduleChange, cancelGroupOccurrence,
+  };
+}

@@ -17,13 +17,17 @@ import { createNoteAttachmentActions } from "./useNoteAttachments";
 import { createDocumentActions } from "./useDocuments";
 import { createExpenseActions } from "./useExpenses";
 import { createMeasurementActions } from "./useMeasurements";
+import { createGroupActions } from "./useGroups";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
+import { computeGroupAutoExtendRows } from "../utils/groupRecurrence";
 import { enrichPatientsWithBalance } from "../utils/accounting";
 import { useFocusRefresh } from "./useFocusRefresh";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
+// Sibling lock for group session auto-extend (same rationale as _extending).
+let _extendingGroups = false;
 // Sibling lock for recurring-expense generation. The DB-side partial unique
 // index `uniq_expenses_recurring_period` is the cross-device truth; this
 // flag just prevents within-tab races (e.g. fast re-renders or a refresh
@@ -588,6 +592,11 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // Soft-deleted rows are filtered out at fetch time so the live
   // state is always the user-visible set.
   const [noteAttachments, setNoteAttachments] = useState(initialCache?.noteAttachments || []);
+  // Groups (Grupos): the recurring schedule template + roster. Group
+  // occurrences live in `upcomingSessions` as ordinary rows tagged with
+  // group_id — these two arrays are just the template + membership.
+  const [groups, setGroups] = useState(initialCache?.groups || []);
+  const [groupMembers, setGroupMembers] = useState(initialCache?.groupMembers || []);
   // Skeleton stays hidden when we hydrated from cache — the user
   // sees their data immediately. Skeleton fires only on a true cold
   // start (no cache, fresh login, or after the cache aged out).
@@ -626,9 +635,9 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // queryable via the CSV export endpoint when the contador needs them.
     const expensesSince = paymentsSince;
     let pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes;
-    let tRes, tlRes, naRes;
+    let tRes, tlRes, naRes, gRes, gmRes;
     try {
-      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes] = await Promise.all([
+      [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes] = await Promise.all([
         q("patients").order("name"),
         q("sessions", 10000).order("created_at"),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
@@ -651,6 +660,10 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // Note attachments (Phase 5). Live rows only — the
         // `deleted_at is null` partial index makes this filter cheap.
         q("note_attachments", 2000).is("deleted_at", null).order("created_at", { ascending: false }),
+        // Groups (Grupos) — recurring schedule templates + roster. Both are
+        // small (a handful of groups, a few members each) so no window.
+        q("groups", 500).order("created_at"),
+        q("group_members", 5000),
       ]);
     } catch (err) {
       setFetchError(err.message || "Error al cargar datos");
@@ -659,11 +672,13 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     }
 
     // Surface individual table errors
-    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes].find(r => r?.error);
+    const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, gRes, gmRes].find(r => r?.error);
     if (tableErr) setFetchError(tableErr.error.message);
 
     let pData = mapRows(pRes.data);
     let sData = mapRows(sRes.data);
+    let gData = mapRows(gRes?.data);
+    const gmData = gmRes?.data || [];
 
     // Auto-extend recurring sessions (skip in read-only or if already extending).
     // The decision logic — which dates to insert for which schedule —
@@ -728,6 +743,50 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         }
       } finally {
         _extending = false;
+      }
+    }
+
+    // ── Group session auto-extend ──
+    // Analogue of the per-patient pass above, for group occurrences. Each
+    // group owns an explicit (day, time) template, so computeGroupAutoExtendRows
+    // reads the slot straight off the group row. Fan-out rows are ordinary
+    // session rows (one per active member), so the counter trigger maintains
+    // each member's billed/sessions server-side just like the patient path.
+    // Same phantom-prevention rules (future-only, clamp-at-today) apply.
+    if (userId && !readOnly && !_extendingGroups && gData.length > 0) {
+      _extendingGroups = true;
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const threshold = new Date(today);
+        threshold.setDate(today.getDate() + RECURRENCE_EXTEND_THRESHOLD_DAYS);
+        const extendEnd = toISODate(new Date(today.getTime() + RECURRENCE_WINDOW_WEEKS * 7 * 86400000));
+        const patientsById = new Map(pData.map(p => [p.id, p]));
+
+        const insertedRows = [];
+        const patientUpdates = new Map();
+        for (const group of gData) {
+          const members = gmData.filter(m => m.group_id === group.id);
+          const groupSessions = sData.filter(s => s.group_id === group.id);
+          const rows = computeGroupAutoExtendRows({ group, members, patientsById, groupSessions, today, threshold, extendEnd, userId });
+          if (rows.length === 0) continue;
+          const { data, error } = await supabase.from("sessions").insert(rows).select();
+          if (!error && data) {
+            insertedRows.push(...data);
+            data.forEach(r => {
+              if (r.patient_id) patientUpdates.set(r.patient_id, (patientUpdates.get(r.patient_id) || 0) + 1);
+            });
+          }
+        }
+        if (insertedRows.length > 0) sData = [...sData, ...mapRows(insertedRows)];
+        if (patientUpdates.size > 0) {
+          pData = pData.map(p => {
+            const inc = patientUpdates.get(p.id);
+            return inc ? { ...p, sessions: (p.sessions || 0) + inc } : p;
+          });
+        }
+      } finally {
+        _extendingGroups = false;
       }
     }
 
@@ -801,6 +860,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     setRecurringExpenses(reData);
     setRescheduleRequests(rrRes?.data || []);
     setNoteAttachments(naRes?.data || []);
+    setGroups(gData);
+    setGroupMembers(gmData);
     setLoading(false);
 
     /* Persist the fresh snapshot for next cold start. We do this
@@ -821,6 +882,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       recurringExpenses: reData,
       rescheduleRequests: rrRes?.data || [],
       noteAttachments: naRes?.data || [],
+      groups: gData,
+      groupMembers: gmData,
     });
     // Re-run when the crypto status flips so encrypted notes get
     // re-fetched + decrypted right after the user unlocks. We can't
@@ -856,6 +919,16 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError);
   const { createMeasurement, updateMeasurement, deleteMeasurement, bulkCreateMeasurements } =
     createMeasurementActions(userId, measurements, setMeasurements, setMutating, setMutationError);
+  const {
+    createGroup, updateGroup, deleteGroup, endGroup,
+    addMembers, removeMember,
+    generateGroupSessions, applyGroupScheduleChange, cancelGroupOccurrence,
+  } = createGroupActions(
+    userId, patients, setPatients,
+    groups, setGroups, groupMembers, setGroupMembers,
+    upcomingSessions, setUpcomingSessions,
+    setMutating, setMutationError,
+  );
   const {
     createExpense, updateExpense, deleteExpense, softDeleteExpense,
     createRecurringTemplate, updateRecurringTemplate, deleteRecurringTemplate,
@@ -930,6 +1003,20 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     if (ok) refresh().catch(() => {});
     return ok;
   };
+  // Creating a group fans out a window of member session rows; a member
+  // add backfills future occurrences. Both can race the next pull, so
+  // refresh after success (same gap-closing rationale as patients above).
+  const createGroupWithRefresh = async (args) => {
+    const res = await createGroup(args);
+    if (res) refresh().catch(() => {});
+    return res;
+  };
+  const addMembersWithRefresh = async (groupId, ids) => {
+    const ok = await addMembers(groupId, ids);
+    if (ok) refresh().catch(() => {});
+    return ok;
+  };
+  const addMemberWithRefresh = async (groupId, id) => addMembersWithRefresh(groupId, [id]);
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
@@ -937,9 +1024,16 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     rescheduleRequests, setRescheduleRequests,
     tags, tagLinks,
     noteAttachments,
+    groups, groupMembers,
     tutorReminders,
     loading, fetchError, mutating, mutationError, readOnly,
     clearMutationError: () => setMutationError(""),
+    createGroup: guard(createGroupWithRefresh), updateGroup: guard(updateGroup),
+    deleteGroup: guard(deleteGroup), endGroup: guard(endGroup),
+    addMember: guard(addMemberWithRefresh), addMembers: guard(addMembersWithRefresh), removeMember: guard(removeMember),
+    generateGroupSessions: guard(generateGroupSessions),
+    applyGroupScheduleChange: guard(applyGroupScheduleChange),
+    cancelGroupOccurrence: guard(cancelGroupOccurrence),
     createPatient: guard(createPatientWithRefresh), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
     createPotential: guard(createPotentialWithRefresh), discardPotential: guard(discardPotential), convertPotentialToActive: guard(convertPotentialWithRefresh),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),
