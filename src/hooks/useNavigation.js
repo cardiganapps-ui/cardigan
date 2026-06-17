@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const VALID_SCREENS = ["home", "agenda", "patients", "finances", "archivo", "settings", "privacy", "admin"];
+const VALID_SCREENS = ["home", "agenda", "patients", "groups", "finances", "archivo", "settings", "privacy", "admin"];
 // privacy sits "after" settings so the slide direction matches the
 // Settings → Aviso de Privacidad → back flow. admin is last — slides
 // in from the right when you enter it from anywhere else, slides out
-// to the right when you go back home.
-const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, finances: 3, archivo: 4, settings: 5, privacy: 6, admin: 7 };
+// to the right when you go back home. `groups` sits between patients and
+// finances (its bottom-tab position) so the slide direction is intuitive.
+const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, groups: 3, finances: 4, archivo: 5, settings: 6, privacy: 7, admin: 8 };
 
 function getHashScreen() {
   // The hash may carry a sub-route (e.g. "#admin/users/<uid>"). The

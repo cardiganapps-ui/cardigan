@@ -38,6 +38,19 @@ export const IconUsers = (p) => (
   </I>
 );
 
+export const IconGroup = (p) => (
+  // A group/class: three heads in a cluster over a shared base arc — reads
+  // as "several people together," distinct from IconUsers (the patients tab).
+  <I {...p}>
+    <circle cx="12" cy="6" r="2.4"/>
+    <circle cx="5.5" cy="9" r="2.2"/>
+    <circle cx="18.5" cy="9" r="2.2"/>
+    <path d="M8.5 20v-.5a3.5 3.5 0 017 0v.5"/>
+    <path d="M2 19.5v-.5a3 3 0 014.2-2.7"/>
+    <path d="M22 19.5v-.5a3 3 0 00-4.2-2.7"/>
+  </I>
+);
+
 export const IconDollar = (p) => (
   <I {...p}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></I>
 );

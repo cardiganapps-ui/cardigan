@@ -1,4 +1,4 @@
-import { IconHome, IconCalendar, IconUsers, IconDollar } from "./Icons";
+import { IconHome, IconCalendar, IconUsers, IconGroup, IconDollar } from "./Icons";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { haptic } from "../utils/haptics";
@@ -15,6 +15,7 @@ const TABS = [
   { key: "home",     Icon: IconHome,     tKey: "nav.home" },
   { key: "agenda",   Icon: IconCalendar, tKey: "nav.agenda" },
   { key: "patients", Icon: IconUsers,    tKey: "nav.patients" },
+  { key: "groups",   Icon: IconGroup,    tKey: "nav.groups" },
   { key: "finances", Icon: IconDollar,   tKey: "nav.finances" },
 ];
 

@@ -89,6 +89,7 @@ import { Home } from "./screens/Home";
    fallback (already keyed by screen name for per-screen shapes). */
 const Agenda = lazy(() => import("./screens/Agenda").then(m => ({ default: m.Agenda })));
 const Patients = lazy(() => import("./screens/Patients").then(m => ({ default: m.Patients })));
+const Groups = lazy(() => import("./screens/Groups").then(m => ({ default: m.Groups })));
 const Finances = lazy(() => import("./screens/Finances").then(m => ({ default: m.Finances })));
 const Archivo = lazy(() => import("./screens/Archivo").then(m => ({ default: m.Archivo })));
 const Settings = lazy(() => import("./screens/Settings").then(m => ({ default: m.Settings })));
@@ -1861,6 +1862,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     home: <Home setScreen={setScreen} userName={userName} />,
     agenda: <Agenda />,
     patients: <Patients />,
+    groups: <Groups />,
     finances: <Finances />,
     archivo: <Archivo />,
     settings: <Settings user={user} signOut={signOut} refreshUser={refreshUser} />,

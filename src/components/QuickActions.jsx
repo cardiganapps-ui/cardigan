@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus, IconArrowDown } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus, IconArrowDown, IconGroup } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
+import { NewGroupSheet } from "./sheets/NewGroupSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
 import { NewDocumentSheet } from "./sheets/NewDocumentSheet";
 import { NoteEditor } from "./NoteEditor";
@@ -16,6 +17,7 @@ export const QUICK_ACTIONS = [
   { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
   { key:"expense",  Icon: IconArrowDown,    tKey:"fab.expense" },
   { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },
+  { key:"group",    Icon: IconGroup,        tKey:"fab.group" },
   { key:"note",     Icon: IconClipboard,    tKey:"fab.note" },
   { key:"document", Icon: IconDocument,     tKey:"fab.document" },
   { key:"session",  Icon: IconCalendarPlus, tKey:"fab.session" },
@@ -104,6 +106,9 @@ export function QuickActions() {
       )}
       {activeSheet === "session" && (
         <NewSessionSheet onClose={closeSheet} onSubmit={createSession} patients={patients} sessions={upcomingSessions} mutating={mutating} />
+      )}
+      {activeSheet === "group" && (
+        <NewGroupSheet onClose={closeSheet} />
       )}
       <QuickCaptureSheet
         open={quickCaptureOpen}
