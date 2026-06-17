@@ -21,10 +21,12 @@ import { enqueue, registerHandler } from "../lib/mutationQueue.js";
 */
 
 // ── Offline queue handlers (registered once at module load) ──
-registerHandler("groups.insert", async ({ row }) => {
-  return await supabase.from("groups").insert(row).select().single();
-});
-
+// Note: there is intentionally no "groups.insert" / "group_members.delete"
+// offline handler. Group creation requires connectivity (the real group id
+// is needed to attach members + fan out sessions, so an offline create
+// can't be replayed coherently), and member removal is a soft-leave
+// (group_members.update of left_at) + session deletes, never a hard
+// group_members delete.
 registerHandler("groups.update", async ({ id, userId, patch }) => {
   return await supabase.from("groups").update(patch).eq("id", id).eq("user_id", userId);
 });
@@ -41,10 +43,6 @@ registerHandler("group_members.insert", async ({ rows }) => {
 
 registerHandler("group_members.update", async ({ id, userId, patch }) => {
   return await supabase.from("group_members").update(patch).eq("id", id).eq("user_id", userId);
-});
-
-registerHandler("group_members.delete", async ({ id, userId }) => {
-  return await supabase.from("group_members").delete().eq("id", id).eq("user_id", userId);
 });
 
 // Fan-out bulk insert (group session generation / member backfill / extend).
@@ -83,6 +81,13 @@ registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time
     .eq("user_id", userId).eq("group_id", groupId)
     .eq("date", date).eq("time", time)
     .eq("status", SESSION_STATUS.SCHEDULED);
+});
+
+// Delete a set of session rows by id (member removal offline replay).
+// Idempotent — re-deleting already-gone ids is a no-op.
+registerHandler("groups.delete_sessions", async ({ ids, userId }) => {
+  if (!ids?.length) return { error: null };
+  return await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
 });
 
 // End a group: status flip + delete future scheduled group rows. Idempotent.
@@ -156,12 +161,15 @@ export function createGroupActions(
     );
   }
 
-  async function generateGroupSessions(groupId, { startDate, endDate, onlyPatientIds } = {}) {
+  async function generateGroupSessions(groupId, { startDate, endDate, onlyPatientIds, force } = {}) {
     const group = groups.find(g => g.id === groupId);
     if (!group || !group.day || !group.time) return false;
     const members = (groupMembers || []).filter(m => m.group_id === groupId && m.left_at == null);
     if (members.length === 0) return false;
-    if (group.scheduling_mode === SCHEDULING_MODE.EPISODIC) return false;
+    // Episodic groups don't auto-generate a recurring window — but an
+    // explicit one-off generation (createGroup with force) does mint the
+    // single chosen occurrence. The auto-extend pass never passes force.
+    if (group.scheduling_mode === SCHEDULING_MODE.EPISODIC && !force) return false;
 
     const { startISO, endISO } = defaultWindow(startDate);
     const memberIds = new Set(members.map(m => m.patient_id));
@@ -237,8 +245,12 @@ export function createGroupActions(
     }
     setMutating(false);
 
-    if (generate && group.day && group.time && schedulingMode !== SCHEDULING_MODE.EPISODIC && memberPatientIds.length > 0) {
-      await generateGroupSessions(group.id, { startDate, endDate });
+    if (generate && group.day && group.time && memberPatientIds.length > 0) {
+      // One-off (episodic) groups generate exactly the single chosen
+      // occurrence (endDate === startDate from the sheet) via force;
+      // recurring groups fan out the normal window.
+      const oneOff = schedulingMode === SCHEDULING_MODE.EPISODIC;
+      await generateGroupSessions(group.id, { startDate, endDate, force: oneOff });
     }
     return group.id;
   }
@@ -321,7 +333,11 @@ export function createGroupActions(
         await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
       }
     } catch {
+      // Offline / transport error: queue BOTH the soft-leave and the
+      // future-row deletes, or the removed member's sessions resurrect
+      // on the next online refresh and re-inflate their counters.
       await enqueue("group_members.update", { id: member.id, userId, patch: { left_at: leftAt } });
+      if (toDeleteIds.length > 0) await enqueue("groups.delete_sessions", { ids: toDeleteIds, userId });
     }
     return true;
   }
@@ -431,8 +447,26 @@ export function createGroupActions(
 
     setMutationError("");
     // Optimistic group + session state.
-    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...groupPatch, ...(("color_idx" in groupPatch) ? {} : {}) } : g));
-    if (toDelete.length > 0) setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...groupPatch } : g));
+    if (toDelete.length > 0) {
+      // Decrement counters for the deleted rows BEFORE re-adding the new
+      // ones, symmetric with applyFanoutOptimistic — otherwise sessions is
+      // inflated by the deleted count until the next server refresh
+      // (the DB trigger reconciles, but local state must stay truthful).
+      const now = new Date();
+      const dec = new Map(); // patient_id → { sessions, billed }
+      for (const s of toDelete) {
+        const d = dec.get(s.patient_id) || { sessions: 0, billed: 0 };
+        d.sessions += 1;
+        if (sessionCountsTowardBalance(s, now)) d.billed += s.rate ?? patientsById.get(s.patient_id)?.rate ?? 0;
+        dec.set(s.patient_id, d);
+      }
+      setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+      setPatients(prev => prev.map(p => {
+        const d = dec.get(p.id);
+        return d ? { ...p, sessions: Math.max(0, (p.sessions || 0) - d.sessions), billed: Math.max(0, (p.billed || 0) - d.billed) } : p;
+      }));
+    }
     applyFanoutOptimistic(newRows, { asTemp: true });
 
     if (isOffline()) {

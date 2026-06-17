@@ -78,7 +78,7 @@ export function Groups() {
                   onClick={() => { haptic.tap(); setOpenId(g.id); }}>
                   <Avatar initials={(g.name || "?").slice(0, 2).toUpperCase()} color={getClientColor(g.colorIdx ?? g.color_idx ?? 0)} size="md" />
                   <div className="row-content">
-                    <div className="row-title">{g.name}</div>
+                    <div className="row-title" style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{g.name}</div>
                     <div className="row-sub">{sub}</div>
                   </div>
                   {ended && <span className="badge badge-gray">{t("groups.ended")}</span>}

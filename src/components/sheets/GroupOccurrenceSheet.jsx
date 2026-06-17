@@ -40,7 +40,12 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }) {
     s.group_id === group.id && s.date === occurrence.date && s.time === occurrence.time);
   const patientsById = new Map(patients.map(p => [p.id, p]));
 
-  const anyScheduled = attendees.some(a => a.status === SESSION_STATUS.SCHEDULED);
+  // `attendees` come from the enriched session list, where a past
+  // still-scheduled row is auto-displayed as "completed" (_autoCompleted).
+  // Those DB rows are genuinely still 'scheduled' and cancellable, so the
+  // whole-group cancel must offer for them too — cancelGroupOccurrence
+  // filters the RAW 'scheduled' rows in the hook regardless.
+  const anyScheduled = attendees.some(a => a.status === SESSION_STATUS.SCHEDULED || a._autoCompleted);
 
   const doGroupCancel = async (status) => {
     await cancelGroupOccurrence(group.id, occurrence.date, occurrence.time, { status, reason: reason.trim() || null });

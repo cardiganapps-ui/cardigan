@@ -88,7 +88,8 @@ export function GroupDetail({ group, onClose }) {
     const files = Array.from(e.target.files || []);
     if (fileInputRef.current) fileInputRef.current.value = "";
     const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
-    if (files.length !== valid.length) showToast?.(t("docs.sizeLimit", { names: "", count: files.length - valid.length }), "warning");
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) showToast?.(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
     if (valid.length === 0) return;
     setUploading(true);
     let ok = 0;
@@ -134,7 +135,9 @@ export function GroupDetail({ group, onClose }) {
         </div>
 
         <div style={{ padding:"4px 20px 0" }}>
-          <SegmentedControl items={tabs} value={tab} onChange={setTab} size="md" ariaLabel={t("groups.title")} />
+          {/* size="sm" (not md) so five tabs incl. "Integrantes" fit on a
+              narrow iPhone without ellipsis clipping. */}
+          <SegmentedControl items={tabs} value={tab} onChange={setTab} size="sm" ariaLabel={t("groups.title")} />
         </div>
 
         <div style={{ padding:"16px 20px 24px", overflowY:"auto" }}>
@@ -228,9 +231,8 @@ export function GroupDetail({ group, onClose }) {
                 {occurrences.map((o) => {
                   const rail = o.status === SESSION_STATUS.CANCELLED ? "cancelled" : o.status === SESSION_STATUS.COMPLETED ? "completed" : "scheduled";
                   return (
-                    <button key={`${o.date}|${o.time}`} className="row-item session-row btn-tap" style={{ width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer" }}
-                      onClick={() => { haptic.tap(); setOccurrence(o); }} data-rail={rail}>
-                      <span className={`session-rail rail-${rail}`} aria-hidden style={{ width:4, alignSelf:"stretch", borderRadius:4, background: rail==="cancelled" ? "var(--red)" : rail==="completed" ? "var(--green)" : "var(--teal)" }} />
+                    <button key={`${o.date}|${o.time}`} className={`row-item session-row rail-${rail} btn-tap`} style={{ width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer" }}
+                      onClick={() => { haptic.tap(); setOccurrence(o); }}>
                       <div className="row-content">
                         <div className="row-title">{o.date} · {o.time}</div>
                         <div className="row-sub">{o.count === 1 ? t("groups.memberCountOne") : t("groups.membersCount", { count: o.count })}</div>

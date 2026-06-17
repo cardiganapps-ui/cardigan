@@ -86,6 +86,18 @@ describe("computeGroupSessionRows", () => {
     expect(new Set(rows.map(r => r.patient_id))).toEqual(new Set(["pb"]));
   });
 
+  it("one-off window (startISO === endISO on the slot weekday) yields exactly one row per active member", () => {
+    // 2026-06-01 is a Monday; group.day is Lunes.
+    const rows = computeGroupSessionRows({
+      group: group({ scheduling_mode: SCHEDULING_MODE.EPISODIC }),
+      members: members(["pa", "pb"]), patientsById,
+      startISO: "2026-06-01", endISO: "2026-06-01", existingSlots: new Set(), userId: "u1",
+    });
+    expect(rows.length).toBe(2);
+    expect(rows.every(r => r.date === "1-Jun")).toBe(true);
+    expect(new Set(rows.map(r => r.patient_id))).toEqual(new Set(["pa", "pb"]));
+  });
+
   it("returns nothing when the group has no day/time (episodic/unscheduled)", () => {
     const rows = computeGroupSessionRows({
       group: group({ day: null, time: null }), members: members(["pa"]), patientsById,

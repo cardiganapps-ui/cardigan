@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { todayISO } from "../../utils/dates";
+import { todayISO, parseLocalDate } from "../../utils/dates";
 import { IconX, IconCheck } from "../Icons";
 import { MoneyInput } from "../MoneyInput";
 import { Avatar } from "../Avatar";
@@ -19,6 +19,8 @@ const FREQ_OPTS = [
 ];
 
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+// Indexed by Date.getDay() (0=Sunday) for deriving a one-off's weekday.
+const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 /* Create a group: name + color + schedule (day/time/duration/modality/
    frequency) + flat rate + an inline multi-select of existing active
@@ -60,16 +62,21 @@ export function NewGroupSheet({ onClose }) {
     e.preventDefault();
     if (!name.trim()) { setErr(t("groups.name")); return; }
     setErr("");
+    // A one-off group still needs a (day, time) slot so the single
+    // occurrence can be minted — derive the weekday from the chosen date
+    // and constrain generation to that one day (startDate === endDate).
+    const oneOffDay = oneOff ? WEEKDAYS[parseLocalDate(date).getDay()] : day;
     const payload = {
       name: name.trim(), colorIdx,
-      day: oneOff ? null : day,
+      day: oneOffDay,
       time, duration: Number(duration) || 60,
       rate: rate === "" ? null : Number(rate),
       modality, frequency,
       schedulingMode: oneOff ? "episodic" : "recurring",
       memberPatientIds: [...selected],
       startDate: date,
-      generate: !oneOff,
+      endDate: oneOff ? date : undefined,
+      generate: true,
     };
     try {
       const res = await createGroup(payload);
