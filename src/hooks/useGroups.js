@@ -173,10 +173,17 @@ export function createGroupActions(
     );
   }
 
-  async function generateGroupSessions(groupId, { startDate, endDate, onlyPatientIds, force } = {}) {
-    const group = groups.find(g => g.id === groupId);
+  async function generateGroupSessions(groupId, { startDate, endDate, onlyPatientIds, force, group: explicitGroup, members: explicitMembers } = {}) {
+    // CRITICAL: callers right after createGroup/addMembers pass the group +
+    // members EXPLICITLY, because the just-inserted rows aren't in the
+    // `groups`/`groupMembers` closure state yet (setState is async). Reading
+    // them from state here would see "0 members" and generate nothing — the
+    // bug that shipped a group with no sessions. Fall back to state only when
+    // no override is given (e.g. a standalone re-generate).
+    const group = explicitGroup || groups.find(g => g.id === groupId);
     if (!group || !group.day || !group.time) return false;
-    const members = (groupMembers || []).filter(m => m.group_id === groupId && m.left_at == null);
+    const members = (explicitMembers || (groupMembers || []).filter(m => m.group_id === groupId))
+      .filter(m => m.left_at == null);
     if (members.length === 0) return false;
     // Episodic groups don't auto-generate a recurring window — but an
     // explicit one-off generation (createGroup with force) does mint the
@@ -260,9 +267,11 @@ export function createGroupActions(
     if (generate && group.day && group.time && memberPatientIds.length > 0) {
       // One-off (episodic) groups generate exactly the single chosen
       // occurrence (endDate === startDate from the sheet) via force;
-      // recurring groups fan out the normal window.
+      // recurring groups fan out the normal window. Pass the group + members
+      // EXPLICITLY — they aren't in state yet (see generateGroupSessions).
       const oneOff = schedulingMode === SCHEDULING_MODE.EPISODIC;
-      await generateGroupSessions(group.id, { startDate, endDate, force: oneOff });
+      const memberList = memberPatientIds.map(pid => ({ group_id: group.id, patient_id: pid, left_at: null }));
+      await generateGroupSessions(group.id, { startDate, endDate, force: oneOff, group, members: memberList });
     }
     return group.id;
   }
@@ -318,8 +327,10 @@ export function createGroupActions(
       await enqueue("group_members.insert", { rows });
     }
     // Backfill FUTURE occurrences for the new members only (never past).
+    // Pass the new members EXPLICITLY — they aren't in groupMembers state yet.
     if (group.day && group.time && group.scheduling_mode !== SCHEDULING_MODE.EPISODIC) {
-      await generateGroupSessions(groupId, { onlyPatientIds: toAdd });
+      const newMembers = toAdd.map(pid => ({ group_id: groupId, patient_id: pid, left_at: null }));
+      await generateGroupSessions(groupId, { group, members: newMembers });
     }
     return true;
   }

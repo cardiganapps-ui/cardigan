@@ -138,11 +138,20 @@ export function computeGroupAutoExtendRows({ group, members, patientsById, group
     const d = parseShortDate(s.date);
     if (!latest || d > latest) latest = d;
   }
-  if (!latest || latest > threshold) return [];
-
   const DAY_MS = 86400000;
   const stride = RECURRENCE_STRIDE_DAYS[group.recurrence_frequency] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
-  const startMs = Math.max(latest.getTime() + stride * DAY_MS, today.getTime());
+  let startMs;
+  if (!latest) {
+    // No future occurrences at all → BOOTSTRAP the full window from today.
+    // Safety net for an active recurring group whose initial generation
+    // failed (e.g. the stale-closure bug) or was somehow left empty: an
+    // active recurring group should always have upcoming sessions.
+    startMs = today.getTime();
+  } else {
+    // Schedule still runs comfortably past the threshold → nothing to do.
+    if (latest > threshold) return [];
+    startMs = Math.max(latest.getTime() + stride * DAY_MS, today.getTime());
+  }
   const startISO = toISODate(new Date(startMs));
   if (startISO > extendEnd) return [];
 

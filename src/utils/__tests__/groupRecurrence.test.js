@@ -140,14 +140,27 @@ describe("computeGroupAutoExtendRows", () => {
     expect(rows).toEqual([]);
   });
 
-  it("never back-fills past dates (phantom prevention)", () => {
+  it("bootstraps future occurrences when none exist, never past (phantom prevention)", () => {
     const today = new Date("2026-06-15"); const c = ctx(today);
-    // Only past scheduled rows exist → no future anchor → no extend.
+    // Only past scheduled rows exist → no future anchor → bootstrap from today.
     const rows = computeGroupAutoExtendRows({
-      group: group(), members: members(["pa"]), patientsById,
+      group: group({ day: formatDay(c.today) }), members: members(["pa"]), patientsById,
       groupSessions: [groupSession(-30, c.today), groupSession(-7, c.today)], ...c,
     });
-    expect(rows).toEqual([]);
+    expect(rows.length).toBeGreaterThan(0);
+    // Every generated row is today-or-future — no phantom past rows.
+    expect(rows.every(r => toISODate(parseShortDate(r.date)) >= toISODate(c.today))).toBe(true);
+  });
+
+  it("bootstraps a group that has NO sessions at all (heals the empty-group bug)", () => {
+    const today = new Date("2026-06-15"); const c = ctx(today);
+    const rows = computeGroupAutoExtendRows({
+      group: group({ day: formatDay(c.today) }), members: members(["pa", "pb"]), patientsById,
+      groupSessions: [], ...c,
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    expect(new Set(rows.map(r => r.patient_id))).toEqual(new Set(["pa", "pb"]));
+    expect(rows.every(r => r.rate === 500)).toBe(true);
   });
 
   it("skips ended and episodic groups", () => {
