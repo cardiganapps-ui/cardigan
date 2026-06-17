@@ -134,7 +134,7 @@ export async function subscribeNative() {
     // nor the error listener fires (plugin glitch, OS denying silently),
     // don't leave the caller hanging.
     const timeout = setTimeout(() => {
-      finish({ ok: false, code: "register-failed" });
+      finish({ ok: false, code: "register-failed", error: "no registration event within 15s" });
     }, 15000);
 
     Promise.all([
@@ -145,7 +145,7 @@ export async function subscribeNative() {
       PushNotifications.addListener("registrationError", (err) => {
         clearTimeout(timeout);
         if (import.meta.env?.DEV) console.error("[nativePush] registration error:", err);
-        finish({ ok: false, code: "register-failed" });
+        finish({ ok: false, code: "register-failed", error: (err && (err.error || err.message)) || JSON.stringify(err || {}).slice(0, 180) });
       }),
     ])
       .then(([r, e]) => { regHandle = r; errHandle = e; })
@@ -153,7 +153,7 @@ export async function subscribeNative() {
       .catch((err) => {
         clearTimeout(timeout);
         if (import.meta.env?.DEV) console.error("[nativePush] register threw:", err);
-        finish({ ok: false, code: "register-failed" });
+        finish({ ok: false, code: "register-failed", error: err?.message || "register() threw" });
       });
   });
 }

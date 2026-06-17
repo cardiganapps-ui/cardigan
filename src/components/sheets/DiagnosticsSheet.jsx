@@ -3,7 +3,7 @@ import { useEscape } from "../../hooks/useEscape";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { isNative, getPlatform } from "../../lib/platform";
 import { haptic } from "../../utils/haptics";
-import { checkNativePermission } from "../../lib/nativePush";
+import { checkNativePermission, subscribeNative } from "../../lib/nativePush";
 
 /* ── DiagnosticsSheet ─────────────────────────────────────────────
    Bottom sheet that surfaces platform + push + haptics state so the
@@ -19,6 +19,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
   const [nativePerm, setNativePerm] = useState(null);
   const [launchUrl, setLaunchUrl] = useState(null);
   const [testResult, setTestResult] = useState(null);
+  const [regResult, setRegResult] = useState(null);
 
   const { exiting, animatedClose } = useSheetExit(open, onClose);
   useEscape(open ? animatedClose : null);
@@ -62,6 +63,21 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
     setTestResult("Enviando…");
     const r = await notifications.sendTest();
     setTestResult(r.ok ? "✓ Enviado" : `✗ ${r.code || "error"}`);
+  };
+
+  // Isolates the on-device step: does iOS actually mint a push token?
+  // ✓ → registration works (any failure is server/delivery); ✗ with the
+  // error string tells us exactly why APNs registration failed.
+  const handleProbeRegister = async () => {
+    setRegResult("Probando…");
+    try {
+      const r = await subscribeNative();
+      setRegResult(r.ok
+        ? `✓ token ${r.platform} · ${(r.token || "").length} chars`
+        : `✗ ${r.code}${r.error ? ` — ${r.error}` : ""}`);
+    } catch (err) {
+      setRegResult(`✗ excepción — ${err?.message || String(err)}`);
+    }
   };
 
   return (
@@ -111,6 +127,11 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {isNative() && (
+              <button type="button" className="btn btn-secondary" onClick={handleProbeRegister} style={{ height: "auto", minHeight: 44, whiteSpace: "normal" }}>
+                Probar registro de push{regResult ? ` — ${regResult}` : ""}
+              </button>
+            )}
             <button type="button" className="btn btn-secondary" onClick={handleTestPush}>
               Enviar push de prueba{testResult ? ` — ${testResult}` : ""}
             </button>
