@@ -180,7 +180,11 @@ function NextRemindersPreview({ minutes }) {
 
 export function Settings({ user, signOut, refreshUser }) {
   const { t } = useT();
-  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro } = useCardigan();
+  const { tutorial, navigate, theme, accentTheme, notifications, showToast, readOnly, noteCrypto, profession, setHideFab, subscription, requirePro, groups, groupsEnabled, setGroupsEnabled } = useCardigan();
+  // Groups feature can only be turned OFF when there are no groups (turning
+  // it back ON is always allowed). Disabling hides the whole Groups surface.
+  const groupCount = (groups || []).length;
+  const groupsToggleLocked = groupsEnabled !== false && groupCount > 0;
   const isPro = !!subscription?.isPro;
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
@@ -910,6 +914,25 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       </div>
 
+      {/* ── FUNCIONES ── */}
+      <div className="settings-label">{t("settings.sectionFeatures")}</div>
+      <div className="card" style={{ margin:"0 16px" }}>
+        <div className="settings-row" style={{ cursor:"default" }}>
+          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
+          <div style={{ flex:1 }}>
+            <div className="settings-row-title">{t("settings.groupsFeature")}</div>
+            <div className="settings-row-sub">
+              {groupsToggleLocked ? t("settings.groupsFeatureLocked") : t("settings.groupsFeatureSub")}
+            </div>
+          </div>
+          <Toggle
+            on={groupsEnabled !== false}
+            disabled={readOnly || groupsToggleLocked}
+            onToggle={() => setGroupsEnabled?.(!(groupsEnabled !== false))}
+          />
+        </div>
+      </div>
+
       {/* ── NOTIFICACIONES Y CALENDARIO ──
          Notifications row opens a sub-sheet absorbing all of the
          notification UI states (install gate, blocked, toggle +
@@ -1066,14 +1089,19 @@ export function Settings({ user, signOut, refreshUser }) {
           </div>
           <IconChevron />
         </div>
-        <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} onClick={checkForUpdate}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconRefresh size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.checkUpdate") || "Buscar actualización"}</div>
-            {updateStatus && <div className="settings-row-sub" style={{ color: updateStatus.tone === "err" ? "var(--red)" : updateStatus.tone === "ok" ? "var(--green)" : "var(--charcoal-md)" }}>{updateStatus.msg}</div>}
+        {/* Service-worker update check is a PWA/web concern. Inside the
+            native app the App Store handles updates and the SW path just
+            reports "tu navegador no soporta…", so hide the row on native. */}
+        {!isNative() && (
+          <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} onClick={checkForUpdate}>
+            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconRefresh size={18} /></div>
+            <div style={{ flex:1 }}>
+              <div className="settings-row-title">{t("settings.checkUpdate") || "Buscar actualización"}</div>
+              {updateStatus && <div className="settings-row-sub" style={{ color: updateStatus.tone === "err" ? "var(--red)" : updateStatus.tone === "ok" ? "var(--green)" : "var(--charcoal-md)" }}>{updateStatus.msg}</div>}
+            </div>
+            {updateChecking ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
           </div>
-          {updateChecking ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
-        </div>
+        )}
       </div>
 
       {/* ── SESIÓN ── */}

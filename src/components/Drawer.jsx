@@ -36,8 +36,8 @@ const VELOCITY_THRESHOLD = 0.3;
 
 export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeProgress, onReportBug }) {
   const { t } = useT();
-  const { subscription } = useCardigan();
-  const principal = navItems.filter(n => n.section === "principal");
+  const { subscription, groupsEnabled } = useCardigan();
+  const principal = navItems.filter(n => n.section === "principal" && (n.id !== "groups" || groupsEnabled !== false));
   const cuenta    = navItems.filter(n => n.section === "cuenta");
   const handleNav = (id) => { setScreen(id); onClose(); };
   // Tapping the plan card jumps to Settings → Suscripción sheet. The

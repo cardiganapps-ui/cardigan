@@ -26,8 +26,9 @@ const ACTIONS = QUICK_ACTIONS;
 
 export function QuickActions() {
   const { t } = useT();
-  const { patients, upcomingSessions, openRecordPaymentModal, openRecordExpenseModal, createPatient, createPotential, createSession, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro } = useCardigan();
+  const { patients, upcomingSessions, openRecordPaymentModal, openRecordExpenseModal, createPatient, createPotential, createSession, updateNote, deleteNote, uploadDocument, mutating, pendingFabAction, consumeFabAction, subscription, requirePro, groupsEnabled } = useCardigan();
   const isPro = !!subscription?.isPro;
+  const actions = ACTIONS.filter(a => a.key !== "group" || groupsEnabled !== false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
   const [quickNote, setQuickNote] = useState(null);
@@ -71,7 +72,7 @@ export function QuickActions() {
       {menuOpen && <div className="fab-overlay" onClick={() => setMenuOpen(false)} />}
       {menuOpen && (
         <div className="fab-menu">
-          {ACTIONS.map((a, i) => (
+          {actions.map((a, i) => (
             <button key={a.key} className="fab-action" style={{ animationDelay:`${i * 0.08}s` }} onClick={() => handleAction(a.key)}>
               <span className="fab-action-label">{t(a.tKey)}</span>
               <span className="fab-action-icon"><a.Icon size={16} /></span>

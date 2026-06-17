@@ -680,6 +680,22 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // Lets a screen hide the bottom-tab pill (e.g. Agenda bulk-select mode,
   // which puts its own action bar at the bottom). Reset by the screen on exit.
   const [localHideBottomTabs, setHideBottomTabs] = useState(false);
+  // Groups feature toggle (Settings → Funciones). Per-user, persisted in
+  // localStorage. Default ON. When OFF the entire Groups surface is hidden
+  // and the app behaves exactly as it did pre-Groups. Users can only turn it
+  // OFF when they have zero groups (enforced in Settings).
+  const [groupsEnabled, setGroupsEnabledState] = useState(true);
+  useEffect(() => {
+    if (!user?.id) { setGroupsEnabledState(true); return; }
+    try {
+      const v = localStorage.getItem(`cardigan.groupsEnabled.${user.id}`);
+      setGroupsEnabledState(v === null ? true : v !== "false");
+    } catch { setGroupsEnabledState(true); }
+  }, [user?.id]);
+  const setGroupsEnabled = useCallback((val) => {
+    setGroupsEnabledState(val);
+    try { if (user?.id) localStorage.setItem(`cardigan.groupsEnabled.${user.id}`, String(val)); } catch { /* private mode */ }
+  }, [user?.id]);
   const [bugReportOpen, setBugReportOpen] = useState(false);
   // Activation-complete share sheet — opens when ActivationChecklist
   // crosses 0→all-done. Reuses the user's referral code so the user
@@ -1701,6 +1717,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     profession,
     accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
+    groupsEnabled, setGroupsEnabled,
     user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, setHideFab, setHideBottomTabs, setScreen,
     isAdminUser: admin, // surfaced to CommandPalette for admin-only commands
     navigate, pushLayer, popLayer, removeLayer, online,
@@ -1801,7 +1818,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       );
       return ok;
     },
-  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withUndoableDelete]);
+  }), [admin, data, noteCrypto, profession, accentTheme, userProfile.setProfessionLocal, user, userName, userInitial, readOnly, subscription, requirePro, updateSessionStatus, patients, upcomingSessions, openQuickSchedule, t, navigate, setScreen, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, pushLayer, popLayer, removeLayer, screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast, online, pendingFabAction, withUndoableDelete, groupsEnabled, setGroupsEnabled]);
 
   // First-time user gate: a 2-step onboarding wizard before mounting
   // the main shell. Demo mode and admin "view as user" mode bypass —
@@ -2313,7 +2330,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
                   data-loading path uses, so a chunk-fetch flash and
                   a data-fetch flash look identical to the user. */}
               <Suspense fallback={<LoadingSkeleton screen={screen} />}>
-                {screenMap[screen]}
+                {/* Groups disabled → a deep-link / stale hash to #groups
+                    falls back to Home so the feature is fully inert. */}
+                {screenMap[(screen === "groups" && !groupsEnabled) ? "home" : screen]}
               </Suspense>
             </SkeletonCrossfade>
           </div>

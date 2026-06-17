@@ -37,7 +37,7 @@ export function PatientExpediente({
 }) {
   const inline = layout === "inline";
   const { t } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession, groupMembers } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession, groupMembers, groupsEnabled } = useCardigan();
   // The Grupos tab only appears when this patient actually belongs to a group
   // (keeps the tab bar lean for individual-only patients).
   const patientGroupCount = useMemo(
@@ -368,7 +368,7 @@ export function PatientExpediente({
     ...(showMedicionesTab ? [{ k: "mediciones", l: t("measurements.tabLabel"), Icon: IconTrendingUp }] : []),
     { k: "finanzas", l: t("finances.payments"), Icon: IconDollar },
     { k: "archivo", l: t("expediente.archivo"), Icon: IconClipboard },
-    ...(patientGroupCount > 0 ? [{ k: "grupos", l: t("groups.title"), Icon: IconUsers }] : []),
+    ...(groupsEnabled !== false && patientGroupCount > 0 ? [{ k: "grupos", l: t("groups.title"), Icon: IconUsers }] : []),
   ];
 
   // ── Horizontal swipe between tabs ──

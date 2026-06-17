@@ -20,13 +20,14 @@ const TABS = [
 ];
 
 export function BottomTabs() {
-  const { screen, navigate } = useCardigan();
+  const { screen, navigate, groupsEnabled } = useCardigan();
   const { t } = useT();
+  const tabs = TABS.filter(tab => tab.key !== "groups" || groupsEnabled !== false);
 
   // Active index drives the sliding indicator's position via CSS
   // variable. -1 (no match — e.g. user is on Settings or Archivo)
   // hides the indicator entirely via the conditional render below.
-  const activeIndex = TABS.findIndex(tab => tab.key === screen);
+  const activeIndex = tabs.findIndex(tab => tab.key === screen);
   const showIndicator = activeIndex >= 0;
 
   return (
@@ -34,7 +35,7 @@ export function BottomTabs() {
       <nav
         className="bottom-tabs"
         aria-label={t("nav.menu")}
-        style={{ "--active-i": activeIndex, "--tab-count": TABS.length }}>
+        style={{ "--active-i": activeIndex, "--tab-count": tabs.length }}>
         {/* Sliding "active" capsule. One absolutely-positioned element
             that translates between tab slots with --ease-spring —
             visibly smoother than the previous per-tab class swap,
@@ -44,7 +45,7 @@ export function BottomTabs() {
             renders) and means the indicator's position survives
             re-renders that don't change the active tab. */}
         {showIndicator && <span className="bottom-tab-indicator" aria-hidden="true" />}
-        {TABS.map((tab, i) => {
+        {tabs.map((tab, i) => {
           const active = screen === tab.key;
           return (
             <button
