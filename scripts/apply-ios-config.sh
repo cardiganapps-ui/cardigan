@@ -113,6 +113,39 @@ else
   echo "AppDelegate push handlers already present (or file missing) — skipping"
 fi
 
+# ── Push: clear the app-icon badge whenever the app opens ──
+# A delivered push can leave a badge on the icon, and there's no in-app
+# notification center to clear it. Reset the badge on every activate so it
+# never sticks. Injects into the existing applicationDidBecomeActive if the
+# template has it, otherwise adds the method. Idempotent.
+if [ -f "$APPDELEGATE" ] && ! grep -q "applicationIconBadgeNumber" "$APPDELEGATE"; then
+  python3 - "$APPDELEGATE" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+needle = "func applicationDidBecomeActive(_ application: UIApplication) {"
+i = s.find(needle)
+if i != -1:
+    j = i + len(needle)
+    s = s[:j] + "\n        application.applicationIconBadgeNumber = 0" + s[j:]
+else:
+    method = (
+        "\n"
+        "    func applicationDidBecomeActive(_ application: UIApplication) {\n"
+        "        application.applicationIconBadgeNumber = 0\n"
+        "    }\n"
+    )
+    idx = s.rstrip().rfind("}")  # final brace = AppDelegate class close
+    if idx == -1:
+        sys.exit("AppDelegate.swift: no closing brace found")
+    s = s[:idx] + method + s[idx:]
+open(p, "w").write(s)
+print("✓ AppDelegate patched to clear icon badge on activate")
+PY
+else
+  echo "AppDelegate badge-clear already present (or file missing) — skipping"
+fi
+
 # CFBundleURLTypes for custom-scheme deep links isn't needed —
 # Universal Links via the associated-domains entitlement cover the
 # tap-from-email flow, and we don't expose a cardigan:// scheme.

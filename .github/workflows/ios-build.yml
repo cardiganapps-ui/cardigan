@@ -39,6 +39,10 @@ on:
     paths-ignore:
       - '**.md'
       - 'android/**'
+      # Serverless functions are Vercel-only and never part of the iOS web
+      # bundle (vite builds src/ → dist/), so api/ changes must not burn an
+      # iOS build — Apple's daily TestFlight upload cap is the constraint.
+      - 'api/**'
       - 'scripts/**'
       # apply-ios-config.sh IS in scripts/ but is on the iOS critical
       # path — changes to it (entitlements, signing-pbxproj patch,

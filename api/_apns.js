@@ -76,7 +76,9 @@ export async function sendAPNs({ token, payload }) {
     aps: {
       alert: { title: payload?.title || "Cardigan", body: payload?.body || "" },
       sound: "default",
-      badge: 1,
+      // No badge: we don't track an unread count, so a static "1" would just
+      // stick on the icon with no in-app way to clear it. The app also clears
+      // any residual badge on launch (see AppDelegate in apply-ios-config.sh).
     },
     ...(payload?.url ? { url: String(payload.url) } : {}),
   });
