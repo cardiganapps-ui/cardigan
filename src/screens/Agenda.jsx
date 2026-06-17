@@ -10,7 +10,7 @@ import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
 import { CalendarLinkSheet } from "../components/sheets/CalendarLinkSheet";
 import { IconSun, IconCheck, IconX, IconTrash, IconCalendar, IconPlus } from "../components/Icons";
 import ContextMenu, { useContextMenu } from "../components/ContextMenu";
-import { BulkActionsBar } from "../components/BulkActionsBar";
+import { BulkActionsSheet } from "../components/sheets/BulkActionsSheet";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
 import { formatShortDate, toISODate } from "../utils/dates";
@@ -413,9 +413,6 @@ function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSele
       onClick={swipeEnabled ? undefined : handleClick}
       style={selectionMode && selected ? { background: "var(--teal-pale)" } : undefined}
     >
-      <div style={{ width: compact ? 40 : 44, textAlign:"center", flex:"none" }}>
-        <div style={{ fontFamily:"var(--font-d)", fontSize: compact ? "var(--text-sm)" : "var(--text-md)", fontWeight:800, color:"var(--teal-dark)" }}>{s.time}</div>
-      </div>
       <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="sm" />
       <div className="row-content">
         <div className="row-title">
@@ -1138,6 +1135,7 @@ export function Agenda() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSet, setSelectedSet] = useState(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkSheetOpen, setBulkSheetOpen] = useState(false);
   const onToggleSelect = useCallback((s) => {
     haptic.tap();
     setSelectedSet((prev) => {
@@ -1167,6 +1165,7 @@ export function Agenda() {
     try {
       const tasks = list.map((s) => {
         if (kind === "delete") return deleteSession(s.id);
+        if (kind === "complete") return onMarkCompleted(s);
         if (kind === "cancel-charge") return onCancelSession(s, true, t("agenda.bulkChargeReason"));
         return onCancelSession(s, false, null);
       });
@@ -1182,13 +1181,13 @@ export function Agenda() {
     } finally {
       setBulkBusy(false);
     }
-  }, [bulkBusy, selectedSet, upcomingSessions, deleteSession, onCancelSession, t, showSuccess, showToast, exitSelection]);
+  }, [bulkBusy, selectedSet, upcomingSessions, deleteSession, onCancelSession, onMarkCompleted, t, showSuccess, showToast, exitSelection]);
   // When the user leaves the day view OR enters readOnly, abort
   // selection so the bar doesn't outlive its context.
   useEffect(() => {
     if (selectionMode && (view !== "day" || readOnly)) exitSelection();
   }, [view, readOnly, selectionMode, exitSelection]);
-  // Selection mode owns the bottom of the screen with the BulkActionsBar, so
+  // Selection mode owns the bottom of the screen with the action pill, so
   // hide the FAB + bottom-tab pill (they'd overlap the bar and bury its exit
   // button). Restored on exit / unmount.
   useEffect(() => {
@@ -1393,7 +1392,21 @@ export function Agenda() {
             button disappears and the bulk bar takes over. Renders
             only if either control has something to show — empty rows
             would leave a phantom gap above the calendar grid. */}
-        {(patients.length > 0 || (view === "day" && !readOnly && !selectionMode)) && (
+        {selectionMode && view === "day" && !readOnly ? (
+          /* Selection header — replaces the filter row while selecting.
+             Clear in-page exit (Cancelar) + live count, styled like the
+             rest of the app (no dark slab). */
+          <div style={{ padding:"0 16px 10px", display:"flex", gap:8, alignItems:"center", justifyContent:"space-between" }}>
+            <button type="button" className="btn btn-ghost"
+              onClick={() => { haptic.tap(); exitSelection(); }}
+              style={{ width:"auto", height:"auto", padding:"6px 12px", fontSize:"var(--text-sm)", fontWeight:700 }}>
+              {t("cancel")}
+            </button>
+            <span style={{ fontFamily:"var(--font-d)", fontWeight:800, fontSize:"var(--text-md)", color:"var(--charcoal)", fontVariantNumeric:"tabular-nums" }}>
+              {selectedSet.size > 0 ? t("agenda.bulkBarCount", { n: selectedSet.size }) : t("agenda.bulkBarHint")}
+            </span>
+          </div>
+        ) : (patients.length > 0 || (view === "day" && !readOnly)) && (
           <div style={{ padding:"0 16px 10px", display:"flex", gap:8, alignItems:"center" }}>
             {patients.length > 0 && (
               <select
@@ -1407,7 +1420,7 @@ export function Agenda() {
                 ))}
               </select>
             )}
-            {view === "day" && !readOnly && !selectionMode && (
+            {view === "day" && !readOnly && (
               <button type="button" className="btn btn-ghost"
                 onClick={() => { haptic.tap(); setSelectionMode(true); }}
                 style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:6, width:"auto", height:"auto", padding:"6px 12px", fontSize:12, whiteSpace:"nowrap" }}>
@@ -1510,11 +1523,26 @@ export function Agenda() {
         mutating={mutating}
       />
       <ContextMenu {...ctxMenu.state} onClose={ctxMenu.close} />
+      {/* Bulk action launcher — a single elevated primary pill (the FAB +
+          bottom tabs are hidden in selection mode). Disabled until ≥1
+          selected; opens the canonical action sheet. */}
       {selectionMode && view === "day" && !readOnly && (
-        <BulkActionsBar
+        <div style={{ position:"fixed", left:0, right:0, bottom:"calc(16px + var(--sab, env(safe-area-inset-bottom, 0px)))", display:"flex", justifyContent:"center", padding:"0 16px", zIndex:"var(--z-banner, 30)", pointerEvents:"none" }}>
+          <button type="button"
+            disabled={selectedSet.size === 0 || bulkBusy}
+            onClick={() => { haptic.tap(); setBulkSheetOpen(true); }}
+            className="btn btn-primary-teal btn-tap"
+            style={{ pointerEvents:"auto", width:"auto", minWidth:200, height:52, gap:8, boxShadow:"var(--shadow-lg)", opacity: (selectedSet.size === 0 || bulkBusy) ? 0.55 : 1 }}>
+            {t("agenda.bulkActionsCta")}{selectedSet.size > 0 ? ` · ${selectedSet.size}` : ""}
+          </button>
+        </div>
+      )}
+      {bulkSheetOpen && (
+        <BulkActionsSheet
           count={selectedSet.size}
           busy={bulkBusy}
-          onExit={exitSelection}
+          onClose={() => setBulkSheetOpen(false)}
+          onComplete={() => bulkApply("complete")}
           onCancelNoCharge={() => bulkApply("cancel")}
           onCancelCharge={() => bulkApply("cancel-charge")}
           onDelete={() => bulkApply("delete")}

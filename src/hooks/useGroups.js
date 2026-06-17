@@ -31,7 +31,13 @@ registerHandler("groups.update", async ({ id, userId, patch }) => {
   return await supabase.from("groups").update(patch).eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("groups.delete", async ({ id, userId }) => {
+registerHandler("groups.delete", async ({ id, userId, scheduledIds }) => {
+  // Delete scheduled member rows first (they'd collide on uniq_sessions_user_slot
+  // once SET NULL detaches them); then delete the group. Idempotent on replay.
+  if (scheduledIds?.length > 0) {
+    const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", scheduledIds);
+    if (r1.error) return r1;
+  }
   return await supabase.from("groups").delete().eq("id", id).eq("user_id", userId);
 });
 
@@ -575,16 +581,46 @@ export function createGroupActions(
     const group = groups.find(g => g.id === groupId);
     if (!group) return false;
     setMutationError("");
-    // Optimistic: remove group + its memberships locally. Session rows stay
-    // (DB sets group_id NULL); detach them locally too so the UI is consistent.
+    // CRITICAL: the group's SCHEDULED member rows share a (user_id, date,
+    // time) slot. ON DELETE SET NULL would flip them to group_id=NULL, at
+    // which point they enter uniq_sessions_user_slot's scope and COLLIDE
+    // (two members on one slot) → the whole DELETE aborts. So delete the
+    // scheduled rows first; completed/charged/cancelled rows (status !=
+    // 'scheduled', not in that index) stay and detach via SET NULL, so real
+    // financial history survives as standalone sessions.
+    const scheduledRows = upcomingSessions.filter(s => s.group_id === groupId && s.status === SESSION_STATUS.SCHEDULED);
+    const scheduledIds = scheduledRows.map(s => s.id).filter(id => !(typeof id === "string" && id.startsWith("temp")));
+    const removedIds = new Set(scheduledRows.map(s => s.id));
+
+    // Optimistic counter decrement for the scheduled rows being removed.
+    const now = new Date();
+    const dec = new Map();
+    for (const s of scheduledRows) {
+      const d = dec.get(s.patient_id) || { sessions: 0, billed: 0 };
+      d.sessions += 1;
+      if (sessionCountsTowardBalance(s, now)) d.billed += s.rate ?? patientsById.get(s.patient_id)?.rate ?? 0;
+      dec.set(s.patient_id, d);
+    }
     setGroups(prev => prev.filter(g => g.id !== groupId));
     setGroupMembers(prev => prev.filter(m => m.group_id !== groupId));
-    setUpcomingSessions(prev => prev.map(s => s.group_id === groupId ? { ...s, group_id: null } : s));
+    setUpcomingSessions(prev => prev
+      .filter(s => !removedIds.has(s.id))
+      .map(s => s.group_id === groupId ? { ...s, group_id: null } : s));
+    if (dec.size > 0) {
+      setPatients(prev => prev.map(p => {
+        const d = dec.get(p.id);
+        return d ? { ...p, sessions: Math.max(0, (p.sessions || 0) - d.sessions), billed: Math.max(0, (p.billed || 0) - d.billed) } : p;
+      }));
+    }
     try {
+      if (scheduledIds.length > 0) {
+        const { error: delErr } = await supabase.from("sessions").delete().eq("user_id", userId).in("id", scheduledIds);
+        if (delErr) { setMutationError(delErr.message); return false; }
+      }
       const { error } = await supabase.from("groups").delete().eq("id", groupId).eq("user_id", userId);
       if (error) { setMutationError(error.message); return false; }
     } catch {
-      await enqueue("groups.delete", { id: groupId, userId });
+      await enqueue("groups.delete", { id: groupId, userId, scheduledIds });
     }
     return true;
   }
