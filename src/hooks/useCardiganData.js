@@ -923,6 +923,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     createGroup, updateGroup, deleteGroup, endGroup,
     addMembers, removeMember,
     generateGroupSessions, applyGroupScheduleChange, cancelGroupOccurrence,
+    rescheduleGroupOccurrence,
   } = createGroupActions(
     userId, patients, setPatients,
     groups, setGroups, groupMembers, setGroupMembers,
@@ -1034,6 +1035,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     generateGroupSessions: guard(generateGroupSessions),
     applyGroupScheduleChange: guard(applyGroupScheduleChange),
     cancelGroupOccurrence: guard(cancelGroupOccurrence),
+    rescheduleGroupOccurrence: guard(rescheduleGroupOccurrence),
     createPatient: guard(createPatientWithRefresh), updatePatient: guard(updatePatient), deletePatient: guard(deletePatient),
     createPotential: guard(createPotentialWithRefresh), discardPotential: guard(discardPotential), convertPotentialToActive: guard(convertPotentialWithRefresh),
     createSession: guard(createSession), updateSessionStatus: guard(updateSessionStatus),

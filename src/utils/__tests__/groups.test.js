@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildGroupRoster, activeMemberCount, groupOccurrences, groupFinancesRollup } from "../groups";
+import { buildGroupRoster, activeMemberCount, groupOccurrences, groupFinancesRollup, collapseGroupOccurrences } from "../groups";
 import { enrichPatientsWithBalance } from "../accounting";
 import { SESSION_STATUS } from "../../data/constants";
 
@@ -71,6 +71,38 @@ describe("groupFinancesRollup", () => {
     expect(ana.consumed).toBe(500); // only the completed one counts
     expect(ana.sessions).toBe(2);
     expect(roll.totalConsumed).toBe(500);
+  });
+});
+
+describe("collapseGroupOccurrences", () => {
+  const gById = new Map([["g1", { id: "g1", name: "Clase", color_idx: 2 }]]);
+  it("collapses N member rows of one occurrence into a single tile, order preserved", () => {
+    const day = [
+      { id: "a", patient_id: "pa", date: "1-Jun", time: "09:00", status: "scheduled" }, // solo
+      { id: "b", group_id: "g1", patient_id: "pa", date: "1-Jun", time: "10:00", status: "scheduled" },
+      { id: "c", group_id: "g1", patient_id: "pb", date: "1-Jun", time: "10:00", status: "scheduled" },
+      { id: "d", patient_id: "pc", date: "1-Jun", time: "11:00", status: "scheduled" }, // solo
+    ];
+    const out = collapseGroupOccurrences(day, gById);
+    expect(out.length).toBe(3); // solo + 1 group tile + solo
+    expect(out[0].id).toBe("a");
+    expect(out[1]._groupOccurrence).toBe(true);
+    expect(out[1].count).toBe(2);
+    expect(out[1].group.name).toBe("Clase");
+    expect(out[2].id).toBe("d");
+  });
+  it("passes non-group rows through untouched", () => {
+    const out = collapseGroupOccurrences([{ id: "x", date: "1-Jun", time: "09:00", status: "scheduled" }], gById);
+    expect(out).toHaveLength(1);
+    expect(out[0]._groupOccurrence).toBeUndefined();
+  });
+  it("keeps two different groups at different times separate", () => {
+    const gMap = new Map([["g1", { id: "g1", name: "A" }], ["g2", { id: "g2", name: "B" }]]);
+    const out = collapseGroupOccurrences([
+      { id: "1", group_id: "g1", date: "1-Jun", time: "10:00", status: "scheduled" },
+      { id: "2", group_id: "g2", date: "1-Jun", time: "12:00", status: "scheduled" },
+    ], gMap);
+    expect(out.filter(o => o._groupOccurrence)).toHaveLength(2);
   });
 });
 

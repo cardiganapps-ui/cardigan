@@ -147,7 +147,7 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
       setDragging(true);
       haptic.warn();
       const ghost = document.createElement("div");
-      ghost.textContent = `${sess.time} · ${shortName(sess.patient)}`;
+      ghost.textContent = `${sess.time} · ${sess._groupOccurrence ? sess.patient : shortName(sess.patient)}`;
       ghost.style.cssText = `
         position: fixed;
         left: 0; top: 0;
@@ -308,7 +308,7 @@ function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLo
         onSelectSession(session);
       }}
       onContextMenu={onEventContextMenu ? (e) => { e.stopPropagation(); onEventContextMenu(e, session); } : undefined}>
-      <span className="week-event-time">{session.time}</span> {shortName(session.patient)}
+      <span className="week-event-time">{session.time}</span> {session._groupOccurrence ? session.patient : shortName(session.patient)}
     </div>
   );
 }
@@ -624,7 +624,7 @@ function timeToFloat(time) {
 }
 
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
-function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours }) {
+function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours, groupsById }) {
   const { strings } = useT();
   const DOW = strings.daysShort;
   const weekDays = getWeekDays(weekDate);
@@ -706,8 +706,22 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
                   </div>
                 );
               })}
-              {/* Session events positioned absolutely */}
-              {daySess.map(sess => {
+              {/* Session events positioned absolutely. Group occurrences
+                  collapse into ONE synthetic event tile (group name + count)
+                  so a class isn't N overlapping tiles; the synthetic id
+                  "grp:<id>|<date>|<time>" routes tap → group sheet and drag →
+                  whole-occurrence reschedule (see handleDropSession). */}
+              {collapseGroupOccurrences(daySess, groupsById).map(item => {
+                const sess = item._groupOccurrence
+                  ? {
+                      id: `grp:${item.group_id}|${item.date}|${item.time}`,
+                      time: item.time, duration: item.duration, status: item.status,
+                      modality: item.group?.modality || "presencial",
+                      colorIdx: item.group?.colorIdx ?? item.group?.color_idx ?? 0,
+                      patient: `${item.group?.name || "Grupo"} · ${item.count}`,
+                      _groupOccurrence: true, group_id: item.group_id, date: item.date, group: item.group,
+                    }
+                  : item;
                 const startF = timeToFloat(sess.time);
                 const dur = (sess.duration || 60) / 60; // hours
                 if (startF < 0 || startF >= hours.length) return null;
@@ -747,7 +761,7 @@ function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSel
 }
 
 /* ── WEEK VIEW ── */
-function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, now, jumpToToday }) {
+function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, now, jumpToToday, groupsById }) {
   const { t, strings } = useT();
   const HOURS = strings.hours;
   const [showWeekends, setShowWeekends] = useState(false);
@@ -761,7 +775,7 @@ function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onC
   const monday = weekDays[0];
   const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
   const isCurrent = weekDays.some(d => isSameDay(d, TODAY));
-  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours: HOURS };
+  const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours: HOURS, groupsById };
 
   // "Ahora" line: only when today is in the visible week and within work hours
   const visibleDays = (showWeekends ? weekDays : weekDays.slice(0, 5));
@@ -1021,7 +1035,7 @@ function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsBy
 }
 
 /* ── MONTH VIEW ── */
-function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName, onMoveDay, canMoveDay, onSwipeComplete }) {
+function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSessions, jumpToToday, filterPatientName, onMoveDay, canMoveDay, onSwipeComplete, groupsById }) {
   const { t, strings } = useT();
   const MONTH_NAMES = strings.months;
   const DOW = strings.daysShort;
@@ -1053,7 +1067,10 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
   const shared = { selectedDate, setSelectedDate, sessionsByDate, onMoveDay, canDrag: canMoveDay };
 
   const selectedDateStr = formatShortDate(selectedDate);
-  const daySessions = sortByTime(upcomingSessions.filter(s => s.date === selectedDateStr));
+  const daySessions = collapseGroupOccurrences(
+    sortByTime(upcomingSessions.filter(s => s.date === selectedDateStr)),
+    groupsById
+  );
 
   return (
     <>
@@ -1089,7 +1106,9 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
                 <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)" }}>{t("sessions.freeDay")}</div>
               </div>
           : <div className="card">
-              {daySessions.map(s => <SessionRow key={s.id} s={s} onClick={onSelectSession} compact onSwipeComplete={onSwipeComplete} />)}
+              {daySessions.map(s => s._groupOccurrence
+                ? <GroupSessionRow key={s.id} occ={s} onClick={() => onSelectSession(s)} />
+                : <SessionRow key={s.id} s={s} onClick={onSelectSession} compact onSwipeComplete={onSwipeComplete} />)}
             </div>
         }
       </div>
@@ -1099,7 +1118,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, user } = useCardigan();
+  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, rescheduleGroupOccurrence, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, user } = useCardigan();
   const groupsById = useMemo(() => new Map((groups || []).map(g => [g.id, g])), [groups]);
   const { t } = useT();
   const { isTabletSplit } = useViewport();
@@ -1173,6 +1192,12 @@ export function Agenda() {
   // event (mobile drag-reschedule replacement); cleared on close. Null
   // for all other entry points.
   const [selectedSessionMode, setSelectedSessionMode] = useState(null);
+  // Unified tap router for all three views: a collapsed group occurrence
+  // opens the group sheet; an ordinary session opens the session sheet.
+  const selectItem = useCallback((item, mode) => {
+    if (item?._groupOccurrence) { setSelectedGroupOcc(item); return; }
+    setSelectedSession(item); setSelectedSessionMode(mode || null);
+  }, []);
   const [editingNote, setEditingNote] = useState(null);
   const [filterPatientId, setFilterPatientId] = useState("");
   const [newSessionPrefill, setNewSessionPrefill] = useState(null);
@@ -1211,12 +1236,20 @@ export function Agenda() {
   // uses formatShortDate + the hour string which already matches the
   // project's "D MMM" + "HH:MM" format.
   const handleDropSession = useCallback(async (sessionId, date, hour) => {
+    const newShortDate = formatShortDate(date);
+    // Group occurrence drag: id is "grp:<groupId>|<fromDate>|<fromTime>".
+    // Move the WHOLE occurrence (all member rows) to the dropped slot.
+    if (typeof sessionId === "string" && sessionId.startsWith("grp:")) {
+      const [groupId, fromDate, fromTime] = sessionId.slice(4).split("|");
+      if (fromDate === newShortDate && fromTime === hour) return;
+      await rescheduleGroupOccurrence(groupId, fromDate, fromTime, newShortDate, hour);
+      return;
+    }
     const sess = upcomingSessions.find(s => s.id === sessionId);
     if (!sess) return;
-    const newShortDate = formatShortDate(date);
     if (sess.date === newShortDate && sess.time === hour) return;
     await rescheduleSession(sessionId, newShortDate, hour, sess.duration || 60);
-  }, [upcomingSessions, rescheduleSession]);
+  }, [upcomingSessions, rescheduleSession, rescheduleGroupOccurrence]);
 
   // ── Month-view "move whole day" ──
   // The MonthGridPanel emits (srcDayIso, targetDayIso) when the user
@@ -1376,9 +1409,9 @@ export function Agenda() {
           </div>
         )}
       </div>
-      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={(item) => item?._groupOccurrence ? setSelectedGroupOcc(item) : setSelectedSession(item)} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
-      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={(s, mode) => { setSelectedSession(s); setSelectedSessionMode(mode || null); }} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} />}
-      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={setSelectedSession} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} onSwipeComplete={readOnly ? undefined : onMarkCompleted} />}
+      {view==="day"   && <DayView   selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} selectionMode={selectionMode} selectedSet={selectedSet} onToggleSelect={onToggleSelect} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
+      {view==="week"  && <WeekView  selectedDate={selectedDate} setSelectedDate={setSelectedDate} setView={setView} onSelectSession={selectItem} onCellTap={handleCellTap} onDropSession={handleDropSession} canDrag={isTabletSplit} onEventContextMenu={isTabletSplit ? handleEventContextMenu : undefined} upcomingSessions={filteredSessions} now={now} jumpToToday={jumpToToday} groupsById={groupsById} />}
+      {view==="month" && <MonthView selectedDate={selectedDate} setSelectedDate={setSelectedDate} onSelectSession={selectItem} upcomingSessions={filteredSessions} jumpToToday={jumpToToday} filterPatientName={filterPatientName} onMoveDay={handleMonthMoveDay} canMoveDay={!readOnly} onSwipeComplete={readOnly ? undefined : onMarkCompleted} groupsById={groupsById} />}
       {upcomingSessions.length === 0 && (() => {
         // Two flavours of "no sessions": brand-new user with zero
         // patients, or an existing user whose calendar is genuinely

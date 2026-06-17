@@ -83,6 +83,15 @@ registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time
     .eq("status", SESSION_STATUS.SCHEDULED);
 });
 
+// Move a whole group occurrence to a new (date, time). Idempotent — a
+// replay filters on the OLD slot, which after the first run matches nothing.
+registerHandler("groups.reschedule_occurrence", async ({ groupId, userId, fromDate, fromTime, patch }) => {
+  return await supabase.from("sessions").update(patch)
+    .eq("user_id", userId).eq("group_id", groupId)
+    .eq("date", fromDate).eq("time", fromTime)
+    .eq("status", "scheduled");
+});
+
 // Delete a set of session rows by id (member removal offline replay).
 // Idempotent — re-deleting already-gone ids is a no-op.
 registerHandler("groups.delete_sessions", async ({ ids, userId }) => {
@@ -106,6 +115,9 @@ function isOffline() {
 function tempId(prefix = "temp") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+// Spanish weekday by Date.getDay() (0=Sunday).
+const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 function defaultWindow(startDate) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -358,6 +370,44 @@ export function createGroupActions(
     return true;
   }
 
+  // Move every scheduled member row of one occurrence to a new (date, time).
+  // Used by week-view drag-to-reschedule. Optimistic with revert-on-error
+  // (a member already booked at the target slot trips
+  // uniq_sessions_patient_date_time → 23505 → we restore the prior slot).
+  async function rescheduleGroupOccurrence(groupId, fromDate, fromTime, toDate, toTime) {
+    if (!toDate || !toTime || (fromDate === toDate && fromTime === toTime)) return false;
+    const rows = upcomingSessions.filter(s =>
+      s.group_id === groupId && s.date === fromDate && s.time === fromTime && s.status === SESSION_STATUS.SCHEDULED);
+    if (rows.length === 0) return false;
+    let newDay = rows[0].day;
+    try { newDay = WEEKDAYS[parseShortDate(toDate).getDay()]; } catch { /* keep prior */ }
+
+    const ids = new Set(rows.map(r => r.id));
+    const prev = rows.map(r => ({ id: r.id, date: r.date, time: r.time, day: r.day }));
+    const patch = { date: toDate, time: toTime, day: newDay };
+
+    setMutationError("");
+    setUpcomingSessions(p => p.map(s => ids.has(s.id) ? { ...s, ...patch } : s));
+    try {
+      const { error } = await supabase.from("sessions").update(patch)
+        .eq("user_id", userId).eq("group_id", groupId)
+        .eq("date", fromDate).eq("time", fromTime).eq("status", SESSION_STATUS.SCHEDULED);
+      if (error) {
+        setUpcomingSessions(p => p.map(s => {
+          const o = prev.find(x => x.id === s.id);
+          return o ? { ...s, date: o.date, time: o.time, day: o.day } : s;
+        }));
+        setMutationError(error.code === "23505"
+          ? "No se pudo mover el grupo: alguien ya tiene una sesión en ese horario."
+          : error.message);
+        return false;
+      }
+    } catch {
+      await enqueue("groups.reschedule_occurrence", { groupId, userId, fromDate, fromTime, patch });
+    }
+    return true;
+  }
+
   async function cancelGroupOccurrence(groupId, date, time, { status = SESSION_STATUS.CANCELLED, reason = null } = {}) {
     const rows = upcomingSessions.filter(s =>
       s.group_id === groupId && s.date === date && s.time === time && s.status === SESSION_STATUS.SCHEDULED);
@@ -532,5 +582,6 @@ export function createGroupActions(
     createGroup, updateGroup, deleteGroup, endGroup,
     addMember, addMembers, removeMember,
     generateGroupSessions, applyGroupScheduleChange, cancelGroupOccurrence,
+    rescheduleGroupOccurrence,
   };
 }

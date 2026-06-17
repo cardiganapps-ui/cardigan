@@ -93,6 +93,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
     createGroup: noop, updateGroup: noop, deleteGroup: noop, endGroup: noop,
     addMember: noop, addMembers: noop, removeMember: noop,
     generateGroupSessions: noop, applyGroupScheduleChange: noop, cancelGroupOccurrence: noop,
+    rescheduleGroupOccurrence: noop,
     refresh: async () => {},
   };
 }
