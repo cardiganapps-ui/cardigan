@@ -1,5 +1,5 @@
 import { Avatar } from "./Avatar";
-import { IconGroup } from "./Icons";
+import { IconUsers } from "./Icons";
 import { useT } from "../i18n/index";
 import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
@@ -33,7 +33,7 @@ export function GroupSessionRow({ occ, onClick }) {
       </span>
       <div className="row-content">
         <div className="row-title" style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
-          <span style={{ color:getClientColor(colorIdx), display:"inline-flex" }}><IconGroup size={14} /></span>
+          <span style={{ color:getClientColor(colorIdx), display:"inline-flex" }}><IconUsers size={14} /></span>
           {g?.name || t("groups.title")}
         </div>
         <div className="row-sub">

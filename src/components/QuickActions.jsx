@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus, IconArrowDown, IconGroup } from "./Icons";
+import { IconUserPlus, IconDollar, IconCalendarPlus, IconClipboard, IconDocument, IconPlus, IconArrowDown, IconUsers } from "./Icons";
 import { NewPatientSheet } from "./sheets/NewPatientSheet";
 import { NewGroupSheet } from "./sheets/NewGroupSheet";
 import { NewSessionSheet } from "./sheets/NewSessionSheet";
@@ -17,7 +17,7 @@ export const QUICK_ACTIONS = [
   { key:"payment",  Icon: IconDollar,       tKey:"fab.payment" },
   { key:"expense",  Icon: IconArrowDown,    tKey:"fab.expense" },
   { key:"patient",  Icon: IconUserPlus,     tKey:"fab.patient" },
-  { key:"group",    Icon: IconGroup,        tKey:"fab.group" },
+  { key:"group",    Icon: IconUsers,        tKey:"fab.group" },
   { key:"note",     Icon: IconClipboard,    tKey:"fab.note" },
   { key:"document", Icon: IconDocument,     tKey:"fab.document" },
   { key:"session",  Icon: IconCalendarPlus, tKey:"fab.session" },

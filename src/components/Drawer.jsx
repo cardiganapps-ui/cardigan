@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { navItems } from "../data/seedData";
-import { IconHome, IconCalendar, IconUsers, IconGroup, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut, IconBug, IconSparkle } from "./Icons";
+import { IconHome, IconCalendar, IconUser, IconUsers, IconDollar, IconDocument, IconClipboard, IconSettings, IconStar, IconLogOut, IconBug, IconSparkle } from "./Icons";
 import { LogoIcon } from "./LogoMark";
 import { AvatarContent } from "./Avatar";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -12,8 +12,8 @@ import { MONETIZATION_ENABLED } from "../config/monetization";
 const NAV_ICONS = {
   home: IconHome,
   calendar: IconCalendar,
-  users: IconUsers,
-  group: IconGroup,
+  users: IconUser,
+  group: IconUsers,
   dollar: IconDollar,
   clipboard: IconClipboard,
   document: IconDocument,
