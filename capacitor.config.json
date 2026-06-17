@@ -13,6 +13,9 @@
     "backgroundColor": "#5B9BAF"
   },
   "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
     "SplashScreen": {
       "launchShowDuration": 600,
       "launchAutoHide": true,
