@@ -154,7 +154,7 @@ if [ -z "$APPLE_TEAM_ID" ]; then
   echo "APPLE_TEAM_ID env var required for pbxproj signing patch"
   exit 1
 fi
-MARKETING_VERSION="${MARKETING_VERSION:-20.2}"
+MARKETING_VERSION="${MARKETING_VERSION:-20.3}"
 APPLE_TEAM_ID="$APPLE_TEAM_ID" MARKETING_VERSION="$MARKETING_VERSION" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
 import re, sys, os
 p = sys.argv[1]

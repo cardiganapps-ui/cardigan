@@ -1,0 +1,87 @@
+# Promote an uploaded TestFlight build to a public App Store release.
+#
+# This is a SEPARATE, manual step from the TestFlight pipeline
+# (ios-build.yml). It never runs on push — you dispatch it once the
+# build for the target version has uploaded and finished Apple's
+# processing. It's pure App Store Connect API (no Mac), reusing the same
+# ASC API key the TestFlight upload uses.
+#
+# Flow (scripts/submit-app-store.mjs):
+#   find processed build for <version> → create/reuse appStoreVersion →
+#   attach build → set Spanish "Novedades" → submit for review.
+#
+# The script polls for the build to finish processing, so it's safe to
+# dispatch shortly after the build kicks off — it'll wait.
+
+name: App Store Submit
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Marketing version to release (must match a built version, e.g. 20.3)'
+        required: true
+        default: '20.3'
+      submit:
+        description: 'Submit for review? Uncheck to stage everything but stop before the final submit.'
+        type: boolean
+        required: true
+        default: true
+      release_type:
+        description: 'Release timing after approval'
+        type: choice
+        options: [AFTER_APPROVAL, MANUAL]
+        default: AFTER_APPROVAL
+
+concurrency:
+  group: app-store-submit
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: Submit ${{ github.event.inputs.version }} to App Store
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify ASC secrets present
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          missing=()
+          [ -z "$ASC_KEY_ID" ]     && missing+=("APP_STORE_CONNECT_API_KEY_ID")
+          [ -z "$ASC_ISSUER" ]     && missing+=("APP_STORE_CONNECT_API_KEY_ISSUER")
+          [ -z "$ASC_KEY_BASE64" ] && missing+=("APP_STORE_CONNECT_API_KEY_BASE64")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"; exit 1
+          fi
+
+      - name: Submit to App Store
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER }}
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          TARGET_VERSION: ${{ github.event.inputs.version }}
+          BUNDLE_ID: mx.cardigan.app
+          SUBMIT: ${{ github.event.inputs.submit }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          # Spanish App Store "Novedades". Honest, reviewer-friendly, no
+          # claims that need extra metadata. Edit here for future releases.
+          WHATS_NEW: |
+            Novedades de esta versión:
+
+            • Recordatorios de sesión más confiables: las notificaciones push llegan a tu iPhone de forma consistente, incluso con la app abierta.
+            • Mejoras de rendimiento y estabilidad.
+            • Ajustes de diseño para una experiencia más clara y cómoda.
+
+            Gracias por usar Cardigan. Si tienes comentarios, escríbenos desde Ajustes.
+        run: node scripts/submit-app-store.mjs
