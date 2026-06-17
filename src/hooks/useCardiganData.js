@@ -229,6 +229,23 @@ export async function adminBlockUser(userId, block) {
   return res.json();
 }
 
+// Admin → in-app inbox: send a 'system' notification to one user or
+// broadcast to all. Backs the AdminMessages compose UI.
+export async function adminNotify({ title, body, url, userId, broadcast }) {
+  const headers = await authHeaders();
+  const res = await fetch("/api/admin-notify", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ title, body, url, userId, broadcast }),
+  });
+  if (!res.ok) {
+    let msg = "Send failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { /* default msg */ }
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
 export async function adminDeleteUser(userId) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-delete-user", {

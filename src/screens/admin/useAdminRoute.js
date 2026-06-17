@@ -24,6 +24,7 @@ const VALID_SECTIONS = new Set([
   "revenue",
   "acquisition",
   "codes",
+  "messages",
   "reports",
   "audit",
   "health",

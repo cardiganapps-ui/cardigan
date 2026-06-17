@@ -15,6 +15,7 @@ import { AdminCodes } from "./AdminCodes";
 import { AdminReports } from "./AdminReports";
 import { AdminAudit } from "./AdminAudit";
 import { AdminHealth } from "./AdminHealth";
+import { AdminMessages } from "./AdminMessages";
 import { AdminActivityDrawer } from "./parts/AdminActivityDrawer";
 import { AdminBottomTabs } from "./parts/AdminBottomTabs";
 
@@ -24,6 +25,7 @@ const SECTIONS = [
   { key: "revenue",     label: "Ingresos",    icon: IconDollar,      group: "insights" },
   { key: "acquisition", label: "Adquisición", icon: IconTrendingUp,  group: "insights" },
   { key: "codes",       label: "Códigos",     icon: IconTag,         group: "ops" },
+  { key: "messages",    label: "Mensajes",    icon: IconBell,        group: "ops" },
   { key: "reports",     label: "Reportes",    icon: IconBug,         group: "ops" },
   { key: "audit",       label: "Auditoría",   icon: IconShield,      group: "ops" },
   { key: "health",      label: "Salud",       icon: IconActivity,    group: "ops" },
@@ -35,6 +37,7 @@ const TITLE_BY_SECTION = {
   revenue: "Ingresos",
   acquisition: "Adquisición",
   codes: "Códigos",
+  messages: "Mensajes",
   reports: "Reportes",
   audit: "Registro de auditoría",
   health: "Salud del sistema",
@@ -223,6 +226,7 @@ export function AdminLayout({ onViewAs, onLeaveAdmin, currentAdminId, onOpenPale
     case "revenue":     body = <AdminRevenue />; break;
     case "acquisition": body = <AdminAcquisition />; break;
     case "codes":       body = <AdminCodes />; break;
+    case "messages":    body = <AdminMessages />; break;
     case "reports":     body = <AdminReports />; break;
     case "audit":       body = <AdminAudit />; break;
     case "health":      body = <AdminHealth />; break;
