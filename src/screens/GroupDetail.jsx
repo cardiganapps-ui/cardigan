@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { IconX, IconPlus, IconTrash, IconEdit, IconChevronRight } from "../components/Icons";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { IconX, IconPlus, IconTrash, IconEdit, IconChevronRight, IconUpload } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -8,6 +8,8 @@ import { MembersPickerSheet } from "../components/sheets/MembersPickerSheet";
 import { GroupOccurrenceSheet } from "../components/sheets/GroupOccurrenceSheet";
 import { GroupScheduleSheet } from "../components/sheets/GroupScheduleSheet";
 import { NoteEditor } from "../components/NoteEditor";
+import { DocumentList } from "../components/DocumentList";
+import { DocumentViewer } from "../components/DocumentViewer";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -28,8 +30,9 @@ import { haptic } from "../utils/haptics";
 export function GroupDetail({ group, onClose }) {
   const { t } = useT();
   const {
-    groups, groupMembers, patients, upcomingSessions, notes, readOnly,
-    deleteGroup, endGroup, removeMember, createNote, updateNote, deleteNote, mutating,
+    groups, groupMembers, patients, upcomingSessions, notes, documents, readOnly,
+    deleteGroup, endGroup, removeMember, createNote, updateNote, deleteNote,
+    uploadDocument, renameDocument, deleteDocument, getDocumentUrl, showToast, mutating,
   } = useCardigan();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
@@ -44,6 +47,9 @@ export function GroupDetail({ group, onClose }) {
   const [occurrence, setOccurrence] = useState(null);
   const [confirm, setConfirm] = useState(null); // { type, member? }
   const [editingNote, setEditingNote] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Always read the live group from context so edits reflect immediately.
   const g = groups.find(x => x.id === group.id) || group;
@@ -61,16 +67,42 @@ export function GroupDetail({ group, onClose }) {
     { k: "integrantes", l: t("groups.tabIntegrantes") },
     { k: "sesiones", l: t("groups.tabSesiones") },
     { k: "finanzas", l: t("groups.tabFinanzas") },
-    { k: "notas", l: t("nav.notes") },
+    { k: "archivo", l: t("nav.archivo") },
   ];
 
   const groupNotes = (notes || [])
     .filter(n => n.group_id === g.id && !n._deleted_at)
     .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  const groupDocs = (documents || [])
+    .filter(d => d.group_id === g.id)
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
   const newGroupNote = async () => {
     const n = await createNote({ groupId: g.id, title: "", content: "" });
     if (n) setEditingNote(n);
+  };
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  const triggerUpload = useCallback(() => fileInputRef.current?.click(), []);
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
+    if (files.length !== valid.length) showToast?.(t("docs.sizeLimit", { names: "", count: files.length - valid.length }), "warning");
+    if (valid.length === 0) return;
+    setUploading(true);
+    let ok = 0;
+    for (const file of valid) {
+      const res = await uploadDocument({ groupId: g.id, file, name: file.name });
+      if (res) ok++;
+    }
+    setUploading(false);
+    if (ok > 0) showToast?.(ok === 1 ? t("docs.uploadSuccessOne") : t("docs.uploadSuccessMany", { count: ok }), "success");
+    else showToast?.(t("docs.uploadFailedOne"), "error");
+  };
+  const openDoc = async (doc) => {
+    const url = await getDocumentUrl(doc.file_path);
+    if (url) setViewingDoc({ doc, url });
   };
 
   const existingActiveIds = groupMembers.filter(m => m.group_id === g.id && m.left_at == null).map(m => m.patient_id);
@@ -232,18 +264,20 @@ export function GroupDetail({ group, onClose }) {
             </div>
           )}
 
-          {/* ── Notas ── */}
-          {tab === "notas" && (
+          {/* ── Archivo (Notas + Documentos) ── */}
+          {tab === "archivo" && (
             <div>
+              {/* Notas */}
+              <div className="section-sub" style={{ textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>{t("nav.notes")} · {groupNotes.length}</div>
               {!readOnly && (
-                <button className="btn btn-primary-teal" style={{ width:"100%", marginBottom:14 }} onClick={newGroupNote}>
+                <button className="btn btn-primary-teal" style={{ width:"100%", marginBottom:12 }} onClick={newGroupNote}>
                   <IconPlus size={16} /> {t("notes.createNote")}
                 </button>
               )}
               {groupNotes.length === 0 ? (
-                <EmptyState kind="notes" title={t("nav.notes")} body="" />
+                <EmptyState kind="notes" compact title={t("notes.noNotes")} body="" />
               ) : (
-                <div className="card">
+                <div className="card" style={{ marginBottom:8 }}>
                   {groupNotes.map((n) => (
                     <button key={n.id} className="row-item btn-tap" style={{ width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer" }}
                       onClick={() => setEditingNote(n)}>
@@ -258,11 +292,33 @@ export function GroupDetail({ group, onClose }) {
                   ))}
                 </div>
               )}
+
+              {/* Documentos */}
+              <div className="section-sub" style={{ textTransform:"uppercase", letterSpacing:"0.06em", margin:"22px 0 10px" }}>{t("expediente.docsSection")} · {groupDocs.length}</div>
+              {!readOnly && (
+                <button className="btn btn-primary" style={{ width:"100%", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+                  onClick={triggerUpload} disabled={uploading}>
+                  <IconUpload size={16} /> {uploading ? t("docs.uploading") : t("docs.upload")}
+                </button>
+              )}
+              <DocumentList
+                documents={groupDocs}
+                sessions={[]}
+                onOpen={openDoc}
+                onRename={renameDocument}
+                onDelete={deleteDocument}
+                emptyMessage={t("docs.noResults")}
+                variant="cards"
+              />
             </div>
           )}
         </div>
       </div>
 
+      <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" style={{ display:"none" }} onChange={handleFileUpload} />
+      {viewingDoc && (
+        <DocumentViewer doc={viewingDoc.doc} url={viewingDoc.url} linkedSession={null} onClose={() => setViewingDoc(null)} />
+      )}
       {editingNote && (
         <NoteEditor
           note={editingNote}

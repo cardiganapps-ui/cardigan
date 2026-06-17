@@ -43,7 +43,7 @@ function isOffline() {
 
 export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
 
-  async function uploadDocument({ patientId, file, sessionId, name, onProgress, kind }) {
+  async function uploadDocument({ patientId, file, sessionId, groupId, name, onProgress, kind }) {
     if (!file) return null;
     // Uploads need network — the presigned URL flow + R2 PUT don't
     // queue cleanly. Surface a clear error rather than silently
@@ -64,7 +64,12 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     // kind=receipt → expense receipts live under _expenses/, never tied to
     // a patient. Default kind=patient preserves the prior signature.
     const docKind = kind === "receipt" ? "receipt" : "patient";
-    const folder = docKind === "receipt" ? "_expenses" : (patientId || "_general");
+    // Group docs live under a _groups/<id>/ prefix (validatePath only
+    // enforces the ${userId}/ prefix, so any subfolder is fine); patient
+    // docs keep their patient-id folder; receipts under _expenses/.
+    const folder = docKind === "receipt"
+      ? "_expenses"
+      : (patientId || (groupId ? `_groups/${groupId}` : "_general"));
     const path = `${userId}/${folder}/${Date.now()}.${ext}`;
 
     // Get presigned upload URL from API
@@ -106,6 +111,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
       user_id: userId,
       patient_id: docKind === "receipt" ? null : (patientId || null),
       session_id: docKind === "receipt" ? null : (sessionId || null),
+      group_id: docKind === "receipt" ? null : (groupId || null),
       name: name || uploadFile.name,
       file_path: path,
       file_type: uploadFile.type || "application/octet-stream",
