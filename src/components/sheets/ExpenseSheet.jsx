@@ -307,14 +307,14 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         </div>
         <form onSubmit={submit} style={{ padding: "0 20px 0" }}>
           <div>
-            {/* Amount — autofocused so the keyboard pops on open and the
-                3-tap quick-capture path works without an extra tap. */}
+            {/* Amount — the user taps the field to start entering; we don't
+                auto-pop the keyboard on open (it reads as intrusive and rushed). */}
             <div className="input-group">
               <label className="input-label">
                 {t("gastos.amount")}
                 <span style={{ color: "var(--red)", marginLeft: 4 }} aria-hidden>*</span>
               </label>
-              <MoneyInput min="1" step="1" required autoFocus value={amount}
+              <MoneyInput min="1" step="1" required value={amount}
                 onChange={(e) => setAmount(e.target.value)} />
             </div>
 

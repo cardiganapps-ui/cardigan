@@ -126,7 +126,7 @@ export function NewGroupSheet({ onClose }) {
             <div>
               <div className="input-group">
                 <label className="input-label">{t("groups.name")}<span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span></label>
-                <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder={t("groups.namePlaceholder")} autoFocus
+                <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder={t("groups.namePlaceholder")}
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); goToMembers(); } }} />
               </div>
 
@@ -204,7 +204,7 @@ export function NewGroupSheet({ onClose }) {
           <div style={{ padding:"0 20px 0" }}>
             <div className="search-bar" style={{ marginBottom:10 }}>
               <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>
-              <input type="search" autoFocus placeholder={t("patients.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
+              <input type="search" placeholder={t("patients.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <SegmentedControl
               items={[{ k: "active", l: t("patients.active") }, { k: "all", l: t("groups.allFilter") }]}

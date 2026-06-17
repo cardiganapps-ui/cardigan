@@ -186,7 +186,6 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
                 max={Math.min(MAX_AMOUNT, Math.round(Number(amountDue) || MAX_AMOUNT))}
                 step="1"
                 style={{ paddingLeft: 28, fontSize: "var(--text-md)", fontWeight: 700 }}
-                autoFocus
               />
             </div>
           </div>
