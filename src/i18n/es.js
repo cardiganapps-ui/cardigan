@@ -1212,6 +1212,7 @@ export default {
     resumen: "Resumen",
     sesiones: "{session.P}",
     notas: "Notas",
+    noGroupsBody: "Este {client.s} no pertenece a ningún grupo todavía.",
     docs: "Docs",
     archivo: "Archivo",
     notasSection: "Notas",

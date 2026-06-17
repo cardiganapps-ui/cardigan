@@ -5,13 +5,15 @@ import { getClientColor } from "../data/seedData";
 import { SESSION_STATUS } from "../data/constants";
 
 /* Consolidated group occurrence tile for Agenda / Home. One row per
-   occurrence (N members collapsed into a single tile) showing the group
-   name, time window, member count, and a small avatar cluster. Reuses the
-   .session-row shell + rail-{status} accent. Tap opens the occurrence sheet. */
+   occurrence (N members collapsed into a single tile) showing a single
+   avatar with the GROUP initials, the group name (with the group glyph),
+   time window, and member count. Reuses the .session-row shell +
+   rail-{status} accent. Tap opens the occurrence sheet. */
 export function GroupSessionRow({ occ, onClick }) {
   const { t } = useT();
   const g = occ.group;
   const colorIdx = g?.colorIdx ?? g?.color_idx ?? 0;
+  const groupInitials = (g?.name || "?").slice(0, 2).toUpperCase();
   const rail = occ.status === SESSION_STATUS.CANCELLED ? "cancelled"
     : occ.status === SESSION_STATUS.COMPLETED ? "completed" : "scheduled";
   const endTime = (() => {
@@ -20,17 +22,10 @@ export function GroupSessionRow({ occ, onClick }) {
     end.setMinutes(end.getMinutes() + (occ.duration || 60));
     return `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
   })();
-  const cluster = occ.attendees.slice(0, 3);
 
   return (
     <div className={`row-item session-row rail-${rail}`} onClick={onClick} style={{ cursor:"pointer" }}>
-      <span className="avatar-cluster" aria-hidden style={{ display:"inline-flex" }}>
-        {cluster.map((a, i) => (
-          <span key={a.id} style={{ marginLeft: i === 0 ? 0 : -12, zIndex: cluster.length - i, borderRadius:"var(--radius-pill)", boxShadow:"0 0 0 2px var(--white)" }}>
-            <Avatar initials={a.initials || "?"} color={getClientColor((a.colorIdx ?? i))} size="sm" />
-          </span>
-        ))}
-      </span>
+      <Avatar initials={groupInitials} color={getClientColor(colorIdx)} size="md" />
       <div className="row-content">
         <div className="row-title" style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
           <span style={{ color:getClientColor(colorIdx), display:"inline-flex" }}><IconUsers size={14} /></span>

@@ -677,6 +677,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // overlay is gone but BottomTabs haven't mounted back yet (which used
   // to show as dark bands on the safe areas in dark mode).
   const [localHideFab, setHideFab] = useState(false);
+  // Lets a screen hide the bottom-tab pill (e.g. Agenda bulk-select mode,
+  // which puts its own action bar at the bottom). Reset by the screen on exit.
+  const [localHideBottomTabs, setHideBottomTabs] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
   // Activation-complete share sheet — opens when ActivationChecklist
   // crosses 0→all-done. Reuses the user's referral code so the user
@@ -1145,7 +1148,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     || tutorialHidesFab
     || screen === "admin"
     || screen === "privacy";
-  const hideBottomTabs = screen === "admin";
+  const hideBottomTabs = screen === "admin" || localHideBottomTabs;
   const notifications = useNotifications(demo ? null : user);
 
   // Welcome-to-Pro prompt: fires once for real trial users (not
@@ -1698,7 +1701,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     profession,
     accentTheme,
     setProfessionLocal: userProfile.setProfessionLocal,
-    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, setHideFab, setScreen,
+    user, userName, userInitial, openRecordPaymentModal, openEditPaymentModal, openRecordExpenseModal, openEditExpenseModal, openRecurringExpenseSheet, setHideFab, setHideBottomTabs, setScreen,
     isAdminUser: admin, // surfaced to CommandPalette for admin-only commands
     navigate, pushLayer, popLayer, removeLayer, online,
     screen, drawerOpen, setDrawerOpen, tutorial, theme, notifications, showSuccess, showToast,

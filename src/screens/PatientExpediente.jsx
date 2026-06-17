@@ -4,7 +4,7 @@ import { shortDateToISO, todayISO, isoToShortDateWithYear } from "../utils/dates
 import { phoneHref, emailHref, phoneDigits } from "../utils/contact";
 import { isNative } from "../lib/platform";
 import { launchUrl } from "../lib/nativeBrowser";
-import { IconClipboard, IconCalendar, IconUser, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconLink, IconCheck } from "../components/Icons";
+import { IconClipboard, IconCalendar, IconUser, IconUsers, IconDollar, IconUpload, IconChevron, IconPhone, IconMail, IconTrendingUp, IconLink, IconCheck } from "../components/Icons";
 import { InvitePatientSheet } from "../components/sheets/InvitePatientSheet";
 import { NoteEditor } from "../components/NoteEditor";
 import { SessionSheet } from "../components/SessionSheet";
@@ -24,6 +24,7 @@ import { ResumenTab } from "./expediente/ResumenTab";
 import { SesionesTab } from "./expediente/SesionesTab";
 import { FinanzasTab } from "./expediente/FinanzasTab";
 import { ArchivoTab } from "./expediente/ArchivoTab";
+import { GruposTab } from "./expediente/GruposTab";
 import { MedicionesTab } from "./expediente/MedicionesTab";
 import { usesAnthropometrics } from "../data/constants";
 
@@ -36,7 +37,13 @@ export function PatientExpediente({
 }) {
   const inline = layout === "inline";
   const { t } = useT();
-  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession } = useCardigan();
+  const { onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, deletePayment, readOnly, showToast, profession, groupMembers } = useCardigan();
+  // The Grupos tab only appears when this patient actually belongs to a group
+  // (keeps the tab bar lean for individual-only patients).
+  const patientGroupCount = useMemo(
+    () => (groupMembers || []).filter(m => m.patient_id === patient.id && m.left_at == null).length,
+    [groupMembers, patient.id]
+  );
   const showMedicionesTab = usesAnthropometrics(profession);
 
   // ── Enter/close animation state ──
@@ -361,6 +368,7 @@ export function PatientExpediente({
     ...(showMedicionesTab ? [{ k: "mediciones", l: t("measurements.tabLabel"), Icon: IconTrendingUp }] : []),
     { k: "finanzas", l: t("finances.payments"), Icon: IconDollar },
     { k: "archivo", l: t("expediente.archivo"), Icon: IconClipboard },
+    ...(patientGroupCount > 0 ? [{ k: "grupos", l: t("groups.title"), Icon: IconUsers }] : []),
   ];
 
   // ── Horizontal swipe between tabs ──
@@ -777,6 +785,8 @@ export function PatientExpediente({
             renameDocument={renameDocument} tagDocumentSession={tagDocumentSession} deleteDocument={deleteDocument}
           />
         )}
+
+        {tab === "grupos" && <GruposTab patient={patient} />}
         </div>
           );
         })()}

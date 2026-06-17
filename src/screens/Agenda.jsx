@@ -1118,7 +1118,7 @@ function MonthView({ onSelectSession, selectedDate, setSelectedDate, upcomingSes
 
 /* ── AGENDA ROOT ── */
 export function Agenda() {
-  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, rescheduleGroupOccurrence, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, user } = useCardigan();
+  const { upcomingSessions, patients, groups, createSession, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, rescheduleGroupOccurrence, updateSessionModality, updateSessionRate, updateCancelReason, notes, createNote, updateNote, deleteNote, mutating, consumeAgendaView, readOnly, showSuccess, showToast, requestFabAction, setHideFab, setHideBottomTabs, user } = useCardigan();
   const groupsById = useMemo(() => new Map((groups || []).map(g => [g.id, g])), [groups]);
   const { t } = useT();
   const { isTabletSplit } = useViewport();
@@ -1188,6 +1188,14 @@ export function Agenda() {
   useEffect(() => {
     if (selectionMode && (view !== "day" || readOnly)) exitSelection();
   }, [view, readOnly, selectionMode, exitSelection]);
+  // Selection mode owns the bottom of the screen with the BulkActionsBar, so
+  // hide the FAB + bottom-tab pill (they'd overlap the bar and bury its exit
+  // button). Restored on exit / unmount.
+  useEffect(() => {
+    setHideFab?.(selectionMode);
+    setHideBottomTabs?.(selectionMode);
+    return () => { setHideFab?.(false); setHideBottomTabs?.(false); };
+  }, [selectionMode, setHideFab, setHideBottomTabs]);
   // "reschedule" when the sheet was opened via a long-press on a week
   // event (mobile drag-reschedule replacement); cleared on close. Null
   // for all other entry points.
