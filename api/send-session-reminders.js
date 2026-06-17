@@ -7,6 +7,7 @@ import {
   TERMINAL_PUSH_STATUSES,
 } from "./_push.js";
 import { fcmConfigured, sendFCM } from "./_fcm.js";
+import { apnsConfigured, sendAPNs } from "./_apns.js";
 import { withSentry } from "./_sentry.js";
 import { getFlag } from "./_flags.js";
 import { sendTemplate, toE164MX } from "./_whatsapp.js";
@@ -318,20 +319,23 @@ async function handler(req, res) {
       // 7b. Native push (FCM for Android, FCM-via-APNs for iOS). Skipped
       // entirely when FCM_SERVICE_ACCOUNT_JSON isn't configured so the
       // cron keeps delivering web push even before Firebase is set up.
-      if (fcmConfigured()) {
+      // iOS → direct APNs; Android → FCM. Each gateway is independent, so a
+      // user with only iOS still gets reminders even if FCM isn't set up.
+      const doIos = apnsConfigured();
+      const doAndroid = fcmConfigured();
+      if (doIos || doAndroid) {
         for (const [platform, platformSubs, platformSessions] of [
           ["ios", iosSubs, newIosSessions],
           ["android", androidSubs, newAndroidSessions],
         ]) {
           if (platformSubs.length === 0 || platformSessions.length === 0) continue;
+          if (platform === "ios" ? !doIos : !doAndroid) continue;
           for (const unit of toUnits(platformSessions)) {
             const payload = payloadForUnit(unit);
             for (const sub of platformSubs) {
-              const result = await sendFCM({
-                token: sub.endpoint,
-                payload,
-                platform,
-              });
+              const result = platform === "ios"
+                ? await sendAPNs({ token: sub.endpoint, payload })
+                : await sendFCM({ token: sub.endpoint, payload, platform });
               if (!result.ok && result.terminal) {
                 await supabase
                   .from("push_subscriptions")

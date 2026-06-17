@@ -6,6 +6,7 @@
 
 import { getServiceClient, sendPush, TERMINAL_PUSH_STATUSES } from "./_push.js";
 import { fcmConfigured, sendFCM } from "./_fcm.js";
+import { apnsConfigured, sendAPNs } from "./_apns.js";
 import { withSentry } from "./_sentry.js";
 import { rateLimit } from "./_ratelimit.js";
 
@@ -65,11 +66,17 @@ async function handler(req, res) {
       // a clear error in the response, which is exactly what the user
       // testing the wiring wants to see.
       if (sub.platform === "ios" || sub.platform === "android") {
-        if (!fcmConfigured()) {
-          results.push({ host: sub.platform, ok: false, terminal: false, message: "fcm-not-configured" });
+        // iOS → direct APNs; Android → FCM. Each reports its own
+        // "not-configured" so the user testing the wiring sees exactly
+        // which gateway needs setup.
+        const isIos = sub.platform === "ios";
+        if (isIos ? !apnsConfigured() : !fcmConfigured()) {
+          results.push({ host: sub.platform, ok: false, terminal: false, message: isIos ? "apns-not-configured" : "fcm-not-configured" });
           continue;
         }
-        const r = await sendFCM({ token: sub.endpoint, payload, platform: sub.platform });
+        const r = isIos
+          ? await sendAPNs({ token: sub.endpoint, payload })
+          : await sendFCM({ token: sub.endpoint, payload, platform: sub.platform });
         if (r.ok) {
           sent++;
           results.push({ host: sub.platform, ok: true });
