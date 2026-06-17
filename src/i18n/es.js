@@ -429,6 +429,7 @@ export default {
     completed: "Completada",
     cancelled: "Cancelada",
     charged: "Cancelada (cobrada)",
+    chargedShort: "Cobrada",
     schedule: "Agendar {session.s}",
     scheduleFirst: "Agendar primera {session.s}",
     scheduling: "Agendando...",

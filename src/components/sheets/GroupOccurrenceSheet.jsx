@@ -11,11 +11,14 @@ import { useLayer } from "../../hooks/useLayer";
 import { getClientColor } from "../../data/seedData";
 import { SESSION_STATUS } from "../../data/constants";
 
+// Same status vocabulary + colors as the individual SessionSheet (the
+// canonical sessions.* labels and the .status-* color system), so a group
+// occurrence reads and works like any other session.
 const STATUS_OPTS = [
-  { k: SESSION_STATUS.SCHEDULED, l: "Programada", c: "var(--charcoal-lt)", bg: "var(--cream-dark)" },
-  { k: SESSION_STATUS.COMPLETED, l: "Asistió",    c: "var(--green)",       bg: "var(--green-bg)" },
-  { k: SESSION_STATUS.CANCELLED, l: "Faltó",      c: "var(--red)",         bg: "var(--red-bg)" },
-  { k: SESSION_STATUS.CHARGED,   l: "Cobrar",     c: "var(--amber)",       bg: "var(--amber-bg)" },
+  { k: SESSION_STATUS.SCHEDULED, labelKey: "sessions.scheduled",    c: "var(--teal-dark)",    bg: "var(--teal-pale)" },
+  { k: SESSION_STATUS.COMPLETED, labelKey: "sessions.completed",    c: "var(--green)",        bg: "var(--green-bg)" },
+  { k: SESSION_STATUS.CANCELLED, labelKey: "sessions.cancelled",    c: "var(--charcoal-lt)",  bg: "var(--cream-dark)" },
+  { k: SESSION_STATUS.CHARGED,   labelKey: "sessions.chargedShort", c: "var(--amber)",        bg: "var(--amber-bg)" },
 ];
 
 /* One group occurrence: per-member attendance toggles (each wired to the
@@ -87,7 +90,7 @@ export function GroupOccurrenceSheet({ group, occurrence, onClose }) {
                             border: on ? `2px solid ${opt.c}` : "1.5px solid var(--border)",
                             background: on ? opt.bg : "var(--white)", color: on ? opt.c : "var(--charcoal-lt)",
                             cursor:"pointer", fontFamily:"var(--font)" }}>
-                          {opt.l}
+                          {t(opt.labelKey)}
                         </button>
                       );
                     })}
