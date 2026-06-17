@@ -83,12 +83,13 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return crypto.encrypt(plaintext || "");
   }
 
-  async function createNote({ patientId, sessionId, title, content }) {
+  async function createNote({ patientId, sessionId, groupId, title, content }) {
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
     const row = {
       user_id: userId, patient_id: patientId || null,
       session_id: sessionId || null,
+      group_id: groupId || null,
       title: title || "", content: storedContent,
       encrypted,
     };
@@ -196,9 +197,10 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  async function updateNoteLink(id, { patientId, sessionId }) {
+  async function updateNoteLink(id, { patientId, sessionId, groupId }) {
     setMutationError("");
     const patch = { patient_id: patientId || null, session_id: sessionId || null };
+    if (groupId !== undefined) patch.group_id = groupId || null;
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updated_at: nowIso } : n));
     if (typeof id === "string" && id.startsWith("temp-")) return true;

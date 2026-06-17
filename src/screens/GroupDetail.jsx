@@ -7,6 +7,7 @@ import { EmptyState } from "../components/EmptyState";
 import { MembersPickerSheet } from "../components/sheets/MembersPickerSheet";
 import { GroupOccurrenceSheet } from "../components/sheets/GroupOccurrenceSheet";
 import { GroupScheduleSheet } from "../components/sheets/GroupScheduleSheet";
+import { NoteEditor } from "../components/NoteEditor";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
@@ -27,8 +28,8 @@ import { haptic } from "../utils/haptics";
 export function GroupDetail({ group, onClose }) {
   const { t } = useT();
   const {
-    groups, groupMembers, patients, upcomingSessions, readOnly,
-    deleteGroup, endGroup, removeMember, mutating,
+    groups, groupMembers, patients, upcomingSessions, notes, readOnly,
+    deleteGroup, endGroup, removeMember, createNote, updateNote, deleteNote, mutating,
   } = useCardigan();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
@@ -42,6 +43,7 @@ export function GroupDetail({ group, onClose }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [occurrence, setOccurrence] = useState(null);
   const [confirm, setConfirm] = useState(null); // { type, member? }
+  const [editingNote, setEditingNote] = useState(null);
 
   // Always read the live group from context so edits reflect immediately.
   const g = groups.find(x => x.id === group.id) || group;
@@ -59,7 +61,17 @@ export function GroupDetail({ group, onClose }) {
     { k: "integrantes", l: t("groups.tabIntegrantes") },
     { k: "sesiones", l: t("groups.tabSesiones") },
     { k: "finanzas", l: t("groups.tabFinanzas") },
+    { k: "notas", l: t("nav.notes") },
   ];
+
+  const groupNotes = (notes || [])
+    .filter(n => n.group_id === g.id && !n._deleted_at)
+    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+
+  const newGroupNote = async () => {
+    const n = await createNote({ groupId: g.id, title: "", content: "" });
+    if (n) setEditingNote(n);
+  };
 
   const existingActiveIds = groupMembers.filter(m => m.group_id === g.id && m.left_at == null).map(m => m.patient_id);
 
@@ -219,9 +231,46 @@ export function GroupDetail({ group, onClose }) {
               </div>
             </div>
           )}
+
+          {/* ── Notas ── */}
+          {tab === "notas" && (
+            <div>
+              {!readOnly && (
+                <button className="btn btn-primary-teal" style={{ width:"100%", marginBottom:14 }} onClick={newGroupNote}>
+                  <IconPlus size={16} /> {t("notes.createNote")}
+                </button>
+              )}
+              {groupNotes.length === 0 ? (
+                <EmptyState kind="notes" title={t("nav.notes")} body="" />
+              ) : (
+                <div className="card">
+                  {groupNotes.map((n) => (
+                    <button key={n.id} className="row-item btn-tap" style={{ width:"100%", border:"none", background:"transparent", textAlign:"left", cursor:"pointer" }}
+                      onClick={() => setEditingNote(n)}>
+                      <div className="row-content">
+                        <div className="row-title">{n.title?.trim() || "Sin título"}</div>
+                        <div className="row-sub" style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                          {n.encrypted ? "•••" : (n.content || "").replace(/\s+/g, " ").slice(0, 80)}
+                        </div>
+                      </div>
+                      <span className="row-chevron" aria-hidden><IconChevronRight size={16} /></span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
+      {editingNote && (
+        <NoteEditor
+          note={editingNote}
+          onSave={async ({ title, content }) => await updateNote(editingNote.id, { title, content })}
+          onDelete={async () => { await deleteNote(editingNote.id); setEditingNote(null); }}
+          onClose={() => setEditingNote(null)}
+        />
+      )}
       {pickerOpen && <MembersPickerSheet groupId={g.id} existingPatientIds={existingActiveIds} onClose={() => setPickerOpen(false)} />}
       {scheduleOpen && <GroupScheduleSheet group={g} onClose={() => setScheduleOpen(false)} />}
       {occurrence && <GroupOccurrenceSheet group={g} occurrence={occurrence} onClose={() => setOccurrence(null)} />}
