@@ -298,6 +298,32 @@ export function useAuth() {
     return {};
   }
 
+  /* Passwordless sign-in with a passkey (WebAuthn). Supabase drives the
+     full ceremony internally via navigator.credentials and uses
+     discoverable credentials, so we pass nothing — the authenticator's
+     own UI lets the user pick which account/passkey to use. On success
+     the onAuthStateChange listener above picks up the new session
+     (SIGNED_IN), same as every other entry point, so there's nothing to
+     wire here beyond surfacing an error. A dismissed system sheet throws
+     NotAllowedError / AbortError — treat that as a silent cancel, not a
+     red error on the auth screen. Gated to web by the caller (the button
+     only renders when passkeysAvailable()). */
+  async function signInWithPasskey() {
+    try {
+      const { error } = await supabase.auth.signInWithPasskey();
+      if (error) {
+        if (/NotAllowed|AbortError|cancel/i.test(error.name || error.message || "")) {
+          return {}; // user dismissed the sheet — silent
+        }
+        return { error: error.message };
+      }
+      return {};
+    } catch (e) {
+      if (/NotAllowed|AbortError|cancel/i.test(e?.name || e?.message || "")) return {};
+      return { error: e?.message };
+    }
+  }
+
   /* Set a password during recovery / invite — same code path, different
      entry point. Supabase auto-signed the user in with the recovery /
      invite token so this call succeeds without re-auth. After it lands
@@ -338,5 +364,5 @@ export function useAuth() {
     return { ok: true };
   }
 
-  return { user, loading, recoveryMode, inviteMode, signUp, signIn, signOut, signInWithProvider, signInWithMagicLink, refreshUser, setNewPassword };
+  return { user, loading, recoveryMode, inviteMode, signUp, signIn, signOut, signInWithProvider, signInWithMagicLink, signInWithPasskey, refreshUser, setNewPassword };
 }

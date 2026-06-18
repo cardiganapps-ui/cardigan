@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { isNative, isIOS } from "./lib/platform";
+import { supabase } from "./supabaseClient";
+import { passkeysAvailable } from "./config/passkeys";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 // Conditionally rendered after first paint by various gates (one-time
 // prompts, encryption unlock, post-subscribe celebration, etc.). Lazy
@@ -21,6 +23,7 @@ const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet.jsx").th
 const CardiSheet = lazy(() => import("./components/sheets/CardiSheet.jsx").then(m => ({ default: m.CardiSheet })));
 const InboxSheet = lazy(() => import("./components/sheets/InboxSheet.jsx").then(m => ({ default: m.InboxSheet })));
 const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt.jsx"));
+const PasskeyEnrollPrompt = lazy(() => import("./components/PasskeyEnrollPrompt.jsx"));
 // Lazy because it pulls a small confetti renderer + a celebration
 // modal that 99% of users see once or never. No reason to bundle it
 // in the main chunk.
@@ -152,7 +155,7 @@ const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 // splash instead of a bare "Cargando" line — see components/AuthSplash.
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signInWithPasskey, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button AND by the ?ref=<code> referral-link
@@ -342,7 +345,7 @@ function CardiganApp() {
     }
     return (
       <Suspense fallback={<AuthSplash />}>
-        <AuthScreen onSignIn={signIn} onSignUp={signUp} onMagicLink={signInWithMagicLink} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />
+        <AuthScreen onSignIn={signIn} onSignUp={signUp} onMagicLink={signInWithMagicLink} onPasskey={signInWithPasskey} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />
       </Suspense>
     );
   }
@@ -1261,6 +1264,68 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const [trialReminderOpen, setTrialReminderOpen] = useState(false);
   const [trialReminderDays, setTrialReminderDays] = useState(null);
   const [trialReminderPaymentOpen, setTrialReminderPaymentOpen] = useState(false);
+
+  // ── Post-login passkey enrollment nudge ──
+  // Offered once per user, only when passkeys are available (web + flag
+  // on; never native), and only if they don't already have one. The
+  // dismissal/enrolled flag is per-user localStorage so it never nags a
+  // second time. Deferred ~1.6s so it doesn't collide with first paint
+  // or stack on top of the trial reminder during that frame.
+  const [passkeyPromptOpen, setPasskeyPromptOpen] = useState(false);
+  const [passkeyCreating, setPasskeyCreating] = useState(false);
+  const passkeyPromptKey = user?.id ? `cardigan.passkeyPrompt.done.${user.id}` : null;
+  useEffect(() => {
+    if (demo || viewAsUserId) return;
+    if (!user?.id) return;
+    if (!passkeysAvailable()) return;
+    let done = false;
+    try { done = localStorage.getItem(passkeyPromptKey) === "1"; } catch { /* private mode */ }
+    if (done) return;
+    let cancelled = false;
+    let timer = null;
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.passkey.list();
+        if (cancelled || error) return;
+        const list = Array.isArray(data) ? data : (data?.passkeys || []);
+        if (list.length > 0) {
+          // Already has a passkey — never prompt again.
+          try { localStorage.setItem(passkeyPromptKey, "1"); } catch { /* private mode */ }
+          return;
+        }
+        timer = setTimeout(() => { if (!cancelled) setPasskeyPromptOpen(true); }, 1600);
+      } catch { /* beta API hiccup — just skip the nudge */ }
+    })();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [user?.id, demo, viewAsUserId, passkeyPromptKey]);
+
+  const dismissPasskeyPrompt = useCallback(() => {
+    setPasskeyPromptOpen(false);
+    try { if (passkeyPromptKey) localStorage.setItem(passkeyPromptKey, "1"); } catch { /* private mode */ }
+  }, [passkeyPromptKey]);
+
+  const createPasskeyFromPrompt = useCallback(async () => {
+    if (passkeyCreating) return;
+    setPasskeyCreating(true);
+    try {
+      const { error } = await supabase.auth.registerPasskey();
+      if (!error) {
+        showSuccess(t("settings.passkeyPromptDone"));
+        setPasskeyPromptOpen(false);
+        try { if (passkeyPromptKey) localStorage.setItem(passkeyPromptKey, "1"); } catch { /* private mode */ }
+      } else if (!/NotAllowed|AbortError|cancel/i.test(error.name || error.message || "")) {
+        // Real failure (not a user cancel) — surface a toast but keep the
+        // prompt open so they can retry.
+        showToast(t("settings.passkeyAddError"), "error");
+      }
+    } catch (e) {
+      if (!/NotAllowed|AbortError|cancel/i.test(e?.name || e?.message || "")) {
+        showToast(t("settings.passkeyAddError"), "error");
+      }
+    } finally {
+      setPasskeyCreating(false);
+    }
+  }, [passkeyCreating, passkeyPromptKey, showSuccess, showToast, t]);
   useEffect(() => {
     if (demo || viewAsUserId) return;
     if (!user?.id) return;
@@ -1991,6 +2056,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             daysLeft={trialReminderDays}
             onSubscribe={subscribeFromTrialReminder}
             onDismiss={() => setTrialReminderOpen(false)}
+          />
+        )}
+        {passkeyPromptOpen && (
+          <PasskeyEnrollPrompt
+            open={passkeyPromptOpen}
+            creating={passkeyCreating}
+            onCreate={createPasskeyFromPrompt}
+            onDismiss={dismissPasskeyPrompt}
           />
         )}
         {trialReminderPaymentOpen && (

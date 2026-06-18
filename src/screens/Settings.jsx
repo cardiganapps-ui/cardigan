@@ -40,6 +40,7 @@ import { Avatar } from "../components/Avatar";
 import { AvatarPicker } from "../components/AvatarPicker";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
 import { useMfa } from "../hooks/useMfa";
+import { usePasskeys } from "../hooks/usePasskeys";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { Expando } from "../components/Expando";
@@ -189,6 +190,11 @@ export function Settings({ user, signOut, refreshUser }) {
   const showEncryptionSetup = isClinicalProfession(profession);
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
   const mfa = useMfa();
+  // Passkeys (WebAuthn). `supported` is false on native + when the build
+  // flag is off, so the whole row stays hidden there. Enrollment + delete
+  // run their own WebAuthn ceremonies via the hook.
+  const passkeys = usePasskeys();
+  const [passkeyRemoveId, setPasskeyRemoveId] = useState(null);
   // Captcha state for the password-reset flow. Supabase enforces a
   // captcha token on resetPasswordForEmail, so the in-app "Cambiar
   // contraseña" affordance has to render its own Turnstile widget.
@@ -1020,6 +1026,23 @@ export function Settings({ user, signOut, refreshUser }) {
               </div>
               <IconChevron />
             </div>
+            {passkeys.supported && (
+              <div className="settings-row" style={{ cursor: passkeys.loading ? "default" : "pointer" }}
+                onClick={() => { if (!passkeys.loading) setActiveSheet("passkeys"); }}>
+                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
+                <div style={{ flex:1 }}>
+                  <div className="settings-row-title">{t("settings.passkeyTitle")}</div>
+                  <div className="settings-row-sub">
+                    {passkeys.loading
+                      ? "…"
+                      : passkeys.passkeys.length > 0
+                        ? t("settings.passkeyRowCount", { count: passkeys.passkeys.length })
+                        : t("settings.passkeyRowNone")}
+                  </div>
+                </div>
+                <IconChevron />
+              </div>
+            )}
             {noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
               <div className="settings-row" onClick={() => {
                 // Existing-encryption users (status !== "disabled") can
@@ -2432,6 +2455,82 @@ export function Settings({ user, signOut, refreshUser }) {
         </div>
       )}
 
+      {/* ── PASSKEYS SHEET ──
+         Lists the user's WebAuthn passkeys and lets them add or remove
+         one. registerPasskey()/delete() each trigger the platform's own
+         passkey UI (Face ID / Touch ID), so there's no code to enter —
+         the hook does the ceremony. */}
+      {activeSheet === "passkeys" && (
+        <div className="sheet-overlay" onClick={() => !passkeys.busy && setActiveSheet(null)}>
+          <div ref={setSheetPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...sheetPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("settings.passkeySheetTitle")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => !passkeys.busy && setActiveSheet(null)} disabled={passkeys.busy}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              <div style={{ fontSize: 14, color: "var(--charcoal-md)", lineHeight: 1.55, marginBottom: 16 }}>
+                {t("settings.passkeySheetIntro")}
+              </div>
+              {passkeys.error && (
+                <div role="alert" aria-live="assertive" style={{ fontSize: 13, color: "var(--red)", marginBottom: 12 }}>{passkeys.error}</div>
+              )}
+              {passkeys.loading ? (
+                <div style={{ fontSize: 13, color: "var(--charcoal-xl)", padding: "8px 0 16px" }}>…</div>
+              ) : passkeys.passkeys.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--charcoal-xl)", lineHeight: 1.5, padding: "4px 0 16px" }}>
+                  {t("settings.passkeyEmpty")}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                  {passkeys.passkeys.map((pk) => (
+                    <div key={pk.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", border:"1px solid var(--border-lt)", borderRadius:"var(--radius)" }}>
+                      <div style={{ color:"var(--teal-dark)", display:"inline-flex", flexShrink:0 }}><IconKey size={18} /></div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:"var(--font-d)", fontWeight:700, fontSize:14, color:"var(--charcoal)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                          {pk.friendly_name || t("settings.passkeyTitle")}
+                        </div>
+                        {pk.created_at && (
+                          <div style={{ fontSize:12, color:"var(--charcoal-xl)" }}>
+                            {t("settings.passkeyCreatedOn", { date: new Date(pk.created_at).toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" }) })}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-tap"
+                        disabled={passkeys.busy}
+                        onClick={() => setPasskeyRemoveId(pk.id)}
+                        style={{ background:"transparent", border:"none", color:"var(--red)", fontSize:13, fontWeight:700, fontFamily:"var(--font)", padding:"6px 8px", cursor:"pointer", flexShrink:0 }}
+                      >
+                        {t("settings.passkeyRemove")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary-teal"
+                  disabled={passkeys.busy}
+                  onClick={async () => {
+                    const ok = await passkeys.register();
+                    if (ok) showToast(t("settings.passkeyPromptDone"), "success");
+                    else if (passkeys.error) showToast(t("settings.passkeyAddError"), "error");
+                  }}
+                >
+                  {passkeys.busy ? t("settings.passkeyAdding") : t("settings.passkeyAdd")}
+                </button>
+                <button type="button" className="btn btn-ghost" disabled={passkeys.busy} onClick={() => setActiveSheet(null)}>
+                  {t("close")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── SIGN OUT EVERYWHERE SHEET ──
          Calls signOut("global") which revokes every refresh token tied
          to this user — kicks them out of every device. Lost-phone
@@ -2585,6 +2684,20 @@ export function Settings({ user, signOut, refreshUser }) {
         destructive
         onConfirm={() => { setConfirmSignOut(false); signOut(); }}
         onCancel={() => setConfirmSignOut(false)}
+      />
+
+      <ConfirmDialog
+        open={!!passkeyRemoveId}
+        title={t("settings.passkeyRemoveConfirmTitle")}
+        body={t("settings.passkeyRemoveConfirmBody")}
+        confirmLabel={t("settings.passkeyRemove")}
+        destructive
+        onConfirm={async () => {
+          const id = passkeyRemoveId;
+          setPasskeyRemoveId(null);
+          await passkeys.remove(id);
+        }}
+        onCancel={() => setPasskeyRemoveId(null)}
       />
 
       <DiagnosticsSheet

@@ -1613,6 +1613,15 @@ button.kpi-card:active {
 .btn-oauth:disabled { opacity: 0.6; cursor: default; }
 .btn-oauth-google { background: var(--white); color: var(--charcoal); }
 .btn-oauth-apple  { background: var(--charcoal); color: var(--white); border-color: var(--charcoal); }
+/* Passkey — the recommended fast path for returning users, so it leads
+   with the brand teal tint (a notch softer than .btn-primary-teal so it
+   doesn't fight the form's main submit). Token-driven → dark mode flips
+   automatically. */
+.btn-oauth-passkey {
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  border-color: color-mix(in srgb, var(--teal) 28%, transparent);
+}
 
 .auth-divider {
   display: flex; align-items: center; gap: 10px;

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
-import { IconX, IconGoogle, IconApple, IconSparkle, IconLink } from "../components/Icons";
+import { IconX, IconGoogle, IconApple, IconSparkle, IconLink, IconKey } from "../components/Icons";
+import { passkeysAvailable } from "../config/passkeys";
 import { PasswordInput } from "../components/PasswordInput";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { TurnstileWidget, TURNSTILE_ENABLED } from "../components/TurnstileWidget";
@@ -179,7 +180,7 @@ function VerifyPendingPanel({ email, onGoToLogin, onCorrectEmail, t }) {
 /* ── Auth form (reused inside sheet) ──
    The landing page is English; the auth form stays in Spanish to match
    the rest of the app, which is Spanish-only per CLAUDE.md. */
-function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, t }) {
+function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, t }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -187,6 +188,12 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [providerBusy, setProviderBusy] = useState(null);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  // Passkey sign-in is offered only on the LOGIN tab, only when the
+  // build flag + WebAuthn support both pass (passkeysAvailable() is
+  // false on native — the WebView can't match the cardigan.mx RP ID),
+  // and only when the parent actually wired a handler.
+  const showPasskey = mode === "login" && !!onPasskey && passkeysAvailable();
   const [message, setMessage] = useState("");
   // Influencer code captured by the /c/:code rewrite in App.jsx and
   // stashed in sessionStorage. Surface a teal banner so the visitor
@@ -246,6 +253,24 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
     if (result?.error) {
       setError(t("auth.providerError"));
       setProviderBusy(null);
+    }
+  };
+
+  // Passkey sign-in. Supabase runs the whole WebAuthn ceremony +
+  // session exchange; on success the auth-state listener unmounts this
+  // form, so we only handle the failure path here. A dismissed system
+  // sheet comes back as a no-op result (handled in useAuth), so no error
+  // flashes when the user simply changes their mind.
+  const handlePasskey = async () => {
+    if (!onPasskey || passkeyBusy) return;
+    setError("");
+    setMessage("");
+    setPasskeyBusy(true);
+    try {
+      const result = await onPasskey();
+      if (result?.error) setError(t("auth.passkeyError"));
+    } finally {
+      setPasskeyBusy(false);
     }
   };
 
@@ -473,29 +498,46 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
           <div style={{ fontSize: 13, color: "var(--charcoal-xl)", lineHeight: 1.5 }}>{t("auth.resetHint")}</div>
         </div>
       )}
-      {mode !== "reset" && onProvider && (
+      {mode !== "reset" && (onProvider || showPasskey) && (
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, marginBottom: 18 }}>
-            {GOOGLE_OAUTH_ENABLED && (
+            {/* Passkey first on the login tab — it's the fastest, most
+                secure path for a returning user (Face ID / Touch ID, no
+                password to type). Discoverable credentials mean we don't
+                even need an email here. */}
+            {showPasskey && (
+              <button
+                type="button"
+                className="btn btn-oauth btn-oauth-passkey"
+                disabled={passkeyBusy || !!providerBusy}
+                onClick={handlePasskey}
+              >
+                <IconKey size={18} />
+                <span>{passkeyBusy ? t("loading") : t("auth.continueWithPasskey")}</span>
+              </button>
+            )}
+            {onProvider && GOOGLE_OAUTH_ENABLED && (
               <button
                 type="button"
                 className="btn btn-oauth btn-oauth-google"
-                disabled={!!providerBusy}
+                disabled={!!providerBusy || passkeyBusy}
                 onClick={() => handleProvider("google")}
               >
                 <IconGoogle size={18} />
                 <span>{t("auth.continueWithGoogle")}</span>
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-oauth btn-oauth-apple"
-              disabled={!!providerBusy}
-              onClick={() => handleProvider("apple")}
-            >
-              <IconApple size={18} />
-              <span>{t("auth.continueWithApple")}</span>
-            </button>
+            {onProvider && (
+              <button
+                type="button"
+                className="btn btn-oauth btn-oauth-apple"
+                disabled={!!providerBusy || passkeyBusy}
+                onClick={() => handleProvider("apple")}
+              >
+                <IconApple size={18} />
+                <span>{t("auth.continueWithApple")}</span>
+              </button>
+            )}
           </div>
           <div className="auth-divider" aria-hidden="true">
             <span>{t("auth.orWithEmail")}</span>
@@ -629,7 +671,7 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
    Thin shell: renders the marketing landing page, and wires the landing
    CTAs to either the auth sheet (signup / sign in) or demo mode (the
    "See how it works" secondary CTA). */
-export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo, autoOpen }) {
+export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, onDemo, autoOpen }) {
   const { t } = useT();
   // Honor autoOpen on FIRST mount as well — not just on subsequent
   // changes. The previous adjust-during-render pattern initialized
@@ -673,6 +715,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
         onSignUp={onSignUp}
         onProvider={onProvider}
         onMagicLink={onMagicLink}
+        onPasskey={onPasskey}
         onDemo={onDemo}
         t={t}
       />
@@ -732,7 +775,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
               <div style={{ fontSize: 13, color: "var(--charcoal-md)", lineHeight: 1.5, marginTop: -4, marginBottom: 16 }}>
                 {t("auth.nativeTagline")}
               </div>
-              <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} onMagicLink={onMagicLink} t={t} />
+              <AuthForm mode={authMode} setMode={setAuthMode} onSignIn={onSignIn} onSignUp={onSignUp} onProvider={onProvider} onMagicLink={onMagicLink} onPasskey={onPasskey} t={t} />
             </div>
           </div>
         </div>
@@ -756,7 +799,7 @@ export function AuthScreen({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo
        iOS native uses the Capacitor plugin), magic link.
      - Footer: discreet "Probar demo" link so App Store reviewers
        still have a one-tap path into the seeded reviewer account. */
-function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo, t }) {
+function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onPasskey, onDemo, t }) {
   const [mode, setMode] = useState("login");
   return (
     <div
@@ -819,6 +862,7 @@ function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onDemo, 
           onSignUp={onSignUp}
           onProvider={onProvider}
           onMagicLink={onMagicLink}
+          onPasskey={onPasskey}
           t={t}
         />
       </div>
