@@ -10,5 +10,8 @@
         ]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["9X58YXW92L.mx.cardigan.app"]
   }
 }

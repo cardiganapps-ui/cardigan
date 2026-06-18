@@ -15,6 +15,7 @@ import { installBodyScrollLock } from './lib/bodyScrollLock'
 import { isNative } from './lib/platform'
 import { initNativeShell } from './lib/nativeBoot'
 import { initNativeDeepLinks } from './lib/nativeDeepLinks'
+import { initNativePasskeys } from './lib/nativePasskeyShim'
 
 /* Defer Sentry init to browser idle. The SDK is dynamic-imported
    inside initSentry() — without the deferral the chunk would still
@@ -42,6 +43,12 @@ initNativeShell()
 // Capacitor-only: route App Links / Universal Links (cardigan.mx/i/<t>,
 // /c/<c>, ?billing=*, etc.) back into the in-app URL parser. No-op on web.
 initNativeDeepLinks()
+
+// Capacitor iOS-only: install the WebAuthn shim so Supabase's passkey
+// calls route to native ASAuthorization (Face ID / Touch ID) against the
+// cardigan.mx passkey. No-op on web + Android. Fire-and-forget — it
+// resolves well before the user could tap a passkey button.
+initNativePasskeys()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

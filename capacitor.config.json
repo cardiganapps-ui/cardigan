@@ -16,6 +16,10 @@
     "PushNotifications": {
       "presentationOptions": ["badge", "sound", "alert"]
     },
+    "CapacitorPasskey": {
+      "origin": "https://cardigan.mx",
+      "domains": ["cardigan.mx"]
+    },
     "SplashScreen": {
       "launchShowDuration": 600,
       "launchAutoHide": true,

@@ -30,6 +30,14 @@
   <key>com.apple.developer.associated-domains</key>
   <array>
     <string>applinks:cardigan.mx</string>
+    <!-- webcredentials enables native passkeys (WebAuthn) for RP ID
+         cardigan.mx via ASAuthorization. Paired with the "webcredentials"
+         block in the apple-app-site-association file and the
+         @capgo/capacitor-passkey shim. The plugin's cap-sync hook also
+         writes this, but apply-ios-config.sh copies this template over
+         the generated project afterwards, so it must be declared here
+         too or it'd be clobbered. -->
+    <string>webcredentials:cardigan.mx</string>
   </array>
 </dict>
 </plist>

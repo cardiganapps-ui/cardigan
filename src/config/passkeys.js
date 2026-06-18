@@ -14,29 +14,37 @@
       VITE_WHATSAPP_UI_ENABLED pattern (live-but-inert until flipped).
 
    2. passkeysSupported() — a runtime WebAuthn capability check. Passkeys
-      need `window.PublicKeyCredential`, and the RP ID (cardigan.mx) only
-      matches the page origin on the real web app — NOT inside the native
-      Capacitor WebView, which loads from capacitor://localhost. Native
-      iOS passkeys are a separate, larger project (see
-      docs/passkeys-native-plan.md); until then we hard-hide passkey UI
-      on native and the native shell keeps Apple Sign In + password.
+      need `window.PublicKeyCredential`. On the web app the page origin
+      IS https://cardigan.mx, so the WebAuthn call matches the RP ID
+      directly. Inside the native iOS WebView the page origin is
+      capacitor://localhost (which can't claim cardigan.mx), so we install
+      the @capgo/capacitor-passkey shim at boot (src/lib/nativePasskeyShim.js)
+      which forwards navigator.credentials to native ASAuthorization
+      against the cardigan.mx passkey — same Supabase credential store as
+      web. See docs/passkeys-native-plan.md.
+
+      Android is deliberately excluded: its WebAuthn clientDataJSON origin
+      is the app signature (android:apk-key-hash:…), which Supabase's
+      strict origin check (webauthn_rp_origins = https://cardigan.mx)
+      rejects. Android keeps password / OAuth.
 
    Flip VITE_PASSKEYS_UI_ENABLED=true in Vercel (Production + Preview)
-   and redeploy once the dashboard config is in place. */
+   and redeploy once the Supabase dashboard config is in place. */
 
-import { isNative } from "../lib/platform";
+import { isNative, isIOS } from "../lib/platform";
 
 export const PASSKEYS_UI_ENABLED =
   import.meta.env.VITE_PASSKEYS_UI_ENABLED === "true";
 
 // Runtime support probe. Cheap + synchronous — safe to call in render.
-// We deliberately gate out native here (not just "no PublicKeyCredential")
-// because the WebView CAN expose PublicKeyCredential yet still fail the
-// RP-ID/origin match against cardigan.mx.
+// WKWebView (iOS 16+) and modern browsers both expose PublicKeyCredential;
+// the native ceremony is made to work by the boot-time shim. Native is
+// limited to iOS (Android origin mismatch, see header).
 export function passkeysSupported() {
   if (typeof window === "undefined") return false;
-  if (isNative()) return false;
-  return typeof window.PublicKeyCredential === "function";
+  if (typeof window.PublicKeyCredential !== "function") return false;
+  if (isNative()) return isIOS();
+  return true;
 }
 
 // Single source of truth the UI calls: both gates must pass.
