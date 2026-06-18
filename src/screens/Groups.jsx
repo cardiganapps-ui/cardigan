@@ -52,7 +52,7 @@ export function Groups() {
   }
 
   return (
-    <div className="page">
+    <div className="page page--reading">
       <div style={{ padding:"16px 16px 10px" }}>
         <div className="search-bar">
           <span style={{ color:"var(--charcoal-xl)" }}><IconSearch size={16} /></span>

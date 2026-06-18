@@ -846,6 +846,16 @@
     padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 960px) / 2));
     padding-right: max(40px, env(safe-area-inset-right), calc((100% - 960px) / 2));
   }
+  /* Single-column list screens (Ajustes, Grupos) don't fill the wide content
+     band — their rows stretch edge-to-edge, leaving big empty horizontal gaps
+     (e.g. a status badge floating far from its row's text). Cap them to a
+     comfortable ~760px reading band, centered. `.page.page--reading` (0,2,0)
+     outranks the plain `.page` band rule at every tier, so it holds at 1440+
+     too without needing to be re-declared. */
+  .page.page--reading {
+    padding-left:  max(40px, env(safe-area-inset-left),  calc((100% - 760px) / 2));
+    padding-right: max(40px, env(safe-area-inset-right), calc((100% - 760px) / 2));
+  }
   .drawer { width: 260px; }
   .drawer-panel { width: 260px; }
   .sheet-panel { max-width: clamp(620px, 60vw, 880px); }
@@ -882,6 +892,12 @@
    switches to the grid here. */
 @media (min-width: 1024px) {
   .home-carousel { display: none !important; }
+}
+/* The two-column dashboard only earns its keep once the rail is wide enough
+   to show full patient names. Between 1024–1179px the rail compresses to
+   ~270px and names ellipsize ("Diego H…"), so hold the split until 1180px;
+   below it the proven 768–1023 single-column stacked layout applies. */
+@media (min-width: 1180px) {
   .home-columns {
     display: grid;
     grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);

@@ -494,11 +494,11 @@ function DayPanel({ panelDate, onSelectSession, upcomingSessions, filterPatientN
 
   return (
     <>
-      <div style={{ padding:"0 16px 4px" }}>
+      <div style={{ padding:"0 16px 4px", maxWidth:760, marginInline:"auto" }}>
         <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", marginBottom:2 }}>{dayName} {dateStr}</div>
         <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginBottom:10 }}>{daySessions.length===0 ? t("sessions.noSessions") : t("sessions.sessionsCount", { count: daySessions.length })}</div>
       </div>
-      <div style={{ padding:"0 16px 12px" }}>
+      <div style={{ padding:"0 16px 12px", maxWidth:760, marginInline:"auto" }}>
         {daySessions.length === 0
           ? filterPatientName
             ? <div className="card" style={{ padding:32, textAlign:"center" }}>

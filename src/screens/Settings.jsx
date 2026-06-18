@@ -798,7 +798,7 @@ export function Settings({ user, signOut, refreshUser }) {
     : t("settings.calendarSummaryNotLinked");
 
   return (
-    <div className="page">
+    <div className="page page--reading">
       <div className="section" style={{ paddingTop:16 }}>
         <div className="card" style={{ padding:16 }}>
           <div className="flex items-center gap-3">
