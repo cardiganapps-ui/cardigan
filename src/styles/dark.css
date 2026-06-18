@@ -247,6 +247,24 @@ html[data-theme="dark"] .bottom-tabs {
     inset 0 -10px 16px -12px rgba(0, 0, 0, 0.40),
     inset 0 -1px 0.5px 0 rgba(255, 255, 255, 0.08);
 }
+/* Dark mode: soften the bottom-edge refraction catch-light so it reads
+   as a faint glint, not a bright bar, on the dark glass. */
+html[data-theme="dark"] .bottom-tabs::after {
+  background:
+    linear-gradient(0deg,
+      rgba(255, 255, 255, 0.10) 0%,
+      rgba(255, 255, 255, 0.02) 7%,
+      transparent 22%);
+}
+/* Dark mode: soften the travelling lens sheen so the glint stays subtle
+   against the darker --teal-pale lens fill. */
+html[data-theme="dark"] .bottom-tab-indicator::after {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.30) 50%,
+    transparent 100%);
+}
 /* Dark mode: soften the shared ::before top rim so it reads as a glint,
    not a white bar, on the dark glass. */
 html[data-theme="dark"] .bottom-tabs::before {

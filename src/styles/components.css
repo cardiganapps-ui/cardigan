@@ -259,9 +259,13 @@
      Showing OVER sheet CTAs is prevented by the
      `:has(.sheet-overlay)` display:none rule below — restoring
      translucency does not reintroduce that bug. */
-  background: color-mix(in srgb, var(--white) 44%, transparent);
-  -webkit-backdrop-filter: saturate(188%) brightness(1.05) blur(28px);
-  backdrop-filter: saturate(188%) brightness(1.05) blur(28px);
+  background: color-mix(in srgb, var(--white) 42%, transparent);
+  /* contrast(1.05) deepens the content showing through so the glass
+     reads as a real refractive lens (Apple's Liquid Glass subtly
+     boosts contrast of what's behind it) rather than a flat frosted
+     wash; the heavier 30px blur + saturation keep labels legible. */
+  -webkit-backdrop-filter: saturate(192%) brightness(1.05) contrast(1.05) blur(30px);
+  backdrop-filter: saturate(192%) brightness(1.05) contrast(1.05) blur(30px);
 
   /* Floating glass pill. The shadow stack is what sells "real glass":
        1-2. layered drop shadow → it floats above the page
@@ -301,6 +305,28 @@
     radial-gradient(135% 78% at 50% -12%,
       rgba(255, 255, 255, 0.20) 0%,
       transparent 56%);
+}
+/* Bottom-edge refraction lens: a soft catch-light hugging the LOWER lip
+   that mirrors the top glint, so light appears to enter the top of the
+   pane and exit the bottom — the read that sells real glass THICKNESS
+   (a flat panel only highlights one edge). Paired with the inset bottom
+   shadow in the box-shadow stack above, it makes the pill feel like a
+   solid lens you could pinch, not a printed-on sticker. Static for the
+   same reason ::before is (no per-frame backdrop recomposite); the
+   living specular lives on the active indicator instead. */
+.bottom-tabs::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(0deg,
+      rgba(255, 255, 255, 0.20) 0%,
+      rgba(255, 255, 255, 0.04) 7%,
+      transparent 22%);
+  mix-blend-mode: screen;
 }
 /* Safari < 17 + Firefox fall back gracefully — solid white if the
    browser can't render the blur. The glass effect is enhancement,
@@ -362,13 +388,19 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
      the bar — the "liquid glass within glass" iOS 26 look. */
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      transparent 55%),
+      rgba(255, 255, 255, 0.30) 0%,
+      rgba(255, 255, 255, 0.04) 48%,
+      transparent 78%),
     var(--teal-pale);
+  /* Lens read: a crisp bright top rim + tinted edge ring, a soft inner
+     glow (the "magnified" centre of the glass), and an outer teal cast
+     so the capsule looks like a thicker pane of tinted glass floating on
+     the bar — the "glass within glass" iOS 26 look. */
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--teal) 24%, transparent),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
-    0 2px 8px -2px color-mix(in srgb, var(--teal) 35%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--teal) 26%, transparent),
+    inset 0 1.5px 0.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -6px 10px -8px color-mix(in srgb, var(--teal) 30%, transparent),
+    0 2px 8px -2px color-mix(in srgb, var(--teal) 38%, transparent);
   /* Springy slide. --ease-spring's overshoot gives the capsule weight
      so it "settles" into place rather than gliding mechanically; the
      overshoot is clipped by the pill, so it reads as a confident bounce
@@ -379,9 +411,46 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
     box-shadow var(--dur-base) var(--ease-out);
   pointer-events: none;
   z-index: 0;
+  /* Clip the travelling specular sweep (::after) to the lens's rounded
+     edge so it can't poke past the capsule. */
+  overflow: hidden;
+}
+/* Living specular — a narrow diagonal glint that drifts slowly across
+   the active lens, the way light plays over real glass. This is the
+   "liquid" the bar was missing: every other highlight is static. It's
+   SAFE to animate because the indicator carries NO backdrop-filter
+   (it's a plain tinted layer over the bar), so the sweep repaints only
+   this small element, never the bar's blurred backdrop — exactly the
+   per-frame recomposite the ::before comment warns against. Long 5.5s
+   cycle keeps it ambient, not flashy. */
+.bottom-tab-indicator::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  left: -60%;
+  width: 45%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%);
+  transform: skewX(-18deg);
+  filter: blur(3px);
+  animation: bottomTabLensSheen 5.5s var(--ease-in-out) infinite;
+}
+@keyframes bottomTabLensSheen {
+  0%   { transform: translateX(0)     skewX(-18deg); opacity: 0; }
+  12%  { opacity: 0.9; }
+  40%  { opacity: 0.9; }
+  55%  { transform: translateX(380%)  skewX(-18deg); opacity: 0; }
+  100% { transform: translateX(380%)  skewX(-18deg); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .bottom-tab-indicator { transition: none; }
+  .bottom-tab-indicator::after { animation: none; display: none; }
 }
 /* The safezone div is no longer needed — the pill is detached from
    the bottom edge by design, so there's nothing to "fill". Keep the
@@ -410,11 +479,24 @@ body:has(.sheet-overlay:not(.sheet-overlay--exit)) .bottom-tabs {
 .bottom-tab-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 46px; height: 26px; border-radius: var(--radius-pill);
-  transition: color var(--dur-slow) var(--ease-out);
+  transition: color var(--dur-slow) var(--ease-out),
+              background var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
   /* Promote to a transform layer so the active-hop animation below
      stays on the compositor and doesn't trigger layout/paint each
      frame. */
   will-change: transform;
+}
+/* Glassy press bloom on a NOT-yet-active tab: touching it lights a
+   frosted glass chip behind the icon for the press duration, so every
+   tab feels like the same liquid-glass material the active lens is made
+   of (without an indicator sliding there yet). The active tab already
+   has the indicator lens behind it, so skip it to avoid double-tinting. */
+.bottom-tab:not(.bottom-tab--active):active .bottom-tab-icon {
+  background: color-mix(in srgb, var(--teal) 12%, transparent);
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1px color-mix(in srgb, var(--teal) 16%, transparent);
 }
 .bottom-tab-label {
   font-size: 11px; font-weight: 700; letter-spacing: 0.01em;
