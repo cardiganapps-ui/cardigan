@@ -76,6 +76,29 @@ else
   /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Cardigan accede a tus fotos para adjuntar recibos y documentos.'" "$PLIST"
 fi
 
+# ── Google Sign-In: register the reversed-client-ID URL scheme ──
+# Native Google sign-in (@capgo/capacitor-social-login → GoogleSignIn SDK)
+# hands control back to the app on a custom URL scheme = the reversed iOS
+# OAuth client ID. Without it in CFBundleURLTypes the system can't return
+# from the account picker and login silently fails. Idempotent — uses
+# plistlib so we don't fight PlistBuddy's array-of-dicts ergonomics.
+python3 - "$PLIST" <<'PY'
+import plistlib, sys
+p = sys.argv[1]
+scheme = "com.googleusercontent.apps.17610829726-9vvfcimk2cbm9eupkaet7k04qlsr33c6"
+with open(p, "rb") as f:
+    pl = plistlib.load(f)
+types = pl.setdefault("CFBundleURLTypes", [])
+present = any(scheme in (t.get("CFBundleURLSchemes") or []) for t in types)
+if present:
+    print("Google URL scheme already present — skipping")
+else:
+    types.append({"CFBundleURLSchemes": [scheme]})
+    with open(p, "wb") as f:
+        plistlib.dump(pl, f)
+    print("✓ Info.plist patched with Google Sign-In URL scheme")
+PY
+
 # ── Push: forward APNs registration callbacks to Capacitor ──
 # Capacitor 6+ DROPPED the remote-notification handlers from the default
 # AppDelegate template. Without them, UIApplication delivers the APNs device

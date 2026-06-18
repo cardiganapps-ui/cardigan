@@ -46,6 +46,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "@capawesome/capacitor-apple-sign-in": "^0.1.0",
     "@capgo/capacitor-passkey": "^8.3.8",
+    "@capgo/capacitor-social-login": "^8.3.27",
     "@sentry/node": "^10.50.0",
     "@sentry/react": "^10.50.0",
     "@supabase/supabase-js": "^2.108.2",

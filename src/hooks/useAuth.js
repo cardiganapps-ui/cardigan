@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { isNative, isIOS } from "../lib/platform";
 import { signInWithAppleNative } from "../lib/nativeAppleSignIn";
+import { signInWithGoogleNative } from "../lib/nativeGoogleSignIn";
 import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage";
 
 // Field/discipline nouns (gender-neutral). The verification email
@@ -288,6 +289,24 @@ export function useAuth() {
         try { await supabase.auth.updateUser({ data: { full_name: fullName } }); }
         catch { /* non-fatal */ }
       }
+      return {};
+    }
+    // iOS native + Google → native Google Sign-In SDK (account picker) →
+    // signInWithIdToken. Mirrors the Apple branch above; same rationale
+    // (the OAuth redirect can't deep-link back to capacitor://localhost).
+    // No nonce — the project runs external_google_skip_nonce_check=true
+    // (see nativeGoogleSignIn.js for why).
+    if (provider === "google" && isNative() && isIOS()) {
+      const native = await signInWithGoogleNative();
+      if (!native.ok) {
+        if (native.code === "user-cancelled") return {}; // silent — user dismissed
+        return { error: native.error || native.code };
+      }
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: native.idToken,
+      });
+      if (error) return { error: error.message };
       return {};
     }
     const { error } = await supabase.auth.signInWithOAuth({
