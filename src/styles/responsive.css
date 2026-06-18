@@ -612,6 +612,16 @@
     background: var(--teal-mist);
     border-left: 3px solid var(--teal);
   }
+  /* In the fixed-width list pane the filter chips can't horizontal-scroll
+     the way they do full-bleed on a phone — a mouse user just sees the last
+     chip ("Potenciales") clipped at the pane edge with no scrollbar to reach
+     it. Wrap them onto a second line instead so every filter stays tappable. */
+  .patients-split-view .patients-list-pane .filter-chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    justify-content: flex-start;
+    row-gap: 8px;
+  }
   .patients-split-view-empty {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center; text-align: center;
