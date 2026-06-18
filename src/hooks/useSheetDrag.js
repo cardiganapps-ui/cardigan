@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef } from "react";
    otherwise schedule a re-render, which on a phone ends up trailing
    the finger and jittering. Only the close/open transitions touch
    React at all. */
-export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
+export function useSheetDrag(onClose, { threshold = 92, isOpen = true } = {}) {
   const scrollRef = useRef(null);
   const panelElRef = useRef(null);
   const startRef = useRef(null);
@@ -78,6 +78,14 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
       dir: 0, // 1 = drag-down (dismiss), -1 = overscroll-up (bounce)
       active: false,
       cancelled: false,
+      // Velocity tracking for flick-to-dismiss. We low-pass the
+      // per-move velocity so a natural quick flick dismisses even when
+      // it hasn't travelled past the distance threshold — the single
+      // biggest contributor to "feels heavy / unnatural" was that the
+      // release decision used distance ONLY and ignored speed.
+      lastY: t.clientY,
+      lastT: e.timeStamp || performance.now(),
+      vy: 0,
       // Capture the panel's height once so rubberBand can scale by it.
       panelH: panelElRef.current?.offsetHeight || window.innerHeight,
     };
@@ -94,6 +102,17 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
     const dx = t.clientX - s.x;
     const panel = panelElRef.current;
     if (!panel) return;
+
+    // Track instantaneous vertical velocity (px/ms, + = downward), lightly
+    // smoothed so one noisy sample doesn't dominate the release decision.
+    const now = e.timeStamp || performance.now();
+    const dt = now - s.lastT;
+    if (dt > 0) {
+      const inst = (t.clientY - s.lastY) / dt;
+      s.vy = s.vy === 0 ? inst : s.vy * 0.4 + inst * 0.6;
+      s.lastY = t.clientY;
+      s.lastT = now;
+    }
 
     if (!s.active) {
       if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
@@ -153,22 +172,36 @@ export function useSheetDrag(onClose, { threshold = 110, isOpen = true } = {}) {
     const matrix = new DOMMatrixReadOnly(getComputedStyle(panel).transform);
     const currentY = matrix.m42 || 0;
 
-    // Silky decelerate, no overshoot — matches iOS rubber-band release.
-    // easeOutExpo at 0.8s gives a long, gentle glide back to rest; the
-    // finger-to-animation handoff stays unbroken because touchstart
-    // cancels the transition if the user re-grabs.
-    const springBack = "transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
-    const dismiss    = "transform 0.38s cubic-bezier(0.32, 0.72, 0.0, 1)";
+    // Dismiss when EITHER the panel was dragged past the distance
+    // threshold OR the finger was moving down fast enough at release (a
+    // flick). The flick path is what makes the gesture feel light: you
+    // don't have to haul the sheet halfway down the screen — a natural
+    // quick downward toss lets go and it leaves. A small travel floor
+    // (24px) stops an accidental jitter at the very top from dismissing.
+    const FLICK_VELOCITY = 0.55; // px/ms (~550 px/s)
+    const FLICK_MIN_TRAVEL = 24; // px
+    const flickDown = s.vy > FLICK_VELOCITY && currentY > FLICK_MIN_TRAVEL;
+    const draggedFar = currentY > threshold;
 
-    if (s.dir === 1 && currentY > threshold) {
+    if (s.dir === 1 && (draggedFar || flickDown)) {
+      // Continue the finger's momentum: a fast flick finishes quickly,
+      // a slow drag-past-threshold eases out. Clamp so it never snaps
+      // jarringly or drags. Curve has a steep start (picks up the
+      // finger's motion) then decelerates into the edge.
+      const remaining = Math.max(1, window.innerHeight - currentY);
+      const v = Math.max(s.vy, 0.1);
+      const durSec = Math.max(0.16, Math.min(0.34, remaining / v / 1000));
       closingRef.current = true;
-      writeTransform(panel, window.innerHeight, dismiss);
+      writeTransform(panel, window.innerHeight, `transform ${durSec}s cubic-bezier(0.3, 0.7, 0.1, 1)`);
       setTimeout(() => {
         closingRef.current = false;
         onClose();
-      }, 380);
+      }, durSec * 1000);
     } else {
-      writeTransform(panel, 0, springBack);
+      // Snap back fast with a soft settle — the old 0.8s glide is what
+      // read as "heavy". A ~0.34s ease-out feels like the sheet is light
+      // and tethered, not dragging an anchor back into place.
+      writeTransform(panel, 0, "transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)");
     }
   }, [threshold, onClose]);
 
