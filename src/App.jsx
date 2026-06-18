@@ -155,7 +155,7 @@ const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 // splash instead of a bare "Cargando" line — see components/AuthSplash.
 
 function CardiganApp() {
-  const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signInWithPasskey, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
+  const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signInWithPasskey, signInWithProvider, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
   // When set, AuthScreen mounts directly into the signup sheet — used by the
   // demo banner's "Crear cuenta" button AND by the ?ref=<code> referral-link
@@ -345,7 +345,7 @@ function CardiganApp() {
     }
     return (
       <Suspense fallback={<AuthSplash />}>
-        <AuthScreen onSignIn={signIn} onSignUp={signUp} onMagicLink={signInWithMagicLink} onPasskey={signInWithPasskey} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />
+        <AuthScreen onSignIn={signIn} onSignUp={signUp} onProvider={signInWithProvider} onMagicLink={signInWithMagicLink} onPasskey={signInWithPasskey} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />
       </Suspense>
     );
   }
