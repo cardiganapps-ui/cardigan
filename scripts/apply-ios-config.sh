@@ -210,7 +210,14 @@ if [ -z "$APPLE_TEAM_ID" ]; then
   echo "APPLE_TEAM_ID env var required for pbxproj signing patch"
   exit 1
 fi
-MARKETING_VERSION="${MARKETING_VERSION:-20.3}"
+# Marketing version (CFBundleShortVersionString). Apple CLOSES a version
+# "train" once a build on it has been approved/released, and rejects any
+# further uploads to that train (errors 90062 "must be higher" + 90186
+# "train is closed"). So this must be bumped whenever the previous value
+# has shipped a build to App Store Connect — the build NUMBER
+# (CURRENT_PROJECT_VERSION = run_number) increments every run, but the
+# version string has to move forward across releases. 20.3 is closed.
+MARKETING_VERSION="${MARKETING_VERSION:-20.4}"
 APPLE_TEAM_ID="$APPLE_TEAM_ID" MARKETING_VERSION="$MARKETING_VERSION" python3 - "ios/App/App.xcodeproj/project.pbxproj" <<'PY'
 import re, sys, os
 p = sys.argv[1]
