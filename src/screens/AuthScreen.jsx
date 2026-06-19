@@ -808,18 +808,14 @@ function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onPasske
     <div
       style={{
         minHeight: "100dvh",
-        // Full-bleed, barely-there gradient: a soft teal wash cradles the
-        // brand hero at the top and the demo link at the bottom, with
-        // clean white through the middle behind the form. Token-driven so
-        // it flips in dark mode. This replaces the flat white that made
-        // the footer read as a detached band with a hard seam — now the
-        // whole screen is one continuous, intentional surface.
-        background:
-          "linear-gradient(180deg," +
-          " color-mix(in srgb, var(--teal) 7%, var(--white)) 0%," +
-          " var(--white) 24%," +
-          " var(--white) 70%," +
-          " color-mix(in srgb, var(--teal) 5%, var(--white)) 100%)",
+        // Flat white surface (the canonical Cardigan page background per
+        // CLAUDE.md). An earlier version used a top→bottom gradient that
+        // re-tinted teal near the footer; the kink where the flat-white
+        // middle met the bottom tint rendered as a faint Mach-band line
+        // right under the "Probar demo" link. Flat white has no stops, so
+        // no banding — the footer sits seamlessly with no border, which
+        // is what made the gradient unnecessary in the first place.
+        background: "var(--white)",
         display: "flex",
         flexDirection: "column",
         paddingTop: "calc(var(--sat, env(safe-area-inset-top, 0px)) + 32px)",
