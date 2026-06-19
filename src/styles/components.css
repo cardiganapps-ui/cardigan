@@ -14,9 +14,17 @@
      to bubble into. Sheets and any other nested scroll surface get
      bounce too via the same default. */
   overscroll-behavior-y: auto;
-  /* Reserve bottom space for the floating Liquid Glass pill so the
-     last row clears it: sab + pill height + 16px breathing room. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 16px);
+  /* Reserve bottom space so the last row clears the FLOATING pill.
+     Geometry: the pill is `position: fixed; bottom: calc(sab + 8px)`
+     with height --bottom-tabs-h, so its TOP edge sits at
+     `sab + 8 + --bottom-tabs-h` above the viewport bottom. The old
+     reservation (`sab + --bottom-tabs-h + 16`) forgot the pill's 8px
+     float offset, leaving only ~8px above the pill — so the last
+     section (e.g. Home's "Notas recientes") jammed under the bar, its
+     drop-shadow bled over it, and the page (already at max scroll) just
+     rubber-banded. Reserve the pill's real top edge (8px offset) PLUS a
+     24px breathing gap. */
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-tabs-h) + 32px);
 
   /* Content flows from the TOP, top-down, like every normal screen.
      `justify-content: flex-start` (the default) stacks children from
