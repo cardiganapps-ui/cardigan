@@ -134,8 +134,20 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
             </label>
             <select className="input" required value={patientName} onChange={(e) => handlePatientChange(e.target.value)}>
               <option value="">{t("finances.selectPatient")}</option>
+              {/* Every patient is selectable regardless of lifecycle
+                  status — a finalized ("ended") or paused patient can
+                  still owe a balance and pay it off later, so the picker
+                  must not hide them. Sorted active → potential → ended →
+                  discarded (stable within each group) so the common case
+                  stays at the top. Payment creation has no status gate;
+                  the row just records against the patient and the DB
+                  trigger recalcs their `paid` counter. */}
               {patients
-                .filter(p => p.status === "active" || p.status === "potential")
+                .slice()
+                .sort((a, b) => {
+                  const rank = (s) => (s === "active" ? 0 : s === "potential" ? 1 : s === "ended" ? 2 : 3);
+                  return rank(a.status) - rank(b.status);
+                })
                 .map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
