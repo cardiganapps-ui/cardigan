@@ -51,3 +51,33 @@ export function passkeysSupported() {
 export function passkeysAvailable() {
   return PASSKEYS_UI_ENABLED && passkeysSupported();
 }
+
+// Async hardware probe — is a PLATFORM authenticator (Face ID / Touch ID /
+// Windows Hello) actually present? FIDO best practice: never surface a
+// passkey ENROLLMENT prompt on a device that can't do it. Branches by
+// platform because the real capability lives in different places:
+//   • Native iOS: the WebView's WebAuthn is sandboxed to capacitor://
+//     localhost, so its UVPAA is unreliable. The true capability comes
+//     from @capgo/capacitor-passkey (ASAuthorization), exposed via
+//     isSupported().available.
+//   • Web: the standard PublicKeyCredential.isUserVerifyingPlatform-
+//     AuthenticatorAvailable().
+// On ANY error we resolve `true` (fail-open): suppressing the prompt on a
+// false-negative is worse than showing it — the ceremony itself still
+// fails gracefully if the device truly can't.
+export async function passkeyPlatformAuthenticatorAvailable() {
+  if (!passkeysAvailable()) return false;
+  try {
+    if (isNative()) {
+      const { CapacitorPasskey } = await import("@capgo/capacitor-passkey");
+      const res = await CapacitorPasskey.isSupported();
+      return res?.available !== false;
+    }
+    if (typeof window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
+      return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}

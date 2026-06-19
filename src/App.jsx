@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } fro
 import { useAuth } from "./hooks/useAuth";
 import { isNative, isIOS } from "./lib/platform";
 import { supabase } from "./supabaseClient";
-import { passkeysAvailable } from "./config/passkeys";
+import { passkeysAvailable, passkeyPlatformAuthenticatorAvailable } from "./config/passkeys";
 import { useNoteCrypto } from "./hooks/useNoteCrypto";
 // Conditionally rendered after first paint by various gates (one-time
 // prompts, encryption unlock, post-subscribe celebration, etc.). Lazy
@@ -153,6 +153,12 @@ const PLAN_SHEET_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 // sequence (Suspense fallbacks, auth/role gates, and the MFA gate). It
 // lives in its own module so MfaChallengeGate can render the exact same
 // splash instead of a bare "Cargando" line — see components/AuthSplash.
+
+// Passkey enrollment-nudge cadence (FIDO best practice: respectful but
+// persistent). Re-ask on a later session after a cooldown, capped at a
+// few asks. Module-scope so they're stable references for the hooks.
+const PASSKEY_PROMPT_MAX_ASKS = 3;
+const PASSKEY_PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 
 function CardiganApp() {
   const { user, loading: authLoading, signUp, signIn, signInWithMagicLink, signInWithPasskey, signInWithProvider, signOut, refreshUser, recoveryMode, inviteMode, setNewPassword } = useAuth();
@@ -1266,43 +1272,60 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const [trialReminderPaymentOpen, setTrialReminderPaymentOpen] = useState(false);
 
   // ── Post-login passkey enrollment nudge ──
-  // Offered once per user, only when passkeys are available (web + flag
-  // on; never native), and only if they don't already have one. The
-  // dismissal/enrolled flag is per-user localStorage so it never nags a
-  // second time. Deferred ~1.6s so it doesn't collide with first paint
-  // or stack on top of the trial reminder during that frame.
+  // FIDO best practice: the post-login auto-prompt drives ~75% of all
+  // passkey enrollments. Cadence is "respectful but persistent" — re-ask
+  // on a LATER session (never the same one), after a cooldown, capped at
+  // a few asks, then stop forever. Enrolling (here or anywhere) silences
+  // it permanently. We only prompt on devices with a real platform
+  // authenticator (Face ID / Touch ID), and defer ~1.6s so it doesn't
+  // collide with first paint or stack on the trial reminder.
+  //
+  // State is a per-user JSON blob `{ n, t, enrolled }`:
+  //   n = times shown, t = last-shown ms, enrolled = done forever.
   const [passkeyPromptOpen, setPasskeyPromptOpen] = useState(false);
   const [passkeyCreating, setPasskeyCreating] = useState(false);
-  const passkeyPromptKey = user?.id ? `cardigan.passkeyPrompt.done.${user.id}` : null;
+  const passkeyPromptKey = user?.id ? `cardigan.passkeyPrompt.v2.${user.id}` : null;
   useEffect(() => {
     if (demo || viewAsUserId) return;
-    if (!user?.id) return;
+    if (!user?.id || !passkeyPromptKey) return;
     if (!passkeysAvailable()) return;
-    let done = false;
-    try { done = localStorage.getItem(passkeyPromptKey) === "1"; } catch { /* private mode */ }
-    if (done) return;
+    let state;
+    try { state = JSON.parse(localStorage.getItem(passkeyPromptKey) || "null"); } catch { state = null; }
+    state = state || { n: 0, t: 0, enrolled: false };
+    if (state.enrolled) return;                            // already has one
+    if ((state.n || 0) >= PASSKEY_PROMPT_MAX_ASKS) return; // asked enough, stop
+    if ((state.n || 0) > 0 && Date.now() - (state.t || 0) < PASSKEY_PROMPT_COOLDOWN_MS) return; // cooldown
     let cancelled = false;
     let timer = null;
     (async () => {
       try {
+        // Only nudge devices that can actually create a passkey.
+        const hw = await passkeyPlatformAuthenticatorAvailable();
+        if (cancelled || !hw) return;
         const { data, error } = await supabase.auth.passkey.list();
         if (cancelled || error) return;
         const list = Array.isArray(data) ? data : (data?.passkeys || []);
         if (list.length > 0) {
-          // Already has a passkey — never prompt again.
-          try { localStorage.setItem(passkeyPromptKey, "1"); } catch { /* private mode */ }
+          // Already enrolled (another device) — never prompt again.
+          try { localStorage.setItem(passkeyPromptKey, JSON.stringify({ ...state, enrolled: true })); } catch { /* private mode */ }
           return;
         }
-        timer = setTimeout(() => { if (!cancelled) setPasskeyPromptOpen(true); }, 1600);
+        timer = setTimeout(() => {
+          if (cancelled) return;
+          setPasskeyPromptOpen(true);
+          // Count the ask the moment it's actually shown.
+          try { localStorage.setItem(passkeyPromptKey, JSON.stringify({ ...state, n: (state.n || 0) + 1, t: Date.now() })); } catch { /* private mode */ }
+        }, 1600);
       } catch { /* beta API hiccup — just skip the nudge */ }
     })();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [user?.id, demo, viewAsUserId, passkeyPromptKey]);
 
   const dismissPasskeyPrompt = useCallback(() => {
+    // The ask was already recorded when shown; the cooldown + cap handle
+    // re-prompting on a later session, so just close here.
     setPasskeyPromptOpen(false);
-    try { if (passkeyPromptKey) localStorage.setItem(passkeyPromptKey, "1"); } catch { /* private mode */ }
-  }, [passkeyPromptKey]);
+  }, []);
 
   const createPasskeyFromPrompt = useCallback(async () => {
     if (passkeyCreating) return;
@@ -1312,7 +1335,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       if (!error) {
         showSuccess(t("settings.passkeyPromptDone"));
         setPasskeyPromptOpen(false);
-        try { if (passkeyPromptKey) localStorage.setItem(passkeyPromptKey, "1"); } catch { /* private mode */ }
+        try { if (passkeyPromptKey) localStorage.setItem(passkeyPromptKey, JSON.stringify({ enrolled: true, n: PASSKEY_PROMPT_MAX_ASKS, t: Date.now() })); } catch { /* private mode */ }
       } else if (!/NotAllowed|AbortError|cancel/i.test(error.name || error.message || "")) {
         // Real failure (not a user cancel) — surface a toast but keep the
         // prompt open so they can retry.
