@@ -124,6 +124,16 @@ jobs:
           VITE_STRIPE_PRICE_ID: ${{ secrets.VITE_STRIPE_PRICE_ID }}
           VITE_STRIPE_PRICE_ID_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_ID_ANNUAL }}
           VITE_WHATSAPP_UI_ENABLED: ${{ vars.VITE_WHATSAPP_UI_ENABLED }}
+          # Native auth features. These are gated by the same VITE flags as
+          # web, but the iOS build runs HERE (not on Vercel), so it never
+          # sees Vercel's env. Hard-enabled because the backend is fully
+          # configured (Supabase Google provider + passkey RP) and these
+          # are first-class native flows: Sign in with Google
+          # (@capgo/capacitor-social-login) and passkeys (@capgo shim →
+          # ASAuthorization). To kill either on native, set to "false" here
+          # and let a new build ship.
+          VITE_GOOGLE_OAUTH_ENABLED: "true"
+          VITE_PASSKEYS_UI_ENABLED: "true"
         run: npm run build
 
       - name: Generate iOS project (cap add ios + sync)
