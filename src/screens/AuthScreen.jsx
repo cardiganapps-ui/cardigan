@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { LandingPage } from "../components/landing/LandingPage";
-import { IconX, IconGoogle, IconApple, IconSparkle, IconLink, IconKey } from "../components/Icons";
+import { IconX, IconGoogle, IconApple, IconSparkle, IconLink, IconFaceId } from "../components/Icons";
 import { passkeysAvailable } from "../config/passkeys";
 import { PasswordInput } from "../components/PasswordInput";
 import { SegmentedControl } from "../components/SegmentedControl";
@@ -498,52 +498,6 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
           <div style={{ fontSize: 13, color: "var(--charcoal-xl)", lineHeight: 1.5 }}>{t("auth.resetHint")}</div>
         </div>
       )}
-      {mode !== "reset" && (onProvider || showPasskey) && (
-        <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, marginBottom: 18 }}>
-            {/* Passkey first on the login tab — it's the fastest, most
-                secure path for a returning user (Face ID / Touch ID, no
-                password to type). Discoverable credentials mean we don't
-                even need an email here. */}
-            {showPasskey && (
-              <button
-                type="button"
-                className="btn btn-oauth btn-oauth-passkey"
-                disabled={passkeyBusy || !!providerBusy}
-                onClick={handlePasskey}
-              >
-                <IconKey size={18} />
-                <span>{passkeyBusy ? t("loading") : t("auth.continueWithPasskey")}</span>
-              </button>
-            )}
-            {onProvider && GOOGLE_OAUTH_ENABLED && (
-              <button
-                type="button"
-                className="btn btn-oauth btn-oauth-google"
-                disabled={!!providerBusy || passkeyBusy}
-                onClick={() => handleProvider("google")}
-              >
-                <IconGoogle size={18} />
-                <span>{t("auth.continueWithGoogle")}</span>
-              </button>
-            )}
-            {onProvider && (
-              <button
-                type="button"
-                className="btn btn-oauth btn-oauth-apple"
-                disabled={!!providerBusy || passkeyBusy}
-                onClick={() => handleProvider("apple")}
-              >
-                <IconApple size={18} />
-                <span>{t("auth.continueWithApple")}</span>
-              </button>
-            )}
-          </div>
-          <div className="auth-divider" aria-hidden="true">
-            <span>{t("auth.orWithEmail")}</span>
-          </div>
-        </>
-      )}
       {MONETIZATION_ENABLED && influencerCode && mode === "signup" && (
         <div style={{
           display:"flex", alignItems:"center", gap:10,
@@ -658,6 +612,55 @@ function AuthForm({ mode, setMode, onSignIn, onSignUp, onProvider, onMagicLink, 
           {(submitting || pendingSubmit) ? t("loading") : mode === "login" ? t("auth.signIn") : mode === "signup" ? t("auth.createAccount") : t("auth.sendLink")}
         </button>
       </form>
+      {/* ── Secondary auth: compact circular icon buttons ──
+          Moved BELOW the email form (email stays the primary path) and
+          shrunk to clean ~52px circles so the screen reads uncluttered.
+          Apple + Google use their official logos; passkey uses the Face
+          ID glyph so it reads as a trustworthy biometric option rather
+          than a sketchy generic key. Each is icon-only with an
+          aria-label for screen readers. */}
+      {mode !== "reset" && (onProvider || showPasskey) && (
+        <div style={{ marginTop: 22 }}>
+          <div className="auth-divider" aria-hidden="true">
+            <span>{t("auth.orContinueWith")}</span>
+          </div>
+          <div className="auth-social-row">
+            {onProvider && (
+              <button
+                type="button"
+                className="auth-social-circle auth-social-circle--apple btn-tap"
+                aria-label={t("auth.continueWithApple")}
+                disabled={!!providerBusy || passkeyBusy}
+                onClick={() => handleProvider("apple")}
+              >
+                <IconApple size={22} />
+              </button>
+            )}
+            {onProvider && GOOGLE_OAUTH_ENABLED && (
+              <button
+                type="button"
+                className="auth-social-circle auth-social-circle--google btn-tap"
+                aria-label={t("auth.continueWithGoogle")}
+                disabled={!!providerBusy || passkeyBusy}
+                onClick={() => handleProvider("google")}
+              >
+                <IconGoogle size={24} />
+              </button>
+            )}
+            {showPasskey && (
+              <button
+                type="button"
+                className="auth-social-circle auth-social-circle--passkey btn-tap"
+                aria-label={t("auth.continueWithPasskey")}
+                disabled={passkeyBusy || !!providerBusy}
+                onClick={handlePasskey}
+              >
+                <IconFaceId size={24} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {mode === "reset" && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={() => switchMode("login")}>{t("auth.signIn")}</button>
@@ -805,7 +808,18 @@ function NativeAuthShell({ onSignIn, onSignUp, onProvider, onMagicLink, onPasske
     <div
       style={{
         minHeight: "100dvh",
-        background: "var(--white)",
+        // Full-bleed, barely-there gradient: a soft teal wash cradles the
+        // brand hero at the top and the demo link at the bottom, with
+        // clean white through the middle behind the form. Token-driven so
+        // it flips in dark mode. This replaces the flat white that made
+        // the footer read as a detached band with a hard seam — now the
+        // whole screen is one continuous, intentional surface.
+        background:
+          "linear-gradient(180deg," +
+          " color-mix(in srgb, var(--teal) 7%, var(--white)) 0%," +
+          " var(--white) 24%," +
+          " var(--white) 70%," +
+          " color-mix(in srgb, var(--teal) 5%, var(--white)) 100%)",
         display: "flex",
         flexDirection: "column",
         paddingTop: "calc(var(--sat, env(safe-area-inset-top, 0px)) + 32px)",

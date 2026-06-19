@@ -229,6 +229,7 @@ export default {
     continueWithApple: "Continuar con Apple",
     continueWithPasskey: "Continuar con passkey",
     orWithEmail: "o continúa con tu correo",
+    orContinueWith: "o continúa con",
     providerError: "No se pudo iniciar sesión. Intenta de nuevo.",
     passkeyError: "No se pudo iniciar sesión con tu passkey. Intenta de nuevo.",
     consentPrefix: "Acepto el",

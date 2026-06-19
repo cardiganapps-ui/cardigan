@@ -107,6 +107,17 @@ html[data-theme="dark"] .btn-oauth-google {
 html[data-theme="dark"] .btn-oauth-apple {
   background: #000000; color: #FFFFFF; border-color: #000000;
 }
+/* Circular social buttons: same brand rules in dark mode — Apple black
+   with the white mark, Google on a white field so the multicolour G
+   stays legible. The base circle gets a faint light rim. Passkey uses
+   tokens, so it flips on its own. */
+html[data-theme="dark"] .auth-social-circle { border-color: rgba(255,255,255,0.12); }
+html[data-theme="dark"] .auth-social-circle--apple {
+  background: #000000; color: #FFFFFF; border-color: #000000;
+}
+html[data-theme="dark"] .auth-social-circle--google {
+  background: #FFFFFF; border-color: #D8D8D8;
+}
 
 /* ── Overlays: slightly stronger for dark backgrounds ── */
 html[data-theme="dark"] .drawer-overlay {

@@ -1641,6 +1641,38 @@ button.kpi-card:active {
   content: ""; flex: 1; height: 1px; background: var(--border-lt);
 }
 
+/* ── Circular social / passkey auth buttons ──────────────────────────
+   Compact icon-only circles for the secondary auth options (Apple,
+   Google, passkey), centered below the email form. ≥52px so the hit
+   target clears Apple's 44pt / Material's 48dp minimums. `.btn-tap`
+   (added in JSX) supplies the spring press. Brand fills follow each
+   provider's logo-usage rules: Apple = solid dark with the white mark,
+   Google = white field so the multicolour G stays legible, passkey =
+   teal-tinted to match the app's primary accent. */
+.auth-social-row {
+  display: flex; justify-content: center; align-items: center;
+  gap: 16px; margin-top: 2px;
+}
+.auth-social-circle {
+  width: 52px; height: 52px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border-lt);
+  background: var(--white);
+  color: var(--charcoal);
+  cursor: pointer; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+.auth-social-circle:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+.auth-social-circle--apple {
+  background: var(--charcoal); color: var(--white); border-color: var(--charcoal);
+}
+.auth-social-circle--google { background: var(--white); }
+.auth-social-circle--passkey {
+  background: var(--teal-pale); color: var(--teal-dark);
+  border-color: color-mix(in srgb, var(--teal) 22%, transparent);
+}
+
 /* ── FORM TWO-COLUMN UTILITY ─────────────────────────────────────────
    Pair related inputs (date+time, modality+rate) onto a single row at
    tablet+ widths. Stacks vertically on phone. Used inside sheets to
