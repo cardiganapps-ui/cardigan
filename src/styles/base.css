@@ -484,11 +484,22 @@ button.avatar-sm::before {
 .cardigan-splash-logo {
   display: inline-flex;
   transform-origin: center;
-  animation: cardiganSplashBreathe 1.8s var(--ease-in-out) infinite;
+  /* The breath RESTS at full scale + full opacity so the first painted
+     frame — and the native→React splash cross-fade frame — is identical
+     to the static native splash (same mark size at scaleAspectFit, same
+     #FFF mark, same #5B9BAF bg). Previously it started at scale(0.96)/
+     opacity(0.72), so the logo visibly shrank + dimmed + pulsed the
+     instant React's splash took over — the "bounce between two logos."
+     The 0.7s delay keeps it perfectly still through the hand-off (which
+     finishes well under 0.7s on a normal cold start, so it usually never
+     animates at all); the breath only surfaces as a calm "still loading"
+     cue if boot genuinely lingers. Amplitude is tiny (2% scale) so it
+     can never read as a bounce. */
+  animation: cardiganSplashBreathe 2.2s var(--ease-in-out) 0.7s infinite;
 }
 @keyframes cardiganSplashBreathe {
-  0%, 100% { transform: scale(0.96); opacity: 0.72; }
-  50%      { transform: scale(1.04); opacity: 1; }
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(0.98); opacity: 0.8; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cardigan-splash-logo { animation: none; }
