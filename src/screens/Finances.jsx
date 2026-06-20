@@ -120,14 +120,17 @@ function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDelete
         onClick={() => setExpandedId(isExpanded ? null : p.id)}
         style={{
           cursor: "pointer",
-          // SwipeableRow stages a red action button BEHIND the row and
-          // slides the row over it. The nested rows must therefore be
-          // OPAQUE — using `transparent` lets the action bleed through
-          // even at rest (the +$1,100 amount visibly overlapped
-          // "Eliminar" in mid-swipe). `--teal-mist` matches the parent
-          // wrapper exactly so the row still reads as part of the
-          // subset container.
-          background: nested ? "var(--teal-mist)" : "var(--white)",
+          // SwipeableRow stages a red delete button BEHIND the row and
+          // slides the row over it; `overflow:hidden` + an OPAQUE row is
+          // what hides the action at rest. `--teal-mist` is opaque in
+          // light mode (#F2F9FB) but TRANSLUCENT in dark mode
+          // (rgba(...,0.08)), so on dark themes the red "Eliminar" bled
+          // straight through the nested row and overlapped the amount.
+          // color-mix(teal 8% over --white) reproduces the teal-mist tint
+          // as a fully OPAQUE surface in BOTH themes (both inputs are
+          // opaque), matching the subset-container lane while keeping the
+          // action button hidden until swiped.
+          background: nested ? "color-mix(in srgb, var(--teal) 8%, var(--white))" : "var(--white)",
           ...(nested ? { paddingLeft: 36, minHeight: 48, gap: 10 } : {}),
         }}
       >
