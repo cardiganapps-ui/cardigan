@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prepare": "husky",
     "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps && node scripts/gen-privacy-page.mjs",
     "build": "rm -rf node_modules/.vite dist && vite build",
     "lint": "eslint .",
@@ -27,6 +28,12 @@
     "cap:run:android": "npm run build && npx cap run android",
     "cap:bundle:android": "npm run build && npx cap sync android && cd android && ./gradlew :app:bundleRelease && echo '\\nAAB → android/app/build/outputs/bundle/release/app-release.aab'",
     "cap:fingerprint:android": "keytool -list -v -keystore android/cardigan-upload.keystore -alias cardigan-upload 2>/dev/null | grep 'SHA256:' || echo 'No keystore at android/cardigan-upload.keystore — run scripts/android-keystore.sh first'"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs}": [
+      "eslint --fix",
+      "vitest related --run --passWithNoTests"
+    ]
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
@@ -78,6 +85,8 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "happy-dom": "^20.9.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "sharp": "^0.34.5",
     "vite": "5.4.19",
     "vite-plugin-pwa": "^1.2.0",
