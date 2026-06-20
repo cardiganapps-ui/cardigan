@@ -23,6 +23,7 @@ import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { computeGroupAutoExtendRows } from "../utils/groupRecurrence";
 import { computeConsumedByPatient, applyConsumedToPatients } from "../utils/accounting";
+import { fetchAllPaged } from "../utils/paginate";
 import { useFocusRefresh } from "./useFocusRefresh";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
@@ -636,6 +637,27 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
       if (limit) query = query.limit(limit);
       return query;
     };
+    // Sessions are special: accounting sums over the patient's ENTIRE
+    // history (every completed / charged / past-scheduled row), so unlike
+    // the windowed tables they CANNOT be capped. The PostgREST server
+    // enforces max_rows = 1000 per request, so the old `.limit(10000)` was
+    // never honored past 1000 — a practice with >1000 lifetime sessions
+    // (a few years of weekly recurring slots) would silently drop the
+    // overflow from `consumed` and understate every balance. Page through
+    // the full set with .range() via the pure fetchAllPaged helper. The id
+    // tiebreaker keeps paging stable when a batch of rows shares one
+    // created_at (the auto-extend insert writes many at the same instant).
+    // Returns the same { data, error } shape as `q(...)`.
+    const fetchAllSessions = () => fetchAllPaged(
+      (from, to) => supabase
+        .from("sessions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+      { pageSize: 1000 }
+    );
     // Scaling windows: most daily use (Home, Agenda, Finances current view)
     // only touches recent rows, so we don't hydrate years of history on
     // every login. Older rows become visible via per-screen "load more"
@@ -658,7 +680,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     try {
       [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, tRes, tlRes, naRes, gRes, gmRes, nfRes] = await Promise.all([
         q("patients").order("name"),
-        q("sessions", 10000).order("created_at"),
+        fetchAllSessions(),
         q("payments", 2000).gte("created_at", paymentsSince.toISOString()).order("created_at", { ascending: false }),
         q("notes", 500).order("updated_at", { ascending: false }),
         q("documents", 500).order("created_at", { ascending: false }),
