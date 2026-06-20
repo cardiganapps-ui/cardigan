@@ -1,13 +1,22 @@
-import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "../supabaseClient";
-import { shortDateToISO } from "../utils/dates";
 import { openExternal } from "../lib/nativeBrowser";
 import { isNative, isIOS } from "../lib/platform";
 import { DiagnosticsSheet } from "../components/sheets/DiagnosticsSheet";
 // Lazy-loaded so Stripe.js + the PaymentElement bundle aren't pulled
 // into the main chunk for users who never open the payment sheet.
 const StripePaymentSheet = lazy(() => import("../components/StripePaymentSheet"));
-import { IconUser, IconUsers, IconStar, IconKey, IconLogOut, IconChevron, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconEdit, IconRefresh, IconDownload, IconTrash, IconShield, IconLock, IconSparkle, IconCalendar, IconDocument, IconCreditCard } from "../components/Icons";
+import { IconUsers, IconStar, IconKey, IconX, IconCheck, IconSun, IconMoon, IconSmartphone, IconBell, IconLock, IconSparkle } from "../components/Icons";
+import { AccountHeader } from "./settings/AccountHeader";
+import { SubscriptionPanel } from "./settings/SubscriptionPanel";
+import { AppearancePanel } from "./settings/AppearancePanel";
+import { FeaturesPanel } from "./settings/FeaturesPanel";
+import { NotificationsCalendarPanel } from "./settings/NotificationsCalendarPanel";
+import { SecurityPanel } from "./settings/SecurityPanel";
+import { DataPrivacyPanel } from "./settings/DataPrivacyPanel";
+import { HelpPanel } from "./settings/HelpPanel";
+import { DangerZone } from "./settings/DangerZone";
+import { NextRemindersPreview } from "./settings/NextRemindersPreview";
 import { ProValueWidget } from "../components/ProValueWidget";
 import { MONETIZATION_ENABLED } from "../config/monetization";
 
@@ -51,7 +60,7 @@ import { useSheetDrag } from "../hooks/useSheetDrag";
 import { useCardigan } from "../context/CardiganContext";
 import { isClinicalProfession } from "../data/constants";
 import { haptic } from "../utils/haptics";
-import { rowSubLine, billingSummary } from "../utils/subscriptionStatus";
+import { billingSummary } from "../utils/subscriptionStatus";
 import { formatMXNCents, formatDate } from "../utils/format";
 // Map typed error codes from useNotifications to user-readable i18n
 // keys. Keeping this as a pure mapping means the hook stays decoupled
@@ -70,113 +79,6 @@ function notifErrorKey(code) {
     case "unsupported":       return "notifications.toastUnsupported";
     default:                  return "notifications.toastSubscribeFailed";
   }
-}
-
-// Small "PRO" pill rendered next to gated row titles. Visual cue that
-// the row needs an active subscription before it'll do anything.
-// Charcoal-on-cream so it reads clearly without screaming for
-// attention — Cardigan's badges throughout the app share this tone.
-function ProBadge() {
-  return (
-    <span style={{
-      fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
-      padding: "2px 6px", borderRadius: 999,
-      background: "var(--charcoal)", color: "var(--white)",
-      lineHeight: 1.2,
-    }}>PRO</span>
-  );
-}
-
-/* Reads upcoming sessions from context, computes the wall-clock
-   moment each reminder will fire (session_time − minutes), filters
-   to the next 24h, and renders a compact list. Helps therapists
-   reconcile "what does the 30-min setting actually do" against
-   their real schedule — closes a meaningful clarity gap that the
-   row's summary text alone can't. */
-function NextRemindersPreview({ minutes }) {
-  const { t } = useT();
-  const { upcomingSessions } = useCardigan();
-  // `now` lives in state so React Compiler's purity rules accept the
-  // useMemo below (Date.now() inside useMemo is flagged as impure).
-  // It re-ticks once per minute while the sheet is open so a reminder
-  // that just passed disappears from the preview without a manual
-  // re-render. The interval only attaches while the component is
-  // mounted, so it doesn't run when the sheet is closed.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const items = useMemo(() => {
-    const horizonMs = now + 24 * 60 * 60 * 1000;
-    const out = [];
-    for (const s of (upcomingSessions || [])) {
-      if (s.status !== "scheduled") continue;
-      if (!s.date || !s.time) continue;
-      const iso = shortDateToISO(s.date);
-      if (!iso) continue;
-      const [h = "0", mi = "0"] = (s.time || "").split(":");
-      const ms = new Date(`${iso}T${h.padStart(2, "0")}:${mi.padStart(2, "0")}:00`).getTime();
-      if (!Number.isFinite(ms)) continue;
-      const fireAt = ms - minutes * 60_000;
-      if (fireAt < now || fireAt > horizonMs) continue;
-      out.push({ id: s.id, fireAt, sessionAt: ms, patient: s.patient || "—" });
-    }
-    out.sort((a, b) => a.fireAt - b.fireAt);
-    return out.slice(0, 5);
-  }, [upcomingSessions, minutes, now]);
-
-  if (items.length === 0) {
-    return (
-      <div style={{ marginTop: 14, padding: "10px 12px", background: "var(--cream)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--charcoal-md)", lineHeight: 1.5 }}>
-        {t("notifications.previewNone")}
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--charcoal-xl)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 2px 6px" }}>
-        {t("notifications.previewTitle")}
-      </div>
-      <div className="card" style={{ overflow: "hidden" }}>
-        {items.map((it, idx) => {
-          const fireDate = new Date(it.fireAt);
-          const sessionDate = new Date(it.sessionAt);
-          const fireH = String(fireDate.getHours()).padStart(2, "0");
-          const fireM = String(fireDate.getMinutes()).padStart(2, "0");
-          const sessH = String(sessionDate.getHours()).padStart(2, "0");
-          const sessM = String(sessionDate.getMinutes()).padStart(2, "0");
-          // "Hoy" / "Mañana" prefix relative to local-day boundary.
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const dayDelta = Math.round((new Date(fireDate).setHours(0,0,0,0) - today.getTime()) / 86_400_000);
-          const dayLabel = dayDelta <= 0 ? t("notifications.previewToday") : t("notifications.previewTomorrow");
-          return (
-            <div
-              key={it.id}
-              style={{
-                padding: "10px 14px",
-                borderBottom: idx < items.length - 1 ? "1px solid var(--border-lt)" : "none",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--charcoal)", fontFamily: "var(--font-d)", fontVariantNumeric: "tabular-nums" }}>
-                  {dayLabel} · {fireH}:{fireM}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--charcoal-md)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {t("notifications.previewLine", { patient: it.patient, sessionTime: `${sessH}:${sessM}` })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 export function Settings({ user, signOut, refreshUser }) {
@@ -805,388 +707,105 @@ export function Settings({ user, signOut, refreshUser }) {
 
   return (
     <div className="page page--reading">
-      <div className="section" style={{ paddingTop:16 }}>
-        <div className="card" style={{ padding:16 }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="av-settings-avatar"
-              role={readOnly ? undefined : "button"}
-              tabIndex={readOnly ? undefined : 0}
-              aria-label={readOnly ? undefined : (t("avatar.changePhoto") || "Cambiar foto")}
-              aria-disabled={readOnly ? "true" : undefined}
-              onClick={readOnly ? undefined : () => setActiveSheet("avatar")}
-              onKeyDown={readOnly ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveSheet("avatar"); } }}
-            >
-              <Avatar
-                initials={userInitial}
-                color="var(--teal)"
-                size="lg"
-                imageUrl={avatarImageUrl}
-              />
-              {!readOnly && (
-                <span className="av-settings-avatar-badge" aria-hidden="true">
-                  <IconEdit size={11} />
-                </span>
-              )}
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontFamily:"var(--font-d)",fontSize:"var(--text-lg)",fontWeight:800,color:"var(--charcoal)" }}>{userName}</div>
-              <div style={{ fontSize:"var(--text-sm)",color:"var(--charcoal-xl)",marginTop:2 }}>{userEmail}</div>
-            </div>
-            <button className="btn btn-ghost" onClick={() => openSheet("profile")}>{t("edit")}</button>
-          </div>
-        </div>
-      </div>
+      <AccountHeader
+        userName={userName}
+        userEmail={userEmail}
+        userInitial={userInitial}
+        avatarImageUrl={avatarImageUrl}
+        readOnly={readOnly}
+        onOpenAvatar={() => setActiveSheet("avatar")}
+        onEditProfile={() => openSheet("profile")}
+      />
 
-      {/* ── CUENTA ── */}
-      <div className="settings-label">{t("settings.sectionAccount")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        {MONETIZATION_ENABLED && (
-        <div className="settings-row" onClick={() => openSheet("plan")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconSparkle size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.subscriptionTitle")}</div>
-            <div className="settings-row-sub" style={subscription?.subscription?.status === "past_due" ? { color: "var(--amber)" } : undefined}>{(() => {
-              const s = subscription || {};
-              // Admin fallthrough: useSubscription returns active for
-              // admins without comp/paid sub. rowSubLine doesn't have
-              // an admin branch, so handle it here.
-              if (!s.compGranted && !s.subscribedActive && s.accessState === "active") {
-                return t("subscription.statusActive");
-              }
-              return rowSubLine(s, t);
-            })()}</div>
-          </div>
-          <IconChevron />
-        </div>
-        )}
-        {/* Referral row — surface the user's invite code directly so it's
-            findable without going through the Suscripción sheet first. The
-            sub-line shows the code (or "Genera tu código…" while the lazy
-            fetch is running on first open). Tapping opens a dedicated sheet
-            with the share UI + rewards tally. */}
-        {MONETIZATION_ENABLED && (
-        <div className="settings-row" onClick={() => openSheet("referral")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.referralRowTitle")}</div>
-            <div className="settings-row-sub">{(() => {
-              const info = subscription?.referralInfo;
-              if (info?.code) {
-                return info.rewardsCount > 0
-                  ? t("settings.referralRowSubWithRewards", { code: info.code, n: info.rewardsCount })
-                  : t("settings.referralRowSubCode", { code: info.code });
-              }
-              if (subscription?.referralLoading) return t("settings.referralRowSubLoading");
-              return t("settings.referralRowSubDefault");
-            })()}</div>
-          </div>
-          <IconChevron />
-        </div>
-        )}
-        <div className="settings-row"
-          onClick={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.changePassword")}</div>
-            {message && activeSheet === null && (
-              <div className="settings-row-sub" style={{ color:"var(--green)" }}>{message}</div>
-            )}
-          </div>
-          <IconChevron />
-        </div>
-      </div>
+      <SubscriptionPanel
+        subscription={subscription}
+        message={message}
+        activeSheet={activeSheet}
+        onOpenSheet={openSheet}
+        onOpenChangePassword={() => { setPasswordResetError(""); setPasswordCaptchaToken(null); setActiveSheet("changePassword"); }}
+      />
 
-      {/* ── APARIENCIA ── */}
-      <div className="settings-label">{t("settings.sectionAppearance")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" onClick={() => openSheet("theme")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}>{theme?.resolvedTheme === "dark" ? <IconMoon size={18} /> : <IconSun size={18} />}</div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.appearance")}</div>
-            <div className="settings-row-sub">{theme?.preference === "light" ? t("settings.themeLight") : theme?.preference === "dark" ? t("settings.themeDark") : t("settings.themeSystem")}</div>
-          </div>
-          <IconChevron />
-        </div>
-        <div className="settings-row" onClick={() => openSheet("accent")}>
-          <div className="settings-row-icon" aria-hidden="true">
-            <span style={{ display:"inline-block", width:18, height:18, borderRadius:"50%", background:"var(--teal)", border:"1px solid var(--border-lt)" }} />
-          </div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.accentColor")}</div>
-            <div className="settings-row-sub">{t(`settings.accent.${accentTheme?.accent || "default"}`)}</div>
-          </div>
-          <IconChevron />
-        </div>
-      </div>
+      <AppearancePanel
+        theme={theme}
+        accentTheme={accentTheme}
+        onOpenSheet={openSheet}
+      />
 
-      {/* ── FUNCIONES ── */}
-      <div className="settings-label">{t("settings.sectionFeatures")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" style={{ cursor:"default" }}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconUsers size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.groupsFeature")}</div>
-            <div className="settings-row-sub">
-              {groupsToggleLocked ? t("settings.groupsFeatureLocked") : t("settings.groupsFeatureSub")}
-            </div>
-          </div>
-          <Toggle
-            on={groupsEnabled !== false}
-            disabled={readOnly || groupsToggleLocked}
-            onToggle={() => setGroupsEnabled?.(!(groupsEnabled !== false))}
-          />
-        </div>
-      </div>
+      <FeaturesPanel
+        groupsEnabled={groupsEnabled}
+        groupsToggleLocked={groupsToggleLocked}
+        readOnly={readOnly}
+        setGroupsEnabled={setGroupsEnabled}
+      />
 
-      {/* ── NOTIFICACIONES Y CALENDARIO ──
-         Notifications row opens a sub-sheet absorbing all of the
-         notification UI states (install gate, blocked, toggle +
-         reminder time). Calendar row opens a sheet wrapping the
-         CalendarLinkPanel — both surfaces are about how the user gets
-         told about their schedule, so they belong together. */}
-      {(notifications?.supported || !readOnly) && (
-        <>
-          <div className="settings-label">{t("settings.sectionNotifCal")}</div>
-          <div className="card" style={{ margin:"0 16px" }}>
-            {notifications?.supported && (
-              <div className="settings-row" onClick={() => setActiveSheet("notifications")}>
-                <div
-                  className={`settings-row-icon${bellFx ? " bell-ring bell-glow" : ""}`}
-                  style={{ color:"var(--teal-dark)" }}
-                >
-                  <IconBell size={18} />
-                </div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("settings.notificationsRowTitle")}</div>
-                  <div className="settings-row-sub">{notifSummary}</div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
-            {!readOnly && (
-              <div
-                className="settings-row"
-                onClick={() => isPro ? setActiveSheet("calendar") : requirePro?.("calendar")}
-              >
-                <div className="settings-row-icon" style={{ color: isPro ? "var(--teal-dark)" : "var(--charcoal-xl)" }}><IconCalendar size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    {t("settings.calendarLabel")}
-                    {!isPro && <ProBadge />}
-                  </div>
-                  <div className="settings-row-sub">{isPro ? calendarSummary : t("settings.proRowLockedSub")}</div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
-            {!readOnly && (
-              <div
-                className="settings-row"
-                onClick={() => isPro ? setActiveSheet("onlinePayments") : requirePro?.("onlinePayments")}
-              >
-                <div className="settings-row-icon" style={{ color: isPro ? "var(--teal-dark)" : "var(--charcoal-xl)" }}><IconCreditCard size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    {t("settings.onlinePaymentsLabel")}
-                    {!isPro && <ProBadge />}
-                  </div>
-                  <div className="settings-row-sub">{isPro ? t("settings.onlinePaymentsSub") : t("settings.proRowLockedSub")}</div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      <NotificationsCalendarPanel
+        notifications={notifications}
+        readOnly={readOnly}
+        bellFx={bellFx}
+        notifSummary={notifSummary}
+        isPro={isPro}
+        calendarSummary={calendarSummary}
+        requirePro={requirePro}
+        onOpenSheet={setActiveSheet}
+      />
 
-      {/* ── SEGURIDAD ── */}
-      {!readOnly && (
-        <>
-          <div className="settings-label">{t("settings.sectionSecurity")}</div>
-          <div className="card" style={{ margin:"0 16px" }}>
-            <div className="settings-row" style={{ cursor: mfa.loading ? "default" : "pointer" }}
-              onClick={() => {
-                if (mfa.loading) return;
-                setMfaUiError(""); setMfaCode("");
-                if (mfa.factors.length === 0) {
-                  setActiveSheet("mfaEnroll");
-                  if (!mfa.enrollment) mfa.enroll();
-                } else {
-                  setMfaUnenrollId(mfa.factors[0].id);
-                  setActiveSheet("mfaManage");
-                }
-              }}>
-              <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconShield size={18} /></div>
-              <div style={{ flex:1 }}>
-                <div className="settings-row-title">{t("settings.mfaTitle")}</div>
-                <div className="settings-row-sub">
-                  {mfa.loading ? "…" : mfa.factors.length > 0 ? t("settings.mfaActive") : t("settings.mfaInactive")}
-                </div>
-              </div>
-              <IconChevron />
-            </div>
-            {passkeys.supported && (
-              <div className="settings-row" style={{ cursor: passkeys.loading ? "default" : "pointer" }}
-                onClick={() => { if (!passkeys.loading) setActiveSheet("passkeys"); }}>
-                <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconKey size={18} /></div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title">{t("settings.passkeyTitle")}</div>
-                  <div className="settings-row-sub">
-                    {passkeys.loading
-                      ? "…"
-                      : passkeys.passkeys.length > 0
-                        ? t("settings.passkeyRowCount", { count: passkeys.passkeys.length })
-                        : t("settings.passkeyRowNone")}
-                  </div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
-            {noteCrypto && noteCrypto.status !== "loading" && (showEncryptionSetup || noteCrypto.status !== "disabled") && (
-              <div className="settings-row" onClick={() => {
-                // Existing-encryption users (status !== "disabled") can
-                // always manage / unlock / change their setup, even if
-                // they later drop off Pro — we never strand someone
-                // outside their already-encrypted notes. Only the
-                // brand-new "set up encryption" flow is Pro-gated.
-                if (!isPro && noteCrypto.status === "disabled") {
-                  requirePro?.("encryption");
-                  return;
-                }
-                setEncUiError("");
-                if (noteCrypto.status === "disabled") { setEncSetupPass1(""); setEncSetupPass2(""); }
-                setActiveSheet("encryption");
-              }}>
-                <div className="settings-row-icon" style={{ color: noteCrypto.status === "unlocked" ? "var(--green)" : noteCrypto.status === "locked" ? "var(--charcoal-md)" : (!isPro && noteCrypto.status === "disabled" ? "var(--charcoal-xl)" : "var(--teal-dark)") }}>
-                  <IconLock size={18} />
-                </div>
-                <div style={{ flex:1 }}>
-                  <div className="settings-row-title" style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    {t("settings.encryptionTitle")}
-                    {!isPro && noteCrypto.status === "disabled" && <ProBadge />}
-                  </div>
-                  <div className="settings-row-sub">
-                    {!isPro && noteCrypto.status === "disabled" ? t("settings.proRowLockedSub") : encSummary}
-                  </div>
-                </div>
-                <IconChevron />
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      <SecurityPanel
+        readOnly={readOnly}
+        mfa={mfa}
+        passkeys={passkeys}
+        noteCrypto={noteCrypto}
+        isPro={isPro}
+        showEncryptionSetup={showEncryptionSetup}
+        encSummary={encSummary}
+        onOpenMfa={() => {
+          if (mfa.loading) return;
+          setMfaUiError(""); setMfaCode("");
+          if (mfa.factors.length === 0) {
+            setActiveSheet("mfaEnroll");
+            if (!mfa.enrollment) mfa.enroll();
+          } else {
+            setMfaUnenrollId(mfa.factors[0].id);
+            setActiveSheet("mfaManage");
+          }
+        }}
+        onOpenPasskeys={() => setActiveSheet("passkeys")}
+        onOpenEncryption={() => {
+          // Existing-encryption users (status !== "disabled") can
+          // always manage / unlock / change their setup, even if
+          // they later drop off Pro — we never strand someone
+          // outside their already-encrypted notes. Only the
+          // brand-new "set up encryption" flow is Pro-gated.
+          if (!isPro && noteCrypto.status === "disabled") {
+            requirePro?.("encryption");
+            return;
+          }
+          setEncUiError("");
+          if (noteCrypto.status === "disabled") { setEncSetupPass1(""); setEncSetupPass2(""); }
+          setActiveSheet("encryption");
+        }}
+      />
 
-      {/* ── DATOS Y PRIVACIDAD ── */}
-      <div className="settings-label">{t("settings.sectionPrivacyData")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        {!readOnly && (
-          <div className="settings-row" style={{ cursor: exporting ? "default" : "pointer" }}
-            onClick={() => { if (!exporting) { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); } }}>
-            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDownload size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">{t("settings.privacyExport")}</div>
-              <div className="settings-row-sub">{t("settings.privacyExportSub")}</div>
-            </div>
-            {exporting ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
-          </div>
-        )}
-        <div className="settings-row" onClick={() => navigate("privacy")}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconDocument size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("settings.privacyPolicy")}</div>
-            <div className="settings-row-sub">{t("settings.privacyPolicySub")}</div>
-          </div>
-          <IconChevron />
-        </div>
-      </div>
+      <DataPrivacyPanel
+        readOnly={readOnly}
+        exporting={exporting}
+        onOpenExport={() => { setExportPassword(""); setExportError(""); setActiveSheet("exportData"); }}
+        onOpenPrivacyPolicy={() => navigate("privacy")}
+      />
 
-      {/* ── AYUDA ── */}
-      <div className="settings-label">{t("settings.sectionHelp")}</div>
-      <div className="card" style={{ margin:"0 16px" }}>
-        <div className="settings-row" onClick={restartTutorial}>
-          <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconStar size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title">{t("tutorial.settingsRow")}</div>
-            <div className="settings-row-sub">{t("tutorial.settingsRowSub")}</div>
-          </div>
-          <IconChevron />
-        </div>
-        {/* Service-worker update check is a PWA/web concern. Inside the
-            native app the App Store handles updates and the SW path just
-            reports "tu navegador no soporta…", so hide the row on native. */}
-        {!isNative() && (
-          <div className="settings-row" style={{ cursor: updateChecking ? "default" : "pointer" }} onClick={checkForUpdate}>
-            <div className="settings-row-icon" style={{ color:"var(--teal-dark)" }}><IconRefresh size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">{t("settings.checkUpdate") || "Buscar actualización"}</div>
-              {updateStatus && <div className="settings-row-sub" style={{ color: updateStatus.tone === "err" ? "var(--red)" : updateStatus.tone === "ok" ? "var(--green)" : "var(--charcoal-md)" }}>{updateStatus.msg}</div>}
-            </div>
-            {updateChecking ? <span style={{ fontSize:12, color:"var(--charcoal-xl)" }}>…</span> : <IconChevron />}
-          </div>
-        )}
-      </div>
+      <HelpPanel
+        updateChecking={updateChecking}
+        updateStatus={updateStatus}
+        onRestartTutorial={restartTutorial}
+        onCheckForUpdate={checkForUpdate}
+      />
 
-      {/* ── SESIÓN ── */}
-      <div className="settings-label">{t("settings.sectionSession")}</div>
-      {/* Diagnostics — visible inside the native shell (where the user
-          is QAing on a real device) and in dev. Hidden in the
-          production web build that regular users see. The sheet
-          surfaces platform/push/haptic state plus test buttons. */}
-      {(isNative() || import.meta.env.DEV) && (
-        <div className="card" style={{ margin:"0 16px", marginBottom: 12 }}>
-          <div className="settings-row" onClick={() => setActiveSheet("diagnostics")}>
-            <div className="settings-row-icon"><IconSmartphone size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title">Diagnóstico</div>
-              <div className="settings-row-sub">Plataforma, push y haptics</div>
-            </div>
-            <IconChevron />
-          </div>
-        </div>
-      )}
-
-      <div className="card" style={{ margin:"0 16px" }}>
-        {/* Confirm before signing out — same ConfirmDialog the Drawer
-            uses, so the affordance is consistent across both entry
-            points (drawer chip + this row). */}
-        <div className="settings-row" onClick={() => setConfirmSignOut(true)}>
-          <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
-          <div style={{ flex:1 }}>
-            <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("nav.signOut")}</div>
-          </div>
-          <IconChevron />
-        </div>
-        {!readOnly && (
-          <div className="settings-row" onClick={() => setActiveSheet("signOutEverywhere")}>
-            <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconLogOut size={18} /></div>
-            <div style={{ flex:1 }}>
-              <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.signOutEverywhere")}</div>
-              <div className="settings-row-sub">{t("settings.signOutEverywhereSub")}</div>
-            </div>
-            <IconChevron />
-          </div>
-        )}
-      </div>
-
-      {/* ── ZONA PELIGROSA ──
-         Account deletion lives in its own bottom-of-page section so it
-         can't be tapped by accident while scanning Settings. */}
-      {!readOnly && (
-        <>
-          <div className="settings-label">{t("settings.dangerZone")}</div>
-          <div className="card" style={{ margin:"0 16px" }}>
-            <div className="settings-row" onClick={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}>
-              <div className="settings-row-icon" style={{ color:"var(--red)" }}><IconTrash size={18} /></div>
-              <div style={{ flex:1 }}>
-                <div className="settings-row-title" style={{ color:"var(--red)" }}>{t("settings.privacyDelete")}</div>
-                <div className="settings-row-sub">{t("settings.privacyDeleteSub")}</div>
-              </div>
-              <IconChevron />
-            </div>
-          </div>
-        </>
-      )}
+      <DangerZone
+        readOnly={readOnly}
+        onOpenDiagnostics={() => setActiveSheet("diagnostics")}
+        onSignOut={() => setConfirmSignOut(true)}
+        onOpenSignOutEverywhere={() => setActiveSheet("signOutEverywhere")}
+        onOpenDeleteAccount={() => { setDeleteConfirm(""); setDeleteError(""); setActiveSheet("deleteAccount"); }}
+      />
 
       <div style={{ paddingBottom:24 }} />
 
