@@ -383,3 +383,41 @@ describe("interview sessions (potential patients)", () => {
     expect(out.amountDue).toBe(700);
   });
 });
+
+/* ── Display-only guard (prime directive) ──
+   Accounting must iterate RAW sessions, never the display-enriched ones
+   (which auto-complete past-scheduled rows). A non-enumerable _displayOnly
+   marker + a dev assertion turns that comment-only rule into a hard
+   failure. The guard is dev/test-only (DCE'd in prod). */
+describe("display-only guard", () => {
+  const marked = (s) => {
+    Object.defineProperty(s, "_displayOnly", { value: true, enumerable: false });
+    return s;
+  };
+
+  it("throws when a display-only session reaches computeConsumedByPatient", () => {
+    const row = marked(sess("p1", "completed", 700, { date: "1-Ene" }));
+    expect(() => computeConsumedByPatient([row], new Map([["p1", 700]]), NOW))
+      .toThrow(/display-only/);
+  });
+
+  it("throws via enrichPatientsWithBalance too", () => {
+    const row = marked(sess("p1", "completed", 700, { date: "1-Ene" }));
+    expect(() => enrichPatientsWithBalance([pat("p1", 700, 0)], [row], NOW))
+      .toThrow(/display-only/);
+  });
+
+  it("raw sessions (no marker) never throw", () => {
+    expect(() => enrichPatientsWithBalance(
+      [pat("p1", 700, 0)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    )).not.toThrow();
+  });
+
+  it("the marker is non-enumerable (invisible to spread/JSON)", () => {
+    const row = marked(sess("p1", "completed", 700));
+    expect(Object.keys(row)).not.toContain("_displayOnly");
+    expect(JSON.parse(JSON.stringify(row))._displayOnly).toBeUndefined();
+  });
+});

@@ -982,7 +982,17 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         d.setHours(parseInt(h) || 0, parseInt(m) || 0);
       }
       d.setTime(d.getTime() + 60 * 60 * 1000);
-      if (now >= d) return { ...s, status: SESSION_STATUS.COMPLETED, _autoCompleted: true };
+      if (now >= d) {
+        const display = { ...s, status: SESSION_STATUS.COMPLETED, _autoCompleted: true };
+        // Non-enumerable dev marker so utils/accounting.js can assert it
+        // never receives a display-enriched row. Non-enumerable = invisible
+        // to {...spread}, JSON, and the localStorage cache writer; the
+        // import.meta.env.DEV gate dead-code-eliminates it in production.
+        if (import.meta.env.DEV) {
+          Object.defineProperty(display, "_displayOnly", { value: true, enumerable: false });
+        }
+        return display;
+      }
       return s;
     });
   }, [upcomingSessions]);

@@ -37,6 +37,14 @@
 import { SESSION_STATUS } from "../data/constants";
 import { parseShortDate } from "./dates";
 
+// Dev/test-only guard flag for the "raw sessions only" invariant below.
+// Computed ONCE at module load. Node callers (audit-accounting.mjs,
+// backfill, api/_cardiTools.js) have no `import.meta.env`, so the `&&`
+// short-circuits to false there (no crash). In a Vite client production
+// build `import.meta.env.DEV` folds to false, so the whole guard
+// dead-code-eliminates. Only dev + vitest get the assertion.
+const DISPLAY_ONLY_GUARD = !!(import.meta.env && import.meta.env.DEV);
+
 // Parse a session's scheduled moment (date + time), offset by +1h so a
 // session that started a moment ago but is still in-progress doesn't
 // flip to "consumed" until the hour mark. Matches the display
@@ -77,6 +85,18 @@ export function computeConsumedByPatient(rawSessions, rateById, now = new Date()
   if (!rawSessions) return consumedByPatient;
   for (const s of rawSessions) {
     if (!s || !s.patient_id) continue;
+    // PRIME-DIRECTIVE GUARD: accounting MUST iterate the RAW DB sessions,
+    // never the display-enriched ones (useCardiganData::enrichedSessions
+    // auto-completes past-scheduled rows for the UI). Feeding those here
+    // would silently count months of un-maintained scheduled slots as
+    // "consumed" and inflate balances. The marker is non-enumerable +
+    // dev-only (invisible to spread/JSON/cache; DCE'd in prod), so this
+    // throws loudly in dev/tests if anyone ever wires enrichedSessions in.
+    if (DISPLAY_ONLY_GUARD && s._displayOnly) {
+      throw new Error(
+        "accounting received a display-only (auto-completed) session — pass raw upcomingSessions, never enrichedSessions",
+      );
+    }
     if (!sessionCountsTowardBalance(s, now)) continue;
     const fallback = rateById && rateById.get ? (rateById.get(s.patient_id) || 0) : 0;
     const rate = s.rate != null ? s.rate : fallback;
