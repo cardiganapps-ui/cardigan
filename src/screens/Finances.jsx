@@ -947,7 +947,10 @@ function GastosTab({
         return (
           <SwipeableRow
             key={e.id}
-            onDelete={() => setConfirmDeleteId(isExpanded ? null : e.id)}
+            onAction={() => setConfirmDeleteId(isExpanded ? null : e.id)}
+            actionLabel={t("delete")}
+            actionTone="danger"
+            exitOnAction={false}
           >
             <div className="bal-row" role="button" tabIndex={0}
               onClick={() => onEdit(e)}

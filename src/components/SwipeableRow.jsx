@@ -34,7 +34,13 @@ const TONE_BG = {
   warn: "var(--amber)",
 };
 
-export function SwipeableRow({ children, onAction, actionLabel, actionTone = "danger" }) {
+/* exitOnAction (default true): tapping the revealed action plays the
+   collapse-out animation then fires onAction — correct when onAction
+   deletes the row (it's leaving the list anyway). Pass false when the
+   action instead reveals an inline confirm step (e.g. expenses): the
+   row must stay in place, so we just snap shut and fire onAction without
+   the exit animation. */
+export function SwipeableRow({ children, onAction, actionLabel, actionTone = "danger", exitOnAction = true }) {
   const ref = useRef(null);
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
@@ -255,7 +261,8 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
           }
           setOffset(0);
           revealedRef.current = false;
-          playExitThenAction();
+          if (exitOnAction) playExitThenAction();
+          else onAction?.();
           if (nextFocus) {
             requestAnimationFrame(() => {
               try { nextFocus.focus(); } catch { /* node may have unmounted too */ }

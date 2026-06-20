@@ -1048,20 +1048,27 @@
 }
 @media (hover: hover) {
   .note-card-row:hover {
-    background: var(--teal-mist);
+    /* Must stay OPAQUE: this row sits over a SwipeableRow delete button.
+       --teal-mist is opaque in light but translucent in dark
+       (rgba(...,0.08)), which let the red action bleed through on hover.
+       color-mix(teal over --white) reproduces the mist tint opaque in
+       both themes. */
+    background: color-mix(in srgb, var(--teal) 8%, var(--white));
     box-shadow: var(--shadow);
     transform: translateY(-1px);
   }
 }
 /* Pinned wins over the patient-color stripe — it's the user's
-   explicit "this matters" signal. Subtle amber-bg wash so the row
-   reads as flagged even when the card stripe is small. */
+   explicit "this matters" signal. Subtle amber wash so the row
+   reads as flagged even when the card stripe is small. Uses --amber
+   (opaque in both themes) rather than --amber-bg (translucent in dark)
+   so the SwipeableRow delete button can't bleed through a pinned row. */
 .note-card-row.is-pinned {
-  background: color-mix(in srgb, var(--amber-bg) 50%, var(--white));
+  background: color-mix(in srgb, var(--amber) 6%, var(--white));
 }
 @media (hover: hover) {
   .note-card-row.is-pinned:hover {
-    background: color-mix(in srgb, var(--amber-bg) 70%, var(--white));
+    background: color-mix(in srgb, var(--amber) 10%, var(--white));
   }
 }
 @media (prefers-reduced-motion: reduce) {
