@@ -178,6 +178,10 @@ export function Patients() {
   const [editIsMinor, setEditIsMinor] = useState(false);
   const [editParent, setEditParent]   = useState("");
   const [editRate, setEditRate]       = useState("");
+  // Opening balance edit (migration 078). Amount is always positive in
+  // the field; direction picks debt vs. credit and signs it on save.
+  const [editOpeningAmount, setEditOpeningAmount] = useState("");
+  const [editOpeningDir, setEditOpeningDir] = useState("owes"); // 'owes' | 'credit'
   const [editTutorFrequency, setEditTutorFrequency] = useState("");
   const [editPhone, setEditPhone]     = useState("");
   const [editEmail, setEditEmail]     = useState("");
@@ -249,6 +253,8 @@ export function Patients() {
     setEditIsMinor(!!p.parent);
     setEditParent(p.parent || "");
     setEditRate(String(p.rate));
+    setEditOpeningAmount(p.opening_balance ? String(Math.abs(p.opening_balance)) : "");
+    setEditOpeningDir((p.opening_balance || 0) < 0 ? "credit" : "owes");
     setEditPhone(formatPhoneMX(p.phone));
     setEditEmail(p.email || "");
     setEditWhatsappEnabled(!!p.whatsapp_enabled);
@@ -292,6 +298,14 @@ export function Patients() {
   const isFinalizingPatient = editStatus === "ended" && selected?.status === "active";
 
   const saveEdit = async () => {
+    // Sign the opening balance once for every save path: positive = owes
+    // (debt), negative = saldo a favor, 0 = none. Always written so the
+    // user can also CLEAR a previously-set balance back to 0.
+    const obNum = Number(editOpeningAmount);
+    const editOpeningBalance =
+      editOpeningAmount !== "" && Number.isFinite(obNum) && obNum > 0
+        ? (editOpeningDir === "credit" ? -Math.round(obNum) : Math.round(obNum))
+        : 0;
     // Finalizing a patient — delete future sessions and set inactive
     if (isFinalizingPatient) {
       const ok = await finalizePatient(selected.id, finishDate);
@@ -304,6 +318,7 @@ export function Patients() {
           tutor_frequency: editIsMinor && editTutorFrequency ? Number(editTutorFrequency) : null,
           phone: phoneDigits(editPhone), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
+          opening_balance: editOpeningBalance,
           whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
           whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
         });
@@ -338,6 +353,7 @@ export function Patients() {
           phone: phoneDigits(editPhone), email: editEmail.trim(),
           birthdate: editBirthdate || null, start_date: editStartDate || null,
           status: editStatus,
+          opening_balance: editOpeningBalance,
           whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
           whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
         });
@@ -354,6 +370,7 @@ export function Patients() {
         birthdate: editBirthdate || null, start_date: editStartDate || null,
         rate: Number(editRate) || 0,
         status: editStatus,
+        opening_balance: editOpeningBalance,
         whatsapp_enabled: !!editWhatsappEnabled && !!phoneDigits(editPhone),
         whatsapp_consent_at: (editWhatsappEnabled && phoneDigits(editPhone)) ? (editWhatsappConsentAt || new Date().toISOString()) : null,
       });
@@ -670,6 +687,8 @@ export function Patients() {
                 setEditIsMinor(!!p.parent);
                 setEditParent(p.parent || "");
                 setEditRate(String(p.rate));
+                setEditOpeningAmount(p.opening_balance ? String(Math.abs(p.opening_balance)) : "");
+                setEditOpeningDir((p.opening_balance || 0) < 0 ? "credit" : "owes");
                 setEditPhone(formatPhoneMX(p.phone));
                 setEditEmail(p.email || "");
                 setEditWhatsappEnabled(!!p.whatsapp_enabled);
@@ -764,6 +783,31 @@ export function Patients() {
                       <div className="input-group">
                         <label className="input-label">{t("patients.ratePerSession")}</label>
                         <MoneyInput min="0" step="50" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+                      </div>
+                      {/* Opening balance — pre-existing debt / saldo a favor.
+                          Not a rate or schedule change; it rides the basic
+                          updatePatient payload on every save path. */}
+                      <div className="input-group">
+                        <label className="input-label">{t("patients.openingBalanceLabel")}</label>
+                        <div style={{ display:"flex", gap:8, alignItems:"stretch" }}>
+                          <div style={{ flexShrink:0, width:150 }}>
+                            <SegmentedControl
+                              size="md"
+                              value={editOpeningDir}
+                              onChange={setEditOpeningDir}
+                              ariaLabel={t("patients.openingBalanceLabel")}
+                              items={[
+                                { k: "owes",   l: t("patients.openingBalanceOwes") },
+                                { k: "credit", l: t("patients.openingBalanceCredit") },
+                              ]}
+                            />
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <MoneyInput min="0" step="50" value={editOpeningAmount}
+                              onChange={e => setEditOpeningAmount(e.target.value)} placeholder="0" />
+                          </div>
+                        </div>
+                        <div className="input-help">{t("patients.openingBalanceHelp")}</div>
                       </div>
                       {isEpisodic(selected) ? (
                         <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", lineHeight:1.5, paddingBottom:6 }}>
@@ -1089,6 +1133,8 @@ export function Patients() {
             setEditIsMinor(!!p.parent);
             setEditParent(p.parent || "");
             setEditRate(String(p.rate));
+            setEditOpeningAmount(p.opening_balance ? String(Math.abs(p.opening_balance)) : "");
+            setEditOpeningDir((p.opening_balance || 0) < 0 ? "credit" : "owes");
             setEditPhone(formatPhoneMX(p.phone));
             setEditEmail(p.email || "");
             setEditWhatsappEnabled(!!p.whatsapp_enabled);
