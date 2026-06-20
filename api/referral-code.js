@@ -22,6 +22,7 @@ import crypto from "node:crypto";
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 /* ── Code format: WORD + 3 digits ────────────────────────────────────
    Codes are designed to be spoken out loud and remembered after a
@@ -115,6 +116,20 @@ async function handler(req, res) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-user limiter — code lazy-creation does a retry loop of DB
+  // writes on first hit; subsequent hits are a single read. 30 in 60s
+  // is well above the Settings panel's natural call rate.
+  const rl = await rateLimit({
+    endpoint: "referral-code",
+    bucket: user.id,
+    max: 30,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
+  }
 
   const svc = getServiceClient();
 

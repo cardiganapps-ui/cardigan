@@ -25,6 +25,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 const APP_URL = "https://cardigan.mx";
 
@@ -33,6 +34,21 @@ async function handler(req, res) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-therapist limiter — minting invite tokens does CSPRNG + DB
+  // writes and is the spam surface for blasting invite links. 20 in
+  // 60s is far above any legitimate burst (adding a handful of
+  // patients) but caps an automated abuser.
+  const rl = await rateLimit({
+    endpoint: "patient-invite",
+    bucket: user.id,
+    max: 20,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   const { patient_id } = req.body || {};
   if (typeof patient_id !== "string" || !patient_id) {

@@ -23,6 +23,35 @@ const PROFESSION_FIELD_ES = {
 // a "check your inbox / resend" panel instead of a raw error string.
 const EMAIL_NOT_CONFIRMED = /email not confirmed/i;
 
+// Supabase returns a captcha-verification failure when server-side
+// `security_captcha_enabled` is ON but the client sent no (or an
+// invalid) Turnstile token. On native this is FATAL — the Capacitor
+// webview can't run Turnstile at all (capacitor://localhost isn't an
+// allowed Turnstile origin), so EVERY native sign-up / sign-in would
+// 400 if enforcement is ever flipped on server-side. We classify it to
+// a distinct, typed result so the failure is diagnosable (Sentry,
+// support) instead of surfacing as a generic red string. The matching
+// invariant lives in api/auth-config-check.js, which asserts the
+// server flag stays false. See CLAUDE.md "Auth captcha".
+const CAPTCHA_ENFORCED = /captcha/i;
+
+// Map a Supabase auth error to our typed captcha result when it's a
+// captcha-required failure; otherwise null (caller handles normally).
+// The error shape from supabase-js is { message, code? } — match on
+// either the documented `captcha_failed` code or any "captcha" message.
+export function classifyCaptchaError(error) {
+  if (!error) return null;
+  const code = (error.code || "").toLowerCase();
+  const msg = (error.message || "").toLowerCase();
+  if (code === "captcha_failed" || CAPTCHA_ENFORCED.test(code) || CAPTCHA_ENFORCED.test(msg)) {
+    return {
+      error: error.message || "Captcha verification failed",
+      code: "captcha_enforced",
+    };
+  }
+  return null;
+}
+
 /* Detect a password-recovery / invite landing synchronously at module
    load time.
 
@@ -159,6 +188,10 @@ export function useAuth() {
       },
     });
     if (error) {
+      // Captcha-enforcement drift is the most diagnostically important
+      // failure (it breaks ALL native auth), so classify it first.
+      const captcha = classifyCaptchaError(error);
+      if (captcha) return captcha;
       // Supabase blocks duplicate-email signups itself, but the error
       // message comes back as raw English ("User already registered" /
       // "A user with this email address has already been registered").
@@ -201,6 +234,8 @@ export function useAuth() {
       options: { captchaToken },
     });
     if (error) {
+      const captcha = classifyCaptchaError(error);
+      if (captcha) return captcha;
       if (EMAIL_NOT_CONFIRMED.test(error.message)) {
         return { pendingVerification: true, email };
       }

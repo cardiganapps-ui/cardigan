@@ -18,12 +18,28 @@
 import { createHash } from "node:crypto";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-user limiter — token redemption is the brute-force surface
+  // (an attacker guessing token hashes). 256-bit tokens make guessing
+  // infeasible, but the cap blunts any automated probing and the DB
+  // load it would generate. 20 in 60s is generous for a real claim.
+  const rl = await rateLimit({
+    endpoint: "patient-claim",
+    bucket: user.id,
+    max: 20,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   const { token } = req.body || {};
   if (typeof token !== "string" || !token) {

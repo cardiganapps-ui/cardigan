@@ -10,12 +10,28 @@
 
 import { requireAdmin, getServiceClient, isValidUserId, logAuditEvent } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const admin = await requireAdmin(req, res);
   if (!admin) return; // response already written
+
+  // Per-admin limiter — broadcast inserts a row for every user, so a
+  // runaway loop (or a compromised admin token) could fan out a huge
+  // amount of writes. 5 in 60s is plenty for legitimate announcements
+  // and caps the blast radius hard.
+  const rl = await rateLimit({
+    endpoint: "admin-notify",
+    bucket: admin.id,
+    max: 5,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
+  }
 
   const { userId, broadcast, title, body, url } = req.body || {};
   const cleanTitle = typeof title === "string" ? title.trim() : "";

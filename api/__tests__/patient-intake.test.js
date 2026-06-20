@@ -10,6 +10,12 @@ vi.mock("../_admin.js", () => ({
 vi.mock("../_sentry.js", () => ({
   withSentry: (h) => h,
 }));
+// The handler now runs the per-endpoint rate-limit guard up front.
+// These tests exercise the intake logic, not the limiter, so stub it to
+// a pass-through (the limiter itself is covered by its own test).
+vi.mock("../_ratelimit.js", () => ({
+  rateLimit: vi.fn().mockResolvedValue({ ok: true, remaining: 99, retryAfter: 0 }),
+}));
 
 // The handler builds a user-JWT'd Supabase client inline via
 // createClient — mock the module so we can inject canned ownership

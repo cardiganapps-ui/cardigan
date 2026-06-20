@@ -9,12 +9,27 @@
 import { getAuthUser } from "./_r2.js";
 import { getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-user limiter — consent is a single click per policy version;
+  // 30 in 60s leaves ample headroom for legit re-accepts while
+  // capping a hammering client.
+  const rl = await rateLimit({
+    endpoint: "record-consent",
+    bucket: user.id,
+    max: 30,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Too many requests" });
+  }
 
   const { policy_version } = req.body || {};
   if (typeof policy_version !== "string" || policy_version.length === 0 || policy_version.length > 64) {

@@ -37,6 +37,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAuthUser, getServiceClient } from "./_admin.js";
 import { withSentry } from "./_sentry.js";
+import { rateLimit } from "./_ratelimit.js";
 
 const MAX_TEXT_LEN = 2000;
 
@@ -75,6 +76,20 @@ async function handler(req, res) {
 
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Per-patient limiter — intake submission updates the patients row.
+  // 20 in 60s comfortably covers a patient revising fields and
+  // re-submitting while capping automated abuse.
+  const rl = await rateLimit({
+    endpoint: "patient-intake",
+    bucket: user.id,
+    max: 20,
+    windowSec: 60,
+  });
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfter));
+    return res.status(429).json({ error: "Demasiados intentos. Espera un minuto." });
+  }
 
   const body = req.body || {};
   if (typeof body.patient_id !== "string" || !body.patient_id) {
