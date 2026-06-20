@@ -11,10 +11,18 @@
 -- deliberately OUT OF SCOPE here because it touches the date-format
 -- invariant threaded through parsers, triggers, and the accounting audit.
 --
--- Apply with CONCURRENTLY so it never blocks writes on a large sessions
--- table. CONCURRENTLY cannot run inside a transaction block — apply via
--- the Supabase Management API query endpoint (not a wrapped runner), then
--- regenerate supabase/schema.snapshot.json:
---   node --env-file=.env.local scripts/schema-snapshot.mjs --update
+-- STATUS: PENDING — not yet applied to live as of this commit. schema.sql
+-- and schema.snapshot.json deliberately do NOT carry this index yet so the
+-- committed state stays consistent with production. To land it:
+--   1. Apply via the Supabase Management API query endpoint (NOT a wrapped
+--      runner — CONCURRENTLY cannot run inside a transaction block):
+--        curl -X POST .../v1/projects/{ref}/database/query \
+--          -d '{"query":"<the create index statement below>"}'
+--   2. Move the index line into supabase/schema.sql (next to the other
+--      sessions indexes).
+--   3. Regenerate the snapshot so schema-drift CI stays green:
+--        node --env-file=.env.local scripts/schema-snapshot.mjs --update
+--
+-- Apply with CONCURRENTLY so it never blocks writes on a large sessions table.
 create index concurrently if not exists idx_sessions_user_date
   on public.sessions (user_id, date);

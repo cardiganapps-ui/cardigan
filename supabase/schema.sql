@@ -566,13 +566,13 @@ create index if not exists idx_patients_user_id on patients(user_id);
 create index if not exists idx_sessions_user_id on sessions(user_id);
 create index if not exists idx_sessions_patient_id on sessions(patient_id);
 create index if not exists idx_sessions_session_type on sessions(session_type);
--- Composite (user_id, date) — speeds the common "this user's sessions on
--- a given day" lookups (Agenda day view, per-date filters). NOTE: `date`
--- is a "D-MMM" STRING, so this helps EQUALITY on an exact date string,
--- not chronological range scans (strings don't sort by calendar order) —
--- an ISO-date column would be the real range-scan fix (deferred; touches
--- the date-format invariant). See migration 079.
-create index if not exists idx_sessions_user_date on sessions(user_id, date);
+-- NOTE: the composite (user_id, date) index lives in migration 079 as a
+-- forward-looking, NOT-YET-APPLIED change (CONCURRENTLY can't run in the
+-- wrapped migration runner, so it's applied out-of-band via the Management
+-- API). It is intentionally absent here because schema.sql mirrors the
+-- CURRENTLY-APPLIED live schema — adding it before it exists in prod would
+-- make schema.sql disagree with the live snapshot. Move this line in (and
+-- regenerate schema.snapshot.json) in the same change that applies it.
 -- One session per (patient, date, time). DB-level guard against dupes;
 -- client-side dedup alone has proven unreliable (stale state across tabs,
 -- date-only comparisons, regen paths re-inserting cancelled slots).
