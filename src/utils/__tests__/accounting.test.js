@@ -3,6 +3,7 @@ import {
   sessionCountsTowardBalance,
   computeConsumedByPatient,
   enrichPatientsWithBalance,
+  applyConsumedToPatients,
 } from "../accounting";
 
 // Fixed reference time so tests are deterministic across years.
@@ -419,5 +420,52 @@ describe("display-only guard", () => {
     const row = marked(sess("p1", "completed", 700));
     expect(Object.keys(row)).not.toContain("_displayOnly");
     expect(JSON.parse(JSON.stringify(row))._displayOnly).toBeUndefined();
+  });
+});
+
+describe("applyConsumedToPatients (memo-split equivalence)", () => {
+  // The hook (useCardiganData) memoizes the two stages separately for
+  // perf: computeConsumedByPatient (O(sessions)) keyed on the raw sessions,
+  // then applyConsumedToPatients (O(patients)) keyed on the patients. These
+  // tests lock that the split produces byte-identical balances to the
+  // one-shot enrichPatientsWithBalance — i.e. the formula has exactly ONE
+  // home and the split can never drift from it.
+  const patients = [
+    pat("p1", 700, 1400),                 // owes (2 done @700 = 1400, paid 1400 → even)
+    pat("p2", 500, 0, { opening_balance: 250 }),
+    pat("p3", 800, 5000),                 // prepaid → credit
+  ];
+  const sessions = [
+    sess("p1", "completed", 700, { date: "1-Ene" }),
+    sess("p1", "completed", 700, { date: "8-Ene" }),
+    sess("p2", "charged", 500, { date: "3-Ene" }),
+    sess("p3", "completed", 800, { date: "2-Ene" }),
+  ];
+
+  it("composition equals the one-shot enrich", () => {
+    const oneShot = enrichPatientsWithBalance(patients, sessions, NOW);
+    const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
+    const consumed = computeConsumedByPatient(sessions, rateById, NOW);
+    const split = applyConsumedToPatients(patients, consumed);
+    expect(split).toEqual(oneShot);
+  });
+
+  it("uses the canonical delta (consumed − paid + opening)", () => {
+    const consumed = new Map([["p2", 500]]);
+    const [out] = applyConsumedToPatients([pat("p2", 500, 100, { opening_balance: 250 })], consumed);
+    // 500 consumed − 100 paid + 250 opening = 650 owed
+    expect(out.amountDue).toBe(650);
+    expect(out.credit).toBe(0);
+  });
+
+  it("missing patient in the map → consumed 0 (no throw)", () => {
+    const [out] = applyConsumedToPatients([pat("p9", 700, 0)], new Map());
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("null guards", () => {
+    expect(applyConsumedToPatients(null, new Map())).toEqual([]);
+    expect(applyConsumedToPatients(undefined, new Map())).toEqual([]);
   });
 });

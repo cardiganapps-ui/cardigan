@@ -22,7 +22,7 @@ import { createInboxActions } from "./useInbox";
 import { getTutorReminders } from "../utils/sessions";
 import { computeAutoExtendRows, computeRecurringExpenseRows } from "../utils/recurrence";
 import { computeGroupAutoExtendRows } from "../utils/groupRecurrence";
-import { enrichPatientsWithBalance } from "../utils/accounting";
+import { computeConsumedByPatient, applyConsumedToPatients } from "../utils/accounting";
 import { useFocusRefresh } from "./useFocusRefresh";
 
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
@@ -1003,9 +1003,43 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // affordance; feeding it into accounting would make every past
   // un-maintained scheduled session silently count as "consumed" and
   // inflate balances by months of phantom activity.
+  //
+  // Split into two memos so the O(sessions) consumed walk and the cheap
+  // O(patients) balance map invalidate on different inputs. Without this,
+  // every optimistic `patient.paid` update (after a payment) re-walked the
+  // entire session history even though sessions hadn't changed.
+  //
+  //  • rateSig — the only patient-derived input to the consumed walk is the
+  //    per-patient FALLBACK rate (used for legacy sessions missing s.rate).
+  //    We capture just that slice as a value-equal string so a paid/opening
+  //    change (which leaves ids+rates untouched) yields an === signature and
+  //    the consumed memo's cache holds.
+  const rateSig = useMemo(
+    () => patients.map(p => `${p.id}:${p.rate || 0}`).join("|"),
+    [patients]
+  );
+  //  • consumedByPatient — the expensive Σ(rate) walk over every raw
+  //    session. Keyed on the sessions plus rateSig ONLY; `patients` is read
+  //    to build the rate-fallback map but deliberately not a dep, so a
+  //    paid-counter update doesn't re-walk the history (rateSig is unchanged
+  //    → cache holds). This is the perf win.
+  const consumedByPatient = useMemo(
+    () => {
+      const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
+      return computeConsumedByPatient(upcomingSessions, rateById);
+    },
+    // `patients` is read above only through its id+rate slice, captured by
+    // value in rateSig. Depending on the patients reference would defeat the
+    // whole split — every paid/opening optimistic update would re-walk the
+    // full session history. rateSig is value-equal when rates are unchanged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [upcomingSessions, rateSig]
+  );
+  //  • enrichedPatients — the cheap O(patients) delta map. Reuses the SAME
+  //    pure formula helper as enrichPatientsWithBalance (no inline copy).
   const enrichedPatients = useMemo(
-    () => enrichPatientsWithBalance(patients, upcomingSessions),
-    [patients, upcomingSessions]
+    () => applyConsumedToPatients(patients, consumedByPatient),
+    [patients, consumedByPatient]
   );
 
   const tutorReminders = useMemo(() =>

@@ -109,21 +109,28 @@ export function computeConsumedByPatient(rawSessions, rateById, now = new Date()
 }
 
 /**
- * Enrich a patients list with { amountDue, credit } derived from the raw
- * session rows. Uses DB status — never the display-auto-complete state.
+ * Apply a precomputed consumed-by-patient map onto a patients list,
+ * producing { amountDue, credit } per patient. This is the SINGLE home of
+ * the balance delta formula:
  *
  *   delta = consumed − paid + opening_balance
  *   amountDue = max(0,  delta)   // patient owes us
  *   credit    = max(0, −delta)   // patient has prepaid
  *
  * The two are mutually exclusive by construction.
+ *
+ * Split out from enrichPatientsWithBalance so callers that need the two
+ * stages keyed on different inputs (e.g. useCardiganData memoizes the
+ * O(sessions) consumed walk on [upcomingSessions] and this cheap
+ * O(patients) map on [patients]) can compose them WITHOUT duplicating the
+ * formula. enrichPatientsWithBalance below is the one-shot composition.
  */
-export function enrichPatientsWithBalance(patients, rawSessions, now = new Date()) {
+export function applyConsumedToPatients(patients, consumedByPatient) {
   if (!patients) return [];
-  const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
-  const consumedByPatient = computeConsumedByPatient(rawSessions, rateById, now);
   return patients.map(p => {
-    const consumed = consumedByPatient.get(p.id) || 0;
+    const consumed = (consumedByPatient && consumedByPatient.get
+      ? consumedByPatient.get(p.id)
+      : 0) || 0;
     const paid = p.paid || 0;
     // Opening balance (migration 078): a pre-existing debt/credit the
     // patient was migrated into Cardigan with. Signed MXN — >0 = owes,
@@ -139,4 +146,20 @@ export function enrichPatientsWithBalance(patients, rawSessions, now = new Date(
       credit: Math.max(0, -delta),
     };
   });
+}
+
+/**
+ * Enrich a patients list with { amountDue, credit } derived from the raw
+ * session rows. Uses DB status — never the display-auto-complete state.
+ *
+ * One-shot composition of the two pure stages: compute the consumed map,
+ * then apply it. Kept so the many existing call sites
+ * (enrichPatientsWithBalance is used across the app, the audit, and tests)
+ * stay a single call. Behavior is identical to the previous inline form.
+ */
+export function enrichPatientsWithBalance(patients, rawSessions, now = new Date()) {
+  if (!patients) return [];
+  const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
+  const consumedByPatient = computeConsumedByPatient(rawSessions, rateById, now);
+  return applyConsumedToPatients(patients, consumedByPatient);
 }
