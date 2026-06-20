@@ -1,0 +1,25 @@
+-- 078_patient_opening_balance.sql
+-- Opening balance: a pre-existing debt or saldo a favor the patient
+-- carries into Cardigan when the therapist migrates them into the app
+-- mid-relationship (they already owed, or had already prepaid).
+--
+-- Signed integer (MXN):
+--   > 0  → patient OWES this much at the start (pre-existing debt)
+--   < 0  → patient has a saldo a favor (pre-existing credit)
+--   = 0  → no opening balance (default)
+--
+-- Folded into the canonical amountDue derivation as an extra term that
+-- sits ALONGSIDE consumed/paid (Prime Directive in CLAUDE.md +
+-- utils/accounting.js::enrichPatientsWithBalance):
+--     delta     = consumed - paid + opening_balance
+--     amountDue = max(0,  delta)
+--     credit    = max(0, -delta)
+--
+-- It is deliberately NOT modeled as a session or payment row, so it
+-- never touches the billed / paid / sessions counters, the session-count
+-- predicate (public.session_counts_at), or income / P&L reporting. No
+-- trigger changes are required. Every amountDue derivation site (the
+-- in-app enrich, the patient portal, the Cardi server tools in
+-- api/_cardiTools.js, and scripts/audit-accounting.mjs) adds this term.
+alter table patients
+  add column if not exists opening_balance integer not null default 0;

@@ -2125,6 +2125,15 @@
       "udt_name": "timestamptz"
     },
     {
+      "column_default": "0",
+      "column_name": "opening_balance",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 32,
+      "table_name": "patients",
+      "udt_name": "int4"
+    },
+    {
       "column_default": "gen_random_uuid()",
       "column_name": "id",
       "data_type": "uuid",

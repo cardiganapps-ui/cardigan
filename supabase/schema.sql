@@ -22,6 +22,13 @@ create table if not exists patients (
   billed integer default 0,
   paid integer default 0,
   sessions integer default 0,
+  -- Opening balance carried into Cardigan when a patient is migrated
+  -- mid-relationship. Signed MXN: >0 = pre-existing debt (owes), <0 =
+  -- saldo a favor (credit), 0 = none (default). Folded into amountDue as
+  -- an extra term (delta = consumed - paid + opening_balance) in
+  -- utils/accounting.js; NOT a session/payment row, so it never touches
+  -- the billed/paid/sessions counters or income. See migration 078.
+  opening_balance integer not null default 0,
   color_idx integer default 0,
   start_date date,
   birthdate date,
