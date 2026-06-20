@@ -598,6 +598,16 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     setLines(result.lines);
   };
 
+  // exhaustive-deps suggests wrapping this in useCallback — but that's
+  // the wrong fix here. onBeforeInput calls handleEnter (a `const`
+  // declared BELOW it), so a useCallback dep array listing handleEnter
+  // would evaluate it at render → a temporal-dead-zone ReferenceError,
+  // the exact TDZ-at-mount class e2e/notes-editor.spec.js guards. The
+  // handler reads ALL editor content from refs (linesRef/caretRef/…), so
+  // re-creating it each render is harmless and the native listener just
+  // re-attaches in one cheap DOM op (see useEffect below). Suppress at
+  // the source rather than contort the editor's function ordering.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const onBeforeInput = (e) => {
     // Attached via a native addEventListener (see useEffect below),
     // NOT via React's onBeforeInput prop. React polyfills
@@ -1188,11 +1198,10 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({
     if (!root) return;
     root.addEventListener("beforeinput", onBeforeInput);
     return () => root.removeEventListener("beforeinput", onBeforeInput);
-    // onBeforeInput is recreated each render but the re-attach cost
-    // is negligible (single DOM op) compared to the alternative of
-    // adding a useCallback wrapper, which would itself churn on any
-    // referenced state (slashMenu in particular).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // onBeforeInput is recreated each render (it can't be a useCallback —
+    // see the note at its definition); re-attaching is a single cheap DOM
+    // op. It's correctly listed as the only dependency, so no suppression
+    // is needed here.
   }, [onBeforeInput]);
 
   return (

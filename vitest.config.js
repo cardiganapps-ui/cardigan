@@ -10,6 +10,10 @@ export default defineConfig({
     environment: "node",
     environmentMatchGlobs: [
       ["src/hooks/__tests__/**", "happy-dom"],
+      // Component tests (.test.jsx anywhere under src) render real DOM via
+      // @testing-library/react, so they need happy-dom too. Pure utils
+      // tests (.test.js) stay in the lighter node env.
+      ["src/**/__tests__/**/*.test.jsx", "happy-dom"],
     ],
     setupFiles: ["./src/test/setup.js"],
     globals: false,
