@@ -12,9 +12,16 @@
                      session effectively happened; therapists rarely mark
                      completions manually, and charging them for what their
                      users owe is a load-bearing piece of the product)
-     amountDue = max(0, consumed − patient.paid)
-     credit    = max(0, patient.paid − consumed)
+     amountDue = max(0, consumed − patient.paid + patient.opening_balance)
+     credit    = max(0, patient.paid − consumed − patient.opening_balance)
 
+   - opening_balance (migration 078) is a signed MXN starting balance the
+     patient was migrated in with: >0 = pre-existing debt (owes), <0 =
+     saldo a favor (credit). It is NOT a session or payment row, so it
+     never feeds `consumed` or `paid` — it's a standalone term in delta.
+     EVERY amountDue derivation must include it (this enrich, the patient
+     portal, api/_cardiTools.js, scripts/audit-accounting.mjs) or Cardi /
+     the portal / the audit would disagree with the in-app number.
    - Iterate *raw* DB sessions (the upcomingSessions state, NOT the
      enrichedSessions memo). The predicate here owns the past-scheduled
      decision; never layer enrichedSessions on top or past-scheduled
@@ -85,7 +92,7 @@ export function computeConsumedByPatient(rawSessions, rateById, now = new Date()
  * Enrich a patients list with { amountDue, credit } derived from the raw
  * session rows. Uses DB status — never the display-auto-complete state.
  *
- *   delta = consumed − paid
+ *   delta = consumed − paid + opening_balance
  *   amountDue = max(0,  delta)   // patient owes us
  *   credit    = max(0, −delta)   // patient has prepaid
  *
@@ -98,7 +105,14 @@ export function enrichPatientsWithBalance(patients, rawSessions, now = new Date(
   return patients.map(p => {
     const consumed = consumedByPatient.get(p.id) || 0;
     const paid = p.paid || 0;
-    const delta = consumed - paid;
+    // Opening balance (migration 078): a pre-existing debt/credit the
+    // patient was migrated into Cardigan with. Signed MXN — >0 = owes,
+    // <0 = saldo a favor. It sits alongside consumed/paid in the delta;
+    // it is NOT a session or payment, so it never enters consumed or
+    // paid. Read snake_case (raw/mapped rows carry opening_balance) with
+    // a camelCase fallback for any caller that pre-normalizes.
+    const opening = p.opening_balance ?? p.openingBalance ?? 0;
+    const delta = consumed - paid + opening;
     return {
       ...p,
       amountDue: Math.max(0, delta),

@@ -6,7 +6,7 @@ import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants"
 
 export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates, setGroupMembers }) {
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult }) {
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult, openingBalance }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un registro con ese nombre.");
@@ -86,6 +86,11 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
       medical_conditions: medicalConditions || "",
       sessions: seedCount,
       billed: seedBilled,
+      // Opening balance (migration 078): signed MXN the patient is
+      // migrated in with. >0 = pre-existing debt, <0 = saldo a favor.
+      // Stored verbatim — it's a standalone amountDue term, never folded
+      // into billed/paid/sessions counters.
+      opening_balance: Math.round(Number(openingBalance) || 0),
       whatsapp_enabled: !!whatsappEnabled,
       // Stamp consent at creation only when the toggle was flipped on
       // — gives us a clean audit row tying opt-in to a moment.

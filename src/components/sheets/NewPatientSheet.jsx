@@ -162,6 +162,11 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   const [isMinor, setIsMinor] = useState(minorDefault);
   const [parent, setParent] = useState("");
   const [rate, setRate] = useState("");
+  // Optional opening balance for a patient migrated into Cardigan
+  // mid-relationship. `openingBalanceDir` picks debt vs. credit; the
+  // amount is always entered positive and signed at submit time.
+  const [openingBalanceAmount, setOpeningBalanceAmount] = useState("");
+  const [openingBalanceDir, setOpeningBalanceDir] = useState("owes"); // 'owes' | 'credit'
   const [tutorFrequency, setTutorFrequency] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -353,8 +358,16 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     setFeedback(null);
     setSubmitting(true);
     try {
+      // Sign the opening balance: positive = owes (debt), negative =
+      // saldo a favor. Empty / non-positive amount → 0 (no opening row).
+      const obNum = Number(openingBalanceAmount);
+      const openingBalance =
+        openingBalanceAmount !== "" && Number.isFinite(obNum) && obNum > 0
+          ? (openingBalanceDir === "credit" ? -Math.round(obNum) : Math.round(obNum))
+          : 0;
       const ok = await onSubmit({
         name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
+        openingBalance,
         tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
         phone: phoneDigits(phone), email: email.trim(),
         whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
@@ -686,6 +699,33 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                   <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
                 </label>
                 <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+              </div>
+
+              {/* 3b. Opening balance (optional) — a pre-existing debt or
+                  saldo a favor for a patient migrated mid-relationship.
+                  Direction toggle + positive amount; signed at submit. */}
+              <div className="input-group">
+                <label className="input-label">{t("patients.openingBalanceLabel")}</label>
+                <div style={{ display:"flex", gap:8, alignItems:"stretch" }}>
+                  <div style={{ flexShrink:0, width:150 }}>
+                    <SegmentedControl
+                      size="md"
+                      value={openingBalanceDir}
+                      onChange={setOpeningBalanceDir}
+                      ariaLabel={t("patients.openingBalanceLabel")}
+                      items={[
+                        { k: "owes",   l: t("patients.openingBalanceOwes") },
+                        { k: "credit", l: t("patients.openingBalanceCredit") },
+                      ]}
+                    />
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <MoneyInput min="0" step="50" value={openingBalanceAmount}
+                      onChange={e => setOpeningBalanceAmount(e.target.value)}
+                      placeholder="0" />
+                  </div>
+                </div>
+                <div className="input-help">{t("patients.openingBalanceHelp")}</div>
               </div>
 
               {/* 4. Scheduling mode — recurring (perpetual weekly slot)

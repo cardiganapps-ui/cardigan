@@ -253,6 +253,80 @@ describe("enrichPatientsWithBalance", () => {
   });
 });
 
+/* ── Opening balance (migration 078) ──
+   A signed starting balance the patient was migrated in with: >0 = owes
+   (pre-existing debt), <0 = saldo a favor. It's a standalone term in the
+   delta, never folded into consumed or paid:
+       delta = consumed − paid + opening_balance
+   These pin that it composes correctly with sessions and payments. */
+describe("opening balance", () => {
+  it("pure opening debt (no sessions/payments) → amountDue", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: 1500 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1500);
+    expect(out.credit).toBe(0);
+  });
+
+  it("pure opening credit (negative) → saldo a favor", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: -800 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(800);
+  });
+
+  it("opening debt is reduced by payments", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 500, { opening_balance: 1500 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1000); // 0 consumed − 500 paid + 1500 debt
+  });
+
+  it("opening credit absorbs consumed sessions before any debt shows", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: -1000 })],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);   // 700 consumed − 1000 credit
+    expect(out.credit).toBe(300);
+  });
+
+  it("opening debt stacks on top of consumed sessions", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: 500 })],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1200); // 700 consumed + 500 debt
+  });
+
+  it("missing opening_balance defaults to 0 (no effect)", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 300)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(400); // unchanged vs. the baseline test
+  });
+
+  it("accepts a camelCase openingBalance fallback", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { openingBalance: 250 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(250);
+  });
+});
+
 /* ── Interview-stage / potential patients (migration 047) ──
    Critical safety: an interview session on a 'potential' patient must
    pass through sessionCountsTowardBalance the same way a regular

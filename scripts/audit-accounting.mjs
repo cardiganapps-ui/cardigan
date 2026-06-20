@@ -122,7 +122,7 @@ async function main() {
   const where = userFilter ? `WHERE user_id = '${userFilter.replace(/'/g, "''")}'` : "";
 
   const patients = await sql(`
-    SELECT id, user_id, name, rate, billed, paid, sessions, status
+    SELECT id, user_id, name, rate, billed, paid, opening_balance, sessions, status
     FROM patients ${where}
     ORDER BY user_id, name;
   `);
@@ -209,7 +209,11 @@ async function main() {
         consumed += (s.rate != null ? s.rate : rate);
       }
       const paidSum = ppays.reduce((a, b) => a + (b.amount || 0), 0);
-      const delta = consumed - (p.paid || 0);
+      // opening_balance (migration 078): signed standalone term in the
+      // delta, mirroring utils/accounting.js. It does NOT feed billed/
+      // paid/sessions, so the counter-drift checks below ignore it.
+      const opening = p.opening_balance || 0;
+      const delta = consumed - (p.paid || 0) + opening;
       const amountDue = Math.max(0, delta);
       const credit = Math.max(0, -delta);
 

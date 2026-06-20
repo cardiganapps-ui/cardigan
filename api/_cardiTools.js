@@ -209,7 +209,7 @@ async function listPatients(svc, userId, input) {
 
   let q = svc
     .from("patients")
-    .select("id,name,status,rate,paid,day,time,start_date,parent")
+    .select("id,name,status,rate,paid,opening_balance,day,time,start_date,parent")
     .eq("user_id", userId)
     .order("name", { ascending: true })
     .limit(limit);
@@ -249,8 +249,12 @@ async function listPatients(svc, userId, input) {
       return sum + rate;
     }, 0);
     const paid = p.paid || 0;
-    const balance_mxn = Math.max(0, consumed - paid);
-    const credit_mxn = Math.max(0, paid - consumed);
+    // opening_balance (migration 078): signed starting balance, folded
+    // into the delta exactly like utils/accounting.js so Cardi's numbers
+    // match the in-app balance.
+    const opening = p.opening_balance || 0;
+    const balance_mxn = Math.max(0, consumed - paid + opening);
+    const credit_mxn = Math.max(0, paid - consumed - opening);
 
     const sessions_total = sess.length;
     const sessions_completed = sess.filter((s) => sessionCountsTowardBalance(s, now)).length;
@@ -298,7 +302,7 @@ async function getPatientDetail(svc, userId, input) {
 
   const { data: candidates, error } = await svc
     .from("patients")
-    .select("id,name,status,rate,paid,day,time,start_date,parent")
+    .select("id,name,status,rate,paid,opening_balance,day,time,start_date,parent")
     .eq("user_id", userId)
     .ilike("name", `%${query}%`)
     .limit(10);
@@ -345,6 +349,9 @@ async function getPatientDetail(svc, userId, input) {
     return sum + rate;
   }, 0);
   const paid = target.paid || 0;
+  // opening_balance (migration 078): signed starting balance, same delta
+  // term as utils/accounting.js so Cardi agrees with the in-app number.
+  const opening = target.opening_balance || 0;
 
   return {
     found: true,
@@ -352,8 +359,8 @@ async function getPatientDetail(svc, userId, input) {
       name: target.name,
       status: target.status,
       rate_mxn: target.rate,
-      balance_mxn: Math.max(0, consumed - paid),
-      credit_mxn: Math.max(0, paid - consumed),
+      balance_mxn: Math.max(0, consumed - paid + opening),
+      credit_mxn: Math.max(0, paid - consumed - opening),
       total_paid_mxn: paid,
       schedule: target.day && target.time ? `${target.day} ${target.time}` : null,
       start_date: target.start_date || null,
@@ -389,7 +396,7 @@ async function getFinanceSummary(svc, userId, input) {
   // skip the loop below via the patient filter) so range-scoped session
   // counters stay consistent with what the user sees on Agenda.
   const [{ data: patients, error: pe }, { data: sessions, error: se }, { data: payments, error: paye }] = await Promise.all([
-    svc.from("patients").select("id,rate,paid,status").eq("user_id", userId).in("status", ["active", "ended"]),
+    svc.from("patients").select("id,rate,paid,opening_balance,status").eq("user_id", userId).in("status", ["active", "ended"]),
     svc.from("sessions").select("patient_id,date,time,status,rate,modality,session_type").eq("user_id", userId),
     svc.from("payments").select("date,amount,method").eq("user_id", userId),
   ]);
@@ -439,8 +446,9 @@ async function getFinanceSummary(svc, userId, input) {
       return sum + (s.rate != null ? s.rate : (p.rate || 0));
     }, 0);
     const paid = p.paid || 0;
-    total_outstanding_mxn += Math.max(0, consumed - paid);
-    total_credit_mxn += Math.max(0, paid - consumed);
+    const opening = p.opening_balance || 0; // migration 078 — see above
+    total_outstanding_mxn += Math.max(0, consumed - paid + opening);
+    total_credit_mxn += Math.max(0, paid - consumed - opening);
   }
 
   return {

@@ -69,7 +69,7 @@ export function usePatientPortalData(user) {
         const [pRes, sRes, tRes, rRes] = await Promise.all([
           supabase
             .from("patients")
-            .select("id, name, rate, billed, paid, sessions, scheduling_mode, day, time, status, user_id, parent, birthdate, allergies, medical_conditions, height_cm, goal_weight_kg, patient_intake_completed_at")
+            .select("id, name, rate, billed, paid, opening_balance, sessions, scheduling_mode, day, time, status, user_id, parent, birthdate, allergies, medical_conditions, height_cm, goal_weight_kg, patient_intake_completed_at")
             .eq("patient_user_id", user.id),
           supabase
             .from("sessions")
