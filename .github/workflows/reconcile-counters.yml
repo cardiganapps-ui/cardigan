@@ -1,0 +1,75 @@
+# ── Counter reconciliation (manual recovery) ──────────────────────────
+#
+# Runs scripts/reconcile-counters.mjs to re-derive the denormalized
+# patient counters (paid / billed / sessions) from raw rows and, when
+# explicitly asked, write the corrected values back.
+#
+#   • patient.paid     = Σ payments.amount
+#   • patient.billed   = Σ rate over predicate-consumed sessions (CLAUDE.md #4)
+#   • patient.sessions = COUNT(sessions)
+#
+# These counters are normally maintained by DB triggers (migrations 068/
+# 069). This workflow is the MANUAL recovery path when they drift. The
+# nightly "Accounting audit" workflow DETECTS drift (read-only); this one
+# FIXES it — and only on a deliberate human dispatch.
+#
+# ⚠️  workflow_dispatch ONLY — never scheduled, never on push. Counter
+#     writes touch production financial cache values, so a human always
+#     pulls the trigger. The default run is a DRY-RUN (report only);
+#     writes happen only when you set the `apply` input to true.
+#
+# amountDue is ALWAYS re-derived live from raw sessions, so these counters
+# never change the number a therapist sees — reconciling them only
+# corrects a cache, and only ever to the canonical predicate value.
+#
+# Setup (one-time, repo Settings → Secrets and variables → Actions) — the
+# same two secrets the accounting audit already uses:
+#   SUPABASE_PAT           — Management API personal access token
+#   SUPABASE_PROJECT_REF   — the SUPABASE_URL subdomain
+#
+# Recommended procedure:
+#   1. Dispatch with apply=false (default) and read the diff in the logs.
+#   2. If the corrections look right, dispatch again with apply=true.
+#   3. Re-run the "Accounting audit" workflow to confirm drift cleared.
+
+name: Reconcile counters
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Write corrections (true) or dry-run report only (false)"
+        type: boolean
+        required: true
+        default: false
+      user:
+        description: "Optional single user_id to limit the reconciliation to"
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Reconcile patient counters
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          APPLY: ${{ inputs.apply }}
+          USER_ID: ${{ inputs.user }}
+        run: |
+          args=""
+          if [ "$APPLY" = "true" ]; then args="$args --apply"; fi
+          if [ -n "$USER_ID" ]; then args="$args --user=$USER_ID"; fi
+          echo "Running: node scripts/reconcile-counters.mjs$args"
+          node scripts/reconcile-counters.mjs $args
