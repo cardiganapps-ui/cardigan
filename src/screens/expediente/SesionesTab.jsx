@@ -219,7 +219,7 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
     <>
       <div style={SECTION_LABEL_STYLE}>{title}</div>
       <div className="card">
-        {visible.map(s => {
+        {visible.map((s, i) => {
           const tutor = isTutorSession(s);
           const interview = isInterviewSession(s);
           const hasNote = pNotes.some(n => n.session_id === s.id);
@@ -233,7 +233,7 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
           const showVisitChip = showVisitTypes && !tutor && !interview;
           const hasSecondLine = tutor || interview || oneOff || hasNote || showVisitChip;
           return (
-            <div className="row-item" key={s.id} onClick={() => onSelect(s)}>
+            <div className="row-item list-entry-stagger" key={s.id} style={{ "--stagger-i": Math.min(i, 12) }} onClick={() => onSelect(s)}>
               <div className="row-content">
                 {/* Title row: time on the left, status pill pinned to the
                     right of the same line. Keeps the row a single line when

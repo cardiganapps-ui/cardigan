@@ -8,6 +8,7 @@ import { classifySessions } from "../../hooks/usePatientPortalData";
 import { usePatientDocuments } from "../../hooks/usePatientDocuments";
 import { IconCalendar, IconDollar, IconCheck, IconMail, IconUpload, IconDocument, IconTrash, IconChevronRight, IconCreditCard, IconUser, IconUsers, IconX, IconPhone, IconCamera, IconHome, IconSparkle } from "../../components/Icons";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 import { haptic } from "../../utils/haptics";
 import { IntakeFormSheet } from "./IntakeFormSheet";
 import { PayBalanceSheet } from "./PayBalanceSheet";
@@ -387,16 +388,19 @@ export function PatientHome({ data }) {
           the same portal reads as "your psychology space" / "your
           nutrition space" depending on the linked professional, instead
           of being a generic white page. */}
-      <PatientHero
-        firstName={patientFirstName}
-        theme={theme}
-        nextSession={nextSession}
-        journey={journey}
-        therapistName={therapistDisplayName}
-        professionWord={professionWord}
-        isFirstExperience={isFirstExperience}
-        t={t}
-      />
+      {/* Hero fades while the card stack rises (two-layer entrance). */}
+      <div style={{ animation: "fadeIn var(--dur-slow) var(--ease-out) both" }}>
+        <PatientHero
+          firstName={patientFirstName}
+          theme={theme}
+          nextSession={nextSession}
+          journey={journey}
+          therapistName={therapistDisplayName}
+          professionWord={professionWord}
+          isFirstExperience={isFirstExperience}
+          t={t}
+        />
+      </div>
 
       <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Intake CTA — shown until the patient self-serves their
@@ -407,8 +411,9 @@ export function PatientHome({ data }) {
           <button
             type="button"
             onClick={() => setIntakeOpen(true)}
-            className="card btn-tap"
+            className="card btn-tap list-entry-stagger"
             style={{
+              "--stagger-i": 0,
               display: "flex",
               alignItems: "center",
               gap: 12,
@@ -476,7 +481,7 @@ export function PatientHome({ data }) {
             modality icon, modality color, and reschedule/cancel
             actions. */}
         {!isFirstExperience && (
-          <div className="card" style={{ padding: 16, background: "var(--white)" }}>
+          <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 2 }}>
             <div
               style={{
                 display: "flex",
@@ -798,7 +803,7 @@ function QuickActionsRow({ theme, showPay, payAmount, onPay }) {
     WebkitTapHighlightColor: "transparent",
   };
   return (
-    <div style={{ display: "flex", gap: 10 }}>
+    <div className="list-entry-stagger" style={{ display: "flex", gap: 10, "--stagger-i": 1 }}>
       <button
         type="button"
         onClick={onPay}
@@ -831,7 +836,7 @@ function TherapistHero({ theme, name, professionWord, email, phone, t }) {
     .toUpperCase() || "—";
 
   return (
-    <div className="card" style={{ padding: 16, background: "var(--white)" }}>
+    <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 3 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: email || phone ? 14 : 0 }}>
         <div
           style={{
@@ -1026,7 +1031,9 @@ function SessionTimeline({ sessions, theme }) {
         return (
           <div
             key={session.id}
+            className="list-entry-stagger"
             style={{
+              "--stagger-i": Math.min(idx, 12),
               display: "flex",
               gap: 12,
               alignItems: "flex-start",
@@ -1284,10 +1291,14 @@ function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }) {
   }[tone];
   const Icon = tone === "even" ? IconCheck : IconDollar;
 
+  // Count-up the money figures (mirrors the therapist KPIs). On a
+  // post-payment refresh the balance counts DOWN old→new; on mount it
+  // reveals 0→value. The "even" branch stays a plain string. 500ms
+  // settles in concert with the progress bar below (--dur-base).
   const valueText = owes
-    ? formatMXN(amountDue)
+    ? <AnimatedNumber value={amountDue} format={formatMXN} duration={500} />
     : hasCredit
-      ? formatMXN(credit)
+      ? <AnimatedNumber value={credit} format={formatMXN} duration={500} />
       : t("patientHome.balanceEvenValue");
 
   const label = owes
@@ -1307,7 +1318,7 @@ function BalanceCard({ amountDue, credit, rate, paid, onPay, theme }) {
   const paidPct = totalConsumed > 0 ? Math.round(((paid || 0) / totalConsumed) * 100) : 0;
 
   return (
-    <div className="card" style={{ padding: 16, background: "var(--white)" }}>
+    <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 4 }}>
       <div
         style={{
           fontSize: 11,

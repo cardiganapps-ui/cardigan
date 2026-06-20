@@ -74,7 +74,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
       {payFiltered.length === 0
         ? <EmptyState kind="finances" compact title={t("finances.noPaymentsInPeriod")} />
         : <div className="card">
-            {payFiltered.map((p) => {
+            {payFiltered.map((p, i) => {
               const isDeleting = confirmDeletePayId === p.id;
               const row = (
                 <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeletePayId(isDeleting ? null : p.id)} style={{ cursor:"pointer", background:"var(--white)" }}>
@@ -89,7 +89,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
                 </div>
               );
               return (
-                <div key={p.id}>
+                <div key={p.id} className="list-entry-stagger" style={{ "--stagger-i": Math.min(i, 12) }}>
                   <SwipeableRow
                     onAction={async () => { if (!mutating) await deletePayment(p.id); }}
                     actionLabel={t("delete")}

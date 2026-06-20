@@ -941,12 +941,13 @@ function GastosTab({
         />
       )}
 
-      {visibleRows.map(e => {
+      {visibleRows.map((e, i) => {
         const isExpanded = confirmDeleteId === e.id;
         const isReceiptPending = e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id;
         return (
+          // Stagger wrapper mirrors PagosTab so Gastos reveals top-down too.
+          <div key={e.id} className="list-entry-stagger" style={{ "--stagger-i": Math.min(i, 12) }}>
           <SwipeableRow
-            key={e.id}
             onAction={() => setConfirmDeleteId(isExpanded ? null : e.id)}
             actionLabel={t("delete")}
             actionTone="danger"
@@ -1033,6 +1034,7 @@ function GastosTab({
               </div>
             )}
           </SwipeableRow>
+          </div>
         );
       })}
 
@@ -1201,7 +1203,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
         gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
         marginBottom: 14,
       }}>
-        <div className="stat-tile">
+        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 0 }}>
           <div className="stat-tile-label">
             <IconTrendingUp size={12} style={{ marginRight: 4, verticalAlign: "-2px" }} />
             {t("gastos.incomeKpi")}
@@ -1210,7 +1212,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             +<AnimatedNumber value={income} format={formatMXN} />
           </div>
         </div>
-        <div className="stat-tile">
+        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 1 }}>
           <div className="stat-tile-label">
             <IconTrendingDown size={12} style={{ marginRight: 4, verticalAlign: "-2px" }} />
             {t("gastos.expensesKpi")}
@@ -1219,7 +1221,7 @@ function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             −<AnimatedNumber value={egresos} format={formatMXN} />
           </div>
         </div>
-        <div className="stat-tile">
+        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 2 }}>
           <div className="stat-tile-label">{profit >= 0 ? t("gastos.profitKpi") : t("gastos.profitNegative")}</div>
           <div className="stat-tile-val" style={{
             color: profit >= 0 ? "var(--teal-dark)" : "var(--amber)",
