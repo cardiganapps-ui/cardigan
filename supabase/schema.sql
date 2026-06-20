@@ -566,6 +566,13 @@ create index if not exists idx_patients_user_id on patients(user_id);
 create index if not exists idx_sessions_user_id on sessions(user_id);
 create index if not exists idx_sessions_patient_id on sessions(patient_id);
 create index if not exists idx_sessions_session_type on sessions(session_type);
+-- Composite (user_id, date) — speeds the common "this user's sessions on
+-- a given day" lookups (Agenda day view, per-date filters). NOTE: `date`
+-- is a "D-MMM" STRING, so this helps EQUALITY on an exact date string,
+-- not chronological range scans (strings don't sort by calendar order) —
+-- an ISO-date column would be the real range-scan fix (deferred; touches
+-- the date-format invariant). See migration 079.
+create index if not exists idx_sessions_user_date on sessions(user_id, date);
 -- One session per (patient, date, time). DB-level guard against dupes;
 -- client-side dedup alone has proven unreliable (stale state across tabs,
 -- date-only comparisons, regen paths re-inserting cancelled slots).
