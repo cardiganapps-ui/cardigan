@@ -22,7 +22,7 @@ import { useEffect, useRef, useState } from "react";
        activity. */
 export function useIdle(thresholdMs = 30_000) {
   const [isIdle, setIsIdle] = useState(false);
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

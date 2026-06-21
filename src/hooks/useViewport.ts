@@ -14,7 +14,7 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 const TABLET_SPLIT_QUERY = "(min-width: 1024px)";
 const TABLET_QUERY = "(min-width: 768px)";
 
-function matches(query) {
+function matches(query: string): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;
   return window.matchMedia(query).matches;
 }

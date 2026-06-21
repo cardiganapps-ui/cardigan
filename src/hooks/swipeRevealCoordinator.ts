@@ -12,10 +12,10 @@
    then user swipes on a different row — the new row claims swipe and
    the old row gets a programmatic close). */
 
-let _openId = null;
-let _closeFn = null;
+let _openId: string | null = null;
+let _closeFn: (() => void) | null = null;
 
-export function claim(id, closeFn) {
+export function claim(id: string, closeFn: () => void) {
   if (_openId && _openId !== id && _closeFn) {
     const prev = _closeFn;
     _openId = id;
@@ -27,7 +27,7 @@ export function claim(id, closeFn) {
   _closeFn = closeFn;
 }
 
-export function release(id) {
+export function release(id: string) {
   if (_openId === id) {
     _openId = null;
     _closeFn = null;

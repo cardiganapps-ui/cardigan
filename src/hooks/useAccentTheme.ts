@@ -18,11 +18,11 @@ export const ACCENTS = ["default", "sage", "amber", "burgundy", "steel"];
 function getStored() {
   try {
     const v = localStorage.getItem(LS_KEY);
-    return ACCENTS.includes(v) ? v : null;
+    return v && ACCENTS.includes(v) ? v : null;
   } catch { return null; }
 }
 
-function apply(accent) {
+function apply(accent: string | null | undefined) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   if (accent && accent !== "default") {
@@ -37,7 +37,7 @@ export function useAccentTheme() {
 
   useEffect(() => { apply(accent); }, [accent]);
 
-  const setAccent = useCallback((value) => {
+  const setAccent = useCallback((value: string) => {
     if (!ACCENTS.includes(value)) return;
     try { localStorage.setItem(LS_KEY, value); } catch { /* private mode / quota */ }
     setAccentState(value);

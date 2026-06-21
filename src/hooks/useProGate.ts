@@ -22,9 +22,9 @@ export function useProGate() {
   const { subscription } = useCardigan();
   const isPro = !!subscription?.isPro;
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetFeature, setSheetFeature] = useState(null);
+  const [sheetFeature, setSheetFeature] = useState<string | null>(null);
 
-  const openSheet = useCallback((feature) => {
+  const openSheet = useCallback((feature?: string | null) => {
     setSheetFeature(feature || "default");
     setSheetOpen(true);
   }, []);
@@ -33,12 +33,12 @@ export function useProGate() {
     setSheetOpen(false);
   }, []);
 
-  const guard = useCallback((feature, fn) => {
+  const guard = useCallback((feature: string | null | undefined, fn?: ((...args: unknown[]) => unknown) | null) => {
     // We return a function so the caller can use it directly as an
     // onClick handler. If the user is Pro, we forward whatever args
     // React gave us (event, etc.) to the original fn so behaviour is
     // identical to wiring fn directly.
-    return (...args) => {
+    return (...args: unknown[]) => {
       if (isPro) return fn?.(...args);
       openSheet(feature);
       return undefined;

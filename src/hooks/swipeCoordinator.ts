@@ -38,19 +38,19 @@ export const DRAWER_EDGE_BAND = 32;
 // ~18px of safety (matches the Home carousel's 50 - 32 = 18 gap).
 export const IN_SCREEN_SWIPE_DEAD_ZONE = 50;
 
-let _owner = null;
+let _owner: string | null = null;
 
-export function tryClaim(id) {
+export function tryClaim(id: string): boolean {
   if (_owner && _owner !== id) return false;
   _owner = id;
   return true;
 }
 
-export function release(id) {
+export function release(id: string): void {
   if (_owner === id) _owner = null;
 }
 
-export function isOwnedBy(id) {
+export function isOwnedBy(id: string): boolean {
   return _owner === id;
 }
 
