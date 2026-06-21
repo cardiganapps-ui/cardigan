@@ -7,7 +7,17 @@
    parent owns the actual `open` state — flipping it from false
    to true based on the value here, then back to false on close. */
 
-export function shouldShowDay14Prompt({ accessState, daysSinceSignup, sessionsCount, patientsCount, hasSubmitted, hasDismissed, secondsSinceSessionStart }) {
+export interface Day14PromptInput {
+  accessState?: string | null;
+  daysSinceSignup?: number | null;
+  sessionsCount?: number | null;
+  patientsCount?: number | null;
+  hasSubmitted?: boolean | null;
+  hasDismissed?: boolean | null;
+  secondsSinceSessionStart?: number | null;
+}
+
+export function shouldShowDay14Prompt({ accessState, daysSinceSignup, sessionsCount, patientsCount, hasSubmitted, hasDismissed, secondsSinceSessionStart }: Day14PromptInput): boolean {
   if (accessState !== "trial" && accessState !== "active") return false;
   if (hasSubmitted) return false;
   if (hasDismissed) return false;

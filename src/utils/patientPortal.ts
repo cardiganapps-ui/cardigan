@@ -1,4 +1,4 @@
-import { sessionCountsTowardBalance } from "./accounting";
+import { sessionCountsTowardBalance, type BalanceSession } from "./accounting";
 
 /* ── Patient portal — pure helpers ────────────────────────────────
    Lives separate from usePatientPortalData so the helpers can be
@@ -22,11 +22,15 @@ import { sessionCountsTowardBalance } from "./accounting";
 // computeConsumedByPatient). Production callers omit it and get real
 // wall-clock time. Without this seam, tests that hardcode session dates
 // silently break once real time drifts past the hardcoded reference.
-export function classifySessions(sessions, patientIds, now = new Date()) {
+export function classifySessions(
+  sessions: BalanceSession[] | null | undefined,
+  patientIds: string[] | null | undefined,
+  now: Date = new Date(),
+): { future: BalanceSession[]; past: BalanceSession[] } {
   const ids = new Set(patientIds || []);
-  const filtered = (sessions || []).filter((s) => ids.has(s.patient_id));
-  const future = [];
-  const past = [];
+  const filtered = (sessions || []).filter((s) => ids.has(s.patient_id ?? ""));
+  const future: BalanceSession[] = [];
+  const past: BalanceSession[] = [];
   for (const s of filtered) {
     // sessionCountsTowardBalance returns true for past-1h auto-
     // completed slots. We use it to decide "this scheduled slot

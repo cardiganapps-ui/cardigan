@@ -10,7 +10,7 @@
    user typed them. The naive title-case version turns "María de la
    Cruz" into "María De La Cruz" which is wrong; we'd rather leave the
    user's lowercase intact than overcorrect it. */
-export function capitalizeName(s) {
+export function capitalizeName(s: string | null | undefined): string | null | undefined {
   if (typeof s !== "string" || !s) return s;
-  return s.replace(/(^|\s)(\p{L})/gu, (_, ws, ch) => ws + ch.toUpperCase());
+  return s.replace(/(^|\s)(\p{L})/gu, (_m: string, ws: string, ch: string) => ws + ch.toUpperCase());
 }
