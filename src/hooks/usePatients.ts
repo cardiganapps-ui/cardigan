@@ -1,12 +1,137 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import { getInitials, shortDateToISO, todayISO } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { PATIENT_STATUS, SESSION_TYPE, SESSION_STATUS } from "../data/constants";
 
-export function createPatientActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, payments, setPayments, documents, setDocuments, setMutating, setMutationError, { formatShortDate, getRecurringDates, setGroupMembers }) {
+// ── Domain row types ────────────────────────────────────────────────
+interface Patient {
+  id: string;
+  name: string;
+  parent?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  initials?: string | null;
+  rate?: number | null;
+  day?: string | null;
+  time?: string | null;
+  colorIdx?: number | null;
+  color_idx?: number | null;
+  status?: string;
+  scheduling_mode?: string;
+  start_date?: string | null;
+  birthdate?: string | null;
+  allergies?: string | null;
+  medical_conditions?: string | null;
+  sessions: number;
+  billed: number;
+  paid?: number;
+  opening_balance?: number | null;
+  [key: string]: unknown;
+}
 
-  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult, openingBalance }) {
+interface Session {
+  id: string;
+  patient_id?: string | null;
+  session_type?: string | null;
+  status?: string | null;
+  date: string;
+  time?: string | null;
+  color_idx?: number | null;
+  colorIdx?: number | null;
+  modality?: string | null;
+  cancel_reason?: string | null;
+  [key: string]: unknown;
+}
+
+interface Payment { id: string; patient_id?: string | null; [key: string]: unknown }
+interface DocumentRow { id: string; patient_id?: string | null; file_path?: string | null; [key: string]: unknown }
+interface GroupMember { patient_id?: string | null; [key: string]: unknown }
+
+interface Schedule {
+  day: string;
+  time: string;
+  duration?: number | string | null;
+  frequency?: string;
+  modality?: string;
+}
+
+/** A first-consult / interview slot picked in the UI (ISO date). */
+interface ConsultSlot {
+  date?: string;
+  time?: string;
+  duration?: number | string | null;
+  modality?: string;
+}
+
+/** Pre-computed session row to seed at patient creation/conversion. */
+interface SessionSeed {
+  day: string;
+  time: string;
+  duration: number;
+  modality: string;
+  frequency?: string;
+  date: string;
+  is_recurring: boolean;
+  visit_type?: string | null;
+}
+
+type Num = number | string | null | undefined;
+
+type SetPatients = Dispatch<SetStateAction<Patient[]>>;
+type SetSessions = Dispatch<SetStateAction<Session[]>>;
+type SetPayments = Dispatch<SetStateAction<Payment[]>>;
+type SetDocuments = Dispatch<SetStateAction<DocumentRow[]>>;
+type SetGroupMembers = Dispatch<SetStateAction<GroupMember[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
+
+interface PatientHelpers {
+  formatShortDate: (d: Date) => string;
+  getRecurringDates: (day: string, start: string, end?: string | null, freq?: string) => Date[];
+  setGroupMembers?: SetGroupMembers;
+}
+
+export function createPatientActions(
+  userId: string,
+  patients: Patient[],
+  setPatients: SetPatients,
+  upcomingSessions: Session[],
+  setUpcomingSessions: SetSessions,
+  payments: Payment[],
+  setPayments: SetPayments | undefined,
+  documents: DocumentRow[],
+  setDocuments: SetDocuments | undefined,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+  { formatShortDate, getRecurringDates, setGroupMembers }: PatientHelpers,
+) {
+
+  async function createPatient({ name, parent, rate, phone, email, birthdate, tutorFrequency, schedules, recurring, startDate, endDate, whatsappEnabled, externalFolderUrl, heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg, allergies, medicalConditions, schedulingMode, firstConsult, openingBalance }: {
+    name?: string;
+    parent?: string;
+    rate?: Num;
+    phone?: string;
+    email?: string;
+    birthdate?: string | null;
+    tutorFrequency?: string | null;
+    schedules?: Schedule[];
+    recurring?: boolean;
+    startDate?: string;
+    endDate?: string;
+    whatsappEnabled?: boolean;
+    externalFolderUrl?: string | null;
+    heightCm?: Num;
+    goalWeightKg?: Num;
+    goalBodyFatPct?: Num;
+    goalSkeletalMuscleKg?: Num;
+    allergies?: string;
+    medicalConditions?: string;
+    schedulingMode?: string;
+    firstConsult?: ConsultSlot;
+    openingBalance?: Num;
+  }) {
     if (!name?.trim()) return false;
     if (patients.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
       setMutationError("Ya existe un registro con ese nombre.");
@@ -23,7 +148,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     // sessions → update counters). Episodic patients get at most one
     // session row (the first consult, if the user filled it in) and
     // never participate in this loop.
-    const sessionSeeds = [];
+    const sessionSeeds: SessionSeed[] = [];
     if (mode === "recurring" && recurring && startDate) {
       for (const s of sched) {
         const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
@@ -147,15 +272,16 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  async function updatePatient(id, updates) {
+  async function updatePatient(id: string, updates: Record<string, unknown>) {
     if (updates.name) {
-      const dupe = patients.some(p => p.id !== id && p.name.toLowerCase() === updates.name.trim().toLowerCase());
+      const newName = String(updates.name).trim().toLowerCase();
+      const dupe = patients.some(p => p.id !== id && p.name.toLowerCase() === newName);
       if (dupe) { setMutationError("Ya existe un paciente con ese nombre."); return false; }
     }
     setMutating(true);
     setMutationError("");
-    const patch = { ...updates };
-    if (patch.name) patch.initials = getInitials(patch.name);
+    const patch: Record<string, unknown> = { ...updates };
+    if (patch.name) patch.initials = getInitials(String(patch.name));
     const { data, error } = await supabase.from("patients")
       .update(patch).eq("id", id).eq("user_id", userId).select().single();
     setMutating(false);
@@ -164,7 +290,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  async function deletePatient(id) {
+  async function deletePatient(id: string) {
     setMutating(true);
     setMutationError("");
 
@@ -250,6 +376,14 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   async function createPotential({
     name, parent, rate, phone, email, whatsappEnabled,
     interview, // { date, time, duration, modality } — required
+  }: {
+    name?: string;
+    parent?: string;
+    rate?: Num;
+    phone?: string;
+    email?: string;
+    whatsappEnabled?: boolean;
+    interview?: ConsultSlot;
   }) {
     if (!name?.trim()) return false;
     // Dedupe only against active + potential — discarded names can be
@@ -349,7 +483,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   // cancel to (status='scheduled' AND date >= today AND session_type
   // ='interview'), matching the user's mental model: "they came in,
   // we decided not to engage, file them away."
-  async function discardPotential(id) {
+  async function discardPotential(id: string) {
     setMutating(true);
     setMutationError("");
     const { error } = await supabase.from("patients")
@@ -408,12 +542,30 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
   // the interview session itself), then seeds the new schedule.
   // Counters are INCREMENTED (not overwritten) so the interview's
   // contribution stays in billed/sessions.
-  async function convertPotentialToActive(id, {
+  async function convertPotentialToActive(id: string, {
     rate, parent, phone, email, birthdate, tutorFrequency,
     schedulingMode, schedules, startDate, endDate,
     heightCm, goalWeightKg, goalBodyFatPct, goalSkeletalMuscleKg,
     allergies, medicalConditions,
     firstConsult, // optional — episodic patients can include the next visit here
+  }: {
+    rate?: Num;
+    parent?: string;
+    phone?: string;
+    email?: string;
+    birthdate?: string | null;
+    tutorFrequency?: string | null;
+    schedulingMode?: string;
+    schedules?: Schedule[];
+    startDate?: string;
+    endDate?: string;
+    heightCm?: Num;
+    goalWeightKg?: Num;
+    goalBodyFatPct?: Num;
+    goalSkeletalMuscleKg?: Num;
+    allergies?: string;
+    medicalConditions?: string;
+    firstConsult?: ConsultSlot;
   }) {
     const patient = patients.find(p => p.id === id);
     if (!patient || patient.status !== PATIENT_STATUS.POTENTIAL) return false;
@@ -443,7 +595,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
         .filter(s => s.patient_id === id)
         .map(s => `${s.date}|${s.time}`)
     );
-    const sessionSeeds = [];
+    const sessionSeeds: SessionSeed[] = [];
     if (mode === "recurring" && startDate) {
       for (const s of sched) {
         const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
@@ -588,7 +740,7 @@ export function createPatientActions(userId, patients, setPatients, upcomingSess
    cases on the date boundary. Used when seeding an episodic patient's
    first consult — sessions.day stores the weekday name, so we derive
    it from the picked ISO date instead of asking the form for it. */
-function dayNameFromISO(iso) {
+function dayNameFromISO(iso: string) {
   const d = new Date((iso || "").slice(0, 10) + "T12:00:00");
   if (Number.isNaN(d.getTime())) return "Lunes";
   return DAY_ORDER[(d.getDay() + 6) % 7]; // Sun=0 → 6 → Sunday last
