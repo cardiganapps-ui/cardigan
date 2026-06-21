@@ -25,7 +25,7 @@
    and "PESO" both resolve. The full key list is duplicated for
    English so a Spanish-locale and English-locale export of the same
    scan land in the same fields. */
-const COLUMN_MAP = {
+const COLUMN_MAP: Record<string, string> = {
   // Identity (consumed for matching, not persisted directly to row)
   "nombre":                "name",
   "name":                  "name",
@@ -110,12 +110,12 @@ const INTEGER_FIELDS = new Set([
 /* RFC 4180-ish CSV parse. Handles quoted fields, escaped quotes
    ("""), and either CRLF or LF line endings. Returns an array of
    string arrays — header detection is the caller's problem. */
-export function parseCSV(text) {
+export function parseCSV(text: string): string[][] {
   if (!text || typeof text !== "string") return [];
   // Strip UTF-8 BOM emitted by Excel / LookinBody on Windows.
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  const rows = [];
-  let row = [];
+  const rows: string[][] = [];
+  let row: string[] = [];
   let field = "";
   let inQuotes = false;
   for (let i = 0; i < text.length; i++) {
@@ -153,8 +153,10 @@ export function parseCSV(text) {
    the same length as the header row: known columns become field
    names, unknown ones become `{ extra: <original> }` markers we use
    to route values into raw_extra. */
-function mapHeaderRow(headerCells) {
-  return headerCells.map((raw) => {
+interface HeaderSlot { field?: string; extra?: string }
+
+function mapHeaderRow(headerCells: string[]): HeaderSlot[] {
+  return headerCells.map((raw): HeaderSlot => {
     const norm = raw.trim().toLowerCase().replace(/\s+/g, " ");
     const field = COLUMN_MAP[norm];
     if (field) return { field };
@@ -170,7 +172,7 @@ function mapHeaderRow(headerCells) {
    untouched — the LookinBody Excel export stores numerics as
    actual cells, not formatted text, so we'd mangle them by
    string-coercing first. */
-export function parseNumber(s) {
+export function parseNumber(s: unknown): number | null {
   if (s == null) return null;
   if (typeof s === "number") return Number.isFinite(s) ? s : null;
   const raw = String(s).trim();
@@ -215,7 +217,7 @@ export function parseNumber(s) {
    stable across timezones — InBody never reports a timezone, and
    the consultorio's local date is what the nutritionist cares about).
    Returns null on anything unparseable. */
-export function parseInBodyDate(s) {
+export function parseInBodyDate(s: unknown): string | null {
   if (!s) return null;
   // Native Date (XLSX cell) — round-trip through toISOString. Skip
   // the timezone-anchoring on this path because read-excel-file
@@ -238,7 +240,7 @@ export function parseInBodyDate(s) {
   const es = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (es) {
     const [, d, m, y, hh = "12", mm = "00", ss = "00"] = es;
-    const pad = (n) => String(n).padStart(2, "0");
+    const pad = (n: string | number) => String(n).padStart(2, "0");
     return `${y}-${pad(m)}-${pad(d)}T${pad(hh)}:${pad(mm)}:${pad(ss)}.000Z`;
   }
 
@@ -249,7 +251,7 @@ export function parseInBodyDate(s) {
    / undefined / boolean from XLSX) to a trimmed display string for
    identity / extra / device_model fields. Numbers + Dates stringify
    to their canonical form; null → "". */
-function cellToString(val) {
+function cellToString(val: unknown): string {
   if (val == null) return "";
   if (val instanceof Date) return Number.isNaN(val.getTime()) ? "" : val.toISOString();
   return String(val).trim();
@@ -260,9 +262,10 @@ function cellToString(val) {
    parseNumber, the date through parseInBodyDate. Cells may be raw
    strings (CSV path) or native JS values (XLSX path) — both helpers
    normalise upstream of this function. */
-function parseRow(headerMap, cells) {
-  const out = { raw_extra: {} };
-  let identityName = null;
+function parseRow(headerMap: HeaderSlot[], cells: unknown[]) {
+  const out: Record<string, unknown> = {};
+  const rawExtra: Record<string, string> = {};
+  let identityName: string | null = null;
   for (let i = 0; i < headerMap.length; i++) {
     const slot = headerMap[i];
     const val = cells[i];
@@ -271,10 +274,11 @@ function parseRow(headerMap, cells) {
       // forensic dump shows the column was present but blank. XLSX
       // gives us native types here; stringify before storing in jsonb.
       const str = cellToString(val);
-      if (str !== "") out.raw_extra[slot.extra] = str;
+      if (str !== "") rawExtra[slot.extra] = str;
       continue;
     }
     const field = slot.field;
+    if (!field) continue;
     if (field === "name") { identityName = cellToString(val); continue; }
     if (field === "external_id") {
       const trimmed = cellToString(val);
@@ -299,9 +303,9 @@ function parseRow(headerMap, cells) {
     const trimmed = cellToString(val);
     if (trimmed) out[field] = trimmed;
   }
-  // Drop the empty raw_extra so downstream JSON.stringify doesn't
-  // bloat with `{}` on every row.
-  if (Object.keys(out.raw_extra).length === 0) delete out.raw_extra;
+  // Only attach raw_extra when non-empty so downstream JSON.stringify
+  // doesn't bloat with `{}` on every row.
+  if (Object.keys(rawExtra).length > 0) out.raw_extra = rawExtra;
   return { row: out, name: identityName };
 }
 
@@ -310,8 +314,8 @@ function parseRow(headerMap, cells) {
    { rows, warnings, totalRows } shape. Exported so callers can plug
    in alternative sources (e.g. a future drag-paste-from-clipboard
    flow) without re-implementing the InBody column map. */
-export function parseFromRows(cells, { expectedName = "" } = {}) {
-  const warnings = [];
+export function parseFromRows(cells: unknown[][], { expectedName = "" }: { expectedName?: string } = {}) {
+  const warnings: string[] = [];
   if (cells.length < 2) {
     return { rows: [], warnings: ["no_data_rows"], totalRows: 0 };
   }
@@ -320,7 +324,7 @@ export function parseFromRows(cells, { expectedName = "" } = {}) {
   if (!hasWeight) warnings.push("no_weight_column");
 
   const expectedNorm = normalizeName(expectedName);
-  const rows = [];
+  const rows: Record<string, unknown>[] = [];
   for (let i = 1; i < cells.length; i++) {
     const { row, name } = parseRow(headerMap, cells[i]);
     if (!row.scanned_at) {
@@ -355,7 +359,7 @@ export function parseFromRows(cells, { expectedName = "" } = {}) {
 
    Never throws on malformed input — degrades to `{ rows: [],
    warnings: [...] }` so the UI can render a clear error state. */
-export function parseInBodyCSV(text, opts = {}) {
+export function parseInBodyCSV(text: string, opts: { expectedName?: string } = {}) {
   if (!text || typeof text !== "string") {
     return { rows: [], warnings: ["empty"], totalRows: 0 };
   }
@@ -375,9 +379,9 @@ export function parseInBodyCSV(text, opts = {}) {
    parseInBodyDate which both accept native types as a first-class
    path. Same return shape as parseInBodyCSV; same graceful-degrade
    behaviour on parse errors. */
-export async function parseInBodyXLSX(file, opts = {}) {
+export async function parseInBodyXLSX(file: File | Blob | null | undefined, opts: { expectedName?: string } = {}) {
   if (!file) return { rows: [], warnings: ["empty"], totalRows: 0 };
-  let cells;
+  let cells: unknown[][];
   try {
     // read-excel-file ships separate entry points per environment.
     // The browser bundle is smallest and is the only path we ever
@@ -386,7 +390,7 @@ export async function parseInBodyXLSX(file, opts = {}) {
     // Vite from trying to statically analyze the dynamic import
     // (which would fail under SSR pre-render anyway).
     const mod = await import("read-excel-file/browser");
-    const readXlsxFile = mod.default || mod;
+    const readXlsxFile = (mod.default || mod) as unknown as (f: File | Blob) => Promise<unknown[][]>;
     cells = await readXlsxFile(file);
   } catch (err) {
     // Common failure modes: corrupt zip, password-protected workbook,
@@ -405,7 +409,7 @@ export async function parseInBodyXLSX(file, opts = {}) {
    "did this scan come from the patient I'm viewing?" matching. We
    stay deliberately conservative — the user gets a checkbox per row
    and can override the default match. */
-export function normalizeName(s) {
+export function normalizeName(s?: string | null): string {
   if (!s) return "";
   return s
     .normalize("NFD").replace(/[̀-ͯ]/g, "") // strip accents
@@ -418,7 +422,7 @@ export function normalizeName(s) {
    token-overlap check is forgiving enough to cover real cases without
    matching unrelated patients ("Ana Lopez" vs. "Ana Garcia" → no
    match; "Ana Garcia" vs. "Ana Maria Garcia Lopez" → match). */
-export function namesMatch(a, b) {
+export function namesMatch(a?: string | null, b?: string | null): boolean {
   if (!a || !b) return false;
   if (a === b) return true;
   const ta = a.split(" ").filter(Boolean);

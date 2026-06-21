@@ -11,7 +11,7 @@
    upload get the new bytes without any CDN / browser-cache stickiness.
    The `userId/` prefix is required by the validatePath guard in
    api/_r2.js. */
-export function avatarPath(userId, timestamp = Date.now()) {
+export function avatarPath(userId: string, timestamp: number = Date.now()) {
   if (!userId) throw new Error("no_user_id");
   return `${userId}/profile/avatar-${timestamp}.jpg`;
 }

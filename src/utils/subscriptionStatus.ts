@@ -13,8 +13,29 @@
 const PRICE_MONTHLY_CENTS = 14900;
 const PRICE_ANNUAL_CENTS = 149000;
 
+interface BillingSubscription {
+  status?: string | null;
+  cancel_at_period_end?: boolean | null;
+  cancel_at?: string | null;
+  current_period_end?: string | null;
+  trial_end?: string | null;
+  stripe_price_id?: string | null;
+}
+
+interface BillingState {
+  loading?: boolean;
+  compGranted?: boolean;
+  subscription?: BillingSubscription | null;
+  subscribedActive?: boolean;
+  accessState?: string;
+  daysLeftInTrial?: number | null;
+  trialEnd?: string | Date | null;
+}
+
+type TFn = (key: string, vars?: Record<string, unknown>) => string;
+
 // "30 de mayo" — short form for the row sub-line.
-function formatShort(iso) {
+function formatShort(iso?: string | null) {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
@@ -23,7 +44,7 @@ function formatShort(iso) {
 }
 
 // "30 de mayo de 2026" — full form for the explicit hero sentence.
-function formatLong(iso) {
+function formatLong(iso?: string | null) {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
@@ -32,7 +53,7 @@ function formatLong(iso) {
 
 // "$149" — currency without decimals (we only deal in whole pesos for
 // Cardigan Pro). The "MXN" suffix lives in the surrounding sentence.
-function formatPriceMXN(cents) {
+function formatPriceMXN(cents?: number | null) {
   if (typeof cents !== "number" || !Number.isFinite(cents) || cents <= 0) return null;
   return `$${(cents / 100).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
 }
@@ -53,7 +74,7 @@ function formatPriceMXN(cents) {
      expired   — no access. Need to subscribe.
      loading   — still fetching the subscription state.
      unknown   — fall-through; render a safe generic label. */
-export function classifyBillingState(s) {
+export function classifyBillingState(s?: BillingState | null) {
   if (!s) return "loading";
   if (s.loading) return "loading";
   if (s.compGranted) return "comp";
@@ -89,7 +110,7 @@ export function classifyBillingState(s) {
    For trial_with_sub: trial_end (== first charge date if not cancelled).
    For trial_no_sub: trial end (computed from auth.users.created_at).
    Returns ISO string or null. */
-export function endDateIso(s) {
+export function endDateIso(s?: BillingState | null) {
   if (!s) return null;
   // For cancelling subs Stripe gives us cancel_at OR current_period_end.
   // Cancel_at is the explicit "this is when it dies" timestamp; prefer it.
@@ -134,7 +155,7 @@ export function endDateIso(s) {
      }
 
    Pure helper — used by Settings.jsx hero + tested. */
-export function billingSummary(s) {
+export function billingSummary(s?: BillingState | null) {
   const state = classifyBillingState(s);
   const endIso = endDateIso(s);
   const endLabel = formatLong(endIso);
@@ -242,7 +263,7 @@ export function billingSummary(s) {
       };
   }
 }
-export function planPriceCents(s) {
+export function planPriceCents(s?: BillingState | null) {
   const priceId = s?.subscription?.stripe_price_id;
   // Authoritative source: the public Vite env vars get the actual
   // Stripe Price IDs at build time. Production gets the live IDs,
@@ -265,7 +286,7 @@ export function planPriceCents(s) {
 /* The terse one-liner for the Settings row sub-line. ALWAYS includes
    either a date (when relevant) or a clear "no charges" affirmation —
    never just "Pro" without context. */
-export function rowSubLine(s, t) {
+export function rowSubLine(s: BillingState | null | undefined, t: TFn) {
   const state = classifyBillingState(s);
   const endIso = endDateIso(s);
   const endShort = formatShort(endIso);
@@ -299,7 +320,7 @@ export function rowSubLine(s, t) {
 
 /* Full sentence for the Suscripción sheet hero — explicitly answers
    "will I be charged, when, and how much". */
-export function chargeLine(s, t) {
+export function chargeLine(s: BillingState | null | undefined, t: TFn) {
   const state = classifyBillingState(s);
   const endIso = endDateIso(s);
   const endLong = formatLong(endIso);

@@ -20,7 +20,7 @@ import { sessionCountsTowardBalance } from "./accounting";
  * Returns the corrected { sessions, billed, paid } and persists them.
  * On failure returns null (caller should surface the error).
  */
-export async function recalcPatientCounters(patientId) {
+export async function recalcPatientCounters(patientId: string): Promise<{ sessions: number; billed: number; paid: number } | null> {
   const [{ data: sessRows, error: sErr }, { data: pmtRows, error: pErr }] = await Promise.all([
     // Predicate needs status + date + time for the past-scheduled auto-
     // complete branch. Rate sums into billed when counted.
@@ -39,7 +39,7 @@ export async function recalcPatientCounters(patientId) {
     }
   }
 
-  const paid = (pmtRows || []).reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const paid = (pmtRows || []).reduce((sum: number, p: { amount?: number | null }) => sum + (p.amount ?? 0), 0);
 
   const { error } = await supabase
     .from("patients")
