@@ -35,7 +35,7 @@ async function authHeaders() {
 // browser, but we can ask the patient-document-delete endpoint to
 // sweep by path. The endpoint is auth-gated to the uploader, which
 // is exactly the path we just uploaded to — no escalation.
-async function bestEffortR2Cleanup(filePath) {
+async function bestEffortR2Cleanup(filePath: string) {
   try {
     const headers = await authHeaders();
     await fetch("/api/patient-document-delete", {
@@ -53,8 +53,10 @@ async function bestEffortR2Cleanup(filePath) {
   }
 }
 
-export function usePatientDocuments(patientId) {
-  const [documents, setDocuments] = useState([]);
+interface PatientDocRow { id: string; name?: string; file_path?: string; file_type?: string; file_size?: number; created_at?: string }
+
+export function usePatientDocuments(patientId: string | null | undefined) {
+  const [documents, setDocuments] = useState<PatientDocRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
@@ -81,7 +83,7 @@ export function usePatientDocuments(patientId) {
 
   // Returns { ok, error } so callers can surface a toast on
   // failure without having to inspect throws.
-  const upload = useCallback(async (file) => {
+  const upload = useCallback(async (file: File | null | undefined) => {
     if (!file || !patientId) return { ok: false, error: "no_file" };
     // Fail-fast on oversized files so the patient sees the error
     // immediately instead of after a long upload that gets rejected
@@ -90,7 +92,7 @@ export function usePatientDocuments(patientId) {
       return { ok: false, error: "too_large" };
     }
     setUploading(true);
-    let uploadedPath = null;
+    let uploadedPath: string | null = null;
     try {
       // Step 1: presigned PUT URL
       const headers = await authHeaders();
@@ -143,17 +145,17 @@ export function usePatientDocuments(patientId) {
       // append) so newest-first ordering is consistent.
       setDocuments(prev => [document, ...prev]);
       return { ok: true, document };
-    } catch (err) {
+    } catch (err: unknown) {
       // Caught after R2 PUT succeeded → orphan cleanup. If we never
       // got past step 1, uploadedPath is null and this is a no-op.
       if (uploadedPath) bestEffortR2Cleanup(uploadedPath);
-      return { ok: false, error: err?.message || "network" };
+      return { ok: false, error: (err as Error)?.message || "network" };
     } finally {
       setUploading(false);
     }
   }, [patientId]);
 
-  const remove = useCallback(async (documentId) => {
+  const remove = useCallback(async (documentId: string) => {
     if (!documentId) return { ok: false };
     const headers = await authHeaders();
     const res = await fetch("/api/patient-document-delete", {
@@ -168,7 +170,7 @@ export function usePatientDocuments(patientId) {
 
   // Generates a short-lived URL for opening the file. Call this
   // right before opening the link — the URL expires in 5 minutes.
-  const getUrl = useCallback(async (documentId) => {
+  const getUrl = useCallback(async (documentId: string) => {
     const headers = await authHeaders();
     const res = await fetch("/api/patient-document-url", {
       method: "POST",

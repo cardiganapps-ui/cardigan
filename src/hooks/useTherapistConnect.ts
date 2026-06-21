@@ -34,15 +34,24 @@ const PENDING = "pending";
 const RESTRICTED = "restricted";
 const ACTIVE  = "active";
 
-function deriveStatus(s) {
+function deriveStatus(s: { exists?: boolean; charges_enabled?: boolean; details_submitted?: boolean } | null | undefined): string {
   if (!s || !s.exists) return ABSENT;
   if (s.charges_enabled) return ACTIVE;
   if (s.details_submitted) return RESTRICTED;
   return PENDING;
 }
 
-export function useTherapistConnect(user) {
-  const [state, setState] = useState({
+interface ConnectState {
+  status: string;
+  exists: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+  requirementsCount: number;
+}
+
+export function useTherapistConnect(user: { id?: string } | null | undefined) {
+  const [state, setState] = useState<ConnectState>({
     status: "loading",
     exists: false,
     chargesEnabled: false,
@@ -123,7 +132,7 @@ export function useTherapistConnect(user) {
         });
       } catch (err) {
         console.error("[useTherapistConnect] onboard fetch failed:", err);
-        return { ok: false, error: err?.message || "network_error" };
+        return { ok: false, error: (err as Error)?.message || "network_error" };
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
@@ -134,7 +143,7 @@ export function useTherapistConnect(user) {
       return { ok: true };
     } catch (err) {
       console.error("[useTherapistConnect] onboard unexpected error:", err);
-      return { ok: false, error: err?.message || "unknown" };
+      return { ok: false, error: (err as Error)?.message || "unknown" };
     } finally {
       setBusy(false);
     }
@@ -152,7 +161,7 @@ export function useTherapistConnect(user) {
         });
       } catch (err) {
         console.error("[useTherapistConnect] dashboard fetch failed:", err);
-        return { ok: false, error: err?.message || "network_error" };
+        return { ok: false, error: (err as Error)?.message || "network_error" };
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
@@ -168,7 +177,7 @@ export function useTherapistConnect(user) {
       return { ok: true };
     } catch (err) {
       console.error("[useTherapistConnect] dashboard unexpected error:", err);
-      return { ok: false, error: err?.message || "unknown" };
+      return { ok: false, error: (err as Error)?.message || "unknown" };
     } finally {
       setBusy(false);
     }

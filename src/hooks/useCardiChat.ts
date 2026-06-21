@@ -18,21 +18,23 @@ import { supabase } from "../supabaseClient";
 
 const MAX_TURNS = 20;
 
-export function useCardiChat({ context } = {}) {
-  const [messages, setMessages] = useState([]);
+interface ChatMessage { role: string; content: string; error?: boolean; errorKey?: string; _streaming?: boolean }
+
+export function useCardiChat({ context }: { context?: unknown } = {}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState(false);
   // True from "first chunk received" to "stream done". Used by the
   // sheet to swap the thinking-dots bubble for the real, growing
   // assistant bubble.
   const [streaming, setStreaming] = useState(false);
-  const lastUserRef = useRef(null);
+  const lastUserRef = useRef<ChatMessage | null>(null);
 
   const reset = useCallback(() => {
     setMessages([]);
     lastUserRef.current = null;
   }, []);
 
-  const send = useCallback(async (text) => {
+  const send = useCallback(async (text: string) => {
     const trimmed = (text || "").trim();
     if (!trimmed || pending) return;
 
@@ -44,7 +46,7 @@ export function useCardiChat({ context } = {}) {
     setPending(true);
     setStreaming(false);
 
-    const pushError = (errorKey, fallback) => {
+    const pushError = (errorKey?: string, fallback?: string) => {
       setMessages(prev => [
         ...prev.filter(m => !(m.role === "assistant" && m._streaming)),
         { role: "assistant", content: fallback || errorKey || "cardi.error", error: true, errorKey: errorKey || "cardi.error" },
@@ -98,7 +100,7 @@ export function useCardiChat({ context } = {}) {
       let assistantContent = "";
       let assistantPushed = false;
 
-      const appendAssistant = (chunk) => {
+      const appendAssistant = (chunk: string) => {
         assistantContent += chunk;
         if (!assistantPushed) {
           assistantPushed = true;
