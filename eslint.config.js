@@ -12,7 +12,14 @@ import { defineConfig, globalIgnores } from 'eslint/config'
    to 'error' as each reaches zero. Downgrading the recommended set keeps
    CI green during adoption instead of breaking it on day one. */
 const a11yWarnRules = Object.fromEntries(
-  Object.keys(jsxA11y.flatConfigs.recommended.rules).map((rule) => [rule, 'warn']),
+  Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, level]) => {
+    // Preserve rules the recommended set ships as 'off' (deprecated /
+    // overly-strict: label-has-for, control-has-associated-label,
+    // anchor-ambiguous-text). Only downgrade the genuinely-recommended
+    // 'error' rules to 'warn' for the non-blocking adoption phase.
+    const isOff = level === 'off' || (Array.isArray(level) && level[0] === 'off')
+    return [rule, isOff ? 'off' : 'warn']
+  }),
 )
 
 /* ── Design-system gate ──
