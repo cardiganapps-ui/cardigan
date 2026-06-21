@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import {
   GROUP_STATUS, SCHEDULING_MODE, SESSION_STATUS,
@@ -6,7 +7,66 @@ import {
 import { parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { computeGroupSessionRows } from "../utils/groupRecurrence";
+import type { GRGroup, GRMember, GRPatient, GroupSessionRow } from "../utils/groupRecurrence";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
+
+// ── Domain row types ────────────────────────────────────────────────
+interface Patient extends GRPatient {
+  id: string;
+  name: string;
+  sessions: number;
+  billed: number;
+  colorIdx?: number | null;
+  color_idx?: number | null;
+  [key: string]: unknown;
+}
+
+interface Group extends GRGroup {
+  name?: string;
+  version?: number | null;
+  colorIdx?: number | null;
+  [key: string]: unknown;
+}
+
+interface Session {
+  id: string;
+  patient_id?: string | null;
+  group_id?: string | null;
+  status?: string | null;
+  date: string;
+  time?: string | null;
+  day?: string | null;
+  rate?: number | null;
+  duration?: number | null;
+  modality?: string | null;
+  cancel_reason?: string | null;
+  color_idx?: number | null;
+  colorIdx?: number | null;
+  [key: string]: unknown;
+}
+
+interface GroupMember {
+  id?: string;
+  user_id?: string;
+  group_id?: string | null;
+  patient_id?: string | null;
+  left_at?: string | null;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+/** A fan-out session row from groupRecurrence, optionally carrying a
+    server-assigned id once persisted. */
+type FanoutRow = GroupSessionRow & { id?: string };
+
+type Maybe = string | null | undefined;
+
+type SetPatients = Dispatch<SetStateAction<Patient[]>>;
+type SetGroups = Dispatch<SetStateAction<Group[]>>;
+type SetGroupMembers = Dispatch<SetStateAction<GroupMember[]>>;
+type SetSessions = Dispatch<SetStateAction<Session[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
 
 /* ── Group (Grupos) domain actions ──
 
@@ -27,34 +87,34 @@ import { enqueue, registerHandler } from "../lib/mutationQueue";
 // can't be replayed coherently), and member removal is a soft-leave
 // (group_members.update of left_at) + session deletes, never a hard
 // group_members delete.
-registerHandler("groups.update", async ({ id, userId, patch }) => {
+registerHandler("groups.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
   return await supabase.from("groups").update(patch).eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("groups.delete", async ({ id, userId, scheduledIds }) => {
+registerHandler("groups.delete", async ({ id, userId, scheduledIds }: { id: string; userId: string; scheduledIds?: string[] }) => {
   // Delete scheduled member rows first (they'd collide on uniq_sessions_user_slot
   // once SET NULL detaches them); then delete the group. Idempotent on replay.
-  if (scheduledIds?.length > 0) {
+  if (scheduledIds && scheduledIds.length > 0) {
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", scheduledIds);
     if (r1.error) return r1;
   }
   return await supabase.from("groups").delete().eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("group_members.insert", async ({ rows }) => {
+registerHandler("group_members.insert", async ({ rows }: { rows: Record<string, unknown>[] }) => {
   const result = await supabase.from("group_members").insert(rows).select();
   if (result.error?.code === "23505") return { data: [], error: null };
   return result;
 });
 
-registerHandler("group_members.update", async ({ id, userId, patch }) => {
+registerHandler("group_members.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
   return await supabase.from("group_members").update(patch).eq("id", id).eq("user_id", userId);
 });
 
 // Fan-out bulk insert (group session generation / member backfill / extend).
 // Idempotent via the 23505 swallow — a prior drain that already inserted the
 // rows trips uniq_sessions_patient_date_time and we treat it as success.
-registerHandler("groups.generate_sessions", async ({ rows }) => {
+registerHandler("groups.generate_sessions", async ({ rows }: { rows: Record<string, unknown>[] }) => {
   const result = await supabase.from("sessions").insert(rows).select();
   if (result.error?.code === "23505") return { data: [], error: null };
   return result;
@@ -63,14 +123,14 @@ registerHandler("groups.generate_sessions", async ({ rows }) => {
 // Group schedule change: delete future group rows + update group + bulk
 // insert. Each step idempotent on retry (delete-by-id no-ops, group patch is
 // the same value, bulk insert swallows 23505).
-registerHandler("groups.apply_schedule_change", async ({ groupId, userId, toDeleteIds, groupPatch, newRows }) => {
-  if (toDeleteIds?.length > 0) {
+registerHandler("groups.apply_schedule_change", async ({ groupId, userId, toDeleteIds, groupPatch, newRows }: { groupId: string; userId: string; toDeleteIds?: string[]; groupPatch: Record<string, unknown>; newRows?: Record<string, unknown>[] }) => {
+  if (toDeleteIds && toDeleteIds.length > 0) {
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
     if (r1.error) return r1;
   }
   const r2 = await supabase.from("groups").update(groupPatch).eq("id", groupId).eq("user_id", userId);
   if (r2.error) return r2;
-  if (newRows?.length > 0) {
+  if (newRows && newRows.length > 0) {
     const r3 = await supabase.from("sessions").insert(newRows).select();
     if (r3.error?.code === "23505") return { data: [], error: null };
     return r3;
@@ -81,7 +141,7 @@ registerHandler("groups.apply_schedule_change", async ({ groupId, userId, toDele
 // Whole-occurrence cancel: one bulk UPDATE over all scheduled member rows
 // for (group, date, time). Idempotent — re-running the same status set is a
 // no-op once the rows have moved off 'scheduled'.
-registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time, status, reason }) => {
+registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time, status, reason }: { groupId: string; userId: string; date: string; time: string; status: string; reason?: string | null }) => {
   return await supabase.from("sessions")
     .update({ status, cancel_reason: reason ?? null })
     .eq("user_id", userId).eq("group_id", groupId)
@@ -91,7 +151,7 @@ registerHandler("groups.cancel_occurrence", async ({ groupId, userId, date, time
 
 // Move a whole group occurrence to a new (date, time). Idempotent — a
 // replay filters on the OLD slot, which after the first run matches nothing.
-registerHandler("groups.reschedule_occurrence", async ({ groupId, userId, fromDate, fromTime, patch }) => {
+registerHandler("groups.reschedule_occurrence", async ({ groupId, userId, fromDate, fromTime, patch }: { groupId: string; userId: string; fromDate: string; fromTime: string; patch: Record<string, unknown> }) => {
   return await supabase.from("sessions").update(patch)
     .eq("user_id", userId).eq("group_id", groupId)
     .eq("date", fromDate).eq("time", fromTime)
@@ -100,14 +160,14 @@ registerHandler("groups.reschedule_occurrence", async ({ groupId, userId, fromDa
 
 // Delete a set of session rows by id (member removal offline replay).
 // Idempotent — re-deleting already-gone ids is a no-op.
-registerHandler("groups.delete_sessions", async ({ ids, userId }) => {
+registerHandler("groups.delete_sessions", async ({ ids, userId }: { ids?: string[]; userId: string }) => {
   if (!ids?.length) return { error: null };
   return await supabase.from("sessions").delete().eq("user_id", userId).in("id", ids);
 });
 
 // End a group: status flip + delete future scheduled group rows. Idempotent.
-registerHandler("groups.end", async ({ groupId, userId, toDeleteIds }) => {
-  if (toDeleteIds?.length > 0) {
+registerHandler("groups.end", async ({ groupId, userId, toDeleteIds }: { groupId: string; userId: string; toDeleteIds?: string[] }) => {
+  if (toDeleteIds && toDeleteIds.length > 0) {
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
     if (r1.error) return r1;
   }
@@ -125,7 +185,7 @@ function tempId(prefix = "temp") {
 // Spanish weekday by Date.getDay() (0=Sunday).
 const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-function defaultWindow(startDate) {
+function defaultWindow(startDate?: string) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const start = startDate ? parseLocalDate(startDate) : today;
   const startISO = toISODate(start < today ? today : start);
@@ -134,34 +194,41 @@ function defaultWindow(startDate) {
 }
 
 export function createGroupActions(
-  userId, patients, setPatients,
-  groups, setGroups, groupMembers, setGroupMembers,
-  upcomingSessions, setUpcomingSessions,
-  setMutating, setMutationError,
+  userId: string,
+  patients: Patient[],
+  setPatients: SetPatients,
+  groups: Group[],
+  setGroups: SetGroups,
+  groupMembers: GroupMember[],
+  setGroupMembers: SetGroupMembers,
+  upcomingSessions: Session[],
+  setUpcomingSessions: SetSessions,
+  setMutating: SetFlag,
+  setMutationError: SetError,
 ) {
-  const patientsById = new Map((patients || []).map(p => [p.id, p]));
+  const patientsById = new Map((patients || []).map(p => [p.id, p] as [string, Patient]));
 
   // Apply optimistic per-patient counter deltas for a freshly-built set of
   // fan-out rows + push the rows into local session state. Mirrors the
   // counter bookkeeping in useSessions.generateRecurringSessions; the DB
   // trigger reconciles to truth on the next fetch.
-  function applyFanoutOptimistic(rows, { asTemp } = {}) {
+  function applyFanoutOptimistic(rows: FanoutRow[], { asTemp }: { asTemp?: boolean } = {}) {
     if (rows.length === 0) return;
     const now = new Date();
-    const deltas = new Map(); // patient_id → { sessions, billed }
+    const deltas = new Map<Maybe, { sessions: number; billed: number }>(); // patient_id → { sessions, billed }
     for (const r of rows) {
       const d = deltas.get(r.patient_id) || { sessions: 0, billed: 0 };
       d.sessions += 1;
-      if (sessionCountsTowardBalance(r, now)) d.billed += r.rate ?? patientsById.get(r.patient_id)?.rate ?? 0;
+      if (sessionCountsTowardBalance(r, now)) d.billed += r.rate ?? patientsById.get(r.patient_id ?? "")?.rate ?? 0;
       deltas.set(r.patient_id, d);
     }
     const localRows = rows.map(r => ({
       ...r,
-      id: asTemp ? tempId() : r.id,
+      id: asTemp ? tempId() : (r.id as string),
       status: SESSION_STATUS.SCHEDULED,
       colorIdx: r.color_idx,
       ...(asTemp ? { _optimistic: true } : {}),
-    }));
+    })) as Session[];
     setUpcomingSessions(prev => [...prev, ...localRows]);
     setPatients(prev => prev.map(p => {
       const d = deltas.get(p.id);
@@ -170,7 +237,7 @@ export function createGroupActions(
   }
 
   // Build the dedup set of slots a set of patients already occupy.
-  function existingSlotsFor(patientIds) {
+  function existingSlotsFor(patientIds: Set<Maybe> | Maybe[]) {
     const ids = patientIds instanceof Set ? patientIds : new Set(patientIds);
     return new Set(
       (upcomingSessions || [])
@@ -179,7 +246,14 @@ export function createGroupActions(
     );
   }
 
-  async function generateGroupSessions(groupId, { startDate, endDate, onlyPatientIds, force, group: explicitGroup, members: explicitMembers } = {}) {
+  async function generateGroupSessions(groupId: string, { startDate, endDate, onlyPatientIds, force, group: explicitGroup, members: explicitMembers }: {
+    startDate?: string;
+    endDate?: string;
+    onlyPatientIds?: string[];
+    force?: boolean;
+    group?: Group;
+    members?: GRMember[];
+  } = {}) {
     // CRITICAL: callers right after createGroup/addMembers pass the group +
     // members EXPLICITLY, because the just-inserted rows aren't in the
     // `groups`/`groupMembers` closure state yet (setState is async). Reading
@@ -232,7 +306,21 @@ export function createGroupActions(
     }
   }
 
-  async function createGroup(payload) {
+  async function createGroup(payload: {
+    name?: string;
+    colorIdx?: number;
+    day?: string | null;
+    time?: string | null;
+    duration?: number | string | null;
+    rate?: number | string | null;
+    modality?: string;
+    frequency?: string;
+    schedulingMode?: string;
+    memberPatientIds?: string[];
+    startDate?: string;
+    endDate?: string;
+    generate?: boolean;
+  }) {
     const {
       name, colorIdx = 0, day = null, time = null, duration = 60, rate = null,
       modality = "presencial", frequency = DEFAULT_RECURRENCE_FREQUENCY,
@@ -262,7 +350,7 @@ export function createGroupActions(
     setGroups(prev => [...prev, group]);
 
     // Members
-    let memberRows = [];
+    let memberRows: Record<string, unknown>[] = [];
     if (memberPatientIds.length > 0) {
       memberRows = memberPatientIds.map(pid => ({ user_id: userId, group_id: group.id, patient_id: pid }));
       const { data: mData, error: mErr } = await supabase.from("group_members").insert(memberRows).select();
@@ -282,17 +370,17 @@ export function createGroupActions(
     return group.id;
   }
 
-  async function updateGroup(id, patch) {
+  async function updateGroup(id: string, patch: Record<string, unknown>) {
     const group = groups.find(g => g.id === id);
     if (!group) return false;
-    const dbPatch = { ...patch };
+    const dbPatch: Record<string, unknown> = { ...patch };
     if ("colorIdx" in dbPatch) { dbPatch.color_idx = dbPatch.colorIdx; delete dbPatch.colorIdx; }
     const prevVersion = group.version ?? null;
     setMutationError("");
     // Optimistic local patch + local version bump (mirrors the server-side
     // bump_version_on_update trigger from migration 076).
     setGroups(prev => prev.map(g => g.id === id
-      ? { ...g, ...patch, ...(("colorIdx" in patch) ? { colorIdx: patch.colorIdx } : {}), version: (g.version ?? 0) + 1 }
+      ? ({ ...g, ...patch, ...(("colorIdx" in patch) ? { colorIdx: patch.colorIdx } : {}), version: (g.version ?? 0) + 1 } as Group)
       : g));
     try {
       // Optimistic concurrency: gate the write on the version we read. A
@@ -314,7 +402,7 @@ export function createGroupActions(
     return true;
   }
 
-  async function addMembers(groupId, patientIds) {
+  async function addMembers(groupId: string, patientIds: string[]) {
     const group = groups.find(g => g.id === groupId);
     if (!group || !patientIds?.length) return false;
     // Skip patients already active in the group.
@@ -341,9 +429,9 @@ export function createGroupActions(
     return true;
   }
 
-  function addMember(groupId, patientId) { return addMembers(groupId, [patientId]); }
+  function addMember(groupId: string, patientId: string) { return addMembers(groupId, [patientId]); }
 
-  async function removeMember(groupId, patientId) {
+  async function removeMember(groupId: string, patientId: string) {
     const member = groupMembers.find(m => m.group_id === groupId && m.patient_id === patientId && m.left_at == null);
     if (!member) return false;
     const leftAt = new Date().toISOString();
@@ -391,7 +479,7 @@ export function createGroupActions(
   // Used by week-view drag-to-reschedule. Optimistic with revert-on-error
   // (a member already booked at the target slot trips
   // uniq_sessions_patient_date_time → 23505 → we restore the prior slot).
-  async function rescheduleGroupOccurrence(groupId, fromDate, fromTime, toDate, toTime) {
+  async function rescheduleGroupOccurrence(groupId: string, fromDate: string, fromTime: string, toDate: string, toTime: string) {
     if (!toDate || !toTime || (fromDate === toDate && fromTime === toTime)) return false;
     const rows = upcomingSessions.filter(s =>
       s.group_id === groupId && s.date === fromDate && s.time === fromTime && s.status === SESSION_STATUS.SCHEDULED);
@@ -425,7 +513,7 @@ export function createGroupActions(
     return true;
   }
 
-  async function cancelGroupOccurrence(groupId, date, time, { status = SESSION_STATUS.CANCELLED, reason = null } = {}) {
+  async function cancelGroupOccurrence(groupId: string, date: string, time: string, { status = SESSION_STATUS.CANCELLED, reason = null }: { status?: string; reason?: string | null } = {}) {
     const rows = upcomingSessions.filter(s =>
       s.group_id === groupId && s.date === date && s.time === time && s.status === SESSION_STATUS.SCHEDULED);
     if (rows.length === 0) return false;
@@ -437,18 +525,18 @@ export function createGroupActions(
     setUpcomingSessions(prev => prev.map(s =>
       (s.group_id === groupId && s.date === date && s.time === time && s.status === SESSION_STATUS.SCHEDULED)
         ? { ...s, status, cancel_reason: reason } : s));
-    const billedDeltas = new Map();
+    const billedDeltas = new Map<Maybe, number>();
     for (const s of rows) {
       const wasCounted = sessionCountsTowardBalance(s, now);
       const nowCounted = sessionCountsTowardBalance({ ...s, status }, now);
       if (wasCounted !== nowCounted) {
-        const amt = s.rate ?? patientsById.get(s.patient_id)?.rate ?? 0;
+        const amt = s.rate ?? patientsById.get(s.patient_id ?? "")?.rate ?? 0;
         billedDeltas.set(s.patient_id, (billedDeltas.get(s.patient_id) || 0) + (nowCounted ? amt : -amt));
       }
     }
     if (billedDeltas.size > 0) {
       setPatients(prev => prev.map(p => billedDeltas.has(p.id)
-        ? { ...p, billed: Math.max(0, (p.billed || 0) + billedDeltas.get(p.id)) } : p));
+        ? { ...p, billed: Math.max(0, (p.billed || 0) + (billedDeltas.get(p.id) || 0)) } : p));
     }
 
     try {
@@ -464,7 +552,7 @@ export function createGroupActions(
     return true;
   }
 
-  async function endGroup(groupId, finishDate) {
+  async function endGroup(groupId: string, finishDate?: string) {
     const group = groups.find(g => g.id === groupId);
     if (!group) return false;
     const cutoff = finishDate ? parseLocalDate(finishDate) : (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
@@ -476,11 +564,11 @@ export function createGroupActions(
     setMutationError("");
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, status: GROUP_STATUS.ENDED } : g));
     if (futureRows.length > 0) {
-      const counts = new Map();
+      const counts = new Map<Maybe, number>();
       futureRows.forEach(s => counts.set(s.patient_id, (counts.get(s.patient_id) || 0) + 1));
       setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
       setPatients(prev => prev.map(p => counts.has(p.id)
-        ? { ...p, sessions: Math.max(0, (p.sessions || 0) - counts.get(p.id)) } : p));
+        ? { ...p, sessions: Math.max(0, (p.sessions || 0) - (counts.get(p.id) || 0)) } : p));
     }
     try {
       if (toDeleteIds.length > 0) await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
@@ -492,7 +580,16 @@ export function createGroupActions(
     return true;
   }
 
-  async function applyGroupScheduleChange(groupId, { day, time, duration, modality, frequency, rate, effectiveDate, endDate } = {}) {
+  async function applyGroupScheduleChange(groupId: string, { day, time, duration, modality, frequency, rate, effectiveDate, endDate }: {
+    day?: string;
+    time?: string;
+    duration?: number | string | null;
+    modality?: string;
+    frequency?: string;
+    rate?: number | string | null;
+    effectiveDate?: string;
+    endDate?: string;
+  } = {}) {
     const group = groups.find(g => g.id === groupId);
     if (!group || !effectiveDate) return false;
     const effDate = parseLocalDate(effectiveDate);
@@ -537,11 +634,11 @@ export function createGroupActions(
       // inflated by the deleted count until the next server refresh
       // (the DB trigger reconciles, but local state must stay truthful).
       const now = new Date();
-      const dec = new Map(); // patient_id → { sessions, billed }
+      const dec = new Map<Maybe, { sessions: number; billed: number }>(); // patient_id → { sessions, billed }
       for (const s of toDelete) {
         const d = dec.get(s.patient_id) || { sessions: 0, billed: 0 };
         d.sessions += 1;
-        if (sessionCountsTowardBalance(s, now)) d.billed += s.rate ?? patientsById.get(s.patient_id)?.rate ?? 0;
+        if (sessionCountsTowardBalance(s, now)) d.billed += s.rate ?? patientsById.get(s.patient_id ?? "")?.rate ?? 0;
         dec.set(s.patient_id, d);
       }
       setUpcomingSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
@@ -577,7 +674,7 @@ export function createGroupActions(
     }
   }
 
-  async function deleteGroup(groupId) {
+  async function deleteGroup(groupId: string) {
     const group = groups.find(g => g.id === groupId);
     if (!group) return false;
     setMutationError("");
@@ -594,11 +691,11 @@ export function createGroupActions(
 
     // Optimistic counter decrement for the scheduled rows being removed.
     const now = new Date();
-    const dec = new Map();
+    const dec = new Map<Maybe, { sessions: number; billed: number }>();
     for (const s of scheduledRows) {
       const d = dec.get(s.patient_id) || { sessions: 0, billed: 0 };
       d.sessions += 1;
-      if (sessionCountsTowardBalance(s, now)) d.billed += s.rate ?? patientsById.get(s.patient_id)?.rate ?? 0;
+      if (sessionCountsTowardBalance(s, now)) d.billed += s.rate ?? patientsById.get(s.patient_id ?? "")?.rate ?? 0;
       dec.set(s.patient_id, d);
     }
     setGroups(prev => prev.filter(g => g.id !== groupId));
