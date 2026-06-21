@@ -4,12 +4,12 @@ import { putPushState, clearPushState } from "../pushStore";
 import { isNative } from "../lib/platform";
 import { subscribeNative, checkNativePermission } from "../lib/nativePush";
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
 
 /**
  * Convert a URL-safe base64 string to a Uint8Array (needed by PushManager.subscribe).
  */
-function urlBase64ToUint8Array(base64String) {
+function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
@@ -25,11 +25,11 @@ function urlBase64ToUint8Array(base64String) {
  * caller forever. Returns null on timeout so callers can degrade
  * gracefully.
  */
-async function readyWithTimeout(timeoutMs = 5000) {
+async function readyWithTimeout(timeoutMs = 5000): Promise<ServiceWorkerRegistration | null> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
   return Promise.race([
     navigator.serviceWorker.ready,
-    new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
   ]);
 }
 
@@ -45,7 +45,7 @@ function isIOSNotStandalone() {
   if (isNative()) return false;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone =
-    window.navigator.standalone === true ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
     window.matchMedia("(display-mode: standalone)").matches;
   return isIOS && !isStandalone;
 }
@@ -56,7 +56,7 @@ function isIOSNotStandalone() {
  * re-authenticate after a browser-initiated endpoint rotation. Returns
  * { ok } so call sites that only care about success stay readable.
  */
-async function postSubscription(subscription) {
+async function postSubscription(subscription: PushSubscription) {
   const token = (await supabase.auth.getSession()).data?.session?.access_token;
   if (!token) return { ok: false };
   const resp = await fetch("/api/push-subscribe", {
@@ -83,7 +83,7 @@ async function postSubscription(subscription) {
  * into a native push_subscriptions row (platform='ios'|'android',
  * p256dh/auth null).
  */
-async function postNativeToken({ platform, token: deviceToken }) {
+async function postNativeToken({ platform, token: deviceToken }: { platform: string; token: string }) {
   const access = (await supabase.auth.getSession()).data?.session?.access_token;
   if (!access) return { ok: false };
   const resp = await fetch("/api/push-subscribe", {
@@ -111,7 +111,7 @@ async function subscribeAndPersist() {
   return { ok, subscription };
 }
 
-export function useNotifications(user) {
+export function useNotifications(user: { id?: string } | null | undefined) {
   // Native is always supported (the Capacitor plugin handles the platform
   // detail). On web we require service worker + PushManager + the VAPID
   // public key — the existing strict gate.
@@ -123,7 +123,7 @@ export function useNotifications(user) {
        "Notification" in window &&
        !!VAPID_PUBLIC_KEY);
 
-  const [permission, setPermission] = useState(
+  const [permission, setPermission] = useState<string>(
     typeof Notification !== "undefined" ? Notification.permission : "default"
   );
   const [enabled, setEnabled] = useState(false);
@@ -143,6 +143,7 @@ export function useNotifications(user) {
     let cancelled = false;
 
     async function init() {
+      if (!user) return;
       const { data } = await supabase
         .from("notification_preferences")
         .select("enabled, reminder_minutes")
@@ -309,7 +310,7 @@ export function useNotifications(user) {
     setEnabled(true);
     setReconciledOff(false);
 
-    let subscription;
+    let subscription: PushSubscription;
     try {
       const reg = await readyWithTimeout();
       if (!reg) { setEnabled(false); return { ok: false, code: "subscribe-failed" }; }
@@ -488,7 +489,7 @@ export function useNotifications(user) {
    * Update the reminder lead time (in minutes).
    */
   const setReminderMinutes = useCallback(
-    async (minutes) => {
+    async (minutes: number) => {
       if (!user) return { ok: false, code: "no-session" };
       const prev = reminderMinutes;
       setReminderMinutesState(minutes);
