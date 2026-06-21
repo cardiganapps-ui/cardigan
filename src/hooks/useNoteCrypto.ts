@@ -34,7 +34,14 @@ import {
 
 const RECOVERY_KID = "v1";
 
-async function authedFetch(path, init = {}) {
+interface WrapMeta {
+  passphrase_wrap: unknown;
+  passphrase_salt: unknown;
+  passphrase_iv: unknown;
+  passphrase_iters: unknown;
+}
+
+async function authedFetch(path: string, init: RequestInit = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("No active session");
@@ -49,22 +56,22 @@ async function authedFetch(path, init = {}) {
   if (!res.ok) {
     let msg = "Request failed";
     try { const j = await res.json(); msg = j.error || msg; } catch { /* keep default */ }
-    const e = new Error(msg);
+    const e = new Error(msg) as Error & { status?: number };
     e.status = res.status;
     throw e;
   }
   return res.json();
 }
 
-export function useNoteCrypto({ user } = {}) {
+export function useNoteCrypto({ user }: { user?: unknown } = {}) {
   const [status, setStatus] = useState(user ? "loading" : "disabled");
   const [error, setError] = useState("");
   // Holds the user's wrap metadata (passphrase wrap, salt, iv, iters).
   // Refreshed from the server when the user enables encryption or on
   // mount when status comes back as "locked".
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<WrapMeta | null>(null);
   // Master key bytes (32) when unlocked. Cleared on lock().
-  const masterKeyRef = useRef(null);
+  const masterKeyRef = useRef<Uint8Array | null>(null);
 
   const refreshStatus = useCallback(async () => {
     if (!user) { setStatus("disabled"); return; }
@@ -85,7 +92,7 @@ export function useNoteCrypto({ user } = {}) {
       }
       setError("");
     } catch (err) {
-      setError(err.message || "Status unavailable");
+      setError((err as Error)?.message || "Status unavailable");
       setStatus("disabled");
     }
   }, [user]);
@@ -96,7 +103,7 @@ export function useNoteCrypto({ user } = {}) {
   useEffect(() => { refreshStatus(); }, [refreshStatus]);
 
   // ── Setup ─────────────────────────────────────────────────────────
-  const setup = useCallback(async (passphrase) => {
+  const setup = useCallback(async (passphrase: string) => {
     setError("");
     if (!passphrase || passphrase.length < 8) {
       setError("Tu contraseña debe tener al menos 8 caracteres.");
@@ -128,13 +135,13 @@ export function useNoteCrypto({ user } = {}) {
       setStatus("unlocked");
       return true;
     } catch (err) {
-      setError(err.message || "Setup failed");
+      setError((err as Error)?.message || "Setup failed");
       return false;
     }
   }, []);
 
   // ── Unlock ────────────────────────────────────────────────────────
-  const unlock = useCallback(async (passphrase) => {
+  const unlock = useCallback(async (passphrase: string) => {
     setError("");
     if (!wrapRef.current) {
       // No wrap loaded — re-fetch first.
@@ -153,7 +160,7 @@ export function useNoteCrypto({ user } = {}) {
       setStatus("unlocked");
       return true;
     } catch (err) {
-      setError(err.code === "bad_passphrase" ? "Contraseña incorrecta." : (err.message || "Unlock failed"));
+      setError((err as { code?: string })?.code === "bad_passphrase" ? "Contraseña incorrecta." : ((err as Error)?.message || "Unlock failed"));
       return false;
     }
   }, [refreshStatus]);
@@ -182,7 +189,7 @@ export function useNoteCrypto({ user } = {}) {
       setStatus("disabled");
       return true;
     } catch (err) {
-      setError(err.message || "Disable failed");
+      setError((err as Error)?.message || "Disable failed");
       return false;
     }
   }, [lock]);
@@ -192,7 +199,7 @@ export function useNoteCrypto({ user } = {}) {
   // unlocked state — we don't trust callers to supply the old
   // passphrase (they might be wrong; the in-memory key is the source
   // of truth at this point).
-  const changePassphrase = useCallback(async (newPassphrase) => {
+  const changePassphrase = useCallback(async (newPassphrase: string) => {
     setError("");
     if (status !== "unlocked" || !masterKeyRef.current) {
       setError("Desbloquea primero.");
@@ -211,7 +218,7 @@ export function useNoteCrypto({ user } = {}) {
       wrapRef.current = passphraseWrap;
       return true;
     } catch (err) {
-      setError(err.message || "Rewrap failed");
+      setError((err as Error)?.message || "Rewrap failed");
       return false;
     }
   }, [status]);
@@ -219,7 +226,7 @@ export function useNoteCrypto({ user } = {}) {
   // ── Per-note encrypt/decrypt ────────────────────────────────────
   // These are stable across renders so they can be passed as deps to
   // memoised callers (createNoteActions, fetch path).
-  const encrypt = useCallback(async (plaintext) => {
+  const encrypt = useCallback(async (plaintext: string) => {
     if (status !== "unlocked" || !masterKeyRef.current) {
       return { content: plaintext, encrypted: false };
     }
@@ -227,7 +234,7 @@ export function useNoteCrypto({ user } = {}) {
     return { content: ct, encrypted: true };
   }, [status]);
 
-  const decrypt = useCallback(async (content, encrypted) => {
+  const decrypt = useCallback(async (content: string, encrypted: boolean) => {
     if (!encrypted) return content;
     if (status !== "unlocked" || !masterKeyRef.current) return null;
     try {
@@ -241,12 +248,12 @@ export function useNoteCrypto({ user } = {}) {
   // byte, IV stored separately on the row). Returns null when the
   // vault is locked / disabled so the attachment code can fall back
   // to a plaintext upload path.
-  const encryptAttachmentBytes = useCallback(async (bytes) => {
+  const encryptAttachmentBytes = useCallback(async (bytes: Uint8Array) => {
     if (status !== "unlocked" || !masterKeyRef.current) return null;
     return encryptBytes(bytes, masterKeyRef.current);
   }, [status]);
 
-  const decryptAttachmentBytes = useCallback(async (ciphertextBase64, ivBase64) => {
+  const decryptAttachmentBytes = useCallback(async (ciphertextBase64: string, ivBase64: string) => {
     if (status !== "unlocked" || !masterKeyRef.current) return null;
     try {
       return await decryptBytes(ciphertextBase64, ivBase64, masterKeyRef.current);
