@@ -26,7 +26,7 @@ import { useConnectivity } from "./useConnectivity";
    drained — for active editors that meant a toast on every save.
 */
 export function useMutationQueue() {
-  const [entries, setEntries] = useState(() => getEntries());
+  const [entries, setEntries] = useState<unknown[]>(() => getEntries());
   const [flushing, setFlushing] = useState(false);
   const { online } = useConnectivity();
 
@@ -38,7 +38,7 @@ export function useMutationQueue() {
     init().then(() => {
       if (mounted) setEntries(getEntries());
     });
-    const unsub = subscribe((next) => {
+    const unsub = subscribe((next: unknown[]) => {
       if (mounted) setEntries(next);
     });
     return () => { mounted = false; unsub(); };
@@ -51,7 +51,7 @@ export function useMutationQueue() {
   // event paths; sometimes the SW notices reconnect first.
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
-    const handler = async (event) => {
+    const handler = async (event: MessageEvent) => {
       if (event?.data?.type === "DRAIN_QUEUE_NUDGE") {
         setFlushing(true);
         try { await drain(); } finally { setFlushing(false); }

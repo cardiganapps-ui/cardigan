@@ -16,9 +16,9 @@ import { supabase } from "../supabaseClient";
 
 export function usePatientPay() {
   const [busy, setBusy] = useState(false);
-  const [lastError, setLastError] = useState(null);
+  const [lastError, setLastError] = useState<string | null>(null);
 
-  const pay = useCallback(async ({ patientId, amountPesos }) => {
+  const pay = useCallback(async ({ patientId, amountPesos }: { patientId: string; amountPesos: number | string }) => {
     setBusy(true);
     setLastError(null);
     try {
@@ -47,9 +47,10 @@ export function usePatientPay() {
       // their way back.
       window.location.href = data.url;
       return { ok: true };
-    } catch (err) {
-      setLastError(err?.message || "unknown");
-      return { ok: false, error: err?.message };
+    } catch (err: unknown) {
+      const msg = (err as Error)?.message;
+      setLastError(msg || "unknown");
+      return { ok: false, error: msg };
     } finally {
       setBusy(false);
     }

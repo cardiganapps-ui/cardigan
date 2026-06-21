@@ -20,7 +20,7 @@ import { supabase } from "../supabaseClient";
 export const CARDI_POLICY_VERSION = "cardi-data-v2";
 const LS_KEY = "cardigan.cardi.consent.v";
 
-export function useCardiConsent({ user, enabled }) {
+export function useCardiConsent({ user, enabled }: { user?: { id?: string } | null; enabled?: boolean }) {
   // Three-state: unknown / accepted / not-accepted.
   const [state, setState] = useState("unknown");
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +30,7 @@ export function useCardiConsent({ user, enabled }) {
     if (!enabled || !user) { setState("unknown"); return; }
 
     let cancelled = false;
-    let stored = null;
+    let stored: string | null = null;
     try { stored = localStorage.getItem(LS_KEY); } catch { /* blocked */ }
     if (stored === CARDI_POLICY_VERSION) {
       setState("accepted");
