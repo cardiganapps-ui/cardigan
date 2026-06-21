@@ -78,7 +78,7 @@ export default function SubscriptionWelcome({
           borderRadius: "var(--radius-lg, 16px)",
           maxWidth: 440,
           width: "100%",
-          boxShadow: "0 16px 48px rgba(0, 0, 0, 0.22)",
+          boxShadow: "var(--shadow-overlay)",
           overflow: "hidden",
           transform: mounted ? "translateY(0) scale(1)" : "translateY(18px) scale(0.98)",
           transition: "transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)",

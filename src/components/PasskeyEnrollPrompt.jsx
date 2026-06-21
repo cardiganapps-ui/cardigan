@@ -83,7 +83,7 @@ export default function PasskeyEnrollPrompt({ open, creating, onCreate, onDismis
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 14px",
             color: "var(--teal-dark)",
-            boxShadow: "0 6px 18px rgba(0,0,0,0.10)",
+            boxShadow: "var(--shadow)",
           }}>
             <IconKey size={26} />
           </div>

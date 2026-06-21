@@ -79,7 +79,7 @@ export default function TrialReminderPrompt({
           borderRadius: "var(--radius-lg, 16px)",
           maxWidth: 420,
           width: "100%",
-          boxShadow: "0 16px 48px rgba(0,0,0,0.22)",
+          boxShadow: "var(--shadow-overlay)",
           overflow: "hidden",
           transform: mounted ? "translateY(0) scale(1)" : "translateY(18px) scale(0.98)",
           transition: "transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -112,7 +112,7 @@ export default function TrialReminderPrompt({
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 14px",
             color: accentColor,
-            boxShadow: "0 6px 18px rgba(0,0,0,0.10)",
+            boxShadow: "var(--shadow)",
           }}>
             <Icon size={26} />
           </div>

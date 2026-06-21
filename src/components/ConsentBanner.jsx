@@ -150,7 +150,7 @@ export default function ConsentBanner({ user, onAccepted }) {
           padding: 20,
           maxWidth: 460,
           width: "100%",
-          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.18)",
+          boxShadow: "var(--shadow-overlay)",
         }}
       >
         <div style={{ width: 32, height: 3, background: "var(--teal)", borderRadius: 100, marginBottom: 16 }} />
