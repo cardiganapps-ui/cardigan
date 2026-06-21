@@ -19,34 +19,117 @@
    doesn't orphan. The DB-side `on delete set null` is a backstop only.
 */
 
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
 import { shortDateToISO } from "../utils/dates";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
+// ── Domain row types ────────────────────────────────────────────────
+interface Expense {
+  id: string;
+  user_id?: string;
+  amount: number;
+  category?: string;
+  date?: string;
+  description?: string | null;
+  payment_method?: string | null;
+  tax_treatment?: string;
+  cfdi_uuid?: string | null;
+  cfdi_url?: string | null;
+  recurring_id?: string | null;
+  period_year?: number | null;
+  period_month?: number | null;
+  receipt_document_id?: string | null;
+  note?: string | null;
+  color_idx?: number | null;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+interface RecurringTemplate {
+  id: string;
+  user_id?: string;
+  amount: number;
+  category?: string;
+  description?: string | null;
+  day_of_month: number;
+  payment_method?: string | null;
+  tax_treatment?: string;
+  active?: boolean;
+  start_year?: number;
+  start_month?: number;
+  paused_at?: string | null;
+  [key: string]: unknown;
+}
+
+interface PendingSlot { recurring_id: string; year: number; month: number }
+
+type Num = number | string | null | undefined;
+
+interface ExpenseFields {
+  amount?: Num;
+  category?: string;
+  date?: string;
+  description?: string | null;
+  paymentMethod?: string | null;
+  taxTreatment?: string;
+  cfdiUuid?: string | null;
+  cfdiUrl?: string | null;
+  receiptDocumentId?: string | null;
+  note?: string | null;
+}
+
+interface TemplateFields {
+  amount?: Num;
+  category?: string;
+  description?: string | null;
+  dayOfMonth?: Num;
+  paymentMethod?: string | null;
+  taxTreatment?: string;
+  active?: boolean;
+}
+
+type SetExpenses = Dispatch<SetStateAction<Expense[]>>;
+type SetRecurring = Dispatch<SetStateAction<RecurringTemplate[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
+
+interface ExpenseActionsArgs {
+  userId: string;
+  expenses: Expense[];
+  setExpenses: SetExpenses;
+  recurringExpenses: RecurringTemplate[];
+  setRecurringExpenses: SetRecurring;
+  deleteDocument?: (id: string) => Promise<unknown>;
+  setMutating: SetFlag;
+  setMutationError: SetError;
+}
+
 // Offline queue handlers (Phase 4 of offline support — covers
 // createExpense, updateExpense, deleteExpense). Recurring-template
 // CRUD is admin-rare so stays online-only for now.
-registerHandler("expenses.insert", async ({ row }) => {
+registerHandler("expenses.insert", async ({ row }: { row: Record<string, unknown> }) => {
   return await supabase.from("expenses").insert(row).select().single();
 });
-registerHandler("expenses.update", async ({ id, userId, patch }) => {
+registerHandler("expenses.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
   return await supabase.from("expenses").update(patch).eq("id", id).eq("user_id", userId);
 });
-registerHandler("expenses.delete", async ({ id, userId }) => {
+registerHandler("expenses.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("expenses").delete().eq("id", id).eq("user_id", userId);
 });
 
 // Module-level setExpenses ref so the once-registered onReplay
 // listener swaps temp ids in the live state holder (same pattern as
 // usePayments / useSessions / useNotes).
-let _setExpensesRef = null;
-onReplay((entry, result) => {
+let _setExpensesRef: SetExpenses | null = null;
+onReplay((entry: { op: string; optimisticMeta?: { tempId?: string } }, result: { error?: unknown; data?: Record<string, unknown> } | null) => {
   if (entry.op !== "expenses.insert") return;
   if (!result || result.error || !result.data) return;
+  const data = result.data;
   const tempId = entry.optimisticMeta?.tempId;
   if (!tempId || !_setExpensesRef) return;
-  _setExpensesRef(prev => prev.map(e => e.id === tempId ? result.data : e));
+  _setExpensesRef(prev => prev.map(e => e.id === tempId ? (data as Expense) : e));
 });
 
 function isOffline() {
@@ -59,7 +142,7 @@ export function createExpenseActions({
   recurringExpenses, setRecurringExpenses,
   deleteDocument,
   setMutating, setMutationError,
-}) {
+}: ExpenseActionsArgs) {
   // Refresh the module-level ref so the once-registered onReplay
   // listener writes into the live state holder.
   _setExpensesRef = setExpenses;
@@ -80,6 +163,20 @@ export function createExpenseActions({
     description = "", paymentMethod = null, taxTreatment = "deductible",
     cfdiUuid = "", cfdiUrl = "", receiptDocumentId = null, note = "",
     recurringId = null, periodYear = null, periodMonth = null,
+  }: {
+    amount?: Num;
+    category?: string;
+    date?: string;
+    description?: string | null;
+    paymentMethod?: string | null;
+    taxTreatment?: string;
+    cfdiUuid?: string | null;
+    cfdiUrl?: string | null;
+    receiptDocumentId?: string | null;
+    note?: string | null;
+    recurringId?: string | null;
+    periodYear?: number | null;
+    periodMonth?: number | null;
   }) {
     const parsedAmount = Number(amount);
     if (!category || !date || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
@@ -146,7 +243,7 @@ export function createExpenseActions({
     return true;
   }
 
-  async function updateExpense(id, fields) {
+  async function updateExpense(id: string, fields: ExpenseFields) {
     const prev = expenses.find(e => e.id === id);
     if (!prev) return false;
     const parsedAmount = fields.amount != null ? Number(fields.amount) : prev.amount;
@@ -182,7 +279,7 @@ export function createExpenseActions({
     setExpenses(arr => arr.map(e => e.id === id ? next : e));
     setMutationError("");
 
-    const updatePayload = {
+    const updatePayload: Record<string, unknown> = {
       amount: next.amount,
       category: next.category,
       date: next.date,
@@ -228,7 +325,7 @@ export function createExpenseActions({
     }
   }
 
-  async function deleteExpense(id) {
+  async function deleteExpense(id: string) {
     const prev = expenses.find(e => e.id === id);
     if (!prev) return false;
 
@@ -281,6 +378,13 @@ export function createExpenseActions({
   async function createRecurringTemplate({
     amount, category, dayOfMonth, description = "",
     paymentMethod = null, taxTreatment = "deductible",
+  }: {
+    amount?: Num;
+    category?: string;
+    dayOfMonth?: Num;
+    description?: string | null;
+    paymentMethod?: string | null;
+    taxTreatment?: string;
   }) {
     const parsedAmount = Number(amount);
     const dom = Number(dayOfMonth);
@@ -308,10 +412,10 @@ export function createExpenseActions({
     return data;
   }
 
-  async function updateRecurringTemplate(id, fields) {
+  async function updateRecurringTemplate(id: string, fields: TemplateFields) {
     const prev = recurringExpenses.find(t => t.id === id);
     if (!prev) return false;
-    const patch = {};
+    const patch: Record<string, unknown> = {};
     if (fields.amount != null) patch.amount = Number(fields.amount);
     if (fields.category != null) patch.category = fields.category;
     if (fields.description !== undefined) patch.description = fields.description || null;
@@ -354,7 +458,7 @@ export function createExpenseActions({
     return true;
   }
 
-  async function deleteRecurringTemplate(id) {
+  async function deleteRecurringTemplate(id: string) {
     const prev = recurringExpenses.find(t => t.id === id);
     if (!prev) return false;
     setRecurringExpenses(arr => arr.filter(t => t.id !== id));
@@ -374,7 +478,7 @@ export function createExpenseActions({
 
   // ── Recurring generation (idempotent) ─────────────────────────────
 
-  async function generateRecurringExpenses(now = new Date()) {
+  async function generateRecurringExpenses(now: Date = new Date()) {
     if (!Array.isArray(recurringExpenses) || recurringExpenses.length === 0) {
       return { inserted: 0, pending: 0 };
     }
@@ -414,14 +518,14 @@ export function createExpenseActions({
   // when the user taps "Generar N gastos pendientes" on the Gastos tab.
   // The pending list is computed in the call site (UI knows current
   // `now`); this just inserts the rows.
-  async function generatePendingRecurringExpenses(pendingSlots) {
+  async function generatePendingRecurringExpenses(pendingSlots: PendingSlot[]) {
     if (!Array.isArray(pendingSlots) || pendingSlots.length === 0) {
       return { inserted: 0 };
     }
-    const tplById = new Map((recurringExpenses || []).map(t => [t.id, t]));
+    const tplById = new Map((recurringExpenses || []).map(t => [t.id, t] as [string, RecurringTemplate]));
     const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
-    const rows = [];
+    const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
+    const rows: Record<string, unknown>[] = [];
     for (const { recurring_id, year, month } of pendingSlots) {
       const t = tplById.get(recurring_id);
       if (!t) continue;
@@ -466,7 +570,7 @@ export function createExpenseActions({
   // remove step — so an undone delete leaves the receipt intact.
   // If the commit fires (timer or visibility hidden) the receipt
   // is cleaned up just like a direct deleteExpense call.
-  function softDeleteExpense(id) {
+  function softDeleteExpense(id: string) {
     const prev = expenses.find(e => e.id === id);
     if (!prev) return { commit: async () => true, undo: () => {} };
 
