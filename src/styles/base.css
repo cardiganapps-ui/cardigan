@@ -75,6 +75,14 @@
   /* Document viewer backdrop for image content. Near-black so the
      image edges contrast cleanly; PDFs / docs render on --white. */
   --doc-viewer-image-bg: #1A1A1A;
+  /* Brand/social constants — intentionally theme-CONSTANT (deliberately
+     NOT overridden in dark.css): a WhatsApp pill must stay
+     WhatsApp-green with a white label in both light and dark mode.
+     --white flips to #1A1A1A in dark, so labels on brand pills use
+     --social-on-brand instead. */
+  --social-whatsapp: #25D366;
+  --social-dark:     #1A1A1A;
+  --social-on-brand: #FFFFFF;
   --radius-sm:   8px;
   --radius:      12px;
   --radius-lg:   16px;

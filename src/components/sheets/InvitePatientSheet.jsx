@@ -338,7 +338,7 @@ export function InvitePatientSheet({ patient, onClose }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="referral-channel-btn"
-                  style={{ background: "#25D366", color: "#fff" }}
+                  style={{ background: "var(--social-whatsapp)", color: "var(--social-on-brand)" }}
                   onClick={() => haptic.tap()}
                   aria-label="WhatsApp"
                 >
@@ -348,10 +348,9 @@ export function InvitePatientSheet({ patient, onClose }) {
                 <a
                   href={`mailto:?subject=${encodeURIComponent(t("patientInvite.emailSubject"))}&body=${encodeURIComponent(shareText)}`}
                   className="referral-channel-btn"
-                  // Hardcoded charcoal so the pill stays dark in both
-                  // themes — the var token inverts to light grey in
-                  // dark mode and the white label disappears.
-                  style={{ background: "#1A1A1A", color: "#fff" }}
+                  // Theme-constant brand pill (see --social-* in base.css):
+                  // stays dark with a white label in both themes.
+                  style={{ background: "var(--social-dark)", color: "var(--social-on-brand)" }}
                   onClick={() => haptic.tap()}
                   aria-label={t("patientInvite.email")}
                 >
