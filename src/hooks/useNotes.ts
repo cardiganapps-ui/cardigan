@@ -1,5 +1,31 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
+
+// ── Domain row types ────────────────────────────────────────────────
+interface Note {
+  id: string;
+  user_id?: string;
+  patient_id?: string | null;
+  session_id?: string | null;
+  group_id?: string | null;
+  title?: string;
+  content?: string;
+  encrypted?: boolean;
+  pinned?: boolean;
+  cover_attachment_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+interface EncryptResult { content: string; encrypted: boolean }
+interface NoteCrypto { encrypt?: (plain: string) => EncryptResult | Promise<EncryptResult> }
+
+type SetNotes = Dispatch<SetStateAction<Note[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
 
 /* createNoteActions
    `crypto` is an optional bag of { encrypt(plain) → { content, encrypted } }.
@@ -14,16 +40,16 @@ import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 // hits IndexedDB. That keeps the queue itself encryption-aware: even
 // while pending, the disk-bound payload is ciphertext for any user
 // who has encryption set up.
-registerHandler("notes.insert", async ({ row }) => {
+registerHandler("notes.insert", async ({ row }: { row: Record<string, unknown> }) => {
   return await supabase.from("notes").insert(row).select().single();
 });
-registerHandler("notes.update", async ({ id, userId, patch }) => {
+registerHandler("notes.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
   return await supabase.from("notes").update(patch).eq("id", id).eq("user_id", userId).select("updated_at").single();
 });
-registerHandler("notes.delete", async ({ id, userId }) => {
+registerHandler("notes.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("notes").delete().eq("id", id).eq("user_id", userId);
 });
-registerHandler("notes.delete_many", async ({ ids, userId }) => {
+registerHandler("notes.delete_many", async ({ ids, userId }: { ids: string[]; userId: string }) => {
   return await supabase.from("notes").delete().eq("user_id", userId).in("id", ids);
 });
 
@@ -38,8 +64,8 @@ registerHandler("notes.delete_many", async ({ ids, userId }) => {
 // otherwise its pre-restore snapshot would be collapsed into the
 // most-recent save and the pre-restore content would be lost
 // forever) pass 0 to skip the debounce branch.
-registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted, debounceSeconds }) => {
-  const params = {
+registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted, debounceSeconds }: { noteId: string; titleCt: string; contentCt: string; encrypted?: boolean; debounceSeconds?: number }) => {
+  const params: Record<string, unknown> = {
     p_note_id: noteId,
     p_title_ciphertext: titleCt,
     p_content_ciphertext: contentCt,
@@ -54,8 +80,8 @@ registerHandler("notes.snapshot", async ({ noteId, titleCt, contentCt, encrypted
 // Module-level ref so the once-registered replay listener swaps temp
 // note ids in the live state holder (same pattern as usePayments /
 // useSessions).
-let _setNotesRef = null;
-onReplay((entry, result) => {
+let _setNotesRef: SetNotes | null = null;
+onReplay((entry: { op: string; optimisticMeta?: { tempId?: string; plaintextContent?: string } }, result: { error?: unknown; data?: Record<string, unknown> } | null) => {
   if (entry.op !== "notes.insert") return;
   if (!result || result.error || !result.data) return;
   const tempId = entry.optimisticMeta?.tempId;
@@ -65,9 +91,9 @@ onReplay((entry, result) => {
   // If encrypted, swap the ciphertext-bearing server row but keep the
   // plaintext from the optimisticMeta in local state so the UI can
   // render. The encrypted flag stays true.
-  const localRow = data.encrypted && plaintext !== undefined
+  const localRow = (data.encrypted && plaintext !== undefined
     ? { ...data, content: plaintext }
-    : data;
+    : data) as Note;
   _setNotesRef(prev => prev.map(n => n.id === tempId ? localRow : n));
 });
 
@@ -75,15 +101,22 @@ function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
-export function createNoteActions(userId, notes, setNotes, setMutating, setMutationError, crypto) {
+export function createNoteActions(
+  userId: string,
+  notes: Note[],
+  setNotes: SetNotes,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+  crypto?: NoteCrypto,
+) {
   _setNotesRef = setNotes;
 
-  async function maybeEncrypt(plaintext) {
+  async function maybeEncrypt(plaintext?: string): Promise<EncryptResult> {
     if (!crypto?.encrypt) return { content: plaintext || "", encrypted: false };
     return crypto.encrypt(plaintext || "");
   }
 
-  async function createNote({ patientId, sessionId, groupId, title, content }) {
+  async function createNote({ patientId, sessionId, groupId, title, content }: { patientId?: string | null; sessionId?: string | null; groupId?: string | null; title?: string; content?: string }) {
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
     const row = {
@@ -152,7 +185,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return localRow;
   }
 
-  async function updateNote(id, { title, content }) {
+  async function updateNote(id: string, { title, content }: { title?: string; content?: string }) {
     setMutationError("");
     const { content: storedContent, encrypted } = await maybeEncrypt(content);
     const patch = { title, content: storedContent, encrypted };
@@ -197,9 +230,9 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  async function updateNoteLink(id, { patientId, sessionId, groupId }) {
+  async function updateNoteLink(id: string, { patientId, sessionId, groupId }: { patientId?: string | null; sessionId?: string | null; groupId?: string | null }) {
     setMutationError("");
-    const patch = { patient_id: patientId || null, session_id: sessionId || null };
+    const patch: Record<string, unknown> = { patient_id: patientId || null, session_id: sessionId || null };
     if (groupId !== undefined) patch.group_id = groupId || null;
     const nowIso = new Date().toISOString();
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updated_at: nowIso } : n));
@@ -227,7 +260,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  async function deleteNotes(ids) {
+  async function deleteNotes(ids: string[]) {
     if (!ids?.length) return false;
     setMutationError("");
     setNotes(prev => prev.filter(n => !ids.includes(n.id)));
@@ -250,7 +283,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  async function deleteNote(id) {
+  async function deleteNote(id: string) {
     setMutationError("");
     setNotes(prev => prev.filter(n => n.id !== id));
     if (typeof id === "string" && id.startsWith("temp-")) return true;
@@ -275,7 +308,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
      optimistic local update, offline-aware enqueue, online write +
      in-memory rollback on error. Temp-id notes (offline-inserted)
      defer the update to drain time. */
-  async function setNoteCover(id, attachmentId) {
+  async function setNoteCover(id: string, attachmentId?: string | null) {
     const note = notes.find(n => n.id === id);
     if (!note) return false;
     const next = attachmentId || null;
@@ -298,7 +331,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
     return true;
   }
 
-  async function togglePinNote(id) {
+  async function togglePinNote(id: string) {
     const note = notes.find(n => n.id === id);
     if (!note) return false;
     const pinned = !note.pinned;
@@ -324,7 +357,7 @@ export function createNoteActions(userId, notes, setNotes, setMutating, setMutat
   // Undo-aware note delete. Same shape as the other soft variants.
   // Temp-id notes (offline-inserted, not yet drained) are a local-
   // only delete and don't queue anything server-side on commit.
-  function softDeleteNote(id) {
+  function softDeleteNote(id: string) {
     const prev = notes.find(n => n.id === id);
     if (!prev) return { commit: async () => true, undo: () => {} };
 
