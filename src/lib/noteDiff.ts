@@ -20,7 +20,9 @@
    but a trailing \n on the last line is normalized away to keep
    the chunk count predictable. */
 
-function splitLines(s) {
+interface DiffChunk { type: "same" | "added" | "removed"; text: string }
+
+function splitLines(s?: string | null): string[] {
   if (s == null) return [];
   const out = String(s).split("\n");
   // Drop a single trailing empty line that comes from a trailing
@@ -32,7 +34,7 @@ function splitLines(s) {
 
 /* Longest common subsequence as a 2D length table. Returns the LCS
    length matrix; the caller does the reverse walk to pick operations. */
-function lcsLengths(a, b) {
+function lcsLengths(a: string[], b: string[]) {
   const m = a.length;
   const n = b.length;
   // Tight allocation — a single Int32Array beats a 2D array of
@@ -61,7 +63,7 @@ function lcsLengths(a, b) {
    Consecutive lines of the same type collapse into one chunk so
    the renderer can paint full-paragraph strips instead of
    per-line slivers. */
-export function diffLines(beforeText, afterText) {
+export function diffLines(beforeText?: string | null, afterText?: string | null): DiffChunk[] {
   const a = splitLines(beforeText);
   const b = splitLines(afterText);
   if (a.length === 0 && b.length === 0) return [];
@@ -69,7 +71,7 @@ export function diffLines(beforeText, afterText) {
   const { grid, stride, m, n } = lcsLengths(a, b);
 
   // Reverse walk to collect ops, then reverse the result.
-  const ops = [];
+  const ops: DiffChunk[] = [];
   let i = m;
   let j = n;
   while (i > 0 || j > 0) {
@@ -93,7 +95,7 @@ export function diffLines(beforeText, afterText) {
   // Collapse adjacent same-type ops into chunks. Newlines come back
   // in the joined text so the renderer can render each chunk as a
   // pre-wrap block.
-  const chunks = [];
+  const chunks: DiffChunk[] = [];
   for (const op of ops) {
     const last = chunks[chunks.length - 1];
     if (last && last.type === op.type) {
@@ -108,7 +110,7 @@ export function diffLines(beforeText, afterText) {
 /* Convenience summary — added/removed line counts. Used by the
    version-list row to show "+3 −1" before the user expands the
    diff. */
-export function diffSummary(beforeText, afterText) {
+export function diffSummary(beforeText?: string | null, afterText?: string | null) {
   const a = splitLines(beforeText);
   const b = splitLines(afterText);
   if (a.length === 0 && b.length === 0) return { added: 0, removed: 0 };

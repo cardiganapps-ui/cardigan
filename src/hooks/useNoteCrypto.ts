@@ -35,10 +35,10 @@ import {
 const RECOVERY_KID = "v1";
 
 interface WrapMeta {
-  passphrase_wrap: unknown;
-  passphrase_salt: unknown;
-  passphrase_iv: unknown;
-  passphrase_iters: unknown;
+  passphrase_wrap: string;
+  passphrase_salt: string;
+  passphrase_iv: string;
+  passphrase_iters?: number;
 }
 
 async function authedFetch(path: string, init: RequestInit = {}) {
@@ -71,7 +71,7 @@ export function useNoteCrypto({ user }: { user?: unknown } = {}) {
   // mount when status comes back as "locked".
   const wrapRef = useRef<WrapMeta | null>(null);
   // Master key bytes (32) when unlocked. Cleared on lock().
-  const masterKeyRef = useRef<Uint8Array | null>(null);
+  const masterKeyRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   const refreshStatus = useCallback(async () => {
     if (!user) { setStatus("disabled"); return; }
@@ -248,15 +248,15 @@ export function useNoteCrypto({ user }: { user?: unknown } = {}) {
   // byte, IV stored separately on the row). Returns null when the
   // vault is locked / disabled so the attachment code can fall back
   // to a plaintext upload path.
-  const encryptAttachmentBytes = useCallback(async (bytes: Uint8Array) => {
+  const encryptAttachmentBytes = useCallback(async (bytes: Uint8Array<ArrayBuffer>) => {
     if (status !== "unlocked" || !masterKeyRef.current) return null;
     return encryptBytes(bytes, masterKeyRef.current);
   }, [status]);
 
-  const decryptAttachmentBytes = useCallback(async (ciphertextBase64: string, ivBase64: string) => {
+  const decryptAttachmentBytes = useCallback(async (ciphertextBytes: Uint8Array<ArrayBuffer>, ivBase64: string) => {
     if (status !== "unlocked" || !masterKeyRef.current) return null;
     try {
-      return await decryptBytes(ciphertextBase64, ivBase64, masterKeyRef.current);
+      return await decryptBytes(ciphertextBytes, ivBase64, masterKeyRef.current);
     } catch {
       return null;
     }

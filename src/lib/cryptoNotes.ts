@@ -46,21 +46,21 @@ function getCrypto() {
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
 
-function bytesToBase64(bytes) {
+function bytesToBase64(bytes: Uint8Array | ArrayBuffer): string {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   let bin = "";
   for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
   return btoa(bin);
 }
 
-function base64ToBytes(b64) {
+function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
 
-function concatBytes(...arrs) {
+function concatBytes(...arrs: Uint8Array[]): Uint8Array {
   const total = arrs.reduce((n, a) => n + a.length, 0);
   const out = new Uint8Array(total);
   let off = 0;
@@ -69,7 +69,7 @@ function concatBytes(...arrs) {
 }
 
 // ── Random material ──────────────────────────────────────────────────
-export function randomBytes(n) {
+export function randomBytes(n: number): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(n);
   getCrypto().getRandomValues(out);
   return out;
@@ -80,7 +80,7 @@ export function generateMasterKeyBytes() {
 }
 
 // ── Passphrase derivation ────────────────────────────────────────────
-async function deriveKeyFromPassphrase(passphrase, salt, iters = PBKDF2_ITERS) {
+async function deriveKeyFromPassphrase(passphrase: string, salt: Uint8Array<ArrayBuffer>, iters: number = PBKDF2_ITERS): Promise<CryptoKey> {
   if (typeof passphrase !== "string" || passphrase.length === 0) {
     throw new Error("Passphrase is required");
   }
@@ -102,7 +102,7 @@ async function deriveKeyFromPassphrase(passphrase, salt, iters = PBKDF2_ITERS) {
 }
 
 // ── Master key import ────────────────────────────────────────────────
-async function importAesKey(rawBytes) {
+async function importAesKey(rawBytes: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   return getCrypto().subtle.importKey(
     "raw",
     rawBytes,
@@ -113,7 +113,7 @@ async function importAesKey(rawBytes) {
 }
 
 // ── Recovery (RSA-OAEP) ──────────────────────────────────────────────
-async function importRecoveryPublicKey(spkiBase64) {
+async function importRecoveryPublicKey(spkiBase64: string): Promise<CryptoKey> {
   if (!spkiBase64) throw new Error("Recovery public key not configured");
   return getCrypto().subtle.importKey(
     "spki",
@@ -131,7 +131,7 @@ async function importRecoveryPublicKey(spkiBase64) {
  * Returns { passphrase_wrap, passphrase_salt, passphrase_iv, passphrase_iters }
  * (all strings, base64-encoded where binary).
  */
-export async function wrapMasterWithPassphrase(masterKeyBytes, passphrase) {
+export async function wrapMasterWithPassphrase(masterKeyBytes: Uint8Array<ArrayBuffer>, passphrase: string) {
   if (!(masterKeyBytes instanceof Uint8Array) || masterKeyBytes.length !== 32) {
     throw new Error("masterKeyBytes must be a 32-byte Uint8Array");
   }
@@ -155,7 +155,7 @@ export async function wrapMasterWithPassphrase(masterKeyBytes, passphrase) {
  * Wrap the master key under the server-held RSA-OAEP recovery key.
  * Returns the base64-encoded ciphertext.
  */
-export async function wrapMasterWithRecovery(masterKeyBytes, recoveryPublicKeySpkiBase64) {
+export async function wrapMasterWithRecovery(masterKeyBytes: Uint8Array<ArrayBuffer>, recoveryPublicKeySpkiBase64: string): Promise<string> {
   const pub = await importRecoveryPublicKey(recoveryPublicKeySpkiBase64);
   const ct = await getCrypto().subtle.encrypt(
     { name: "RSA-OAEP" },
@@ -170,7 +170,7 @@ export async function wrapMasterWithRecovery(masterKeyBytes, recoveryPublicKeySp
  * Uint8Array on success; throws on a wrong passphrase or tampered wrap
  * (AES-GCM's auth tag fails to verify).
  */
-export async function unwrapMasterWithPassphrase({ passphrase, passphrase_wrap, passphrase_salt, passphrase_iv, passphrase_iters }) {
+export async function unwrapMasterWithPassphrase({ passphrase, passphrase_wrap, passphrase_salt, passphrase_iv, passphrase_iters }: { passphrase: string; passphrase_wrap: string; passphrase_salt: string; passphrase_iv: string; passphrase_iters?: number }): Promise<Uint8Array<ArrayBuffer>> {
   const wrapKey = await deriveKeyFromPassphrase(
     passphrase,
     base64ToBytes(passphrase_salt),
@@ -186,7 +186,7 @@ export async function unwrapMasterWithPassphrase({ passphrase, passphrase_wrap, 
   } catch (_err) {
     // WebCrypto throws OperationError on auth-tag mismatch. Surface a
     // clean exception so the caller can render "wrong passphrase".
-    const e = new Error("Invalid passphrase");
+    const e: Error & { code?: string } = new Error("Invalid passphrase");
     e.code = "bad_passphrase";
     throw e;
   }
@@ -201,7 +201,7 @@ export async function unwrapMasterWithPassphrase({ passphrase, passphrase_wrap, 
  * Encrypt a UTF-8 plaintext into a base64 ciphertext bundle suitable
  * for storing in notes.content. Bundle: version || iv || ciphertext.
  */
-export async function encryptNote(plaintext, masterKeyBytes) {
+export async function encryptNote(plaintext: string, masterKeyBytes: Uint8Array<ArrayBuffer>): Promise<string> {
   if (typeof plaintext !== "string") throw new Error("plaintext must be a string");
   const aesKey = await importAesKey(masterKeyBytes);
   const iv = randomBytes(IV_BYTES);
@@ -221,7 +221,7 @@ export async function encryptNote(plaintext, masterKeyBytes) {
 /**
  * Decrypt a note bundle. Throws on tamper / wrong key.
  */
-export async function decryptNote(bundleBase64, masterKeyBytes) {
+export async function decryptNote(bundleBase64: string, masterKeyBytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const bundle = base64ToBytes(bundleBase64);
   if (bundle.length < 1 + IV_BYTES + 16) {
     throw new Error("Ciphertext too short");
@@ -237,7 +237,7 @@ export async function decryptNote(bundleBase64, masterKeyBytes) {
   try {
     plain = await getCrypto().subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ct);
   } catch (_err) {
-    const e = new Error("Failed to decrypt note");
+    const e: Error & { code?: string } = new Error("Failed to decrypt note");
     e.code = "decrypt_failed";
     throw e;
   }
@@ -257,7 +257,7 @@ export async function decryptNote(bundleBase64, masterKeyBytes) {
 // here, which forced upload + download paths to round-trip
 // 10MB+ payloads through atob/btoa on the main thread — multiple
 // hundreds of ms on mid-range phones.
-export async function encryptBytes(bytes, masterKeyBytes) {
+export async function encryptBytes(bytes: Uint8Array<ArrayBuffer>, masterKeyBytes: Uint8Array<ArrayBuffer>): Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string }> {
   if (!(bytes instanceof Uint8Array)) throw new Error("bytes must be a Uint8Array");
   const aesKey = await importAesKey(masterKeyBytes);
   const iv = randomBytes(IV_BYTES);
@@ -278,7 +278,7 @@ export async function encryptBytes(bytes, masterKeyBytes) {
  * returned) and IV as base64 (matches what the row column holds).
  * Throws on tamper / wrong key.
  */
-export async function decryptBytes(ciphertextBytes, ivBase64, masterKeyBytes) {
+export async function decryptBytes(ciphertextBytes: Uint8Array<ArrayBuffer>, ivBase64: string, masterKeyBytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
   if (!(ciphertextBytes instanceof Uint8Array)) throw new Error("ciphertextBytes must be a Uint8Array");
   const iv = base64ToBytes(ivBase64);
   if (iv.length !== IV_BYTES) throw new Error("Bad IV length");
@@ -287,7 +287,7 @@ export async function decryptBytes(ciphertextBytes, ivBase64, masterKeyBytes) {
   try {
     plain = await getCrypto().subtle.decrypt({ name: "AES-GCM", iv }, aesKey, ciphertextBytes);
   } catch (_err) {
-    const e = new Error("Failed to decrypt attachment");
+    const e: Error & { code?: string } = new Error("Failed to decrypt attachment");
     e.code = "decrypt_failed";
     throw e;
   }
@@ -304,7 +304,7 @@ export async function decryptBytes(ciphertextBytes, ivBase64, masterKeyBytes) {
 // canonicalize: lowercase + strip diacritics + collapse whitespace.
 // Matches utils/noteSearch.js::normalize so users can't end up with
 // both "SOAP" and "soap" as separate tags by inadvertent case.
-export function canonicalizeTagLabel(label) {
+export function canonicalizeTagLabel(label?: string | null): string {
   return String(label || "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -317,7 +317,7 @@ export function canonicalizeTagLabel(label) {
 // threat model already assumes DB-only compromise can't decrypt note
 // content, and the marginal exposure of common tag names like "SOAP"
 // is bounded. Per-user uniqueness comes from the column constraint.
-export async function hashTagLabel(label) {
+export async function hashTagLabel(label?: string | null): Promise<string> {
   const canonical = canonicalizeTagLabel(label);
   if (!canonical) return "";
   const buf = textEncoder.encode(canonical);

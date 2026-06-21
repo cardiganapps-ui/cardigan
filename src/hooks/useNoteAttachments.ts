@@ -22,7 +22,7 @@ interface NoteLike { id: string; cover_attachment_id?: string | null; [key: stri
 
 interface AttachmentCrypto {
   canEncrypt?: boolean;
-  encryptAttachmentBytes?: (bytes: Uint8Array) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
+  encryptAttachmentBytes?: (bytes: Uint8Array<ArrayBuffer>) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
 }
 
 type SetAttachments = Dispatch<SetStateAction<Attachment[]>>;

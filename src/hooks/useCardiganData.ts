@@ -33,7 +33,7 @@ interface NoteCryptoBag {
   encrypt?: (plain: string) => { content: string; encrypted: boolean } | Promise<{ content: string; encrypted: boolean }>;
   decrypt?: (content: string, encrypted: boolean) => Promise<string | null>;
   canEncrypt?: boolean;
-  encryptAttachmentBytes?: (bytes: Uint8Array) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
+  encryptAttachmentBytes?: (bytes: Uint8Array<ArrayBuffer>) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
 }
 
 /** A row rendered in the admin "Usuarios" list, assembled from three
