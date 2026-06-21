@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { DAY_ORDER } from "../data/seedData";
 import {
@@ -13,20 +14,99 @@ import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 // Re-export for callers that historically imported it from this module.
 export { getRecurringDates };
 
+// ── Domain row types ────────────────────────────────────────────────
+// Structural shapes the session actions read/write. Local to the module
+// (matching the rest of the migrated hooks); the index signature keeps
+// the many DB-mirrored fields the factory passes around without listing
+// every column.
+
+/** Patient fields the session path mutates. */
+interface Patient {
+  id: string;
+  name: string;
+  initials?: string | null;
+  parent?: string | null;
+  colorIdx?: number | null;
+  rate?: number | null;
+  paid?: number;
+  billed: number;
+  sessions: number;
+  day?: string | null;
+  time?: string | null;
+  status?: string;
+  [key: string]: unknown;
+}
+
+/** A session row as held in client state. */
+interface Session {
+  id: string;
+  patient_id?: string | null;
+  patient?: string | null;
+  initials?: string | null;
+  status?: string | null;
+  date: string;
+  time?: string | null;
+  day?: string | null;
+  duration?: number | null;
+  rate?: number | null;
+  modality?: string | null;
+  session_type?: string | null;
+  visit_type?: string | null;
+  cancel_reason?: string | null;
+  is_recurring?: boolean;
+  recurrence_frequency?: string | null;
+  version?: number | null;
+  color_idx?: number | null;
+  colorIdx?: number | null;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+/** Snake-cased row inserted into `sessions` (recurring generation). */
+interface SessionInsertRow {
+  user_id: string;
+  patient_id: string;
+  patient: string;
+  initials?: string | null;
+  time: string;
+  day: string;
+  date: string;
+  duration: number;
+  rate?: number | null;
+  modality: string;
+  color_idx: number;
+  is_recurring?: boolean;
+  recurrence_frequency?: string;
+}
+
+/** A recurring schedule slot supplied by the UI. */
+interface Schedule {
+  day: string;
+  time: string;
+  duration?: number | string | null;
+  frequency?: string;
+  modality?: string;
+}
+
+type SetPatients = Dispatch<SetStateAction<Patient[]>>;
+type SetSessions = Dispatch<SetStateAction<Session[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
+
 // Offline queue handlers (registered once at module load). Each handler
 // re-runs the supabase call when the queue drains on reconnect. For
 // locked updates the handler intentionally OMITS the version filter —
 // offline replays are last-write-wins by design (see migration 066
 // and lib/mutationQueue.js for the tradeoff).
-registerHandler("sessions.insert", async ({ row }) => {
+registerHandler("sessions.insert", async ({ row }: { row: Record<string, unknown> }) => {
   return await supabase.from("sessions").insert(row).select().single();
 });
 
-registerHandler("sessions.delete", async ({ id, userId }) => {
+registerHandler("sessions.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("sessions").delete().eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelReason, enqueuedVersion }) => {
+registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelReason, enqueuedVersion }: { id: string; newStatus: string; cancelReason: string | null; enqueuedVersion?: number | null }) => {
   // Conflict detection: if the row's version has moved past what we
   // captured at enqueue time, another writer landed first. We still
   // replay (last-write-wins by design for offline) but flag the
@@ -49,7 +129,7 @@ registerHandler("sessions.update_status_atomic", async ({ id, newStatus, cancelR
 // offline / on transport error and by rescheduleSession. No version
 // filter (last-write-wins on replay); enqueuedVersion is used solely
 // for conflict counting.
-registerHandler("sessions.update", async ({ id, userId, patch, enqueuedVersion }) => {
+registerHandler("sessions.update", async ({ id, userId, patch, enqueuedVersion }: { id: string; userId: string; patch: Record<string, unknown>; enqueuedVersion?: number | null }) => {
   let conflict = false;
   if (enqueuedVersion != null) {
     const { data: current } = await supabase.from("sessions").select("version").eq("id", id).maybeSingle();
@@ -65,7 +145,7 @@ registerHandler("sessions.update", async ({ id, userId, patch, enqueuedVersion }
 // uniq_sessions_patient_date_time index errors the whole batch with
 // SQLSTATE 23505. Treat as success — the trigger already recomputed
 // counters on the original drain, retrying would just no-op.
-registerHandler("sessions.bulk_insert", async ({ rows }) => {
+registerHandler("sessions.bulk_insert", async ({ rows }: { rows: Record<string, unknown>[] }) => {
   const result = await supabase.from("sessions").insert(rows).select();
   if (result.error?.code === "23505") return { data: [], error: null };
   return result;
@@ -74,8 +154,8 @@ registerHandler("sessions.bulk_insert", async ({ rows }) => {
 // Multi-step finalize: bulk delete + patient status flip. Both steps
 // are idempotent — a retry hits "nothing to delete" + "status already
 // ended", both no-ops. Safe to retry on transient failure.
-registerHandler("sessions.finalize_patient", async ({ patientId, userId, toDeleteIds, statusValue }) => {
-  if (toDeleteIds?.length > 0) {
+registerHandler("sessions.finalize_patient", async ({ patientId, userId, toDeleteIds, statusValue }: { patientId: string; userId: string; toDeleteIds?: string[]; statusValue: string }) => {
+  if (toDeleteIds && toDeleteIds.length > 0) {
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
     if (r1.error) return r1;
   }
@@ -88,14 +168,14 @@ registerHandler("sessions.finalize_patient", async ({ patientId, userId, toDelet
 // on retry — the delete by id is a no-op if already done, the patient
 // patch is the same value each time, and the bulk insert's 23505
 // swallow makes a re-insert pass-through.
-registerHandler("sessions.apply_schedule_change", async ({ patientId, userId, toDeleteIds, patientPatch, newRows }) => {
-  if (toDeleteIds?.length > 0) {
+registerHandler("sessions.apply_schedule_change", async ({ patientId, userId, toDeleteIds, patientPatch, newRows }: { patientId: string; userId: string; toDeleteIds?: string[]; patientPatch: Record<string, unknown>; newRows?: Record<string, unknown>[] }) => {
+  if (toDeleteIds && toDeleteIds.length > 0) {
     const r1 = await supabase.from("sessions").delete().eq("user_id", userId).in("id", toDeleteIds);
     if (r1.error) return r1;
   }
   const r2 = await supabase.from("patients").update(patientPatch).eq("id", patientId).eq("user_id", userId);
   if (r2.error) return r2;
-  if (newRows?.length > 0) {
+  if (newRows && newRows.length > 0) {
     const r3 = await supabase.from("sessions").insert(newRows).select();
     if (r3.error?.code === "23505") return { data: [], error: null };
     return r3;
@@ -110,15 +190,15 @@ function isOffline() {
 // Module-level ref to the latest setUpcomingSessions, mirrored from the
 // action factory. Same pattern as usePayments — the factory runs every
 // render; the onReplay subscription must register only once.
-let _setUpcomingSessionsRef = null;
-onReplay((entry, result) => {
+let _setUpcomingSessionsRef: SetSessions | null = null;
+onReplay((entry: { op: string; optimisticMeta?: { tempId?: string } }, result: { error?: unknown; data?: Record<string, unknown> } | null) => {
   if (entry.op !== "sessions.insert") return;
   if (!result || result.error || !result.data) return;
   const tempId = entry.optimisticMeta?.tempId;
   if (!tempId || !_setUpcomingSessionsRef) return;
   const data = result.data;
   _setUpcomingSessionsRef(prev => prev.map(s => s.id === tempId
-    ? { ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" }
+    ? ({ ...data, colorIdx: data.color_idx, modality: data.modality || "presencial" } as Session)
     : s));
 });
 
@@ -130,7 +210,15 @@ onReplay((entry, result) => {
 const CONFLICT_MSG = "Esta sesión se editó en otro lugar. Volvimos a cargarla — intenta de nuevo.";
 const MISSING_MSG = "Esta sesión ya no existe.";
 
-export function createSessionActions(userId, patients, setPatients, upcomingSessions, setUpcomingSessions, setMutating, setMutationError) {
+export function createSessionActions(
+  userId: string,
+  patients: Patient[],
+  setPatients: SetPatients,
+  upcomingSessions: Session[],
+  setUpcomingSessions: SetSessions,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+) {
   // Refresh the module-level ref so the once-registered onReplay
   // listener writes into the live state holder.
   _setUpcomingSessionsRef = setUpcomingSessions;
@@ -143,7 +231,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // and "row no longer exists" (drop locally) by re-reading by id. Also
   // restores the prior patient row when the optimistic mutation touched
   // patient.billed.
-  async function reconcileSessionConflict(sessionId, prevSession, prevPatient) {
+  async function reconcileSessionConflict(sessionId: string, prevSession: Session, prevPatient: Patient | null) {
     const { data: fresh } = await supabase
       .from("sessions")
       .select("*")
@@ -171,7 +259,17 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }
   }
 
-  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate, modality, visitType }) {
+  async function createSession({ patientName, date, time, duration, isTutor, tutorName, customRate, modality, visitType }: {
+    patientName: string;
+    date: string;
+    time: string;
+    duration?: number | string | null;
+    isTutor?: boolean;
+    tutorName?: string | null;
+    customRate?: number | string | null;
+    modality?: string;
+    visitType?: string | null;
+  }) {
     if (!patientName?.trim() || !date?.trim() || !time?.trim()) return false;
     const patient = patients.find(p => p.name === patientName);
     if (!patient) return false;
@@ -319,7 +417,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // lives in exactly one place — the RPC just applies whatever delta
   // the client computes. CLAUDE.md rule #4 still holds: counter math
   // routes through the predicate, end to end.
-  async function updateSessionStatus(sessionId, status, charge, cancelReason) {
+  async function updateSessionStatus(sessionId: string, status: string, charge?: boolean, cancelReason?: string | null) {
     const session = upcomingSessions.find(s => s.id === sessionId);
     if (!session) return false;
     const newStatus = (status === SESSION_STATUS.CANCELLED && charge) ? SESSION_STATUS.CHARGED : status;
@@ -412,14 +510,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
       } catch (e) {
         setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? prevSession : s));
         if (prevPatient) setPatients(prev => prev.map(p => p.id === prevPatient.id ? prevPatient : p));
-        setMutationError(e?.message || "Network error");
+        setMutationError((e as Error)?.message || "Network error");
       }
     })();
 
     return true;
   }
 
-  async function deleteSession(sessionId) {
+  async function deleteSession(sessionId: string) {
     const session = upcomingSessions.find(s => s.id === sessionId);
     setMutationError("");
 
@@ -478,7 +576,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   //               patient counter snapshot. No-op if commit() ran.
   // The pair is shaped so the caller can wire it into setTimeout +
   // visibilitychange + toast without leaking the action's internals.
-  function softDeleteSession(sessionId) {
+  function softDeleteSession(sessionId: string) {
     const session = upcomingSessions.find(s => s.id === sessionId);
     if (!session) return { commit: async () => true, undo: () => {} };
     const prevSession = { ...session };
@@ -545,14 +643,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // Without this, moving a session across the past/future boundary
   // leaves patient.billed stranded above or below consumed until the
   // next recalc.
-  async function rescheduleSession(sessionId, newDate, newTime, newDuration) {
+  async function rescheduleSession(sessionId: string, newDate: string, newTime: string, newDuration?: number | string | null) {
     if (!newDate?.trim() || !newTime?.trim()) return false;
     const prevSession = upcomingSessions.find(s => s.id === sessionId);
     if (!prevSession) return false;
 
     const dateObj = parseShortDate(newDate);
     const dayName = DAY_ORDER[(dateObj.getDay() + 6) % 7];
-    const patch = { date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED };
+    const patch: Partial<Session> = { date: newDate.trim(), time: newTime.trim(), day: dayName, status: SESSION_STATUS.SCHEDULED };
     if (newDuration != null && Number(newDuration) > 0) patch.duration = Number(newDuration);
 
     // Compute the predicate-aware billed delta BEFORE touching state so
@@ -622,7 +720,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  async function generateRecurringSessions(patientId, schedules, startDate, endDate) {
+  async function generateRecurringSessions(patientId: string, schedules: Schedule[], startDate: string, endDate?: string) {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !schedules?.length || !startDate) return false;
 
@@ -634,7 +732,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         .filter(s => s.patient_id === patientId)
         .map(s => `${s.date}|${s.time}`)
     );
-    const allRows = [];
+    const allRows: SessionInsertRow[] = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
       const freq = s.frequency || "weekly";
@@ -719,14 +817,14 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     // patient.{sessions,billed} are recomputed by the trigger that fires
     // on the bulk insert above. Optimistic React state already mirrored
     // the expected values above; replace temp rows with server rows here.
-    setUpcomingSessions(prev => [...prev, ...data.map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
+    setUpcomingSessions(prev => [...prev, ...(data || []).map(r => ({ ...r, colorIdx: r.color_idx, modality: r.modality || "presencial" }))]);
     setPatients(prev => prev.map(p => p.id === patientId
       ? { ...p, sessions: newSessions, billed: newBilled } : p));
     setMutating(false);
     return true;
   }
 
-  async function applyScheduleChange(patientId, { schedules, rate, effectiveDate, endDate }) {
+  async function applyScheduleChange(patientId: string, { schedules, rate, effectiveDate, endDate }: { schedules: Schedule[]; rate?: number | string | null; effectiveDate: string; endDate?: string }) {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !effectiveDate || !schedules?.length) return false;
 
@@ -752,7 +850,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
         .filter(s => s.patient_id === patientId && !deletedIds.has(s.id))
         .map(s => `${s.date}|${s.time}`)
     );
-    const allRows = [];
+    const allRows: SessionInsertRow[] = [];
     for (const s of schedules) {
       const dur = Number(s.duration) > 0 ? Number(s.duration) : 60;
       const freq = s.frequency || "weekly";
@@ -864,7 +962,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     }
   }
 
-  async function finalizePatient(patientId, finishDate) {
+  async function finalizePatient(patientId: string, finishDate: string) {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !finishDate) return false;
     setMutationError("");
@@ -938,7 +1036,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
   // the new version locally on success. Returns true on success, false
   // on error/conflict — caller already updated optimistic state. The
   // helper handles revert + setMutationError on failure.
-  async function writeSessionWithLock(sessionId, patch, prevSession, onSuccess) {
+  async function writeSessionWithLock(sessionId: string, patch: Record<string, unknown>, prevSession: Session, onSuccess?: () => void | Promise<void>) {
     // Temp-id rows haven't drained yet — the underlying insert is in
     // the queue. Updating before that insert lands would target a non-
     // existent row. Apply optimistic locally only and skip the wire;
@@ -986,7 +1084,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return true;
   }
 
-  async function updateSessionModality(sessionId, modality) {
+  async function updateSessionModality(sessionId: string, modality: string) {
     const prevSession = upcomingSessions.find(s => s.id === sessionId);
     if (!prevSession) return false;
     setMutating(true);
@@ -1000,7 +1098,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return ok;
   }
 
-  async function updateSessionVisitType(sessionId, visitType) {
+  async function updateSessionVisitType(sessionId: string, visitType?: string | null) {
     // null clears the tag (returns the row to "Sin clasificar"). Any
     // other value must match the CHECK constraint set in migration
     // 041; the upstream UI uses the VISIT_TYPE enum so this is a
@@ -1016,7 +1114,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return ok;
   }
 
-  async function updateSessionRate(sessionId, newRate) {
+  async function updateSessionRate(sessionId: string, newRate: number | string) {
     const rate = Number(newRate);
     // Allow any non-negative finite number. Zero is valid (pro-bono).
     if (!Number.isFinite(rate) || rate < 0) return false;
@@ -1045,7 +1143,7 @@ export function createSessionActions(userId, patients, setPatients, upcomingSess
     return ok;
   }
 
-  async function updateCancelReason(sessionId, reason) {
+  async function updateCancelReason(sessionId: string, reason?: string | null) {
     const trimmed = (reason || "").trim();
     const prevSession = upcomingSessions.find(s => s.id === sessionId);
     if (!prevSession) return false;
