@@ -21,7 +21,7 @@
 // Detect HEIC by extension first (iOS sometimes hands File objects with
 // type="" because the OS hasn't registered the MIME), then by MIME.
 // Either signal is sufficient.
-export function isHeic(file) {
+export function isHeic(file: File | null | undefined): boolean {
   if (!file) return false;
   const t = (file.type || "").toLowerCase();
   if (t === "image/heic" || t === "image/heif") return true;
@@ -33,7 +33,7 @@ export function isHeic(file) {
 // original file on conversion failure so the upload still proceeds —
 // it just won't OCR. The caller doesn't need to handle errors;
 // fallback behavior is identical to no conversion.
-export async function maybeConvertHeic(file, { quality = 0.9 } = {}) {
+export async function maybeConvertHeic(file: File, { quality = 0.9 }: { quality?: number } = {}): Promise<File> {
   if (!isHeic(file)) return file;
   try {
     const mod = await import("heic2any");
@@ -49,12 +49,12 @@ export async function maybeConvertHeic(file, { quality = 0.9 } = {}) {
       type: "image/jpeg",
       lastModified: file.lastModified || Date.now(),
     });
-  } catch (err) {
+  } catch (err: unknown) {
     // Conversion can fail on corrupt files, multi-image HEICs that
     // heic2any can't iterate, or browsers without WebAssembly. Fall
     // back to the original file so the user still gets *something*
     // attached. The OCR endpoint's HEIC 415 path catches it next.
-    console.warn("[heicConvert] failed, uploading original:", err?.message);
+    console.warn("[heicConvert] failed, uploading original:", (err as Error)?.message);
     return file;
   }
 }

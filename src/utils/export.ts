@@ -1,5 +1,22 @@
-export function exportCSV(filename, headers, rows) {
-  const escape = (v) => {
+interface ExportSession {
+  patient?: string | null;
+  date?: string | null;
+  time?: string | null;
+  duration?: number | null;
+  day?: string | null;
+  status?: string | null;
+  session_type?: string | null;
+  initials?: string | null;
+}
+interface ExportPayment {
+  patient?: string | null;
+  amount?: number | null;
+  date?: string | null;
+  method?: string | null;
+}
+
+export function exportCSV(filename: string, headers: string[], rows: unknown[][]): void {
+  const escape = (v: unknown) => {
     const s = String(v ?? "");
     return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
   };
@@ -13,7 +30,7 @@ export function exportCSV(filename, headers, rows) {
   URL.revokeObjectURL(url);
 }
 
-export function exportSessions(sessions, filename = "sesiones.csv") {
+export function exportSessions(sessions: ExportSession[], filename = "sesiones.csv"): void {
   const headers = ["Paciente", "Fecha", "Hora", "Duración (min)", "Día", "Estado", "Tipo"];
   const rows = sessions.map(s => [
     s.patient,
@@ -31,7 +48,7 @@ export function exportSessions(sessions, filename = "sesiones.csv") {
   exportCSV(filename, headers, rows);
 }
 
-export function exportPayments(payments, filename = "pagos.csv") {
+export function exportPayments(payments: ExportPayment[], filename = "pagos.csv"): void {
   const headers = ["Paciente", "Monto", "Fecha", "Método"];
   const rows = payments.map(p => [
     p.patient,

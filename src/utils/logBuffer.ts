@@ -1,7 +1,9 @@
 /* Captures console.error and console.warn into a ring buffer for bug reports. */
 
+interface LogEntry { level: string; message: string; timestamp: string }
+
 const MAX = 50;
-const logs = [];
+const logs: LogEntry[] = [];
 
 const PII_PATTERNS = [
   /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
@@ -9,7 +11,7 @@ const PII_PATTERNS = [
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
 ];
 
-function sanitize(message) {
+function sanitize(message: string): string {
   let s = message;
   for (const pattern of PII_PATTERNS) {
     s = s.replace(pattern, "[REDACTED]");
@@ -17,7 +19,7 @@ function sanitize(message) {
   return s;
 }
 
-function push(level, args) {
+function push(level: string, args: unknown[]) {
   const message = args.map(a => {
     if (a instanceof Error) return `${a.message}\n${a.stack || ""}`;
     if (typeof a === "object") try { return JSON.stringify(a); } catch { return String(a); }
@@ -30,8 +32,8 @@ function push(level, args) {
 const origError = console.error;
 const origWarn = console.warn;
 
-console.error = (...args) => { push("error", args); origError.apply(console, args); };
-console.warn = (...args) => { push("warn", args); origWarn.apply(console, args); };
+console.error = (...args: unknown[]) => { push("error", args); origError.apply(console, args); };
+console.warn = (...args: unknown[]) => { push("warn", args); origWarn.apply(console, args); };
 
 // Capture uncaught errors and unhandled promise rejections so they show up
 // in bug-report payloads even when the user didn't see a console message.

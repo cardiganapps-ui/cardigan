@@ -28,7 +28,14 @@
 const KEY = "cardigan.patientInviteToken";
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-function readPayload() {
+interface InvitePayload {
+  token: string;
+  savedAt?: number;
+  therapistName?: string;
+  therapistProfession?: string;
+}
+
+function readPayload(): InvitePayload | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(KEY);
@@ -49,14 +56,14 @@ function readPayload() {
   }
 }
 
-function writePayload(obj) {
+function writePayload(obj: { token: string; therapistName?: string; therapistProfession?: string }) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...obj, savedAt: Date.now() }));
   } catch { /* private mode etc — caller falls back gracefully */ }
 }
 
-export function setInviteToken(token) {
+export function setInviteToken(token: string | null | undefined) {
   if (!token) return;
   // Preserve any therapist context already attached from a prior
   // PatientClaimScreen preview. This handles the order-of-operations
@@ -79,7 +86,7 @@ export function getInviteToken() {
    these to personalize the verification email (template branches on
    .Data.therapist_name presence; the profession resolves to a
    gender-neutral field noun like "psicología" or "tutoría"). */
-export function attachTherapistContext({ therapistName, therapistProfession }) {
+export function attachTherapistContext({ therapistName, therapistProfession }: { therapistName?: string | null; therapistProfession?: string | null }) {
   const cur = readPayload();
   if (!cur?.token) return;
   writePayload({

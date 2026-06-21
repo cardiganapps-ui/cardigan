@@ -9,7 +9,9 @@
 
 import { isNative } from "../lib/platform";
 
-function runWeb(pattern) {
+type HapticKind = "tap" | "success" | "warn";
+
+function runWeb(pattern: number | number[]) {
   if (typeof navigator === "undefined") return;
   if (typeof navigator.vibrate !== "function") return;
   try { navigator.vibrate(pattern); } catch { /* ignore */ }
@@ -18,7 +20,7 @@ function runWeb(pattern) {
 // Native-haptics dispatch. Dynamic-imported so the web bundle never pays
 // the cost of loading the plugin. Errors are swallowed — haptics are a
 // nice-to-have, never block a user action because of one.
-async function runNative(kind) {
+async function runNative(kind: HapticKind) {
   try {
     const mod = await import("@capacitor/haptics");
     if (kind === "tap") {
@@ -31,7 +33,7 @@ async function runNative(kind) {
   } catch { /* ignore */ }
 }
 
-function fire(kind, webPattern) {
+function fire(kind: HapticKind, webPattern: number | number[]) {
   if (isNative()) {
     // fire-and-forget — callers don't await haptics
     runNative(kind);
