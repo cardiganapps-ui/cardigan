@@ -13,10 +13,20 @@ import { parseShortDate } from "./dates";
 
 const PRICE_MONTHLY_CENTS = 14900; // $149 MXN — mirrors Stripe price
 
+interface ProSession { status?: string | null; date?: string | null }
+interface ProPayment { date?: string | null; amount?: unknown }
+interface ProValueOptions { totalSessionThreshold?: number; monthlyPriceCents?: number }
+export interface ProValue {
+  sessionsCount: number;
+  earnedMxn: number;
+  proSharePct: number | null;
+  monthlyPriceMxn: number;
+}
+
 /* Returns a Date or null. We rely on existing parsing utilities (the
    stored format is "D-MMM" / "D MMM" with optional year suffix) so any
    format quirks the rest of the app handles also resolve here. */
-function parseRowDate(short, refDate) {
+function parseRowDate(short: string | null | undefined, refDate?: Date): Date | null {
   if (!short) return null;
   const d = parseShortDate(short, refDate);
   return d && !Number.isNaN(d.getTime()) ? d : null;
@@ -27,7 +37,7 @@ function parseRowDate(short, refDate) {
    so we count completed, charged, and past-scheduled (the auto-
    complete equivalent the rest of the app uses). cancelled-without-
    charge is excluded. */
-function sessionCompletedEquivalent(s, now) {
+function sessionCompletedEquivalent(s: ProSession | null | undefined, now: Date): boolean {
   if (!s || !s.status) return false;
   if (s.status === "completed") return true;
   if (s.status === "charged") return true;
@@ -42,13 +52,13 @@ function sessionCompletedEquivalent(s, now) {
   return false;
 }
 
-function startOfDay(date) {
+function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-function startOfMonth(date) {
+function startOfMonth(date: Date): Date {
   const d = new Date(date);
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
@@ -59,7 +69,7 @@ function startOfMonth(date) {
    prefer payments-as-truth for the dollar figure (since recorded
    payments are what the therapist has actually collected) and use
    sessions only for the count narrative. */
-function paymentsThisMonth(payments, now) {
+function paymentsThisMonth(payments: ProPayment[] | null | undefined, now: Date): number {
   const monthStart = startOfMonth(now);
   let total = 0;
   for (const p of payments || []) {
@@ -73,7 +83,7 @@ function paymentsThisMonth(payments, now) {
   return total;
 }
 
-function sessionsThisMonth(sessions, now) {
+function sessionsThisMonth(sessions: ProSession[] | null | undefined, now: Date): number {
   const monthStart = startOfMonth(now);
   let count = 0;
   for (const s of sessions || []) {
@@ -93,10 +103,12 @@ function sessionsThisMonth(sessions, now) {
    Threshold: ≥10 sessions logged ever. Avoids the awkward "you logged
    0 sessions this month, Pro is Infinity% of your month" zero-state
    for inactive accounts. */
-export function computeProValue(sessions, payments, now = new Date(), {
-  totalSessionThreshold = 10,
-  monthlyPriceCents = PRICE_MONTHLY_CENTS,
-} = {}) {
+export function computeProValue(
+  sessions: ProSession[] | null | undefined,
+  payments: ProPayment[] | null | undefined,
+  now: Date = new Date(),
+  { totalSessionThreshold = 10, monthlyPriceCents = PRICE_MONTHLY_CENTS }: ProValueOptions = {},
+): ProValue | null {
   const totalSessionsLogged = (sessions || []).length;
   if (totalSessionsLogged < totalSessionThreshold) return null;
 

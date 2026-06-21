@@ -21,7 +21,22 @@
 // a pure function so we can drop in new providers without touching
 // the parser. Hosts compared lowercase and post-IDN-normalized
 // (`new URL(...).host` already does both).
-const PROVIDERS = [
+interface Provider {
+  id: string;
+  label: string;
+  test: (h: string) => boolean;
+}
+
+export interface FolderLinkResult {
+  provider: string | null;
+  label: string;
+  host: string;
+  url: string;
+  valid: boolean;
+  reason: string | null;
+}
+
+const PROVIDERS: Provider[] = [
   {
     id: "google_drive",
     label: "Google Drive",
@@ -52,7 +67,7 @@ const PROVIDERS = [
 
 const MAX_URL_LEN = 2048;
 
-function fail(reason) {
+function fail(reason: string): FolderLinkResult {
   return { provider: null, label: "", host: "", url: "", valid: false, reason };
 }
 
@@ -61,7 +76,7 @@ function fail(reason) {
  * @param {unknown} rawInput
  * @returns {{ provider: string|null, label: string, host: string, url: string, valid: boolean, reason: string|null }}
  */
-export function parseFolderLink(rawInput) {
+export function parseFolderLink(rawInput: unknown): FolderLinkResult {
   if (rawInput == null || typeof rawInput !== "string") return fail("empty");
   // Strip surrounding whitespace + matched outer quotes (paste from
   // chat apps wraps URLs in "…" or '…' or `…`). We only strip a
@@ -92,7 +107,7 @@ export function parseFolderLink(rawInput) {
   //      https:// for typing convenience.
   // The scheme regex matches the RFC 3986 scheme grammar:
   //   ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"
-  let candidate;
+  let candidate: string;
   if (/^https?:\/\//i.test(trimmed)) {
     candidate = trimmed;
   } else if (/^[a-z][a-z0-9+\-.]*:/i.test(trimmed)) {
@@ -101,7 +116,7 @@ export function parseFolderLink(rawInput) {
     candidate = `https://${trimmed}`;
   }
 
-  let u;
+  let u: URL;
   try { u = new URL(candidate); } catch { return fail("bad_url"); }
 
   // Some inputs parse but have no host (e.g. `https://`). Reject.
@@ -134,9 +149,9 @@ export function parseFolderLink(rawInput) {
  * layout. Strategy: keep the host + first path segment, ellipsize
  * the rest. Falls through to the input on parse failure.
  */
-export function shortenForDisplay(url, max = 42) {
+export function shortenForDisplay(url: string | null | undefined, max = 42): string {
   if (!url || typeof url !== "string") return "";
-  let u;
+  let u: URL;
   try { u = new URL(url); } catch { return url.length > max ? url.slice(0, max - 1) + "…" : url; }
   // host + the first non-empty path segment is enough context
   // ("drive.google.com/folders") — the ID part is meaningless to

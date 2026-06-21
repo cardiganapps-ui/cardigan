@@ -16,19 +16,26 @@
    already pre-sorted). We preserve input order within a bucket, so the
    caller controls the sort within-bucket. */
 
-function sameDay(a, b) {
+/** Note fields the grouping reads. */
+export interface NoteRow {
+  pinned?: boolean | null;
+  updated_at?: string | number | Date | null;
+}
+type TFn = ((key: string) => string) | null | undefined;
+
+function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear()
       && a.getMonth() === b.getMonth()
       && a.getDate() === b.getDate();
 }
 
-function startOfDay(d) {
+function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
 }
 
-export function bucketForDate(updatedAt, now = new Date()) {
+export function bucketForDate(updatedAt: string | number | Date | null | undefined, now: Date = new Date()): string {
   if (!updatedAt) return "older";
   const d = new Date(updatedAt);
   const today = startOfDay(now);
@@ -50,7 +57,7 @@ export function bucketForDate(updatedAt, now = new Date()) {
 /* Display label for a bucket key. `monthYearFormatter` is optional so
    the caller can inject locale-sensitive formatting. Default is
    Spanish-MX long month. */
-export function bucketLabel(key, t, now = new Date()) {
+export function bucketLabel(key: string, t?: TFn, now: Date = new Date()): string {
   if (key === "pinned") return t?.("notes.groups.pinned") || "Fijadas";
   if (key === "today") return t?.("notes.groups.today") || "Hoy";
   if (key === "yesterday") return t?.("notes.groups.yesterday") || "Ayer";
@@ -62,7 +69,7 @@ export function bucketLabel(key, t, now = new Date()) {
   if (m) {
     const date = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, 1);
     const sameYear = date.getFullYear() === now.getFullYear();
-    const opts = sameYear ? { month: "long" } : { month: "long", year: "numeric" };
+    const opts: Intl.DateTimeFormatOptions = sameYear ? { month: "long" } : { month: "long", year: "numeric" };
     // Capitalize first letter (es-MX long month is lowercase).
     const str = date.toLocaleDateString("es-MX", opts);
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -73,21 +80,27 @@ export function bucketLabel(key, t, now = new Date()) {
 /* Group a pre-sorted list of notes into an ordered array of
    { key, label, notes } buckets. `pinned=true` notes are pulled to
    the top regardless of date. */
-export function groupNotesByRecency(notes, t, now = new Date()) {
+export interface NoteBucket {
+  key: string;
+  label: string;
+  notes: NoteRow[];
+}
+
+export function groupNotesByRecency(notes: NoteRow[] | null | undefined, t?: TFn, now: Date = new Date()): NoteBucket[] {
   if (!notes || notes.length === 0) return [];
   const order = ["pinned", "today", "yesterday", "thisWeek", "thisMonth", "lastMonth"];
-  const buckets = new Map();
-  const monthKeys = [];
+  const buckets = new Map<string, NoteRow[]>();
+  const monthKeys: string[] = [];
 
   for (const note of notes) {
-    let key;
+    let key: string;
     if (note.pinned) key = "pinned";
     else key = bucketForDate(note.updated_at, now);
     if (!buckets.has(key)) {
       buckets.set(key, []);
       if (!order.includes(key)) monthKeys.push(key);
     }
-    buckets.get(key).push(note);
+    buckets.get(key)!.push(note);
   }
 
   // Sort month-year keys descending (newest first)
@@ -97,6 +110,6 @@ export function groupNotesByRecency(notes, t, now = new Date()) {
   return keyOrder.map(key => ({
     key,
     label: bucketLabel(key, t, now),
-    notes: buckets.get(key),
+    notes: buckets.get(key) ?? [],
   }));
 }

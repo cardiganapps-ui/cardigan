@@ -17,13 +17,19 @@ import { isPresetId, presetUrl } from "../data/avatarPresets";
                                            URL resolved by useAvatarUrl.
      { kind: "preset", url: "/avatars/…" } — static public asset. */
 
-export function resolveAvatar(avatar) {
+export type ResolvedAvatar =
+  | { kind: null }
+  | { kind: "uploaded"; path: string }
+  | { kind: "preset"; url: string };
+
+export function resolveAvatar(avatar: { kind?: string | null; value?: unknown } | null | undefined): ResolvedAvatar {
   if (!avatar || typeof avatar !== "object") return { kind: null };
   if (avatar.kind === "uploaded" && typeof avatar.value === "string") {
     return { kind: "uploaded", path: avatar.value };
   }
   if (avatar.kind === "preset" && isPresetId(avatar.value)) {
-    return { kind: "preset", url: presetUrl(avatar.value) };
+    // isPresetId() guarantees presetUrl() resolves to a real asset path.
+    return { kind: "preset", url: presetUrl(avatar.value)! };
   }
   return { kind: null };
 }
