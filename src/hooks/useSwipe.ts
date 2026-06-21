@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
+import type { TouchEvent as ReactTouchEvent } from "react";
 import { IN_SCREEN_SWIPE_DEAD_ZONE, isOwned, isOwnedBy, release, tryClaim } from "./swipeCoordinator";
 
 /* ── useSwipe ──
@@ -22,8 +23,8 @@ import { IN_SCREEN_SWIPE_DEAD_ZONE, isOwned, isOwnedBy, release, tryClaim } from
 
 const OWNER_ID = "in-screen-swipe";
 
-export function useSwipe(onLeft, onRight) {
-  const ref = useRef(null);
+export function useSwipe(onLeft: () => void, onRight: () => void) {
+  const ref = useRef<{ x: number; y: number; active: boolean } | null>(null);
   const [offset, setOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const [settling, setSettling] = useState(false);
@@ -32,7 +33,7 @@ export function useSwipe(onLeft, onRight) {
   // queued setOffset/setSettling/onLeft fire against an unmounted
   // hook and the navigation callback may run against stale screen
   // state.
-  const settleTimerRef = useRef(null);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelSettleTimer = useCallback(() => {
     if (settleTimerRef.current) {
       clearTimeout(settleTimerRef.current);
@@ -58,7 +59,7 @@ export function useSwipe(onLeft, onRight) {
     release(OWNER_ID);
   }, [cancelSettleTimer]);
 
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: ReactTouchEvent) => {
     // Defensive: if a stale ref lingers from an aborted gesture,
     // drop it before deciding on the new touch.
     ref.current = null;
@@ -69,7 +70,7 @@ export function useSwipe(onLeft, onRight) {
     ref.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
   }, []);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: ReactTouchEvent) => {
     if (!ref.current) return;
     // If ownership flipped to another handler while we were tracking
     // (edge-swipe took over), fold this gesture out cleanly.
@@ -94,7 +95,7 @@ export function useSwipe(onLeft, onRight) {
     if (ref.current.active) setOffset(dx);
   }, [resetGesture]);
 
-  const onTouchEnd = useCallback((e) => {
+  const onTouchEnd = useCallback((e: ReactTouchEvent) => {
     if (!ref.current?.active) {
       ref.current = null;
       release(OWNER_ID);

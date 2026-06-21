@@ -6,7 +6,7 @@ const VALID_SCREENS = ["home", "agenda", "patients", "groups", "finances", "arch
 // in from the right when you enter it from anywhere else, slides out
 // to the right when you go back home. `groups` sits between patients and
 // finances (its bottom-tab position) so the slide direction is intuitive.
-const SCREEN_ORDER = { home: 0, agenda: 1, patients: 2, groups: 3, finances: 4, archivo: 5, settings: 6, privacy: 7, admin: 8 };
+const SCREEN_ORDER: Record<string, number> = { home: 0, agenda: 1, patients: 2, groups: 3, finances: 4, archivo: 5, settings: 6, privacy: 7, admin: 8 };
 
 function getHashScreen() {
   // The hash may carry a sub-route (e.g. "#admin/users/<uid>"). The
@@ -22,24 +22,24 @@ function getHashScreen() {
 
 export function useNavigation() {
   const [screen, setScreen] = useState(getHashScreen);
-  const [direction, setDirection] = useState(null);
-  const layerStack = useRef([]); // [{ key, closeFn }]
+  const [direction, setDirection] = useState<"left" | "right" | null>(null);
+  const layerStack = useRef<{ key: string; closeFn: () => void }[]>([]); // [{ key, closeFn }]
   const suppressPopState = useRef(false);
-  const scrollPositions = useRef({});
+  const scrollPositions = useRef<Record<string, number>>({});
   // Pending direction-clear timer. Tracked so we can cancel it when a
   // second nav happens within the 300ms animation window — without
   // this, the first nav's timer fires mid-second-animation and clears
   // direction, which cuts the slide-in transition. Visible as "the
   // screen pops into place instead of sliding" on rapid tab-tapping.
-  const directionTimerRef = useRef(null);
+  const directionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Save/restore scroll ──
-  const saveScroll = useCallback((screenId) => {
+  const saveScroll = useCallback((screenId: string) => {
     const page = document.querySelector(".page");
     if (page) scrollPositions.current[screenId] = page.scrollTop;
   }, []);
 
-  const restoreScroll = useCallback((screenId) => {
+  const restoreScroll = useCallback((screenId: string) => {
     requestAnimationFrame(() => {
       const page = document.querySelector(".page");
       if (page) page.scrollTop = scrollPositions.current[screenId] || 0;
@@ -59,7 +59,7 @@ export function useNavigation() {
   // modal, which pushes its own entry via pushLayer) — no in-app navigation
   // conflict. The URL hash still reflects the current screen for deep links
   // and reloads.
-  const navigate = useCallback((target) => {
+  const navigate = useCallback((target: string) => {
     // `target` may be a bare screen name ("home") OR a screen with a
     // sub-path ("admin/users/<uid>"). The top-level router cares only
     // about the first segment for screen identity + slide direction;
@@ -77,7 +77,7 @@ export function useNavigation() {
     // Close all layers first
     while (layerStack.current.length > 0) {
       const layer = layerStack.current.pop();
-      layer.closeFn();
+      layer?.closeFn();
     }
     // Determine direction (only for actual screen changes).
     if (!sameTop) {
@@ -112,7 +112,7 @@ export function useNavigation() {
   }, []);
 
   // ── Layer stack (modals/overlays) ──
-  const pushLayer = useCallback((key, closeFn) => {
+  const pushLayer = useCallback((key: string, closeFn: () => void) => {
     layerStack.current.push({ key, closeFn });
     suppressPopState.current = true;
     history.pushState({ layer: key }, "", window.location.href);
@@ -122,10 +122,10 @@ export function useNavigation() {
   const popLayer = useCallback(() => {
     if (layerStack.current.length === 0) return;
     const layer = layerStack.current.pop();
-    layer.closeFn();
+    layer?.closeFn();
   }, []);
 
-  const removeLayer = useCallback((key) => {
+  const removeLayer = useCallback((key: string) => {
     layerStack.current = layerStack.current.filter(l => l.key !== key);
   }, []);
 
@@ -141,7 +141,7 @@ export function useNavigation() {
       if (suppressPopState.current) return;
       if (layerStack.current.length > 0) {
         const layer = layerStack.current.pop();
-        layer.closeFn();
+        layer?.closeFn();
       }
     };
 

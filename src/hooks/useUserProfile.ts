@@ -15,10 +15,10 @@ import { DEFAULT_PROFESSION, PROFESSIONS, SIGNUP_SOURCES, SIGNUP_SOURCE } from "
 
    Pass `null` for userId in demo mode / when the caller doesn't have a
    user — the hook short-circuits cleanly. */
-export function useUserProfile(userId) {
-  const [profession, setProfession] = useState(null);
-  const [signupSource, setSignupSourceState] = useState(null);
-  const [signupSourceRecordedAt, setSignupSourceRecordedAt] = useState(null);
+export function useUserProfile(userId: string | null | undefined) {
+  const [profession, setProfession] = useState<string | null>(null);
+  const [signupSource, setSignupSourceState] = useState<string | null>(null);
+  const [signupSourceRecordedAt, setSignupSourceRecordedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -57,9 +57,9 @@ export function useUserProfile(userId) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  const createProfile = useCallback(async (prof) => {
+  const createProfile = useCallback(async (prof: string) => {
     if (!userId) return false;
-    if (!PROFESSIONS.includes(prof)) {
+    if (!(PROFESSIONS as readonly string[]).includes(prof)) {
       setError("Profesión inválida");
       return false;
     }
@@ -79,9 +79,9 @@ export function useUserProfile(userId) {
      after the user picks one of the predefined channels (or "Otro"
      with free-form detail). Updates the existing user_profiles row
      created by createProfile; never inserts. */
-  const setSignupSource = useCallback(async ({ signupSource: source, signupSourceDetail }) => {
+  const setSignupSource = useCallback(async ({ signupSource: source, signupSourceDetail }: { signupSource: string; signupSourceDetail?: string }) => {
     if (!userId) return false;
-    if (!SIGNUP_SOURCES.includes(source)) {
+    if (!(SIGNUP_SOURCES as readonly string[]).includes(source)) {
       setError("Origen inválido");
       return false;
     }
@@ -97,7 +97,7 @@ export function useUserProfile(userId) {
       .from("user_profiles")
       .update({
         signup_source: source,
-        signup_source_detail: source === SIGNUP_SOURCE.OTHER ? signupSourceDetail.trim() : null,
+        signup_source_detail: source === SIGNUP_SOURCE.OTHER ? (signupSourceDetail || "").trim() : null,
         signup_source_recorded_at: recordedAt,
       })
       .eq("user_id", userId);
@@ -117,8 +117,8 @@ export function useUserProfile(userId) {
      Cardigan session keeps rendering the old vocab + theme until they
      manually refresh. The server-side row is already updated by the
      time this runs; we're just hydrating the React state to match. */
-  const setProfessionLocal = useCallback((prof) => {
-    if (!PROFESSIONS.includes(prof)) return;
+  const setProfessionLocal = useCallback((prof: string) => {
+    if (!(PROFESSIONS as readonly string[]).includes(prof)) return;
     setProfession(prof);
     setError("");
   }, []);
