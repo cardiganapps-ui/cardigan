@@ -16,14 +16,61 @@ import {
 import { isTutorSession, isInterviewSession } from "./sessions";
 import { formatShortDate, parseLocalDate, parseShortDate, shortDateToISO, toISODate } from "./dates";
 
-const DAY_TO_JS = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
+/* ── Structural types for the rows these pure helpers walk ── */
+export interface RecPatient {
+  id: string;
+  name?: string | null;
+  initials?: string | null;
+  status?: string | null;
+  scheduling_mode?: string | null;
+  rate?: number | null;
+  color_idx?: number | null;
+}
+export interface RecSession {
+  status?: string | null;
+  day: string;
+  time: string;
+  date: string;
+  duration?: number | null;
+  modality?: string | null;
+  is_recurring?: boolean | null;
+  recurrence_frequency?: string | null;
+  session_type?: string | null;
+  initials?: string | null;
+}
+export interface AutoExtendArgs {
+  patient: RecPatient | null | undefined;
+  allPSess: RecSession[] | null | undefined;
+  today: Date;
+  threshold: Date;
+  extendEnd: string;
+  userId: string;
+}
+interface SlotInfo { day: string; time: string; duration: number; modality: string; frequency: string }
+export interface AutoExtendRow {
+  user_id: string;
+  patient_id: string;
+  patient: string | null | undefined;
+  initials: string | null | undefined;
+  time: string;
+  day: string;
+  date: string;
+  duration: number;
+  rate: number | null | undefined;
+  modality: string;
+  is_recurring: true;
+  recurrence_frequency: string;
+  color_idx: number;
+}
+
+const DAY_TO_JS: Record<string, number> = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
 
 /* Resolve a frequency string to its stride in days. Falls back to
    weekly for unknown / null / undefined values so legacy rows with
    no recurrence_frequency column read as weekly (matches the DB
    migration 044 default). */
-function strideFor(frequency) {
-  return RECURRENCE_STRIDE_DAYS[frequency] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
+function strideFor(frequency: string | null | undefined): number {
+  return RECURRENCE_STRIDE_DAYS[frequency ?? ""] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
 }
 
 /**
@@ -38,7 +85,12 @@ function strideFor(frequency) {
  * the weekday with the monthly drift, which doesn't match how a
  * therapist's "Lunes" slot actually works.
  */
-export function getRecurringDates(dayName, startDateStr, endDateStr, frequency = DEFAULT_RECURRENCE_FREQUENCY) {
+export function getRecurringDates(
+  dayName: string,
+  startDateStr: string,
+  endDateStr?: string | null,
+  frequency: string = DEFAULT_RECURRENCE_FREQUENCY,
+): Date[] {
   const target = DAY_TO_JS[dayName];
   if (target == null) return [];
   const stride = strideFor(frequency);
@@ -47,7 +99,7 @@ export function getRecurringDates(dayName, startDateStr, endDateStr, frequency =
   if (diff < 0) diff += 7;
   const end = endDateStr ? parseLocalDate(endDateStr) : new Date(start);
   if (!endDateStr) end.setDate(end.getDate() + RECURRENCE_WINDOW_WEEKS * 7);
-  const dates = [];
+  const dates: Date[] = [];
   const current = new Date(start);
   current.setDate(start.getDate() + diff);
   while (current <= end) {
@@ -81,7 +133,7 @@ export function getRecurringDates(dayName, startDateStr, endDateStr, frequency =
  *   extendEnd  — ISO date string; the upper bound for new sessions
  *   userId     — user_id to stamp on inserted rows
  */
-export function computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId }) {
+export function computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId }: AutoExtendArgs): AutoExtendRow[] {
   if (!patient || patient.status !== PATIENT_STATUS.ACTIVE) return [];
   // Episodic patients have no perpetual weekly slot — the practitioner
   // schedules the next visit at the end of each consult. Defensive
@@ -145,15 +197,15 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   // `session_type='regular'`). Requiring ≥2 future sessions on the
   // slot lets one-offs remain one-offs and prevents a single mistaken
   // row from minting a weekly schedule.
-  const slotCounts = new Map();
+  const slotCounts = new Map<string, number>();
   scheduledRegular.forEach(s => {
     const k = `${s.day}|${s.time}`;
     slotCounts.set(k, (slotCounts.get(k) || 0) + 1);
   });
-  const schedMap = new Map();
+  const schedMap = new Map<string, SlotInfo>();
   scheduledRegular.forEach(s => {
     const k = `${s.day}|${s.time}`;
-    if (slotCounts.get(k) < 2) return;
+    if ((slotCounts.get(k) ?? 0) < 2) return;
     if (schedMap.has(k)) return;
     schedMap.set(k, {
       day: s.day, time: s.time,
@@ -182,7 +234,7 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   // a global "latest across all slots" — so a multi-slot patient
   // with mixed frequencies (e.g. Lunes weekly + Miércoles monthly)
   // extends each one correctly.
-  const latestPerSlot = new Map();
+  const latestPerSlot = new Map<string, Date>();
   scheduledRegular.forEach(s => {
     const k = `${s.day}|${s.time}`;
     if (!schedMap.has(k)) return;
@@ -200,7 +252,7 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
   if (!earliestLast || earliestLast > threshold) return [];
 
   const DAY_MS = 86400000;
-  const rows = [];
+  const rows: AutoExtendRow[] = [];
   for (const [slotKey, sched] of schedMap.entries()) {
     const slotLatest = latestPerSlot.get(slotKey);
     if (!slotLatest) continue;
@@ -265,9 +317,42 @@ export function computeAutoExtendRows({ patient, allPSess, today, threshold, ext
 
 export const RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS = 2;
 
+export interface ExpenseTemplate {
+  id: string;
+  active?: boolean | null;
+  start_year?: number | null;
+  start_month?: number | null;
+  day_of_month: number;
+  amount?: number | null;
+  category?: string | null;
+  description?: string | null;
+  payment_method?: string | null;
+  tax_treatment?: string | null;
+}
+export interface ExistingExpense {
+  recurring_id?: string | null;
+  period_year?: number | null;
+  period_month?: number | null;
+}
+interface MonthSlot { year: number; month: number }
+export interface PendingExpense { recurring_id: string; year: number; month: number }
+export interface RecurringExpenseRow {
+  user_id: string | undefined;
+  amount: number | null | undefined;
+  date: string;
+  category: string | null | undefined;
+  description: string | null;
+  payment_method: string | null;
+  tax_treatment: string;
+  recurring_id: string;
+  period_year: number;
+  period_month: number;
+  color_idx: number;
+}
+
 // Days in (year, month) — 1-indexed month, JS Date.getDate at end-of-month
 // trick. Pure function, no timezone surprises.
-export function daysInMonth(year, month) {
+export function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
@@ -275,7 +360,7 @@ export function daysInMonth(year, month) {
 // Mirror of utils/dates.js::SHORT_MONTHS — duplicated here to keep this
 // file React-free and test-pure.
 const _GASTOS_SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-function _formatGastoDate(year, month, day) {
+function _formatGastoDate(year: number, month: number, day: number): string {
   return `${day}-${_GASTOS_SHORT_MONTHS[month - 1]}`;
 }
 
@@ -283,13 +368,15 @@ function _formatGastoDate(year, month, day) {
 // between its start and `now`, as a sorted ascending array. Inactive or
 // paused-only-future templates produce []. The caller decides which slice
 // to auto-create vs. surface as a backfill prompt.
-export function expectedSlotsForTemplate(template, now = new Date()) {
+export function expectedSlotsForTemplate(template: ExpenseTemplate | null | undefined, now: Date = new Date()): MonthSlot[] {
   if (!template?.active) return [];
   const startY = template.start_year;
   const startM = template.start_month;
   if (!Number.isFinite(startY) || !Number.isFinite(startM)) return [];
-  const slots = [];
-  let y = startY, m = startM;
+  const slots: MonthSlot[] = [];
+  // Number.isFinite above guarantees both are real numbers at runtime;
+  // it isn't a TS type guard, so assert the narrowed type here.
+  let y = startY as number, m = startM as number;
   const nowY = now.getFullYear();
   const nowM = now.getMonth() + 1;
   while (y < nowY || (y === nowY && m <= nowM)) {
@@ -311,13 +398,18 @@ export function expectedSlotsForTemplate(template, now = new Date()) {
 //     auto: [...rows to insert now],
 //     pending: [...{recurring_id, year, month}] // older, awaiting user CTA
 //   }
-export function computeRecurringExpenseRows(templates, existingExpenses, now = new Date(), userId) {
-  const auto = [];
-  const pending = [];
+export function computeRecurringExpenseRows(
+  templates: ExpenseTemplate[] | null | undefined,
+  existingExpenses: ExistingExpense[] | null | undefined,
+  now: Date = new Date(),
+  userId?: string,
+): { auto: RecurringExpenseRow[]; pending: PendingExpense[] } {
+  const auto: RecurringExpenseRow[] = [];
+  const pending: PendingExpense[] = [];
   if (!Array.isArray(templates) || templates.length === 0) return { auto, pending };
 
   // Index existing slots for O(1) lookup.
-  const taken = new Set();
+  const taken = new Set<string>();
   for (const e of (existingExpenses || [])) {
     if (e.recurring_id && e.period_year != null && e.period_month != null) {
       taken.add(`${e.recurring_id}::${e.period_year}::${e.period_month}`);
@@ -329,7 +421,7 @@ export function computeRecurringExpenseRows(templates, existingExpenses, now = n
   const autoCutoff = new Date(now.getFullYear(), now.getMonth() - RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS, 1);
   const autoY = autoCutoff.getFullYear();
   const autoM = autoCutoff.getMonth() + 1;
-  const isWithinAuto = (y, m) => (y > autoY) || (y === autoY && m >= autoM);
+  const isWithinAuto = (y: number, m: number) => (y > autoY) || (y === autoY && m >= autoM);
 
   for (const t of templates) {
     if (!t?.active) continue;
