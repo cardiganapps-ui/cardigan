@@ -1,4 +1,36 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+
+// ── Domain row types ────────────────────────────────────────────────
+interface Measurement {
+  id: string;
+  user_id?: string;
+  patient_id?: string | null;
+  taken_at?: string;
+  scanned_at?: string | null;
+  source?: string | null;
+  weight_kg?: number | null;
+  waist_cm?: number | null;
+  hip_cm?: number | null;
+  body_fat_pct?: number | null;
+  notes?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+/** A row mapped from an InBody/LookinBody CSV import (pre-insert). */
+interface ImportRow {
+  scanned_at?: string;
+  _name?: string;
+  _matchesPatient?: boolean;
+  [key: string]: unknown;
+}
+
+type SetMeasurements = Dispatch<SetStateAction<Measurement[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
+
+type Num = number | string | null | undefined;
 
 /* CRUD actions for the `measurements` table — anthropometric data
    (weight, waist, hip, body fat) tracked per visit by nutritionists +
@@ -8,12 +40,26 @@ import { supabase } from "../supabaseClient";
    Read path lives in useCardiganData (single fetch alongside the rest
    of the row sets). Reads are gated by usesAnthropometrics(profession)
    in the caller — other professions never trigger a fetch. */
-export function createMeasurementActions(userId, measurements, setMeasurements, setMutating, setMutationError) {
+export function createMeasurementActions(
+  userId: string,
+  measurements: Measurement[],
+  setMeasurements: SetMeasurements,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+) {
 
   /* Insert a new measurement. `taken_at` is required (the date the
      measurement was taken — defaults to today client-side); every
      numeric field is optional so a partial entry is allowed. */
-  async function createMeasurement({ patientId, takenAt, weightKg, waistCm, hipCm, bodyFatPct, notes }) {
+  async function createMeasurement({ patientId, takenAt, weightKg, waistCm, hipCm, bodyFatPct, notes }: {
+    patientId?: string | null;
+    takenAt?: string;
+    weightKg?: Num;
+    waistCm?: Num;
+    hipCm?: Num;
+    bodyFatPct?: Num;
+    notes?: string;
+  }) {
     if (!patientId || !takenAt) return false;
     setMutating(true);
     setMutationError("");
@@ -35,10 +81,10 @@ export function createMeasurementActions(userId, measurements, setMeasurements, 
     return data;
   }
 
-  async function updateMeasurement(id, updates) {
+  async function updateMeasurement(id: string, updates: Record<string, unknown>) {
     setMutating(true);
     setMutationError("");
-    const patch = { ...updates };
+    const patch: Record<string, unknown> = { ...updates };
     // Mirror createMeasurement's "blank → null" rule so an edit that
     // clears a field actually writes null instead of NaN.
     for (const k of ["weight_kg", "waist_cm", "hip_cm", "body_fat_pct"]) {
@@ -66,14 +112,14 @@ export function createMeasurementActions(userId, measurements, setMeasurements, 
      duplicates and any DB-side conflicts the unique index catches —
      a generic count is enough for the toast, the user can re-open
      the import sheet to see the row-level breakdown if they care. */
-  async function bulkCreateMeasurements({ patientId, rows }) {
+  async function bulkCreateMeasurements({ patientId, rows }: { patientId?: string | null; rows?: ImportRow[] }) {
     if (!patientId || !Array.isArray(rows) || rows.length === 0) {
       return { created: 0, skipped: 0 };
     }
     // Canonicalize timestamps before comparing — Supabase returns
     // timestamptz as `+00:00` and the parser emits `…Z`; same instant,
     // different strings. Date round-trip normalizes both.
-    const canon = (s) => {
+    const canon = (s?: string | null) => {
       if (!s) return null;
       const d = new Date(s);
       return Number.isNaN(d.getTime()) ? null : d.toISOString();
@@ -100,7 +146,7 @@ export function createMeasurementActions(userId, measurements, setMeasurements, 
         // taken_at is the stable date label used by the rest of the
         // UI (sparkline x-axis, list grouping). Derive it from the
         // exact scanned_at so the two stay aligned.
-        taken_at: clean.scanned_at.slice(0, 10),
+        taken_at: (clean.scanned_at || "").slice(0, 10),
         ...clean,
       };
     });
@@ -121,7 +167,7 @@ export function createMeasurementActions(userId, measurements, setMeasurements, 
     return { created, skipped: skippedLocal + (fresh.length - created) };
   }
 
-  async function deleteMeasurement(id) {
+  async function deleteMeasurement(id: string) {
     setMutating(true);
     setMutationError("");
     const { error } = await supabase.from("measurements")

@@ -1,5 +1,34 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
+
+// ── Domain row types ────────────────────────────────────────────────
+interface Attachment {
+  id: string;
+  note_id?: string;
+  user_id?: string;
+  r2_path?: string | null;
+  mime?: string;
+  size_bytes?: number | null;
+  width?: number | null;
+  height?: number | null;
+  encrypted?: boolean;
+  iv?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+interface NoteLike { id: string; cover_attachment_id?: string | null; [key: string]: unknown }
+
+interface AttachmentCrypto {
+  canEncrypt?: boolean;
+  encryptAttachmentBytes?: (bytes: Uint8Array) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
+}
+
+type SetAttachments = Dispatch<SetStateAction<Attachment[]>>;
+type SetNotes = Dispatch<SetStateAction<NoteLike[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
 
 /* ── useNoteAttachments ─────────────────────────────────────────────
    Phase 5 of the Notes premium roadmap. Image attachments for
@@ -30,7 +59,7 @@ async function authHeaders() {
    (notePdf, image strip aspect-ratio reservations) avoid a second
    in-memory decode at render time. Best-effort — returns null if
    the browser can't decode the file (corrupt, exotic codec). */
-async function probeImageDimensions(file) {
+async function probeImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
   try {
     if (typeof createImageBitmap === "function") {
       const bmp = await createImageBitmap(file);
@@ -40,7 +69,7 @@ async function probeImageDimensions(file) {
     }
   } catch { /* fall through to Image() */ }
   try {
-    return await new Promise((resolve) => {
+    return await new Promise<{ width: number; height: number } | null>((resolve) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
@@ -63,7 +92,7 @@ function isOffline() {
 // Hard-delete of the row + R2 object. Mirrors the documents handler;
 // R2 failure is swallowed (orphan recoverable by audit) so we never
 // block a DB delete on transient network state.
-registerHandler("note_attachments.delete", async ({ id, userId, r2Path }) => {
+registerHandler("note_attachments.delete", async ({ id, userId, r2Path }: { id: string; userId: string; r2Path?: string | null }) => {
   if (r2Path) {
     try {
       const headers = await authHeaders();
@@ -76,7 +105,15 @@ registerHandler("note_attachments.delete", async ({ id, userId, r2Path }) => {
   return await supabase.from("note_attachments").delete().eq("id", id).eq("user_id", userId);
 });
 
-export function createNoteAttachmentActions(userId, attachments, setAttachments, setMutating, setMutationError, noteCrypto, setNotes) {
+export function createNoteAttachmentActions(
+  userId: string,
+  attachments: Attachment[],
+  setAttachments: SetAttachments,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+  noteCrypto?: AttachmentCrypto,
+  setNotes?: SetNotes,
+) {
 
   /* uploadNoteAttachment
      Args: { noteId, file, onProgress? }
@@ -88,7 +125,7 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
      ciphertext is uploaded as application/octet-stream so the presigned
      GET (should it ever leak) downloads an opaque blob rather than a
      pretend image. */
-  async function uploadNoteAttachment({ noteId, file, onProgress }) {
+  async function uploadNoteAttachment({ noteId, file, onProgress }: { noteId?: string; file?: File | null; onProgress?: (fraction: number) => void }) {
     if (!file || !noteId) return null;
     if (isOffline()) {
       setMutationError("Necesitas conexión para subir archivos.");
@@ -117,7 +154,7 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
       let uploadBytes = bytes;
       let uploadContentType = file.type || "image/jpeg";
       let encrypted = false;
-      let iv = null;
+      let iv: string | null = null;
 
       // Crypto lane: wrap bytes if the vault is unlocked. canEncrypt
       // gates this — when the user hasn't set up / is locked, we
@@ -158,7 +195,7 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
       // Step 2: PUT bytes to R2. XHR rather than fetch so we can
       // surface upload progress to a status indicator — large
       // photos on cellular need motion or the UI feels frozen.
-      const ok = await new Promise((resolve) => {
+      const ok = await new Promise<boolean>((resolve) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", url, true);
         xhr.setRequestHeader("Content-Type", uploadContentType);
@@ -213,14 +250,14 @@ export function createNoteAttachmentActions(userId, attachments, setAttachments,
       setAttachments(prev => [data, ...prev]);
       return data;
     } catch (err) {
-      setMutationError(err?.message || "Error al subir archivo");
+      setMutationError((err as Error)?.message || "Error al subir archivo");
       return null;
     } finally {
       setMutating(false);
     }
   }
 
-  async function deleteNoteAttachment(id) {
+  async function deleteNoteAttachment(id: string) {
     setMutationError("");
     const row = attachments.find(a => a.id === id);
     const r2Path = row?.r2_path;

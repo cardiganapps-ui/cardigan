@@ -1,6 +1,29 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
 import { hashTagLabel, canonicalizeTagLabel } from "../lib/cryptoNotes";
+
+// ── Domain row types ────────────────────────────────────────────────
+interface Tag {
+  id: string;
+  user_id?: string;
+  label_ciphertext?: string;
+  label_hash?: string;
+  color?: string | null;
+  label?: string;
+  encrypted?: boolean;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+interface TagLink { note_id: string; tag_id: string }
+
+interface EncryptResult { content: string; encrypted: boolean }
+interface NoteCrypto { encrypt?: (plain: string) => EncryptResult | Promise<EncryptResult> }
+
+type SetTags = Dispatch<SetStateAction<Tag[]>>;
+type SetTagLinks = Dispatch<SetStateAction<TagLink[]>>;
+type SetError = Dispatch<SetStateAction<string>>;
 
 /* createNoteTagActions
    Phase 1.3 of the Notes premium rollout. Tag CRUD + note↔tag link
@@ -11,18 +34,18 @@ import { hashTagLabel, canonicalizeTagLabel } from "../lib/cryptoNotes";
    (user_id, label_hash) unique constraint dedupes silently across
    case + diacritic variations. */
 
-registerHandler("note_tags.upsert", async ({ row }) => {
+registerHandler("note_tags.upsert", async ({ row }: { row: Record<string, unknown> }) => {
   return await supabase.from("note_tags").upsert(row, { onConflict: "user_id,label_hash" }).select().single();
 });
-registerHandler("note_tags.delete", async ({ id, userId }) => {
+registerHandler("note_tags.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("note_tags").delete().eq("id", id).eq("user_id", userId);
 });
-registerHandler("note_tag_links.upsert", async ({ noteId, tagId }) => {
+registerHandler("note_tag_links.upsert", async ({ noteId, tagId }: { noteId: string; tagId: string }) => {
   // The PK on (note_id, tag_id) makes this idempotent. ignoreDuplicates
   // keeps the replay clean if a second drain hits the same insert.
   return await supabase.from("note_tag_links").upsert({ note_id: noteId, tag_id: tagId }, { ignoreDuplicates: true });
 });
-registerHandler("note_tag_links.delete", async ({ noteId, tagId }) => {
+registerHandler("note_tag_links.delete", async ({ noteId, tagId }: { noteId: string; tagId: string }) => {
   return await supabase.from("note_tag_links").delete().eq("note_id", noteId).eq("tag_id", tagId);
 });
 
@@ -30,14 +53,22 @@ function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
-export function createNoteTagActions(userId, tags, setTags, tagLinks, setTagLinks, setMutationError, crypto) {
+export function createNoteTagActions(
+  userId: string,
+  tags: Tag[],
+  setTags: SetTags,
+  tagLinks: TagLink[],
+  setTagLinks: SetTagLinks,
+  setMutationError: SetError,
+  crypto?: NoteCrypto,
+) {
 
   // Upsert by canonical label hash so the SAME tag name (regardless
   // of case / diacritics) maps to the same row. Returns the tag row
   // — either the existing one or the just-inserted one. The optimistic
   // path adds a temp row when no match exists locally; the replay
   // listener (TODO Phase 1.3.5) reconciles to the server id.
-  async function upsertTag({ label, color }) {
+  async function upsertTag({ label, color }: { label?: string; color?: string | null }) {
     setMutationError("");
     const trimmed = (label || "").trim();
     if (!trimmed) return null;
@@ -74,7 +105,7 @@ export function createNoteTagActions(userId, tags, setTags, tagLinks, setTagLink
     // Decorate with the user-typed label so the UI shows it without
     // a round-trip through decrypt (server stored ciphertext when
     // crypto is on).
-    const decorated = { ...res.data, label: trimmed, encrypted };
+    const decorated = { ...res.data, label: trimmed, encrypted } as Tag;
     setTags(prev => {
       const without = prev.filter(t => t.label_hash !== hash);
       return [decorated, ...without];
@@ -85,7 +116,7 @@ export function createNoteTagActions(userId, tags, setTags, tagLinks, setTagLink
     return decorated;
   }
 
-  async function deleteTag(id) {
+  async function deleteTag(id: string) {
     setMutationError("");
     const prev = (tags || []).find(t => t.id === id);
     if (!prev) return false;
@@ -106,7 +137,7 @@ export function createNoteTagActions(userId, tags, setTags, tagLinks, setTagLink
     return true;
   }
 
-  async function linkTag(noteId, tagId) {
+  async function linkTag(noteId: string, tagId: string) {
     setMutationError("");
     if (!noteId || !tagId) return false;
     // Idempotent locally — Set semantics on (noteId, tagId).
@@ -127,7 +158,7 @@ export function createNoteTagActions(userId, tags, setTags, tagLinks, setTagLink
     return true;
   }
 
-  async function unlinkTag(noteId, tagId) {
+  async function unlinkTag(noteId: string, tagId: string) {
     setMutationError("");
     setTagLinks(arr => (arr || []).filter(l => !(l.note_id === noteId && l.tag_id === tagId)));
     if (isOffline()) {
