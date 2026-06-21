@@ -1,8 +1,61 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
 import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
+
+// ── Domain row types ────────────────────────────────────────────────
+// Structural shapes the payment actions read/write. Kept local (rather
+// than a shared types module) to mirror the rest of the migrated hooks
+// — the factory only touches these fields.
+
+/** Patient fields the payment path mutates. */
+interface Patient {
+  id: string;
+  name: string;
+  initials?: string | null;
+  colorIdx?: number | null;
+  paid: number;
+  [key: string]: unknown;
+}
+
+/** A payment row as held in client state. Server rows arrive snake_cased
+    (`color_idx`); the client mirror adds `colorIdx`. */
+interface Payment {
+  id: string;
+  user_id?: string;
+  patient_id?: string | null;
+  patient?: string | null;
+  initials?: string | null;
+  amount: number;
+  date?: string;
+  method?: string;
+  note?: string | null;
+  colorIdx?: number | null;
+  color_idx?: number | null;
+  version?: number | null;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+/** Snake-cased insert/update payload sent to supabase. */
+interface PaymentRow {
+  user_id?: string;
+  patient_id: string | null;
+  patient: string;
+  initials: string;
+  amount: number;
+  date: string;
+  method: string;
+  note: string | null;
+  color_idx: number;
+}
+
+type SetPatients = Dispatch<SetStateAction<Patient[]>>;
+type SetPayments = Dispatch<SetStateAction<Payment[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
 
 // Mirrors the session-side strings from useSessions.js. Keep the wording
 // uniform — users see the same message whether they conflict on a
@@ -20,15 +73,15 @@ const MISSING_MSG = "Este pago ya no existe.";
 // wins semantics is intentional for offline writes — the user already
 // saw their offline state and expects it to persist. See migration 066
 // and the queue lib docblock for the full tradeoff.
-registerHandler("payments.insert", async ({ row }) => {
+registerHandler("payments.insert", async ({ row }: { row: PaymentRow }) => {
   return await supabase.from("payments").insert(row).select().single();
 });
 
-registerHandler("payments.delete", async ({ id, userId }) => {
+registerHandler("payments.delete", async ({ id, userId }: { id: string; userId: string }) => {
   return await supabase.from("payments").delete().eq("id", id).eq("user_id", userId);
 });
 
-registerHandler("payments.update", async ({ id, userId, patch, enqueuedVersion }) => {
+registerHandler("payments.update", async ({ id, userId, patch, enqueuedVersion }: { id: string; userId: string; patch: Partial<PaymentRow>; enqueuedVersion?: number | null }) => {
   // No .eq("version") — offline replay is last-write-wins by design.
   // We still surface a `conflict: true` flag when the row's current
   // version is past the one captured at enqueue, so drain() can roll
@@ -47,18 +100,27 @@ registerHandler("payments.update", async ({ id, userId, patch, enqueuedVersion }
 // so subscribing inside the factory would leak listeners. We register
 // the replay reconciler ONCE at module load and route to the latest
 // setPayments via a module-level ref that the factory updates.
-let _setPaymentsRef = null;
-onReplay((entry, result) => {
+let _setPaymentsRef: SetPayments | null = null;
+onReplay((entry: { op: string; optimisticMeta?: { tempId?: string } }, result: { error?: unknown; data?: Record<string, unknown> } | null) => {
   if (entry.op !== "payments.insert") return;
   if (!result || result.error || !result.data) return;
+  const data = result.data;
   const tempId = entry.optimisticMeta?.tempId;
   if (!tempId || !_setPaymentsRef) return;
   _setPaymentsRef(prev => prev.map(p => p.id === tempId
-    ? { ...result.data, colorIdx: result.data.color_idx }
+    ? ({ ...data, colorIdx: data.color_idx } as Payment)
     : p));
 });
 
-export function createPaymentActions(userId, patients, setPatients, payments, setPayments, setMutating, setMutationError) {
+export function createPaymentActions(
+  userId: string,
+  patients: Patient[],
+  setPatients: SetPatients,
+  payments: Payment[],
+  setPayments: SetPayments,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+) {
   // Refresh the module-level setPayments ref so the once-registered
   // onReplay listener writes into the live state holder. Cheap pointer
   // swap — re-running this per render is fine.
@@ -69,7 +131,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
   // the patient.paid update locally, and fire the insert in the
   // background. If the browser reports offline, the insert is queued
   // to IndexedDB and replayed on reconnect (Phase 1 of offline support).
-  async function createPayment({ patientName, amount, method = PAYMENT_METHOD.TRANSFER, date = formatShortDate(), note = "" }) {
+  async function createPayment({ patientName, amount, method = PAYMENT_METHOD.TRANSFER, date = formatShortDate(), note = "" }: { patientName: string; amount: number | string; method?: string; date?: string; note?: string }) {
     const parsedAmount = Number(amount);
     if (!patientName || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return false;
     const patient = patients.find(p => p.name === patientName);
@@ -143,7 +205,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
     return true;
   }
 
-  async function deletePayment(paymentId) {
+  async function deletePayment(paymentId: string) {
     const payment = payments.find(p => p.id === paymentId);
     setMutationError("");
 
@@ -191,7 +253,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
   // Optimistic edit: mirrors createPayment's pattern. Captures the
   // previous payment row and both affected patients for revert, then
   // applies the changes locally so the modal can close immediately.
-  async function updatePayment(paymentId, { patientName, amount, method, date, note }) {
+  async function updatePayment(paymentId: string, { patientName, amount, method, date, note }: { patientName: string; amount: number | string; method?: string; date?: string; note?: string }) {
     const oldPayment = payments.find(p => p.id === paymentId);
     if (!oldPayment) return false;
     const parsedAmount = Number(amount);
@@ -217,7 +279,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
       _optimistic: true,
     };
 
-    const patientUpdates = new Map();
+    const patientUpdates = new Map<string, number>();
     if (oldPatient) {
       const afterSubtract = Math.max(0, oldPatient.paid - oldPayment.amount);
       patientUpdates.set(oldPatient.id, afterSubtract);
@@ -230,7 +292,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
 
     setPayments(prev => prev.map(p => p.id === paymentId ? optimisticRow : p));
     if (patientUpdates.size > 0) {
-      setPatients(prev => prev.map(p => patientUpdates.has(p.id) ? { ...p, paid: patientUpdates.get(p.id) } : p));
+      setPatients(prev => prev.map(p => patientUpdates.has(p.id) ? { ...p, paid: patientUpdates.get(p.id)! } : p));
     }
     setMutationError("");
 
@@ -333,7 +395,7 @@ export function createPaymentActions(userId, patients, setPatients, payments, se
   // Undo-aware payment delete. Same shape as softDeleteSession —
   // returns { commit, undo } so App.jsx can show a "Deshacer" toast
   // for ~5s and only fire the supabase call when the window expires.
-  function softDeletePayment(paymentId) {
+  function softDeletePayment(paymentId: string) {
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return { commit: async () => true, undo: () => {} };
     const prevPayment = { ...payment };
