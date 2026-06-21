@@ -29,8 +29,26 @@
    - `maxPages` is a safety valve against an unbounded loop if a backend
      ever returns full pages forever.
 */
-export async function fetchAllPaged(fetchPage, { pageSize = 1000, maxPages = 200 } = {}) {
-  const rows = [];
+/** One page of results, shaped exactly like a Supabase range query
+    response (`{ data, error }`). `data` may be null on error. */
+export interface PageResult<T> {
+  data: T[] | null;
+  error: unknown;
+}
+
+/** Resolves the rows in the inclusive `[from, to]` range. */
+export type FetchPage<T> = (from: number, to: number) => Promise<PageResult<T>>;
+
+export interface FetchAllPagedOptions {
+  pageSize?: number;
+  maxPages?: number;
+}
+
+export async function fetchAllPaged<T>(
+  fetchPage: FetchPage<T>,
+  { pageSize = 1000, maxPages = 200 }: FetchAllPagedOptions = {},
+): Promise<{ data: T[]; error: unknown }> {
+  const rows: T[] = [];
   for (let page = 0, from = 0; page < maxPages; page++) {
     const { data, error } = await fetchPage(from, from + pageSize - 1);
     if (error) return { data: rows, error };

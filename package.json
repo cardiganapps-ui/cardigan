@@ -9,6 +9,7 @@
     "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps && node scripts/gen-privacy-page.mjs",
     "build": "rm -rf node_modules/.vite dist && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -89,6 +90,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "sharp": "^0.34.5",
+    "typescript": "^6.0.3",
     "vite": "5.4.19",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.1.4"

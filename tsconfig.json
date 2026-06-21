@@ -1,0 +1,28 @@
+{
+  // ── TypeScript migration scaffold (Phase 4) ──
+  // Plain-JS today; migrating in dependency order, leaves first. `allowJs`
+  // lets .ts and .js coexist during the migration; `checkJs:false` means
+  // only files that have actually been converted to .ts/.tsx are
+  // type-checked, so `tsc --noEmit` is a real gate from day one without
+  // boiling the ocean. Vite owns transpilation/emit — this config is
+  // type-checking only (`noEmit`). Tighten by migrating more files, then
+  // eventually flip `allowJs` off once everything is .ts.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleDetection": "force"
+  },
+  "include": ["src"]
+}
