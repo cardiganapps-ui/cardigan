@@ -11,18 +11,53 @@
 */
 
 import { SESSION_STATUS } from "../data/constants";
-import { sessionCountsTowardBalance } from "./accounting";
+import { sessionCountsTowardBalance, type BalanceSession } from "./accounting";
 import { parseShortDate } from "./dates";
+
+export interface GroupLike { id: string }
+export interface GroupRow extends GroupLike { name?: string | null }
+export interface GroupMember { group_id?: string | null; patient_id?: string | null; left_at?: string | null }
+export interface GroupPatient { id?: string; name?: string | null; rate?: number | null }
+type PatientMap = Map<string, GroupPatient> | null | undefined;
+type GroupMap = Map<string, GroupRow> | null | undefined;
+/** A session row that may belong to a group. */
+export interface GroupSession extends BalanceSession { group_id?: string | null; duration?: number | null }
+
+export interface HydratedMember extends GroupMember { patient: GroupPatient | null; active: boolean }
+export interface GroupOccurrence {
+  date: string;
+  time: string | null | undefined;
+  attendees: GroupSession[];
+  status: string;
+  count: number;
+}
+export interface GroupOccurrenceTile {
+  _groupOccurrence: true;
+  id: string;
+  group_id: string;
+  group: GroupRow | null;
+  date: string;
+  time: string | null | undefined;
+  duration: number | null | undefined;
+  attendees: GroupSession[];
+  count: number;
+  status: string;
+}
+export interface MemberFinance { patientId: string; name: string; consumed: number; sessions: number }
 
 /* Hydrate a group with its roster. Returns the group plus a `members`
    array of { ...member, patient, active } sorted with active members first
    then by patient name. patientsById maps patient_id → patient row. */
-export function buildGroupRoster(group, groupMembers, patientsById) {
+export function buildGroupRoster<G extends GroupLike>(
+  group: G,
+  groupMembers: GroupMember[] | null | undefined,
+  patientsById: PatientMap,
+): G & { members: HydratedMember[] } {
   const members = (groupMembers || [])
     .filter(m => m.group_id === group.id)
     .map(m => ({
       ...m,
-      patient: patientsById?.get?.(m.patient_id) || null,
+      patient: patientsById?.get?.(m.patient_id ?? "") || null,
       active: m.left_at == null,
     }))
     .sort((a, b) => {
@@ -33,7 +68,7 @@ export function buildGroupRoster(group, groupMembers, patientsById) {
 }
 
 /* Count of active members in a group. */
-export function activeMemberCount(group, groupMembers) {
+export function activeMemberCount(group: GroupLike, groupMembers: GroupMember[] | null | undefined): number {
   return (groupMembers || []).filter(m => m.group_id === group.id && m.left_at == null).length;
 }
 
@@ -42,7 +77,7 @@ export function activeMemberCount(group, groupMembers) {
      - 'completed'  → at least one attendee took place (completed/charged/
                       past-scheduled) and none are still upcoming-scheduled
      - 'scheduled'  → otherwise (still upcoming) */
-function deriveOccurrenceStatus(attendees, now) {
+function deriveOccurrenceStatus(attendees: GroupSession[], now: Date): string {
   if (attendees.length === 0) return SESSION_STATUS.SCHEDULED;
   const allCancelled = attendees.every(a => a.status === SESSION_STATUS.CANCELLED);
   if (allCancelled) return SESSION_STATUS.CANCELLED;
@@ -55,13 +90,13 @@ function deriveOccurrenceStatus(attendees, now) {
 /* Reduce a group's session rows into occurrences keyed by (date, time).
    Each occurrence carries its attendee session rows + a derived status.
    Sorted by date+time descending (newest first) by default. */
-export function groupOccurrences(group, sessions, now = new Date()) {
-  const byKey = new Map();
+export function groupOccurrences(group: GroupLike, sessions: GroupSession[] | null | undefined, now: Date = new Date()): GroupOccurrence[] {
+  const byKey = new Map<string, { date: string; time: string | null | undefined; attendees: GroupSession[] }>();
   for (const s of (sessions || [])) {
     if (s.group_id !== group.id) continue;
     const key = `${s.date}|${s.time}`;
     if (!byKey.has(key)) byKey.set(key, { date: s.date, time: s.time, attendees: [] });
-    byKey.get(key).attendees.push(s);
+    byKey.get(key)!.attendees.push(s);
   }
   const occs = [...byKey.values()].map(o => ({
     ...o,
@@ -84,22 +119,22 @@ export function groupOccurrences(group, sessions, now = new Date()) {
    so Agenda/Home can render one consolidated "group tile" instead of N rows.
    Order is preserved: the tile lands at the position of the occurrence's
    first row. groupsById maps group_id → group (for name/color). */
-export function collapseGroupOccurrences(sessions, groupsById, now = new Date()) {
-  const out = [];
-  const seen = new Set();
-  const byKey = new Map();
+export function collapseGroupOccurrences(sessions: GroupSession[] | null | undefined, groupsById: GroupMap, now: Date = new Date()): (GroupSession | GroupOccurrenceTile)[] {
+  const out: (GroupSession | GroupOccurrenceTile)[] = [];
+  const seen = new Set<string>();
+  const byKey = new Map<string, GroupSession[]>();
   for (const s of (sessions || [])) {
     if (!s.group_id) continue;
     const key = `${s.group_id}|${s.date}|${s.time}`;
     if (!byKey.has(key)) byKey.set(key, []);
-    byKey.get(key).push(s);
+    byKey.get(key)!.push(s);
   }
   for (const s of (sessions || [])) {
     if (!s.group_id) { out.push(s); continue; }
     const key = `${s.group_id}|${s.date}|${s.time}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const attendees = byKey.get(key);
+    const attendees = byKey.get(key)!;
     out.push({
       _groupOccurrence: true,
       id: `grp-${key}`,
@@ -123,16 +158,26 @@ export function collapseGroupOccurrences(sessions, groupsById, now = new Date())
    aren't earmarked to a group, so we report consumed only and let the UI
    reference the patient's overall balance. Returns { totalConsumed, perMember:
    [{ patientId, name, consumed, sessions }] }. */
-export function groupFinancesRollup(group, groupMembers, sessions, patientsById, now = new Date()) {
-  const memberIds = new Set(
-    (groupMembers || []).filter(m => m.group_id === group.id).map(m => m.patient_id)
+export function groupFinancesRollup(
+  group: GroupLike,
+  groupMembers: GroupMember[] | null | undefined,
+  sessions: GroupSession[] | null | undefined,
+  patientsById: PatientMap,
+  now: Date = new Date(),
+): { totalConsumed: number; perMember: MemberFinance[] } {
+  const memberIds = new Set<string>(
+    (groupMembers || [])
+      .filter(m => m.group_id === group.id)
+      .map(m => m.patient_id)
+      .filter((x): x is string => !!x)
   );
-  const acc = new Map();
+  const acc = new Map<string, { consumed: number; sessions: number }>();
   for (const s of (sessions || [])) {
     if (s.group_id !== group.id) continue;
+    if (!s.patient_id) continue;
     if (!memberIds.has(s.patient_id)) continue;
     if (!acc.has(s.patient_id)) acc.set(s.patient_id, { consumed: 0, sessions: 0 });
-    const entry = acc.get(s.patient_id);
+    const entry = acc.get(s.patient_id)!;
     entry.sessions += 1;
     if (sessionCountsTowardBalance(s, now)) {
       const patient = patientsById?.get?.(s.patient_id) || null;
@@ -140,7 +185,7 @@ export function groupFinancesRollup(group, groupMembers, sessions, patientsById,
     }
   }
   let totalConsumed = 0;
-  const perMember = [];
+  const perMember: MemberFinance[] = [];
   for (const patientId of memberIds) {
     const entry = acc.get(patientId) || { consumed: 0, sessions: 0 };
     totalConsumed += entry.consumed;
