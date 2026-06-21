@@ -53,9 +53,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const EXIT_MS = 260;
 
-export function useSheetExit(open, onClose) {
+export function useSheetExit(open: boolean, onClose: ((...args: unknown[]) => void) | null | undefined) {
   const [exiting, setExiting] = useState(false);
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancelTimer = useCallback(() => {
     if (timerRef.current) {
@@ -86,7 +86,7 @@ export function useSheetExit(open, onClose) {
     }
   }, [open, cancelTimer]);
 
-  const animatedClose = useCallback((...args) => {
+  const animatedClose = useCallback((...args: unknown[]) => {
     if (!onClose) return;
     if (exiting) return;
     setExiting(true);

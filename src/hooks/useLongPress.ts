@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import type { TouchEvent as ReactTouchEvent, MouseEvent as ReactMouseEvent } from "react";
 import { haptic } from "../utils/haptics";
 
 /* ── useLongPress ──
@@ -46,9 +47,12 @@ const MOVE_TOLERANCE = 10;
 // outside this window pass through normally.
 const CLICK_SUPPRESS_MS = 300;
 
-export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS } = {}) {
-  const timerRef = useRef(null);
-  const startRef = useRef(null);
+export function useLongPress(
+  onLongPress: ((x: number, y: number) => void) | null | undefined,
+  { enabled = true, ms = LONG_PRESS_MS }: { enabled?: boolean; ms?: number } = {},
+) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
   const firedAtRef = useRef(0);
 
   const clearTimer = useCallback(() => {
@@ -60,7 +64,7 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
 
   useEffect(() => () => clearTimer(), [clearTimer]);
 
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: ReactTouchEvent) => {
     if (!enabled || !onLongPress) return;
     const t = e.touches[0];
     if (!t) return;
@@ -71,11 +75,12 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
       timerRef.current = null;
       firedAtRef.current = Date.now();
       haptic.warn?.();
-      onLongPress(startRef.current.x, startRef.current.y);
+      const s = startRef.current;
+      if (s) onLongPress(s.x, s.y);
     }, ms);
   }, [enabled, onLongPress, ms, clearTimer]);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: ReactTouchEvent) => {
     if (!startRef.current) return;
     const t = e.touches[0];
     if (!t) return;
@@ -88,7 +93,7 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
     }
   }, [clearTimer]);
 
-  const onTouchEnd = useCallback((e) => {
+  const onTouchEnd = useCallback((e: ReactTouchEvent) => {
     clearTimer();
     // If the long-press already fired AND the touchend event is still
     // cancelable, preventDefault suppresses the synthetic click iOS
@@ -113,7 +118,7 @@ export function useLongPress(onLongPress, { enabled = true, ms = LONG_PRESS_MS }
   // that window, the click passes through — important for keyboard
   // users who activate buttons via Enter/Space, which would otherwise
   // get permanently silenced after the first long-press on the row.
-  const onClickCapture = useCallback((e) => {
+  const onClickCapture = useCallback((e: ReactMouseEvent) => {
     if (firedAtRef.current && Date.now() - firedAtRef.current < CLICK_SUPPRESS_MS) {
       firedAtRef.current = 0;
       e.stopPropagation();

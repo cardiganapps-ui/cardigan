@@ -18,12 +18,15 @@ import { useEffect, useRef, useState } from "react";
    the browser's single rAF frame budget, so a 4-up KPI grid still
    paints at 60fps on iPhone 13-era hardware. */
 
-const easeOutExpo = (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
+const easeOutExpo = (t: number): number => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
-export function useAnimatedNumber(target, { duration = 700, enabled = true, ease = easeOutExpo } = {}) {
+export function useAnimatedNumber(
+  target: number | null | undefined,
+  { duration = 700, enabled = true, ease = easeOutExpo }: { duration?: number; enabled?: boolean; ease?: (t: number) => number } = {},
+) {
   const [animated, setAnimated] = useState(0);
   const animatedRef = useRef(0);
-  const rafRef = useRef(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => { animatedRef.current = animated; }, [animated]);
 
@@ -40,17 +43,17 @@ export function useAnimatedNumber(target, { duration = 700, enabled = true, ease
   const shouldSnap = isNonFinite || !enabled || reducedMotion;
 
   useEffect(() => {
-    if (shouldSnap) {
+    if (shouldSnap || typeof target !== "number") {
       // Keep animatedRef in sync with the displayed value so a later
       // transition back to animate-mode starts from a sensible base.
-      animatedRef.current = isNonFinite ? 0 : target;
+      animatedRef.current = isNonFinite || typeof target !== "number" ? 0 : target;
       return;
     }
     const startValue = animatedRef.current;
     if (startValue === target) return;
 
     const startTime = performance.now();
-    const tick = (now) => {
+    const tick = (now: number) => {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
       const eased = ease(t);

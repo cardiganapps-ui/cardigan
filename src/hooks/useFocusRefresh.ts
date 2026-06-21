@@ -26,8 +26,11 @@ import { useEffect, useRef } from "react";
 
    Returns nothing; effect-only.
 */
-export function useFocusRefresh(refresh, { mutating, minHiddenMs = 10_000 } = {}) {
-  const hiddenSinceRef = useRef(null);
+export function useFocusRefresh(
+  refresh: (() => Promise<unknown>) | null | undefined,
+  { mutating, minHiddenMs = 10_000 }: { mutating?: boolean | null; minHiddenMs?: number } = {},
+) {
+  const hiddenSinceRef = useRef<number | null>(null);
   const mutatingRef = useRef(mutating);
   useEffect(() => { mutatingRef.current = mutating; }, [mutating]);
 
