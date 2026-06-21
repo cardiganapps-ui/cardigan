@@ -6,7 +6,7 @@ import { useEffect } from "react";
 // a sheet doesn't ALSO close the sheet underneath. Previously each
 // useEscape call attached its own document listener and they all
 // fired on a single keypress, collapsing every open modal at once.
-const escapeStack = [];
+const escapeStack: Array<() => void> = [];
 let listenerAttached = false;
 
 function ensureListener() {
@@ -19,7 +19,7 @@ function ensureListener() {
   });
 }
 
-export function useEscape(onClose) {
+export function useEscape(onClose: (() => void) | null | undefined) {
   useEffect(() => {
     if (!onClose) return;
     ensureListener();

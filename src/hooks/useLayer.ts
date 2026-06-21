@@ -9,7 +9,7 @@ import { useCardigan } from "../context/CardiganContext";
  * Usage:
  *   useLayer("expediente", onClose);
  */
-export function useLayer(key, closeFn) {
+export function useLayer(key: string | null | undefined, closeFn: (() => void) | null | undefined) {
   const { pushLayer, removeLayer } = useCardigan();
   // Capture the latest closeFn in a ref so the registered layer always
   // calls the current closure, without re-registering on every render.
