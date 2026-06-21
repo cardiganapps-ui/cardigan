@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveTemplate, lookupKey } from "../../i18n/resolve.js";
 import { VOCAB, getVocab } from "../../i18n/vocabulary.js";
-import { PROFESSIONS } from "../../data/constants.js";
+import { PROFESSIONS } from "../../data/constants";
 
 const PSYCH = VOCAB.psychologist;
 const NUTRI = VOCAB.nutritionist;

@@ -9,7 +9,7 @@
    user will be billed, which is the right anchor for the "X% of your
    month" framing. */
 
-import { parseShortDate } from "./dates.js";
+import { parseShortDate } from "./dates";
 
 const PRICE_MONTHLY_CENTS = 14900; // $149 MXN — mirrors Stripe price
 

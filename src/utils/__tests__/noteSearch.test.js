@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalize, tokenize, matches, buildHaystack, buildExcerpt } from "../noteSearch.js";
+import { normalize, tokenize, matches, buildHaystack, buildExcerpt } from "../noteSearch";
 
 describe("normalize", () => {
   it("strips diacritics", () => {

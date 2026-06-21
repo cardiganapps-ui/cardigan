@@ -16,33 +16,33 @@ const SHORT_PARTS_RE = /[\s-]+/;
  * to the previous year, and a "2 Ene" date viewed in December
  * resolves to the next year.
  */
-function inferYear(monthIdx, day, referenceDate) {
+function inferYear(monthIdx: number, day: number, referenceDate?: Date): number {
   const ref = referenceDate || new Date();
   const refYear = ref.getFullYear();
   let best = refYear;
   let bestDiff = Infinity;
   for (const y of [refYear - 1, refYear, refYear + 1]) {
-    const diff = Math.abs(new Date(y, monthIdx, day) - ref);
+    const diff = Math.abs(new Date(y, monthIdx, day).getTime() - ref.getTime());
     if (diff < bestDiff) { bestDiff = diff; best = y; }
   }
   return best;
 }
 
-export function formatShortDate(date = new Date()) {
+export function formatShortDate(date: Date = new Date()): string {
   return `${date.getDate()}-${SHORT_MONTHS[date.getMonth()]}`;
 }
 
 // Same as formatShortDate but appends the 2-digit year: "14-Abr-26".
 // Use only when the year would otherwise be ambiguous (e.g. multi-year
 // exports, historical logs). Everyday UI should stick with formatShortDate.
-export function formatShortDateWithYear(date = new Date()) {
+export function formatShortDateWithYear(date: Date = new Date()): string {
   const yy = String(date.getFullYear()).slice(-2);
   return `${date.getDate()}-${SHORT_MONTHS[date.getMonth()]}-${yy}`;
 }
 
 // Normalize a short date coming from the DB or another source to the
 // canonical "D-MMM" form. Idempotent.
-export function normalizeShortDate(str) {
+export function normalizeShortDate(str: string | null | undefined): string | null | undefined {
   if (!str || typeof str !== "string") return str;
   const parts = str.split(SHORT_PARTS_RE);
   if (parts.length < 2) return str;
@@ -52,12 +52,12 @@ export function normalizeShortDate(str) {
   return `${day}-${mon}`;
 }
 
-export function todayISO() {
+export function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-export function shortDateToISO(str, referenceDate) {
+export function shortDateToISO(str: string | null | undefined, referenceDate?: Date): string {
   if (!str) return todayISO();
   const [day, mon] = str.split(SHORT_PARTS_RE);
   const mIdx = SHORT_MONTHS.indexOf(mon);
@@ -66,23 +66,23 @@ export function shortDateToISO(str, referenceDate) {
   return `${y}-${String(mIdx+1).padStart(2,"0")}-${String(parseInt(day)).padStart(2,"0")}`;
 }
 
-export function isoToShortDate(iso) {
+export function isoToShortDate(iso: string | null | undefined): string {
   if (!iso) return formatShortDate();
   const [, m, d] = iso.split("-");
   return `${parseInt(d)}-${SHORT_MONTHS[parseInt(m)-1]}`;
 }
 
-export function isoToShortDateWithYear(iso) {
+export function isoToShortDateWithYear(iso: string | null | undefined): string {
   if (!iso) return formatShortDateWithYear();
   const [y, m, d] = iso.split("-");
   return `${parseInt(d)}-${SHORT_MONTHS[parseInt(m)-1]}-${y.slice(-2)}`;
 }
 
-export function toISODate(d) {
+export function toISODate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-export function parseShortDate(str, referenceDate) {
+export function parseShortDate(str: string, referenceDate?: Date): Date {
   const [dayNum, mon] = str.split(SHORT_PARTS_RE);
   const mIdx = SHORT_MONTHS.indexOf(mon);
   const m = mIdx >= 0 ? mIdx : 0;
@@ -91,17 +91,17 @@ export function parseShortDate(str, referenceDate) {
   return new Date(y, m, d);
 }
 
-export function parseLocalDate(str) {
+export function parseLocalDate(str: string): Date {
   const [y, m, d] = str.split("-");
   return new Date(+y, +m - 1, +d);
 }
 
-export function getInitials(name) {
+export function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
 }
 
-export function formatCurrency(n) {
+export function formatCurrency(n: number | null | undefined): string {
   return `$${(n || 0).toLocaleString()}`;
 }
