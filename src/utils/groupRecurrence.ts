@@ -19,24 +19,79 @@ import { GROUP_STATUS, SCHEDULING_MODE, RECURRENCE_STRIDE_DAYS, DEFAULT_RECURREN
 import { getRecurringDates } from "./recurrence";
 import { formatShortDate, parseShortDate, toISODate } from "./dates";
 
+export interface GRGroup {
+  id: string;
+  day?: string | null;
+  time?: string | null;
+  duration?: number | string | null;
+  rate?: number | null;
+  modality?: string | null;
+  recurrence_frequency?: string | null;
+  scheduling_mode?: string | null;
+  status?: string | null;
+  color_idx?: number | null;
+}
+export interface GRMember { patient_id?: string | null; left_at?: string | null }
+export interface GRPatient { name?: string | null; initials?: string | null; rate?: number | null }
+type PatientMap = Map<string, GRPatient> | null | undefined;
+export interface GRSession { status?: string | null; time?: string | null; date: string; patient_id?: string | null }
+
+export interface GroupSessionRow {
+  user_id: string | undefined;
+  group_id: string;
+  patient_id: string | null | undefined;
+  patient: string;
+  initials: string;
+  time: string | null | undefined;
+  day: string | null | undefined;
+  date: string;
+  duration: number;
+  rate: number;
+  modality: string;
+  is_recurring: boolean;
+  recurrence_frequency: string;
+  color_idx: number;
+}
+
+interface GroupSessionRowsArgs {
+  group: GRGroup | null | undefined;
+  members: GRMember[] | null | undefined;
+  patientsById: PatientMap;
+  startISO: string;
+  endISO: string;
+  existingSlots?: Set<string> | string[] | null;
+  userId?: string;
+  onlyPatientIds?: Set<string> | null;
+}
+interface GroupAutoExtendArgs {
+  group: GRGroup | null | undefined;
+  members: GRMember[] | null | undefined;
+  patientsById: PatientMap;
+  groupSessions: GRSession[] | null | undefined;
+  today: Date;
+  threshold: Date;
+  extendEnd: string;
+  userId?: string;
+}
+
 /* Resolve the effective rate for a member's group session. The group has a
    FLAT rate applied to every member (product decision); when the group rate
    is unset we fall back to the member's own patient.rate so a row never
    carries a null/0 rate by accident. */
-export function resolveGroupRate(group, patient) {
+export function resolveGroupRate(group: GRGroup | null | undefined, patient: GRPatient | null | undefined): number {
   if (group?.rate != null) return group.rate;
   return patient?.rate ?? 0;
 }
 
 /* Active members only — `left_at == null`. A member who has left keeps
    their past session rows (financial history) but generates no new ones. */
-function activeMembers(members) {
+function activeMembers(members: GRMember[] | null | undefined): GRMember[] {
   return (members || []).filter(m => m && m.left_at == null);
 }
 
 /* Build the session row for one (member, date) pair. patientsById maps
    patient_id → patient row (for name/initials/rate fallback). */
-function buildRow({ group, member, patient, date, userId }) {
+function buildRow({ group, member, patient, date, userId }: { group: GRGroup; member: GRMember; patient: GRPatient | null; date: Date; userId: string | undefined }): GroupSessionRow {
   const ds = formatShortDate(date);
   return {
     user_id: userId,
@@ -74,15 +129,15 @@ function buildRow({ group, member, patient, date, userId }) {
  *   onlyPatientIds — optional Set; when present, restrict fan-out to these
  *                    members (used when backfilling a single newly-added member)
  */
-export function computeGroupSessionRows({ group, members, patientsById, startISO, endISO, existingSlots, userId, onlyPatientIds }) {
+export function computeGroupSessionRows({ group, members, patientsById, startISO, endISO, existingSlots, userId, onlyPatientIds }: GroupSessionRowsArgs): GroupSessionRow[] {
   if (!group || !group.day || !group.time) return [];
-  const dates = getRecurringDates(group.day, startISO, endISO, group.recurrence_frequency);
+  const dates = getRecurringDates(group.day, startISO, endISO, group.recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY);
   if (dates.length === 0) return [];
   const seen = existingSlots instanceof Set ? existingSlots : new Set(existingSlots || []);
-  const rows = [];
+  const rows: GroupSessionRow[] = [];
   for (const member of activeMembers(members)) {
-    if (onlyPatientIds && !onlyPatientIds.has(member.patient_id)) continue;
-    const patient = patientsById?.get?.(member.patient_id) || null;
+    if (onlyPatientIds && !onlyPatientIds.has(member.patient_id ?? "")) continue;
+    const patient = patientsById?.get?.(member.patient_id ?? "") || null;
     for (const d of dates) {
       const ds = formatShortDate(d);
       const slot = `${member.patient_id}|${ds}|${group.time}`;
@@ -118,7 +173,7 @@ export function computeGroupSessionRows({ group, members, patientsById, startISO
  *   extendEnd     — ISO date string upper bound for new occurrences
  *   userId        — user_id to stamp on rows
  */
-export function computeGroupAutoExtendRows({ group, members, patientsById, groupSessions, today, threshold, extendEnd, userId }) {
+export function computeGroupAutoExtendRows({ group, members, patientsById, groupSessions, today, threshold, extendEnd, userId }: GroupAutoExtendArgs): GroupSessionRow[] {
   if (!group || group.status !== GROUP_STATUS.ACTIVE) return [];
   if (group.scheduling_mode === SCHEDULING_MODE.EPISODIC) return [];
   if (!group.day || !group.time) return [];
@@ -129,7 +184,7 @@ export function computeGroupAutoExtendRows({ group, members, patientsById, group
   // Latest FUTURE scheduled occurrence date for this group. Past scheduled
   // rows auto-complete in display but are never used to derive the schedule
   // (phantom-prevention — same rule as the patient path).
-  let latest = null;
+  let latest: Date | null = null;
   for (const s of (groupSessions || [])) {
     if (s.status !== SESSION_STATUS.SCHEDULED) continue;
     if (s.time !== group.time) continue;
@@ -139,8 +194,8 @@ export function computeGroupAutoExtendRows({ group, members, patientsById, group
     if (!latest || d > latest) latest = d;
   }
   const DAY_MS = 86400000;
-  const stride = RECURRENCE_STRIDE_DAYS[group.recurrence_frequency] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
-  let startMs;
+  const stride = RECURRENCE_STRIDE_DAYS[group.recurrence_frequency ?? ""] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
+  let startMs: number;
   if (!latest) {
     // No future occurrences at all → BOOTSTRAP the full window from today.
     // Safety net for an active recurring group whose initial generation
