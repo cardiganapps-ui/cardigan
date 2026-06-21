@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { enrichPatientsWithBalance } from "../utils/accounting";
+import { enrichPatientsWithBalance, type BalancePatient, type BalanceSession } from "../utils/accounting";
 // Re-exported below for backwards compatibility — components that
 // imported `classifySessions` from this file keep working without
 // changing their import path.
@@ -28,28 +28,28 @@ export { classifySessions } from "../utils/patientPortal";
    patients, sessions, therapists, refresh } so the patient shell's
    render code reads similarly to the therapist app where useful. */
 
-export function usePatientPortalData(user) {
+export function usePatientPortalData(user: { id?: string } | null | undefined) {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [patients, setPatients] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [therapists, setTherapists] = useState([]);
+  const [error, setError] = useState<string | null>(null);
+  const [patients, setPatients] = useState<BalancePatient[]>([]);
+  const [sessions, setSessions] = useState<BalanceSession[]>([]);
+  const [therapists, setTherapists] = useState<unknown[]>([]);
   // Pending reschedule requests the patient has submitted (status=
   // pending only). Drives the "Esperando confirmación" badge on the
   // session card + swaps the Reprogramar pill for "Cancelar
   // solicitud" when there's an in-flight request.
-  const [rescheduleRequests, setRescheduleRequests] = useState([]);
+  const [rescheduleRequests, setRescheduleRequests] = useState<unknown[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
   // PullToRefresh awaits the refresh promise to drive its spinner —
   // we capture the next load's resolve fn here so the gesture's
   // success-check only appears AFTER the data round-trip lands. The
   // ref-then-resolve pattern means a redundant refresh during an
   // in-flight one collapses cleanly into the same promise.
-  const pendingResolverRef = useRef(null);
+  const pendingResolverRef = useRef<(() => void) | null>(null);
 
   const refresh = () => {
     setReloadKey(k => k + 1);
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       pendingResolverRef.current = resolve;
     });
   };
@@ -101,9 +101,9 @@ export function usePatientPortalData(user) {
         setSessions(sRes.data || []);
         setTherapists(tRes.data || []);
         setRescheduleRequests(rRes.error ? [] : (rRes.data || []));
-      } catch (err) {
+      } catch (err: unknown) {
         if (cancelled) return;
-        setError(err?.message || "No pudimos cargar tus datos.");
+        setError((err as Error)?.message || "No pudimos cargar tus datos.");
       } finally {
         if (!cancelled) setLoading(false);
         // Resolve any pending refresh promise — fires on first

@@ -40,7 +40,7 @@ const EMPTY = Object.freeze({
   refresh: () => {},
 });
 
-let cachedSnapshot = null;
+let cachedSnapshot: ReturnType<typeof computeSnapshot> | null = null;
 
 function computeSnapshot() {
   const seed = generateDemoData(DEFAULT_PROFESSION);
