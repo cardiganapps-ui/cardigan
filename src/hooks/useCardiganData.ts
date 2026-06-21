@@ -26,6 +26,73 @@ import { computeConsumedByPatient, applyConsumedToPatients } from "../utils/acco
 import { fetchAllPaged } from "../utils/paginate";
 import { useFocusRefresh } from "./useFocusRefresh";
 
+// ── Shared shapes ───────────────────────────────────────────────────
+/** The optional client-side note-encryption bag threaded through the
+    note/tag/attachment factories. Each factory consumes a subset. */
+interface NoteCryptoBag {
+  encrypt?: (plain: string) => { content: string; encrypted: boolean } | Promise<{ content: string; encrypted: boolean }>;
+  decrypt?: (content: string, encrypted: boolean) => Promise<string | null>;
+  canEncrypt?: boolean;
+  encryptAttachmentBytes?: (bytes: Uint8Array) => Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: string } | null>;
+}
+
+/** A row rendered in the admin "Usuarios" list, assembled from three
+    independent reads (profiles, patient counts, subscriptions). */
+interface AdminAccount {
+  userId: string;
+  fullName: string;
+  email: string;
+  patientCount: number;
+  firstSeen: string | null;
+  blocked: boolean;
+  bannedUntil: string | null;
+  profession: string | null;
+  isPatient: boolean;
+  accountType: string;
+  subscriptionStatus?: string | null;
+  subscriptionPeriodEnd?: string | null;
+  subscriptionCancelAt?: string | null;
+  subscriptionCancelAtPeriodEnd?: boolean;
+  compGranted?: boolean;
+  compReason?: string | null;
+  compGrantedAt?: string | null;
+  referralRewardsCount?: number;
+  defaultPaymentMethod?: string | null;
+  trialExtensionDays?: number;
+  tier?: string | null;
+  daysLeftInTrial?: number | null;
+}
+
+/* The coordinator holds 15 heterogeneous DB row-sets in state and threads
+   them into domain factories that each own their OWN structural types
+   (Patient/Session/Payment/…). Typing the coordinator's state as those
+   concrete shapes would duplicate every factory's interface here and fight
+   the loosely-typed Supabase client (the project's client is untyped, so
+   every `.data` is already `any`). A single deliberate `any` row alias keeps
+   the coordinator a thin pass-through while the factories enforce real types
+   at the only boundary that matters. Mirrors the CardiganContext bridge. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+/** The localStorage snapshot shape hydrated on cold start. */
+interface CachedData {
+  patients?: Row[];
+  upcomingSessions?: Row[];
+  payments?: Row[];
+  notes?: Row[];
+  documents?: Row[];
+  measurements?: Row[];
+  expenses?: Row[];
+  recurringExpenses?: Row[];
+  rescheduleRequests?: Row[];
+  tags?: Row[];
+  tagLinks?: Row[];
+  noteAttachments?: Row[];
+  groups?: Row[];
+  groupMembers?: Row[];
+  notifications?: Row[];
+}
+
 // Module-level lock to prevent concurrent auto-extend from duplicating sessions.
 let _extending = false;
 // Sibling lock for group session auto-extend (same rationale as _extending).
@@ -36,20 +103,20 @@ let _extendingGroups = false;
 // triggered before the previous insert resolves).
 let _generatingExpenses = false;
 
-function mapRows(rows) {
+function mapRows<T extends Record<string, unknown>>(rows: T[] | null | undefined): T[] {
   // Normalize `date` to the canonical "D-MMM" form so the UI doesn't have to
   // care whether historical rows were saved with a space separator. New
   // writes already go through formatShortDate (which emits "D-MMM"); this
   // covers any rows that predate migration 008_date_format_hyphens.sql.
   return (rows || []).map(r => ({
     ...r,
-    date: r.date ? normalizeShortDate(r.date) : r.date,
+    date: r.date ? normalizeShortDate(r.date as string) : r.date,
     colorIdx: r.color_idx,
     modality: r.modality || "presencial",
-  }));
+  })) as T[];
 }
 
-export function isAdmin(user) {
+export function isAdmin(user?: { email?: string | null; [key: string]: unknown } | null) {
   return user?.email === ADMIN_EMAIL;
 }
 
@@ -72,7 +139,7 @@ export async function fetchAllAccounts() {
     supabase.from("user_subscriptions")
       .select("user_id, status, current_period_end, cancel_at_period_end, cancel_at, comp_granted, comp_granted_at, comp_reason, referral_rewards_count, default_payment_method, trial_extension_days"),
   ]);
-  let pData = [], profileData = [], subscriptionData = [];
+  let pData: Row[] = [], profileData: Row[] = [], subscriptionData: Row[] = [];
   if (pRes.status === "fulfilled") pData = pRes.value.data || [];
   else console.error("fetchAllAccounts: patients query failed", pRes.reason);
   if (profRes.status === "fulfilled") profileData = profRes.value.data || [];
@@ -93,7 +160,7 @@ export async function fetchAllAccounts() {
   // Profession defaulting was removed in migration 058 so a missing
   // profile row no longer masquerades as a "psychologist" therapist.
   const now = Date.now();
-  const accounts = new Map();
+  const accounts = new Map<string, AdminAccount>();
   profileData.forEach(prof => {
     const bannedUntilMs = prof.banned_until ? new Date(prof.banned_until).getTime() : 0;
     const isPatient = !!prof.is_patient;
@@ -132,7 +199,7 @@ export async function fetchAllAccounts() {
         accountType: "therapist",
       });
     }
-    accounts.get(p.user_id).patientCount++;
+    accounts.get(p.user_id)!.patientCount++;
   });
   subscriptionData.forEach(sub => {
     const acct = accounts.get(sub.user_id);
@@ -215,7 +282,7 @@ async function authHeaders() {
   };
 }
 
-export async function adminBlockUser(userId, block) {
+export async function adminBlockUser(userId: string, block: boolean) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-block-user", {
     method: "POST",
@@ -232,7 +299,7 @@ export async function adminBlockUser(userId, block) {
 
 // Admin → in-app inbox: send a 'system' notification to one user or
 // broadcast to all. Backs the AdminMessages compose UI.
-export async function adminNotify({ title, body, url, userId, broadcast }) {
+export async function adminNotify({ title, body, url, userId, broadcast }: { title?: string; body?: string; url?: string | null; userId?: string | null; broadcast?: boolean }) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-notify", {
     method: "POST",
@@ -247,7 +314,7 @@ export async function adminNotify({ title, body, url, userId, broadcast }) {
   return res.json();
 }
 
-export async function adminDeleteUser(userId) {
+export async function adminDeleteUser(userId: string) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-delete-user", {
     method: "POST",
@@ -262,7 +329,7 @@ export async function adminDeleteUser(userId) {
   return res.json();
 }
 
-export async function adminUpdateProfession(userId, profession) {
+export async function adminUpdateProfession(userId: string, profession: string) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-update-profession", {
     method: "POST",
@@ -279,7 +346,7 @@ export async function adminUpdateProfession(userId, profession) {
 
 /* Saved-views CRUD — admin-only filter presets shared across the
    admin team. Backed by the admin_saved_views table (mig 063). */
-export async function fetchAdminSavedViews(screen) {
+export async function fetchAdminSavedViews(screen?: string) {
   const headers = await authHeaders();
   const url = screen
     ? `/api/admin-saved-views?screen=${encodeURIComponent(screen)}`
@@ -294,7 +361,7 @@ export async function fetchAdminSavedViews(screen) {
   return j.views || [];
 }
 
-export async function createAdminSavedView({ screen, name, filterState }) {
+export async function createAdminSavedView({ screen, name, filterState }: { screen?: string; name?: string; filterState?: unknown }) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-saved-views", {
     method: "POST",
@@ -310,9 +377,9 @@ export async function createAdminSavedView({ screen, name, filterState }) {
   return j.view;
 }
 
-export async function updateAdminSavedView({ id, name, filterState }) {
+export async function updateAdminSavedView({ id, name, filterState }: { id: string; name?: string; filterState?: unknown }) {
   const headers = await authHeaders();
-  const body = { id };
+  const body: Record<string, unknown> = { id };
   if (name !== undefined) body.name = name;
   if (filterState !== undefined) body.filterState = filterState;
   const res = await fetch("/api/admin-saved-views", {
@@ -329,7 +396,7 @@ export async function updateAdminSavedView({ id, name, filterState }) {
   return j.view;
 }
 
-export async function deleteAdminSavedView(id) {
+export async function deleteAdminSavedView(id: string) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-saved-views", {
     method: "DELETE",
@@ -349,7 +416,7 @@ export async function deleteAdminSavedView(id) {
    master-key bytes as base64 — the admin then sends this out-of-band
    so the user can reset their passphrase. Logged in audit_log as
    "recover_encryption". */
-export async function adminRecoverEncryption(userId) {
+export async function adminRecoverEncryption(userId: string) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-recover-encryption", {
     method: "POST",
@@ -366,7 +433,7 @@ export async function adminRecoverEncryption(userId) {
 
 /* Toggle complimentary (always-free) access on a user's
    user_subscriptions row. Admin-gated server-side. */
-export async function adminGrantComp(userId, granted, reason) {
+export async function adminGrantComp(userId: string, granted: boolean, reason?: string | null) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-grant-comp", {
     method: "POST",
@@ -396,7 +463,7 @@ export async function fetchInfluencerCodes() {
   return j.codes || [];
 }
 
-export async function createInfluencerCode(payload) {
+export async function createInfluencerCode(payload: unknown) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-influencer-codes", {
     method: "POST",
@@ -408,7 +475,7 @@ export async function createInfluencerCode(payload) {
   return j.code;
 }
 
-export async function toggleInfluencerCode(id, active) {
+export async function toggleInfluencerCode(id: string, active: boolean) {
   const headers = await authHeaders();
   const res = await fetch("/api/admin-influencer-codes", {
     method: "PATCH",
@@ -428,7 +495,7 @@ export async function toggleInfluencerCode(id, active) {
  * Returned shape:
  *   { overview: {...counts and sums...}, daily: [{ day, signups, active_users, ... }] }
  */
-export async function fetchAdminAnalytics({ days = 30 } = {}) {
+export async function fetchAdminAnalytics({ days = 30 }: { days?: number } = {}) {
   const [ovRes, dailyRes, sourcesRes] = await Promise.all([
     supabase.rpc("admin_analytics_overview"),
     supabase.rpc("admin_analytics_daily", { days }),
@@ -455,8 +522,8 @@ export async function fetchSignupSources() {
     .not("signup_source_recorded_at", "is", null);
   if (error) throw error;
   const rows = data || [];
-  const counts = {};
-  const otherDetails = [];
+  const counts: Record<string, number> = {};
+  const otherDetails: { text: string; at: string }[] = [];
   for (const r of rows) {
     counts[r.signup_source] = (counts[r.signup_source] || 0) + 1;
     if (r.signup_source === "other" && r.signup_source_detail) {
@@ -478,7 +545,7 @@ export async function fetchSignupSources() {
   return { breakdown, otherDetails, total };
 }
 
-export async function fetchBugReports({ archived = false } = {}) {
+export async function fetchBugReports({ archived = false }: { archived?: boolean } = {}) {
   let q = supabase
     .from("bug_reports")
     .select("*")
@@ -490,12 +557,12 @@ export async function fetchBugReports({ archived = false } = {}) {
   return data || [];
 }
 
-export async function archiveBugReports(ids) {
+export async function archiveBugReports(ids: string[]) {
   const { error } = await supabase.rpc("archive_bug_reports", { report_ids: ids });
   if (error) throw error;
 }
 
-export async function deleteBugReport(id) {
+export async function deleteBugReport(id: string) {
   const { error } = await supabase.from("bug_reports").delete().eq("id", id);
   if (error) throw error;
 }
@@ -504,7 +571,7 @@ export async function deleteBugReport(id) {
    These three helpers feed the dedicated `#admin/...` dashboard.
    Each is admin-gated server-side (RPC via is_admin() RLS or
    requireAdmin in the Vercel function). */
-export async function fetchUserDetail(uid) {
+export async function fetchUserDetail(uid: string) {
   const headers = await authHeaders();
   const res = await fetch(`/api/admin-user-detail?uid=${encodeURIComponent(uid)}`, { method: "GET", headers });
   const j = await res.json().catch(() => ({}));
@@ -512,7 +579,7 @@ export async function fetchUserDetail(uid) {
   return j;
 }
 
-export async function fetchAuditLog({ targetUserId = null, action = null, actorId = null, limit = 200 } = {}) {
+export async function fetchAuditLog({ targetUserId = null, action = null, actorId = null, limit = 200 }: { targetUserId?: string | null; action?: string | null; actorId?: string | null; limit?: number } = {}) {
   let q = supabase
     .from("admin_audit_log")
     .select("id, actor_id, target_user_id, action, payload, ip, ua, created_at")
@@ -536,7 +603,7 @@ export async function fetchRevenueOverview() {
    drill into Stripe for the full ledger. Filters out $0 invoices
    (trial-start, prorated price-change, etc.) since they're noise
    for the admin who actually wants to see real money flowing. */
-export async function fetchRecentInvoices({ limit = 50 } = {}) {
+export async function fetchRecentInvoices({ limit = 50 }: { limit?: number } = {}) {
   const { data, error } = await supabase
     .from("stripe_invoices")
     .select("id, user_id, amount_cents, currency, paid_at, hosted_invoice_url, created_at")
@@ -550,7 +617,7 @@ export async function fetchRecentInvoices({ limit = 50 } = {}) {
 /* Admin-only read of a user's rating history. RLS lets is_admin()
    SELECT all rows from user_ratings, so this is a direct query —
    no /api hop needed. Returns the most recent first. */
-export async function fetchUserRatings(uid, { limit = 20 } = {}) {
+export async function fetchUserRatings(uid: string, { limit = 20 }: { limit?: number } = {}) {
   const { data, error } = await supabase
     .from("user_ratings")
     .select("prompt_kind, stars, comment, created_at")
@@ -565,7 +632,7 @@ export async function fetchUserRatings(uid, { limit = 20 } = {}) {
    impersonation flow is a state flip in the React app, not a server
    round-trip — without this the audit log would have a gap on every
    view-as event. */
-export async function logAdminViewAs(targetUserId) {
+export async function logAdminViewAs(targetUserId: string) {
   const headers = await authHeaders();
   await fetch("/api/admin-audit", {
     method: "POST",
@@ -574,8 +641,12 @@ export async function logAdminViewAs(targetUserId) {
   }).catch(() => { /* best-effort, never block view-as on logging */ });
 }
 
-export function useCardiganData(user, viewAsUserId, options = {}) {
-  const userId = viewAsUserId || user?.id;
+export function useCardiganData(
+  user?: { id?: string; email?: string | null } | null,
+  viewAsUserId?: string | null,
+  options: { noteCrypto?: NoteCryptoBag } = {},
+) {
+  const userId = viewAsUserId || user?.id || "";
   const readOnly = !!viewAsUserId;
   const noteCrypto = options.noteCrypto;
   /* Stale-while-revalidate hydration: read the user's last-seen
@@ -588,7 +659,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
      user's id, not the admin's — separate cache per identity, no
      leak. Logged-out / pre-auth render gets null and falls through
      to empty arrays + the loading skeleton, same as before. */
-  const initialCache = useMemo(() => loadCachedData(userId), [userId]);
+  const initialCache = useMemo(() => loadCachedData(userId) as CachedData | null, [userId]);
   const [patients, setPatients] = useState(initialCache?.patients || []);
   const [upcomingSessions, setUpcomingSessions] = useState(initialCache?.upcomingSessions || []);
   const [payments, setPayments] = useState(initialCache?.payments || []);
@@ -632,7 +703,7 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     if (!userId) { setLoading(false); return; }
     setLoading(true);
     setFetchError("");
-    const q = (table, limit) => {
+    const q = (table: string, limit?: number) => {
       let query = supabase.from(table).select("*").eq("user_id", userId);
       if (limit) query = query.limit(limit);
       return query;
@@ -649,13 +720,16 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // created_at (the auto-extend insert writes many at the same instant).
     // Returns the same { data, error } shape as `q(...)`.
     const fetchAllSessions = () => fetchAllPaged(
-      (from, to) => supabase
-        .from("sessions")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
+      async (from, to) => {
+        const res = await supabase
+          .from("sessions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to);
+        return { data: res.data, error: res.error };
+      },
       { pageSize: 1000 }
     );
     // Scaling windows: most daily use (Home, Agenda, Finances current view)
@@ -711,18 +785,18 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         q("notifications", 200).order("created_at", { ascending: false }),
       ]);
     } catch (err) {
-      setFetchError(err.message || "Error al cargar datos");
+      setFetchError((err as Error)?.message || "Error al cargar datos");
       setLoading(false);
       return;
     }
 
     // Surface individual table errors
     const tableErr = [pRes, sRes, pmRes, nRes, dRes, mRes, eRes, reRes, rrRes, gRes, gmRes].find(r => r?.error);
-    if (tableErr) setFetchError(tableErr.error.message);
+    if (tableErr) setFetchError((tableErr.error as { message?: string })?.message || "Error al cargar datos");
 
     let pData = mapRows(pRes.data);
     let sData = mapRows(sRes.data);
-    let gData = mapRows(gRes?.data);
+    const gData = mapRows(gRes?.data);
     const gmData = gmRes?.data || [];
 
     // Auto-extend recurring sessions (skip in read-only or if already extending).
@@ -748,8 +822,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         // active recurring patients. The inserted row set + the
         // patient (sessions, billed) targets we just computed are
         // exactly the canonical state, so merge locally instead.
-        const insertedRows = [];
-        const patientUpdates = new Map();
+        const insertedRows: Record<string, unknown>[] = [];
+        const patientUpdates = new Map<string, { sessions: number }>();
 
         for (const patient of pData) {
           // Episodic patients have no perpetual slot — the practitioner
@@ -808,8 +882,8 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
         const extendEnd = toISODate(new Date(today.getTime() + RECURRENCE_WINDOW_WEEKS * 7 * 86400000));
         const patientsById = new Map(pData.map(p => [p.id, p]));
 
-        const insertedRows = [];
-        const patientUpdates = new Map();
+        const insertedRows: Record<string, unknown>[] = [];
+        const patientUpdates = new Map<string, number>();
         for (const group of gData) {
           const members = gmData.filter(m => m.group_id === group.id);
           const groupSessions = sData.filter(s => s.group_id === group.id);
@@ -877,9 +951,10 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // a re-fetch.
     let notesData = nRes.data || [];
     if (noteCrypto?.decrypt) {
-      notesData = await Promise.all(notesData.map(async (n) => {
+      const decrypt = noteCrypto.decrypt;
+      notesData = await Promise.all(notesData.map(async (n: Row) => {
         if (!n.encrypted) return n;
-        const plain = await noteCrypto.decrypt(n.content, true);
+        const plain = await decrypt(n.content, true);
         return plain == null ? n : { ...n, content: plain };
       }));
     }
@@ -890,12 +965,13 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
     // decrypt the notes path uses.
     let tagsData = tRes?.data || [];
     if (noteCrypto?.decrypt) {
-      tagsData = await Promise.all(tagsData.map(async (t) => {
-        const plain = await noteCrypto.decrypt(t.label_ciphertext, /* encrypted= */ true).catch(() => null);
+      const decrypt = noteCrypto.decrypt;
+      tagsData = await Promise.all(tagsData.map(async (t: Row) => {
+        const plain = await decrypt(t.label_ciphertext, /* encrypted= */ true).catch(() => null);
         return { ...t, label: plain ?? t.label_ciphertext };
       }));
     } else {
-      tagsData = tagsData.map(t => ({ ...t, label: t.label_ciphertext }));
+      tagsData = tagsData.map((t: Row) => ({ ...t, label: t.label_ciphertext }));
     }
     setTags(tagsData);
     setTagLinks(tlRes?.data || []);
@@ -1070,14 +1146,14 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   );
 
   // Defense-in-depth: prevent mutations in read-only mode
-  const guard = (fn) => readOnly ? async () => false : fn;
+  const guard = <T,>(fn: T): T | (() => Promise<boolean>) => readOnly ? (async () => false) : fn;
 
   // After a successful patient create we also refresh from the server.
   // The optimistic setters inside createPatient should be enough, but a
   // user report showed newly-generated recurring sessions occasionally
   // didn't render until the next pull-to-refresh — this closes that
   // gap without blocking the sheet from dismissing.
-  const createPatientWithRefresh = async (args) => {
+  const createPatientWithRefresh = async (args: Parameters<typeof createPatient>[0]) => {
     const ok = await createPatient(args);
     if (ok) refresh().catch(() => {});
     return ok;
@@ -1087,12 +1163,12 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // patient, and the optimistic setters can race the next pull. The
   // post-create refresh ensures the new row reflects in any open
   // detail sheet without forcing the user to pull-to-refresh.
-  const createPotentialWithRefresh = async (args) => {
+  const createPotentialWithRefresh = async (args: Parameters<typeof createPotential>[0]) => {
     const ok = await createPotential(args);
     if (ok) refresh().catch(() => {});
     return ok;
   };
-  const convertPotentialWithRefresh = async (id, args) => {
+  const convertPotentialWithRefresh = async (id: string, args: Parameters<typeof convertPotentialToActive>[1]) => {
     const ok = await convertPotentialToActive(id, args);
     if (ok) refresh().catch(() => {});
     return ok;
@@ -1100,17 +1176,17 @@ export function useCardiganData(user, viewAsUserId, options = {}) {
   // Creating a group fans out a window of member session rows; a member
   // add backfills future occurrences. Both can race the next pull, so
   // refresh after success (same gap-closing rationale as patients above).
-  const createGroupWithRefresh = async (args) => {
+  const createGroupWithRefresh = async (args: Parameters<typeof createGroup>[0]) => {
     const res = await createGroup(args);
     if (res) refresh().catch(() => {});
     return res;
   };
-  const addMembersWithRefresh = async (groupId, ids) => {
+  const addMembersWithRefresh = async (groupId: string, ids: string[]) => {
     const ok = await addMembers(groupId, ids);
     if (ok) refresh().catch(() => {});
     return ok;
   };
-  const addMemberWithRefresh = async (groupId, id) => addMembersWithRefresh(groupId, [id]);
+  const addMemberWithRefresh = async (groupId: string, id: string) => addMembersWithRefresh(groupId, [id]);
 
   return {
     patients: enrichedPatients, upcomingSessions: enrichedSessions, payments, notes, documents, measurements,
