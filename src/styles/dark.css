@@ -248,7 +248,7 @@ html[data-theme="dark"] .bottom-tabs {
     linear-gradient(180deg,
       rgba(255, 255, 255, 0.06) 0%,
       transparent 40%),
-    rgba(28, 28, 30, 0.42);
+    rgba(28, 28, 30, 0.30);
   border-color: rgba(255, 255, 255, 0.10);
   box-shadow:
     0 12px 34px -10px rgba(0, 0, 0, 0.62),

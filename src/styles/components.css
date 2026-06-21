@@ -256,7 +256,7 @@
      earlier "solid white" workaround was only there to hide a ghost of
      the page padding caused by the `100dvh` shell bug — that bug is
      fixed now (see base.css `.shell`), so the real glass is back.
-     `color-mix` renders as ~44% white in light mode and auto-flips in
+     `color-mix` renders as ~30% white in light mode and auto-flips in
      dark mode via dark.css, which redefines --white. The alpha is kept
      low + the blur moderate so the page content reads clearly THROUGH
      the bar (WhatsApp-style frosted glass) instead of washing out to a
@@ -267,7 +267,7 @@
      Showing OVER sheet CTAs is prevented by the
      `:has(.sheet-overlay)` display:none rule below — restoring
      translucency does not reintroduce that bug. */
-  background: color-mix(in srgb, var(--white) 42%, transparent);
+  background: color-mix(in srgb, var(--white) 30%, transparent);
   /* contrast(1.05) deepens the content showing through so the glass
      reads as a real refractive lens (Apple's Liquid Glass subtly
      boosts contrast of what's behind it) rather than a flat frosted
