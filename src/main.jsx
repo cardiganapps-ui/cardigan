@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import './index.css'
-import App from './App.jsx'
+import App from './App'
 import { initSentry } from './lib/sentry'
-import ErrorBoundary from './components/ErrorBoundary.jsx'
+import ErrorBoundary from './components/ErrorBoundary'
 // nativeFetch MUST come before skewProtection so the URL rewrite
 // happens first; skewProtection then sees the absolute production URL
 // and stamps its header normally.

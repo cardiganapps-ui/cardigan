@@ -18,7 +18,7 @@ import { VersionHistorySheet } from "./notes/VersionHistorySheet";
 import { AttachmentStrip } from "./notes/AttachmentStrip";
 import { useVoiceDictation } from "../lib/useVoiceDictation";
 import { supabase } from "../supabaseClient";
-import { enqueue } from "../lib/mutationQueue.js";
+import { enqueue } from "../lib/mutationQueue";
 import { extractOutline } from "./notes/outlineUtil";
 import { toPlainText } from "./notes/markdownModel";
 import { haptic } from "../utils/haptics";

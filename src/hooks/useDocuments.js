@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { maybeConvertHeic } from "../utils/heicConvert";
-import { enqueue, registerHandler } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler } from "../lib/mutationQueue";
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();

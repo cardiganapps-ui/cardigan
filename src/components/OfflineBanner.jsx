@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutationQueue } from "../hooks/useMutationQueue.js";
+import { useMutationQueue } from "../hooks/useMutationQueue";
 
 /* ── OfflineBanner ─ thin strip below the topbar that signals offline
    state + pending-queue count. Renders nothing in the common case

@@ -1,5 +1,5 @@
 import { supabase } from "../supabaseClient";
-import { enqueue, registerHandler } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler } from "../lib/mutationQueue";
 
 /* ── useNoteAttachments ─────────────────────────────────────────────
    Phase 5 of the Notes premium roadmap. Image attachments for

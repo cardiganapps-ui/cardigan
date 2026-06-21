@@ -2,7 +2,7 @@ import { supabase } from "../supabaseClient";
 import { PAYMENT_METHOD } from "../data/constants";
 import { formatShortDate, getInitials } from "../utils/dates";
 import { recalcPatientCounters } from "../utils/patients";
-import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // Mirrors the session-side strings from useSessions.js. Keep the wording
 // uniform — users see the same message whether they conflict on a

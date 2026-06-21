@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { init, subscribe, drain, getEntries } from "../lib/mutationQueue.js";
-import { useConnectivity } from "./useConnectivity.js";
+import { init, subscribe, drain, getEntries } from "../lib/mutationQueue";
+import { useConnectivity } from "./useConnectivity";
 
 /* ── useMutationQueue ─ React surface for the offline queue.
    Initializes the queue on mount (loads from IndexedDB), exposes the

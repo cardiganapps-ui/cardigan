@@ -9,8 +9,8 @@ import {
   toggleInline,
   toggleTaskOnLine,
   toPlainText,
-} from "../../components/notes/markdownModel.js";
-import { NOTE_TEMPLATES } from "../../data/noteTemplates.js";
+} from "../../components/notes/markdownModel";
+import { NOTE_TEMPLATES } from "../../data/noteTemplates";
 
 describe("tokenizeLine — block detection", () => {
   it("detects h1/h2/h3", () => {

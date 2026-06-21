@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { avatarPath } from "../imageUpload.js";
+import { avatarPath } from "../imageUpload";
 
 /* The resize pipeline itself relies on DOM APIs (Image, Canvas,
    URL.createObjectURL) that aren't available in vitest's default

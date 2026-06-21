@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useT } from "../../i18n/index.jsx";
+import { useT } from "../../i18n/index";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useSheetDrag } from "../../hooks/useSheetDrag";

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeProValue } from "../proValue.js";
+import { computeProValue } from "../proValue";
 
 const APR_30 = new Date("2026-04-30T12:00:00.000-06:00");
 

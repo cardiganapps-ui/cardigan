@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
-import { useT } from "../../i18n/index.jsx";
+import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { useEscape } from "../../hooks/useEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";

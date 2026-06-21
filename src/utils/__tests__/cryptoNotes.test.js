@@ -13,7 +13,7 @@ import {
   wrapMasterWithPassphrase,
   unwrapMasterWithPassphrase,
   _internals,
-} from "../../lib/cryptoNotes.js";
+} from "../../lib/cryptoNotes";
 
 describe("encryptNote / decryptNote", () => {
   it("round-trips ASCII content", async () => {
@@ -86,7 +86,7 @@ describe("passphrase wrap / unwrap", () => {
   async function fastWrap(master, passphrase) {
     // Re-implement the wrap helper but with low iters. Mirrors
     // wrapMasterWithPassphrase's output shape precisely.
-    const { wrapMasterWithPassphrase: realWrap } = await import("../../lib/cryptoNotes.js");
+    const { wrapMasterWithPassphrase: realWrap } = await import("../../lib/cryptoNotes");
     const wrap = await realWrap(master, passphrase);
     // Replace the iter count without re-running PBKDF2 — we just
     // assert via the public API at the default cost. Simpler than

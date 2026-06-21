@@ -21,7 +21,7 @@ beforeEach(async () => {
     kvDelete: async (k) => { delete store[k]; },
     kvAvailable: async () => true,
   }));
-  mq = await import("../mutationQueue.js");
+  mq = await import("../mutationQueue");
   await mq.init();
 });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { bucketForDate, bucketLabel, groupNotesByRecency } from "../noteGrouping.js";
+import { bucketForDate, bucketLabel, groupNotesByRecency } from "../noteGrouping";
 
 const NOW = new Date("2026-04-22T14:00:00");
 

@@ -22,7 +22,7 @@ vi.mock("../../supabaseClient", () => ({
 }));
 
 const { createNoteActions } = await import("../useNotes");
-const queue = await import("../../lib/mutationQueue.js");
+const queue = await import("../../lib/mutationQueue");
 
 function setOnline(value) {
   Object.defineProperty(navigator, "onLine", { value, configurable: true, writable: true });

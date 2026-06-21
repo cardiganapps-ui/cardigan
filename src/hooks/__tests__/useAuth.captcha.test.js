@@ -13,7 +13,7 @@ vi.mock("../../utils/inviteTokenStorage", () => ({
   getInviteContext: vi.fn(),
 }));
 
-import { classifyCaptchaError } from "../useAuth.js";
+import { classifyCaptchaError } from "../useAuth";
 
 /* The captcha classifier maps Supabase's captcha-required auth error to
    a typed { code: "captcha_enforced" } result so the failure is

@@ -22,7 +22,7 @@
 import { supabase } from "../supabaseClient";
 import { computeRecurringExpenseRows } from "../utils/recurrence";
 import { shortDateToISO } from "../utils/dates";
-import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // Offline queue handlers (Phase 4 of offline support — covers
 // createExpense, updateExpense, deleteExpense). Recurring-template

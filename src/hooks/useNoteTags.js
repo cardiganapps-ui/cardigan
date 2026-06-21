@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
-import { enqueue, registerHandler } from "../lib/mutationQueue.js";
-import { hashTagLabel, canonicalizeTagLabel } from "../lib/cryptoNotes.js";
+import { enqueue, registerHandler } from "../lib/mutationQueue";
+import { hashTagLabel, canonicalizeTagLabel } from "../lib/cryptoNotes";
 
 /* createNoteTagActions
    Phase 1.3 of the Notes premium rollout. Tag CRUD + note↔tag link

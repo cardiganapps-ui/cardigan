@@ -35,7 +35,7 @@
      by the F-tier optimistic locking; offline replays bypass.
 */
 
-import { kvGet, kvSet, kvAvailable } from "./idbKv.js";
+import { kvGet, kvSet, kvAvailable } from "./idbKv";
 
 const QUEUE_KEY = "mutation_queue_v1";
 

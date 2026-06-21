@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveAvatar } from "../avatarMeta.js";
+import { resolveAvatar } from "../avatarMeta";
 
 /* Covers the pure metadata-resolution logic. The network-backed
    presigned-URL path is exercised by manual browser verification. */

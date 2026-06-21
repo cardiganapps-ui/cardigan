@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useCardigan } from "../context/CardiganContext";
 import { useT } from "../i18n/index";
-import { computeProValue } from "../utils/proValue.js";
+import { computeProValue } from "../utils/proValue";
 import { IconSparkle } from "./Icons";
 import { formatMXN } from "../utils/format";
 

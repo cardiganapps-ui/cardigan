@@ -29,7 +29,7 @@
    a slugged filename. */
 
 import { jsPDF } from "jspdf";
-import { tokenizeLine } from "../components/notes/markdownModel.js";
+import { tokenizeLine } from "../components/notes/markdownModel";
 
 const MAX_INLINE_IMAGES = 10;
 

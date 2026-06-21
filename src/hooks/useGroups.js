@@ -6,7 +6,7 @@ import {
 import { parseShortDate, parseLocalDate, toISODate } from "../utils/dates";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { computeGroupSessionRows } from "../utils/groupRecurrence";
-import { enqueue, registerHandler } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler } from "../lib/mutationQueue";
 
 /* ── Group (Grupos) domain actions ──
 

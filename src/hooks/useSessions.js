@@ -8,7 +8,7 @@ import { getInitials, formatShortDate, parseShortDate, parseLocalDate } from "..
 import { recalcPatientCounters } from "../utils/patients";
 import { sessionCountsTowardBalance } from "../utils/accounting";
 import { getRecurringDates } from "../utils/recurrence";
-import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 // Re-export for callers that historically imported it from this module.
 export { getRecurringDates };

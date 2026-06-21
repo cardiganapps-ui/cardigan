@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { diffLines, diffSummary } from "../noteDiff.js";
+import { diffLines, diffSummary } from "../noteDiff";
 
 describe("noteDiff::diffLines", () => {
   it("returns [] when both sides are empty", () => {

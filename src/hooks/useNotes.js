@@ -1,5 +1,5 @@
 import { supabase } from "../supabaseClient";
-import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue.js";
+import { enqueue, registerHandler, onReplay } from "../lib/mutationQueue";
 
 /* createNoteActions
    `crypto` is an optional bag of { encrypt(plain) → { content, encrypted } }.

@@ -32,11 +32,31 @@ const a11yWarnRules = Object.fromEntries(
    color / not under a `style` attribute). First hard-enforced rule of the
    design-token burn-down; fontSize / hex / cream rules join as each
    category reaches zero. */
+/* Inline rgba(0,0,0,…) box-shadow: doesn't flip in dark mode (stays a
+   black shadow on a dark surface). Applied everywhere — harmless in api/
+   (no JSX) and meaningful in the UI. */
+const shadowSelector = {
+  selector: "JSXAttribute[name.name='style'] Property[key.name='boxShadow'] Literal[value=/rgba\\(\\s*0\\s*,\\s*0\\s*,\\s*0/]",
+  message: 'Inline rgba(0,0,0,…) box-shadow breaks dark mode — use a --shadow-* / --shadow-overlay / --shadow-sheet-up token instead.',
+}
 const designTokenRules = {
-  'no-restricted-syntax': ['error', {
-    selector: "JSXAttribute[name.name='style'] Property[key.name='boxShadow'] Literal[value=/rgba\\(\\s*0\\s*,\\s*0\\s*,\\s*0/]",
-    message: 'Inline rgba(0,0,0,…) box-shadow breaks dark mode — use a --shadow-* / --shadow-overlay / --shadow-sheet-up token instead.',
-  }],
+  'no-restricted-syntax': ['error', shadowSelector],
+}
+
+/* Relative imports in the Vite-bundled frontend (src/) must be
+   extensionless. An explicit ".js"/".jsx" breaks the production Rollup
+   build the moment the target migrates to .ts/.tsx (vitest's resolver is
+   lenient, so tests pass while `vite build` fails) — exactly the
+   dates.js→dates.ts break. NOTE: scoped to src/ only — api/ and scripts/
+   run as Node ESM where explicit extensions are required, not bundled. */
+const srcImportExtMessage =
+  'Use an extensionless relative import (drop the .js/.jsx) — explicit extensions break the Vite build when the target migrates to TypeScript.'
+const frontendRestrictedSyntax = {
+  'no-restricted-syntax': ['error',
+    shadowSelector,
+    { selector: "ImportDeclaration[source.value=/^\\.\\.?\\/.*\\.jsx?$/]", message: srcImportExtMessage },
+    { selector: "ImportExpression[source.value=/^\\.\\.?\\/.*\\.jsx?$/]", message: srcImportExtMessage },
+  ],
 }
 
 /* Shared React JSX correctness rules (apply to both JS and TS sources). */
@@ -112,6 +132,14 @@ export default defineConfig([
       ...reactJsxRules,
       ...designTokenRules,
     },
+  },
+  {
+    /* Frontend only: forbid explicit .js/.jsx in relative imports (see
+       frontendRestrictedSyntax). Placed after the base js/ts blocks so
+       this no-restricted-syntax (which still includes the shadow rule)
+       replaces theirs for src/ files. */
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    rules: frontendRestrictedSyntax,
   },
   {
     /* api/ files are Vercel serverless functions — Node runtime, not

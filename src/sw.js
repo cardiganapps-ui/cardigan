@@ -6,7 +6,7 @@ import { precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, CacheFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
-import { getPushState, putPushState } from "./pushStore.js";
+import { getPushState, putPushState } from "./pushStore";
 
 // Vite injects VITE_VAPID_PUBLIC_KEY into this file at build time. Used
 // to reconstruct subscribe() options when `event.oldSubscription` is

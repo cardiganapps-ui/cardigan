@@ -7,27 +7,27 @@ import { useNoteCrypto } from "./hooks/useNoteCrypto";
 // Conditionally rendered after first paint by various gates (one-time
 // prompts, encryption unlock, post-subscribe celebration, etc.). Lazy
 // shaves them off the cold-start payload.
-const EncryptionUnlockGate = lazy(() => import("./components/EncryptionUnlockGate.jsx"));
-const SubscriptionWelcome = lazy(() => import("./components/SubscriptionWelcome.jsx"));
-const MilestoneCelebration = lazy(() => import("./components/MilestoneCelebration.jsx").then(m => ({ default: m.MilestoneCelebration })));
-const ActivationCompleteShareSheet = lazy(() => import("./components/ActivationCompleteShareSheet.jsx").then(m => ({ default: m.ActivationCompleteShareSheet })));
-const RatingSheet = lazy(() => import("./components/RatingSheet.jsx").then(m => ({ default: m.RatingSheet })));
+const EncryptionUnlockGate = lazy(() => import("./components/EncryptionUnlockGate"));
+const SubscriptionWelcome = lazy(() => import("./components/SubscriptionWelcome"));
+const MilestoneCelebration = lazy(() => import("./components/MilestoneCelebration").then(m => ({ default: m.MilestoneCelebration })));
+const ActivationCompleteShareSheet = lazy(() => import("./components/ActivationCompleteShareSheet").then(m => ({ default: m.ActivationCompleteShareSheet })));
+const RatingSheet = lazy(() => import("./components/RatingSheet").then(m => ({ default: m.RatingSheet })));
 // Conditionally rendered by activeSheet === "shareFolder" — lazy
 // keeps its (and its date-picker / preview deps') bytes off cold start.
-const ShareFolderSheet = lazy(() => import("./components/sheets/ShareFolderSheet.jsx").then(m => ({ default: m.ShareFolderSheet })));
+const ShareFolderSheet = lazy(() => import("./components/sheets/ShareFolderSheet").then(m => ({ default: m.ShareFolderSheet })));
 import { shouldShowDay14Prompt } from "./utils/ratingPrompt";
 // Lazy-loaded — Stripe.js + the PaymentElement chunk only ship when a
 // user actually opens the welcome-modal subscribe flow.
-const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet.jsx"));
-const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet.jsx").then(m => ({ default: m.ProUpgradeSheet })));
-const CardiSheet = lazy(() => import("./components/sheets/CardiSheet.jsx").then(m => ({ default: m.CardiSheet })));
-const InboxSheet = lazy(() => import("./components/sheets/InboxSheet.jsx").then(m => ({ default: m.InboxSheet })));
-const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt.jsx"));
-const PasskeyEnrollPrompt = lazy(() => import("./components/PasskeyEnrollPrompt.jsx"));
+const StripePaymentSheet = lazy(() => import("./components/StripePaymentSheet"));
+const ProUpgradeSheet = lazy(() => import("./components/ProUpgradeSheet").then(m => ({ default: m.ProUpgradeSheet })));
+const CardiSheet = lazy(() => import("./components/sheets/CardiSheet").then(m => ({ default: m.CardiSheet })));
+const InboxSheet = lazy(() => import("./components/sheets/InboxSheet").then(m => ({ default: m.InboxSheet })));
+const TrialReminderPrompt = lazy(() => import("./components/TrialReminderPrompt"));
+const PasskeyEnrollPrompt = lazy(() => import("./components/PasskeyEnrollPrompt"));
 // Lazy because it pulls a small confetti renderer + a celebration
 // modal that 99% of users see once or never. No reason to bundle it
 // in the main chunk.
-const SubscriptionSuccess = lazy(() => import("./components/SubscriptionSuccess.jsx").then(m => ({ default: m.SubscriptionSuccess })));
+const SubscriptionSuccess = lazy(() => import("./components/SubscriptionSuccess").then(m => ({ default: m.SubscriptionSuccess })));
 import { useAvatarUrl } from "./hooks/useAvatarUrl";
 import { AvatarContent } from "./components/Avatar";
 import { useCardiganData, isAdmin } from "./hooks/useCardiganData";

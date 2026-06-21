@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useT } from "../../i18n/index.jsx";
+import { useT } from "../../i18n/index";
 
 /* ── SlashCommandMenu ──────────────────────────────────────────────
    Notion-style "/" inserter. Opens at the caret when the user types
