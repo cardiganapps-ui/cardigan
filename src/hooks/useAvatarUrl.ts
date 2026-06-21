@@ -18,10 +18,10 @@ import { resolveAvatar } from "../utils/avatarMeta";
    surfaces stuck on initials because the effect didn't re-run under
    some render timing. */
 
-const urlCache = new Map();
+const urlCache = new Map<string, string>();
 
-async function fetchSignedUrl(path) {
-  if (urlCache.has(path)) return urlCache.get(path);
+async function fetchSignedUrl(path: string): Promise<string | null> {
+  if (urlCache.has(path)) return urlCache.get(path) ?? null;
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) return null;
@@ -36,7 +36,7 @@ async function fetchSignedUrl(path) {
   return url || null;
 }
 
-export function invalidateAvatarUrl(path) {
+export function invalidateAvatarUrl(path: string | null | undefined) {
   if (path) urlCache.delete(path);
 }
 
@@ -46,17 +46,17 @@ export function invalidateAvatarUrl(path) {
    instantly while the actual upload + auth.updateUser run in the
    background. The blob URL stays cached across the upload window;
    browser GC will free it on page unload. */
-export function setAvatarUrl(path, url) {
+export function setAvatarUrl(path: string | null | undefined, url: string | null | undefined) {
   if (path && url) urlCache.set(path, url);
 }
 
-export function useAvatarUrl(avatar) {
+export function useAvatarUrl(avatar: { kind?: string | null; value?: unknown } | null | undefined) {
   const resolved = resolveAvatar(avatar);
   const uploadedPath = resolved.kind === "uploaded" ? resolved.path : null;
-  const [uploadedUrl, setUploadedUrl] = useState(() =>
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(() =>
     uploadedPath ? urlCache.get(uploadedPath) || null : null
   );
-  const lastPathRef = useRef(null);
+  const lastPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!uploadedPath) {

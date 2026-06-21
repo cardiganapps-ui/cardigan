@@ -21,10 +21,13 @@ import { supabase } from "../supabaseClient";
    - Unenrolling a verified factor requires an AAL2 session — Supabase
      enforces this at the API. Handle the resulting error in the UI. */
 
+interface MfaFactor { id: string; friendly_name?: string | null; status?: string }
+interface MfaEnrollment { id: string; qr: string; secret: string; uri: string }
+
 export function useMfa() {
   const [loading, setLoading] = useState(true);
-  const [factors, setFactors] = useState([]);
-  const [enrollment, setEnrollment] = useState(null);
+  const [factors, setFactors] = useState<MfaFactor[]>([]);
+  const [enrollment, setEnrollment] = useState<MfaEnrollment | null>(null);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
@@ -72,7 +75,7 @@ export function useMfa() {
     setEnrollment(null);
   }, [enrollment]);
 
-  const verifyEnroll = useCallback(async (code) => {
+  const verifyEnroll = useCallback(async (code: string) => {
     if (!enrollment?.id) return false;
     setError("");
     const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: enrollment.id });
@@ -88,7 +91,7 @@ export function useMfa() {
     return true;
   }, [enrollment, refresh]);
 
-  const unenroll = useCallback(async (factorId) => {
+  const unenroll = useCallback(async (factorId: string) => {
     setError("");
     const { error: err } = await supabase.auth.mfa.unenroll({ factorId });
     if (err) { setError(err.message || "Unenroll failed"); return false; }

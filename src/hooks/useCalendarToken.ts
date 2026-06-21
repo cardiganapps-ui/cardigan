@@ -18,7 +18,16 @@ import { supabase } from "../supabaseClient";
    `url` is empty and the panel shows the prefix + "rotate to copy"
    affordance. */
 
-let cache = {
+interface CalendarTokenState {
+  hasToken: boolean;
+  tokenPrefix: string | null;
+  createdAt: string | null;
+  lastAccessedAt: string | null;
+  url: string;
+  loaded: boolean;
+}
+
+let cache: CalendarTokenState = {
   hasToken: false,
   tokenPrefix: null,
   createdAt: null,
@@ -26,8 +35,8 @@ let cache = {
   url: "", // populated only by setCalendarToken after a fresh POST
   loaded: false,
 };
-let inFlight = null;
-const subscribers = new Set();
+let inFlight: Promise<void> | null = null;
+const subscribers = new Set<(s: CalendarTokenState) => void>();
 
 function notify() {
   for (const s of subscribers) s(cache);
@@ -75,7 +84,7 @@ async function fetchToken() {
 /** Imperative setter for after enable / rotate. Pass the full POST
     response so the cache picks up the transient URL plus all the
     metadata the next GET would surface. */
-export function setCalendarToken(payload) {
+export function setCalendarToken(payload: { hasToken?: boolean; tokenPrefix?: string | null; createdAt?: string | null; lastAccessedAt?: string | null; url?: string } | null | undefined) {
   if (!payload || !payload.hasToken) {
     cache = { hasToken: false, tokenPrefix: null, createdAt: null, lastAccessedAt: null, url: "", loaded: true };
   } else {
@@ -102,15 +111,15 @@ export function refreshCalendarToken() {
    discovery card (CalendarLinkPromptCard) and the slim Agenda CTA pill.
    They share ONE userId-scoped localStorage flag so dismissing it in
    either place hides it everywhere (it's the same nudge). */
-const calendarPromptDismissKey = (userId) =>
+const calendarPromptDismissKey = (userId: string | null | undefined) =>
   `cardigan.calendarPrompt.dismissed.${userId || "anon"}`;
 
-export function isCalendarPromptDismissed(userId) {
+export function isCalendarPromptDismissed(userId: string | null | undefined) {
   try { return localStorage.getItem(calendarPromptDismissKey(userId)) === "1"; }
   catch { return false; }
 }
 
-export function dismissCalendarPrompt(userId) {
+export function dismissCalendarPrompt(userId: string | null | undefined) {
   try { localStorage.setItem(calendarPromptDismissKey(userId), "1"); }
   catch { /* private mode / quota — non-fatal */ }
 }
@@ -120,7 +129,7 @@ export function useCalendarToken() {
   useEffect(() => {
     subscribers.add(setState);
     if (!cache.loaded && !inFlight) fetchToken();
-    return () => subscribers.delete(setState);
+    return () => { subscribers.delete(setState); };
   }, []);
   return state;
 }
