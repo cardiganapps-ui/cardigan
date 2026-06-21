@@ -1,6 +1,29 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
 import { maybeConvertHeic } from "../utils/heicConvert";
 import { enqueue, registerHandler } from "../lib/mutationQueue";
+
+// ── Domain row types ────────────────────────────────────────────────
+interface DocumentRow {
+  id: string;
+  user_id?: string;
+  patient_id?: string | null;
+  session_id?: string | null;
+  group_id?: string | null;
+  name?: string;
+  file_path?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  kind?: string;
+  created_at?: string;
+  updated_at?: string;
+  _optimistic?: boolean;
+  [key: string]: unknown;
+}
+
+type SetDocuments = Dispatch<SetStateAction<DocumentRow[]>>;
+type SetFlag = Dispatch<SetStateAction<boolean>>;
+type SetError = Dispatch<SetStateAction<string>>;
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -15,7 +38,7 @@ async function authHeaders() {
 // R2 PUT make it a bigger design problem. Users see an explicit
 // "necesitas conexión para subir archivos" error in the upload sheet
 // when offline.
-registerHandler("documents.update", async ({ id, userId, patch }) => {
+registerHandler("documents.update", async ({ id, userId, patch }: { id: string; userId: string; patch: Record<string, unknown> }) => {
   return await supabase.from("documents").update(patch).eq("id", id).eq("user_id", userId).select("updated_at").maybeSingle();
 });
 
@@ -24,7 +47,7 @@ registerHandler("documents.update", async ({ id, userId, patch }) => {
 // (orphan recoverable via audit) so we don't block the DB delete.
 // authHeaders is called inside the handler so the token is fresh at
 // replay time — a stale enqueue-time token would 401.
-registerHandler("documents.delete", async ({ id, userId, filePath }) => {
+registerHandler("documents.delete", async ({ id, userId, filePath }: { id: string; userId: string; filePath?: string | null }) => {
   if (filePath) {
     try {
       const headers = await authHeaders();
@@ -41,9 +64,23 @@ function isOffline() {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
-export function createDocumentActions(userId, documents, setDocuments, setMutating, setMutationError) {
+export function createDocumentActions(
+  userId: string,
+  documents: DocumentRow[],
+  setDocuments: SetDocuments,
+  setMutating: SetFlag,
+  setMutationError: SetError,
+) {
 
-  async function uploadDocument({ patientId, file, sessionId, groupId, name, onProgress, kind }) {
+  async function uploadDocument({ patientId, file, sessionId, groupId, name, onProgress, kind }: {
+    patientId?: string | null;
+    file?: File | null;
+    sessionId?: string | null;
+    groupId?: string | null;
+    name?: string;
+    onProgress?: (fraction: number) => void;
+    kind?: string;
+  }) {
     if (!file) return null;
     // Uploads need network — the presigned URL flow + R2 PUT don't
     // queue cleanly. Surface a clear error rather than silently
@@ -88,7 +125,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     // upload reads as frozen. The onProgress callback is optional —
     // call sites that don't care (background uploads, future
     // automation) just omit it and lose nothing.
-    const ok = await new Promise((resolve) => {
+    const ok = await new Promise<boolean>((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", url, true);
       xhr.setRequestHeader("Content-Type", uploadFile.type || "application/octet-stream");
@@ -133,7 +170,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     return data;
   }
 
-  async function renameDocument(id, name) {
+  async function renameDocument(id: string, name: string) {
     setMutationError("");
     const nowIso = new Date().toISOString();
     setDocuments(prev => prev.map(d => d.id === id ? { ...d, name, updated_at: nowIso } : d));
@@ -161,7 +198,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     return true;
   }
 
-  async function tagDocumentSession(id, sessionId) {
+  async function tagDocumentSession(id: string, sessionId?: string | null) {
     setMutationError("");
     const next = sessionId || null;
     const nowIso = new Date().toISOString();
@@ -190,7 +227,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     return true;
   }
 
-  async function deleteDocument(id) {
+  async function deleteDocument(id: string) {
     setMutationError("");
     const doc = documents.find(d => d.id === id);
     const filePath = doc?.file_path;
@@ -222,7 +259,7 @@ export function createDocumentActions(userId, documents, setDocuments, setMutati
     }
   }
 
-  async function getDocumentUrl(filePath) {
+  async function getDocumentUrl(filePath: string) {
     const headers = await authHeaders();
     const res = await fetch("/api/document-url", {
       method: "POST",
