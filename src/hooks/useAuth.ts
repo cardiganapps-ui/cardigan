@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { User, Provider } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
 import { isNative, isIOS } from "../lib/platform";
 import { signInWithAppleNative } from "../lib/nativeAppleSignIn";
@@ -10,7 +11,7 @@ import { clearInviteToken, getInviteContext } from "../utils/inviteTokenStorage"
 // "Atención: Psicología" — neutral and accurate regardless of the
 // practitioner's gender. Mirrors PROVIDER_LABELS in
 // PatientClaimScreen / PatientHome / IntakeFormSheet.
-const PROFESSION_FIELD_ES = {
+const PROFESSION_FIELD_ES: Record<string, string> = {
   psychologist:  "psicología",
   nutritionist:  "nutrición",
   trainer:       "entrenamiento personal",
@@ -39,7 +40,7 @@ const CAPTCHA_ENFORCED = /captcha/i;
 // captcha-required failure; otherwise null (caller handles normally).
 // The error shape from supabase-js is { message, code? } — match on
 // either the documented `captcha_failed` code or any "captcha" message.
-export function classifyCaptchaError(error) {
+export function classifyCaptchaError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return null;
   const code = (error.code || "").toLowerCase();
   const msg = (error.message || "").toLowerCase();
@@ -82,7 +83,7 @@ const INITIAL_INVITE = (() => {
 })();
 
 export function useAuth() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   // Set true while the user is on the password-recovery flow (clicked
   // a link from a "restablecer contraseña" email). Supabase auto-signs
@@ -151,7 +152,7 @@ export function useAuth() {
   // is undefined and the call goes through unchallenged — matching the
   // current behaviour. Once Supabase's captcha enforcement is on, an
   // unchallenged call returns a 400 and the UI must surface the widget.
-  async function signUp({ email, password, name, captchaToken }) {
+  async function signUp({ email, password, name, captchaToken }: { email: string; password: string; name?: string; captchaToken?: string }) {
     // If a patient-invite token is in storage, the user signed up
     // FROM /i/<token>. Three things change when that's the case:
     //   1. emailRedirectTo points back at /i/<token> so the
@@ -166,7 +167,7 @@ export function useAuth() {
     //   3. full_name still flows through so the email greets the
     //      patient by name.
     let emailRedirectTo;
-    const extraData = {};
+    const extraData: Record<string, string> = {};
     try {
       const ctx = getInviteContext();
       if (ctx?.token && typeof window !== "undefined") {
@@ -228,7 +229,7 @@ export function useAuth() {
     return { data };
   }
 
-  async function signIn({ email, password, captchaToken }) {
+  async function signIn({ email, password, captchaToken }: { email: string; password: string; captchaToken?: string }) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email, password,
       options: { captchaToken },
@@ -258,7 +259,7 @@ export function useAuth() {
      for the prior user (e.g. avatar URLs baked into rendered HTML on a
      stale tab). Easiest, safest path: delete every Cache Storage bucket
      on sign-out. The next page load repopulates from the network. */
-  async function signOut(scope = "local") {
+  async function signOut(scope: string = "local") {
     // Defensive: callers occasionally pass `signOut` directly to an
     // event handler (`onClick={signOut}`) which feeds the synthetic
     // event into `scope`. Supabase rejects anything that isn't one of
@@ -279,7 +280,7 @@ export function useAuth() {
       // caches and let the auth listener mark the user signed-out
       // anyway. Better the user sees the auth screen than a stuck
       // post-MFA page with no escape.
-      console.warn("signOut:", err?.message || err);
+      console.warn("signOut:", (err as Error)?.message || err);
     }
     finally { await wipeBrowserCaches(); }
   }
@@ -301,7 +302,7 @@ export function useAuth() {
   // identity token to supabase.auth.signInWithIdToken. App Store Guideline
   // 4.8 effectively requires this — the OAuth redirect technically works
   // but reviewers consistently flag the second-class UX.
-  async function signInWithProvider(provider) {
+  async function signInWithProvider(provider: Provider) {
     if (provider === "apple" && isNative() && isIOS()) {
       const native = await signInWithAppleNative();
       if (!native.ok) {
@@ -310,7 +311,7 @@ export function useAuth() {
       }
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
-        token: native.identityToken,
+        token: native.identityToken!,
         nonce: native.nonce,
       });
       if (error) return { error: error.message };
@@ -339,7 +340,7 @@ export function useAuth() {
       }
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
-        token: native.idToken,
+        token: native.idToken!,
       });
       if (error) return { error: error.message };
       return {};
@@ -373,8 +374,8 @@ export function useAuth() {
       }
       return {};
     } catch (e) {
-      if (/NotAllowed|AbortError|cancel/i.test(e?.name || e?.message || "")) return {};
-      return { error: e?.message };
+      if (/NotAllowed|AbortError|cancel/i.test((e as Error)?.name || (e as Error)?.message || "")) return {};
+      return { error: (e as Error)?.message };
     }
   }
 
@@ -389,7 +390,7 @@ export function useAuth() {
      The redirect honors any pending invite token so a patient who
      clicks "Entrar con un enlace" after landing on /i/<token> still
      ends up at the claim flow on return. */
-  async function signInWithMagicLink({ email, captchaToken }) {
+  async function signInWithMagicLink({ email, captchaToken }: { email: string; captchaToken?: string }) {
     const { token: inviteToken } = getInviteContext() || {};
     const redirectTo = inviteToken
       ? `${window.location.origin}/i/${inviteToken}`
@@ -409,7 +410,7 @@ export function useAuth() {
     return { sent: true, email };
   }
 
-  async function setNewPassword(password) {
+  async function setNewPassword(password: string) {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return { error: error.message };
     setRecoveryMode(false);
