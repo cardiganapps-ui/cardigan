@@ -35,7 +35,7 @@ const NF_PERCENT = new Intl.NumberFormat("es-MX", {
   maximumFractionDigits: 0,
 });
 
-function safeNumber(n) {
+function safeNumber(n: unknown): number {
   if (typeof n === "number" && Number.isFinite(n)) return n;
   if (typeof n === "string" && n.trim() !== "") {
     const parsed = Number(n);
@@ -44,23 +44,23 @@ function safeNumber(n) {
   return 0;
 }
 
-export function formatMXN(n) {
+export function formatMXN(n: unknown): string {
   return `$${NF_INT.format(safeNumber(n))}`;
 }
 
-export function formatMXNDecimal(n) {
+export function formatMXNDecimal(n: unknown): string {
   return `$${NF_DECIMAL.format(safeNumber(n))}`;
 }
 
-export function formatMXNCents(cents) {
+export function formatMXNCents(cents: unknown): string {
   return formatMXN(safeNumber(cents) / 100);
 }
 
-export function formatNumber(n) {
+export function formatNumber(n: unknown): string {
   return NF_INT.format(safeNumber(n));
 }
 
-export function formatPercent(n) {
+export function formatPercent(n: unknown): string {
   // Caller passes a decimal (0.23) OR a percentage (23). Heuristic:
   // anything between -1 and 1 is treated as a fraction; everything
   // else as a percentage value. Most dashboards in Cardigan pass
@@ -87,7 +87,7 @@ export function formatPercent(n) {
    Storage-format helpers ("D-MMM" — see utils/dates.js::formatShortDate)
    are SEPARATE on purpose: those are persisted in the DB and aren't
    subject to the locale/format pass. This helper only owns display. */
-const DATE_OPTS = {
+const DATE_OPTS: Record<string, Intl.DateTimeFormatOptions> = {
   short:      { day: "numeric", month: "short" },
   shortDay:   { day: "numeric", month: "short", weekday: "short" },
   shortYear:  { day: "numeric", month: "short", year: "numeric" },
@@ -95,7 +95,10 @@ const DATE_OPTS = {
   longTime:   { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" },
 };
 
-export function formatDate(input, variant = "long") {
+export function formatDate(
+  input: Date | string | number | null | undefined,
+  variant: string = "long",
+): string {
   if (input == null || input === "") return "";
   const d = input instanceof Date ? input : new Date(input);
   if (Number.isNaN(d.getTime())) return "";

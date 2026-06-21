@@ -17,7 +17,16 @@
 // then drops the marks so the remaining letters match the unaccented
 // equivalent. Lowercase first because some marks compose differently
 // on uppercase.
-export function normalize(s) {
+/** Minimal note / patient shapes these helpers read. */
+export interface NoteLike {
+  title?: string | null;
+  content?: string | null;
+}
+export interface PatientLike {
+  name?: string | null;
+}
+
+export function normalize(s: unknown): string {
   if (!s) return "";
   // ̀-ͯ is the Unicode "Combining Diacritical Marks" block.
   // After NFD splits "ñ" → "n" + "̃" we strip the mark.
@@ -30,7 +39,7 @@ export function normalize(s) {
 /* Tokenize the user's query into search terms. Splits on whitespace
    and quotes; quoted phrases stay intact (handy for "primera sesión"
    when the title literally has both words side by side). */
-export function tokenize(query) {
+export function tokenize(query: string | null | undefined): string[] {
   if (!query) return [];
   const out = [];
   const re = /"([^"]+)"|(\S+)/g;
@@ -45,7 +54,7 @@ export function tokenize(query) {
 /* Build the searchable haystack for a note. Concatenates title +
    content + linked patient name with separators so cross-field
    matches still work but don't bleed across fields semantically. */
-export function buildHaystack(note, patient) {
+export function buildHaystack(note: NoteLike | null | undefined, patient: PatientLike | null | undefined): string {
   return normalize([
     note?.title || "",
     note?.content || "",
@@ -53,7 +62,7 @@ export function buildHaystack(note, patient) {
   ].join("  ")); //  is just an unlikely separator
 }
 
-export function matches(note, patient, terms) {
+export function matches(note: NoteLike | null | undefined, patient: PatientLike | null | undefined, terms: string[] | null | undefined): boolean {
   if (!terms || terms.length === 0) return true;
   const hay = buildHaystack(note, patient);
   for (const t of terms) {
@@ -67,7 +76,7 @@ export function matches(note, patient, terms) {
    is capped at ~120 chars total so it doesn't break the row layout.
    Returns the original (un-normalized) characters so the user reads
    their own text, not the diacritic-stripped form. */
-export function buildExcerpt(note, terms, maxLen = 120) {
+export function buildExcerpt(note: NoteLike | null | undefined, terms: string[] | null | undefined, maxLen = 120): string {
   const content = note?.content || "";
   if (!content || !terms || terms.length === 0) return "";
   const norm = normalize(content);

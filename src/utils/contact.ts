@@ -12,7 +12,7 @@
    Click-to-email uses plain `mailto:`. */
 
 /** Return the digits-only representation of a phone value. */
-export function phoneDigits(value) {
+export function phoneDigits(value: string | null | undefined): string {
   return (value || "").replace(/\D+/g, "");
 }
 
@@ -24,7 +24,7 @@ export function phoneDigits(value) {
  * - Anything past 10 digits is appended after a space to avoid silently
  *   dropping user input.
  */
-export function formatPhoneMX(value) {
+export function formatPhoneMX(value: string | null | undefined): string {
   const d = phoneDigits(value);
   if (!d) return "";
   if (d.length <= 2) return d;
@@ -34,7 +34,7 @@ export function formatPhoneMX(value) {
 }
 
 /** Return an href for `tel:` links. Prepends +52 for bare 10-digit MX numbers. */
-export function phoneHref(value) {
+export function phoneHref(value: string | null | undefined): string | null {
   const d = phoneDigits(value);
   if (!d) return null;
   // Heuristic: a 10-digit Mexican number with no country code. Add +52.
@@ -47,7 +47,7 @@ export function phoneHref(value) {
 }
 
 /** mailto href, or null when the value isn't an email-ish string. */
-export function emailHref(value) {
+export function emailHref(value: string | null | undefined): string | null {
   const v = (value || "").trim();
   if (!v || !v.includes("@")) return null;
   return `mailto:${v}`;
