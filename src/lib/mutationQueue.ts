@@ -39,23 +39,57 @@ import { kvGet, kvSet, kvAvailable } from "./idbKv";
 
 const QUEUE_KEY = "mutation_queue_v1";
 
+/** A persisted outbound write awaiting drain. */
+export interface QueueEntry {
+  id: string;
+  op: string;
+  args: unknown;
+  /* Free-form bridge object the caller stashes to reconcile replay
+     results back to React state (e.g. tempId → realId). Each caller
+     knows its own shape; typed `any` so replay listeners can read their
+     fields without the queue enumerating every caller's contract. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  optimisticMeta: any;
+  createdAt: number;
+  attempts: number;
+  lastError: string | null;
+}
+
+/** The result shape a handler resolves to — mirrors a Supabase response
+    so the drain loop can reconcile uniformly. */
+export interface HandlerResult {
+  data?: unknown;
+  error?: { message?: string } | null;
+  conflict?: boolean;
+}
+
+/* Handler args are op-specific shapes the queue itself can't know about
+   (each caller registers a typed handler and casts at its own boundary),
+   so the registry param is intentionally `any`. Mirrors the loose-edge
+   pattern used across the data layer. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QueueHandler = (args: any, entry: QueueEntry) => Promise<HandlerResult> | HandlerResult;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ReplayListener = (entry: QueueEntry, result: any) => void;
+type Subscriber = (entries: QueueEntry[]) => void;
+
 // Registry of op handlers. Caller modules register at import time.
-const HANDLERS = new Map();
+const HANDLERS = new Map<string, QueueHandler>();
 
 // Subscribers receive (entries[]). Notified on every mutation +
 // after drain.
-const subscribers = new Set();
+const subscribers = new Set<Subscriber>();
 
 // In-memory mirror of the persisted queue. Source of truth for
 // subscribers (sync reads). Loaded from IDB on init.
-let entries = [];
+let entries: QueueEntry[] = [];
 let ready = false;
-let loadPromise = null;
+let loadPromise: Promise<void> | null = null;
 
 // Listener-side handler for replayed entries. Receives (entry, result)
 // where result is the handler's return value. Used to bridge replay
 // success back to React state (temp-id swap, etc.).
-const replayListeners = new Set();
+const replayListeners = new Set<ReplayListener>();
 
 let monotonicCounter = 0;
 function nextId() {
@@ -91,20 +125,20 @@ function notify() {
   }
 }
 
-export function registerHandler(op, handler) {
+export function registerHandler(op: string, handler: QueueHandler) {
   HANDLERS.set(op, handler);
 }
 
-export function subscribe(fn) {
+export function subscribe(fn: Subscriber) {
   subscribers.add(fn);
   // Immediately deliver current snapshot when subscribing.
   if (ready) fn([...entries]);
-  return () => subscribers.delete(fn);
+  return () => { subscribers.delete(fn); };
 }
 
-export function onReplay(fn) {
+export function onReplay(fn: ReplayListener) {
   replayListeners.add(fn);
-  return () => replayListeners.delete(fn);
+  return () => { replayListeners.delete(fn); };
 }
 
 export async function init() {
@@ -116,9 +150,9 @@ export function getEntries() {
   return [...entries];
 }
 
-export async function enqueue(op, args, optimisticMeta) {
+export async function enqueue(op: string, args: unknown, optimisticMeta?: unknown): Promise<QueueEntry> {
   await load();
-  const entry = {
+  const entry: QueueEntry = {
     id: nextId(),
     op,
     args,
@@ -139,7 +173,7 @@ export async function enqueue(op, args, optimisticMeta) {
   // reconnect-based drain in useMutationQueue still runs.
   try {
     if (typeof navigator !== "undefined" && navigator.serviceWorker && "SyncManager" in (globalThis.window || {})) {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await navigator.serviceWorker.ready as unknown as { sync?: { register: (tag: string) => Promise<void> } };
       if (reg && reg.sync) await reg.sync.register("cardigan-drain-queue");
     }
   } catch { /* permissions / unsupported — fallback path runs anyway */ }
@@ -168,11 +202,11 @@ export async function drain() {
         notify();
         break;
       }
-      let result;
+      let result: HandlerResult;
       try {
         result = await handler(entry.args, entry);
       } catch (err) {
-        result = { error: { message: err?.message || String(err) } };
+        result = { error: { message: (err as Error)?.message || String(err) } };
       }
       if (result && result.error) {
         // Bail and let the next reconnect/focus retry. Keep the entry

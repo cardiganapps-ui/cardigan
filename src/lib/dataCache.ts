@@ -33,7 +33,7 @@ const KEY_PREFIX = "cardigan.cache.v1";
 // a flash of week-old data would be more confusing than helpful.
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-function keyFor(userId) {
+function keyFor(userId: string) {
   return `${KEY_PREFIX}.${userId}`;
 }
 
@@ -46,10 +46,10 @@ function keyFor(userId) {
    The shape mirrors what useCardiganData hydrates into useState:
    { patients, upcomingSessions, payments, notes, documents,
      measurements } plus the metadata fields. */
-export function loadCachedData(userId) {
+export function loadCachedData(userId?: string | null): Record<string, unknown> | null {
   if (!userId) return null;
   if (typeof localStorage === "undefined") return null;
-  let raw;
+  let raw: string | null;
   try { raw = localStorage.getItem(keyFor(userId)); }
   catch { return null; }
   if (!raw) return null;
@@ -66,7 +66,7 @@ export function loadCachedData(userId) {
    in-memory state will flow through the next refresh write. We do
    NOT write per-mutation — that thrashes localStorage for accounts
    with chatty edit flows (rapid status flips, payment edits). */
-export function saveCachedData(userId, data) {
+export function saveCachedData(userId: string | null | undefined, data: Record<string, unknown>) {
   if (!userId) return;
   if (typeof localStorage === "undefined") return;
   const payload = JSON.stringify({
@@ -95,7 +95,7 @@ export function saveCachedData(userId, data) {
 /* Wipe a user's cache slot. Called from the signout flow so a
    shared device doesn't leak the previous user's data into the
    next browser refresh. */
-export function clearCachedData(userId) {
+export function clearCachedData(userId?: string | null) {
   if (!userId) return;
   if (typeof localStorage === "undefined") return;
   try { localStorage.removeItem(keyFor(userId)); }

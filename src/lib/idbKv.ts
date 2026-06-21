@@ -18,15 +18,15 @@ const DB_NAME = "cardigan";
 const STORE = "kv";
 const VERSION = 1;
 
-let dbPromise = null;
+let dbPromise: Promise<IDBDatabase> | null = null;
 
-function openDb() {
+function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   if (typeof indexedDB === "undefined") {
     dbPromise = Promise.reject(new Error("IndexedDB unavailable"));
     return dbPromise;
   }
-  dbPromise = new Promise((resolve, reject) => {
+  dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -40,28 +40,28 @@ function openDb() {
   return dbPromise;
 }
 
-function tx(mode) {
+function tx(mode: IDBTransactionMode): Promise<IDBObjectStore> {
   return openDb().then((db) => db.transaction(STORE, mode).objectStore(STORE));
 }
 
-function asPromise(req) {
-  return new Promise((resolve, reject) => {
+function asPromise<T>(req: IDBRequest<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-export async function kvGet(key) {
+export async function kvGet(key: string) {
   const store = await tx("readonly");
   return asPromise(store.get(key));
 }
 
-export async function kvSet(key, value) {
+export async function kvSet(key: string, value: unknown) {
   const store = await tx("readwrite");
   return asPromise(store.put(value, key));
 }
 
-export async function kvDelete(key) {
+export async function kvDelete(key: string) {
   const store = await tx("readwrite");
   return asPromise(store.delete(key));
 }
