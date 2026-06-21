@@ -4,12 +4,12 @@ import { supabase } from "../supabaseClient";
 // ── Persistence helpers ──────────────────────────────────────────────
 const LS_DONE_PREFIX = "cardigan-tutorial-done-";
 
-function localDoneKey(userId) { return LS_DONE_PREFIX + (userId || "anon"); }
+function localDoneKey(userId: string | null | undefined) { return LS_DONE_PREFIX + (userId || "anon"); }
 
-function readLocalDone(userId) {
+function readLocalDone(userId: string | null | undefined) {
   try { return !!localStorage.getItem(localDoneKey(userId)); } catch { return false; }
 }
-function writeLocalDone(userId) {
+function writeLocalDone(userId: string | null | undefined) {
   try { localStorage.setItem(localDoneKey(userId), "1"); } catch { /* private mode / quota — non-fatal */ }
 }
 
@@ -27,9 +27,11 @@ async function writeMetadataDone() {
 // The carousel owns its own slide index; the hook is a pure on/off +
 // persistence machine. App.jsx reads `state` ("running"/"done") to
 // coordinate the Welcome-to-Pro prompt, so the string values are stable.
-const initial = { state: "idle" };
+interface TutorialState { state: string }
+interface TutorialAction { type: string }
+const initial: TutorialState = { state: "idle" };
 
-function reducer(s, a) {
+function reducer(s: TutorialState, a: TutorialAction): TutorialState {
   switch (a.type) {
     case "showWelcome": return { state: "welcome" };
     case "start":       return { state: "running" };
@@ -44,14 +46,16 @@ function reducer(s, a) {
  * Owns persistence (localStorage + Supabase user metadata) and the
  * first-login gate. The consumer (Tutorial carousel) drives the UI.
  */
-export function useTutorial({ user, demo, readOnly, screen } = {}) {
+interface TutorialUser { id?: string; user_metadata?: { tutorial_completed_at?: string | null } | null }
+
+export function useTutorial({ user, demo, readOnly, screen }: { user?: TutorialUser | null; demo?: boolean; readOnly?: boolean; screen?: string } = {}) {
   const [state, dispatch] = useReducer(reducer, initial);
   const userId = user?.id || null;
   const disabled = !!demo || !!readOnly || !user;
 
   // Track whether we already dispatched the welcome prompt for this user
   // session, so subsequent screen changes don't re-schedule it.
-  const gateCheckedRef = useRef(null);
+  const gateCheckedRef = useRef<string | null>(null);
 
   // ── Initial gate check ──
   //

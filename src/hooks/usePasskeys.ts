@@ -24,10 +24,12 @@ import { passkeysAvailable } from "../config/passkeys";
    callers never trip the experimental API on an unsupported surface
    (e.g. the native WebView). */
 
+interface PasskeyRow { id: string; friendly_name?: string | null; created_at?: string }
+
 export function usePasskeys() {
   const supported = passkeysAvailable();
   const [loading, setLoading] = useState(supported);
-  const [passkeys, setPasskeys] = useState([]);
+  const [passkeys, setPasskeys] = useState<PasskeyRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,10 +45,10 @@ export function usePasskeys() {
       } else {
         // The beta returns the list either directly as the array or under
         // a `passkeys` key depending on SDK minor — tolerate both.
-        setPasskeys(Array.isArray(data) ? data : (data?.passkeys || []));
+        setPasskeys(Array.isArray(data) ? data : ((data as { passkeys?: PasskeyRow[] })?.passkeys || []));
       }
-    } catch (e) {
-      setError(e?.message || "No se pudieron cargar las llaves de acceso");
+    } catch (e: unknown) {
+      setError((e as Error)?.message || "No se pudieron cargar las llaves de acceso");
       setPasskeys([]);
     } finally {
       setLoading(false);
@@ -75,16 +77,17 @@ export function usePasskeys() {
       }
       await refresh();
       return true;
-    } catch (e) {
-      if (/NotAllowed|AbortError|cancel/i.test(e?.name || e?.message || "")) return false;
-      setError(e?.message || "No se pudo crear la llave de acceso");
+    } catch (e: unknown) {
+      const err = e as Error;
+      if (/NotAllowed|AbortError|cancel/i.test(err?.name || err?.message || "")) return false;
+      setError(err?.message || "No se pudo crear la llave de acceso");
       return false;
     } finally {
       setBusy(false);
     }
   }, [supported, busy, refresh]);
 
-  const remove = useCallback(async (passkeyId) => {
+  const remove = useCallback(async (passkeyId: string) => {
     if (!supported || !passkeyId) return false;
     setError("");
     setBusy(true);
@@ -96,8 +99,8 @@ export function usePasskeys() {
       }
       await refresh();
       return true;
-    } catch (e) {
-      setError(e?.message || "No se pudo eliminar la llave de acceso");
+    } catch (e: unknown) {
+      setError((e as Error)?.message || "No se pudo eliminar la llave de acceso");
       return false;
     } finally {
       setBusy(false);
