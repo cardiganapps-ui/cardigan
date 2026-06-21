@@ -8,7 +8,7 @@ export const SESSION_STATUS = Object.freeze({
   COMPLETED: "completed",
   CANCELLED: "cancelled",
   CHARGED:   "charged",
-});
+} as const);
 
 // Patient lifecycle status. 'active' / 'ended' are the regular
 // patient lifecycle. 'potential' / 'discarded' are the interview
@@ -23,7 +23,7 @@ export const PATIENT_STATUS = Object.freeze({
   ENDED:     "ended",
   POTENTIAL: "potential",
   DISCARDED: "discarded",
-});
+} as const);
 
 // Group (Grupos) lifecycle. Groups have no interview/potential lane —
 // they're either active or ended. Mirrors the groups.status CHECK
@@ -31,7 +31,7 @@ export const PATIENT_STATUS = Object.freeze({
 export const GROUP_STATUS = Object.freeze({
   ACTIVE: "active",
   ENDED:  "ended",
-});
+} as const);
 export const GROUP_STATUSES = [GROUP_STATUS.ACTIVE, GROUP_STATUS.ENDED];
 
 // "Regular" patient statuses — those that should appear in the main
@@ -49,7 +49,7 @@ export const REGULAR_PATIENT_STATUSES = Object.freeze([
 // active patients (Home outstanding KPI, Finances Balances, Cardi
 // finance summary, etc.). Centralized so the filter doesn't drift
 // across surfaces.
-export function isPotentialOrDiscarded(p) {
+export function isPotentialOrDiscarded(p: { status?: string | null } | null | undefined): boolean {
   return p?.status === PATIENT_STATUS.POTENTIAL
       || p?.status === PATIENT_STATUS.DISCARDED;
 }
@@ -64,7 +64,7 @@ export const SESSION_TYPE = Object.freeze({
   REGULAR:   "regular",
   TUTOR:     "tutor",
   INTERVIEW: "interview",
-});
+} as const);
 
 // Payment methods. Values double as DB strings and display labels (Spanish-only app).
 export const PAYMENT_METHOD = Object.freeze({
@@ -73,7 +73,7 @@ export const PAYMENT_METHOD = Object.freeze({
   CARD:     "Tarjeta",
   CARDLESS: "Retiro sin Tarjeta",
   OTHER:    "Otro",
-});
+} as const);
 export const PAYMENT_METHODS = [
   PAYMENT_METHOD.TRANSFER,
   PAYMENT_METHOD.CASH,
@@ -99,7 +99,7 @@ export const EXPENSE_CATEGORY = Object.freeze({
   COMISIONES:  "comisiones",
   IMPUESTOS:   "impuestos",
   OTRO:        "otro",
-});
+} as const);
 export const EXPENSE_CATEGORIES = [
   EXPENSE_CATEGORY.CONSULTORIO,
   EXPENSE_CATEGORY.SERVICIOS,
@@ -132,7 +132,7 @@ export const TAX_TREATMENT = Object.freeze({
   DEDUCTIBLE:     "deductible",
   NON_DEDUCTIBLE: "non_deductible",
   PERSONAL:       "personal",
-});
+} as const);
 export const TAX_TREATMENTS = [
   TAX_TREATMENT.DEDUCTIBLE,
   TAX_TREATMENT.NON_DEDUCTIBLE,
@@ -152,7 +152,7 @@ export const PROFESSION = Object.freeze({
   TUTOR:         "tutor",
   MUSIC_TEACHER: "music_teacher",
   TRAINER:       "trainer",
-});
+} as const);
 export const PROFESSIONS = [
   PROFESSION.PSYCHOLOGIST,
   PROFESSION.NUTRITIONIST,
@@ -180,7 +180,7 @@ export const SIGNUP_SOURCE = Object.freeze({
   PODCAST:   "podcast",
   EVENT:     "event",
   OTHER:     "other",
-});
+} as const);
 export const SIGNUP_SOURCES = [
   SIGNUP_SOURCE.INSTAGRAM,
   SIGNUP_SOURCE.FACEBOOK,
@@ -204,26 +204,26 @@ export const SIGNUP_SOURCE_DETAIL_MAX_LEN = 60;
 // music / trainer don't write clinical notes, so the encryption setup
 // prompt is hidden for those — they can still see existing encrypted
 // notes if they previously set it up under a different profession.
-export const CLINICAL_PROFESSIONS = new Set([
+export const CLINICAL_PROFESSIONS = new Set<string>([
   PROFESSION.PSYCHOLOGIST,
   PROFESSION.NUTRITIONIST,
 ]);
 
-export function isClinicalProfession(profession) {
-  return CLINICAL_PROFESSIONS.has(profession);
+export function isClinicalProfession(profession: string | null | undefined): boolean {
+  return CLINICAL_PROFESSIONS.has(profession ?? "");
 }
 
 // Professions whose workflow includes tracking client weight, body
 // measurements, and other anthropometric data over time. Gates the
 // "Mediciones" tab in the expediente, the nutrition/fitness fields on
 // the patient form, and the related demo seed.
-export const ANTHROPOMETRIC_PROFESSIONS = new Set([
+export const ANTHROPOMETRIC_PROFESSIONS = new Set<string>([
   PROFESSION.NUTRITIONIST,
   PROFESSION.TRAINER,
 ]);
 
-export function usesAnthropometrics(profession) {
-  return ANTHROPOMETRIC_PROFESSIONS.has(profession);
+export function usesAnthropometrics(profession: string | null | undefined): boolean {
+  return ANTHROPOMETRIC_PROFESSIONS.has(profession ?? "");
 }
 
 // Scheduling mode — per-patient, NOT per-profession. Profession sets
@@ -240,9 +240,9 @@ export function usesAnthropometrics(profession) {
 export const SCHEDULING_MODE = Object.freeze({
   RECURRING: "recurring",
   EPISODIC:  "episodic",
-});
+} as const);
 
-const SCHEDULING_DEFAULTS = Object.freeze({
+const SCHEDULING_DEFAULTS: Record<string, string> = Object.freeze({
   psychologist:  SCHEDULING_MODE.RECURRING,
   nutritionist:  SCHEDULING_MODE.EPISODIC,
   tutor:         SCHEDULING_MODE.RECURRING,
@@ -250,11 +250,11 @@ const SCHEDULING_DEFAULTS = Object.freeze({
   trainer:       SCHEDULING_MODE.RECURRING,
 });
 
-export function defaultSchedulingMode(profession) {
-  return SCHEDULING_DEFAULTS[profession] ?? SCHEDULING_MODE.RECURRING;
+export function defaultSchedulingMode(profession: string | null | undefined): string {
+  return SCHEDULING_DEFAULTS[profession ?? ""] ?? SCHEDULING_MODE.RECURRING;
 }
 
-export function isEpisodic(patient) {
+export function isEpisodic(patient: { scheduling_mode?: string | null } | null | undefined): boolean {
   return patient?.scheduling_mode === SCHEDULING_MODE.EPISODIC;
 }
 
@@ -269,7 +269,7 @@ export const VISIT_TYPE = Object.freeze({
   INTAKE:      "intake",
   FOLLOWUP:    "followup",
   MAINTENANCE: "maintenance",
-});
+} as const);
 
 export const VISIT_TYPES = [
   VISIT_TYPE.INTAKE,
@@ -277,10 +277,10 @@ export const VISIT_TYPES = [
   VISIT_TYPE.MAINTENANCE,
 ];
 
-export function usesVisitTypes(profession) {
+export function usesVisitTypes(profession: string | null | undefined): boolean {
   // Same gate as Mediciones — the audiences who think clinically in
   // intake / follow-up / maintenance terms.
-  return ANTHROPOMETRIC_PROFESSIONS.has(profession);
+  return ANTHROPOMETRIC_PROFESSIONS.has(profession ?? "");
 }
 
 // Session modality. Values must match the sessions.modality check
@@ -294,9 +294,9 @@ export const MODALITY = Object.freeze({
   VIRTUAL:      "virtual",
   TELEFONICA:   "telefonica",
   A_DOMICILIO:  "a-domicilio",
-});
+} as const);
 
-export const MODALITIES_BY_PROFESSION = Object.freeze({
+export const MODALITIES_BY_PROFESSION: Record<string, readonly string[]> = Object.freeze({
   psychologist:  ["presencial", "virtual", "telefonica"],
   nutritionist:  ["presencial", "a-domicilio", "virtual"],
   tutor:         ["presencial", "a-domicilio", "virtual"],
@@ -307,15 +307,15 @@ export const MODALITIES_BY_PROFESSION = Object.freeze({
 // Maps a raw modality value to the i18n key suffix used by t().
 // Hyphenated values can't be used as object literal keys without quoting,
 // so 'a-domicilio' resolves to 'aDomicilio' in es.js.
-export const MODALITY_I18N_KEY = Object.freeze({
+export const MODALITY_I18N_KEY: Record<string, string> = Object.freeze({
   presencial:    "presencial",
   virtual:       "virtual",
   telefonica:    "telefonica",
   "a-domicilio": "aDomicilio",
 });
 
-export function getModalitiesForProfession(profession) {
-  return MODALITIES_BY_PROFESSION[profession]
+export function getModalitiesForProfession(profession: string | null | undefined): readonly string[] {
+  return MODALITIES_BY_PROFESSION[profession ?? ""]
     ?? MODALITIES_BY_PROFESSION[DEFAULT_PROFESSION];
 }
 
@@ -342,13 +342,13 @@ export const RECURRENCE_FREQUENCY = Object.freeze({
   WEEKLY:   "weekly",
   BIWEEKLY: "biweekly",
   MONTHLY:  "monthly",
-});
+} as const);
 export const RECURRENCE_FREQUENCIES = [
   RECURRENCE_FREQUENCY.WEEKLY,
   RECURRENCE_FREQUENCY.BIWEEKLY,
   RECURRENCE_FREQUENCY.MONTHLY,
 ];
-export const RECURRENCE_STRIDE_DAYS = Object.freeze({
+export const RECURRENCE_STRIDE_DAYS: Record<string, number> = Object.freeze({
   [RECURRENCE_FREQUENCY.WEEKLY]:   7,
   [RECURRENCE_FREQUENCY.BIWEEKLY]: 14,
   [RECURRENCE_FREQUENCY.MONTHLY]:  28,
