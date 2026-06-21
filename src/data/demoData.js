@@ -297,6 +297,7 @@ function weekdayName(date) {
   return JS_TO_DAY[date.getDay()];
 }
 
+/** @param {string} [profession] */
 export function generateDemoData(profession = DEFAULT_PROFESSION) {
   const patientDefs = PATIENT_DEFS_BY_PROFESSION[profession]
     ?? PATIENT_DEFS_BY_PROFESSION[DEFAULT_PROFESSION];

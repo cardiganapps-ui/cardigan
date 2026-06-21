@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
+import type { TouchEvent as ReactTouchEvent } from "react";
+
+interface DragStart {
+  y: number; x: number; dir: number; active: boolean; cancelled: boolean;
+  lastY: number; lastT: number; vy: number; panelH: number;
+}
 
 /* ── Drag-to-dismiss + overscroll bounce for bottom sheets ─────────────
    Two gestures on the sheet panel:
@@ -20,13 +26,13 @@ import { useCallback, useEffect, useRef } from "react";
    otherwise schedule a re-render, which on a phone ends up trailing
    the finger and jittering. Only the close/open transitions touch
    React at all. */
-export function useSheetDrag(onClose, { threshold = 92, isOpen = true } = {}) {
-  const scrollRef = useRef(null);
-  const panelElRef = useRef(null);
-  const startRef = useRef(null);
+export function useSheetDrag(onClose: () => void, { threshold = 92, isOpen = true }: { threshold?: number; isOpen?: boolean } = {}) {
+  const scrollRef = useRef<HTMLElement | null>(null);
+  const panelElRef = useRef<HTMLElement | null>(null);
+  const startRef = useRef<DragStart | null>(null);
   const closingRef = useRef(false);
 
-  const writeTransform = (el, y, transition) => {
+  const writeTransform = (el: HTMLElement | null, y: number, transition?: string) => {
     if (!el) return;
     el.style.transition = transition || "";
     el.style.transform = y === 0 ? "" : `translateY(${y}px)`;
@@ -46,14 +52,14 @@ export function useSheetDrag(onClose, { threshold = 92, isOpen = true } = {}) {
   // iOS-style rubber band: resistance grows with distance so the drag
   // feels "tethered" rather than linear. Tuned to feel close to native
   // UIScrollView overscroll.
-  const rubberBand = (distance, dimension) => {
+  const rubberBand = (distance: number, dimension: number) => {
     const c = 0.5;
     const x = Math.abs(distance);
     const resist = (x * dimension * c) / (dimension + c * x);
     return Math.sign(distance) * resist;
   };
 
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: ReactTouchEvent) => {
     if (closingRef.current) return;
     const t = e.touches[0];
     // Skip drag-to-dismiss when the touch begins on an interactive
@@ -65,11 +71,11 @@ export function useSheetDrag(onClose, { threshold = 92, isOpen = true } = {}) {
     // input becomes glitchy / hard to focus. Sheet dismissal still
     // works from the handle, header, surrounding whitespace, or the
     // overlay click — the surface area for intentional drag is plenty.
-    const target = e.target;
+    const target = e.target as Element | null;
     if (target?.closest && target.closest(
       "input, textarea, select, button, [contenteditable=true], [role='button'], [role='switch'], [role='checkbox'], [role='radio'], a[href]"
     )) {
-      startRef.current = { cancelled: true };
+      startRef.current = { y: 0, x: 0, dir: 0, active: false, cancelled: true, lastY: 0, lastT: 0, vy: 0, panelH: 0 };
       return;
     }
     startRef.current = {
@@ -94,7 +100,7 @@ export function useSheetDrag(onClose, { threshold = 92, isOpen = true } = {}) {
     if (panelElRef.current) panelElRef.current.style.transition = "";
   }, []);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: ReactTouchEvent) => {
     const s = startRef.current;
     if (!s || s.cancelled) return;
     const t = e.touches[0];
@@ -206,7 +212,7 @@ export function useSheetDrag(onClose, { threshold = 92, isOpen = true } = {}) {
   }, [threshold, onClose]);
 
   // Callback ref: capture the panel DOM node for direct mutation.
-  const setPanelEl = useCallback((el) => {
+  const setPanelEl = useCallback((el: HTMLElement | null) => {
     panelElRef.current = el;
   }, []);
 

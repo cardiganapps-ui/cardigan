@@ -8,7 +8,7 @@ import { DEFAULT_PROFESSION } from "../data/constants";
 const noop = async () => false;
 const noopNote = async () => null;
 
-export function useDemoData(profession = DEFAULT_PROFESSION) {
+export function useDemoData(profession: string = DEFAULT_PROFESSION) {
   // Regenerating on every profession change is fine — generateDemoData
   // is pure and runs in <50ms even for 20-patient seed sets, well under
   // a frame. useMemo avoids regen across unrelated re-renders.
@@ -45,7 +45,7 @@ export function useDemoData(profession = DEFAULT_PROFESSION) {
 
   // A few inbox fixtures so the bell + sheet are populated in demo mode.
   const demoNotifications = useMemo(() => {
-    const iso = (mins) => new Date(new Date().getTime() - mins * 60000).toISOString();
+    const iso = (mins: number) => new Date(new Date().getTime() - mins * 60000).toISOString();
     return [
       { id: "demo-n1", kind: "reminder", title: "Recordatorio de sesión", body: "Ana López · 17:00", url: "/#agenda", session_id: null, patient_id: null, read: false, created_at: iso(25) },
       { id: "demo-n2", kind: "reminder", title: "Recordatorio de sesión", body: "Carlos Ruiz · 12:30", url: "/#agenda", session_id: null, patient_id: null, read: false, created_at: iso(180) },
