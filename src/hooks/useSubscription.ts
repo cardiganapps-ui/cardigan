@@ -45,7 +45,14 @@ const TRIAL_DAYS = 30;
 // statuses imply a payment method was already attached at checkout.
 const PAID_STATUSES = new Set(["active", "past_due"]);
 
-function trialEndDate(user, extensionDays = 0) {
+interface SubRow {
+  status?: string;
+  default_payment_method?: string | null;
+  comp_granted?: boolean;
+  trial_extension_days?: number;
+}
+
+function trialEndDate(user: { created_at?: string } | null | undefined, extensionDays = 0): Date | null {
   if (!user?.created_at) return null;
   const created = new Date(user.created_at);
   if (Number.isNaN(created.getTime())) return null;
@@ -53,14 +60,14 @@ function trialEndDate(user, extensionDays = 0) {
   return new Date(created.getTime() + totalDays * 86_400_000);
 }
 
-function daysBetween(now, then) {
+function daysBetween(now: Date, then: Date | null): number | null {
   if (!then) return null;
   return Math.ceil((then.getTime() - now.getTime()) / 86_400_000);
 }
 
-export function useSubscription(user) {
+export function useSubscription(user: { id?: string; created_at?: string } | null | undefined) {
   const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState(null);
+  const [subscription, setSubscription] = useState<SubRow | null>(null);
   // Tick the clock every 5 minutes so an open tab can transition from
   // "trial" to "expired" without a refresh. Not a hot loop — five
   // minutes is plenty of granularity for a daily-ticking trial.
@@ -160,7 +167,7 @@ export function useSubscription(user) {
     // attached. Abandoned payment sheets leave a card-less trialing
     // sub that the webhook records as status=trialing — without this
     // guard, those users would falsely show as Pro.
-    if (status === "trialing" && !!subscription.default_payment_method) return true;
+    if (status === "trialing" && !!subscription?.default_payment_method) return true;
     return false;
   })();
   // Admin-granted complimentary access — set via the AdminPanel.
@@ -201,17 +208,17 @@ export function useSubscription(user) {
   const accessExpired = accessState === "expired";
   const accessLoading = accessState === "loading";
 
-  const startCheckout = useCallback(async ({ referralCode, influencerCode, plan } = {}) => {
+  const startCheckout = useCallback(async ({ referralCode, influencerCode, plan }: { referralCode?: string; influencerCode?: string; plan?: string } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) return { ok: false, error: "Not signed in" };
-    const payload = {};
+    const payload: Record<string, string> = {};
     if (referralCode) payload.referral_code = referralCode;
     // Pull the influencer code from sessionStorage if the caller
     // didn't pass one explicitly. Set by the /c/:code rewrite in
     // App.jsx during initial render. Same pattern as the existing
     // referral code handoff.
-    let ic = influencerCode;
+    let ic: string | null | undefined = influencerCode;
     if (!ic) {
       try { ic = sessionStorage.getItem("cardigan.influencerCodeFromUrl") || null; }
       catch { ic = null; }
@@ -236,7 +243,7 @@ export function useSubscription(user) {
   // Lazy-fetched on first request from the Settings panel — mints the
   // user's referral_code if they don't have one. Cached on the hook
   // state so subsequent reads are zero-roundtrip.
-  const [referralInfo, setReferralInfo] = useState(null);
+  const [referralInfo, setReferralInfo] = useState<{ code: string; rewardsCount: number; pendingCreditCents: number } | null>(null);
   const [referralLoading, setReferralLoading] = useState(false);
   const fetchReferralInfo = useCallback(async () => {
     setReferralLoading(true);
@@ -266,7 +273,7 @@ export function useSubscription(user) {
   // with the invitee's display name (first name + last initial,
   // privacy-conscious). Read from `referral_credits`; nothing here
   // is sensitive vs. just the count we already showed.
-  const [referralLeaderboard, setReferralLeaderboard] = useState(null);
+  const [referralLeaderboard, setReferralLeaderboard] = useState<unknown[] | null>(null);
   const [referralLeaderboardLoading, setReferralLeaderboardLoading] = useState(false);
   const fetchReferralLeaderboard = useCallback(async () => {
     if (!userId) return [];
@@ -294,7 +301,7 @@ export function useSubscription(user) {
   // the caller's user_id). The webhook appends to this table on each
   // `invoice.paid`, so it's the right read model for the Settings →
   // plan history widget. Cached on hook state; fetched on first request.
-  const [invoices, setInvoices] = useState(null);
+  const [invoices, setInvoices] = useState<unknown[] | null>(null);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const fetchInvoices = useCallback(async () => {
     if (!userId) return [];
@@ -331,7 +338,7 @@ export function useSubscription(user) {
   // updated total so the caller can show the right count without a
   // refetch — though we also call refresh() below to keep
   // accessState consistent for any in-flight banners.
-  const grantTrialExtension = useCallback(async (reason) => {
+  const grantTrialExtension = useCallback(async (reason: string) => {
     if (!reason) return { ok: false, error: "missing reason" };
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -366,7 +373,7 @@ export function useSubscription(user) {
       await refresh();
       return { ok: true, status: json.status };
     } catch (err) {
-      return { ok: false, error: err?.message || "Sync failed" };
+      return { ok: false, error: (err as Error)?.message || "Sync failed" };
     }
   }, [refresh]);
 
