@@ -1,4 +1,7 @@
+import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabaseClient";
+
+interface NotificationRow { id: string; read?: boolean | null }
 
 /* In-app notification inbox actions (read / clear). Mirrors the optimistic-
    update + revert pattern of the other domain modules. Rows are created
@@ -9,8 +12,13 @@ import { supabase } from "../supabaseClient";
    Note: distinct from src/hooks/useNotifications.js, which manages PUSH
    subscription state (enable/disable/permission). This is the durable inbox
    data domain. */
-export function createInboxActions(userId, notifications, setNotifications, setMutationError) {
-  const markNotificationRead = async (id) => {
+export function createInboxActions(
+  userId: string,
+  notifications: NotificationRow[],
+  setNotifications: Dispatch<SetStateAction<NotificationRow[]>>,
+  setMutationError: (msg: string) => void,
+) {
+  const markNotificationRead = async (id: string) => {
     const prev = notifications;
     if (!prev.some((n) => n.id === id && !n.read)) return true;
     setNotifications((list) => list.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -44,7 +52,7 @@ export function createInboxActions(userId, notifications, setNotifications, setM
     return true;
   };
 
-  const deleteNotification = async (id) => {
+  const deleteNotification = async (id: string) => {
     const prev = notifications;
     setNotifications((list) => list.filter((n) => n.id !== id));
     const { error } = await supabase

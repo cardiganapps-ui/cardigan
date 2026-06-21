@@ -2,15 +2,18 @@ import { useEffect, useRef } from "react";
 
 const IGNORE_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
-function isTypingTarget(el) {
+function isTypingTarget(el: Element | null): boolean {
   if (!el) return false;
   if (IGNORE_TAGS.has(el.tagName)) return true;
-  if (el.isContentEditable) return true;
+  if ((el as HTMLElement).isContentEditable) return true;
   return false;
 }
 
-function normalizeKey(e) {
-  const parts = [];
+type KeyHandler = (e: KeyboardEvent) => void;
+type ChordMap = Record<string, KeyHandler>;
+
+function normalizeKey(e: KeyboardEvent): string {
+  const parts: string[] = [];
   if (e.metaKey) parts.push("meta");
   if (e.ctrlKey) parts.push("ctrl");
   if (e.altKey)  parts.push("alt");
@@ -32,14 +35,17 @@ function normalizeKey(e) {
  * shortcuts; modifier-chord shortcuts (meta/ctrl) still fire so ⌘K
  * opens the palette from anywhere.
  */
-export function useKeyboardShortcuts(bindings, { enabled = true, leader = null, leaderBindings = null } = {}) {
+export function useKeyboardShortcuts(
+  bindings: ChordMap,
+  { enabled = true, leader = null, leaderBindings = null }: { enabled?: boolean; leader?: string | null; leaderBindings?: ChordMap | null } = {},
+) {
   const bindingsRef = useRef(bindings);
-  const leaderRef = useRef(null);
+  const leaderRef = useRef<{ timeout: ReturnType<typeof setTimeout>; bindings: ChordMap } | null>(null);
   useEffect(() => { bindingsRef.current = bindings; }, [bindings]);
 
   useEffect(() => {
     if (!enabled) return;
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       const typing = isTypingTarget(document.activeElement);
       const chord = normalizeKey(e);
       const hasModifier = e.metaKey || e.ctrlKey;

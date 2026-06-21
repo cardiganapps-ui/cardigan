@@ -18,8 +18,10 @@ import { supabase } from "../supabaseClient";
    for the lifetime of the user — `version` bumps force a re-detect
    (used after a successful patient-invite claim). */
 
-export function useRoleDetection(user, version = 0) {
-  const [state, setState] = useState({ role: "loading", therapists: [], profession: null });
+interface RoleState { role: string; therapists: unknown[]; profession: string | null }
+
+export function useRoleDetection(user: { id?: string } | null | undefined, version = 0) {
+  const [state, setState] = useState<RoleState>({ role: "loading", therapists: [], profession: null });
 
   // Reset to "loading" when the user changes OR the version bumps
   // via the adjust-during-render pattern (setState-in-effect would
