@@ -5,6 +5,7 @@ import { shortDateToISO, isoToShortDate } from "../utils/dates";
 import { IconX, IconTrash, IconCheck, IconRefresh, IconClipboard } from "./Icons";
 import { Avatar } from "./Avatar";
 import { haptic } from "../utils/haptics";
+import { clickableProps } from "../utils/a11y";
 import { useT } from "../i18n/index";
 import { useEscape } from "../hooks/useEscape";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -122,8 +123,8 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
         </div>
         <div style={{ padding:"0 20px 22px" }}>
           <div className="flex items-center gap-3" style={{ marginBottom:20, position:"relative" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"inherit", flex:1, minWidth:0, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
-              onClick={() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { animatedClose(); openExpediente(p); } }}>
+            <div {...clickableProps(() => { const p = patients?.find(p => p.id === session.patient_id); if (p) { animatedClose(); openExpediente(p); } }, { label: session.patient })}
+              style={{ display:"flex", alignItems:"center", gap:"inherit", flex:1, minWidth:0, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
               <Avatar initials={displayInitials}
                 color={isInterview ? "var(--rose)" : isTutor ? "var(--purple)" : getClientColor(session.colorIdx)} size="lg" />
               <div style={{ flex:1, minWidth:0 }}>
@@ -156,8 +157,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
             </button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-            <div role="button" tabIndex={0}
-              onClick={() => { if (onUpdateRate && !editingRate) { setRateInput(String(sessionRate)); setEditingRate(true); } }}
+            <div {...clickableProps(() => { if (!editingRate) { setRateInput(String(sessionRate)); setEditingRate(true); } }, { disabled: !onUpdateRate, label: t("sessions.rate") })}
               className="stat-tile"
               style={{ background:"var(--cream)", cursor: onUpdateRate ? "pointer" : undefined }}>
               <div className="stat-tile-label">{t("sessions.rate")}</div>
@@ -192,7 +192,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
               };
               const tint = TINT[mod] ?? TINT.presencial;
               return (
-                <div role="button" tabIndex={0} onClick={() => onUpdateModality && onUpdateModality(session.id, next)}
+                <div {...clickableProps(() => onUpdateModality(session.id, next), { disabled: !onUpdateModality, label: t("sessions.modality") })}
                   className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
                   style={{ background: tint.bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
                   <div className="stat-tile-label">{t("sessions.modality")}</div>
