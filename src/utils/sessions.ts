@@ -3,12 +3,39 @@
 import { SESSION_STATUS, SESSION_TYPE, PATIENT_STATUS } from "../data/constants";
 import { shortDateToISO, todayISO } from "./dates";
 
+/** Minimal session shape these helpers read (a subset of a sessions row). */
+export interface SessionLike {
+  patient_id?: string | null;
+  session_type?: string | null;
+  initials?: string | null;
+  status?: string | null;
+  date?: string | null;
+  time?: string | null;
+}
+
+/** Minimal patient shape for the tutor-reminder helpers. */
+export interface PatientLike {
+  id: string;
+  status?: string | null;
+  parent?: string | null;
+  tutor_frequency?: number | null;
+}
+
+export interface TutorReminder {
+  patient: PatientLike;
+  lastTutorSession: SessionLike | null;
+  nextTutorSession: SessionLike | null;
+  daysSince: number | null;
+  daysUntilDue: number;
+  frequencyWeeks: number;
+}
+
 /* `session_type === "tutor"` is the source of truth post-migration 023.
    The startsWith("T·") fallback covers the brief deploy window before
    the migration runs, plus any legacy rows that somehow lingered with
    the old prefix. Once we're confident every row in production is
    migrated, the fallback can be retired. */
-export function isTutorSession(s) {
+export function isTutorSession(s: SessionLike | null | undefined): boolean {
   if (!s) return false;
   if (s.session_type === SESSION_TYPE.TUTOR) return true;
   return s.initials?.startsWith("T·") || false;
@@ -19,7 +46,7 @@ export function isTutorSession(s) {
    it never feeds the recurring-slot derivation in computeAutoExtendRows
    — even after the patient is converted to active+recurring, the
    interview row stays one-off and keeps its original rate. */
-export function isInterviewSession(s) {
+export function isInterviewSession(s: SessionLike | null | undefined): boolean {
   return s?.session_type === SESSION_TYPE.INTERVIEW;
 }
 
@@ -27,22 +54,22 @@ export function isInterviewSession(s) {
    023 the `T·` prefix is gone, so this is just `s.initials` for both
    regular and tutor sessions — but we keep the strip so any legacy
    row (or unmigrated test fixture) renders cleanly. */
-export function tutorDisplayInitials(s) {
+export function tutorDisplayInitials(s: SessionLike): string {
   return s.initials?.replace(/^T·/, "") || "T";
 }
 
-export function isCancelledStatus(status) {
+export function isCancelledStatus(status: string | null | undefined): boolean {
   return status === SESSION_STATUS.CANCELLED || status === SESSION_STATUS.CHARGED;
 }
 
-export function statusClass(status) {
+export function statusClass(status: string | null | undefined): string {
   if (status === SESSION_STATUS.SCHEDULED) return "status-scheduled";
   if (status === SESSION_STATUS.COMPLETED) return "status-completed";
   if (status === SESSION_STATUS.CHARGED)   return "status-charged";
   return "status-cancelled";
 }
 
-export function statusLabel(status) {
+export function statusLabel(status: string | null | undefined): string {
   if (status === SESSION_STATUS.CHARGED)   return "Cancelada cobrada";
   if (status === SESSION_STATUS.CANCELLED) return "Cancelada";
   if (status === SESSION_STATUS.COMPLETED) return "Completada";
@@ -50,29 +77,29 @@ export function statusLabel(status) {
 }
 
 /** CSS class suffix for the session-row colored rail. */
-export function railClass(status) {
+export function railClass(status: string | null | undefined): string {
   if (status === SESSION_STATUS.COMPLETED) return "rail-completed";
   if (status === SESSION_STATUS.CANCELLED) return "rail-cancelled";
   if (status === SESSION_STATUS.CHARGED)   return "rail-charged";
   return "rail-scheduled";
 }
 
-export function shortName(name) {
+export function shortName(name: string | null | undefined): string {
   if (!name) return "";
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
-export function sessionDisplayLabel(s) {
+export function sessionDisplayLabel(s: SessionLike): string {
   return `${s.date} · ${s.time} — ${statusLabel(s.status)}`;
 }
 
 /* ── Tutor session reminder helpers ── */
 
 /** Find the most recent completed/charged tutor session for a patient. */
-export function getLastTutorSession(sessions, patientId) {
-  let best = null;
+export function getLastTutorSession(sessions: SessionLike[], patientId: string): SessionLike | null {
+  let best: SessionLike | null = null;
   let bestISO = "";
   for (const s of sessions) {
     if (s.patient_id !== patientId) continue;
@@ -85,9 +112,9 @@ export function getLastTutorSession(sessions, patientId) {
 }
 
 /** Find the soonest scheduled tutor session in the future for a patient. */
-export function getNextTutorSession(sessions, patientId) {
+export function getNextTutorSession(sessions: SessionLike[], patientId: string): SessionLike | null {
   const today = todayISO();
-  let best = null;
+  let best: SessionLike | null = null;
   let bestISO = "";
   for (const s of sessions) {
     if (s.patient_id !== patientId) continue;
@@ -107,11 +134,11 @@ export function getNextTutorSession(sessions, patientId) {
  * the coming week, or have never had a tutor session — only shows reminders
  * 1 week before the ideal date (or already overdue).
  */
-export function getTutorReminders(patients, sessions) {
+export function getTutorReminders(patients: PatientLike[], sessions: SessionLike[]): TutorReminder[] {
   const today = todayISO();
   const todayMs = new Date(today + "T00:00:00").getTime();
   const DAY_MS = 86400000;
-  const reminders = [];
+  const reminders: TutorReminder[] = [];
 
   for (const p of patients) {
     if (p.status !== PATIENT_STATUS.ACTIVE) continue;
