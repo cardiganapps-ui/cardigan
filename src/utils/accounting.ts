@@ -37,6 +37,27 @@
 import { SESSION_STATUS } from "../data/constants";
 import { parseShortDate } from "./dates";
 
+/** Raw DB session fields the balance math reads. `_displayOnly` is the
+    non-enumerable dev marker the guard below trips on. */
+export interface BalanceSession {
+  patient_id?: string | null;
+  status?: string | null;
+  date: string;
+  time?: string | null;
+  rate?: number | null;
+  _displayOnly?: boolean;
+}
+
+/** Patient fields the balance math reads. Generic callers keep all their
+    other fields — these helpers only add amountDue/credit. */
+export interface BalancePatient {
+  id: string;
+  rate?: number | null;
+  paid?: number | null;
+  opening_balance?: number | null;
+  openingBalance?: number | null;
+}
+
 // Dev/test-only guard flag for the "raw sessions only" invariant below.
 // Computed ONCE at module load. Node callers (audit-accounting.mjs,
 // backfill, api/_cardiTools.js) have no `import.meta.env`, so the `&&`
@@ -51,7 +72,7 @@ const DISPLAY_ONLY_GUARD = !!(import.meta.env && import.meta.env.DEV);
 // auto-complete rule in useCardiganData::enrichedSessions — they MUST
 // agree so that a session visible as "completed" in the UI is also
 // the one that appears in amountDue.
-function sessionEndMoment(session) {
+function sessionEndMoment(session: BalanceSession): Date {
   const d = parseShortDate(session.date);
   if (session.time) {
     const [h, m] = session.time.split(":");
@@ -63,7 +84,7 @@ function sessionEndMoment(session) {
 
 // Exported so call sites can reuse the same predicate and so unit
 // tests can pin it explicitly.
-export function sessionCountsTowardBalance(session, now = new Date()) {
+export function sessionCountsTowardBalance(session: BalanceSession | null | undefined, now: Date = new Date()): boolean {
   if (!session) return false;
   if (session.status === SESSION_STATUS.COMPLETED) return true;
   if (session.status === SESSION_STATUS.CHARGED) return true;
@@ -80,8 +101,12 @@ export function sessionCountsTowardBalance(session, now = new Date()) {
  *
  * One pass over rawSessions. O(sessions).
  */
-export function computeConsumedByPatient(rawSessions, rateById, now = new Date()) {
-  const consumedByPatient = new Map();
+export function computeConsumedByPatient(
+  rawSessions: BalanceSession[] | null | undefined,
+  rateById: Map<string, number> | null | undefined,
+  now: Date = new Date(),
+): Map<string, number> {
+  const consumedByPatient = new Map<string, number>();
   if (!rawSessions) return consumedByPatient;
   for (const s of rawSessions) {
     if (!s || !s.patient_id) continue;
@@ -125,7 +150,10 @@ export function computeConsumedByPatient(rawSessions, rateById, now = new Date()
  * O(patients) map on [patients]) can compose them WITHOUT duplicating the
  * formula. enrichPatientsWithBalance below is the one-shot composition.
  */
-export function applyConsumedToPatients(patients, consumedByPatient) {
+export function applyConsumedToPatients<P extends BalancePatient>(
+  patients: P[] | null | undefined,
+  consumedByPatient: Map<string, number> | null | undefined,
+): (P & { amountDue: number; credit: number })[] {
   if (!patients) return [];
   return patients.map(p => {
     const consumed = (consumedByPatient && consumedByPatient.get
@@ -157,9 +185,13 @@ export function applyConsumedToPatients(patients, consumedByPatient) {
  * (enrichPatientsWithBalance is used across the app, the audit, and tests)
  * stay a single call. Behavior is identical to the previous inline form.
  */
-export function enrichPatientsWithBalance(patients, rawSessions, now = new Date()) {
+export function enrichPatientsWithBalance<P extends BalancePatient>(
+  patients: P[] | null | undefined,
+  rawSessions: BalanceSession[] | null | undefined,
+  now: Date = new Date(),
+): (P & { amountDue: number; credit: number })[] {
   if (!patients) return [];
-  const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
+  const rateById = new Map<string, number>(patients.map(p => [p.id, p.rate || 0]));
   const consumedByPatient = computeConsumedByPatient(rawSessions, rateById, now);
   return applyConsumedToPatients(patients, consumedByPatient);
 }
