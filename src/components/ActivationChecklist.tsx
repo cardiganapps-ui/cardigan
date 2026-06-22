@@ -19,7 +19,11 @@ import { IconCheck } from "./Icons";
    state forever, but gets it once and is then left alone). The
    component self-hides once trial expires or the user dismisses. */
 
-export function ActivationChecklist({ userId, accessState, onNavigate }) {
+export function ActivationChecklist({ userId, accessState, onNavigate }: {
+  userId?: string;
+  accessState?: string;
+  onNavigate?: (nav: string) => void;
+}) {
   const { t } = useT();
   const ctx = useCardigan() || {};
   const { patients, sessions, payments, notes, subscription, showSuccess } = ctx;
@@ -63,7 +67,7 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
     catch { /* fall through */ }
     if (claimed) return;
     grantedRef.current = true;
-    let shareTimerId = null;
+    let shareTimerId: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     (async () => {
       const res = await subscription?.grantTrialExtension?.("activation_complete");
@@ -142,7 +146,7 @@ export function ActivationChecklist({ userId, accessState, onNavigate }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {steps.map((step) => {
-          const done = stepStates[step.key];
+          const done = stepStates[step.key as keyof typeof stepStates];
           return (
             <button
               key={step.key}

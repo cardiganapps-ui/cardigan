@@ -34,12 +34,23 @@ const OPEN_THRESHOLD = 100;
 const CLOSE_THRESHOLD = 80;
 const VELOCITY_THRESHOLD = 0.3;
 
-export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeProgress, onReportBug }) {
+interface NavItem { id: string; section?: string; iconId?: string }
+
+export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeProgress = 0, onReportBug }: {
+  screen?: string;
+  setScreen: (id: string) => void;
+  onClose: () => void;
+  user?: { email?: string; user_metadata?: { full_name?: string; avatar?: { kind?: string | null; value?: unknown } | null } } | null;
+  signOut: () => void;
+  open?: boolean;
+  swipeProgress?: number;
+  onReportBug?: () => void;
+}) {
   const { t } = useT();
   const { subscription, groupsEnabled } = useCardigan();
-  const principal = navItems.filter(n => n.section === "principal" && (n.id !== "groups" || groupsEnabled !== false));
-  const cuenta    = navItems.filter(n => n.section === "cuenta");
-  const handleNav = (id) => { setScreen(id); onClose(); };
+  const principal = (navItems as NavItem[]).filter(n => n.section === "principal" && (n.id !== "groups" || groupsEnabled !== false));
+  const cuenta    = (navItems as NavItem[]).filter(n => n.section === "cuenta");
+  const handleNav = (id: string) => { setScreen(id); onClose(); };
   // Tapping the plan card jumps to Settings → Suscripción sheet. The
   // sheet is owned by Settings.jsx, so we navigate to the screen and
   // dispatch a window event the screen listens for. Same pattern would
@@ -69,7 +80,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   const { imageUrl: avatarImageUrl } = useAvatarUrl(user?.user_metadata?.avatar);
 
   /* ── Close swipe: track leftward drag on the open panel ── */
-  const dragRef = useRef(null);
+  const dragRef = useRef<{ x: number; y: number; time: number; active: boolean } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   // Pending swipe-to-close animation timer. Tracked so we can cancel
@@ -77,7 +88,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   // fires. Without this guard, a fast close-then-reopen sequence
   // hits the timer's onClose() ~280ms later and silently closes the
   // drawer the user just opened.
-  const closeTimerRef = useRef(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelCloseTimer = useCallback(() => {
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
@@ -106,13 +117,13 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   // can't fire against a detached component.
   useEffect(() => () => cancelCloseTimer(), [cancelCloseTimer]);
 
-  const onPanelTouchStart = useCallback((e) => {
+  const onPanelTouchStart = useCallback((e: React.TouchEvent) => {
     if (!open) return;
     const t0 = e.touches[0];
     dragRef.current = { x: t0.clientX, y: t0.clientY, time: Date.now(), active: false };
   }, [open]);
 
-  const onPanelTouchMove = useCallback((e) => {
+  const onPanelTouchMove = useCallback((e: React.TouchEvent) => {
     if (!dragRef.current) return;
     const dx = e.touches[0].clientX - dragRef.current.x;
     const dy = e.touches[0].clientY - dragRef.current.y;
@@ -130,7 +141,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     }
   }, []);
 
-  const onPanelTouchEnd = useCallback((e) => {
+  const onPanelTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!dragRef.current?.active) { dragRef.current = null; return; }
     const dx = e.changedTouches[0].clientX - dragRef.current.x;
     const elapsed = Date.now() - dragRef.current.time;
@@ -176,7 +187,7 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
   // independent: -101% is always fully off-screen. Live drag / swipe keep
   // px since they track the finger; getPanelWidth() drives their ratios.
   const PANEL_WIDTH = getPanelWidth();
-  let transformCss, overlayOpacity, transition, visible;
+  let transformCss: string, overlayOpacity: number, transition: string, visible: boolean;
   const CLOSE_SPRING = `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)`;
 
   if (dragging) {
@@ -208,8 +219,8 @@ export function Drawer({ screen, setScreen, onClose, user, signOut, open, swipeP
     visible = false;
   }
 
-  const renderItem = (item) => {
-    const Icon = NAV_ICONS[item.iconId];
+  const renderItem = (item: NavItem) => {
+    const Icon = item.iconId ? NAV_ICONS[item.iconId as keyof typeof NAV_ICONS] : undefined;
     return (
       <button
         key={item.id}

@@ -30,7 +30,7 @@ import { launchUrl } from "../lib/nativeBrowser";
    state 2 — that flow rotates the token (breaks existing subscribers
    by design) and surfaces the new URL once. */
 
-export function CalendarLinkPanel({ readOnly = false }) {
+export function CalendarLinkPanel({ readOnly = false }: { readOnly?: boolean }) {
   const { t } = useT();
   const { showToast } = useCardigan();
   const { hasToken, url } = useCalendarToken();
@@ -38,7 +38,7 @@ export function CalendarLinkPanel({ readOnly = false }) {
   const [copied, setCopied] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
-  const callCalendarToken = async (method) => {
+  const callCalendarToken = async (method: string) => {
     if (busy) return null;
     setBusy(true);
     try {
@@ -180,7 +180,7 @@ export function CalendarLinkPanel({ readOnly = false }) {
   // flow expects the same webcal URL, URL-encoded into the cid param.
   const webcalUrl = url.replace(/^https?:\/\//, "webcal://");
   const googleAddUrl = `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(webcalUrl)}`;
-  const pillStyle = {
+  const pillStyle: React.CSSProperties = {
     flex: 1,
     display: "flex",
     alignItems: "center",
@@ -298,7 +298,7 @@ export function CalendarLinkPanel({ readOnly = false }) {
    Unsubscribing from an .ics feed has to happen in the user's calendar
    app — Cardigan can't reach into iOS / Google / Outlook to revoke a
    subscription, so the best we can do is tell them where to tap. */
-function UnlinkInstructions({ t }) {
+function UnlinkInstructions({ t }: { t: (key: string, vars?: Record<string, unknown>) => string }) {
   return (
     <details style={{ marginTop:14 }}>
       <summary

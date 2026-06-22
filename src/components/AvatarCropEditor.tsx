@@ -35,7 +35,21 @@ import { haptic } from "../utils/haptics";
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
 
-function clampPan(panX, panY, totalScale, imgW, imgH, frame) {
+interface Decoded {
+  url: string;
+  htmlImage: HTMLImageElement;
+  bitmap: ImageBitmap | null;
+  width: number;
+  height: number;
+}
+
+// Transient gesture bookkeeping — the shape differs between a one-finger
+// pan and a two-finger pinch, and it's read/written imperatively through
+// a ref within a single render. Modeled loosely at this internal boundary.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- transient gesture state, shape varies by pan/pinch
+type DragState = any;
+
+function clampPan(panX: number, panY: number, totalScale: number, imgW: number, imgH: number, frame: number) {
   const dispW = imgW * totalScale;
   const dispH = imgH * totalScale;
   // Pan range: image must fully cover the frame at all times.
@@ -47,7 +61,7 @@ function clampPan(panX, panY, totalScale, imgW, imgH, frame) {
   };
 }
 
-function dist(a, b) {
+function dist(a: { clientX: number; clientY: number }, b: { clientX: number; clientY: number }) {
   const dx = a.clientX - b.clientX;
   const dy = a.clientY - b.clientY;
   return Math.hypot(dx, dy);
@@ -61,7 +75,7 @@ function dist(a, b) {
    Returns { url, htmlImage, bitmap, width, height }. The bitmap has
    the rotated dimensions; the htmlImage is rendered with the same
    image-orientation:from-image CSS so the displayed dimensions match. */
-async function decodeFile(file) {
+async function decodeFile(file: File): Promise<Decoded> {
   const url = URL.createObjectURL(file);
   // ImageBitmap path. Honours EXIF and returns a renderable surface
   // for drawImage. createImageBitmap is supported in iOS Safari 15+,
@@ -76,7 +90,7 @@ async function decodeFile(file) {
   // caller can read .width/.height immediately and so init pan math
   // uses the post-decode size (matters when the orientation flips
   // dimensions vs. the file's declared metadata).
-  const htmlImage = await new Promise((resolve, reject) => {
+  const htmlImage = await new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("decode_failed"));
@@ -88,16 +102,22 @@ async function decodeFile(file) {
   return { url, htmlImage, bitmap, width, height };
 }
 
-export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel, onConfirm }) {
+export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel, onConfirm }: {
+  file?: File | null;
+  frameSize?: number;
+  output?: number;
+  onCancel?: () => void;
+  onConfirm: (blob: Blob) => void;
+}) {
   const { t } = useT();
-  const [decoded, setDecoded] = useState(null); // { url, htmlImage, bitmap, width, height } | null
+  const [decoded, setDecoded] = useState<Decoded | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   // Active drag/pinch state. ref-based so every render reads / writes
   // the same gesture context without rerendering.
-  const dragRef = useRef(null);
+  const dragRef = useRef<DragState | null>(null);
 
   // Refs that mirror the latest pan / zoom / decoded values. The
   // native touch + wheel listeners attached in a useEffect below read
@@ -120,7 +140,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   useEffect(() => {
     if (!file) return;
     let alive = true;
-    let result = null;
+    let result: Decoded | null = null;
     setLoadError(false);
     decodeFile(file).then(r => {
       if (!alive) {
@@ -172,7 +192,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   // Single finger = pan. Two fingers = pinch zoom (centered between
   // the two fingers, anchored against the image so the gesture feels
   // like manipulating the photo directly).
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (!decoded) return;
     if (e.touches.length === 1) {
       const t0 = e.touches[0];
@@ -195,7 +215,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   // Touch move handler — must call preventDefault to block the iOS
   // page-zoom hijack on pinch. Reads pan/zoom from refs so the same
   // attached listener stays valid across re-renders.
-  const onTouchMoveNative = useCallback((e) => {
+  const onTouchMoveNative = useCallback((e: TouchEvent) => {
     if (!dragRef.current) return;
     const dec = decodedRef.current;
     if (!dec) return;
@@ -218,7 +238,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
     }
   }, [frameSize]);
 
-  const onTouchEnd = useCallback((e) => {
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
     // If we drop from pinch to one finger, transition into pan from
     // the remaining finger so the gesture feels continuous.
     if (e.touches.length === 1 && dragRef.current?.mode === "pinch") {
@@ -240,7 +260,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   // unmount even if the user navigates away mid-drag. Without the
   // unmount cleanup, a closed component leaves dangling listeners
   // that fire setState on a detached tree.
-  const mouseListenersRef = useRef(null);
+  const mouseListenersRef = useRef<{ onMove: (ev: MouseEvent) => void; onUp: () => void } | null>(null);
   useEffect(() => {
     return () => {
       const l = mouseListenersRef.current;
@@ -251,7 +271,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
       }
     };
   }, []);
-  const onMouseDown = useCallback((e) => {
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
     const dec = decodedRef.current;
     if (!dec || e.button !== 0) return;
     e.preventDefault();
@@ -262,7 +282,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
       panX: panRef.current.x,
       panY: panRef.current.y,
     };
-    const onMove = (ev) => {
+    const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return;
       const d = decodedRef.current;
       if (!d) return;
@@ -287,7 +307,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   }, [frameSize]);
 
   // Wheel zoom — desktop trackpad pinch (ctrl+wheel) + mouse-wheel.
-  const onWheelNative = useCallback((e) => {
+  const onWheelNative = useCallback((e: WheelEvent) => {
     if (!decodedRef.current) return;
     e.preventDefault();
     const factor = Math.exp(-e.deltaY * 0.0015);
@@ -298,7 +318,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
   // synthetic touch/wheel handlers are passive — preventDefault is
   // ignored — so we have to bypass synthetic. Now stable across
   // re-renders thanks to the ref-based handlers above.
-  const frameRef = useRef(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = frameRef.current;
     if (!el) return;
@@ -325,6 +345,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
       canvas.width = output;
       canvas.height = output;
       const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("no_2d_context");
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       // Source rect in original-image coords:
@@ -342,7 +363,7 @@ export function AvatarCropEditor({ file, frameSize = 300, output = 256, onCancel
       // on the browsers Cardigan targets.
       const source = dec.bitmap || dec.htmlImage;
       ctx.drawImage(source, sx, sy, sw, sh, 0, 0, output, output);
-      const blob = await new Promise((resolve, reject) => {
+      const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error("encode_failed"))),
           "image/jpeg",

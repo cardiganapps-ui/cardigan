@@ -26,7 +26,11 @@ import { track } from "../lib/analytics";
      - subscription has a referral code (otherwise we degrade to a
        celebration card without the share buttons). */
 
-export function ActivationCompleteShareSheet({ open, onClose, code }) {
+export function ActivationCompleteShareSheet({ open, onClose, code }: {
+  open?: boolean;
+  onClose?: () => void;
+  code?: string;
+}) {
   const { t } = useT();
   const { setHideFab } = useCardigan();
 
@@ -41,11 +45,11 @@ export function ActivationCompleteShareSheet({ open, onClose, code }) {
     if (open) track("activation_share_opened");
   }, [open]);
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);

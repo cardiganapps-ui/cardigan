@@ -15,7 +15,27 @@ import { useCardigan } from "../context/CardiganContext";
 import { getModalitiesForProfession, MODALITY_I18N_KEY, SESSION_STATUS } from "../data/constants";
 import { formatMXN } from "../utils/format";
 
-export function SessionSheet({ session, patients, notes, onOpenNote, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }) {
+// Session/patient rows come through the loosely-typed Cardigan data
+// layer; model the fields this sheet actually reads.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration bridge for the loosely-typed session row
+type SessionRow = any;
+
+export function SessionSheet({ session, patients, notes, onOpenNote, onClose, onCancelSession, onMarkCompleted, onDelete, onReschedule, onUpdateModality, onUpdateRate, onUpdateCancelReason, mutating, initialMode }: {
+  session?: SessionRow;
+  patients?: Array<{ id?: string; name?: string; rate?: number }>;
+  notes?: Array<{ session_id?: string }>;
+  onOpenNote?: (session: SessionRow) => void;
+  onClose?: () => void;
+  onCancelSession: (session: SessionRow, charge: boolean | null, reason: string) => Promise<boolean> | boolean;
+  onMarkCompleted?: (session: SessionRow, status?: string) => Promise<boolean> | boolean;
+  onDelete: (id: string) => Promise<unknown> | unknown;
+  onReschedule: (id: string, date: string, time: string, duration: number) => Promise<boolean> | boolean;
+  onUpdateModality?: (id: string, modality: string) => void;
+  onUpdateRate?: (id: string, rate: string) => Promise<boolean> | boolean;
+  onUpdateCancelReason?: (id: string, reason: string) => Promise<boolean> | boolean;
+  mutating?: boolean;
+  initialMode?: string;
+}) {
   const { t } = useT();
   const { openExpediente, profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -26,8 +46,8 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
   const { exiting, animatedClose } = useSheetExit(!!session, onClose);
   useEscape(session ? animatedClose : null);
   const panelRef = useFocusTrap(!!session);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}));
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -39,7 +59,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
   // one gesture instead of tap → button.
   const [rescheduling, setRescheduling] = useState(initialMode === "reschedule");
   const [cancelling, setCancelling] = useState(false);
-  const [cancelCharge, setCancelCharge] = useState(null);
+  const [cancelCharge, setCancelCharge] = useState<boolean | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   // Pre-fill the reschedule inputs with the session's current slot when
   // the sheet opens straight into reschedule mode. Otherwise they get
@@ -162,11 +182,11 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
               style={{ background:"var(--cream)", cursor: onUpdateRate ? "pointer" : undefined }}>
               <div className="stat-tile-label">{t("sessions.rate")}</div>
               {editingRate ? (
-                <form onSubmit={async (e) => { e.preventDefault(); const ok = await onUpdateRate(session.id, rateInput); if (ok) setEditingRate(false); }}
+                <form onSubmit={async (e) => { e.preventDefault(); const ok = await onUpdateRate?.(session.id, rateInput); if (ok) setEditingRate(false); }}
                   style={{ display:"flex", alignItems:"center", gap:4 }}>
                   <span style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, color:"var(--charcoal)" }}>$</span>
                   <input type="number" className="input" value={rateInput} onChange={e => setRateInput(e.target.value)}
-                    autoFocus onBlur={async () => { const ok = await onUpdateRate(session.id, rateInput); if (ok) setEditingRate(false); else setEditingRate(false); }}
+                    autoFocus onBlur={async () => { const ok = await onUpdateRate?.(session.id, rateInput); if (ok) setEditingRate(false); else setEditingRate(false); }}
                     onClick={e => e.stopPropagation()}
                     style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:700, padding:"0 4px", height:22, width:"100%", minHeight:"unset" }} />
                 </form>
@@ -184,7 +204,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
               // Per-modality colour tints. a-domicilio reuses --amber to
               // suggest "going somewhere" without colliding with the
               // purple used for tutor-of-minor sessions.
-              const TINT = {
+              const TINT: Record<string, { bg: string; fg: string }> = {
                 presencial:    { bg: "var(--cream)",      fg: "var(--charcoal)" },
                 virtual:       { bg: "var(--blue-bg)",    fg: "var(--blue)" },
                 telefonica:    { bg: "var(--green-bg)",   fg: "var(--green)" },
@@ -192,7 +212,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
               };
               const tint = TINT[mod] ?? TINT.presencial;
               return (
-                <div {...clickableProps(() => onUpdateModality(session.id, next), { disabled: !onUpdateModality, label: t("sessions.modality") })}
+                <div {...clickableProps(() => onUpdateModality?.(session.id, next), { disabled: !onUpdateModality, label: t("sessions.modality") })}
                   className={`stat-tile ${onUpdateModality ? "modality-toggle" : ""}`}
                   style={{ background: tint.bg, cursor: onUpdateModality ? "pointer" : undefined, transition:"background 0.5s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
                   <div className="stat-tile-label">{t("sessions.modality")}</div>
@@ -231,7 +251,7 @@ export function SessionSheet({ session, patients, notes, onOpenNote, onClose, on
                     <button className="btn" style={{ flex:1, height:36, fontSize:12, background:"var(--amber)", color:"var(--white)", boxShadow:"none", fontWeight:700 }}
                       disabled={mutating}
                       onClick={async () => {
-                        const ok = await onUpdateCancelReason(session.id, reasonInput);
+                        const ok = await onUpdateCancelReason?.(session.id, reasonInput);
                         if (ok) setEditingReason(false);
                       }}>{mutating ? t("saving") : t("save")}</button>
                   </div>

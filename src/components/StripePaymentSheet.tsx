@@ -38,6 +38,12 @@ const PAYMENT_ELEMENT_NODE_ID = "cardigan-payment-element";
 // rendered the card field as dark-charcoal text + light-tan borders on a
 // white box, sitting inside the dark sheet panel — invisible labels and
 // a jarring white block.
+/* Stripe.js is loaded at runtime (see src/lib/stripe.ts) without the
+   @stripe/stripe-js types, so the instance + Elements objects are
+   modeled loosely here. Documented escape hatch at the SDK boundary. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Stripe.js runtime objects; types not bundled
+type StripeLike = any;
+
 function isDarkTheme() {
   const t = document.documentElement.getAttribute("data-theme");
   if (t === "dark") return true;
@@ -48,7 +54,7 @@ function isDarkTheme() {
 
 const TEAL = "#5B9BAF";
 
-function buildElementsAppearance(isDark) {
+function buildElementsAppearance(isDark: boolean) {
   if (isDark) {
     const border = "rgba(255,255,255,0.14)";
     return {
@@ -111,9 +117,16 @@ export default function StripePaymentSheet({
   referralCode,
   daysLeftInTrial,
   plan = "monthly",
+}: {
+  open?: boolean;
+  onClose?: () => void;
+  onSuccess?: () => void;
+  referralCode?: string;
+  daysLeftInTrial?: number;
+  plan?: string;
 }) {
   const { t } = useT();
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   // Stage state machine — each transitions to the next on success and
   // can fall back to "error" on any failure.
   //   loading → ready → submitting → done
@@ -122,13 +135,13 @@ export default function StripePaymentSheet({
   const [stage, setStage] = useState("loading");
   const [error, setError] = useState("");
 
-  const stripeRef = useRef(null);
-  const elementsRef = useRef(null);
-  const intentTypeRef = useRef(null);
-  const clientSecretRef = useRef(null);
+  const stripeRef = useRef<StripeLike>(null);
+  const elementsRef = useRef<StripeLike>(null);
+  const intentTypeRef = useRef<string | null>(null);
+  const clientSecretRef = useRef<string | null>(null);
   const mountedRef = useRef(false);
   const elementMountedRef = useRef(false);
-  const cardEl = useRef(null);
+  const cardEl = useRef<HTMLDivElement>(null);
 
   // Track last "open" id so we can ignore late async results from a
   // previous open cycle (user closes + reopens within 2s).
@@ -152,7 +165,7 @@ export default function StripePaymentSheet({
     (async () => {
       try {
         const [stripe, subResp] = await Promise.all([
-          getStripe(),
+          getStripe() as Promise<StripeLike>,
           fetchCreateSubscription(referralCode, plan),
         ]);
         if (!mountedRef.current || openIdRef.current !== myOpenId) return;
@@ -193,7 +206,7 @@ export default function StripePaymentSheet({
         });
       } catch (err) {
         if (!mountedRef.current || openIdRef.current !== myOpenId) return;
-        setError(err?.message || t("subscription.errorGeneric"));
+        setError((err as Error)?.message || t("subscription.errorGeneric"));
         setStage("error");
       }
     })();
@@ -208,7 +221,7 @@ export default function StripePaymentSheet({
     };
   }, [open, referralCode, plan, t]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
     if (stage !== "ready") return;
     const stripe = stripeRef.current;
@@ -461,7 +474,7 @@ export default function StripePaymentSheet({
   );
 }
 
-async function fetchCreateSubscription(referralCode, plan) {
+async function fetchCreateSubscription(referralCode?: string, plan?: string) {
   // Pull the JWT from the Supabase session at call time — keeps this
   // helper decoupled from the broader supabase singleton import path.
   const { supabase } = await import("../supabaseClient");
@@ -469,7 +482,7 @@ async function fetchCreateSubscription(referralCode, plan) {
   const token = session?.access_token;
   if (!token) return { ok: false, error: "Not signed in" };
 
-  const payload = {};
+  const payload: Record<string, string> = {};
   if (referralCode) payload.referral_code = referralCode;
   if (plan === "annual") payload.plan = "annual";
   const res = await fetch("/api/stripe-create-subscription", {

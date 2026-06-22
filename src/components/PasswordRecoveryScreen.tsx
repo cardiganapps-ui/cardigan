@@ -28,7 +28,11 @@ import { LogoIcon } from "./LogoMark";
    Captcha is intentionally NOT mounted here. updateUser isn't on
    Supabase's captcha-required endpoint list — the recovery token
    already proves authenticity. */
-export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" }) {
+export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" }: {
+  onSubmit: (password: string) => Promise<{ error?: string } | void> | { error?: string } | void;
+  onSignOut?: () => void;
+  mode?: string;
+}) {
   const { t } = useT();
   const [phase, setPhase] = useState("checking");
   const [factorId, setFactorId] = useState("");
@@ -38,7 +42,7 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" 
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const codeInputRef = useRef(null);
+  const codeInputRef = useRef<HTMLInputElement>(null);
 
   // Bootstrap: figure out whether MFA challenge is needed. Run once.
   // No deps — onResolved-style callbacks would reintroduce the race.
@@ -77,7 +81,7 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" 
     if (phase === "mfa") codeInputRef.current?.focus();
   }, [phase]);
 
-  const submitMfa = async (e) => {
+  const submitMfa = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
     if (busy) return;
     if (!/^\d{6}$/.test(code)) { setError(t("mfa.codeFormat")); return; }
@@ -92,7 +96,7 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" 
     setPhase("password");
   };
 
-  const submitPassword = async (e) => {
+  const submitPassword = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
     setError("");
     if (!password || password.length < 8) { setError(t("recovery.errorTooShort")); return; }
@@ -182,7 +186,7 @@ export function PasswordRecoveryScreen({ onSubmit, onSignOut, mode = "recovery" 
   );
 }
 
-function Shell({ title, body, children }) {
+function Shell({ title, body, children }: { title?: React.ReactNode; body?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="shell" style={{ justifyContent:"center", alignItems:"center", padding:20 }}>
       <div style={{ maxWidth:380, width:"100%", background:"var(--white)", borderRadius:"var(--radius-lg, 16px)", padding:24, boxShadow:"var(--shadow-sm)" }}>

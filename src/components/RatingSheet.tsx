@@ -31,14 +31,19 @@ import { haptic } from "../utils/haptics";
 
 const STARS = [1, 2, 3, 4, 5];
 
-function dismissKey(promptKind, userId) {
+function dismissKey(promptKind: string, userId?: string) {
   return `cardigan.rating.${promptKind}.dismissed.${userId || "anon"}`;
 }
-function submittedKey(promptKind, userId) {
+function submittedKey(promptKind: string, userId?: string) {
   return `cardigan.rating.${promptKind}.submitted.${userId || "anon"}`;
 }
 
-export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) {
+export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }: {
+  open?: boolean;
+  onClose?: () => void;
+  promptKind?: string;
+  userId?: string;
+}) {
   const { t } = useT();
   const { showToast, setHideFab } = useCardigan();
   const [stars, setStars] = useState(0);
@@ -65,11 +70,11 @@ export function RatingSheet({ open, onClose, promptKind = "day14_v1", userId }) 
     return () => setHideFab?.(false);
   }, [open, setHideFab]);
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);

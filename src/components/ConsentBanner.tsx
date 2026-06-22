@@ -21,7 +21,10 @@ const LS_KEY = "cardigan.consent.v";
 
    Only renders when `session` is truthy — we don't need consent before
    sign-in. Returns null once dismissed for the active version. */
-export default function ConsentBanner({ user, onAccepted }) {
+export default function ConsentBanner({ user, onAccepted }: {
+  user?: { id?: string } | null;
+  onAccepted?: () => void;
+}) {
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState("");
   const [visible, setVisible] = useState(false);
@@ -114,7 +117,7 @@ export default function ConsentBanner({ user, onAccepted }) {
       setVisible(false);
       onAccepted?.();
     } catch (err) {
-      setError(err.message || "Intenta de nuevo.");
+      setError((err as Error).message || "Intenta de nuevo.");
       setAccepting(false);
     }
   };

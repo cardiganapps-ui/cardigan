@@ -32,7 +32,7 @@ const PROVIDER_VIS = {
   google_drive: {
     tint: "#1A73E81F", // 12% blue
     fg: "#1A73E8",
-    Glyph: ({ size = 18 }) => (
+    Glyph: ({ size = 18 }: { size?: number }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.828 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214Zm2.259 12.225L7.63 18.713l-1.88 3.275 5.514.01c3.034.005 7.27.005 9.42 0l3.91-.011-1.83-3.262c-1.009-1.793-1.86-3.276-1.89-3.296-.026-.025-3.244-.04-7.148-.034l-7.104.008z"/>
       </svg>
@@ -41,7 +41,7 @@ const PROVIDER_VIS = {
   onedrive: {
     tint: "#0078D41F",
     fg: "#0078D4",
-    Glyph: ({ size = 18 }) => (
+    Glyph: ({ size = 18 }: { size?: number }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12.2 7.999a4.99 4.99 0 0 0-4.792 3.578 3.997 3.997 0 0 0-3.408 3.946 3.998 3.998 0 0 0 3.998 3.998h11.999a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-2.93-3.45A5 5 0 0 0 17.2 8.5a5 5 0 0 0-1.65.282A4.989 4.989 0 0 0 12.2 8z"/>
       </svg>
@@ -50,7 +50,7 @@ const PROVIDER_VIS = {
   dropbox: {
     tint: "#0061FF1F",
     fg: "#0061FF",
-    Glyph: ({ size = 18 }) => (
+    Glyph: ({ size = 18 }: { size?: number }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M6 2 0 5.928l6 3.928 6-3.928zm12 0-6 3.928 6 3.928 6-3.928zM0 13.785l6 3.929 6-3.929-6-3.928zm18-3.928-6 3.928 6 3.929 6-3.929zM6 19.071l6 3.929 6-3.929-6-3.928z"/>
       </svg>
@@ -59,7 +59,7 @@ const PROVIDER_VIS = {
   icloud: {
     tint: "#9999991F",
     fg: "#666666",
-    Glyph: ({ size = 18 }) => (
+    Glyph: ({ size = 18 }: { size?: number }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M13.762 4.29a6.51 6.51 0 0 0-5.669 3.332 3.571 3.571 0 0 0-1.558-.36 3.571 3.571 0 0 0-3.516 3A4.918 4.918 0 0 0 0 14.796a4.918 4.918 0 0 0 4.92 4.914 4.93 4.93 0 0 0 .617-.045h14.42c2.305-.272 4.041-2.258 4.043-4.589v-.009a4.594 4.594 0 0 0-3.727-4.508 6.51 6.51 0 0 0-6.511-6.27z"/>
       </svg>
@@ -68,12 +68,12 @@ const PROVIDER_VIS = {
   generic: {
     tint: "var(--teal-pale)",
     fg: "var(--teal-dark)",
-    Glyph: ({ size = 18 }) => <IconDocument size={size} />,
+    Glyph: ({ size = 18 }: { size?: number }) => <IconDocument size={size} />,
   },
 };
 
-function ProviderIcon({ provider, size = 40 }) {
-  const vis = PROVIDER_VIS[provider] || PROVIDER_VIS.generic;
+function ProviderIcon({ provider, size = 40 }: { provider?: string | null; size?: number }) {
+  const vis = (provider && PROVIDER_VIS[provider as keyof typeof PROVIDER_VIS]) || PROVIDER_VIS.generic;
   const { Glyph, tint, fg } = vis;
   return (
     <div
@@ -98,7 +98,7 @@ function ProviderIcon({ provider, size = 40 }) {
 // External-link arrow glyph — sits on the right of a linked card to
 // reinforce "this leaves the app." Kept inline so the visual doesn't
 // rely on ChevronRight which already means "navigate within app."
-function ExternalArrow({ size = 14 }) {
+function ExternalArrow({ size = 14 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -117,7 +117,7 @@ function ExternalArrow({ size = 14 }) {
   );
 }
 
-function KebabIcon({ size = 16 }) {
+function KebabIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="5" r="1.6" fill="currentColor" />
@@ -131,21 +131,25 @@ function KebabIcon({ size = 16 }) {
 // folders see the small affordance just once across all patients,
 // and a single dismiss declutters everywhere. Scoped per userId so
 // admin "view as user" doesn't leak preferences across accounts.
-function minimizedKey(userId) {
+function minimizedKey(userId?: string) {
   return `cardigan.folderCard.minimized.${userId || "anon"}`;
 }
-function isMinimized(userId) {
+function isMinimized(userId?: string) {
   try { return localStorage.getItem(minimizedKey(userId)) === "1"; }
   catch { return false; }
 }
-function setMinimizedFlag(userId, value) {
+function setMinimizedFlag(userId: string | undefined, value: boolean) {
   try {
     if (value) localStorage.setItem(minimizedKey(userId), "1");
     else localStorage.removeItem(minimizedKey(userId));
   } catch { /* private mode — fine */ }
 }
 
-export function ExternalFolderCard({ url, onSave, readOnly = false }) {
+export function ExternalFolderCard({ url, onSave, readOnly = false }: {
+  url?: string | null;
+  onSave?: (url: string | null) => Promise<boolean | void> | boolean | void;
+  readOnly?: boolean;
+}) {
   const { t } = useT();
   const { showToast, user } = useCardigan();
   const ctxMenu = useContextMenu();
@@ -176,8 +180,8 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
   // Remove confirm dialog visibility.
   const [removeOpen, setRemoveOpen] = useState(false);
 
-  const inputRef = useRef(null);
-  const editFormRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
 
   const parsed = parseFolderLink(url || "");
   const linked = parsed.valid;
@@ -268,8 +272,8 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
   // user's typing.
   useEffect(() => {
     if (!editing) return;
-    const handler = (e) => {
-      if (editFormRef.current?.contains(e.target)) return;
+    const handler = (e: MouseEvent) => {
+      if (editFormRef.current?.contains(e.target as Node)) return;
       // Don't trigger cancel-on-outside when a dialog is up — the
       // dialog overlays sit outside the form ref but are part of
       // the same logical interaction.
@@ -332,7 +336,7 @@ export function ExternalFolderCard({ url, onSave, readOnly = false }) {
     }
   }
 
-  const openKebab = (e) => {
+  const openKebab = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const items = [

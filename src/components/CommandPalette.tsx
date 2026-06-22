@@ -43,7 +43,27 @@ const ACTION_COMMANDS = [
   { id: "action:document", group: "Crear",     labelKey: "fab.document", fabKey: "document", Icon: IconDocument },
 ];
 
-function score(query, text) {
+// Note/patient rows arrive through the loosely-typed Cardigan data
+// layer (useCardigan returns Record<string, any>); model them as Row
+// at the callback boundary rather than threading a precise shape.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration bridge for loosely-typed data rows
+type Row = any;
+
+interface Command {
+  id: string;
+  group: string;
+  label: string;
+  sublabel?: string | null;
+  Icon?: React.ComponentType<{ size?: number }>;
+  pinned?: boolean;
+  run: () => void;
+}
+
+type GroupedRow =
+  | { type: "header"; label: string }
+  | { type: "item"; cmd: Command; idx: number };
+
+function score(query: string, text: string) {
   if (!query) return 1;
   const q = query.toLowerCase();
   const t = (text || "").toLowerCase();
@@ -55,7 +75,12 @@ function score(query, text) {
   return 0;
 }
 
-export default function CommandPalette({ open, onClose, onViewAsUser, currentAdminId }) {
+export default function CommandPalette({ open, onClose, onViewAsUser, currentAdminId }: {
+  open?: boolean;
+  onClose: () => void;
+  onViewAsUser?: (id: string) => void;
+  currentAdminId?: string;
+}) {
   const { t } = useT();
   // Keyboard hints (ESC chip, ↑↓ tips, mod-key shortcuts, footer) only
   // mean something on a device with an actual keyboard. iPhone users
@@ -71,12 +96,13 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   const adminAvailable = isAdminUser && !isNative();
   // Admin account list — lazy-fetched the first time the palette opens
   // for an admin so non-admin sessions never make this round-trip.
-  const [adminAccounts, setAdminAccounts] = useState([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- admin account rows from the loosely-typed fetchAllAccounts
+  const [adminAccounts, setAdminAccounts] = useState<any[]>([]);
   const adminFetchedRef = useRef(false);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
-  const inputRef = useRef(null);
-  const listRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEscape(open ? onClose : null);
 
@@ -133,7 +159,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   //     500-row cap useCardiganData loads into memory, and gets
   //     server-side ts_rank for free.
   // Debounced 200ms so a fast typist doesn't issue an RPC per keystroke.
-  const [rpcNoteHits, setRpcNoteHits] = useState([]);
+  const [rpcNoteHits, setRpcNoteHits] = useState<string[]>([]);
   const encryptionEnabled = !!noteCrypto?.isEnabled;
   // RPC search effect. When the query is empty / palette closed /
   // user is on the encrypted lane, the in-memory filter below covers
@@ -161,23 +187,23 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
     const q = (query || "").trim();
     if (!q) return [];
     const terms = tokenize(q);
-    const inMemory = (notes || []).filter(n => {
-      const patient = n.patient_id ? (patients || []).find(p => p.id === n.patient_id) : null;
+    const inMemory = (notes || []).filter((n: Row) => {
+      const patient = n.patient_id ? (patients || []).find((p: Row) => p.id === n.patient_id) : null;
       return matches(n, patient, terms);
     });
     if (encryptionEnabled) return inMemory.slice(0, 8);
-    const inMemIds = new Set(inMemory.map(n => n.id));
+    const inMemIds = new Set(inMemory.map((n: Row) => n.id));
     const rpcOnly = rpcNoteHits
       .filter(id => !inMemIds.has(id))
-      .map(id => (notes || []).find(n => n.id === id))
+      .map(id => (notes || []).find((n: Row) => n.id === id))
       .filter(Boolean);
     return [...inMemory, ...rpcOnly].slice(0, 8);
   }, [notes, patients, query, encryptionEnabled, rpcNoteHits]);
 
-  const commands = useMemo(() => {
+  const commands = useMemo<Command[]>(() => {
     const navCmds = NAV_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { navigate(c.screen); onClose(); } }));
     const actionCmds = ACTION_COMMANDS.map((c) => ({ ...c, label: t(c.labelKey), run: () => { requestFabAction?.(c.fabKey); onClose(); } }));
-    const patientCmds = (patients || []).map((p) => ({
+    const patientCmds = (patients || []).map((p: Row) => ({
       id: `patient:${p.id}`,
       group: "Pacientes",
       label: p.name,
@@ -189,8 +215,8 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
     // doesn't re-score the label (which is just the note title + a
     // body excerpt, not a deterministic match string).
     const queryTerms = tokenize((query || "").trim());
-    const noteCmds = noteHits.map((n) => {
-      const patient = n.patient_id ? (patients || []).find(p => p.id === n.patient_id) : null;
+    const noteCmds = noteHits.map((n: Row) => {
+      const patient = n.patient_id ? (patients || []).find((p: Row) => p.id === n.patient_id) : null;
       const title = (n.title || "").trim() || (patient ? `Nota · ${patient.name}` : "Nota sin título");
       const excerpt = buildExcerpt(n, queryTerms, 80);
       return {
@@ -207,7 +233,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
       ? ADMIN_COMMANDS.map((c) => ({ ...c, run: () => { navigate(c.target); onClose(); } }))
       : [];
     const adminAccountCmds = adminAvailable
-      ? adminAccounts.map((a) => ({
+      ? adminAccounts.map((a: Row) => ({
           id: `adminUser:${a.userId}`,
           group: "Admin · usuarios",
           label: a.fullName ? `${a.fullName} · ${a.email || ""}` : (a.email || a.userId.slice(0, 8) + "…"),
@@ -268,7 +294,7 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
 
   if (!open) return null;
 
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIdx((i) => Math.min(i + 1, filtered.length - 1));
@@ -283,8 +309,8 @@ export default function CommandPalette({ open, onClose, onViewAsUser, currentAdm
   };
 
   // Group consecutive items with the same group label so we can render headers.
-  const grouped = [];
-  let lastGroup = null;
+  const grouped: GroupedRow[] = [];
+  let lastGroup: string | null = null;
   filtered.forEach((cmd, idx) => {
     if (cmd.group !== lastGroup) {
       grouped.push({ type: "header", label: cmd.group });

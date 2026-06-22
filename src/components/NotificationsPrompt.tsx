@@ -20,18 +20,18 @@ import { track } from "../lib/analytics";
 const DISMISS_KEY_INITIAL      = "cardigan.notifications.promptDismissed";
 const DISMISS_KEY_POST_PATIENT = "cardigan.notifications.promptDismissed.postPatient";
 
-function dismissKey(variant) {
+function dismissKey(variant: string) {
   return variant === "post_patient" ? DISMISS_KEY_POST_PATIENT : DISMISS_KEY_INITIAL;
 }
-function isDismissed(variant) {
+function isDismissed(variant: string) {
   try { return localStorage.getItem(dismissKey(variant)) === "1"; }
   catch { return false; }
 }
-function markDismissed(variant) {
+function markDismissed(variant: string) {
   try { localStorage.setItem(dismissKey(variant), "1"); } catch { /* ignore */ }
 }
 
-export function NotificationsPrompt({ variant = "initial" } = {}) {
+export function NotificationsPrompt({ variant = "initial" }: { variant?: string } = {}) {
   const { t } = useT();
   const { notifications, showToast, readOnly } = useCardigan();
   const [hidden, setHidden] = useState(() => isDismissed(variant));
@@ -57,7 +57,7 @@ export function NotificationsPrompt({ variant = "initial" } = {}) {
   // versions could leak update queues.
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
-  const safeSet = useCallback((fn) => {
+  const safeSet = useCallback((fn: () => void) => {
     if (mountedRef.current) fn();
   }, []);
 
