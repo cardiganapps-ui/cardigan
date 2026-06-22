@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
@@ -40,7 +40,15 @@ import { PatientHomeSkeleton } from "./home/PatientHomeSkeleton";
    when the patient owes money; the three-state balance card is
    strict about owe vs. even vs. credit. */
 
-export function PatientHome({ data }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed portal data + domain rows
+type Row = any;
+
+type PatientHomeProps = {
+  data: Row;
+  user?: Row;
+};
+
+export function PatientHome({ data }: PatientHomeProps) {
   const { t } = useT();
   const { showToast } = useCardigan();
   const [showAllPast, setShowAllPast] = useState(false);
@@ -48,7 +56,7 @@ export function PatientHome({ data }) {
   // cancelled (the dialog shows it for context). `cancelNote` is
   // the optional reason the patient types into the dialog.
   // `cancelling` blocks double-fire while the API is in flight.
-  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState<Row | null>(null);
   const [cancelNote, setCancelNote] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
@@ -60,8 +68,8 @@ export function PatientHome({ data }) {
   // operating on this session. Submit posts to the new endpoint and
   // refreshes data on success; the sheet handles its own form state
   // and surfaces server-mapped error hints internally.
-  const [rescheduleTarget, setRescheduleTarget] = useState(null);
-  const requestReschedule = (session) => setRescheduleTarget(session);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Row | null>(null);
+  const requestReschedule = (session: Row) => setRescheduleTarget(session);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const intakeCompleted = !!primaryPatient?.patient_intake_completed_at;
   const [payOpen, setPayOpen] = useState(false);
@@ -94,7 +102,7 @@ export function PatientHome({ data }) {
     }
   }, [showToast, refresh, t]);
 
-  const requestCancel = (session) => {
+  const requestCancel = (session: Row) => {
     setCancelTarget(session);
     setCancelNote("");
   };
@@ -155,21 +163,21 @@ export function PatientHome({ data }) {
   // Soonest future session — sorted ASC by ISO date+time.
   const nextSession = useMemo(() => {
     if (!future.length) return null;
-    const withIso = future.map(s => ({
+    const withIso = future.map((s: Row) => ({
       ...s,
       _iso: shortDateToISO(s.date) + " " + (s.time || "00:00"),
     }));
-    withIso.sort((a, b) => a._iso.localeCompare(b._iso));
+    withIso.sort((a: Row, b: Row) => a._iso.localeCompare(b._iso));
     return withIso[0];
   }, [future]);
 
   // Past sessions sorted DESC by ISO so most-recent is at top.
   const pastSorted = useMemo(() => {
-    const withIso = past.map(s => ({
+    const withIso = past.map((s: Row) => ({
       ...s,
       _iso: shortDateToISO(s.date) + " " + (s.time || "00:00"),
     }));
-    withIso.sort((a, b) => b._iso.localeCompare(a._iso));
+    withIso.sort((a: Row, b: Row) => b._iso.localeCompare(a._iso));
     return withIso;
   }, [past]);
 
@@ -210,7 +218,7 @@ export function PatientHome({ data }) {
   const therapistDisplayName = primaryTherapist.therapist_full_name
     || primaryTherapist.therapist_email?.split("@")[0]
     || "—";
-  const professionWord = PROFESSION_LABEL[primaryTherapist.therapist_profession]
+  const professionWord = PROFESSION_LABEL[primaryTherapist.therapist_profession as keyof typeof PROFESSION_LABEL]
     || PROFESSION_LABEL.psychologist;
   // Greeting uses the patient's first name from the patients row.
   // Trim falsy / blank to avoid an awkward "Hola, " with nothing after.
@@ -222,7 +230,7 @@ export function PatientHome({ data }) {
   // expectations and reads like a designed first-run, not an
   // empty database.
   const isFirstExperience = !nextSession && pastSorted.length === 0;
-  const theme = PROFESSION_THEME[primaryTherapist.therapist_profession] || PROFESSION_THEME.psychologist;
+  const theme = PROFESSION_THEME[primaryTherapist.therapist_profession as keyof typeof PROFESSION_THEME] || PROFESSION_THEME.psychologist;
   const journey = computeJourneyStats(sessions, primaryPatient.id);
 
   return (
@@ -281,7 +289,7 @@ export function PatientHome({ data }) {
               textAlign: "left",
               WebkitTapHighlightColor: "transparent",
               width: "100%",
-            }}
+            } as React.CSSProperties}
           >
             <span
               style={{
@@ -337,7 +345,7 @@ export function PatientHome({ data }) {
             modality icon, modality color, and reschedule/cancel
             actions. */}
         {!isFirstExperience && (
-          <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 2 }}>
+          <div className="card list-entry-stagger" style={{ padding: 16, background: "var(--white)", "--stagger-i": 2 } as React.CSSProperties}>
             <div
               style={{
                 display: "flex",
@@ -388,7 +396,7 @@ export function PatientHome({ data }) {
           credit={totalCredit}
           rate={primaryPatient.rate || 0}
           paid={primaryPatient.paid || 0}
-          onPay={therapistAcceptsOnlinePayments && totalAmountDue > 0 ? () => setPayOpen(true) : null}
+          onPay={therapistAcceptsOnlinePayments && totalAmountDue > 0 ? () => setPayOpen(true) : undefined}
           theme={theme}
         />
 
@@ -455,7 +463,7 @@ export function PatientHome({ data }) {
         <DocumentsCard
           documents={patientDocs}
           uploading={docUploading}
-          onUpload={async (file) => {
+          onUpload={async (file: Row) => {
             const r = await uploadDoc(file);
             if (r.ok) {
               haptic.tap();
@@ -464,12 +472,12 @@ export function PatientHome({ data }) {
               showToast(t("patientDocs.uploadError"), "error");
             }
           }}
-          onOpen={async (doc) => {
+          onOpen={async (doc: Row) => {
             const url = await getDocUrl(doc.id);
             if (url) window.open(url, "_blank", "noopener,noreferrer");
             else showToast(t("patientDocs.openError"), "error");
           }}
-          onRemove={async (doc) => {
+          onRemove={async (doc: Row) => {
             const r = await removeDoc(doc.id);
             if (r.ok) {
               haptic.tap();

@@ -34,7 +34,17 @@ const REMINDER_OPTIONS = [
   { value: 60, labelKey: "notifications.60min" },
 ];
 
-export function PatientSettingsSheet({ open, onClose, user, signOut }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed auth user
+type Row = any;
+
+type PatientSettingsSheetProps = {
+  open: boolean;
+  onClose?: () => void;
+  user: Row;
+  signOut?: () => void;
+};
+
+export function PatientSettingsSheet({ open, onClose, user, signOut }: PatientSettingsSheetProps) {
   const { t } = useT();
   const { showToast, setHideFab } = useCardigan();
   const notifications = useNotifications(user);
@@ -49,8 +59,8 @@ export function PatientSettingsSheet({ open, onClose, user, signOut }) {
 
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);

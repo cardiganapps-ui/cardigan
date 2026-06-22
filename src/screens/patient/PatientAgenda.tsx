@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
@@ -34,19 +34,24 @@ import { RescheduleSessionSheet } from "./RescheduleSessionSheet";
    pushes the destructive copy ("Cancelar esta cita") into a place
    where the user has to deliberately tap a row first. */
 
-const MODALITY_LABEL = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session / portal-data rows
+type Row = any;
+
+type T = (key: string, vars?: Record<string, unknown>) => string;
+
+const MODALITY_LABEL: Record<string, string> = {
   presencial: "Presencial",
   virtual: "Virtual",
   telefonica: "Telefónica",
   "a-domicilio": "A domicilio",
 };
-const MODALITY_ICON = {
+const MODALITY_ICON: Record<string, typeof IconUsers> = {
   presencial:    IconUsers,
   virtual:       IconCamera,
   telefonica:    IconPhone,
   "a-domicilio": IconHome,
 };
-const MODALITY_COLOR = {
+const MODALITY_COLOR: Record<string, string> = {
   presencial:    "var(--modality-presencial)",
   virtual:       "var(--modality-virtual)",
   telefonica:    "var(--modality-telefonica)",
@@ -56,30 +61,34 @@ const MODALITY_COLOR = {
 const DAY_LONG  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MONTH_LONG = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
-function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
-function sameDay(a, b) {
+function startOfDay(d: Date | number | string) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear()
       && a.getMonth() === b.getMonth()
       && a.getDate() === b.getDate();
 }
-function sessionStartMs(s) {
+function sessionStartMs(s: Row) {
   const iso = shortDateToISO(s.date);
   if (!iso) return 0;
   return new Date(`${iso}T${(s.time || "00:00")}:00`).getTime();
 }
-function monthLabel(d) {
+function monthLabel(d: Date) {
   return `${MONTH_LONG[d.getMonth()].toUpperCase()} ${d.getFullYear()}`;
 }
-function relativeLabel(sessionDate, today, t) {
+function relativeLabel(sessionDate: Date, today: Date, t: T) {
   if (sameDay(sessionDate, today)) return t("patientAgenda.today");
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   if (sameDay(sessionDate, tomorrow)) return t("patientAgenda.tomorrow");
-  const diffDays = Math.round((sessionDate - today) / 86400000);
+  const diffDays = Math.round((sessionDate.getTime() - today.getTime()) / 86400000);
   if (diffDays >= 2 && diffDays <= 6) return t("patientAgenda.inDays", { n: diffDays });
   return null;
 }
 
-export function PatientAgenda({ data }) {
+type PatientAgendaProps = {
+  data: Row;
+};
+
+export function PatientAgenda({ data }: PatientAgendaProps) {
   const { t } = useT();
   const { showToast } = useCardigan();
   const { primaryPatient, primaryTherapist, sessions, rescheduleRequests = [], refresh } = data;
@@ -87,14 +96,14 @@ export function PatientAgenda({ data }) {
   // can only have one pending request per session (DB enforces it),
   // so a Map keyed on session_id is safe.
   const pendingBySessionId = useMemo(() => {
-    const m = new Map();
+    const m = new Map<string, Row>();
     for (const r of rescheduleRequests || []) {
       if (r.status === "pending") m.set(r.session_id, r);
     }
     return m;
   }, [rescheduleRequests]);
   const [withdrawing, setWithdrawing] = useState(false);
-  const handleWithdraw = async (requestId) => {
+  const handleWithdraw = async (requestId: string) => {
     if (!requestId || withdrawing) return;
     setWithdrawing(true);
     try {
@@ -136,9 +145,9 @@ export function PatientAgenda({ data }) {
     || primaryTherapist?.therapist_email?.split("@")[0]
     || "Tu profesionista";
 
-  const [activeSession, setActiveSession] = useState(null);     // tap-target → opens management sheet
-  const [rescheduleTarget, setRescheduleTarget] = useState(null);
-  const [cancelTarget, setCancelTarget] = useState(null);
+  const [activeSession, setActiveSession] = useState<Row | null>(null);     // tap-target → opens management sheet
+  const [rescheduleTarget, setRescheduleTarget] = useState<Row | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Row | null>(null);
   const [cancelNote, setCancelNote] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
@@ -149,23 +158,23 @@ export function PatientAgenda({ data }) {
     if (!primaryPatient) return [];
     const now = new Date();
     return (sessions || [])
-      .filter(s => s.patient_id === primaryPatient.id)
-      .filter(s => {
+      .filter((s: Row) => s.patient_id === primaryPatient.id)
+      .filter((s: Row) => {
         // Cancelled stays out of the upcoming list (it's not really
         // "upcoming" anymore). Auto-completed past-scheduled also out.
         if (s.status === "cancelled") return false;
         if (sessionCountsTowardBalance(s, now)) return false;
         return s.status === "scheduled";
       })
-      .sort((a, b) => sessionStartMs(a) - sessionStartMs(b));
+      .sort((a: Row, b: Row) => sessionStartMs(a) - sessionStartMs(b));
   }, [sessions, primaryPatient]);
 
   // Group ascending list by month for the section headers. We carry
   // the iso month string (e.g. "2026-05") as the key + a Date for
   // formatting the eyebrow.
   const groups = useMemo(() => {
-    const out = [];
-    let currentKey = null;
+    const out: Array<{ key: string; when: Date; items: Row[] }> = [];
+    let currentKey: string | null = null;
     for (const s of upcoming) {
       const iso = shortDateToISO(s.date);
       if (!iso) continue;
@@ -179,7 +188,7 @@ export function PatientAgenda({ data }) {
     return out;
   }, [upcoming]);
 
-  const requestCancel = (s) => {
+  const requestCancel = (s: Row) => {
     setActiveSession(null);
     setCancelTarget(s); setCancelNote("");
   };
@@ -206,7 +215,7 @@ export function PatientAgenda({ data }) {
     } finally { setCancelling(false); }
   };
 
-  const requestReschedule = (s) => {
+  const requestReschedule = (s: Row) => {
     setActiveSession(null);
     setRescheduleTarget(s);
   };
@@ -332,7 +341,7 @@ export function PatientAgenda({ data }) {
 
 // ── Session row ─────────────────────────────────────────────────────
 
-function SessionRow({ s, pending, onTap, t }) {
+function SessionRow({ s, pending, onTap, t }: { s: Row; pending: Row | null; onTap: () => void; t: T }) {
   const ModalityIcon = MODALITY_ICON[s.modality] || IconUsers;
   const modalityColor = MODALITY_COLOR[s.modality] || "var(--teal-dark)";
   const modalityLabel = MODALITY_LABEL[s.modality] || MODALITY_LABEL.presencial;
@@ -463,12 +472,20 @@ function SessionRow({ s, pending, onTap, t }) {
 
 // ── Session management sheet ────────────────────────────────────────
 
-function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedule, onCancel, onWithdraw }) {
+function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedule, onCancel, onWithdraw }: {
+  session: Row;
+  pending: Row | null;
+  withdrawing: boolean;
+  onClose: () => void;
+  onReschedule: (s: Row) => void;
+  onCancel: (s: Row) => void;
+  onWithdraw: (requestId: string) => void;
+}) {
   const { t } = useT();
   useEscape(onClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: true });
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -660,7 +677,7 @@ function SessionManageSheet({ session, pending, withdrawing, onClose, onReschedu
 
 // ── Empty state ─────────────────────────────────────────────────────
 
-function EmptyAgenda({ t }) {
+function EmptyAgenda({ t }: { t: T }) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon"><IconCalendar size={20} /></div>

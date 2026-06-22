@@ -1,3 +1,4 @@
+import React from "react";
 import { I18nProvider, useT } from "../../i18n/index";
 import { CardiganProvider } from "../../context/CardiganContext";
 import { Toast } from "../../components/Toast";
@@ -12,7 +13,7 @@ import { PatientShell } from "./PatientShell";
    ("psicología", "nutrición") consistently across the patient
    shell. setProfession is only available inside the provider, so
    this lives as a child component. */
-function PatientI18nSync({ profession, children }) {
+function PatientI18nSync({ profession, children }: { profession?: string; children: React.ReactNode }) {
   const i18n = useT();
   const setProfession = i18n.setProfession;
   useEffect(() => {
@@ -37,7 +38,16 @@ function PatientI18nSync({ profession, children }) {
    labels resolve to the right field nouns ("psicología",
    "nutrición") for the linked professional. */
 
-export function PatientApp({ user, signOut, demo = false }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase auth user + loosely-typed portal data
+type Row = any;
+
+type PatientAppProps = {
+  user: Row;
+  signOut?: () => void;
+  demo?: boolean;
+};
+
+export function PatientApp({ user, signOut, demo = false }: PatientAppProps) {
   // Demo branch: read-only fixture data, no network. The shape is
   // kept in lockstep with usePatientPortalData by sharing the same
   // generateDemoData() seed the therapist demo uses. Only the e2e
@@ -49,14 +59,14 @@ export function PatientApp({ user, signOut, demo = false }) {
   // gated by the `demo` prop, so real users never pay the cost of
   // generating the fixture data they'd never see.
   const realData = usePatientPortalData(demo ? null : user);
-  const data = demo ? getDemoPatientPortalSnapshot() : realData;
-  const [toasts, setToasts] = useState([]);
+  const data: Row = demo ? getDemoPatientPortalSnapshot() : realData;
+  const [toasts, setToasts] = useState<Array<{ id: number; kind: string; message: string }>>([]);
   const nextToastIdRef = useRef(0);
 
   // Minimal toast surface — same shape as the therapist app's so
   // shared components that call showToast just work. No persistent
   // / actionable toasts in v1.
-  const showToast = useCallback((msg, type = "info") => {
+  const showToast = useCallback((msg: string, type = "info") => {
     if (!msg) return;
     const id = ++nextToastIdRef.current;
     setToasts(prev => [...prev, { id, kind: type, message: msg }]);
@@ -68,7 +78,7 @@ export function PatientApp({ user, signOut, demo = false }) {
   const ctxValue = {
     user,
     showToast,
-    showSuccess: (msg) => showToast(msg, "success"),
+    showSuccess: (msg: string) => showToast(msg, "success"),
     readOnly: true,
     setHideFab: () => {}, // patient shell has no FAB; sheets that toggle it no-op
     profession: data.primaryTherapist?.therapist_profession || "psychologist",

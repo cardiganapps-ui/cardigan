@@ -32,7 +32,7 @@ import { todayISO } from "../../utils/dates";
 // Field nouns rather than practitioner nouns so the form copy
 // doesn't force a gender assumption on the therapist. Mirrors the
 // same map in PatientClaimScreen / PatientHome / useAuth.
-const PROFESSION_LABEL = {
+const PROFESSION_LABEL: Record<string, string> = {
   psychologist:  "psicología",
   nutritionist:  "nutrición",
   trainer:       "entrenamiento personal",
@@ -40,7 +40,19 @@ const PROFESSION_LABEL = {
   tutor:         "tutoría",
 };
 
-export function IntakeFormSheet({ open, onClose, patient, therapistProfession, therapistDisplayName, onSubmitted }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient row from untyped portal hook
+type Row = any;
+
+type IntakeFormSheetProps = {
+  open: boolean;
+  onClose?: () => void;
+  patient: Row;
+  therapistProfession?: string;
+  therapistDisplayName?: string;
+  onSubmitted?: () => void;
+};
+
+export function IntakeFormSheet({ open, onClose, patient, therapistProfession, therapistDisplayName, onSubmitted }: IntakeFormSheetProps) {
   const { t } = useT();
   const { showToast, setHideFab } = useCardigan();
   const showAnthro = usesAnthropometrics(therapistProfession);
@@ -58,7 +70,7 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
   // Inline error hint — survives the toast auto-dismiss so the user
   // can read why a submit failed even after the toast fades. Cleared
   // on every new submit attempt + on form-field changes downstream.
-  const [errorHint, setErrorHint] = useState(null);
+  const [errorHint, setErrorHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -91,8 +103,8 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
 
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -150,7 +162,7 @@ export function IntakeFormSheet({ open, onClose, patient, therapistProfession, t
     }
   };
 
-  const profession = PROFESSION_LABEL[therapistProfession] || PROFESSION_LABEL.psychologist;
+  const profession = PROFESSION_LABEL[therapistProfession || ""] || PROFESSION_LABEL.psychologist;
 
   return (
     <div className="sheet-overlay" onClick={onClose}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
 import { attachTherapistContext } from "../../utils/inviteTokenStorage";
@@ -33,7 +33,7 @@ import { attachTherapistContext } from "../../utils/inviteTokenStorage";
 // practitioner's gender. This map is mirrored in PatientHome,
 // IntakeFormSheet, and useAuth — keep them in sync if a profession
 // is added.
-const PROVIDER_LABELS = {
+const PROVIDER_LABELS: Record<string, string> = {
   psychologist:  "psicología",
   nutritionist:  "nutrición",
   trainer:       "entrenamiento personal",
@@ -41,11 +41,20 @@ const PROVIDER_LABELS = {
   tutor:         "tutoría",
 };
 
-export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed invite-preview payload
+type Row = any;
+
+type PatientClaimScreenProps = {
+  token: string;
+  onCreateAccount?: () => void;
+  onSignIn?: () => void;
+};
+
+export function PatientClaimScreen({ token, onCreateAccount, onSignIn }: PatientClaimScreenProps) {
   const { t } = useT();
   const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState(null);
-  const [error, setError] = useState(null);
+  const [preview, setPreview] = useState<Row | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -84,7 +93,7 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
 
   // Centered card layout, matches the AuthScreen's hero width on
   // mobile / tablet / desktop. Logo + welcome copy + CTAs.
-  const cardStyle = {
+  const cardStyle: React.CSSProperties = {
     background: "var(--white)",
     borderRadius: "var(--radius-lg, 16px)",
     border: "1px solid var(--border-lt)",
@@ -106,11 +115,11 @@ export function PatientClaimScreen({ token, onCreateAccount, onSignIn }) {
   // which point the OUTER scrolls. .scroll-bounce wires in the iOS
   // rubber-band sentinel so the screen feels native even when the
   // card fits the viewport.
-  const wrapperStyle = {
+  const wrapperStyle: React.CSSProperties = {
     height: "100dvh",
     background: "var(--white)",
   };
-  const innerStyle = {
+  const innerStyle: React.CSSProperties = {
     minHeight: "100%",
     display: "flex",
     alignItems: "center",

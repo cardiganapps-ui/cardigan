@@ -22,7 +22,18 @@ import { formatMXN } from "../../utils/format";
 const MIN_AMOUNT = 20; // pesos — server-side floor enforces 20 MXN
 const MAX_AMOUNT = 50_000;
 
-export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistName }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient row from untyped portal hook
+type Row = any;
+
+type PayBalanceSheetProps = {
+  open: boolean;
+  onClose?: () => void;
+  patient: Row;
+  amountDue?: number;
+  therapistName?: string;
+};
+
+export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistName }: PayBalanceSheetProps) {
   const { t } = useT();
   const { showToast, setHideFab } = useCardigan();
   const { pay, busy } = usePatientPay();
@@ -31,7 +42,7 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
   // Inline error hint — survives the toast auto-dismiss so the user
   // can read why "Continuar" failed (Stripe Connect missing on
   // therapist's side, network blip, etc.) without re-tapping Pay.
-  const [errorHint, setErrorHint] = useState(null);
+  const [errorHint, setErrorHint] = useState<string | null>(null);
   // Track when the sheet last opened so we can reset the amount in
   // the adjust-during-render pattern instead of a setState-in-effect.
   // Each open clears the previous amount and seeds the input with
@@ -53,8 +64,8 @@ export function PayBalanceSheet({ open, onClose, patient, amountDue, therapistNa
 
   useEscape(open ? onClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);

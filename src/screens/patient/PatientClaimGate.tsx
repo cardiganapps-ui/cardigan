@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
@@ -18,9 +18,19 @@ import { clearInviteToken } from "../../utils/inviteTokenStorage";
    The token is cleared from sessionStorage in BOTH success and
    failure paths so a refresh doesn't re-fire the claim. */
 
-export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed auth user
+type Row = any;
+
+type PatientClaimGateProps = {
+  token: string;
+  user?: Row;
+  onComplete?: () => void;
+  onSignOut?: () => void;
+};
+
+export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }: PatientClaimGateProps) {
   const { t } = useT();
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const firedRef = useRef(false);
 
   useEffect(() => {
@@ -90,11 +100,11 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
   // PatientClaimScreen for the same pattern). .scroll-bounce wires
   // overflow + iOS rubber-band; inner centers the card; if the card
   // outgrows the viewport it falls back to top-aligned and scrolls.
-  const wrapperStyle = {
+  const wrapperStyle: React.CSSProperties = {
     height: "100dvh",
     background: "var(--white)",
   };
-  const innerStyle = {
+  const innerStyle: React.CSSProperties = {
     minHeight: "100%",
     display: "flex",
     alignItems: "center",
@@ -102,7 +112,7 @@ export function PatientClaimGate({ token, user: _user, onComplete, onSignOut }) 
     padding: "max(24px, calc(var(--sat, 0px) + 16px)) 16px max(24px, env(safe-area-inset-bottom))",
     boxSizing: "border-box",
   };
-  const cardStyle = {
+  const cardStyle: React.CSSProperties = {
     background: "var(--white)",
     borderRadius: "var(--radius-lg, 16px)",
     border: "1px solid var(--border-lt)",

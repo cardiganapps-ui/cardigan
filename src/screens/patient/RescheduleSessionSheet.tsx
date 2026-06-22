@@ -21,20 +21,30 @@ import { todayISO, shortDateToISO } from "../../utils/dates";
    conflict, race lost, past target) so the user can adjust without
    losing what they typed. */
 
-export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session row from untyped portal hook
+type Row = any;
+
+type RescheduleSessionSheetProps = {
+  open: boolean;
+  session: Row;
+  onClose?: () => void;
+  onRescheduled?: () => void;
+};
+
+export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }: RescheduleSessionSheetProps) {
   const { t } = useT();
   const { showToast, setHideFab } = useCardigan();
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errorHint, setErrorHint] = useState(null);
+  const [errorHint, setErrorHint] = useState<string | null>(null);
 
   // Adjust-during-render: when the sheet opens with a new session,
   // seed the form from that session's current slot. The pattern
   // keeps the existing values visible if the user closes + re-opens
   // mid-edit on the same session, which is rare but cleaner than
   // a useEffect that re-fires after each render.
-  const [prevSessionId, setPrevSessionId] = useState(null);
+  const [prevSessionId, setPrevSessionId] = useState<string | null>(null);
   if (open && session && session.id !== prevSessionId) {
     setPrevSessionId(session.id);
     // Seed the date input. The session stores "D-MMM" + a year-fuzz
@@ -65,8 +75,8 @@ export function RescheduleSessionSheet({ open, session, onClose, onRescheduled }
   const safeClose = submitting ? null : onClose;
   useEscape(open ? safeClose : null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose || (() => {}), { isOpen: open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);

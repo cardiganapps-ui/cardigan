@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useT } from "../../i18n/index";
 import { LogoIcon } from "../../components/LogoMark";
 import { AvatarContent } from "../../components/Avatar";
@@ -33,7 +33,16 @@ const TABS = [
   { key: "agenda", Icon: IconCalendar, tKey: "patientShell.tabAgenda" },
 ];
 
-export function PatientShell({ user, signOut, data }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed auth user + portal data
+type Row = any;
+
+type PatientShellProps = {
+  user: Row;
+  signOut?: () => void;
+  data: Row;
+};
+
+export function PatientShell({ user, signOut, data }: PatientShellProps) {
   const { t } = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [screen, setScreen] = useState("home");
@@ -56,7 +65,7 @@ export function PatientShell({ user, signOut, data }) {
     || user?.email?.split("@")[0]
     || "";
   const patientInitials = (
-    patientName.split(/\s+/).map(s => s[0] || "").join("").slice(0, 2)
+    patientName.split(/\s+/).map((s: string) => s[0] || "").join("").slice(0, 2)
     || user?.email?.slice(0, 2)
     || "?"
   ).toUpperCase();
@@ -185,7 +194,7 @@ export function PatientShell({ user, signOut, data }) {
         className="bottom-tabs"
         role="tablist"
         aria-label={t("patientShell.nav")}
-        style={{ "--active-i": activeIndex, "--tab-count": TABS.length }}
+        style={{ "--active-i": activeIndex, "--tab-count": TABS.length } as React.CSSProperties}
       >
         {activeIndex >= 0 && <span className="bottom-tab-indicator" aria-hidden="true" />}
         {TABS.map(tab => {
