@@ -34,14 +34,27 @@ import { parseShortDateLocal } from "./agendaShared";
 
    Coordinates the swipeCoordinator lock so horizontal day-navigation
    swipes don't fire during drag. */
-export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLongPressable, onSelectSession, onDropSession, onEventContextMenu }) {
-  const elRef = useRef(null);
-  const timerRef = useRef(null);
-  const startPosRef = useRef(null);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session row
+type Row = any;
+
+export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, touchLongPressable, onSelectSession, onDropSession, onEventContextMenu }: {
+  session: Row;
+  eventStyle?: React.CSSProperties;
+  startF: number;
+  dur: number;
+  isDraggable?: boolean;
+  touchLongPressable?: boolean;
+  onSelectSession: (s: Row, mode?: string) => void;
+  onDropSession?: (id: string, d: Date, hour: string) => void;
+  onEventContextMenu?: (e: React.MouseEvent, s: Row) => void;
+}) {
+  const elRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startPosRef = useRef<{ x: number; y: number } | null>(null);
   const draggingRef = useRef(false);
   const movedRef = useRef(false);
-  const ghostRef = useRef(null);
-  const lastTargetRef = useRef(null);
+  const ghostRef = useRef<HTMLElement | null>(null);
+  const lastTargetRef = useRef<HTMLElement | null>(null);
   // Track when we've consumed the gesture so the synthetic click that
   // iOS fires after a touchend doesn't re-open the session sheet.
   const consumedRef = useRef(false);
@@ -91,14 +104,14 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
     const el = elRef.current;
     if (!el || !touchLongPressable) return;
 
-    const updateTarget = (clientX, clientY) => {
+    const updateTarget = (clientX: number, clientY: number) => {
       const ghost = ghostRef.current;
       if (!ghost) return;
       // Hide the ghost so elementFromPoint sees what's underneath.
       ghost.style.visibility = "hidden";
       const hit = document.elementFromPoint(clientX, clientY);
       ghost.style.visibility = "";
-      const cell = hit?.closest?.("[data-cell-day]");
+      const cell = hit?.closest?.("[data-cell-day]") as HTMLElement | null;
       if (cell === lastTargetRef.current) return;
       clearTargetHighlight();
       if (cell) {
@@ -118,7 +131,7 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
       }
     };
 
-    const enterDrag = (touch) => {
+    const enterDrag = (touch: Touch) => {
       if (!trySwipeClaim("week-event-dnd")) return false;
       const sess = sessionRef.current;
       draggingRef.current = true;
@@ -148,7 +161,7 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
       return true;
     };
 
-    const exitDrag = (commit) => {
+    const exitDrag = (commit: boolean) => {
       const sess = sessionRef.current;
       const target = lastTargetRef.current;
       let outcome = "cancelled";
@@ -167,7 +180,7 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
           if (sameSlot) {
             outcome = "same-slot";
           } else {
-            onDropSessionRef.current(sess.id, new Date(day + "T00:00:00"), hour);
+            onDropSessionRef.current(sess.id, new Date(day + "T00:00:00"), hour!);
             haptic.success();
             outcome = "dropped";
           }
@@ -190,7 +203,7 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
       setPressing(false);
     };
 
-    const onTouchStart = (e) => {
+    const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
       const t0 = e.touches[0];
       startPosRef.current = { x: t0.clientX, y: t0.clientY };
@@ -209,7 +222,7 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
       }, 500);
     };
 
-    const onTouchMove = (e) => {
+    const onTouchMove = (e: TouchEvent) => {
       const t = e.touches[0];
       if (!t) return;
       if (draggingRef.current) {
@@ -228,7 +241,7 @@ export function LongPressEvent({ session, eventStyle, startF, dur, isDraggable, 
       }
     };
 
-    const onTouchEnd = (e) => {
+    const onTouchEnd = (e: TouchEvent) => {
       clearTimer();
       if (draggingRef.current) {
         const outcome = exitDrag(true);

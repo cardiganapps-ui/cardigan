@@ -8,21 +8,38 @@ import { LongPressEvent } from "./LongPressEvent";
 import { getWeekDays, isSameDay, timeToFloat } from "./agendaShared";
 
 /* ── WEEK DAYS PANEL (just the day headers + grid cells, no time labels) ── */
-export const WeekDaysPanel = memo(function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours, groupsById }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session/group rows
+type Row = any;
+
+export const WeekDaysPanel = memo(function WeekDaysPanel({ weekDate, selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours, groupsById }: {
+  weekDate: Date;
+  selectedDate: Date;
+  setSelectedDate: (d: Date) => void;
+  setView: (v: string) => void;
+  onSelectSession: (s: Row) => void;
+  onCellTap?: (d: Date, hour: string) => void;
+  onDropSession?: (id: string, d: Date, hour: string) => void;
+  canDrag?: boolean;
+  onEventContextMenu?: (e: React.MouseEvent, s: Row) => void;
+  upcomingSessions: Row[];
+  showWeekends?: boolean;
+  hours: string[];
+  groupsById?: Map<string, Row>;
+}) {
   const { strings } = useT();
   const DOW = strings.daysShort;
   const weekDays = getWeekDays(weekDate);
   const visibleDays = showWeekends ? weekDays : weekDays.slice(0, 5);
   const visibleDow = showWeekends ? DOW : DOW.slice(0, 5);
   const cols = `repeat(${visibleDays.length}, 1fr)`;
-  const [dropTarget, setDropTarget] = useState(null); // `${dayIdx}:${hourIdx}`
+  const [dropTarget, setDropTarget] = useState<string | null>(null); // `${dayIdx}:${hourIdx}`
 
   // Group sessions by date for quick lookup
   const sessionsByDate = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, Row[]>();
     for (const s of upcomingSessions) {
       if (!map.has(s.date)) map.set(s.date, []);
-      map.get(s.date).push(s);
+      map.get(s.date)!.push(s);
     }
     return map;
   }, [upcomingSessions]);
@@ -95,7 +112,7 @@ export const WeekDaysPanel = memo(function WeekDaysPanel({ weekDate, selectedDat
                   so a class isn't N overlapping tiles; the synthetic id
                   "grp:<id>|<date>|<time>" routes tap → group sheet and drag →
                   whole-occurrence reschedule (see handleDropSession). */}
-              {collapseGroupOccurrences(daySess, groupsById).map(item => {
+              {collapseGroupOccurrences(daySess, groupsById).map((item: Row) => {
                 const sess = item._groupOccurrence
                   ? {
                       id: `grp:${item.group_id}|${item.date}|${item.time}`,

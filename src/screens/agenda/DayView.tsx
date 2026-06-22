@@ -7,11 +7,26 @@ import { DayPanel } from "./DayPanel";
 import { HeaderLabel } from "./HeaderLabel";
 import { getWeekDays, addDays, isSameDay } from "./agendaShared";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session/group rows
+type Row = any;
+
 /* ── DAY VIEW ── */
-export function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete, groupsById }) {
+export function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomingSessions, jumpToToday, filterPatientName, selectionMode, selectedSet, onToggleSelect, onSwipeComplete, groupsById }: {
+  selectedDate: Date;
+  setSelectedDate: (d: Date | ((prev: Date) => Date)) => void;
+  onSelectSession: (s: Row) => void;
+  upcomingSessions: Row[];
+  jumpToToday?: () => void;
+  filterPatientName?: string | null;
+  selectionMode?: boolean;
+  selectedSet?: Set<string>;
+  onToggleSelect?: (s: Row) => void;
+  onSwipeComplete?: (s: Row) => void;
+  groupsById?: Map<string, Row>;
+}) {
   const { t, strings } = useT();
   const DOW = strings.daysShort;
-  const sessionDateSet = useMemo(() => new Set(upcomingSessions.map(s => s.date)), [upcomingSessions]);
+  const sessionDateSet = useMemo(() => new Set(upcomingSessions.map((s: Row) => s.date)), [upcomingSessions]);
   const swipe = useSwipe(
     useCallback(() => setSelectedDate(d => addDays(d, 1)), [setSelectedDate]),
     useCallback(() => setSelectedDate(d => addDays(d, -1)), [setSelectedDate])
@@ -36,9 +51,9 @@ export function DayView({ selectedDate, setSelectedDate, onSelectSession, upcomi
     : `${formatShortDate(monday)} – ${formatShortDate(sunday)}`;
   const isCurrent = isSameDay(selectedDate, TODAY);
 
-  const renderCalStrip = (days) => (
+  const renderCalStrip = (days: Date[]) => (
     <div className="cal-strip">
-      {days.map((d,i) => {
+      {days.map((d: Date, i: number) => {
         const ds = formatShortDate(d);
         const isActive = isSameDay(d, selectedDate);
         const isToday = isSameDay(d, TODAY);

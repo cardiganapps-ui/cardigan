@@ -16,11 +16,22 @@ import { buildMonthGrid, isSameDay } from "./agendaShared";
    We piggy-back on the same elementFromPoint pattern the week-view
    LongPressEvent uses: cells get data-month-day attributes, and the
    gesture handler reads them off whatever the finger lands on. */
-export const MonthGridPanel = memo(function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsByDate, onMoveDay, canDrag }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session rows
+type Row = any;
+
+export const MonthGridPanel = memo(function MonthGridPanel({ year, month, selectedDate, setSelectedDate, sessionsByDate, onMoveDay, canDrag }: {
+  year: number;
+  month: number;
+  selectedDate: Date;
+  setSelectedDate: (d: Date) => void;
+  sessionsByDate: Map<string, Row[]>;
+  onMoveDay?: (srcIso: string, tgtIso: string) => void;
+  canDrag?: boolean;
+}) {
   const cells = buildMonthGrid(year, month);
   const selectedDateStr = formatShortDate(selectedDate);
   const isCurrentMonth = selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
-  const gridRef = useRef(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Native touch DnD for month-day cells. Attached at the grid level
   // so a single set of listeners handles every cell (cheaper than
@@ -31,12 +42,12 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
     if (!grid) return;
     if (!canDrag) return;
 
-    let timer = null;
-    let startPos = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let startPos: { x: number; y: number; cell: HTMLElement; dayCount: number } | null = null;
     let dragging = false;
-    let sourceCell = null;
-    let lastTarget = null;
-    let ghost = null;
+    let sourceCell: HTMLElement | null = null;
+    let lastTarget: HTMLElement | null = null;
+    let ghost: HTMLElement | null = null;
 
     const clearTarget = () => {
       if (lastTarget) {
@@ -45,12 +56,12 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
       }
     };
 
-    const updateTarget = (clientX, clientY) => {
+    const updateTarget = (clientX: number, clientY: number) => {
       if (!ghost) return;
       ghost.style.visibility = "hidden";
       const el = document.elementFromPoint(clientX, clientY);
       ghost.style.visibility = "";
-      const cell = el?.closest?.("[data-month-day]");
+      const cell = el?.closest?.("[data-month-day]") as HTMLElement | null;
       if (cell === lastTarget) return;
       clearTarget();
       // Only highlight cells that aren't the source.
@@ -60,7 +71,7 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
       }
     };
 
-    const enterDrag = (touch, cell, dayCount) => {
+    const enterDrag = (touch: Touch, cell: HTMLElement, dayCount: number) => {
       if (!trySwipeClaim("month-cell-dnd")) return false;
       dragging = true;
       sourceCell = cell;
@@ -88,7 +99,7 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
       return true;
     };
 
-    const exitDrag = (commit) => {
+    const exitDrag = (commit: boolean) => {
       let firedDrop = false;
       if (commit && lastTarget && sourceCell && lastTarget !== sourceCell && onMoveDay) {
         const src = sourceCell.dataset.monthDay;
@@ -110,10 +121,10 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
       return firedDrop;
     };
 
-    const onTouchStart = (e) => {
+    const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
       const t0 = e.touches[0];
-      const cell = (e.target).closest?.("[data-month-day]");
+      const cell = (e.target as Element).closest?.("[data-month-day]") as HTMLElement | null;
       if (!cell) return;
       const dayCount = parseInt(cell.dataset.monthDayCount || "0", 10);
       if (dayCount === 0) return; // empty days aren't pickable
@@ -127,7 +138,7 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
       }, 500);
     };
 
-    const onTouchMove = (e) => {
+    const onTouchMove = (e: TouchEvent) => {
       const t = e.touches[0];
       if (!t) return;
       if (dragging) {
@@ -140,12 +151,13 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
       const dx = t.clientX - startPos.x;
       const dy = t.clientY - startPos.y;
       if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-        clearTimeout(timer); timer = null;
+        if (timer) clearTimeout(timer);
+        timer = null;
         startPos = null;
       }
     };
 
-    const onTouchEnd = (e) => {
+    const onTouchEnd = (e: TouchEvent) => {
       if (timer) { clearTimeout(timer); timer = null; }
       if (dragging) {
         exitDrag(true);
@@ -183,10 +195,10 @@ export const MonthGridPanel = memo(function MonthGridPanel({ year, month, select
         const isToday  = isSameDay(cellDate, TODAY);
         const isActive = isCurrentMonth && cellStr === selectedDateStr;
         const sessions = sessionsByDate.get(cellStr) || [];
-        const hasPresencial = sessions.some(s => !isTutorSession(s) && s.modality !== "virtual" && s.modality !== "telefonica");
-        const hasVirtual = sessions.some(s => !isTutorSession(s) && s.modality === "virtual");
-        const hasTelefonica = sessions.some(s => !isTutorSession(s) && s.modality === "telefonica");
-        const hasTutor = sessions.some(s => isTutorSession(s));
+        const hasPresencial = sessions.some((s: Row) => !isTutorSession(s) && s.modality !== "virtual" && s.modality !== "telefonica");
+        const hasVirtual = sessions.some((s: Row) => !isTutorSession(s) && s.modality === "virtual");
+        const hasTelefonica = sessions.some((s: Row) => !isTutorSession(s) && s.modality === "telefonica");
+        const hasTutor = sessions.some((s: Row) => isTutorSession(s));
         return (
           <div key={i} className={`month-cell ${isActive?"active":""} ${isToday&&!isActive?"today":""} ${!cell.current?"other-month":""}`}
             role="button" tabIndex={0}

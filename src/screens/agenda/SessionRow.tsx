@@ -15,7 +15,18 @@ import { useT } from "../../i18n/index";
    in the parent's selected set instead of opening the session detail.
    The row gets a subtle selected highlight + a check pill replaces the
    chevron so the affordance is unambiguous. */
-export const SessionRow = memo(function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSelect, onSwipeComplete }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session row
+type Row = any;
+
+export const SessionRow = memo(function SessionRow({ s, onClick, compact, selectionMode, selected, onToggleSelect, onSwipeComplete }: {
+  s: Row;
+  onClick?: (s: Row) => void;
+  compact?: boolean;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (s: Row) => void;
+  onSwipeComplete?: (s: Row) => void;
+}) {
   const { t } = useT();
   const tutor = isTutorSession(s);
   const interview = isInterviewSession(s);

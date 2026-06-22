@@ -2,7 +2,12 @@
    Shared between DayView / WeekView / MonthView: tappable label that
    jumps back to today and shows a "Hoy" pill when the current view
    isn't already on today. */
-export function HeaderLabel({ children, isCurrent, onJumpToday, t }) {
+export function HeaderLabel({ children, isCurrent, onJumpToday, t }: {
+  children: React.ReactNode;
+  isCurrent?: boolean;
+  onJumpToday?: () => void;
+  t: (key: string) => string;
+}) {
   return (
     <button
       type="button"

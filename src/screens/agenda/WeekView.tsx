@@ -8,8 +8,24 @@ import { WeekDaysPanel } from "./WeekDaysPanel";
 import { HeaderLabel } from "./HeaderLabel";
 import { getWeekDays, addDays, isSameDay } from "./agendaShared";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session/group rows
+type Row = any;
+
 /* ── WEEK VIEW ── */
-export function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, now, jumpToToday, groupsById }) {
+export function WeekView({ selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, now, jumpToToday, groupsById }: {
+  selectedDate: Date;
+  setSelectedDate: (d: Date | ((prev: Date) => Date)) => void;
+  setView: (v: string) => void;
+  onSelectSession: (s: Row) => void;
+  onCellTap?: (d: Date, hour: string) => void;
+  onDropSession?: (id: string, d: Date, hour: string) => void;
+  canDrag?: boolean;
+  onEventContextMenu?: (e: React.MouseEvent, s: Row) => void;
+  upcomingSessions: Row[];
+  now: Date;
+  jumpToToday?: () => void;
+  groupsById?: Map<string, Row>;
+}) {
   const { t, strings } = useT();
   const HOURS = strings.hours;
   const [showWeekends, setShowWeekends] = useState(false);
@@ -22,12 +38,12 @@ export function WeekView({ selectedDate, setSelectedDate, setView, onSelectSessi
   const weekDays = getWeekDays(selectedDate);
   const monday = weekDays[0];
   const weekLabel = `${t("sessions.weekOf")} ${formatShortDate(monday)}`;
-  const isCurrent = weekDays.some(d => isSameDay(d, TODAY));
+  const isCurrent = weekDays.some((d: Date) => isSameDay(d, TODAY));
   const shared = { selectedDate, setSelectedDate, setView, onSelectSession, onCellTap, onDropSession, canDrag, onEventContextMenu, upcomingSessions, showWeekends, hours: HOURS, groupsById };
 
   // "Ahora" line: only when today is in the visible week and within work hours
   const visibleDays = (showWeekends ? weekDays : weekDays.slice(0, 5));
-  const todayIdx = visibleDays.findIndex(d => isSameDay(d, now));
+  const todayIdx = visibleDays.findIndex((d: Date) => isSameDay(d, now));
   const nowHourFloat = now.getHours() + now.getMinutes() / 60;
   const showNow = todayIdx >= 0 && nowHourFloat >= 7 && nowHourFloat <= 23;
   const dayCount = visibleDays.length;
