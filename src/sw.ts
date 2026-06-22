@@ -158,8 +158,18 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
       for (const client of windowClients) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
-          return client.focus();
+        if (client.url.includes(self.location.origin)) {
+          // Deep-link the already-open client to the notification's target
+          // BEFORE focusing. Without the navigate, an installed PWA that's
+          // already open just gets focused on whatever screen was last
+          // shown and targetUrl (e.g. "/#agenda") is silently dropped.
+          // navigate is same-origin only; our targetUrls are app-relative.
+          if ("navigate" in client && targetUrl) {
+            return client.navigate(targetUrl)
+              .then((c) => (c || client).focus())
+              .catch(() => client.focus());
+          }
+          if ("focus" in client) return client.focus();
         }
       }
       return self.clients.openWindow(targetUrl);

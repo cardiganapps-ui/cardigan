@@ -64,7 +64,12 @@ async function handleVerify(req: Row, res: Row) {
   const mode = req.query?.["hub.mode"];
   const token = req.query?.["hub.verify_token"];
   const challenge = req.query?.["hub.challenge"];
-  if (mode === "subscribe" && token === verifyToken && typeof challenge === "string") {
+  // Constant-time compare of the verify token (length-guarded) — mirrors
+  // the HMAC path's timing-safe handling rather than a leaky ===.
+  const tokenBuf = Buffer.from(typeof token === "string" ? token : "");
+  const expectedBuf = Buffer.from(verifyToken);
+  const tokenOk = tokenBuf.length === expectedBuf.length && crypto.timingSafeEqual(tokenBuf, expectedBuf);
+  if (mode === "subscribe" && tokenOk && typeof challenge === "string") {
     res.setHeader("Content-Type", "text/plain");
     return res.status(200).send(challenge);
   }

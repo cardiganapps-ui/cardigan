@@ -2,9 +2,18 @@
 
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
+import crypto from "node:crypto";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = any;
+
+// Constant-time string compare (length-guarded). For secret/token checks
+// so they don't leak length/prefix via timing — mirrors the HMAC paths.
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+}
 
 // Short month names matching src/utils/dates.js
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -131,7 +140,8 @@ export function verifyCronSecret(req: Row): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
   const auth = req.headers.authorization;
-  return auth === `Bearer ${secret}`;
+  if (typeof auth !== "string") return false;
+  return safeEqual(auth, `Bearer ${secret}`);
 }
 
 // Non-session pushes (referral nudges, lifecycle prompts) MUST respect
