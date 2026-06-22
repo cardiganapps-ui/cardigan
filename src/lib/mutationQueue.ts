@@ -38,6 +38,24 @@
 import { kvGet, kvSet, kvAvailable } from "./idbKv";
 
 const QUEUE_KEY = "mutation_queue_v1";
+// Entries that fail to drain this many times in a row are moved OUT of the
+// head of the queue into a preserved dead-letter list, so one permanently-
+// failing write (a check-constraint violation, a deleted parent row, an
+// RLS change) can't wedge every later mutation behind it forever. The
+// entry is never discarded — it stays recoverable via getDeadLetter() /
+// retryDeadLetter(). Transient (network) failures recover well within this
+// budget across reconnect/focus drains.
+const MAX_DRAIN_ATTEMPTS = 5;
+const DEADLETTER_KEY = "mutation_queue_deadletter_v1";
+
+// Structural validation for entries loaded from persistence — a malformed
+// args/op (corrupted IDB, a partial write) must not be fed to a handler.
+function isValidEntry(e: unknown): e is QueueEntry {
+  return !!e && typeof e === "object"
+    && typeof (e as QueueEntry).id === "string"
+    && typeof (e as QueueEntry).op === "string"
+    && "args" in (e as object);
+}
 
 /** A persisted outbound write awaiting drain. */
 export interface QueueEntry {
@@ -83,6 +101,9 @@ const subscribers = new Set<Subscriber>();
 // In-memory mirror of the persisted queue. Source of truth for
 // subscribers (sync reads). Loaded from IDB on init.
 let entries: QueueEntry[] = [];
+// Entries that exhausted MAX_DRAIN_ATTEMPTS. Preserved (not discarded) so a
+// failed money write is never silently lost and can be surfaced/retried.
+let deadLetter: QueueEntry[] = [];
 let ready = false;
 let loadPromise: Promise<void> | null = null;
 
@@ -108,7 +129,11 @@ async function load() {
       return;
     }
     const stored = await kvGet(QUEUE_KEY);
-    entries = Array.isArray(stored) ? stored : [];
+    // Validate each entry's shape — a structurally-broken entry can't be
+    // drained and would otherwise sit at the head and wedge the queue.
+    entries = Array.isArray(stored) ? stored.filter(isValidEntry) : [];
+    const storedDL = await kvGet(DEADLETTER_KEY);
+    deadLetter = Array.isArray(storedDL) ? storedDL.filter(isValidEntry) : [];
     ready = true;
   })();
   return loadPromise;
@@ -117,6 +142,11 @@ async function load() {
 async function persist() {
   if (!(await kvAvailable())) return;
   await kvSet(QUEUE_KEY, entries);
+}
+
+async function persistDeadLetter() {
+  if (!(await kvAvailable())) return;
+  await kvSet(DEADLETTER_KEY, deadLetter);
 }
 
 function notify() {
@@ -148,6 +178,28 @@ export async function init() {
 
 export function getEntries() {
   return [...entries];
+}
+
+// Entries that exhausted their drain attempts and were set aside. Surface
+// these so the user can be told "N changes couldn't sync" rather than them
+// vanishing silently.
+export function getDeadLetter() {
+  return [...deadLetter];
+}
+
+// Move all dead-lettered entries back to the active queue (attempts reset)
+// for another drain — e.g. after the user fixes the underlying cause or a
+// deploy ships a corrected handler. Returns how many were re-queued.
+export async function retryDeadLetter(): Promise<number> {
+  await load();
+  if (deadLetter.length === 0) return 0;
+  const revived = deadLetter.map((e) => ({ ...e, attempts: 0, lastError: null }));
+  entries.push(...revived);
+  deadLetter = [];
+  await persist();
+  await persistDeadLetter();
+  notify();
+  return revived.length;
 }
 
 export async function enqueue(op: string, args: unknown, optimisticMeta?: unknown): Promise<QueueEntry> {
@@ -209,10 +261,26 @@ export async function drain() {
         result = { error: { message: (err as Error)?.message || String(err) } };
       }
       if (result && result.error) {
-        // Bail and let the next reconnect/focus retry. Keep the entry
-        // at the head of the queue so order is preserved.
         entry.attempts += 1;
         entry.lastError = result.error.message || "unknown";
+        if (entry.attempts >= MAX_DRAIN_ATTEMPTS) {
+          // Poison pill: this entry has failed MAX_DRAIN_ATTEMPTS times.
+          // A transient (network) failure would have cleared long ago, so
+          // it's almost certainly permanent (check-constraint, deleted
+          // parent, RLS). Move it to the preserved dead-letter list and
+          // CONTINUE so the independent mutations queued behind it still
+          // land — instead of wedging the whole queue at the head forever.
+          // The entry is kept (recoverable via getDeadLetter/retryDeadLetter),
+          // never discarded.
+          entries.shift();
+          deadLetter.push(entry);
+          await persistDeadLetter();
+          await persist();
+          notify();
+          continue;
+        }
+        // Transient: bail and let the next reconnect/focus retry. Keep the
+        // entry at the head so order is preserved.
         await persist();
         notify();
         break;
@@ -242,6 +310,8 @@ export async function drain() {
 // call this — it's the equivalent of `git reset --hard`.
 export async function clearForTest() {
   entries = [];
+  deadLetter = [];
   await persist();
+  await persistDeadLetter();
   notify();
 }

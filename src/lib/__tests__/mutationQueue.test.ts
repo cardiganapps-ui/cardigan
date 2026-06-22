@@ -148,3 +148,78 @@ describe("mutationQueue", () => {
     expect(peak).toBe(1); // never two handlers in flight at once
   });
 });
+
+  it("dead-letters a permanently-failing entry after MAX attempts and unblocks the queue", async () => {
+    let bCalls = 0;
+    // 'bad' always errors (permanent failure, e.g. check-constraint).
+    mq.registerHandler("test.bad", async () => ({ error: { message: "23514 check constraint" } }));
+    mq.registerHandler("test.good", async () => { bCalls += 1; return { data: { ok: true } }; });
+
+    await mq.enqueue("test.bad", { x: 1 });
+    await mq.enqueue("test.good", { x: 2 });
+
+    // Each drain retries the head once then bails (transient assumption).
+    // The good entry stays blocked behind the bad one until it's dead-lettered.
+    for (let i = 0; i < 4; i++) {
+      const r = await mq.drain();
+      expect(r.remaining).toBe(2);     // still wedged, retrying
+      expect(bCalls).toBe(0);          // good entry not reached yet
+    }
+    expect(mq.getEntries()[0].attempts).toBe(4);
+
+    // 5th drain hits MAX_DRAIN_ATTEMPTS: the bad entry is moved to the
+    // dead-letter list and draining CONTINUES to the good entry.
+    const final = await mq.drain();
+    expect(final.drained).toBe(1);     // the good entry drained
+    expect(final.remaining).toBe(0);
+    expect(bCalls).toBe(1);
+    expect(mq.getEntries()).toEqual([]);
+
+    const dl = mq.getDeadLetter();
+    expect(dl.length).toBe(1);
+    expect(dl[0].op).toBe("test.bad");
+    expect(dl[0].attempts).toBe(5);
+    expect(dl[0].lastError).toMatch(/23514/);
+  });
+
+  it("retryDeadLetter re-queues set-aside entries with attempts reset", async () => {
+    mq.registerHandler("test.bad", async () => ({ error: { message: "boom" } }));
+    await mq.enqueue("test.bad", { x: 1 });
+    for (let i = 0; i < 5; i++) await mq.drain();
+    expect(mq.getDeadLetter().length).toBe(1);
+    expect(mq.getEntries().length).toBe(0);
+
+    const revived = await mq.retryDeadLetter();
+    expect(revived).toBe(1);
+    expect(mq.getDeadLetter().length).toBe(0);
+    const entries = mq.getEntries();
+    expect(entries.length).toBe(1);
+    expect(entries[0].op).toBe("test.bad");
+    expect(entries[0].attempts).toBe(0);
+    expect(entries[0].lastError).toBe(null);
+  });
+
+  it("drops structurally-invalid persisted entries on load", async () => {
+    // Persist a mix of valid and malformed entries directly, then re-init.
+    vi.resetModules();
+    const store: Record<string, Row> = {
+      mutation_queue_v1: [
+        { id: "ok", op: "test.x", args: { a: 1 }, optimisticMeta: null, createdAt: 1, attempts: 0, lastError: null },
+        { op: "no-id", args: {} },           // missing id
+        { id: "no-op", args: {} },           // missing op
+        null,                                  // junk
+        "garbage",                             // junk
+      ],
+    };
+    vi.doMock("../idbKv.js", () => ({
+      kvGet: async (k: Row) => store[k],
+      kvSet: async (k: Row, v: Row) => { store[k] = v; },
+      kvDelete: async (k: Row) => { delete store[k]; },
+      kvAvailable: async () => true,
+    }));
+    const fresh = await import("../mutationQueue");
+    await fresh.init();
+    const entries = fresh.getEntries();
+    expect(entries.length).toBe(1);
+    expect(entries[0].id).toBe("ok");
+  });
