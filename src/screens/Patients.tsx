@@ -478,7 +478,15 @@ export function Patients() {
     }
     return a.name.localeCompare(b.name);
   };
-  const filtered = patients.filter((p: Row) => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort);
+  // Memoized so a re-render that doesn't change the inputs (e.g. a parent
+  // state tick) doesn't re-run filter+sort over the whole patient list on
+  // every keystroke/render. applyFilter closes over filter + the potential
+  // sub-filter; applySort is pure.
+  const filtered = useMemo(
+    () => patients.filter((p: Row) => p.name.toLowerCase().includes(search.toLowerCase()) && applyFilter(p)).sort(applySort),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [patients, search, filter, potentialSubFilter],
+  );
   const isPotentialView = filter === "potential";
 
   // Empty state
