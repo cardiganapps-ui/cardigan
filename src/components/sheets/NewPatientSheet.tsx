@@ -33,9 +33,13 @@ const SLOT_SEARCH_TIMES = [
  * schedule row and to pick a sensible default when the user clicks
  * "+ Agregar otro horario".
  */
-function findEmptySlot(sessions, extraTaken) {
-  const taken = new Set([
-    ...((sessions || []).filter(s => s.status === "scheduled").map(s => `${s.day}|${s.time}`)),
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
+type Row = any;
+interface Schedule { day: string; time: string; duration: string; modality: string; frequency: string }
+
+function findEmptySlot(sessions: Row[] | undefined, extraTaken: string[]) {
+  const taken = new Set<string>([
+    ...((sessions || []).filter((s: Row) => s.status === "scheduled").map((s: Row) => `${s.day}|${s.time}`)),
     ...(extraTaken || []),
   ]);
   for (const day of SLOT_SEARCH_DAYS) {
@@ -48,7 +52,15 @@ function findEmptySlot(sessions, extraTaken) {
   return { day: "Lunes", time: "16:00" };
 }
 
-export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating, patients, sessions, initialMode = "patient" }) {
+export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating, patients, sessions, initialMode = "patient" }: {
+  onClose: () => void;
+  onSubmit: (payload: Row) => Promise<boolean> | boolean;
+  onPotentialSubmit?: (payload: Row) => Promise<boolean> | boolean;
+  mutating?: boolean;
+  patients?: Row[];
+  sessions?: Row[];
+  initialMode?: string;
+}) {
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -58,7 +70,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     setPanelEl(el);
   };
@@ -66,7 +78,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // footer (see the flex layout below) — not on .sheet-panel itself.
   // useSheetDrag reads scrollTop to decide drag vs. scroll, so point
   // it at the inner scroll body.
-  const setScrollBody = (el) => { scrollRef.current = el; };
+  const setScrollBody = (el: HTMLElement | null) => { scrollRef.current = el; };
 
   // Record type — "patient" (full two-step regular patient flow) or
   // "potential" (slim single-step interview-stage flow). The user
@@ -96,9 +108,9 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // to the new content's natural height. After the transition, set
   // height back to "auto" so dynamic content (keyboard pop-up,
   // input growth, validation rows) flows naturally again.
-  const morphRef = useRef(null);
-  const morphFromHeight = useRef(null);
-  const handleRecordTypeChange = (v) => {
+  const morphRef = useRef<HTMLDivElement>(null);
+  const morphFromHeight = useRef<number | null>(null);
+  const handleRecordTypeChange = (v: string) => {
     // Only snapshot when the value actually changes — otherwise a
     // re-tap on the active segment would leave a stale height in
     // morphFromHeight for the next genuine toggle to pick up.
@@ -134,7 +146,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
       el.style.transition = "";
       el.removeEventListener("transitionend", onEnd);
     };
-    const onEnd = (e) => {
+    const onEnd = (e: TransitionEvent) => {
       if (e.target !== el || e.propertyName !== "height") return;
       cleanup();
     };
@@ -190,7 +202,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // Schedule defaults are computed once on mount from the calendar —
   // we don't want them to bounce around if `sessions` updates while
   // the user is typing.
-  const [schedules, setSchedules] = useState(() => {
+  const [schedules, setSchedules] = useState<Schedule[]>(() => {
     const slot = findEmptySlot(sessions, []);
     return [{ ...slot, duration: "60", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }];
   });
@@ -203,7 +215,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // Episodic patients have NO perpetual weekly slot; they have at most
   // one "first consult" (which itself is optional — intake-call-first
   // workflows leave it blank and schedule from Resumen later).
-  const [schedulingMode, setSchedulingMode] = useState(() => defaultSchedulingMode(profession));
+  const [schedulingMode, setSchedulingMode] = useState<string>(() => defaultSchedulingMode(profession));
   const [firstConsultDate, setFirstConsultDate] = useState(todayISO());
   const [firstConsultTime, setFirstConsultTime] = useState("10:00");
   const [firstConsultDuration, setFirstConsultDuration] = useState("60");
@@ -215,13 +227,13 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // leaving the user wondering why the form wasn't advancing — this
   // fades in the exact reason for ~2.6s and blurs out. `id` forces
   // the animation to replay when the same message is set twice.
-  const [feedback, setFeedback] = useState(null);
+  const [feedback, setFeedback] = useState<{ msg: string; id: number } | null>(null);
   useEffect(() => {
     if (!feedback) return;
     const id = setTimeout(() => setFeedback(null), 2600);
     return () => clearTimeout(id);
   }, [feedback]);
-  const flash = (msg) => setFeedback({ msg, id: Date.now() });
+  const flash = (msg: string) => setFeedback({ msg, id: Date.now() });
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -230,16 +242,16 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
   // Internal conflicts: the form has two schedule rows at the same
   // day/time (can happen after user edits). Both block progression.
   const { externalConflicts, internalConflictRows } = useMemo(() => {
-    const external = [];
-    const internal = new Set();
-    const seen = new Map(); // `${day}|${time}` -> first row index
+    const external: { row: number; match: Row }[] = [];
+    const internal = new Set<number>();
+    const seen = new Map<string, number>(); // `${day}|${time}` -> first row index
     for (let i = 0; i < schedules.length; i++) {
       const s = schedules[i];
       const key = `${s.day}|${s.time}`;
-      if (seen.has(key)) { internal.add(i); internal.add(seen.get(key)); }
+      if (seen.has(key)) { internal.add(i); internal.add(seen.get(key)!); }
       else seen.set(key, i);
       const match = (sessions || []).find(
-        x => x.status === "scheduled" && x.day === s.day && x.time === s.time
+        (x: Row) => x.status === "scheduled" && x.day === s.day && x.time === s.time
       );
       if (match) external.push({ row: i, match });
     }
@@ -248,8 +260,8 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
 
   const hasConflict = externalConflicts.length > 0 || internalConflictRows.length > 0;
 
-  const updateSched = (i, f, v) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
-  const removeSched = (i) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
+  const updateSched = (i: number, f: keyof Schedule, v: string) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
+  const removeSched = (i: number) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
   const addSched = () => {
     setSchedules(prev => {
       const extraTaken = prev.map(s => `${s.day}|${s.time}`);
@@ -275,7 +287,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
 
   const goNext = () => {
     if (!name.trim()) { flash(t("patients.enterName")); return; }
-    if (patients?.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
+    if (patients?.some((p: Row) => p.name.toLowerCase() === name.trim().toLowerCase())) {
       flash(t("patients.duplicateName")); return;
     }
     if (!rateValid) { flash(t("patients.enterRate")); return; }
@@ -287,8 +299,9 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     // pickers because the previously-focused MoneyInput unmounts but
     // iOS doesn't release the keyboard until something explicitly
     // blurs the active element.
-    if (typeof document !== "undefined" && document.activeElement && typeof document.activeElement.blur === "function") {
-      document.activeElement.blur();
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (active && typeof active.blur === "function") {
+      active.blur();
     }
     setFeedback(null);
     setStep(2);
@@ -303,7 +316,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   };
 
-  const submit = async (e) => {
+  const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
     // Potential mode — single-step slim form. Validate, then call
@@ -311,7 +324,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
     // toast pattern as patient mode for missed-field feedback.
     if (isPotentialMode) {
       if (!name.trim()) { flash(t("patients.enterName")); return; }
-      const dupe = (patients || []).some(p =>
+      const dupe = (patients || []).some((p: Row) =>
         (p.status === "active" || p.status === "potential")
         && p.name.toLowerCase() === name.trim().toLowerCase()
       );
@@ -339,7 +352,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
         if (ok) animatedClose();
         else setSubmitting(false);
       } catch (ex) {
-        flash(ex?.message || "Error al guardar");
+        flash((ex as Error)?.message || "Error al guardar");
         setSubmitting(false);
       }
       return;
@@ -401,7 +414,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
       if (ok) animatedClose();
       else setSubmitting(false);
     } catch (ex) {
-      flash(ex?.message || "Error al guardar");
+      flash((ex as Error)?.message || "Error al guardar");
       setSubmitting(false);
     }
   };
@@ -525,7 +538,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                   <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
                 </label>
                 <input className="input" type="text" required value={name}
-                  onChange={e => setName(capitalizeName(e.target.value))}
+                  onChange={e => setName((capitalizeName(e.target.value) || ""))}
                   placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
               </div>
 
@@ -549,7 +562,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                 <div className="input-group">
                   <label className="input-label">{t("patients.tutor")}</label>
                   <input className="input" type="text" value={parent}
-                    onChange={e => setParent(capitalizeName(e.target.value))}
+                    onChange={e => setParent((capitalizeName(e.target.value) || ""))}
                     placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
                 </div>
               )}
@@ -663,7 +676,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
                   {t("settings.fullName")}
                   <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
                 </label>
-                <input className="input" type="text" required value={name} onChange={e => setName(capitalizeName(e.target.value))} placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
+                <input className="input" type="text" required value={name} onChange={e => setName((capitalizeName(e.target.value) || ""))} placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
               </div>
 
               {/* 2. Minor toggle — second question, immediately after name */}
@@ -688,7 +701,7 @@ export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating
               {isMinor && (
                 <div className="input-group">
                   <label className="input-label">{t("patients.tutor")}</label>
-                  <input className="input" type="text" value={parent} onChange={e => setParent(capitalizeName(e.target.value))} placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
+                  <input className="input" type="text" value={parent} onChange={e => setParent((capitalizeName(e.target.value) || ""))} placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
                 </div>
               )}
 
