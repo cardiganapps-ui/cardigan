@@ -36,21 +36,31 @@ const PROVIDER_TINTS = {
   generic:      "var(--teal-dark)",
 };
 
-export function ShareFolderSheet({ open, url, onClose, onLinked }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient rows
+type Row = any;
+
+const PROVIDER_TINTS_TYPED: Record<string, string> = PROVIDER_TINTS;
+
+export function ShareFolderSheet({ open, url, onClose, onLinked }: {
+  open?: boolean;
+  url?: string;
+  onClose?: () => void;
+  onLinked?: (patient: Row) => void;
+}) {
   const { t } = useT();
   const { patients, updatePatient, showToast, setHideFab, openExpediente } = useCardigan();
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useFocusTrap(!!open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
 
   useEffect(() => {
@@ -80,28 +90,28 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
   // for predictable picker ordering.
   const eligible = useMemo(() => {
     return (patients || [])
-      .filter((p) => p.status === "active" || p.status === "potential")
+      .filter((p: Row) => p.status === "active" || p.status === "potential")
       .slice()
-      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+      .sort((a: Row, b: Row) => (a.name || "").localeCompare(b.name || "", "es"));
   }, [patients]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return eligible;
-    return eligible.filter((p) => (p.name || "").toLowerCase().includes(q));
+    return eligible.filter((p: Row) => (p.name || "").toLowerCase().includes(q));
   }, [eligible, search]);
 
   // Held while we wait for the user to confirm overwriting an
   // existing folder link. Capturing the patient (not just the id)
   // so the confirm dialog can show the name without re-finding it.
-  const [pendingOverwrite, setPendingOverwrite] = useState(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<Row | null>(null);
   // Tracked so a setState after an unmount no-ops cleanly.
   const isMountedRef = useRef(true);
   useEffect(() => () => { isMountedRef.current = false; }, []);
 
   // Internal commit — the actual write. Used by both the
   // tap-without-existing-link path and the post-confirm path.
-  const commitPick = async (patient) => {
+  const commitPick = async (patient: Row) => {
     if (!parsed.valid || saving) return;
     setSaving(true);
     haptic.tap();
@@ -121,7 +131,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
     }
   };
 
-  const handlePick = (patient) => {
+  const handlePick = (patient: Row) => {
     if (!parsed.valid || saving) return;
     // If the picked patient already has a folder linked, surface a
     // ConfirmDialog before clobbering it. The audit flagged this as
@@ -228,8 +238,8 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
                 width: 36,
                 height: 36,
                 borderRadius: "50%",
-                background: `${PROVIDER_TINTS[parsed.provider] || PROVIDER_TINTS.generic}1F`,
-                color: PROVIDER_TINTS[parsed.provider] || PROVIDER_TINTS.generic,
+                background: `${(parsed.provider && PROVIDER_TINTS_TYPED[parsed.provider]) || PROVIDER_TINTS_TYPED.generic}1F`,
+                color: (parsed.provider && PROVIDER_TINTS_TYPED[parsed.provider]) || PROVIDER_TINTS_TYPED.generic,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -356,7 +366,7 @@ export function ShareFolderSheet({ open, url, onClose, onLinked }) {
                     {t("patients.noResults")}
                   </div>
                 ) : (
-                  filtered.map((p) => (
+                  filtered.map((p: Row) => (
                     <button
                       key={p.id}
                       type="button"

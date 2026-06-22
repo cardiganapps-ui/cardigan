@@ -41,7 +41,16 @@ import {
    updates the patient row in place (preserving payments / notes /
    the interview session) and seeds the new schedule. */
 
-export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed potential row + schedule entries
+type Row = any;
+interface Schedule { day: string; time: string; duration: string; modality: string; frequency: string }
+
+export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }: {
+  potential?: Row;
+  onClose: () => void;
+  onSubmit: (id: string, payload: Row) => Promise<boolean> | boolean;
+  mutating?: boolean;
+}) {
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -50,7 +59,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   useLayer("convert-potential", animatedClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -64,7 +73,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
   const [schedulingMode, setSchedulingMode] = useState(() => defaultSchedulingMode(profession));
   const isEpisodicMode = schedulingMode === SCHEDULING_MODE.EPISODIC;
 
-  const [schedules, setSchedules] = useState([
+  const [schedules, setSchedules] = useState<Schedule[]>([
     { day: "Lunes", time: "16:00", duration: "60", modality: modalities[0] || "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY },
   ]);
   const [startDate, setStartDate] = useState(todayISO());
@@ -90,19 +99,19 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
 
   const [err, setErr] = useState("");
 
-  const updateSched = (i, k, v) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [k]: v } : s));
+  const updateSched = (i: number, k: keyof Schedule, v: string) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [k]: v } : s));
   const addSched = () => setSchedules(prev => [...prev, { day: "Lunes", time: "16:00", duration: "60", modality: modalities[0] || "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }]);
-  const removeSched = (i) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
+  const removeSched = (i: number) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
 
   // Internal duplicate detection — two rows with the same (day, time)
   // would race against the DB unique index.
   const internalConflictRows = useMemo(() => {
-    const seen = new Map();
-    const dupes = [];
+    const seen = new Map<string, number>();
+    const dupes: number[] = [];
     schedules.forEach((s, i) => {
       const k = `${s.day}|${s.time}`;
       if (seen.has(k)) {
-        dupes.push(seen.get(k));
+        dupes.push(seen.get(k)!);
         dupes.push(i);
       } else {
         seen.set(k, i);
@@ -111,7 +120,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
     return Array.from(new Set(dupes));
   }, [schedules]);
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!potential) { animatedClose(); return; }
     if (rate === "" || Number.isNaN(Number(rate))) { setErr(t("patients.enterRate")); return; }
@@ -146,7 +155,7 @@ export function ConvertPotentialSheet({ potential, onClose, onSubmit, mutating }
       const ok = await onSubmit(potential.id, payload);
       if (ok) animatedClose();
     } catch (ex) {
-      setErr(ex?.message || "Error al guardar");
+      setErr((ex as Error)?.message || "Error al guardar");
     }
   };
 

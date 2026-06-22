@@ -28,12 +28,15 @@ import { isSharingSupported, shareContent } from "../../lib/nativeShare";
    the DB. (Unused rows aren't a security concern because the token
    is hashed, but they'd accumulate over time.) */
 
-export function InvitePatientSheet({ patient, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient row
+type Row = any;
+
+export function InvitePatientSheet({ patient, onClose }: { patient?: Row; onClose?: () => void }) {
   const { t } = useT();
   const { showToast, setHideFab } = useCardigan();
   const [busy, setBusy] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
-  const [expiresAt, setExpiresAt] = useState(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   // The API returns `already_linked: true` when this patient is
   // already paired with a Cardigan account. We still let the
@@ -43,8 +46,8 @@ export function InvitePatientSheet({ patient, onClose }) {
   const [alreadyLinked, setAlreadyLinked] = useState(false);
 
   const panelRef = useFocusTrap(!!patient);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: !!patient });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!patient });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
