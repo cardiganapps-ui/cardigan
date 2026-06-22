@@ -5,6 +5,7 @@ import { haptic } from "../utils/haptics";
 import { getStripe } from "../lib/stripe";
 import { formatMXN } from "../utils/format";
 import { useSheetExit } from "../hooks/useSheetExit";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /* ── StripePaymentSheet ───────────────────────────────────────────────
    Native checkout — Stripe Elements `PaymentElement` mounted inside
@@ -127,6 +128,9 @@ export default function StripePaymentSheet({
 }) {
   const { t } = useT();
   const { exiting, animatedClose } = useSheetExit(!!open, onClose);
+  // Trap keyboard focus inside the modal and restore it to the trigger on
+  // close (this is a money path — aria-modal="true" should mean it).
+  const panelRef = useFocusTrap(!!open);
   // Stage state machine — each transitions to the next on success and
   // can fall back to "error" on any failure.
   //   loading → ready → submitting → done
@@ -294,6 +298,7 @@ export default function StripePaymentSheet({
       onClick={() => stage !== "submitting" && animatedClose()}
     >
       <div
+        ref={(el) => { panelRef.current = el; }}
         className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`}
         role="dialog"
         aria-modal="true"

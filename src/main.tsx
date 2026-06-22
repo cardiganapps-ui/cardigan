@@ -141,7 +141,13 @@ if ('serviceWorker' in navigator && !isNative()) {
       reg.update().then(drainState).catch(() => {});
     });
 
-    // Safety net: poll every 30 minutes.
-    setInterval(() => reg.update().then(drainState).catch(() => {}), 30 * 60 * 1000);
+    // Safety net: poll every 30 minutes — but only while the tab is
+    // actually visible, so a backgrounded standalone PWA isn't firing
+    // update checks every half hour forever. (visibilitychange above
+    // already covers the foreground-on-wake case.)
+    setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      reg.update().then(drainState).catch(() => {});
+    }, 30 * 60 * 1000);
   });
 }
