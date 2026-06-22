@@ -7,7 +7,12 @@ import { extractOutline } from "./outlineUtil";
    headings, and renders a clickable list. Selecting a heading calls
    `onJump(lineIdx)` so the parent can scroll the editor to it. */
 
-export function NoteOutline({ content, onJump, variant = "drawer", activeLine = null }) {
+export function NoteOutline({ content, onJump, variant = "drawer", activeLine = null }: {
+  content?: string | null;
+  onJump: (line: number) => void;
+  variant?: string;
+  activeLine?: number | null;
+}) {
   const { t } = useT();
   const items = useMemo(() => extractOutline(content), [content]);
 

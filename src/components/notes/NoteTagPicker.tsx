@@ -24,12 +24,22 @@
 import { useState, useMemo } from "react";
 import { IconX } from "../Icons";
 
-export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unlinkTag }) {
+interface Tag { id: string; label?: string; color?: string }
+interface TagLink { note_id: string; tag_id: string }
+
+export function NoteTagPicker({ noteId, tags, tagLinks, upsertTag, linkTag, unlinkTag }: {
+  noteId?: string;
+  tags?: Tag[];
+  tagLinks?: TagLink[];
+  upsertTag?: (input: { label: string }) => Promise<{ id?: string } | null | undefined> | { id?: string } | null | undefined;
+  linkTag?: (noteId: string | undefined, tagId: string) => void | Promise<unknown>;
+  unlinkTag?: (noteId: string | undefined, tagId: string) => void | Promise<unknown>;
+}) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
 
   const linkedIds = useMemo(() => {
-    const s = new Set();
+    const s = new Set<string>();
     for (const l of (tagLinks || [])) if (l.note_id === noteId) s.add(l.tag_id);
     return s;
   }, [tagLinks, noteId]);

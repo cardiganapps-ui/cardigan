@@ -17,7 +17,14 @@ function isMac() {
 }
 const MOD_LABEL = isMac() ? "⌘" : "Ctrl";
 
-function Tool({ label, hint, active, onClick, disabled, children }) {
+function Tool({ label, hint, active, onClick, disabled, children }: {
+  label?: string;
+  hint?: string;
+  active?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+  children?: React.ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -128,9 +135,18 @@ const IconPaperclipMini = () => (
   </svg>
 );
 
-export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSupported, voiceRecording, onVoiceToggle, onAttachClick }) {
+export function FormatToolbar({ active, onInline, onBlock, disabled, voiceSupported, voiceRecording, onVoiceToggle, onAttachClick }: {
+  active?: Set<string>;
+  onInline: (kind: string) => void;
+  onBlock: (block: string) => void;
+  disabled?: boolean;
+  voiceSupported?: boolean;
+  voiceRecording?: boolean;
+  onVoiceToggle?: () => void;
+  onAttachClick?: () => void;
+}) {
   const { t } = useT();
-  const has = (k) => active?.has(k);
+  const has = (k: string) => active?.has(k);
   return (
     <div className="mde-toolbar" role="toolbar" aria-label={t("notes.formatting") || "Formato"}>
       <Tool label={t("notes.bold") || "Negrita"} hint={`${MOD_LABEL}B`} active={has("strong")} onClick={() => onInline("strong")} disabled={disabled}>

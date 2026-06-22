@@ -14,11 +14,19 @@ import { haptic } from "../../utils/haptics";
    The bar doesn't mutate content — it asks the parent to jump the
    editor caret/selection to each match via an imperative callback. */
 
-export function FindInNote({ title, content, onJump, onClose, initialQuery = "" }) {
+interface Match { line: number; startCol: number; endCol: number }
+
+export function FindInNote({ title, content, onJump, onClose, initialQuery = "" }: {
+  title?: string | null;
+  content?: string | null;
+  onJump?: (match: Match) => void;
+  onClose: () => void;
+  initialQuery?: string;
+}) {
   const { t } = useT();
   const [query, setQuery] = useState(initialQuery);
   const [current, setCurrent] = useState(0);
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   /* Compute matches over the whole document whenever the query or
      content changes. A match is { line, startCol, endCol }, scanning
@@ -27,7 +35,7 @@ export function FindInNote({ title, content, onJump, onClose, initialQuery = "" 
   const matches = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    const out = [];
+    const out: Match[] = [];
     const lines = (content || "").split("\n");
     for (let i = 0; i < lines.length; i++) {
       const ln = lines[i].toLowerCase();
@@ -71,7 +79,7 @@ export function FindInNote({ title, content, onJump, onClose, initialQuery = "" 
     haptic.tap();
   };
 
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (e.shiftKey) prev(); else next();

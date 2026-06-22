@@ -10,12 +10,20 @@
 
 import { useMemo } from "react";
 
-export function TagFilterPills({ tags, tagLinks, selectedIds, onToggle }) {
+interface Tag { id: string; label?: string }
+interface TagLink { tag_id: string }
+
+export function TagFilterPills({ tags, tagLinks, selectedIds, onToggle }: {
+  tags?: Tag[];
+  tagLinks?: TagLink[];
+  selectedIds?: string[];
+  onToggle?: (id: string) => void;
+}) {
   // Count per tag — single pass over the link table; the row reads
   // tabular-nums for steady-width counts so the row doesn't jiggle
   // as filters narrow.
   const counts = useMemo(() => {
-    const m = new Map();
+    const m = new Map<string, number>();
     for (const l of (tagLinks || [])) {
       m.set(l.tag_id, (m.get(l.tag_id) || 0) + 1);
     }

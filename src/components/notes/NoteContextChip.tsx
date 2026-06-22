@@ -12,7 +12,17 @@ import { useEscape } from "../../hooks/useEscape";
    selects. Saves ~60 px of vertical space and matches the rest of
    the Phase-3 chip/pill vocabulary. */
 
-export function NoteContextChip({ patients, sessions, patientId, sessionId, onChange, readOnly }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
+type Row = any;
+
+export function NoteContextChip({ patients, sessions, patientId, sessionId, onChange, readOnly }: {
+  patients?: Row[];
+  sessions?: Row[];
+  patientId?: string | null;
+  sessionId?: string | null;
+  onChange: (next: { patientId: string | null; sessionId: string | null }) => void;
+  readOnly?: boolean;
+}) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -22,15 +32,15 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
   const { exiting, animatedClose } = useSheetExit(open, close);
   useEscape(open ? animatedClose : null);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(close, { isOpen: open });
-  const setPanel = (el) => { scrollRef.current = el; setPanelEl(el); };
+  const setPanel = (el: HTMLElement | null) => { scrollRef.current = el; setPanelEl(el); };
 
-  const patient = patientId ? (patients || []).find(p => p.id === patientId) : null;
-  const session = sessionId ? (sessions || []).find(s => s.id === sessionId) : null;
+  const patient = patientId ? (patients || []).find((p: Row) => p.id === patientId) : null;
+  const session = sessionId ? (sessions || []).find((s: Row) => s.id === sessionId) : null;
 
   const patientSessions = patientId
     ? (sessions || [])
-        .filter(s => s.patient_id === patientId)
-        .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+        .filter((s: Row) => s.patient_id === patientId)
+        .sort((a: Row, b: Row) => (b.created_at || "").localeCompare(a.created_at || ""))
     : [];
 
   const isLinked = !!patient;
@@ -86,9 +96,9 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
                   onChange={e => onChange({ patientId: e.target.value || null, sessionId: null })}
                 >
                   <option value="">{t("notes.generalNote") || "Nota general"}</option>
-                  {(patients || []).filter(p => p.status === "active")
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {(patients || []).filter((p: Row) => p.status === "active")
+                    .sort((a: Row, b: Row) => a.name.localeCompare(b.name))
+                    .map((p: Row) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               {patientId && patientSessions.length > 0 && (
@@ -100,7 +110,7 @@ export function NoteContextChip({ patients, sessions, patientId, sessionId, onCh
                     onChange={e => onChange({ patientId, sessionId: e.target.value || null })}
                   >
                     <option value="">{t("notes.generalPatientNote")}</option>
-                    {patientSessions.map(s => (
+                    {patientSessions.map((s: Row) => (
                       <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`) || s.status}</option>
                     ))}
                   </select>

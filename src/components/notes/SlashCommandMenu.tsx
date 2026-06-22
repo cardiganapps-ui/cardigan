@@ -26,7 +26,7 @@ import { useT } from "../../i18n/index";
 // Inline SVG glyphs — same line-art family as FormatToolbar. Tiny so
 // inlining doesn't pull from Icons.jsx (this menu is one-off enough
 // not to warrant adding to the global icon set).
-const G = (path) => (
+const G = (path: React.ReactNode) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {path}
   </svg>
@@ -41,7 +41,9 @@ const GlyphTask = G(<><rect x="3" y="4" width="6" height="6" rx="1.4" /><line x1
 // `prefix` is what the chosen command inserts at line start (which
 // the renderer will then tokenise as the matching block). Order in
 // this list = order shown in the menu.
-function getCommands(t) {
+interface SlashCommand { key: string; labelKey: string; glyph: React.ReactNode; prefix: string; label?: string }
+
+function getCommands(t: (key: string) => string): SlashCommand[] {
   return [
     { key: "h1",   labelKey: "notes.h1",        glyph: GlyphH1,   prefix: "# " },
     { key: "h2",   labelKey: "notes.h2",        glyph: GlyphH2,   prefix: "## " },
@@ -52,9 +54,14 @@ function getCommands(t) {
   ].map(c => ({ ...c, label: t(c.labelKey) }));
 }
 
-export function SlashCommandMenu({ open, anchorRect, onSelect, onClose }) {
+export function SlashCommandMenu({ open, anchorRect, onSelect, onClose }: {
+  open?: boolean;
+  anchorRect?: { top: number; bottom: number; left: number } | null;
+  onSelect?: (command: SlashCommand) => void;
+  onClose?: () => void;
+}) {
   const { t } = useT();
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
   const commands = getCommands(t);
 
   // Close on Escape; close on clicks outside the menu (the editor
@@ -62,10 +69,10 @@ export function SlashCommandMenu({ open, anchorRect, onSelect, onClose }) {
   // dismiss the menu rather than leave it floating).
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); onClose?.(); } };
-    const onDocPointer = (e) => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); onClose?.(); } };
+    const onDocPointer = (e: Event) => {
       if (!ref.current) return;
-      if (ref.current.contains(e.target)) return;
+      if (ref.current.contains(e.target as Node)) return;
       onClose?.();
     };
     // Scroll-on-any-ancestor desyncs the popover from its anchor
