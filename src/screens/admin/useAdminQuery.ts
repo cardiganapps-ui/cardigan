@@ -24,24 +24,27 @@ import { useEffect, useState, useRef, useCallback } from "react";
    Deps for the fetcher (e.g. uid in user-detail) get folded into the
    key so each unique key gets its own cache slot. */
 
-const cache = new Map(); // key -> { value, at }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
 
-export function getCachedValue(key) {
+const cache = new Map<string, { value: Row; at: number }>(); // key -> { value, at }
+
+export function getCachedValue(key: string) {
   return cache.get(key)?.value;
 }
 
-export function setCachedValue(key, value) {
+export function setCachedValue(key: string, value: Row) {
   cache.set(key, { value, at: Date.now() });
 }
 
-export function invalidateAdminCache(prefix) {
+export function invalidateAdminCache(prefix: string) {
   if (!prefix) { cache.clear(); return; }
   for (const k of cache.keys()) {
     if (k === prefix || k.startsWith(prefix + ":")) cache.delete(k);
   }
 }
 
-export function useAdminQuery(key, fetcher, { enabled = true } = {}) {
+export function useAdminQuery(key: string, fetcher: () => Row | Promise<Row>, { enabled = true }: { enabled?: boolean } = {}) {
   // Hydrate from cache synchronously on first render so the page
   // body paints with real content instead of "Cargando…" when the
   // user revisits a section.
@@ -94,8 +97,8 @@ export function useAdminQuery(key, fetcher, { enabled = true } = {}) {
   // Callers typically invoke this right after a mutating server
   // action so the row re-renders instantly while the next refetch
   // confirms the truth.
-  const mutate = useCallback((updater) => {
-    setData((prev) => {
+  const mutate = useCallback((updater: Row | ((prev: Row) => Row)) => {
+    setData((prev: Row) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       if (key) setCachedValue(key, next);
       return next;

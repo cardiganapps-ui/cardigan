@@ -59,7 +59,7 @@ export function useAdminRoute() {
     };
   }, []);
 
-  const navigate = useCallback((section, id) => {
+  const navigate = useCallback((section: string, id?: string | null) => {
     if (!VALID_SECTIONS.has(section)) return;
     const target = id ? `admin/${section}/${id}` : `admin/${section}`;
     if (window.location.hash === "#" + target) return;

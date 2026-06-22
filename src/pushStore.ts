@@ -8,7 +8,7 @@
 const DB = "cardigan-push";
 const STORE = "kv";
 
-function open() {
+function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 1);
     req.onupgradeneeded = () => {
@@ -21,18 +21,18 @@ function open() {
   });
 }
 
-function tx(db, mode) {
+function tx(db: IDBDatabase, mode: IDBTransactionMode) {
   return db.transaction(STORE, mode).objectStore(STORE);
 }
 
-function req(r) {
+function req<T = unknown>(r: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
   });
 }
 
-export async function putPushState({ endpoint, resubToken }) {
+export async function putPushState({ endpoint, resubToken }: { endpoint: string; resubToken: string }) {
   const db = await open();
   const store = tx(db, "readwrite");
   await Promise.all([req(store.put(endpoint, "endpoint")), req(store.put(resubToken, "resubToken"))]);

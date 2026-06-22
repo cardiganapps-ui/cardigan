@@ -11,7 +11,7 @@ import { useT } from "../../../i18n/index";
    audit action surfaces as the literal id rather than blanking out. */
 export function useAuditLabel() {
   const { t } = useT();
-  return (actionKey) => {
+  return (actionKey: string) => {
     if (!actionKey) return "";
     const translated = t(`admin.audit.action.${actionKey}`);
     // i18n returns the key itself when missing; surface the raw action

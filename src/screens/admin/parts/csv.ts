@@ -11,7 +11,7 @@
    normal spreadsheet view. */
 const FORMULA_PREFIX = /^[=+\-@\t\r]/;
 
-function escape(value) {
+function escape(value: unknown) {
   if (value == null) return "";
   let s = String(value);
   if (FORMULA_PREFIX.test(s)) s = "'" + s;
@@ -24,11 +24,15 @@ function escape(value) {
   return s;
 }
 
-export function downloadCsv(filename, rows, columns) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+type Column = { label: string; key?: string; get?: (row: Row) => unknown };
+
+export function downloadCsv(filename: string, rows: Row[], columns: Column[]) {
   if (!Array.isArray(rows) || rows.length === 0) return;
-  const header = columns.map((c) => escape(c.label)).join(",");
-  const body = rows.map((row) =>
-    columns.map((c) => escape(typeof c.get === "function" ? c.get(row) : row[c.key])).join(",")
+  const header = columns.map((c: Column) => escape(c.label)).join(",");
+  const body = rows.map((row: Row) =>
+    columns.map((c: Column) => escape(typeof c.get === "function" ? c.get(row) : row[c.key as string])).join(",")
   ).join("\n");
   const csv = "﻿" + header + "\n" + body;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });

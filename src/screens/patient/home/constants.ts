@@ -1,6 +1,9 @@
 import { IconUsers, IconCamera, IconPhone, IconHome } from "../../../components/Icons";
 import { shortDateToISO } from "../../../utils/dates";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Field/discipline nouns — gender-neutral. Mirrors PROVIDER_LABELS
 // in PatientClaimScreen / IntakeFormSheet / useAuth. Practitioner
 // nouns ("psicóloga", "nutrióloga") would force a gender assumption
@@ -72,7 +75,7 @@ export const STATUS_COLOR = {
   charged: "var(--amber, #E8B86C)",
 };
 
-export function dayName(iso) {
+export function dayName(iso: string) {
   const d = new Date(iso + "T12:00:00");
   if (Number.isNaN(d.getTime())) return "";
   return DAY_NAMES[d.getDay()];
@@ -83,7 +86,7 @@ export function dayName(iso) {
 // Returns null when the session is in the past so callers can
 // hide the chip cleanly. The "ya casi" / "en unos minutos" copy
 // reads warmer than a raw count when the gap is < 1h.
-export function formatCountdown(iso, time) {
+export function formatCountdown(iso: string, time?: string) {
   if (!iso) return null;
   const [h = "0", m = "0"] = (time || "00:00").split(":");
   const target = new Date(`${iso}T${h.padStart(2, "0")}:${m.padStart(2, "0")}:00`).getTime();
@@ -108,19 +111,19 @@ export function formatCountdown(iso, time) {
 // "Camino contigo" tile. Uses the OLDEST session's date as the
 // "started together" anchor — works regardless of whether the
 // first session is past, completed, or future-but-already-booked.
-export function computeJourneyStats(allSessions, patientId) {
+export function computeJourneyStats(allSessions: Row[], patientId: string) {
   if (!patientId) return null;
-  const own = (allSessions || []).filter(s => s.patient_id === patientId);
+  const own = (allSessions || []).filter((s: Row) => s.patient_id === patientId);
   if (own.length === 0) return null;
   const isos = own
-    .map(s => shortDateToISO(s.date))
+    .map((s: Row) => shortDateToISO(s.date))
     .filter(Boolean)
     .sort();
   if (isos.length === 0) return null;
   const firstIso = isos[0];
   const firstDate = new Date(firstIso + "T12:00:00");
   if (Number.isNaN(firstDate.getTime())) return null;
-  const completedCount = own.filter(s => {
+  const completedCount = own.filter((s: Row) => {
     if (s.status === "completed" || s.status === "charged") return true;
     if (s.status === "scheduled") {
       const iso = shortDateToISO(s.date);
@@ -135,7 +138,7 @@ export function computeJourneyStats(allSessions, patientId) {
   const months = (now.getFullYear() - firstDate.getFullYear()) * 12
     + (now.getMonth() - firstDate.getMonth())
     + (now.getDate() >= firstDate.getDate() ? 0 : -1);
-  const days = Math.max(0, Math.floor((now - firstDate) / 86_400_000));
+  const days = Math.max(0, Math.floor((now.getTime() - firstDate.getTime()) / 86_400_000));
   let durationLabel;
   if (days < 7) durationLabel = days <= 1 ? "esta semana" : `hace ${days} días`;
   else if (days < 30) {

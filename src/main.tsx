@@ -50,7 +50,7 @@ initNativeDeepLinks()
 // resolves well before the user could tap a passkey button.
 initNativePasskeys()
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
@@ -101,8 +101,8 @@ if ('serviceWorker' in navigator && !isNative()) {
     // Idempotent: the announcedSet guards against re-announcing the same
     // SW when multiple listeners fire (e.g. updatefound AND the
     // reg.installing self-check on startup).
-    const announcedSet = new WeakSet();
-    const announce = (sw) => {
+    const announcedSet = new WeakSet<ServiceWorker>();
+    const announce = (sw: ServiceWorker | null) => {
       if (!sw || !navigator.serviceWorker.controller) return;
       if (announcedSet.has(sw)) return;
       announcedSet.add(sw);
@@ -112,7 +112,7 @@ if ('serviceWorker' in navigator && !isNative()) {
     // Track a SW through its lifecycle. Idempotent — calling twice for
     // the same SW just re-attaches a listener that fires once on its
     // terminal state; the announcedSet guard above dedupes the event.
-    const track = (sw) => {
+    const track = (sw: ServiceWorker | null) => {
       if (!sw) return;
       if (sw.state === 'installed') { announce(sw); return; }
       sw.addEventListener('statechange', () => {

@@ -29,6 +29,9 @@ import {
    `parsedVerb` lets the palette show a hint ("Acción: bloquear");
    `parsedQuery` is the remainder for caller-level matching if needed. */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const RECENT_KEY = "admin.cmdp.recent";
 const RECENT_CAP = 5;
 
@@ -41,7 +44,7 @@ const VERBS = [
   { prefix: "delete ",   key: "delete",        danger: true,  Icon: IconTrash,  label: "Eliminar" },
 ];
 
-function readRecent() {
+function readRecent(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(RECENT_KEY);
@@ -51,16 +54,16 @@ function readRecent() {
   } catch { return []; }
 }
 
-function pushRecent(id) {
+function pushRecent(id: string) {
   if (typeof window === "undefined" || !id) return;
   try {
     const cur = readRecent();
-    const next = [id, ...cur.filter((x) => x !== id)].slice(0, RECENT_CAP);
+    const next = [id, ...cur.filter((x: string) => x !== id)].slice(0, RECENT_CAP);
     window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
   } catch { /* non-fatal */ }
 }
 
-function parseQuery(query) {
+function parseQuery(query: string) {
   const q = (query || "").toLowerCase();
   for (const v of VERBS) {
     if (q.startsWith(v.prefix)) {
@@ -70,11 +73,11 @@ function parseQuery(query) {
   return { verb: null, query };
 }
 
-function matchAccounts(accounts, query) {
+function matchAccounts(accounts: Row[], query: string) {
   if (!query) return [];
   const q = query.toLowerCase();
   return accounts
-    .filter((a) => {
+    .filter((a: Row) => {
       const hay = `${a.fullName || ""} ${a.email || ""}`.toLowerCase();
       return hay.includes(q);
     })
@@ -90,7 +93,7 @@ export function useAdminCommands({
   showToast,
   onViewAs,
   currentAdminId,
-}) {
+}: Row) {
   const { verb, query: rest } = useMemo(() => parseQuery(query), [query]);
 
   const commands = useMemo(() => {
@@ -100,10 +103,10 @@ export function useAdminCommands({
     const recentIds = readRecent();
     const recentCmds = !query.trim()
       ? recentIds
-          .map((id) => {
+          .map((id: string) => {
             if (id.startsWith("admin:user:")) {
               const uid = id.slice("admin:user:".length);
-              const acc = (adminAccounts || []).find((a) => a.userId === uid);
+              const acc = (adminAccounts || []).find((a: Row) => a.userId === uid);
               if (!acc) return null;
               return {
                 id,
@@ -131,15 +134,15 @@ export function useAdminCommands({
     // `comp` / `uncomp` / `view as` intentionally allow self per the
     // CLAUDE.md spec ("Used for the admin's own account…").
     if (currentAdminId && (verb.key === "block" || verb.key === "unblock" || verb.key === "delete")) {
-      matches = matches.filter((a) => a.userId !== currentAdminId);
+      matches = matches.filter((a: Row) => a.userId !== currentAdminId);
     }
     if (matches.length === 0) return { typeToAct: [], recent: recentCmds };
 
-    const typeToAct = matches.map((a) => {
+    const typeToAct = matches.map((a: Row) => {
       const userLabel = a.fullName ? `${a.fullName}` : (a.email || a.userId.slice(0, 8) + "…");
       const cmdId = `admin:typeact:${verb.key}:${a.userId}`;
-      const showError = (msg) => showToast?.(msg, "error");
-      const showOk = (msg) => showToast?.(msg, "success");
+      const showError = (msg: string) => showToast?.(msg, "error");
+      const showOk = (msg: string) => showToast?.(msg, "success");
 
       return {
         id: cmdId,
@@ -185,7 +188,7 @@ export function useAdminCommands({
               showToast?.("Confirma la eliminación en el detalle del usuario.", "info");
               return;
             }
-          } catch (e) {
+          } catch (e: Row) {
             showError(e?.message || "Error en la acción");
           }
         },
@@ -204,6 +207,6 @@ export function useAdminCommands({
 /* Exported for callers that want to bump a recent entry without
    going through the hook (e.g. an account-jump click from the
    palette's existing adminAccountCmds). */
-export function recordAdminRecent(id) {
+export function recordAdminRecent(id: string) {
   pushRecent(id);
 }

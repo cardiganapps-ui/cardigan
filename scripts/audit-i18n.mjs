@@ -38,7 +38,7 @@ async function walk(dir, out = []) {
     if (e.isDirectory()) {
       if (e.name === "__tests__" || e.name === "node_modules") continue;
       await walk(p, out);
-    } else if (/\.(js|jsx)$/.test(e.name)) {
+    } else if (/\.(js|jsx|ts|tsx)$/.test(e.name)) {
       out.push(p);
     }
   }
@@ -67,12 +67,13 @@ const T_STATIC = /\bt\(\s*["'`]([^"'`$]+)["'`]\s*[,)]/g;
 const T_DYNAMIC = /\bt\(\s*`([^`]*?)\$\{/g;
 
 async function main() {
-  // Dynamic import so we evaluate es.js the same way the bundler does.
-  const mod = await import(`file://${ROOT}/src/i18n/es.js`);
-  // es.js exports default or a named `es` — try both.
+  // Dynamic import so we evaluate es.ts the same way the bundler does.
+  // Node ≥22.18 strips the (annotation-free) types on import natively.
+  const mod = await import(`file://${ROOT}/src/i18n/es.ts`);
+  // es.ts exports default or a named `es` — try both.
   const root = mod.default || mod.es;
   if (!root || typeof root !== "object") {
-    console.error("Could not load i18n keys from src/i18n/es.js");
+    console.error("Could not load i18n keys from src/i18n/es.ts");
     process.exit(2);
   }
   const defined = flatten(root);
@@ -105,7 +106,7 @@ async function main() {
     .filter((k) => ![...dynamicPrefixes].some((p) => k === p || k.startsWith(`${p}.`)))
     .sort();
 
-  console.log(`i18n audit — src/i18n/es.js vs src tree (.js and .jsx)`);
+  console.log(`i18n audit — src/i18n/es.ts vs src tree`);
   console.log("");
   console.log(`  Defined keys:       ${defined.size}`);
   console.log(`  Statically used:    ${usedStatic.size}`);

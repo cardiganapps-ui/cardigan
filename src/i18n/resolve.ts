@@ -23,11 +23,16 @@
                         paciente" / "3 pacientes" without the fragile
                         {plural} suffix. */
 
-const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// Loosely-typed i18n boundary inputs: the vars interpolation bag and the
+// active profession's vocabulary record (shape lives in vocabulary.ts).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
 
-export function resolveTemplate(template, vars, vocab) {
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+export function resolveTemplate(template: Row, vars: Row, vocab: Row) {
   if (typeof template !== "string") return template;
-  return template.replace(/\{(\w+)(?:\.(\w+))?\}/g, (_, k, sub) => {
+  return template.replace(/\{(\w+)(?:\.(\w+))?\}/g, (_: string, k: string, sub: string) => {
     if (k === "plural") {
       const count = vars?.count ?? 0;
       return count !== 1 ? "s" : "";
@@ -49,7 +54,7 @@ export function resolveTemplate(template, vars, vocab) {
 /* Walks a dot-path (e.g. "patients.selectHint") through a strings object
    and returns the leaf value. Returns the original key if any segment
    misses, so consumers see the missing key rather than a blank. */
-export function lookupKey(strings, key) {
+export function lookupKey(strings: Row, key: string) {
   const parts = key.split(".");
   let val = strings;
   for (const p of parts) {

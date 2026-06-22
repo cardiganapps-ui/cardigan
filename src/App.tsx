@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { isNative, isIOS } from "./lib/platform";
 import { supabase } from "./supabaseClient";
@@ -136,6 +136,12 @@ import { useSubscription } from "./hooks/useSubscription";
 import "./utils/logBuffer";
 import "./styles/index.css";
 
+// Boundary alias for untyped domain/hook/context data flowing in from
+// the still-JS data layer. See the migration conventions — mechanical,
+// behavior-preserving; not a real domain model.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Days-remaining thresholds at which we surface the trial reminder
 // modal. Module-level so the dependency array of the gating effect
 // stays stable across renders. Cadence is intentionally light — three
@@ -167,7 +173,7 @@ function CardiganApp() {
   // demo banner's "Crear cuenta" button AND by the ?ref=<code> referral-link
   // capture below, so a visitor arriving from a friend's invite link skips
   // the landing page entirely.
-  const [authIntent, setAuthIntent] = useState(() => {
+  const [authIntent, setAuthIntent] = useState<string | null>(() => {
     // Capture acquisition signals at initial render so they're in
     // place BEFORE the auth gate. Two channels:
     //   ?ref=<code>          — peer referral code (existing user invites
@@ -351,7 +357,7 @@ function CardiganApp() {
     }
     return (
       <Suspense fallback={<AuthSplash />}>
-        <AuthScreen onSignIn={signIn} onSignUp={signUp} onProvider={signInWithProvider} onMagicLink={signInWithMagicLink} onPasskey={signInWithPasskey} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent} />
+        <AuthScreen onSignIn={signIn as Row} onSignUp={signUp as Row} onProvider={signInWithProvider as Row} onMagicLink={signInWithMagicLink as Row} onPasskey={signInWithPasskey} onDemo={() => { setAuthIntent(null); setDemoMode(true); }} autoOpen={authIntent ?? undefined} />
       </Suspense>
     );
   }
@@ -424,7 +430,13 @@ export default function Cardigan() {
    When `showContent` flips true, both layers remain mounted for the
    fade duration: content fades in from 0 while the skeleton fades out
    on top, giving the eye a continuous handoff. */
-function SkeletonCrossfade({ showContent, skeletonScreen, children }) {
+type SkeletonCrossfadeProps = {
+  showContent: boolean;
+  skeletonScreen?: string;
+  children: React.ReactNode;
+};
+
+function SkeletonCrossfade({ showContent, skeletonScreen, children }: SkeletonCrossfadeProps) {
   const [keepSkeleton, setKeepSkeleton] = useState(!showContent);
   useEffect(() => {
     if (showContent && keepSkeleton) {
@@ -475,8 +487,8 @@ function SkeletonCrossfade({ showContent, skeletonScreen, children }) {
    filling in" rather than "two different screens cross-fading".
    Falls back to a generic "header + list" skeleton for any screen
    not yet specialised (Settings, admin dashboard, etc.). */
-function LoadingSkeleton({ screen = "home" }) {
-  const skeletonAvatarRow = (key, idx) => (
+function LoadingSkeleton({ screen = "home" }: { screen?: string }) {
+  const skeletonAvatarRow = (key: number, idx: number) => (
     <div key={key} className="row-item" style={{ cursor:"default" }}>
       <div className="sk-circle" />
       <div className="row-content">
@@ -585,7 +597,7 @@ function LoadingSkeleton({ screen = "home" }) {
   // Home variant — the only screen with the KPI-tiles + carousel
   // layout, so it gets a bespoke skeleton matching that shape. The
   // generic skeletonAvatarRow above is reused for the list rows.
-  const skeletonRow = (key) => skeletonAvatarRow(key, key);
+  const skeletonRow = (key: number) => skeletonAvatarRow(key, key);
   return (
     <div className="page" aria-hidden>
       {/* Match real Home's classes so the responsive rules kick in —
@@ -647,7 +659,15 @@ function LoadingSkeleton({ screen = "home" }) {
   );
 }
 
-function AppShell({ user, signOut, refreshUser, demo, theme }) {
+type AppShellProps = {
+  user: Row;
+  signOut: Row;
+  refreshUser?: Row;
+  demo?: boolean;
+  theme?: Row;
+};
+
+function AppShell({ user, signOut, refreshUser, demo, theme }: AppShellProps) {
   const { t, setProfession: setI18nProfession } = useT();
   const { screen, direction, navigate, pushLayer, popLayer, removeLayer } = useNavigation();
   const setScreen = navigate; // alias for compatibility
@@ -673,13 +693,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     return () => clearTimeout(id);
   }, []);
   const { isTablet } = useViewport();
-  const [viewAsUserId, setViewAsUserId] = useState(null);
+  const [viewAsUserId, setViewAsUserId] = useState<string | null>(null);
   // Where the admin came from when they entered "view as user" mode.
   // Captured as the full hash so the exit path can drop them BACK on
   // the exact admin page (Usuarios, the user's detail tab, etc.) they
   // launched from — instead of the previous behavior that always
   // dumped them on Home regardless of origin.
-  const viewAsOriginHashRef = useRef(null);
+  const viewAsOriginHashRef = useRef<string | null>(null);
   // `localHideFab` is controlled by non-tutorial callers (e.g. the Patients
   // expediente drawer). The tutorial contributes its own reason to hide
   // the FAB, derived synchronously from `tutorial` state below — that way
@@ -702,7 +722,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       setGroupsEnabledState(v === null ? true : v !== "false");
     } catch { setGroupsEnabledState(true); }
   }, [user?.id]);
-  const setGroupsEnabled = useCallback((val) => {
+  const setGroupsEnabled = useCallback((val: boolean) => {
     setGroupsEnabledState(val);
     try { if (user?.id) localStorage.setItem(`cardigan.groupsEnabled.${user.id}`, String(val)); } catch { /* private mode */ }
   }, [user?.id]);
@@ -726,7 +746,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // URL into Cardigan from the OS share sheet, the browser routes
   // to /?share_folder=1&url=…&text=…&title=… — we capture the URL
   // here and open the ShareFolderSheet patient picker.
-  const [shareFolderUrl, setShareFolderUrl] = useState(null);
+  const [shareFolderUrl, setShareFolderUrl] = useState<string | null>(null);
   // The encryption unlock prompt is dismissable for the current
   // session — closing the tab re-prompts on next visit. Until then,
   // encrypted notes still render as "[cifrado]" since noteCrypto.canEncrypt
@@ -756,7 +776,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // Demo mode lets the visitor preview each profession's flavor — the
   // picker lives in the demo banner. Live mode (real user) ignores this
   // and uses the loaded user_profiles row instead.
-  const [demoProfession, setDemoProfession] = useState(DEFAULT_PROFESSION);
+  const [demoProfession, setDemoProfession] = useState<string>(DEFAULT_PROFESSION);
   const profession = demo
     ? demoProfession
     : (userProfile.profession || DEFAULT_PROFESSION);
@@ -829,8 +849,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     ? false
     : (data.readOnly || subscription.accessExpired);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [paymentDraft, setPaymentDraft] = useState({ patientName:"", amount:"" });
-  const [editingPayment, setEditingPayment] = useState(null);
+  const [paymentDraft, setPaymentDraft] = useState<Row>({ patientName:"", amount:"" });
+  const [editingPayment, setEditingPayment] = useState<Row>(null);
 
   /* ── Toast queue (single source of truth) ──
      Previously three separate toast slots (success, mutationError,
@@ -839,16 +859,16 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
      collide on screen. Now every surface pushes into one queue; the
      UI renders up to MAX_TOASTS with a stagger, oldest fading out
      first. Persistent toasts (the mutationError) don't auto-dismiss. */
-  const [toasts, setToasts] = useState([]);
+  const [toasts, setToasts] = useState<Row[]>([]);
   const nextToastIdRef = useRef(0);
-  const showToast = useCallback((msg, type = "info", opts = {}) => {
+  const showToast = useCallback((msg: string, type = "info", opts: Row = {}) => {
     if (!msg) return null;
     const id = ++nextToastIdRef.current;
     setToasts(prev => {
       // Drop an earlier entry with the same key (e.g. reopening the
       // mutation-error channel) before appending, so the user only
       // sees one copy of a recurring message at a time.
-      const base = opts.key ? prev.filter(t => t.key !== opts.key) : prev;
+      const base = opts.key ? prev.filter((t: Row) => t.key !== opts.key) : prev;
       const next = [...base, {
         id, kind: type, message: msg,
         persistent: !!opts.persistent,
@@ -865,7 +885,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       }];
       if (next.length <= 5) return next;
       // Over cap: drop oldest non-persistent first.
-      const out = [];
+      const out: Row[] = [];
       let toDrop = next.length - 5;
       for (const t of next) {
         if (toDrop > 0 && !t.persistent) { toDrop--; continue; }
@@ -879,14 +899,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // the underlying data-layer error so a subsequent failure with the
   // same message can re-raise (setMutationError is a no-op when the
   // new value matches the stale one).
-  const dismissToast = useCallback((id) => {
+  const dismissToast = useCallback((id: string | number) => {
     setToasts(prev => {
-      const toast = prev.find(t => t.id === id);
+      const toast = prev.find((t: Row) => t.id === id);
       if (toast?.key === "mutation-error") clearMutationError?.();
-      return prev.filter(t => t.id !== id);
+      return prev.filter((t: Row) => t.id !== id);
     });
   }, [clearMutationError]);
-  const showSuccess = useCallback((msg) => {
+  const showSuccess = useCallback((msg: string) => {
     if (!msg) return;
     showToast(msg, "success");
   }, [showToast]);
@@ -896,8 +916,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
      The end-of-visit toast (fired below from onMarkCompleted) routes
      into this so the user can schedule the next consult with one tap
      from the toast, regardless of which screen they're on. */
-  const [quickScheduleFor, setQuickScheduleFor] = useState(null);
-  const openQuickSchedule = useCallback((patient) => {
+  const [quickScheduleFor, setQuickScheduleFor] = useState<Row>(null);
+  const openQuickSchedule = useCallback((patient: Row) => {
     if (!patient) return;
     setQuickScheduleFor(patient);
   }, []);
@@ -920,8 +940,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // so we can surface it in-app via the existing Toast queue, keeping
   // the foreground reminder reachable without leaving the running app.
   useEffect(() => {
-    const handler = (e) => {
-      const detail = e?.detail || {};
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail || {};
       const body = detail.body || detail.title || "Recordatorio";
       showToast(body, "info");
     };
@@ -976,13 +996,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // (also consumed by OfflineBanner). Kept in the App-level context
   // for any consumer that branches on it (e.g. action gating).
   const { online } = useConnectivity();
-  const pendingAgendaViewRef = useRef(null);
-  const pendingExpedienteRef = useRef(null);
+  const pendingAgendaViewRef = useRef<Row>(null);
+  const pendingExpedienteRef = useRef<Row>(null);
   // Pending note open — set by CommandPalette when a user picks a note
   // from the search results, consumed by Notes screen on mount. Mirrors
   // the pendingExpedienteRef pattern so the palette doesn't need to
   // reach into per-screen state setters.
-  const pendingNoteOpenRef = useRef(null);
+  const pendingNoteOpenRef = useRef<Row>(null);
 
   // ── Stripe return-from-Checkout / Portal handler ──
   // Stripe sends users back to /?billing=success|cancel|return after
@@ -1235,8 +1255,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // level, far enough below the StripePaymentSheet that subscribing
   // from inside it can stack cleanly.
   const [proSheetOpen, setProSheetOpen] = useState(false);
-  const [proSheetFeature, setProSheetFeature] = useState(null);
-  const requirePro = useCallback((feature) => {
+  const [proSheetFeature, setProSheetFeature] = useState<string | null>(null);
+  const requirePro = useCallback((feature?: string) => {
     // Trial users + expired users land here. Pro users (active sub,
     // comp, admin) should never see this sheet — callers must short-
     // circuit on `subscription.isPro` before invoking.
@@ -1250,7 +1270,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // either opens the sheet or bumps the user to ProUpgradeSheet.
   const [cardiOpen, setCardiOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
-  const handleDrawerNav = useCallback((id) => {
+  const handleDrawerNav = useCallback((id: string) => {
     if (id === "cardi") {
       if (!subscription.isPro) {
         requirePro("cardi");
@@ -1268,7 +1288,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // they've subscribed or been comp'd. Dedupe key encodes the YYYY-MM-DD
   // local date — a fresh login the next morning re-evaluates.
   const [trialReminderOpen, setTrialReminderOpen] = useState(false);
-  const [trialReminderDays, setTrialReminderDays] = useState(null);
+  const [trialReminderDays, setTrialReminderDays] = useState<number | null>(null);
   const [trialReminderPaymentOpen, setTrialReminderPaymentOpen] = useState(false);
 
   // ── Post-login passkey enrollment nudge ──
@@ -1296,7 +1316,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     if ((state.n || 0) >= PASSKEY_PROMPT_MAX_ASKS) return; // asked enough, stop
     if ((state.n || 0) > 0 && Date.now() - (state.t || 0) < PASSKEY_PROMPT_COOLDOWN_MS) return; // cooldown
     let cancelled = false;
-    let timer = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     (async () => {
       try {
         // Only nudge devices that can actually create a passkey.
@@ -1304,7 +1324,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         if (cancelled || !hw) return;
         const { data, error } = await supabase.auth.passkey.list();
         if (cancelled || error) return;
-        const list = Array.isArray(data) ? data : (data?.passkeys || []);
+        const list = Array.isArray(data) ? data : ((data as Row)?.passkeys || []);
         if (list.length > 0) {
           // Already enrolled (another device) — never prompt again.
           try { localStorage.setItem(passkeyPromptKey, JSON.stringify({ ...state, enrolled: true })); } catch { /* private mode */ }
@@ -1341,7 +1361,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         // prompt open so they can retry.
         showToast(t("settings.passkeyAddError"), "error");
       }
-    } catch (e) {
+    } catch (e: Row) {
       if (!/NotAllowed|AbortError|cancel/i.test(e?.name || e?.message || "")) {
         showToast(t("settings.passkeyAddError"), "error");
       }
@@ -1424,14 +1444,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   const userInitial = userName.charAt(0).toUpperCase();
   const { imageUrl: avatarImageUrl } = useAvatarUrl(demo ? null : user?.user_metadata?.avatar);
 
-  const openEditPaymentModal = useCallback((payment) => {
+  const openEditPaymentModal = useCallback((payment: Row) => {
     if (readOnly) return;
     setEditingPayment(payment);
     setPaymentDraft({ patientName: "", amount: "" });
     setPaymentModalOpen(true);
   }, [readOnly]);
 
-  const openRecordPaymentModal = useCallback((patient) => {
+  const openRecordPaymentModal = useCallback((patient: Row) => {
     if (readOnly) return;
     setEditingPayment(null);
     setPaymentDraft({
@@ -1445,13 +1465,13 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // (FAB, GastosTab list, ResumenTab CTA) can open record-mode or
   // edit-mode through context.
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState(null);
+  const [editingExpense, setEditingExpense] = useState<Row>(null);
   const openRecordExpenseModal = useCallback(() => {
     if (readOnly) return;
     setEditingExpense(null);
     setExpenseSheetOpen(true);
   }, [readOnly]);
-  const openEditExpenseModal = useCallback((expense) => {
+  const openEditExpenseModal = useCallback((expense: Row) => {
     if (readOnly) return;
     setEditingExpense(expense);
     setExpenseSheetOpen(true);
@@ -1476,8 +1496,8 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
      horizontal drag and release it on end/cancel. useSwipe() reads the
      lock and bails out, so even a finger that crosses the edge band
      mid-drag can't drive two animations at once. */
-  const shellRef = useRef(null);
-  const edgeRef = useRef(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const edgeRef = useRef<Row>(null);
   const drawerOpenRef = useRef(drawerOpen);
   // Screen-slide animations from bottom-tab nav play for ~500ms. If we
   // let the edge-swipe activate during that window, the user sees the
@@ -1512,7 +1532,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
 
     const EDGE_OWNER_ID = "drawer-edge";
 
-    const onTouchStart = (e) => {
+    const onTouchStart = (e: TouchEvent) => {
       // DRAWER_EDGE_BAND is shared with useSwipe's IN_SCREEN_SWIPE_DEAD_ZONE
       // so the two gesture owners never race at start.
       const inEdgeBand = e.touches[0].clientX < DRAWER_EDGE_BAND;
@@ -1557,7 +1577,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       }
     };
 
-    const onTouchMove = (e) => {
+    const onTouchMove = (e: TouchEvent) => {
       if (!edgeRef.current) return;
       const dx = e.touches[0].clientX - edgeRef.current.startX;
       const dy = e.touches[0].clientY - edgeRef.current.startY;
@@ -1612,7 +1632,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       }
     };
 
-    const finishGesture = (e) => {
+    const finishGesture = (e: TouchEvent) => {
       if (!edgeRef.current?.active) {
         edgeRef.current = null;
         releaseSwipe(EDGE_OWNER_ID);
@@ -1654,7 +1674,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     };
   }, [isTablet]);
 
-  const [pendingFabAction, setPendingFabAction] = useState(null);
+  const [pendingFabAction, setPendingFabAction] = useState<string | null>(null);
 
   // ── PWA / native app shortcuts receiver ──
   // The web app manifest's `shortcuts` array (public/manifest.json)
@@ -1745,13 +1765,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
   // Returns true so callers using `await delete(id)` see the same
   // success contract as before.
   const UNDO_MS = 3000;
-  const withUndoableDelete = useCallback((softFn, label) => async (...args) => {
+  const withUndoableDelete = useCallback((softFn: Row, label: string) => async (...args: Row[]) => {
     if (typeof softFn !== "function") return false;
     const handle = softFn(...args);
     if (!handle || typeof handle.commit !== "function") return false;
 
     let done = false;
-    let timer;
+    // eslint-disable-next-line prefer-const -- referenced in cleanup() closure below before its single assignment
+    let timer: ReturnType<typeof setTimeout>;
     const onHidden = () => { if (document.visibilityState === "hidden") finalize(); };
     const cleanup = () => {
       clearTimeout(timer);
@@ -1817,9 +1838,9 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     requestFabAction: setPendingFabAction,
     consumeFabAction: () => setPendingFabAction(null),
     openActivationShareSheet: () => setActivationShareOpen(true),
-    setAgendaView: (v) => { pendingAgendaViewRef.current = v; },
+    setAgendaView: (v: Row) => { pendingAgendaViewRef.current = v; },
     consumeAgendaView: () => { const v = pendingAgendaViewRef.current; pendingAgendaViewRef.current = null; return v; },
-    openExpediente: (patient) => {
+    openExpediente: (patient: Row) => {
       // Remember which screen the user came from so closing the
       // expediente can take them back there instead of stranding them
       // on Pacientes. Only set an origin when the caller isn't already
@@ -1827,7 +1848,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       pendingExpedienteRef.current = { patient, origin: screen !== "patients" ? screen : null };
       setScreen("patients");
     },
-    openNoteById: (id) => {
+    openNoteById: (id: Row) => {
       // Navigate to Archivo (which routes to Notes tab by default) and
       // stash the id; Notes screen reads it on mount and opens the
       // editor with the matching note. Same pendingRef pattern as
@@ -1846,14 +1867,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       return v;
     },
     openQuickSchedule,
-    onCancelSession: async (s, charge, reason) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
+    onCancelSession: async (s: Row, charge: Row, reason: Row) => !readOnly && await updateSessionStatus(s.id, "cancelled", charge, reason),
     /* onMarkCompleted intercepts the standard updateSessionStatus
        call to layer in the "schedule next?" affordance for episodic
        patients. After the status flip succeeds, if the patient has
        no future scheduled session, fire an actionable toast that
        opens QuickScheduleSheet on tap. Recurring patients see no
        prompt — their schedule already covers the next visit. */
-    onMarkCompleted: async (s, overrideStatus) => {
+    onMarkCompleted: async (s: Row, overrideStatus?: Row) => {
       if (readOnly) return false;
       const newStatus = overrideStatus || "completed";
       const ok = await updateSessionStatus(s.id, newStatus);
@@ -1864,7 +1885,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       // possible from the same handler) shouldn't surface a
       // "completed" toast.
       if (newStatus !== "completed") return ok;
-      const patient = patients.find((p) => p.id === s.patient_id);
+      const patient = patients.find((p: Row) => p.id === s.patient_id);
       if (!patient || !isEpisodic(patient)) return ok;
       // "Has a future visit already" check: any row with status=
       // 'scheduled' dated today-or-later that isn't the one we just
@@ -1874,7 +1895,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       // user just wrapped a visit and likely wants to schedule the
       // next one regardless.
       const todayIso = todayISOFn();
-      const hasFuture = (upcomingSessions || []).some((row) => {
+      const hasFuture = (upcomingSessions || []).some((row: Row) => {
         if (row.patient_id !== patient.id) return false;
         if (row.id === s.id) return false;
         if (row.status !== "scheduled") return false;
@@ -1962,14 +1983,14 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
     return (
       <Suspense fallback={<AuthSplash />}>
         <SignupSourceStep
-          onSubmit={(payload) => userProfile.setSignupSource(payload)}
+          onSubmit={(payload: Row) => userProfile.setSignupSource(payload)}
           onSignOut={signOut}
         />
       </Suspense>
     );
   }
 
-  const screenMap = {
+  const screenMap: Record<string, React.ReactNode> = {
     home: <Home setScreen={setScreen} userName={userName} />,
     agenda: <Agenda />,
     patients: <Patients />,
@@ -1987,7 +2008,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       <AdminLayout
         currentAdminId={user?.id}
         onOpenPalette={() => setPaletteOpen(true)}
-        onViewAs={(uid) => {
+        onViewAs={(uid: string) => {
           // Snapshot the admin hash so the read-only banner's exit
           // path can restore it (e.g. #admin/users/<uid>).
           viewAsOriginHashRef.current = typeof window !== "undefined"
@@ -2025,7 +2046,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       {welcomeProOpen && (
         <Suspense fallback={null}>
           <SubscriptionWelcome
-            daysLeftInTrial={subscription.daysLeftInTrial}
+            daysLeftInTrial={subscription.daysLeftInTrial ?? undefined}
             onContinue={closeWelcomePro}
             onSubscribe={subscribeFromWelcomePro}
           />
@@ -2035,7 +2056,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {welcomePaymentOpen && (
           <StripePaymentSheet
             open={welcomePaymentOpen}
-            daysLeftInTrial={subscription.daysLeftInTrial}
+            daysLeftInTrial={subscription.daysLeftInTrial ?? undefined}
             onClose={() => setWelcomePaymentOpen(false)}
             onSuccess={() => {
               setWelcomePaymentOpen(false);
@@ -2051,7 +2072,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {proSheetOpen && (
           <ProUpgradeSheet
             open={proSheetOpen}
-            feature={proSheetFeature}
+            feature={proSheetFeature ?? undefined}
             onClose={() => setProSheetOpen(false)}
           />
         )}
@@ -2076,7 +2097,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {trialReminderOpen && (
           <TrialReminderPrompt
             open={trialReminderOpen}
-            daysLeft={trialReminderDays}
+            daysLeft={trialReminderDays ?? undefined}
             onSubscribe={subscribeFromTrialReminder}
             onDismiss={() => setTrialReminderOpen(false)}
           />
@@ -2092,7 +2113,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         {trialReminderPaymentOpen && (
           <StripePaymentSheet
             open={trialReminderPaymentOpen}
-            daysLeftInTrial={subscription.daysLeftInTrial}
+            daysLeftInTrial={subscription.daysLeftInTrial ?? undefined}
             onClose={() => setTrialReminderPaymentOpen(false)}
             onSuccess={() => {
               setTrialReminderPaymentOpen(false);
@@ -2128,7 +2149,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           <ActivationCompleteShareSheet
             open={activationShareOpen}
             onClose={() => setActivationShareOpen(false)}
-            code={subscription?.referralInfo?.code || null}
+            code={subscription?.referralInfo?.code || undefined}
           />
         </Suspense>
       )}
@@ -2161,7 +2182,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
       <Suspense fallback={null}>
         <Drawer screen={screen} setScreen={handleDrawerNav} onClose={() => { setDrawerOpen(false); setSwipeProgress(0); }}
           user={user} signOut={signOut} open={drawerOpen} swipeProgress={swipeProgress}
-          onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : null} />
+          onReportBug={user && !demo && !readOnly ? () => { setDrawerOpen(false); setSwipeProgress(0); setBugReportOpen(true); } : undefined} />
       </Suspense>
 
       {/* tabIndex={-1} is what actually makes the skip-link work: a
@@ -2461,7 +2482,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
         </PullToRefresh>
         {!readOnly && (
           <Suspense fallback={null}>
-            <PaymentModal open={paymentModalOpen} onClose={(msg) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }}
+            <PaymentModal open={paymentModalOpen} onClose={((msg: Row) => { setPaymentModalOpen(false); setEditingPayment(null); if (typeof msg === "string" && msg) showSuccess(msg); }) as Row}
               initialPatientName={paymentDraft.patientName} initialAmount={paymentDraft.amount} editingPayment={editingPayment} />
           </Suspense>
         )}
@@ -2469,11 +2490,11 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
           <Suspense fallback={null}>
             <ExpenseSheet
               editingExpense={editingExpense}
-              onClose={(msg) => {
+              onClose={((msg: Row) => {
                 setExpenseSheetOpen(false);
                 setEditingExpense(null);
                 if (typeof msg === "string" && msg) showSuccess(msg);
-              }}
+              }) as Row}
             />
           </Suspense>
         )}
@@ -2491,7 +2512,7 @@ function AppShell({ user, signOut, refreshUser, demo, theme }) {
             open={paletteOpen}
             onClose={() => setPaletteOpen(false)}
             currentAdminId={user?.id}
-          onViewAsUser={admin && !readOnly ? (uid) => {
+          onViewAsUser={admin && !readOnly ? (uid: string) => {
             // Same impersonation entry as AdminLayout's onViewAs. We
             // snapshot the admin hash (empty when invoked from a non-admin
             // screen) so the read-only banner's exit returns to wherever

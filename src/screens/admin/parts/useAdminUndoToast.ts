@@ -15,11 +15,18 @@ import { useCallback, useRef, useState } from "react";
    each get exactly one undo.
 
    Usage: see AdminUndoToast.jsx docstring. */
-export function useAdminUndoToast() {
-  const [toast, setToast] = useState(null);
-  const usedRef = useRef(new Set());
+interface UndoToast {
+  id: string;
+  message: string;
+  onUndo?: () => void | Promise<void>;
+  durationMs: number;
+}
 
-  const show = useCallback(({ message, onUndo, durationMs = 8000 }) => {
+export function useAdminUndoToast() {
+  const [toast, setToast] = useState<UndoToast | null>(null);
+  const usedRef = useRef<Set<string>>(new Set());
+
+  const show = useCallback(({ message, onUndo, durationMs = 8000 }: { message: string; onUndo?: () => void | Promise<void>; durationMs?: number }) => {
     setToast({
       id: Math.random().toString(36).slice(2),
       message,
@@ -30,7 +37,7 @@ export function useAdminUndoToast() {
 
   const dismiss = useCallback(() => setToast(null), []);
 
-  const runUndo = useCallback(async (t) => {
+  const runUndo = useCallback(async (t: UndoToast | null) => {
     if (!t || usedRef.current.has(t.id)) return;
     usedRef.current.add(t.id);
     try { await t.onUndo?.(); }

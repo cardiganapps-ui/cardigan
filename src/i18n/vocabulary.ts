@@ -37,7 +37,7 @@
 
 import { DEFAULT_PROFESSION } from "../data/constants";
 
-function noun(s, p, art, artP) {
+function noun(s: string, p: string, art: string, artP: string) {
   // de + el → del; a + el → al. Other articles don't contract.
   const del  = art  === "el"  ? `del ${s}`  : `de ${art} ${s}`;
   const al   = art  === "el"  ? `al ${s}`   : `a ${art} ${s}`;
@@ -51,7 +51,7 @@ function noun(s, p, art, artP) {
   // article and noun for sentence-start use.
   const withArt   = `${art} ${s}`;
   const withArtP  = `${artP} ${p}`;
-  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
   const WithArt  = `${cap(art)} ${cap(s)}`;
   const WithArtP = `${cap(artP)} ${cap(p)}`;
   // Gender-agreement helpers — derived from the singular article. Spanish
@@ -130,6 +130,6 @@ export const VOCAB = {
   },
 };
 
-export function getVocab(profession) {
-  return VOCAB[profession] ?? VOCAB[DEFAULT_PROFESSION];
+export function getVocab(profession: string) {
+  return VOCAB[profession as keyof typeof VOCAB] ?? VOCAB[DEFAULT_PROFESSION as keyof typeof VOCAB];
 }
