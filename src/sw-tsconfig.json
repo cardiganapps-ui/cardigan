@@ -1,0 +1,29 @@
+{
+  // ── TypeScript config for the service worker (src/sw.ts) ──
+  // A separate one-file project because the SW runs in the WebWorker
+  // global scope, not the DOM. It needs lib "WebWorker" (for
+  // ServiceWorkerGlobalScope, PushEvent, the Cache API, etc.) WITHOUT
+  // lib "DOM" — the two define overlapping globals (self, fetch,
+  // caches…) with different types and can't coexist in one program.
+  // The root tsconfig (DOM lib) therefore EXCLUDES src/sw.ts and this
+  // project owns it. Type-checking only (noEmit) — vite-plugin-pwa's
+  // injectManifest build compiles the worker.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "WebWorker"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleDetection": "force",
+    // vite/client augments import.meta.env (VITE_VAPID_PUBLIC_KEY); no
+    // DOM/node ambient types — keep the worker scope clean.
+    "types": ["vite/client"]
+  },
+  "include": ["sw.ts"]
+}

@@ -2,18 +2,28 @@
    Custom SW using injectManifest strategy.
    Handles: Workbox precaching, runtime caching, push notifications. */
 
-import { precacheAndRoute } from "workbox-precaching";
+import { precacheAndRoute, type PrecacheEntry } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst, CacheFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { getPushState, putPushState } from "./pushStore";
+
+// The SW runs in the service-worker global scope. Declare `self` with
+// the precise type (+ the manifest vite-plugin-pwa injects) so every
+// self.* call and the addEventListener event payloads type-check.
+declare const self: ServiceWorkerGlobalScope & {
+  __WB_MANIFEST: Array<string | PrecacheEntry>;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
 
 // Vite injects VITE_VAPID_PUBLIC_KEY into this file at build time. Used
 // to reconstruct subscribe() options when `event.oldSubscription` is
 // null on pushsubscriptionchange — a documented Chromium quirk.
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
-function urlBase64ToUint8Array(base64String) {
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
@@ -56,7 +66,9 @@ self.addEventListener("activate", (event) => {
 //   • Safari (iOS) doesn't implement SyncManager — falls back to the
 //     existing reconnect-based drain in the page (still works).
 //   • Firefox doesn't ship Background Sync — same fallback.
-self.addEventListener("sync", (event) => {
+// The "sync" (Background Sync) event isn't in TS's webworker lib, so it
+// resolves to a bare Event — type the param loosely to read .tag/.waitUntil.
+self.addEventListener("sync", (event: Row) => {
   if (event.tag === "cardigan-drain-queue") {
     event.waitUntil(broadcastDrainNudge());
   }
@@ -108,7 +120,7 @@ registerRoute(
 
 // ── Push notification handler ──
 self.addEventListener("push", (event) => {
-  let data = {};
+  let data: Row = {};
   try {
     data = event.data?.json() || {};
   } catch {
@@ -178,7 +190,11 @@ self.addEventListener("pushsubscriptionchange", (event) => {
       } : null);
       if (!options) return;
 
-      const newSub = await self.registration.pushManager.subscribe(options);
+      // `options` is either the browser-provided PushSubscriptionOptions
+      // or our reconstructed literal; the Uint8Array applicationServerKey
+      // trips TS 5.7's ArrayBuffer-vs-ArrayBufferLike variance. Cast at
+      // the boundary — the runtime shape is exactly what subscribe wants.
+      const newSub = await self.registration.pushManager.subscribe(options as Row);
       const resp = await fetch("/api/push-resubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

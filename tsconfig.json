@@ -24,5 +24,10 @@
     "forceConsistentCasingInFileNames": true,
     "moduleDetection": "force"
   },
-  "include": ["src"]
+  "include": ["src"],
+  // src/sw.ts is the service worker — it runs in the WebWorker scope and
+  // is type-checked by its own src/sw-tsconfig.json (lib WebWorker, no
+  // DOM). Excluded here so the DOM-lib program doesn't choke on
+  // ServiceWorkerGlobalScope / self.__WB_MANIFEST etc.
+  "exclude": ["src/sw.ts"]
 }

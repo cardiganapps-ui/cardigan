@@ -9,7 +9,7 @@
     "prebuild": "node scripts/audit-api-auth.mjs && npm run audit:deps && node --experimental-strip-types scripts/gen-privacy-page.mjs",
     "build": "rm -rf node_modules/.vite dist && vite build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit && tsc -p api/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p src/sw-tsconfig.json && tsc -p api/tsconfig.json",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

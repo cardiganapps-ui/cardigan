@@ -56,7 +56,7 @@ export default defineConfig({
       manifest: false, // we use our own public/manifest.json
       strategies: 'injectManifest',
       srcDir: 'src',
-      filename: 'sw.js',
+      filename: 'sw.ts',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // heic2any is a 1.3MB lazy chunk only used when a user uploads
