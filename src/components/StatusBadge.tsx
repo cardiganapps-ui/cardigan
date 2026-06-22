@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { statusClass, statusLabel } from "../utils/sessions";
 
 /* Render a session-status pill with optional "just changed" pulse.
@@ -7,7 +8,7 @@ import { statusClass, statusLabel } from "../utils/sessions";
    value), we mark the pill as `.is-pulsing` for the animation
    duration. Mount-time renders don't pulse so the initial paint of
    a long list isn't a confetti of pulses. */
-export function StatusBadge({ status, style }) {
+export function StatusBadge({ status, style }: { status?: string; style?: CSSProperties }) {
   const prevStatus = useRef(status);
   const mounted = useRef(false);
   const [pulse, setPulse] = useState(false);

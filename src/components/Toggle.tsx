@@ -1,4 +1,11 @@
-export function Toggle({ on, onToggle, pending = false, disabled: disabledProp = false, type, ariaLabel }) {
+export function Toggle({ on, onToggle, pending = false, disabled: disabledProp = false, type, ariaLabel }: {
+  on?: boolean;
+  onToggle?: () => void;
+  pending?: boolean;
+  disabled?: boolean;
+  type?: "button" | "submit" | "reset";
+  ariaLabel?: string;
+}) {
   // `pending` both disables AND shows the spinner (long ops where the
   // user needs to see work-in-progress feedback). `disabled` just
   // disables — used when the underlying state has already flipped

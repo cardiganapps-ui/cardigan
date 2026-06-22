@@ -28,6 +28,9 @@ export function MoneyInput({
   inputMode = "numeric",
   required,
   ...rest
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & {
+  value?: string | number | null;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   // Silently drop attrs that would be ignored / warn on type=text. Keeps
   // every existing caller working (they pass min/step/max freely).
@@ -41,11 +44,11 @@ export function MoneyInput({
 
   const display = formatMoneyInput(value);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^\d]/g, "");
     // Synthesize an event whose target.value is the cleaned string so
     // listeners don't have to do their own parsing.
-    onChange({ ...e, target: { ...e.target, value: raw } });
+    onChange({ ...e, target: { ...e.target, value: raw } } as React.ChangeEvent<HTMLInputElement>);
   };
 
   return (
@@ -68,7 +71,7 @@ export function MoneyInput({
   );
 }
 
-function formatMoneyInput(value) {
+function formatMoneyInput(value?: string | number | null) {
   if (value === "" || value == null) return "";
   const digits = String(value).replace(/[^\d]/g, "");
   if (digits === "") return "";

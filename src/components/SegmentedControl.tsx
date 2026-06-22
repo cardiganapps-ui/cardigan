@@ -23,8 +23,19 @@
  *   role, ariaLabel — optional pass-through
  */
 import { useEffect, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
-export function SegmentedControl({ items, value, onChange, size = "sm", role = "tablist", ariaLabel, style }) {
+interface SegItem { k: string; l: ReactNode }
+
+export function SegmentedControl({ items, value, onChange, size = "sm", role = "tablist", ariaLabel, style }: {
+  items: SegItem[];
+  value: string;
+  onChange: (key: string) => void;
+  size?: "sm" | "md";
+  role?: string;
+  ariaLabel?: string;
+  style?: CSSProperties;
+}) {
   const activeIndex = items.findIndex(it => it.k === value);
   const showSlider = activeIndex >= 0;
 
@@ -33,7 +44,7 @@ export function SegmentedControl({ items, value, onChange, size = "sm", role = "
   // anchored to that wall so the spring overshoot doesn't poke
   // past the container. Tracked locally; nulled out after the
   // animation duration so repeating the same selection replays.
-  const [edgeBounce, setEdgeBounce] = useState(null);
+  const [edgeBounce, setEdgeBounce] = useState<"left" | "right" | null>(null);
   const [prevValue, setPrevValue] = useState(value);
   if (value !== prevValue) {
     setPrevValue(value);
@@ -60,7 +71,7 @@ export function SegmentedControl({ items, value, onChange, size = "sm", role = "
       className={`segmented segmented--${size}`}
       role={role}
       aria-label={ariaLabel}
-      style={{ "--active-i": activeIndex, "--tab-count": items.length, ...style }}
+      style={{ "--active-i": activeIndex, "--tab-count": items.length, ...style } as CSSProperties}
     >
       {showSlider && <span className={sliderClass} aria-hidden="true" />}
       {items.map(it => (

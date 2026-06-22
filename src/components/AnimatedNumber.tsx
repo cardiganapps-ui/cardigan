@@ -1,4 +1,5 @@
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import type { CSSProperties, HTMLAttributes } from "react";
 
 /* ── AnimatedNumber ──
    Render a number that count-up animates on mount and on change.
@@ -22,7 +23,13 @@ import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
      <AnimatedNumber value={1234} format={formatMXN} />  // → "$1,234"
      <AnimatedNumber value={42} duration={500} />
 */
-export function AnimatedNumber({ value, format, duration, enabled, style, ...rest }) {
+export function AnimatedNumber({ value, format, duration, enabled, style, ...rest }: {
+  value: number | null | undefined;
+  format?: (n: number) => string;
+  duration?: number;
+  enabled?: boolean;
+  style?: CSSProperties;
+} & HTMLAttributes<HTMLSpanElement>) {
   const animated = useAnimatedNumber(value, { duration, enabled });
   const display = typeof animated === "number" && isFinite(animated)
     ? (format ? format(Math.round(animated)) : Math.round(animated).toString())

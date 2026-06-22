@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
 /* Height-animated reveal. Wraps children in a div whose max-height
    transitions between 0 and the measured content height, producing a
@@ -9,9 +10,9 @@ import { useRef, useEffect, useState } from "react";
    subtle but readable. This wraps the whole conditional block so it
    unfolds instead. Transitions opacity in tandem for a slight fade. */
 
-export function Expando({ open, duration = 260, children }) {
-  const innerRef = useRef(null);
-  const [maxH, setMaxH] = useState(open ? "none" : 0);
+export function Expando({ open, duration = 260, children }: { open?: boolean; duration?: number; children?: ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [maxH, setMaxH] = useState<number | "none">(open ? "none" : 0);
 
   useEffect(() => {
     const el = innerRef.current;
