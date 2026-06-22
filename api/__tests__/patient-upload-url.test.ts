@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 vi.mock("../_admin.js", () => ({
   getAuthUser: vi.fn(),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 vi.mock("../_r2.js", () => ({
   getR2: vi.fn(async () => ({})),
@@ -14,22 +17,25 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: vi.fn(async () => "https://presigned.example/test"),
 }));
 vi.mock("@aws-sdk/client-s3", () => ({
-  PutObjectCommand: class { constructor(input) { Object.assign(this, input); } },
+  PutObjectCommand: class { constructor(input: Row) { Object.assign(this, input); } },
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(),
 }));
 
 import handler from "../patient-upload-url.js";
-import { getAuthUser } from "../_admin.js";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthUser as getAuthUserRaw } from "../_admin.js";
+import { createClient as createClientRaw } from "@supabase/supabase-js";
 
-function makeRes() {
-  const r = {
+const getAuthUser = vi.mocked(getAuthUserRaw);
+const createClient = createClientRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
@@ -47,7 +53,7 @@ function makeReq(body = {}) {
   };
 }
 
-function makeUserClient(patientRow, error = null) {
+function makeUserClient(patientRow: Row, error = null) {
   return {
     from: () => ({
       select: () => ({

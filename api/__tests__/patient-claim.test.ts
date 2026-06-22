@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Mock _admin's auth + service-client helpers BEFORE importing the
 // handler. The handler reads getAuthUser() + getServiceClient() at
 // call time, so the mocks just need to be in place by import.
@@ -8,7 +11,7 @@ vi.mock("../_admin.js", () => ({
   getServiceClient: vi.fn(),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 // The handler now runs the per-endpoint rate-limit guard up front.
 // These tests exercise the claim logic, not the limiter, so stub it to
@@ -18,7 +21,10 @@ vi.mock("../_ratelimit.js", () => ({
 }));
 
 import claimHandler from "../patient-claim.js";
-import { getAuthUser, getServiceClient } from "../_admin.js";
+import { getAuthUser as getAuthUserRaw, getServiceClient as getServiceClientRaw } from "../_admin.js";
+
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
 
 /* The claim handler walks a 5-step query chain — lookup, atomic
    claim, atomic stamp, rollback on stamp-fail, existence-re-check.
@@ -33,12 +39,12 @@ import { getAuthUser, getServiceClient } from "../_admin.js";
      4. .from("patient_invites").update(...).eq("id", id)        // rollback
      5. .from("patients").select(...).eq("id", id).maybeSingle()  // existence re-check */
 
-function makeRes() {
-  const r = {
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
@@ -62,10 +68,10 @@ function makeReq(token = "tok") {
    the same builder object with a `_resolve()` that delivers the
    stored result when terminal (.maybeSingle / .select for terminal
    selects). */
-function makeServiceStub(responses) {
+function makeServiceStub(responses: Row) {
   const queue = [...responses];
-  const calls = [];
-  function builder(table, op) {
+  const calls: Row[] = [];
+  function builder(table: Row, op: Row) {
     // Only consume the queue on terminal `maybeSingle`. Chains that
     // don't terminate (the rollback path, which is just .update().eq()
     // followed by `await`) MUST NOT consume — otherwise they'd eat a
@@ -81,7 +87,7 @@ function makeServiceStub(responses) {
       },
       // Awaitable for the rollback path. Doesn't consume the queue
       // — the rollback always resolves with { error: null }.
-      then(onFulfilled) {
+      then(onFulfilled: Row) {
         calls.push({ table, op, terminal: "await" });
         return Promise.resolve({ error: null }).then(onFulfilled);
       },
@@ -94,7 +100,7 @@ function makeServiceStub(responses) {
       // Some claim paths re-fetch — keep the stub simple.
       admin: { getUserById: async () => ({ data: { user: null } }) },
     },
-    from(table) {
+    from(table: Row) {
       return {
         select() { return builder(table, "select"); },
         update() { return builder(table, "update"); },

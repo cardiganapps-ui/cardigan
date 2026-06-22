@@ -6,6 +6,9 @@ import {
   hasActiveSubscription,
 } from "../_cohorts.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 /* These helpers gate every lifecycle email — getting the date math
    wrong silently messages the wrong cohort, so the tests are
    intentionally exhaustive on boundary conditions. */
@@ -64,8 +67,8 @@ describe("isInCohortWindow", () => {
   });
 
   it("rejects null / undefined / empty timestamps", () => {
-    expect(isInCohortWindow(null, lower, upper)).toBe(false);
-    expect(isInCohortWindow(undefined, lower, upper)).toBe(false);
+    expect(isInCohortWindow(null as Row, lower, upper)).toBe(false);
+    expect(isInCohortWindow(undefined as Row, lower, upper)).toBe(false);
     expect(isInCohortWindow("", lower, upper)).toBe(false);
   });
 

@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Mock _admin's auth + service-client helpers BEFORE importing the
 // handler. The handler resolves them at call time, so the mocks just
 // need to be in place at import.
@@ -8,7 +11,7 @@ vi.mock("../_admin.js", () => ({
   getServiceClient: vi.fn(),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 // The handler now runs the per-endpoint rate-limit guard up front.
 // These tests exercise the intake logic, not the limiter, so stub it to
@@ -25,20 +28,24 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import handler from "../patient-intake.js";
-import { getAuthUser, getServiceClient } from "../_admin.js";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthUser as getAuthUserRaw, getServiceClient as getServiceClientRaw } from "../_admin.js";
+import { createClient as createClientRaw } from "@supabase/supabase-js";
 
-function makeRes() {
-  const r = {
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
+const createClient = createClientRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
 
-function makeReq(body) {
+function makeReq(body?: Row) {
   return {
     method: "POST",
     headers: { authorization: "Bearer test-jwt" },
@@ -47,7 +54,7 @@ function makeReq(body) {
 }
 
 // User-JWT'd client: a single SELECT against patients gated by RLS.
-function makeUserClient(patientRow, error = null) {
+function makeUserClient(patientRow: Row, error = null) {
   return {
     from: () => ({
       select: () => ({
@@ -60,10 +67,10 @@ function makeUserClient(patientRow, error = null) {
 
 // Service-role client: captures the UPDATE payload so tests can
 // assert which columns were touched.
-function makeServiceClient({ updateError = null, captured } = {}) {
+function makeServiceClient({ updateError = null, captured }: Row = {}) {
   return {
     from: () => ({
-      update(payload) {
+      update(payload: Row) {
         if (captured) captured.payload = payload;
         return {
           eq() { return Promise.resolve({ error: updateError }); },
@@ -125,7 +132,7 @@ describe("POST /api/patient-intake", () => {
       id: "p-1",
       patient_intake_completed_at: null,
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ captured }));
     const res = makeRes();
     await handler(makeReq({
@@ -150,7 +157,7 @@ describe("POST /api/patient-intake", () => {
       id: "p-1",
       patient_intake_completed_at: original,
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ captured }));
     const res = makeRes();
     await handler(makeReq({ allergies: "actualizado" }), res);
@@ -169,7 +176,7 @@ describe("POST /api/patient-intake", () => {
       id: "p-1",
       patient_intake_completed_at: null,
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ captured }));
     const res = makeRes();
     await handler(makeReq({ allergies: "polen" }), res);
@@ -187,7 +194,7 @@ describe("POST /api/patient-intake", () => {
       id: "p-1",
       patient_intake_completed_at: null,
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ captured }));
     const res = makeRes();
     await handler(makeReq({
@@ -209,7 +216,7 @@ describe("POST /api/patient-intake", () => {
       id: "p-1",
       patient_intake_completed_at: null,
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ captured }));
     const res = makeRes();
     await handler(makeReq({ birthdate: "not-a-date", allergies: "x" }), res);
@@ -223,7 +230,7 @@ describe("POST /api/patient-intake", () => {
       id: "p-1",
       patient_intake_completed_at: null,
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ captured }));
     const res = makeRes();
     await handler(makeReq({ birthdate: "2999-01-01", allergies: "x" }), res);

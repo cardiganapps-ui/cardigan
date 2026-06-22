@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 vi.mock("../_admin.js", () => ({
   getAuthUser: vi.fn(),
   getServiceClient: vi.fn(),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 vi.mock("../_stripe.js", () => ({
   createConnectAccount: vi.fn(),
@@ -13,15 +16,20 @@ vi.mock("../_stripe.js", () => ({
 }));
 
 import handler from "../stripe-connect-onboard.js";
-import { getAuthUser, getServiceClient } from "../_admin.js";
-import { createConnectAccount, createAccountLink } from "../_stripe.js";
+import { getAuthUser as getAuthUserRaw, getServiceClient as getServiceClientRaw } from "../_admin.js";
+import { createConnectAccount as createConnectAccountRaw, createAccountLink as createAccountLinkRaw } from "../_stripe.js";
 
-function makeRes() {
-  const r = {
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
+const createConnectAccount = createConnectAccountRaw as Row;
+const createAccountLink = createAccountLinkRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
@@ -38,14 +46,14 @@ function makeReq() {
 // `existing` controls whether the lookup hits an existing account.
 // `insertCaptured` records what was passed to .insert() so we can
 // assert first-time onboarding writes the right shape.
-function makeServiceClient({ existing = null, insertCaptured = {}, insertError = null } = {}) {
+function makeServiceClient({ existing = null, insertCaptured = {}, insertError = null }: Row = {}) {
   return {
     from: () => ({
       select: () => ({
         eq() { return this; },
         async maybeSingle() { return { data: existing, error: null }; },
       }),
-      insert(payload) {
+      insert(payload: Row) {
         insertCaptured.payload = payload;
         return Promise.resolve({ error: insertError });
       },
@@ -80,7 +88,7 @@ describe("POST /api/stripe-connect-onboard", () => {
       email: "doc@example.com",
       user_metadata: { full_name: "Dra. Mariana López" },
     });
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({ existing: null, insertCaptured: captured }));
     createConnectAccount.mockResolvedValue({
       id: "acct_new123",
@@ -109,7 +117,7 @@ describe("POST /api/stripe-connect-onboard", () => {
 
   it("reuses an existing account on resume", async () => {
     getAuthUser.mockResolvedValue({ id: "u-1", email: "doc@example.com" });
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({
       existing: { stripe_account_id: "acct_existing" },
       insertCaptured: captured,

@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 vi.mock("../_admin.js", () => ({
   getAuthUser: vi.fn(),
   getServiceClient: vi.fn(),
@@ -9,30 +12,35 @@ vi.mock("../_push.js", () => ({
   TERMINAL_PUSH_STATUSES: new Set([400, 404, 410]),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(),
 }));
 
 import handler from "../patient-reschedule-session.js";
-import { getAuthUser, getServiceClient } from "../_admin.js";
-import { sendPush } from "../_push.js";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthUser as getAuthUserRaw, getServiceClient as getServiceClientRaw } from "../_admin.js";
+import { sendPush as sendPushRaw } from "../_push.js";
+import { createClient as createClientRaw } from "@supabase/supabase-js";
 
-function makeRes() {
-  const r = {
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
+const sendPush = sendPushRaw as Row;
+const createClient = createClientRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
 
 // Build a future ISO date N days from now in yyyy-mm-dd. Used in
 // happy-path bodies so the new_slot timestamp passes the past-check.
-function futureIso(days) {
+function futureIso(days: number) {
   const d = new Date(Date.now() + days * 86_400_000);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -55,13 +63,13 @@ function makeReq(overrides = {}) {
 
 // Future short-date in "D-MMM" form for the existing-session row.
 // Mirrors how the real DB stores `date`.
-function futureShortDate(days) {
+function futureShortDate(days: number) {
   const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const d = new Date(Date.now() + days * 86_400_000);
   return `${d.getDate()}-${months[d.getMonth()]}`;
 }
 
-function makeUserClient(sessionRow, error = null) {
+function makeUserClient(sessionRow: Row, error = null) {
   return {
     from: () => ({
       select: () => ({
@@ -82,9 +90,9 @@ function makeUserClient(sessionRow, error = null) {
      5. SELECT patients + auth.admin.getUserById (for emails)
    Tests pass canned responses for conflict + insert; everything else
    returns harmless empty results. */
-function makeServiceClient({ conflict = null, insertResult, pushSubs = [] } = {}) {
+function makeServiceClient({ conflict = null, insertResult, pushSubs = [] }: Row = {}) {
   return {
-    from: (table) => {
+    from: (table: Row) => {
       if (table === "push_subscriptions") {
         return {
           select: () => ({

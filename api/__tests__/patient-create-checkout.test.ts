@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Mock _admin's auth + service-client helpers and _stripe's checkout
 // helper BEFORE importing the handler. The handler resolves them at
 // call time, so the mocks just need to be in place at import.
@@ -8,7 +11,7 @@ vi.mock("../_admin.js", () => ({
   getServiceClient: vi.fn(),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 vi.mock("../_stripe.js", () => ({
   createPatientCheckoutSession: vi.fn(),
@@ -18,16 +21,21 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import handler from "../patient-create-checkout.js";
-import { getAuthUser, getServiceClient } from "../_admin.js";
-import { createPatientCheckoutSession } from "../_stripe.js";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthUser as getAuthUserRaw, getServiceClient as getServiceClientRaw } from "../_admin.js";
+import { createPatientCheckoutSession as createPatientCheckoutSessionRaw } from "../_stripe.js";
+import { createClient as createClientRaw } from "@supabase/supabase-js";
 
-function makeRes() {
-  const r = {
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
+const createPatientCheckoutSession = createPatientCheckoutSessionRaw as Row;
+const createClient = createClientRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
@@ -44,7 +52,7 @@ function makeReq(body = {}) {
 }
 
 // User-JWT'd client: a single SELECT against patients gated by RLS.
-function makeUserClient(patientRow, error = null) {
+function makeUserClient(patientRow: Row, error = null) {
   return {
     from: () => ({
       select: () => ({
@@ -58,9 +66,9 @@ function makeUserClient(patientRow, error = null) {
 // Service-role client: returns the requested Connect-account row +
 // records the patient_payment_intents insert payload so tests can
 // assert the ledger was updated correctly.
-function makeServiceClient({ tca, captured = {}, insertError = null } = {}) {
+function makeServiceClient({ tca, captured = {}, insertError = null }: Row = {}) {
   return {
-    from: (table) => {
+    from: (table: Row) => {
       if (table === "therapist_connect_accounts") {
         return {
           select: () => ({
@@ -71,7 +79,7 @@ function makeServiceClient({ tca, captured = {}, insertError = null } = {}) {
       }
       if (table === "patient_payment_intents") {
         return {
-          insert(payload) {
+          insert(payload: Row) {
             captured.payload = payload;
             return Promise.resolve({ error: insertError });
           },
@@ -180,7 +188,7 @@ describe("POST /api/patient-create-checkout", () => {
       user_id: "therapist-1",
       name: "Juana",
     }));
-    const captured = {};
+    const captured: Row = {};
     getServiceClient.mockReturnValue(makeServiceClient({
       tca: { stripe_account_id: "acct_abc", charges_enabled: true },
       captured,

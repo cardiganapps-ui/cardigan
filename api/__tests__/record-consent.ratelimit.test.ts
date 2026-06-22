@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 /* Asserts the per-endpoint rate-limit guard short-circuits with a 429
    (and the standard { error } shape + Retry-After header) BEFORE the
    handler does any DB work. Mock the limiter so we can drive the
@@ -14,22 +17,26 @@ vi.mock("../_admin.js", () => ({
   getServiceClient: vi.fn(),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 
 import handler from "../record-consent.js";
-import { rateLimit } from "../_ratelimit.js";
-import { getAuthUser } from "../_r2.js";
-import { getServiceClient } from "../_admin.js";
+import { rateLimit as rateLimitRaw } from "../_ratelimit.js";
+import { getAuthUser as getAuthUserRaw } from "../_r2.js";
+import { getServiceClient as getServiceClientRaw } from "../_admin.js";
 
-function makeRes() {
-  const r = {
+const rateLimit = rateLimitRaw as Row;
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
     headers: {},
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
-    setHeader(k, v) { r.headers[k] = v; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
+    setHeader(k: Row, v: Row) { r.headers[k] = v; return r; },
   };
   return r;
 }

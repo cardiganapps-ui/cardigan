@@ -13,7 +13,7 @@ describe("isInQuietHours", () => {
   // in 2022 — UTC-6 year-round). Use the en-US locale + the same
   // toLocaleString trick the helper itself uses, which means the
   // assertion runs the helper end-to-end including the parsing path.
-  function mxAt(hour, minute = 0) {
+  function mxAt(hour: number, minute = 0) {
     // 2026-05-07 is the test today (matches CLAUDE.md current date).
     // MX is UTC-6 → set the UTC time to hour+6.
     const d = new Date(Date.UTC(2026, 4, 7, hour + 6, minute));

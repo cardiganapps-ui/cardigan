@@ -1,27 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Mock _email so we don't try to hit Resend in tests.
 vi.mock("../_email.js", () => ({
   sendTransactionalEmail: vi.fn(),
 }));
 
 import { sendLifecycleEmail } from "../_lifecycle.js";
-import { sendTransactionalEmail } from "../_email.js";
+import { sendTransactionalEmail as sendTransactionalEmailRaw } from "../_email.js";
+
+const sendTransactionalEmail = sendTransactionalEmailRaw as Row;
 
 /* Build a stub Supabase client that records inserts/deletes/updates
    in-memory so we can assert the dedupe-then-send order. The real
    supabase-js client is rich; we only need a tiny subset here. */
-function makeStub({ insertResult = { error: null } } = {}) {
-  const calls = { insert: [], update: [], delete: [] };
-  let lastFilters = null;
+function makeStub({ insertResult = { error: null } }: Row = {}) {
+  const calls: Row = { insert: [], update: [], delete: [] };
+  let lastFilters: Row = null;
   return {
     calls,
     from: () => ({
-      insert: (row) => {
+      insert: (row: Row) => {
         calls.insert.push(row);
         return { error: insertResult.error };
       },
-      update: (row) => {
+      update: (row: Row) => {
         lastFilters = { kind: "update", row };
         return {
           eq: () => ({
@@ -99,8 +104,8 @@ describe("sendLifecycleEmail", () => {
   });
 
   it("escapes HTML in the firstName so a malicious display name can't inject", async () => {
-    let captured;
-    sendTransactionalEmail.mockImplementation(async (args) => {
+    let captured: Row;
+    sendTransactionalEmail.mockImplementation(async (args: Row) => {
       captured = args;
       return { ok: true, id: "re_2" };
     });
@@ -113,8 +118,8 @@ describe("sendLifecycleEmail", () => {
   });
 
   it("composes a payment_failed email with the invoice URL", async () => {
-    let captured;
-    sendTransactionalEmail.mockImplementation(async (args) => {
+    let captured: Row;
+    sendTransactionalEmail.mockImplementation(async (args: Row) => {
       captured = args;
       return { ok: true, id: "re_3" };
     });
@@ -128,8 +133,8 @@ describe("sendLifecycleEmail", () => {
   });
 
   it("composes a pro_welcome email", async () => {
-    let captured;
-    sendTransactionalEmail.mockImplementation(async (args) => {
+    let captured: Row;
+    sendTransactionalEmail.mockImplementation(async (args: Row) => {
       captured = args;
       return { ok: true, id: "re_w" };
     });
@@ -144,8 +149,8 @@ describe("sendLifecycleEmail", () => {
   });
 
   it("composes a pro_cancelled email with the end date", async () => {
-    let captured;
-    sendTransactionalEmail.mockImplementation(async (args) => {
+    let captured: Row;
+    sendTransactionalEmail.mockImplementation(async (args: Row) => {
       captured = args;
       return { ok: true, id: "re_c" };
     });
@@ -161,8 +166,8 @@ describe("sendLifecycleEmail", () => {
   });
 
   it("pro_cancelled falls back to a generic phrase when no end date provided", async () => {
-    let captured;
-    sendTransactionalEmail.mockImplementation(async (args) => {
+    let captured: Row;
+    sendTransactionalEmail.mockImplementation(async (args: Row) => {
       captured = args;
       return { ok: true, id: "re_c2" };
     });

@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Mock the auth + service-client + push helpers BEFORE importing the
 // handler. The handler resolves them at call time, so the mocks just
 // need to be in place at import.
@@ -12,12 +15,16 @@ vi.mock("../_push.js", () => ({
   TERMINAL_PUSH_STATUSES: new Set([400, 404, 410]),
 }));
 vi.mock("../_sentry.js", () => ({
-  withSentry: (h) => h,
+  withSentry: (h: Row) => h,
 }));
 
 import handler from "../patient-cancel-session.js";
-import { getAuthUser, getServiceClient } from "../_admin.js";
-import { sendPush } from "../_push.js";
+import { getAuthUser as getAuthUserRaw, getServiceClient as getServiceClientRaw } from "../_admin.js";
+import { sendPush as sendPushRaw } from "../_push.js";
+
+const getAuthUser = getAuthUserRaw as Row;
+const getServiceClient = getServiceClientRaw as Row;
+const sendPush = sendPushRaw as Row;
 
 /* The cancel handler walks: ownership lookup (via user-JWT client) →
    atomic flip (service-role) → therapist push (best-effort). The
@@ -36,19 +43,21 @@ import { sendPush } from "../_push.js";
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(),
 }));
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createClientRaw } from "@supabase/supabase-js";
 
-function makeRes() {
-  const r = {
+const createClient = createClientRaw as Row;
+
+function makeRes(): Row {
+  const r: Row = {
     statusCode: 200,
     body: null,
-    status(c) { r.statusCode = c; return r; },
-    json(b) { r.body = b; return r; },
+    status(c: Row) { r.statusCode = c; return r; },
+    json(b: Row) { r.body = b; return r; },
   };
   return r;
 }
 
-function makeReq(session_id = "s-1", note) {
+function makeReq(session_id = "s-1", note?: Row) {
   return {
     method: "POST",
     headers: { authorization: "Bearer test-jwt" },
@@ -61,7 +70,7 @@ function makeReq(session_id = "s-1", note) {
    The chain methods (.eq, .is, .select, .in, .delete) all return
    the same builder so the test doesn't have to pattern-match on
    exact call shapes. */
-function makeSelectBuilder(maybeSingleResult) {
+function makeSelectBuilder(maybeSingleResult: Row) {
   const node = {
     eq() { return node; },
     in() { return node; },
@@ -71,7 +80,7 @@ function makeSelectBuilder(maybeSingleResult) {
   };
   return node;
 }
-function makeUpdateBuilder(maybeSingleResult) {
+function makeUpdateBuilder(maybeSingleResult: Row) {
   const node = {
     eq() { return node; },
     is() { return node; },
@@ -83,14 +92,14 @@ function makeUpdateBuilder(maybeSingleResult) {
 function makeDeleteBuilder() {
   const node = {
     eq() { return node; },
-    then(onFulfilled) {
+    then(onFulfilled: Row) {
       return Promise.resolve({ error: null }).then(onFulfilled);
     },
   };
   return node;
 }
 
-function makeUserClient(sessionRow, error = null) {
+function makeUserClient(sessionRow: Row, error = null) {
   return {
     from: () => ({
       select: () => makeSelectBuilder({ data: sessionRow, error }),
@@ -98,9 +107,9 @@ function makeUserClient(sessionRow, error = null) {
   };
 }
 
-function makeServiceClient({ updateResult, pushSubs = [] }) {
+function makeServiceClient({ updateResult, pushSubs = [] }: Row) {
   return {
-    from: (table) => ({
+    from: (table: Row) => ({
       select: () => {
         if (table === "push_subscriptions") {
           return {

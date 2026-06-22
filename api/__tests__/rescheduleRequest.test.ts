@@ -14,7 +14,7 @@ import { isoSlotToMs, shortToTimestampMs, isoToShort } from "../_rescheduleReque
 
 const DAY = 86_400_000;
 
-function isoForOffset(days) {
+function isoForOffset(days: number) {
   const d = new Date(Date.now() + days * DAY);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -47,7 +47,7 @@ describe("isoSlotToMs", () => {
     const iso = isoForOffset(10);
     const withTime = isoSlotToMs(iso, "14:45");
     const midnight = isoSlotToMs(iso, undefined);
-    expect(withTime - midnight).toBe((14 * 60 + 45) * 60 * 1000);
+    expect(withTime! - midnight!).toBe((14 * 60 + 45) * 60 * 1000);
   });
 
   it("rejects malformed, impossible, or non-string input", () => {
