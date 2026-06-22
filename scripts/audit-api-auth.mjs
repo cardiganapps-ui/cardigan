@@ -1,6 +1,7 @@
 /* ── audit-api-auth.mjs ──
-   Walks every `api/*.js` route handler (excluding `_*.js` helpers and
-   intentionally-unauth endpoints) and verifies that getServiceClient
+   Walks every `api/*.ts` route handler (excluding `_*.ts` helpers,
+   `*.d.ts` types, and intentionally-unauth endpoints) and verifies that
+   getServiceClient
    is never called before an auth gate in the same handler.
 
    Why: the service-role client bypasses RLS. If a handler calls it
@@ -29,16 +30,16 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "api");
    Each entry must justify itself in code comments above the endpoint's
    handler. Don't add to this list to make a lint pass — fix the code. */
 const ALLOWED_NO_AUTH = new Set([
-  "health.js",                  // public health probe; no DB writes
-  "whatsapp-webhook.js",        // Meta delivery callback; HMAC verified
-  "resend-webhook.js",          // Resend delivery callback; HMAC verified
-  "push-resubscribe.js",        // browser SW can't carry JWT; (oldEndpoint, resubToken) pair
-  "push-test.js",               // dev-only diagnostic; not deployed in prod (verify before shipping)
-  "calendar/[token].js",        // token IS the credential; no JWT possible from cal clients
-  "stripe-webhook.js",          // Stripe delivery callback; HMAC verified via STRIPE_WEBHOOK_SECRET
-  "patient-invite-preview.js",  // anonymous invite metadata read; token IS the credential, leaks only therapist's name+profession (no patient PII)
-  "r/[token].js",               // email-link reschedule landing page; token IS the credential, single-use, cleared on apply
-  "session-request-respond-token.js", // confirm-page POST handler for the token landing; token IS the credential, single-use
+  "health.ts",                  // public health probe; no DB writes
+  "whatsapp-webhook.ts",        // Meta delivery callback; HMAC verified
+  "resend-webhook.ts",          // Resend delivery callback; HMAC verified
+  "push-resubscribe.ts",        // browser SW can't carry JWT; (oldEndpoint, resubToken) pair
+  "push-test.ts",               // dev-only diagnostic; not deployed in prod (verify before shipping)
+  "calendar/[token].ts",        // token IS the credential; no JWT possible from cal clients
+  "stripe-webhook.ts",          // Stripe delivery callback; HMAC verified via STRIPE_WEBHOOK_SECRET
+  "patient-invite-preview.ts",  // anonymous invite metadata read; token IS the credential, leaks only therapist's name+profession (no patient PII)
+  "r/[token].ts",               // email-link reschedule landing page; token IS the credential, single-use, cleared on apply
+  "session-request-respond-token.ts", // confirm-page POST handler for the token landing; token IS the credential, single-use
 ]);
 
 const AUTH_PATTERNS = [
@@ -61,7 +62,12 @@ async function listRoutes(dir, prefix = "") {
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       out.push(...await listRoutes(full, rel));
-    } else if (entry.isFile() && entry.name.endsWith(".js") && !entry.name.startsWith("_")) {
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith(".ts") &&
+      !entry.name.endsWith(".d.ts") &&
+      !entry.name.startsWith("_")
+    ) {
       out.push({ rel, path: full });
     }
   }
