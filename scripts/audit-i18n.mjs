@@ -28,6 +28,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
+import { transform } from "esbuild";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -67,9 +68,16 @@ const T_STATIC = /\bt\(\s*["'`]([^"'`$]+)["'`]\s*[,)]/g;
 const T_DYNAMIC = /\bt\(\s*`([^`]*?)\$\{/g;
 
 async function main() {
-  // Dynamic import so we evaluate es.ts the same way the bundler does.
-  // Node ≥22.18 strips the (annotation-free) types on import natively.
-  const mod = await import(`file://${ROOT}/src/i18n/es.ts`);
+  // Load es.ts the same way the bundler does, portably across Node
+  // versions. esbuild strips any TS syntax in-memory (it's annotation-
+  // free today, but this stays correct if types are added later) and we
+  // import the result via a data: URL — so this doesn't depend on Node's
+  // native type-stripping (which only lands in ≥22.18).
+  const { code } = await transform(
+    await readFile(join(ROOT, "src/i18n/es.ts"), "utf8"),
+    { loader: "ts", format: "esm" }
+  );
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
   // es.ts exports default or a named `es` — try both.
   const root = mod.default || mod.es;
   if (!root || typeof root !== "object") {

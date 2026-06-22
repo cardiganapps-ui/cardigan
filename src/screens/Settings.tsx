@@ -326,7 +326,7 @@ export function Settings({ user, signOut, refreshUser }: SettingsProps) {
       if (reg.waiting) {
         setUpdateStatus({ msg: t("settings.updateApplying") || "Actualizando…", tone: "info" });
         reg.waiting.postMessage({ type: "SKIP_WAITING" });
-        // controllerchange in main.jsx reloads the page.
+        // controllerchange in main.tsx reloads the page.
         return;
       }
       if (reg.installing) {

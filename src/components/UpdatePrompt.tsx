@@ -4,9 +4,9 @@ import { haptic } from "../utils/haptics";
 import { useIdle } from "../hooks/useIdle";
 
 /* ── Update prompt ────────────────────────────────────────────────────
-   Pipeline (driven by main.jsx's SW lifecycle wiring):
+   Pipeline (driven by main.tsx's SW lifecycle wiring):
 
-     main.jsx detects waiting SW → dispatches 'cardigan-update-ready'
+     main.tsx detects waiting SW → dispatches 'cardigan-update-ready'
        with the SW as detail → this component picks it up.
 
    States:
@@ -15,13 +15,13 @@ import { useIdle } from "../hooks/useIdle";
                   cardigan.updateDeferredUntil
      available  — pill rendered with Actualizar / Más tarde
      applying   — postMessage SKIP_WAITING fired; waiting on
-                  controllerchange (handled in main.jsx)
+                  controllerchange (handled in main.tsx)
      stuck      — applying took >4s; show retry / continue UI
 
    Smart auto-apply:
      If the SW becomes available AND no overlay is open AND no input
      is dirty AND the user has been idle ≥30s, we apply silently —
-     the controllerchange listener in main.jsx reloads the page. The
+     the controllerchange listener in main.tsx reloads the page. The
      user sees a "Actualizado correctamente" toast on the next render
      (via App.jsx, gated on a localStorage flag we set right before
      the postMessage).
@@ -92,7 +92,7 @@ export function UpdatePrompt() {
   const reloadFailsafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isIdle = useIdle(30_000);
 
-  // Pick up the waiting SW from main.jsx.
+  // Pick up the waiting SW from main.tsx.
   useEffect(() => {
     const onReady = (e: Event) => setWaitingSW((e as CustomEvent).detail || null);
     window.addEventListener("cardigan-update-ready", onReady);

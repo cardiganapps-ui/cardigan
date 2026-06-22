@@ -2,7 +2,7 @@
    Cardigan tracks a small set of named events at the moments that
    matter for trial → paid conversion analysis. Backed by Vercel
    Analytics' custom-event API — already wired into <Analytics /> in
-   main.jsx, so events stream directly into the project's dashboard
+   main.tsx, so events stream directly into the project's dashboard
    without a separate account or env var.
 
    Why Vercel over a dedicated product-analytics service:

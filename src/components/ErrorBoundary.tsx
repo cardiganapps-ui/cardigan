@@ -116,7 +116,7 @@ export default class ErrorBoundary extends Component<{ children?: ReactNode }, {
       }
     }
     // Buffered until the Sentry SDK loads (deferred to idle in
-    // main.jsx). If a crash happens during the first ~100ms before
+    // main.tsx). If a crash happens during the first ~100ms before
     // init, the event sits in the in-memory queue and flushes the
     // moment the SDK chunk lands.
     captureException(error, { extra: { componentStack: info?.componentStack } });

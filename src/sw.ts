@@ -40,7 +40,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 // via the UpdatePrompt toast — clicking it posts {type:"SKIP_WAITING"}
 // which calls skipWaiting() below. clients.claim() in activate then
 // takes over all open tabs, which fires `controllerchange` on each
-// client and triggers the reload wired up in main.jsx.
+// client and triggers the reload wired up in main.tsx.
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();

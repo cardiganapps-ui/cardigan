@@ -52,7 +52,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: false, // we handle registration in main.jsx
+      injectRegister: false, // we handle registration in main.tsx
       manifest: false, // we use our own public/manifest.json
       strategies: 'injectManifest',
       srcDir: 'src',
