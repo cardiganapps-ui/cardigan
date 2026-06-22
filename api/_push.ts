@@ -3,29 +3,32 @@
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Short month names matching src/utils/dates.js
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
-export function formatShortDate(date) {
+export function formatShortDate(date: Date): string {
   return `${date.getDate()}-${SHORT_MONTHS[date.getMonth()]}`;
 }
 
 // Legacy space-separated form. Still present in historical DB rows until the
 // 008_date_format_hyphens migration normalizes them. The cron matches both.
-export function formatShortDateLegacy(date) {
+export function formatShortDateLegacy(date: Date): string {
   return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
 }
 
-export function getServiceClient() {
+export function getServiceClient(): Row {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const missing = [];
+  const missing: string[] = [];
   if (!url || !url.trim()) missing.push("SUPABASE_URL");
   if (!key || !key.trim()) missing.push("SUPABASE_SERVICE_ROLE_KEY");
   if (missing.length) {
     throw new Error(`Missing env var(s): ${missing.join(", ")}`);
   }
-  return createClient(url.trim(), key.trim(), {
+  return createClient(url!.trim(), key!.trim(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
@@ -55,7 +58,7 @@ const ALLOWED_PUSH_HOSTS = new Set([
   "notify.windows.com",
 ]);
 
-export function isAllowedPushEndpoint(urlString) {
+export function isAllowedPushEndpoint(urlString: Row): boolean {
   try {
     const u = new URL(urlString);
     if (u.protocol !== "https:") return false;
@@ -79,7 +82,7 @@ export function isAllowedPushEndpoint(urlString) {
 // safe Base 64 (without '=')" BEFORE the HTTP call is attempted — which
 // silently broke every push send in the background until now. Both
 // forms represent the same binary key, so normalising is safe.
-function toUrlSafeBase64(s) {
+function toUrlSafeBase64(s: Row): Row {
   if (!s || typeof s !== "string") return s;
   return s.trim().replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
@@ -91,7 +94,7 @@ function toUrlSafeBase64(s) {
 // If the subject is missing or malformed we fall back to a real mailto
 // instead of throwing: webpush's own validator handles it, and throwing
 // here would collapse to "sent=0" at call sites without a usable error.
-export function readVapidConfig() {
+export function readVapidConfig(): Row {
   // Trim to defend against a trailing "\n" paste into the Vercel env
   // editor — web-push embeds the subject into the VAPID JWT "sub" claim
   // verbatim, and Apple's push gateway rejects any JWT whose "sub"
@@ -103,13 +106,13 @@ export function readVapidConfig() {
     : "mailto:noreply@cardigan.mx";
   const pub = toUrlSafeBase64(process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY);
   const priv = toUrlSafeBase64(process.env.VAPID_PRIVATE_KEY);
-  const missing = [];
+  const missing: string[] = [];
   if (!pub) missing.push("VAPID_PUBLIC_KEY");
   if (!priv) missing.push("VAPID_PRIVATE_KEY");
   return { subject, pub, priv, missing };
 }
 
-export function sendPush(subscription, payload) {
+export function sendPush(subscription: Row, payload: Row): Promise<Row> {
   const { subject, pub, priv, missing } = readVapidConfig();
   if (missing.length) {
     throw new Error(`Missing or invalid VAPID env var(s): ${missing.join(", ")}`);
@@ -124,7 +127,7 @@ export function sendPush(subscription, payload) {
   );
 }
 
-export function verifyCronSecret(req) {
+export function verifyCronSecret(req: Row): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
   const auth = req.headers.authorization;
@@ -142,9 +145,9 @@ export function verifyCronSecret(req) {
 // 10:00–19:00 local window for the given IANA zone. Defaults to
 // America/Mexico_City when zone is missing/invalid (matches the
 // app-wide default in notification_preferences).
-export function isInQuietHours(tz, now = new Date()) {
+export function isInQuietHours(tz: Row, now = new Date()): boolean {
   const zone = tz || "America/Mexico_City";
-  let hour;
+  let hour: number;
   try {
     const local = new Date(now.toLocaleString("en-US", { timeZone: zone }));
     hour = local.getHours();

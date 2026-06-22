@@ -1,6 +1,9 @@
 import { S3Client } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 /* ── R2 client ───────────────────────────────────────────────────────
    Two credential paths, prefer-long-lived:
 
@@ -43,12 +46,12 @@ const HAS_LONG_LIVED_KEYS = !!(process.env.R2_ACCESS_KEY_ID
 // Cache for mode-2 (temp creds). Module scope persists across warm
 // invocations of the same Vercel function instance; cold starts pay
 // the ~200ms re-fetch latency.
-let tempCredsCache = null; // { accessKeyId, secretAccessKey, sessionToken, expiresAt }
+let tempCredsCache: Row = null; // { accessKeyId, secretAccessKey, sessionToken, expiresAt }
 
 const TEMP_CREDS_TTL_SECONDS = 604800; // 7 days, the API max
 const TEMP_CREDS_REFRESH_MARGIN_MS = 60 * 60 * 1000; // refresh 1h early
 
-async function fetchTempCreds() {
+async function fetchTempCreds(): Promise<Row> {
   const account = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_API_TOKEN;
   const tokenId = process.env.CLOUDFLARE_TOKEN_ID;
@@ -68,7 +71,7 @@ async function fetchTempCreds() {
       }),
     }
   );
-  const json = await res.json().catch(() => ({}));
+  const json: Row = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
     throw new Error(`temp-access-credentials failed: ${JSON.stringify(json.errors || json)}`);
   }
@@ -80,7 +83,7 @@ async function fetchTempCreds() {
   };
 }
 
-async function getCredentials() {
+async function getCredentials(): Promise<Row> {
   if (HAS_LONG_LIVED_KEYS) {
     return {
       accessKeyId: process.env.R2_ACCESS_KEY_ID,
@@ -102,7 +105,7 @@ function getEndpointAccount() {
 /* Get an R2 client. Async because mode-2 may need to mint temp creds.
    Each call returns a fresh S3Client bound to current creds — cheap
    to construct, ensures expired temp creds aren't reused. */
-export async function getR2() {
+export async function getR2(): Promise<Row> {
   const credentials = await getCredentials();
   const endpoint = `https://${getEndpointAccount()}.r2.cloudflarestorage.com`;
   return new S3Client({
@@ -124,7 +127,7 @@ export async function getR2() {
 //
 // Path traversal (`..`) and empty segments (`//`) are rejected in
 // both shapes — same defence-in-depth as before.
-export function validatePath(path, userId) {
+export function validatePath(path: Row, userId: string): boolean {
   if (!path || typeof path !== "string" || path.length > 512) return false;
   if (path.includes("..") || path.includes("//")) return false;
   if (path.startsWith(`${userId}/`)) return true;
@@ -133,13 +136,13 @@ export function validatePath(path, userId) {
 }
 
 // Verify Supabase JWT and extract user_id
-export async function getAuthUser(req) {
+export async function getAuthUser(req: Row): Promise<Row> {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) return null;
   const token = auth.slice(7);
   const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
+    process.env.SUPABASE_URL ?? "",
+    process.env.SUPABASE_ANON_KEY ?? ""
   );
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;

@@ -21,7 +21,10 @@
 
 import { getServiceClient } from "./_admin.js";
 
-export async function rateLimit({ endpoint, bucket, max, windowSec }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+export async function rateLimit({ endpoint, bucket, max, windowSec }: Row): Promise<Row> {
   if (!endpoint || !bucket) {
     // Misconfigured caller — fail open (better than fail closed in a
     // hot path). The Sentry wrapper around the handler will see the
@@ -73,7 +76,7 @@ export async function rateLimit({ endpoint, bucket, max, windowSec }) {
 /* Caller for IP-based limits when there's no authed user (the Stripe
    webhook itself can't be rate-limited like this — Stripe's IPs would
    trip it). For authed endpoints, prefer bucket = user.id. */
-export function getClientIp(req) {
+export function getClientIp(req: Row): string {
   const fwd = req.headers["x-forwarded-for"];
   if (typeof fwd === "string" && fwd.length > 0) {
     return fwd.split(",")[0].trim();

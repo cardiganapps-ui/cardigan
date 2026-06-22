@@ -18,6 +18,9 @@
    at localhost (capacitor://localhost, ionic://localhost, …) so it works
    regardless of the exact scheme the OS/WebView reports. */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const STATIC_ALLOWED = new Set([
   "capacitor://localhost", // iOS Capacitor WebView
   "ionic://localhost",     // legacy Ionic scheme
@@ -27,7 +30,7 @@ const STATIC_ALLOWED = new Set([
   "https://www.cardigan.mx",
 ]);
 
-function isAllowedOrigin(origin) {
+function isAllowedOrigin(origin: Row): boolean {
   if (!origin) return false;
   if (STATIC_ALLOWED.has(origin)) return true;
   try {
@@ -45,7 +48,7 @@ function isAllowedOrigin(origin) {
 
 // Sets CORS response headers. Returns true if the request is a preflight
 // (OPTIONS) that the caller should answer with a 204 and stop.
-export function applyCors(req, res) {
+export function applyCors(req: Row, res: Row): boolean {
   const origin = req.headers.origin;
   if (isAllowedOrigin(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);

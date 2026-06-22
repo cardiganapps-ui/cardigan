@@ -23,12 +23,15 @@
 import http2 from "node:http2";
 import crypto from "node:crypto";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const HOST_PROD = "https://api.push.apple.com";
 const HOST_SANDBOX = "https://api.sandbox.push.apple.com";
 
-let _key = null;
+let _key: string | null = null;
 let _keyResolved = false;
-function getAuthKey() {
+function getAuthKey(): string | null {
   if (_keyResolved) return _key;
   _keyResolved = true;
   const b64 = process.env.APNS_AUTH_KEY_BASE64;
@@ -46,29 +49,29 @@ const keyId = () => process.env.APNS_KEY_ID || "";
 const bundleId = () => process.env.APNS_BUNDLE_ID || "mx.cardigan.app";
 const useProduction = () => process.env.APNS_PRODUCTION !== "false";
 
-export function apnsConfigured() {
+export function apnsConfigured(): boolean {
   return !!(getAuthKey() && teamId() && keyId());
 }
 
 // Apple requires the auth JWT be refreshed every 20–60 min and reused in
 // between (minting one per push gets you throttled with TooManyProviderTokenUpdates).
-let _jwt = null;
+let _jwt: string | null = null;
 let _jwtAt = 0;
-function authJwt() {
+function authJwt(): string {
   const now = Math.floor(Date.now() / 1000);
   if (_jwt && now - _jwtAt < 3000) return _jwt; // ~50 min
   const key = getAuthKey();
-  const b64url = (b) => Buffer.from(b).toString("base64url");
+  const b64url = (b: Row) => Buffer.from(b).toString("base64url");
   const header = b64url(JSON.stringify({ alg: "ES256", kid: keyId() }));
   const claims = b64url(JSON.stringify({ iss: teamId(), iat: now }));
   const input = `${header}.${claims}`;
-  const sig = crypto.sign("SHA256", Buffer.from(input), { key, dsaEncoding: "ieee-p1363" }).toString("base64url");
+  const sig = crypto.sign("SHA256", Buffer.from(input), { key: key as string, dsaEncoding: "ieee-p1363" }).toString("base64url");
   _jwt = `${input}.${sig}`;
   _jwtAt = now;
   return _jwt;
 }
 
-export async function sendAPNs({ token, payload }) {
+export async function sendAPNs({ token, payload }: Row): Promise<Row> {
   if (!apnsConfigured()) return { ok: false, terminal: false, error: "apns-not-configured" };
   if (!token) return { ok: false, terminal: true, error: "missing-token" };
 
@@ -85,8 +88,8 @@ export async function sendAPNs({ token, payload }) {
 
   return await new Promise((resolve) => {
     let settled = false;
-    let client;
-    const done = (r) => {
+    let client: Row;
+    const done = (r: Row) => {
       if (settled) return;
       settled = true;
       try { client?.close(); } catch { /* ignore */ }
@@ -94,12 +97,12 @@ export async function sendAPNs({ token, payload }) {
     };
     try {
       client = http2.connect(useProduction() ? HOST_PROD : HOST_SANDBOX);
-    } catch (err) {
+    } catch (err: Row) {
       return resolve({ ok: false, terminal: false, error: err.message });
     }
-    client.on("error", (err) => done({ ok: false, terminal: false, error: err.message }));
+    client.on("error", (err: Row) => done({ ok: false, terminal: false, error: err.message }));
 
-    const headers = {
+    const headers: Row = {
       ":method": "POST",
       ":path": `/3/device/${token}`,
       "authorization": `bearer ${authJwt()}`,
@@ -112,9 +115,9 @@ export async function sendAPNs({ token, payload }) {
     const req = client.request(headers);
     let status = 0;
     let data = "";
-    req.on("response", (h) => { status = h[":status"]; });
+    req.on("response", (h: Row) => { status = h[":status"]; });
     req.setEncoding("utf8");
-    req.on("data", (c) => { data += c; });
+    req.on("data", (c: Row) => { data += c; });
     req.on("end", () => {
       if (status === 200) return done({ ok: true });
       let reason = "";
@@ -125,7 +128,7 @@ export async function sendAPNs({ token, payload }) {
       if (!terminal) console.error(JSON.stringify({ evt: "apns.send.error", status, reason }));
       done({ ok: false, terminal, error: reason || `status-${status}` });
     });
-    req.on("error", (err) => done({ ok: false, terminal: false, error: err.message }));
+    req.on("error", (err: Row) => done({ ok: false, terminal: false, error: err.message }));
     req.setTimeout(10000, () => done({ ok: false, terminal: false, error: "timeout" }));
     req.end(body);
   });

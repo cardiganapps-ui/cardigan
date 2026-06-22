@@ -14,13 +14,16 @@
 
 import crypto from "node:crypto";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // "D-MMM" Spanish short-date matches what sessions/payments store.
 // Mirrors utils/dates.js::SHORT_MONTHS server-side. Kept inline so
 // this helper has no client-bundle dependencies.
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const SHORT_MONTHS_BY_NAME = Object.fromEntries(SHORT_MONTHS.map((m, i) => [m, i]));
 
-export function isoToShort(iso) {
+export function isoToShort(iso: Row): string | null {
   if (!iso || typeof iso !== "string") return null;
   if (!/^\d{4}-\d{2}-\d{2}/.test(iso.slice(0, 10))) return null;
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
@@ -38,7 +41,7 @@ export function isoToShort(iso) {
 // patient-cancel endpoint uses; keep them in lockstep so the
 // "is this in the past?" check answers identically across the two
 // endpoints that touch the same session shape.
-export function shortToTimestampMs(shortDate, time) {
+export function shortToTimestampMs(shortDate: Row, time: Row): number | null {
   if (!shortDate || typeof shortDate !== "string") return null;
   const m = shortDate.match(/^(\d{1,2})[\s-](\w{3})$/);
   if (!m) return null;
@@ -67,7 +70,7 @@ export function shortToTimestampMs(shortDate, time) {
 // against the real year removes that ambiguity; storage can still use the
 // year-less form afterwards because the horizon cap guarantees the slot
 // is ≤180 days out, where the year-less round-trip is unambiguous.
-export function isoSlotToMs(iso, time) {
+export function isoSlotToMs(iso: Row, time: Row): number | null {
   if (!iso || typeof iso !== "string") return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.slice(0, 10));
   if (!m) return null;
@@ -88,7 +91,7 @@ export function isoSlotToMs(iso, time) {
 // parties.
 //
 // Returns ISO string (Postgres timestamptz) or null on parse failure.
-export function computeExpiresAt(originalShortDate, originalTime, proposedShortDate, proposedTime) {
+export function computeExpiresAt(originalShortDate: Row, originalTime: Row, proposedShortDate: Row, proposedTime: Row): string | null {
   const a = shortToTimestampMs(originalShortDate, originalTime);
   const b = shortToTimestampMs(proposedShortDate, proposedTime);
   if (a == null && b == null) return null;
@@ -96,7 +99,7 @@ export function computeExpiresAt(originalShortDate, originalTime, proposedShortD
   // relative to that one — we'd rather lose the request than orphan
   // it in the DB forever.
   const earliest = (a != null && b != null) ? Math.min(a, b) : (a ?? b);
-  return new Date(earliest - 60 * 60 * 1000).toISOString();
+  return new Date(earliest! - 60 * 60 * 1000).toISOString();
 }
 
 // 32 random bytes → URL-safe base64 (~43 chars). Independent values
@@ -105,7 +108,7 @@ export function computeExpiresAt(originalShortDate, originalTime, proposedShortD
 // resolves through ANY path (token spend, JWT response, withdraw,
 // expire) so a stale email link is a 404 rather than a replay.
 export function mintTokens() {
-  const enc = (b) => Buffer.from(b).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  const enc = (b: Row) => Buffer.from(b).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   return {
     approve_token: enc(crypto.randomBytes(32)),
     reject_token: enc(crypto.randomBytes(32)),
@@ -116,7 +119,7 @@ export function mintTokens() {
 //   - the patient submits a fresh request (only one pending allowed)
 //   - the patient cancels the session entirely
 // Service-role only. No-op if no pending row exists.
-export async function withdrawPendingForSession(svc, sessionId, who = "patient_withdraw") {
+export async function withdrawPendingForSession(svc: Row, sessionId: Row, who = "patient_withdraw"): Promise<Row> {
   const { data, error } = await svc
     .from("session_reschedule_requests")
     .update({
@@ -137,7 +140,7 @@ export async function withdrawPendingForSession(svc, sessionId, who = "patient_w
 // the therapist's rescheduleSession action and the original cancel
 // endpoint. Used to recompute sessions.day when an accept lands.
 const DAY_BY_INDEX = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
-function shortDateToDayName(shortDate) {
+function shortDateToDayName(shortDate: Row): string | null {
   if (!shortDate) return null;
   const m = shortDate.match(/^(\d{1,2})[\s-](\w{3})$/);
   if (!m) return null;
@@ -165,7 +168,7 @@ function shortDateToDayName(shortDate) {
 // Caller is responsible for ownership/auth — the helper trusts that
 // the request was fetched by an authorized path. Both the JWT-gated
 // therapist endpoint and the token-based email landing call this.
-export async function applyAccept(svc, request, { resolvedBy, therapistNote }) {
+export async function applyAccept(svc: Row, request: Row, { resolvedBy, therapistNote }: Row): Promise<Row> {
   if (!request || request.status !== "pending") {
     return { ok: false, code: "not_pending", current_status: request?.status || null };
   }
@@ -262,7 +265,7 @@ export async function applyAccept(svc, request, { resolvedBy, therapistNote }) {
 // even when the request was withdrawn / expired between the caller's
 // SELECT and our UPDATE. With .select(), we get the row back when
 // matched and an empty array when not — explicit race detection.
-export async function applyReject(svc, request, { resolvedBy, therapistNote }) {
+export async function applyReject(svc: Row, request: Row, { resolvedBy, therapistNote }: Row): Promise<Row> {
   if (!request || request.status !== "pending") {
     return { ok: false, code: "not_pending", current_status: request?.status || null };
   }
@@ -294,7 +297,7 @@ export async function applyReject(svc, request, { resolvedBy, therapistNote }) {
 // Bundle the parties (patient row, therapist auth row) for email
 // fan-out. Both response endpoints + the cron expire path call this
 // before triggering the appropriate Resend send. Service-role only.
-export async function fetchPartiesForRequest(svc, request) {
+export async function fetchPartiesForRequest(svc: Row, request: Row): Promise<Row> {
   const [{ data: patientRow }, { data: therapistAuth }] = await Promise.all([
     svc.from("patients")
       .select("name, parent, email")
@@ -321,7 +324,7 @@ export async function fetchPartiesForRequest(svc, request) {
 // The token IS the auth: a leaked link can act on the row but the
 // row itself is single-use (tokens null out on resolve), and the
 // token can't be enumerated.
-export async function findRequestByToken(svc, token) {
+export async function findRequestByToken(svc: Row, token: Row): Promise<Row> {
   if (!token || typeof token !== "string" || token.length < 16) {
     return { row: null, action: null };
   }

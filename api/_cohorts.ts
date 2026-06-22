@@ -14,7 +14,10 @@
  *
  *  A timestamp T qualifies when `T >= lower && T < upper`. Default
  *  `now` makes the function pure & easy to test. */
-export function cohortWindow(daysSince, windowDays, now = Date.now()) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+export function cohortWindow(daysSince: number, windowDays: number, now: number = Date.now()): Row {
   const upper = new Date(now - daysSince * 86_400_000).toISOString();
   const lower = new Date(now - (daysSince + windowDays) * 86_400_000).toISOString();
   return { lower, upper };
@@ -23,7 +26,7 @@ export function cohortWindow(daysSince, windowDays, now = Date.now()) {
 /** True iff `timestamp` falls in [lower, upper). Strings compare
  *  lexicographically when in matching ISO formats — no parsing
  *  needed. NaN-safe: missing timestamps are excluded. */
-export function isInCohortWindow(timestamp, lower, upper) {
+export function isInCohortWindow(timestamp: string, lower: string, upper: string): boolean {
   if (!timestamp) return false;
   return timestamp >= lower && timestamp < upper;
 }
@@ -31,7 +34,7 @@ export function isInCohortWindow(timestamp, lower, upper) {
 /** Build a Map<user_id, first_paid_at_iso> from a list of invoice
  *  rows ordered ASC by paid_at. The first invoice we see for each
  *  user is — by construction — their earliest. */
-export function firstPaidByUser(invoices) {
+export function firstPaidByUser(invoices: Row): Map<string, string> {
   const out = new Map();
   for (const inv of invoices || []) {
     if (!inv.user_id || !inv.paid_at) continue;
@@ -48,7 +51,7 @@ export function firstPaidByUser(invoices) {
  *      Pro-without-card orphan state)
  *  Used to gate trial-stage cohorts off of users who've already
  *  converted. */
-export function hasActiveSubscription(sub) {
+export function hasActiveSubscription(sub: Row): boolean {
   if (!sub) return false;
   if (sub.comp_granted) return true;
   if (sub.status === "active") return true;

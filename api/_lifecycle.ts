@@ -41,12 +41,15 @@
 
 import { sendTransactionalEmail } from "./_email.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const APP_URL = "https://cardigan.mx";
 
 /* Compose the {subject, html, text} for a given kind. The user
    object is the auth.users row + a few derived fields the caller
    passes in (firstName, daysLeft, lastInvoiceUrl). */
-function compose(kind, ctx) {
+function compose(kind: Row, ctx: Row): Row {
   const firstName = ctx.firstName || "Hola";
 
   switch (kind) {
@@ -162,11 +165,11 @@ function compose(kind, ctx) {
   }
 }
 
-function htmlWrap(inner) {
+function htmlWrap(inner: Row): string {
   return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;color:#2E2E2E;line-height:1.55;max-width:560px;margin:0 auto;padding:24px;">${inner}<p style="font-size:12px;color:#888;margin-top:32px;">Recibes este correo porque tienes una cuenta en Cardigan. Si ya no quieres recibir avisos como este, contesta este correo y lo desactivamos.</p></body></html>`;
 }
 
-function escapeHtml(s) {
+function escapeHtml(s: Row): string {
   return String(s || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -179,7 +182,7 @@ function escapeHtml(s) {
    (user_id, kind) slot in lifecycle_emails before sending. Returns
    { ok: true, sent: false, reason: "duplicate" } when the slot was
    already claimed by a previous run. */
-export async function sendLifecycleEmail(svc, { userId, email, firstName, kind, invoiceUrl, endDateStr }) {
+export async function sendLifecycleEmail(svc: Row, { userId, email, firstName, kind, invoiceUrl, endDateStr }: Row): Promise<Row> {
   if (!userId || !email || !kind) {
     return { ok: false, error: "missing userId/email/kind" };
   }

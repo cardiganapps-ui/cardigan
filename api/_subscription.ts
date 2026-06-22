@@ -15,10 +15,13 @@
 
 import { getServiceClient } from "./_admin.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const ADMIN_EMAIL = "gaxioladiego@gmail.com";
 const PAID_STATUSES = new Set(["active", "past_due"]);
 
-export async function isProUser(user) {
+export async function isProUser(user: Row): Promise<boolean> {
   if (!user) return false;
   if (user.email === ADMIN_EMAIL) return true;
 

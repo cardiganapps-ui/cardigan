@@ -25,13 +25,16 @@
    re-implement the bare minimum here to avoid pulling client code
    into a serverless function. */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 // Sessions are written with no year in the date string. Infer it from
 // the reference (today): if the parsed (month, day) is more than 6 months
 // in the past relative to today, assume next year. Same heuristic the
 // client uses in inferYear(); kept in sync intentionally.
-function inferYear(monthIdx, day, ref = new Date()) {
+function inferYear(monthIdx: number, day: number, ref = new Date()): number {
   const candidate = new Date(ref.getFullYear(), monthIdx, day);
   const diffMs = candidate.getTime() - ref.getTime();
   const sixMonthsMs = 1000 * 60 * 60 * 24 * 183;
@@ -40,7 +43,7 @@ function inferYear(monthIdx, day, ref = new Date()) {
   return ref.getFullYear();
 }
 
-function parseShortDate(str, ref = new Date()) {
+function parseShortDate(str: Row, ref = new Date()): Row {
   if (!str || typeof str !== "string") return null;
   const parts = str.split(/[\s-]+/);
   if (parts.length < 2) return null;
@@ -51,9 +54,9 @@ function parseShortDate(str, ref = new Date()) {
   return { year, month: monthIdx + 1, day };
 }
 
-function pad(n) { return String(n).padStart(2, "0"); }
+function pad(n: number): string { return String(n).padStart(2, "0"); }
 
-function formatLocalDateTime({ year, month, day }, time) {
+function formatLocalDateTime({ year, month, day }: Row, time: Row): string {
   // "HH:MM" → "HHMM00". Defaults to 00:00 if missing.
   let hours = 0, mins = 0;
   if (typeof time === "string") {
@@ -77,7 +80,7 @@ function formatUTCStamp(date = new Date()) {
   );
 }
 
-function escapeText(s) {
+function escapeText(s: Row): string {
   if (s == null) return "";
   return String(s)
     .replace(/\\/g, "\\\\")
@@ -90,10 +93,10 @@ function escapeText(s) {
 // CRLF + a single leading space on the continuation line. We measure in
 // UTF-16 code units, which is a small overestimate vs. UTF-8 octets but
 // safe (folding earlier than required is allowed).
-function foldLine(line) {
+function foldLine(line: string): string {
   const MAX = 73; // leave headroom for CRLF + space
   if (line.length <= MAX) return line;
-  const out = [];
+  const out: string[] = [];
   let i = 0;
   while (i < line.length) {
     out.push(line.slice(i, i + MAX));
@@ -102,7 +105,7 @@ function foldLine(line) {
   return out.join("\r\n ");
 }
 
-function formatStatus(sessionStatus) {
+function formatStatus(sessionStatus: Row): string {
   // Map our statuses to the small ICS vocabulary. Cancelled events
   // appear as strikethroughs in most clients; charged sessions are
   // confirmed (the appointment time was held even if the patient
@@ -111,7 +114,7 @@ function formatStatus(sessionStatus) {
   return "CONFIRMED";
 }
 
-function vtimezoneBlock(tz) {
+function vtimezoneBlock(tz: string): string[] {
   // Hardcoded for America/Mexico_City (no DST since 2022). For other
   // zones we still emit a block with the same offset as a graceful
   // fallback; a properly-configured client will use its own zoneinfo
@@ -140,7 +143,7 @@ function vtimezoneBlock(tz) {
  * @param {string} options.timezone - IANA TZ name. Defaults to America/Mexico_City.
  * @param {string} options.calendarName - Title shown in the subscriber's UI.
  */
-export function generateICS({ sessions, timezone = "America/Mexico_City", calendarName = "Cardigan", subjectOverride = null } = {}) {
+export function generateICS({ sessions, timezone = "America/Mexico_City", calendarName = "Cardigan", subjectOverride = null }: Row = {}): string {
   // subjectOverride: when set, every SUMMARY uses this string as the
   // event subject instead of the patient's name. Used by patient-side
   // feeds where the "patient" of the row IS the viewer themselves —
@@ -178,11 +181,11 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
   // overlapping events. Only on the therapist feed (no subjectOverride) —
   // a patient feed already contains just the viewer's own member row per
   // occurrence. The representative carries a member count + the group name.
-  const eventRows = [];
+  const eventRows: Row[] = [];
   if (subjectOverride) {
     eventRows.push(...(sessions || []));
   } else {
-    const seen = new Map();
+    const seen = new Map<string, Row>();
     for (const s of sessions || []) {
       if (!s.group_id) { eventRows.push(s); continue; }
       const key = `${s.group_id}|${s.date}|${s.time}`;
@@ -233,7 +236,7 @@ export function generateICS({ sessions, timezone = "America/Mexico_City", calend
         ? `- ${escapeText(s._groupName || "Grupo")} (${s._groupCount})`
         : `- ${escapeText(s.patient || s.initials || "?")}`;
     const summary = `${summaryPrefix} ${summarySubject}`;
-    const descParts = [];
+    const descParts: string[] = [];
     if (s.modality) descParts.push(`Modalidad: ${s.modality}`);
     if (s.status === "charged") descParts.push("Cancelada con cargo.");
     if (s.status === "cancelled" && s.cancel_reason) descParts.push(`Motivo: ${s.cancel_reason}`);

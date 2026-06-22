@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 /* ── Step-up authentication helper ──
    Sensitive endpoints (export-user-data, delete-my-account) require
    the caller to re-prove password possession on top of a valid JWT.
@@ -18,19 +21,19 @@ import { createClient } from "@supabase/supabase-js";
      to verify. Return code: "oauth_only" so the UI can route them
      to "set a password first" before retrying. */
 
-export async function verifyPasswordReauth({ user, password, captchaToken }) {
+export async function verifyPasswordReauth({ user, password, captchaToken }: Row): Promise<Row> {
   if (!user?.email) return { ok: false, code: "no_email" };
   if (typeof password !== "string" || !password) {
     return { ok: false, code: "password_required" };
   }
 
   const hasEmailIdentity = Array.isArray(user.identities)
-    && user.identities.some(i => i.provider === "email");
+    && user.identities.some((i: Row) => i.provider === "email");
   if (!hasEmailIdentity) {
     return { ok: false, code: "oauth_only" };
   }
 
-  const anon = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+  const anon = createClient(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "", {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   // Pass the captcha token through when supplied. Supabase Auth has

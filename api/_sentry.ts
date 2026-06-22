@@ -8,6 +8,9 @@
 import * as Sentry from "@sentry/node";
 import { applyCors } from "./_cors.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const PII_FIELDS = new Set([
   "patient",
   "patient_name",
@@ -20,10 +23,10 @@ const PII_FIELDS = new Set([
   "phone",
 ]);
 
-function scrubPII(obj, depth = 0) {
+function scrubPII(obj: Row, depth = 0): Row {
   if (depth > 6 || obj == null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map((v) => scrubPII(v, depth + 1));
-  const out = {};
+  if (Array.isArray(obj)) return obj.map((v: Row) => scrubPII(v, depth + 1));
+  const out: Row = {};
   for (const [k, v] of Object.entries(obj)) {
     if (PII_FIELDS.has(k)) { out[k] = "[redacted]"; continue; }
     out[k] = v && typeof v === "object" ? scrubPII(v, depth + 1) : v;
@@ -41,7 +44,7 @@ function ensureInit() {
     dsn,
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "production",
     tracesSampleRate: 0,
-    beforeSend(event) {
+    beforeSend(event: Row) {
       if (event.extra) event.extra = scrubPII(event.extra);
       if (event.request?.data) event.request.data = scrubPII(event.request.data);
       return event;
@@ -53,8 +56,8 @@ function ensureInit() {
 // failures that a probing client will generate at volume.
 const EXPECTED_STATUSES = new Set([400, 401, 403, 404, 405, 409, 413, 429]);
 
-export function withSentry(handler, { name } = {}) {
-  return async function wrapped(req, res) {
+export function withSentry(handler: Row, { name }: Row = {}): Row {
+  return async function wrapped(req: Row, res: Row) {
     // CORS first: the native app calls /api/* cross-origin
     // (capacitor://localhost → cardigan.mx). Set the headers on every
     // response and short-circuit the preflight OPTIONS with a 204 — the

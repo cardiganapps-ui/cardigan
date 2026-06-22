@@ -10,22 +10,25 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const ADMIN_EMAIL = "gaxioladiego@gmail.com";
 
-export async function getAuthUser(req) {
+export async function getAuthUser(req: Row): Promise<Row> {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) return null;
   const token = auth.slice(7);
   const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
+    process.env.SUPABASE_URL ?? "",
+    process.env.SUPABASE_ANON_KEY ?? ""
   );
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;
   return user;
 }
 
-export async function requireAdmin(req, res) {
+export async function requireAdmin(req: Row, res: Row): Promise<Row> {
   const user = await getAuthUser(req);
   if (!user) {
     res.status(401).json({ error: "Unauthorized" });
@@ -46,13 +49,13 @@ export function getServiceClient() {
   // Be specific about which var is missing so the admin knows what to
   // fix in Vercel. Also trim: a trailing newline in the pasted value
   // will pass the truthy check but break createClient downstream.
-  const missing = [];
+  const missing: string[] = [];
   if (!url || !url.trim()) missing.push("SUPABASE_URL");
   if (!key || !key.trim()) missing.push("SUPABASE_SERVICE_ROLE_KEY");
   if (missing.length) {
     throw new Error(`Missing env var(s): ${missing.join(", ")}`);
   }
-  return createClient(url.trim(), key.trim(), {
+  return createClient(url!.trim(), key!.trim(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
@@ -67,7 +70,7 @@ export function getServiceClient() {
    Reads IP + UA from request headers (best-effort). The table has no
    INSERT policy — only the service-role client can write, which is
    exactly what we have here. */
-export async function logAuditEvent(svc, { actorId, targetUserId, action, payload, req } = {}) {
+export async function logAuditEvent(svc: Row, { actorId, targetUserId, action, payload, req }: Row = {}): Promise<void> {
   if (!svc || !actorId || !action) return;
   try {
     const ip = req
@@ -82,14 +85,14 @@ export async function logAuditEvent(svc, { actorId, targetUserId, action, payloa
       ip,
       ua,
     });
-  } catch (err) {
+  } catch (err: Row) {
     // Swallowed by design — never fail the parent endpoint on audit
     // table unavailability. Vercel function logs will show it.
     console.warn("audit log write failed:", err?.message);
   }
 }
 
-export function isValidUserId(id) {
+export function isValidUserId(id: Row): boolean {
   // UUID v4-ish validation to guard against malformed input that could
   // slip into SQL filters or admin API calls.
   return typeof id === "string"
@@ -112,7 +115,7 @@ export function isValidUserId(id) {
 
    Optional `tombstone` writes an account_deletions row before wiping
    auth — pass the user's email and a short reason string. */
-export async function deleteUserCascade({ svc, r2Client, bucket, userId, tombstone } = {}) {
+export async function deleteUserCascade({ svc, r2Client, bucket, userId, tombstone }: Row = {}): Promise<Row> {
   if (!svc || !userId) throw new Error("svc and userId are required");
 
   // 1. R2 documents (best-effort; don't abort on failures).
@@ -125,9 +128,9 @@ export async function deleteUserCascade({ svc, r2Client, bucket, userId, tombsto
       const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
       await Promise.all(
         docs
-          .map((d) => d.file_path)
-          .filter((p) => typeof p === "string" && p.startsWith(`${userId}/`))
-          .map((path) =>
+          .map((d: Row) => d.file_path)
+          .filter((p: Row) => typeof p === "string" && p.startsWith(`${userId}/`))
+          .map((path: string) =>
             r2Client
               .send(new DeleteObjectCommand({ Bucket: bucket, Key: path }))
               .catch(() => {})

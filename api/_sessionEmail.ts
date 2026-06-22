@@ -12,13 +12,16 @@
 
 import { sendTransactionalEmail } from "./_email.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const APP_URL = "https://cardigan.mx";
 
-function htmlWrap(inner) {
+function htmlWrap(inner: Row): string {
   return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;color:#2E2E2E;line-height:1.55;max-width:560px;margin:0 auto;padding:24px;">${inner}<p style="font-size:12px;color:#888;margin-top:32px;">Cardigan — gestión de consultorio para terapeutas. Si recibiste este correo por error, contesta y lo arreglamos.</p></body></html>`;
 }
 
-function escapeHtml(s) {
+function escapeHtml(s: Row): string {
   return String(s || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -27,7 +30,7 @@ function escapeHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
-function ctaButton(href, label) {
+function ctaButton(href: Row, label: Row): string {
   return `<p style="margin:24px 0;"><a href="${href}" style="background:#5B9BAF;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;">${escapeHtml(label)}</a></p>`;
 }
 
@@ -40,8 +43,8 @@ export async function sendCancelNotificationEmails({
   date,
   time,
   cancelNote,
-}) {
-  const tasks = [];
+}: Row): Promise<Row> {
+  const tasks: Row[] = [];
 
   if (patientEmail) {
     const noteLine = cancelNote
@@ -90,7 +93,7 @@ export async function sendCancelNotificationEmails({
   }
 
   const results = await Promise.allSettled(tasks);
-  return results.map((r) =>
+  return results.map((r: Row) =>
     r.status === "fulfilled"
       ? r.value
       : { ok: false, error: r.reason?.message || "rejected" }
@@ -113,7 +116,7 @@ export async function sendRescheduleWithdrawnEmails({
   oldTime,
   newDate,
   newTime,
-}) {
+}: Row): Promise<Row> {
   if (!therapistEmail) return [];
   const html = htmlWrap(`
     <p>Hola${therapistName ? ` ${escapeHtml(therapistName)}` : ""},</p>
@@ -150,8 +153,8 @@ export async function sendRescheduleRequestEmails({
   patientNote,
   approveUrl,
   rejectUrl,
-}) {
-  const tasks = [];
+}: Row): Promise<Row> {
+  const tasks: Row[] = [];
   const movedLine = `${escapeHtml(oldDate)} a las ${escapeHtml(oldTime)} → <strong>${escapeHtml(newDate)} a las ${escapeHtml(newTime)}</strong>`;
 
   if (therapistEmail) {
@@ -206,7 +209,7 @@ export async function sendRescheduleRequestEmails({
   }
 
   const results = await Promise.allSettled(tasks);
-  return results.map((r) =>
+  return results.map((r: Row) =>
     r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }
   );
 }
@@ -225,8 +228,8 @@ export async function sendRescheduleAcceptedEmails({
   newDate,
   newTime,
   therapistNote,
-}) {
-  const tasks = [];
+}: Row): Promise<Row> {
+  const tasks: Row[] = [];
   if (patientEmail) {
     const therapistLine = therapistName ? ` con ${escapeHtml(therapistName)}` : "";
     const noteLine = therapistNote
@@ -249,7 +252,7 @@ export async function sendRescheduleAcceptedEmails({
     );
   }
   const results = await Promise.allSettled(tasks);
-  return results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
+  return results.map((r: Row) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
 }
 
 // ── Reschedule REJECTED emails ────────────────────────────────────
@@ -269,8 +272,8 @@ export async function sendRescheduleRejectedEmails({
   newDate: _newDate,
   newTime: _newTime,
   therapistNote,
-}) {
-  const tasks = [];
+}: Row): Promise<Row> {
+  const tasks: Row[] = [];
   if (patientEmail) {
     const therapistLine = therapistName ? ` con ${escapeHtml(therapistName)}` : "";
     const noteLine = therapistNote
@@ -294,7 +297,7 @@ export async function sendRescheduleRejectedEmails({
     );
   }
   const results = await Promise.allSettled(tasks);
-  return results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
+  return results.map((r: Row) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
 }
 
 // ── Reschedule EXPIRED emails ─────────────────────────────────────
@@ -314,8 +317,8 @@ export async function sendRescheduleExpiredEmails({
   oldTime,
   newDate,
   newTime,
-}) {
-  const tasks = [];
+}: Row): Promise<Row> {
+  const tasks: Row[] = [];
   if (patientEmail) {
     const html = htmlWrap(`
       <p>Hola ${escapeHtml(patientGreetingName || patientDisplayName || "")},</p>
@@ -351,5 +354,5 @@ export async function sendRescheduleExpiredEmails({
     );
   }
   const results = await Promise.allSettled(tasks);
-  return results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
+  return results.map((r: Row) => (r.status === "fulfilled" ? r.value : { ok: false, error: r.reason?.message || "rejected" }));
 }

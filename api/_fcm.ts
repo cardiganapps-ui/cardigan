@@ -13,10 +13,13 @@
 
 import admin from "firebase-admin";
 
-let _app = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+let _app: Row = null;
 let _initAttempted = false;
 
-function getFcmApp() {
+function getFcmApp(): Row {
   if (_initAttempted) return _app;
   _initAttempted = true;
 
@@ -26,10 +29,10 @@ function getFcmApp() {
     return null;
   }
 
-  let serviceAccount;
+  let serviceAccount: Row;
   try {
     serviceAccount = JSON.parse(raw);
-  } catch (err) {
+  } catch (err: Row) {
     console.error("[fcm] FCM_SERVICE_ACCOUNT_JSON is not valid JSON:", err.message);
     return null;
   }
@@ -43,7 +46,7 @@ function getFcmApp() {
       "cardigan-fcm"
     );
     return _app;
-  } catch (err) {
+  } catch (err: Row) {
     // If a previous invocation already initialized the same named app
     // (Vercel can keep the runtime warm across requests), reuse it.
     if (err.code === "app/duplicate-app") {
@@ -55,7 +58,7 @@ function getFcmApp() {
   }
 }
 
-export function fcmConfigured() {
+export function fcmConfigured(): boolean {
   return !!getFcmApp();
 }
 
@@ -71,7 +74,7 @@ export function fcmConfigured() {
  * the cron's existing payload-building code can be reused as-is:
  *   { title, body, url?, tag? }
  */
-export async function sendFCM({ token, payload, platform }) {
+export async function sendFCM({ token, payload, platform }: Row): Promise<Row> {
   const app = getFcmApp();
   if (!app) return { ok: false, terminal: false, error: "fcm-not-configured" };
   if (!token) return { ok: false, terminal: true, error: "missing-token" };
@@ -79,11 +82,11 @@ export async function sendFCM({ token, payload, platform }) {
   // Data payload must be all-string; nested objects/numbers get coerced.
   // Mirror the web-push handler in src/sw.js — title/body/url/tag are
   // the only fields the tap handler reads.
-  const data = {};
+  const data: Row = {};
   if (payload?.url) data.url = String(payload.url);
   if (payload?.tag) data.tag = String(payload.tag);
 
-  const message = {
+  const message: Row = {
     token,
     notification: {
       title: payload?.title || "Cardigan",
@@ -118,7 +121,7 @@ export async function sendFCM({ token, payload, platform }) {
   try {
     await admin.messaging(app).send(message);
     return { ok: true };
-  } catch (err) {
+  } catch (err: Row) {
     // Terminal token errors → delete the push_subscriptions row so the
     // next cron tick doesn't re-attempt and burn CPU.
     const code = err?.errorInfo?.code || err?.code || "";

@@ -26,6 +26,9 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
 // Pin the API version so behavior is stable across Stripe's automatic
 // account-version upgrades. This account was auto-upgraded to a
@@ -57,7 +60,7 @@ export function getPriceId(plan = "monthly") {
 
 // Whitelist for the `plan` request param. Anything else collapses to
 // monthly so a tampered client can't push us at an arbitrary price id.
-export function resolvePlan(input) {
+export function resolvePlan(input: Row): string {
   const v = typeof input === "string" ? input.trim().toLowerCase() : "";
   return v === "annual" ? "annual" : "monthly";
 }
@@ -66,7 +69,7 @@ export function resolvePlan(input) {
 // unix-second timestamp suitable for Stripe's `trial_end`, or null if
 // the trial has already lapsed (Stripe rejects past `trial_end`).
 // Centralized here so both checkout endpoints share one definition.
-export function trialEndUnixFromUser(user, days = TRIAL_DAYS) {
+export function trialEndUnixFromUser(user: Row, days = TRIAL_DAYS): number | null {
   if (!user?.created_at) return null;
   const created = new Date(user.created_at);
   if (Number.isNaN(created.getTime())) return null;
@@ -107,9 +110,9 @@ export function getConnectWebhookSecret() {
      { line_items: [{ price: "p_…", quantity: 1 }] }
    becomes
      line_items[0][price]=p_…&line_items[0][quantity]=1 */
-function encodeBody(obj) {
+function encodeBody(obj: Row): string {
   const params = new URLSearchParams();
-  const append = (key, value) => {
+  const append = (key: Row, value: Row) => {
     if (value === undefined || value === null) return;
     if (Array.isArray(value)) {
       value.forEach((v, i) => append(`${key}[${i}]`, v));
@@ -123,8 +126,8 @@ function encodeBody(obj) {
   return params.toString();
 }
 
-async function stripeFetch(path, { method = "POST", body, idempotencyKey, stripeAccount } = {}) {
-  const headers = {
+async function stripeFetch(path: string, { method = "POST", body, idempotencyKey, stripeAccount }: Row = {}): Promise<Row> {
+  const headers: Row = {
     "Authorization": `Bearer ${getSecret()}`,
     "Content-Type": "application/x-www-form-urlencoded",
     "Stripe-Version": STRIPE_API_VERSION,
@@ -141,10 +144,10 @@ async function stripeFetch(path, { method = "POST", body, idempotencyKey, stripe
     headers,
     body: body ? encodeBody(body) : undefined,
   });
-  const json = await res.json().catch(() => ({}));
+  const json: Row = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = json?.error?.message || `Stripe ${path} failed (${res.status})`;
-    const err = new Error(msg);
+    const err: Row = new Error(msg);
     err.statusCode = res.status;
     err.stripeCode = json?.error?.code;
     throw err;
@@ -152,7 +155,7 @@ async function stripeFetch(path, { method = "POST", body, idempotencyKey, stripe
   return json;
 }
 
-export function createCustomer({ email, name, metadata }) {
+export function createCustomer({ email, name, metadata }: Row): Promise<Row> {
   // Idempotency-keyed by user_id (supplied via metadata.user_id) so a
   // double-click on "Suscribirme" can't mint two Stripe customers for
   // the same Cardigan user.
@@ -167,13 +170,13 @@ export function createCustomer({ email, name, metadata }) {
   });
 }
 
-export function createCheckoutSession({ customerId, priceId, successUrl, cancelUrl, metadata, promotionCodeId }) {
+export function createCheckoutSession({ customerId, priceId, successUrl, cancelUrl, metadata, promotionCodeId }: Row): Promise<Row> {
   // Mirror every metadata key onto BOTH the Checkout Session and the
   // Subscription so downstream webhooks (subscription.* and
   // invoice.paid → which carries `subscription`) can see them. Using
   // bracketed keys directly here is fine — encodeBody passes through
   // anything we already serialized.
-  const body = {
+  const body: Row = {
     mode: "subscription",
     customer: customerId,
     "line_items[0][price]": priceId,
@@ -201,7 +204,7 @@ export function createCheckoutSession({ customerId, priceId, successUrl, cancelU
   return stripeFetch("/checkout/sessions", { body });
 }
 
-export function createBillingPortalSession({ customerId, returnUrl }) {
+export function createBillingPortalSession({ customerId, returnUrl }: Row): Promise<Row> {
   return stripeFetch("/billing_portal/sessions", {
     body: {
       customer: customerId,
@@ -210,7 +213,7 @@ export function createBillingPortalSession({ customerId, returnUrl }) {
   });
 }
 
-export function getSubscription(subscriptionId) {
+export function getSubscription(subscriptionId: Row): Promise<Row> {
   return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "GET" });
 }
 
@@ -226,13 +229,13 @@ export function getSubscription(subscriptionId) {
    set so codes only apply to first-time customers (an influencer
    shouldn't be able to give discounts to existing paying users). */
 
-export function createCoupon({ percentOff, duration, durationInMonths, name, metadata }) {
+export function createCoupon({ percentOff, duration, durationInMonths, name, metadata }: Row): Promise<Row> {
   // `currency` is required ONLY for amount_off coupons — Stripe
   // rejects it on percent_off coupons with parameter_unknown on
   // stricter API versions. v1 is percent-off only, so we omit it
   // entirely. If we ever add amount_off support, branch the body
   // shape here based on which one is set.
-  const body = {
+  const body: Row = {
     percent_off: String(percentOff),
     duration,
   };
@@ -249,8 +252,8 @@ export function createCoupon({ percentOff, duration, durationInMonths, name, met
   return stripeFetch("/coupons", { body });
 }
 
-export function createPromotionCode({ couponId, code, firstTimeOnly = true, metadata }) {
-  const body = {
+export function createPromotionCode({ couponId, code, firstTimeOnly = true, metadata }: Row): Promise<Row> {
+  const body: Row = {
     coupon: couponId,
     code,
   };
@@ -270,7 +273,7 @@ export function createPromotionCode({ couponId, code, firstTimeOnly = true, meta
    code at Checkout will fail with a "promotion code not active"
    error after this; auto-apply via discounts[promotion_code] also
    fails. */
-export function updatePromotionCode(id, { active }) {
+export function updatePromotionCode(id: Row, { active }: Row): Promise<Row> {
   return stripeFetch(`/promotion_codes/${id}`, {
     body: { active: String(!!active) },
   });
@@ -280,14 +283,14 @@ export function updatePromotionCode(id, { active }) {
    reconcile DB state with Stripe's truth when a webhook delivery is
    delayed or missed (e.g. user cancels in portal then immediately
    refreshes — webhook hasn't arrived yet, DB still says "active"). */
-export function listCustomerSubscriptions(customerId) {
+export function listCustomerSubscriptions(customerId: Row): Promise<Row> {
   return stripeFetch(
     `/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=10`,
     { method: "GET" }
   );
 }
 
-export function cancelSubscription(subscriptionId) {
+export function cancelSubscription(subscriptionId: Row): Promise<Row> {
   return stripeFetch(`/subscriptions/${subscriptionId}`, { method: "DELETE" });
 }
 
@@ -296,8 +299,8 @@ export function cancelSubscription(subscriptionId) {
    the returned client_secret. Idempotency-keyed by user_id + minute-
    bucket so a double-click on Confirm can't create two subs against the
    same customer. */
-export function createSubscription({ customerId, priceId, trialEnd, metadata, userId }) {
-  const body = {
+export function createSubscription({ customerId, priceId, trialEnd, metadata, userId }: Row): Promise<Row> {
+  const body: Row = {
     customer: customerId,
     "items[0][price]": priceId,
     "items[0][quantity]": 1,
@@ -333,7 +336,7 @@ export function createSubscription({ customerId, priceId, trialEnd, metadata, us
    callers (drain pending at checkout) pass a one-shot UUID since the
    call is naturally guarded by a `pending_credit_amount_cents > 0`
    precondition cleared after a successful post. */
-export function creditCustomerBalance({ customerId, amountCents, currency = "mxn", description, metadata, idempotencyKey }) {
+export function creditCustomerBalance({ customerId, amountCents, currency = "mxn", description, metadata, idempotencyKey }: Row): Promise<Row> {
   const key = idempotencyKey || `cardigan-credit-${crypto.randomUUID()}`;
   return stripeFetch(`/customers/${customerId}/balance_transactions`, {
     body: {
@@ -359,11 +362,11 @@ export function creditCustomerBalance({ customerId, amountCents, currency = "mxn
    event. */
 const DEFAULT_TOLERANCE_SEC = 5 * 60;
 
-export function verifyStripeSignature({ rawBody, header, secret, tolerance = DEFAULT_TOLERANCE_SEC }) {
+export function verifyStripeSignature({ rawBody, header, secret, tolerance = DEFAULT_TOLERANCE_SEC }: Row): boolean {
   if (!header || typeof header !== "string") return false;
-  const parts = header.split(",").map((p) => p.trim());
-  let timestamp = null;
-  const signatures = [];
+  const parts = header.split(",").map((p: Row) => p.trim());
+  let timestamp: Row = null;
+  const signatures: string[] = [];
   for (const part of parts) {
     const [k, v] = part.split("=");
     if (k === "t") timestamp = v;
@@ -382,7 +385,7 @@ export function verifyStripeSignature({ rawBody, header, secret, tolerance = DEF
     .update(signedPayload, "utf8")
     .digest("hex");
   const expectedBuf = Buffer.from(expected, "hex");
-  return signatures.some((sig) => {
+  return signatures.some((sig: Row) => {
     try {
       const sigBuf = Buffer.from(sig, "hex");
       return sigBuf.length === expectedBuf.length
@@ -410,8 +413,8 @@ export function verifyStripeSignature({ rawBody, header, secret, tolerance = DEF
 // is the minimum for accepting card payments + receiving payouts.
 // Idempotency-keyed by user_id so a double-tap on "Empezar" can't
 // mint two accounts for the same therapist.
-export function createConnectAccount({ email, userId, fullName }) {
-  const body = {
+export function createConnectAccount({ email, userId, fullName }: Row): Promise<Row> {
+  const body: Row = {
     type: "express",
     country: "MX",
     email,
@@ -432,7 +435,7 @@ export function createConnectAccount({ email, userId, fullName }) {
 // through onboarding (identity, bank, etc). Single-use, expires in 5
 // minutes. We pass return + refresh URLs so Stripe sends the user
 // back to Cardigan when they're done OR if the link expires.
-export function createAccountLink({ accountId, returnUrl, refreshUrl, type = "account_onboarding" }) {
+export function createAccountLink({ accountId, returnUrl, refreshUrl, type = "account_onboarding" }: Row): Promise<Row> {
   return stripeFetch("/account_links", {
     body: {
       account: accountId,
@@ -446,14 +449,14 @@ export function createAccountLink({ accountId, returnUrl, refreshUrl, type = "ac
 // One-time login link to the Express dashboard so the therapist can
 // see their balance, payouts, transactions, etc. Stripe handles the
 // full UI; we just hand them the front door.
-export function createLoginLink(accountId) {
+export function createLoginLink(accountId: Row): Promise<Row> {
   return stripeFetch(`/accounts/${accountId}/login_links`);
 }
 
 // Read the current state of a Connect account. We use the `retrieve`
 // shape (no body, GET) so the webhook + status endpoint can refresh
 // charges_enabled / payouts_enabled / details_submitted on demand.
-export function getConnectAccount(accountId) {
+export function getConnectAccount(accountId: Row): Promise<Row> {
   return stripeFetch(`/accounts/${accountId}`, { method: "GET" });
 }
 
@@ -477,8 +480,8 @@ export function createPatientCheckoutSession({
   cancelUrl,
   metadata,
   idempotencyKey,
-}) {
-  const body = {
+}: Row): Promise<Row> {
+  const body: Row = {
     mode: "payment",
     "payment_method_types[0]": "card",
     "line_items[0][price_data][currency]": currency,
@@ -502,8 +505,8 @@ export function createPatientCheckoutSession({
   });
 }
 
-export async function readRawBody(req) {
-  const chunks = [];
+export async function readRawBody(req: Row): Promise<string> {
+  const chunks: Row[] = [];
   for await (const chunk of req) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }

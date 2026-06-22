@@ -25,13 +25,16 @@
 
 import * as Sentry from "@sentry/node";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const FROM = "Cardigan <no-reply@cardigan.mx>";
 
 // Dedupe the missing-key alert per cold boot so we don't spam Sentry
 // when the feature is bursty (e.g. lifecycle cron loops).
 let _missingKeyReported = false;
 
-export async function sendTransactionalEmail({ to, subject, html, text }) {
+export async function sendTransactionalEmail({ to, subject, html, text }: Row): Promise<Row> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     if (!_missingKeyReported) {
@@ -79,9 +82,9 @@ export async function sendTransactionalEmail({ to, subject, html, text }) {
     }
     // Resend returns `{ id: "<uuid>" }` on success — surface it so
     // callers can stamp it into their audit row for support follow-up.
-    const body = await res.json().catch(() => ({}));
+    const body: Row = await res.json().catch(() => ({}));
     return { ok: true, id: body?.id || null };
-  } catch (err) {
+  } catch (err: Row) {
     return { ok: false, error: err?.message || "fetch failed" };
   }
 }

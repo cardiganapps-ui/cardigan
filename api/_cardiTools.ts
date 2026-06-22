@@ -28,6 +28,9 @@
 
 import { getServiceClient } from "./_admin.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 // Spanish month abbreviations matching utils/dates.js::SHORT_MONTHS.
 // Sessions/payments store dates as "D-MMM" strings (e.g. "8-Abr").
 const SHORT_MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -35,7 +38,7 @@ const SHORT_PARTS_RE = /[\s-]/;
 
 // Mirror of utils/dates.js::parseShortDate. Year is inferred from
 // reference (assumes the date is within ~6 months of today).
-function parseShortDate(str, ref = new Date()) {
+function parseShortDate(str: Row, ref = new Date()): Date {
   if (!str) return new Date(NaN);
   const parts = String(str).split(SHORT_PARTS_RE).filter(Boolean);
   const dayNum = parts[0];
@@ -51,7 +54,7 @@ function parseShortDate(str, ref = new Date()) {
   let bestDelta = Infinity;
   for (const y of candidates) {
     const dt = new Date(y, m, d);
-    const delta = Math.abs(dt - ref);
+    const delta = Math.abs(dt.getTime() - ref.getTime());
     if (delta < bestDelta) { bestDelta = delta; best = y; }
   }
   return new Date(best, m, d);
@@ -60,7 +63,7 @@ function parseShortDate(str, ref = new Date()) {
 // Mirror of utils/accounting.js::sessionCountsTowardBalance. Keep in
 // sync — if the predicate drifts the balances Cardi reports won't
 // match the in-app numbers and users will lose trust.
-function sessionEndMoment(s) {
+function sessionEndMoment(s: Row): Date {
   const d = parseShortDate(s.date);
   if (s.time) {
     const [h, m] = s.time.split(":");
@@ -69,7 +72,7 @@ function sessionEndMoment(s) {
   d.setTime(d.getTime() + 60 * 60 * 1000);
   return d;
 }
-function sessionCountsTowardBalance(s, now) {
+function sessionCountsTowardBalance(s: Row, now: Row): boolean {
   if (!s) return false;
   if (s.status === "completed" || s.status === "charged") return true;
   if (s.status === "scheduled") return now >= sessionEndMoment(s);
@@ -79,7 +82,7 @@ function sessionCountsTowardBalance(s, now) {
 // Date range helpers for the get_finance_summary tool. Inputs are
 // ISO YYYY-MM-DD strings; we compare against parsed session/payment
 // dates which are "D-MMM" strings.
-function isoToDate(iso) {
+function isoToDate(iso: Row): Date | null {
   if (!iso) return null;
   const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
   if (!y || !m || !d) return null;
@@ -184,7 +187,7 @@ export const TOOL_DEFINITIONS = [
 // Executors
 // ────────────────────────────────────────────────────────────────────
 
-export async function executeTool(name, input, userId) {
+export async function executeTool(name: Row, input: Row, userId: Row): Promise<Row> {
   if (!userId) throw new Error("userId required");
   const svc = getServiceClient();
   switch (name) {
@@ -203,7 +206,7 @@ export async function executeTool(name, input, userId) {
   }
 }
 
-async function listPatients(svc, userId, input) {
+async function listPatients(svc: Row, userId: Row, input: Row): Promise<Row> {
   const activeOnly = input.active_only !== false;
   const limit = Math.max(1, Math.min(200, Number(input.limit) || 100));
 
@@ -219,7 +222,7 @@ async function listPatients(svc, userId, input) {
   if (error) throw new Error(error.message);
   if (!patients || patients.length === 0) return { count: 0, patients: [] };
 
-  const ids = patients.map((p) => p.id);
+  const ids = patients.map((p: Row) => p.id);
   const [{ data: sessions, error: se }, { data: payments, error: pe }] = await Promise.all([
     svc.from("sessions")
       .select("patient_id,date,time,status,rate")
@@ -236,14 +239,14 @@ async function listPatients(svc, userId, input) {
   const now = new Date();
   const ms30d = 30 * 24 * 60 * 60 * 1000;
 
-  const out = patients.map((p) => {
-    const sess = (sessions || []).filter((s) => s.patient_id === p.id);
-    const pays = (payments || []).filter((py) => py.patient_id === p.id);
+  const out = patients.map((p: Row) => {
+    const sess = (sessions || []).filter((s: Row) => s.patient_id === p.id);
+    const pays = (payments || []).filter((py: Row) => py.patient_id === p.id);
 
     // Consumed = sum of session rates that count toward the balance.
     // Uses the same predicate as utils/accounting.js — drift here
     // would make Cardi's numbers disagree with the in-app balance.
-    const consumed = sess.reduce((sum, s) => {
+    const consumed = sess.reduce((sum: Row, s: Row) => {
       if (!sessionCountsTowardBalance(s, now)) return sum;
       const rate = s.rate != null ? s.rate : (p.rate || 0);
       return sum + rate;
@@ -257,18 +260,18 @@ async function listPatients(svc, userId, input) {
     const credit_mxn = Math.max(0, paid - consumed - opening);
 
     const sessions_total = sess.length;
-    const sessions_completed = sess.filter((s) => sessionCountsTowardBalance(s, now)).length;
-    const sessions_cancelled = sess.filter((s) => s.status === "cancelled").length;
-    const sessions_charged = sess.filter((s) => s.status === "charged").length;
-    const sessions_last_30d = sess.filter((s) => {
+    const sessions_completed = sess.filter((s: Row) => sessionCountsTowardBalance(s, now)).length;
+    const sessions_cancelled = sess.filter((s: Row) => s.status === "cancelled").length;
+    const sessions_charged = sess.filter((s: Row) => s.status === "charged").length;
+    const sessions_last_30d = sess.filter((s: Row) => {
       const d = parseShortDate(s.date);
-      const delta = now - d;
+      const delta = now.getTime() - d.getTime();
       return delta >= 0 && delta <= ms30d && sessionCountsTowardBalance(s, now);
     }).length;
 
     const sortedPays = pays
-      .map((py) => ({ ...py, parsed: parseShortDate(py.date) }))
-      .sort((a, b) => b.parsed - a.parsed);
+      .map((py: Row) => ({ ...py, parsed: parseShortDate(py.date) }))
+      .sort((a: Row, b: Row) => b.parsed - a.parsed);
     const last_payment = sortedPays[0];
 
     return {
@@ -291,11 +294,11 @@ async function listPatients(svc, userId, input) {
     };
   });
 
-  out.sort((a, b) => b.balance_mxn - a.balance_mxn);
+  out.sort((a: Row, b: Row) => b.balance_mxn - a.balance_mxn);
   return { count: out.length, patients: out };
 }
 
-async function getPatientDetail(svc, userId, input) {
+async function getPatientDetail(svc: Row, userId: Row, input: Row): Promise<Row> {
   const query = String(input.name || "").trim();
   if (!query) throw new Error("name is required");
   const lc = query.toLowerCase();
@@ -314,13 +317,13 @@ async function getPatientDetail(svc, userId, input) {
 
   // If multiple, prefer exact (case-insensitive) match; otherwise
   // return the list and let Claude ask the user to clarify.
-  let target = candidates.find((c) => c.name.toLowerCase() === lc);
+  let target = candidates.find((c: Row) => c.name.toLowerCase() === lc);
   if (!target && candidates.length === 1) target = candidates[0];
   if (!target) {
     return {
       found: false,
       ambiguous: true,
-      candidates: candidates.map((c) => ({ name: c.name, status: c.status })),
+      candidates: candidates.map((c: Row) => ({ name: c.name, status: c.status })),
       message: `Encontré varios pacientes que coinciden con "${query}". ¿A cuál te refieres?`,
     };
   }
@@ -343,7 +346,7 @@ async function getPatientDetail(svc, userId, input) {
   if (pe) throw new Error(pe.message);
 
   const now = new Date();
-  const consumed = (sessions || []).reduce((sum, s) => {
+  const consumed = (sessions || []).reduce((sum: Row, s: Row) => {
     if (!sessionCountsTowardBalance(s, now)) return sum;
     const rate = s.rate != null ? s.rate : (target.rate || 0);
     return sum + rate;
@@ -366,7 +369,7 @@ async function getPatientDetail(svc, userId, input) {
       start_date: target.start_date || null,
       tutor: target.parent || null,
     },
-    sessions: (sessions || []).map((s) => ({
+    sessions: (sessions || []).map((s: Row) => ({
       date: s.date,
       time: s.time,
       status: s.status,
@@ -376,7 +379,7 @@ async function getPatientDetail(svc, userId, input) {
       type: s.session_type,
       recurring: s.is_recurring,
     })),
-    payments: (payments || []).map((p) => ({
+    payments: (payments || []).map((p: Row) => ({
       date: p.date,
       amount_mxn: p.amount,
       method: p.method,
@@ -384,7 +387,7 @@ async function getPatientDetail(svc, userId, input) {
   };
 }
 
-async function getFinanceSummary(svc, userId, input) {
+async function getFinanceSummary(svc: Row, userId: Row, input: Row): Promise<Row> {
   const dateFrom = isoToDate(input.date_from);
   const dateTo = isoToDate(input.date_to);
 
@@ -405,32 +408,32 @@ async function getFinanceSummary(svc, userId, input) {
   if (paye) throw new Error(paye.message);
 
   const now = new Date();
-  const inRange = (d) => {
+  const inRange = (d: Row) => {
     if (dateFrom && d < dateFrom) return false;
     if (dateTo && d > dateTo) return false;
     return true;
   };
 
   // Sessions in range
-  const sessRows = (sessions || []).map((s) => ({ ...s, _d: parseShortDate(s.date) }));
-  const sessionsInRange = sessRows.filter((s) => inRange(s._d));
+  const sessRows = (sessions || []).map((s: Row) => ({ ...s, _d: parseShortDate(s.date) }));
+  const sessionsInRange = sessRows.filter((s: Row) => inRange(s._d));
 
   const sessions_scheduled_total = sessionsInRange.length;
-  const sessions_completed = sessionsInRange.filter((s) => sessionCountsTowardBalance(s, now)).length;
-  const sessions_cancelled = sessionsInRange.filter((s) => s.status === "cancelled").length;
-  const sessions_charged = sessionsInRange.filter((s) => s.status === "charged").length;
+  const sessions_completed = sessionsInRange.filter((s: Row) => sessionCountsTowardBalance(s, now)).length;
+  const sessions_cancelled = sessionsInRange.filter((s: Row) => s.status === "cancelled").length;
+  const sessions_charged = sessionsInRange.filter((s: Row) => s.status === "charged").length;
 
-  const by_modality = {};
+  const by_modality: Row = {};
   for (const s of sessionsInRange) {
     if (!sessionCountsTowardBalance(s, now)) continue;
     by_modality[s.modality || "presencial"] = (by_modality[s.modality || "presencial"] || 0) + 1;
   }
 
   // Payments in range
-  const payRows = (payments || []).map((p) => ({ ...p, _d: parseShortDate(p.date) }));
-  const paymentsInRange = payRows.filter((p) => inRange(p._d));
-  const total_received_mxn = paymentsInRange.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const by_method = {};
+  const payRows = (payments || []).map((p: Row) => ({ ...p, _d: parseShortDate(p.date) }));
+  const paymentsInRange = payRows.filter((p: Row) => inRange(p._d));
+  const total_received_mxn = paymentsInRange.reduce((sum: Row, p: Row) => sum + (p.amount || 0), 0);
+  const by_method: Row = {};
   for (const p of paymentsInRange) {
     by_method[p.method || "Otro"] = (by_method[p.method || "Otro"] || 0) + (p.amount || 0);
   }
@@ -440,8 +443,8 @@ async function getFinanceSummary(svc, userId, input) {
   let total_outstanding_mxn = 0;
   let total_credit_mxn = 0;
   for (const p of patients || []) {
-    const sess = sessRows.filter((s) => s.patient_id === p.id);
-    const consumed = sess.reduce((sum, s) => {
+    const sess = sessRows.filter((s: Row) => s.patient_id === p.id);
+    const consumed = sess.reduce((sum: Row, s: Row) => {
       if (!sessionCountsTowardBalance(s, now)) return sum;
       return sum + (s.rate != null ? s.rate : (p.rate || 0));
     }, 0);
@@ -468,7 +471,7 @@ async function getFinanceSummary(svc, userId, input) {
   };
 }
 
-async function getExpenseSummary(svc, userId, input) {
+async function getExpenseSummary(svc: Row, userId: Row, input: Row): Promise<Row> {
   const dateFrom = isoToDate(input.date_from);
   const dateTo = isoToDate(input.date_to);
   const categoryFilter = typeof input.category === "string" ? input.category : null;
@@ -488,23 +491,23 @@ async function getExpenseSummary(svc, userId, input) {
   if (ee) throw new Error(ee.message);
   if (pe) throw new Error(pe.message);
 
-  const inRange = (d) => {
+  const inRange = (d: Row) => {
     if (dateFrom && d < dateFrom) return false;
     if (dateTo && d > dateTo) return false;
     return true;
   };
 
-  const expRows = (expenses || []).map((e) => ({ ...e, _d: parseShortDate(e.date) }));
-  let scoped = expRows.filter((e) => inRange(e._d));
-  if (categoryFilter) scoped = scoped.filter((e) => e.category === categoryFilter);
+  const expRows = (expenses || []).map((e: Row) => ({ ...e, _d: parseShortDate(e.date) }));
+  let scoped = expRows.filter((e: Row) => inRange(e._d));
+  if (categoryFilter) scoped = scoped.filter((e: Row) => e.category === categoryFilter);
 
-  const businessRows = scoped.filter((e) => e.tax_treatment !== "personal");
-  const personalRows = scoped.filter((e) => e.tax_treatment === "personal");
+  const businessRows = scoped.filter((e: Row) => e.tax_treatment !== "personal");
+  const personalRows = scoped.filter((e: Row) => e.tax_treatment === "personal");
 
-  const total_expenses_mxn = businessRows.reduce((s, e) => s + (e.amount || 0), 0);
-  const personal_total_mxn = personalRows.reduce((s, e) => s + (e.amount || 0), 0);
+  const total_expenses_mxn = businessRows.reduce((s: Row, e: Row) => s + (e.amount || 0), 0);
+  const personal_total_mxn = personalRows.reduce((s: Row, e: Row) => s + (e.amount || 0), 0);
 
-  const by_category_mxn = {};
+  const by_category_mxn: Row = {};
   for (const e of businessRows) {
     by_category_mxn[e.category] = (by_category_mxn[e.category] || 0) + (e.amount || 0);
   }
@@ -519,9 +522,9 @@ async function getExpenseSummary(svc, userId, input) {
   // Top 10 individual expenses by amount, filtered down to a small
   // payload so Cardi can name the biggest ones if asked.
   const top = [...businessRows]
-    .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+    .sort((a: Row, b: Row) => (b.amount || 0) - (a.amount || 0))
     .slice(0, 10)
-    .map((e) => ({
+    .map((e: Row) => ({
       date: e.date,
       amount_mxn: e.amount,
       category: e.category,
@@ -534,15 +537,15 @@ async function getExpenseSummary(svc, userId, input) {
   // a real-world friction point the therapist needs reminding about
   // before the contador deadline. Count it scoped to the same range.
   const receipts_pending = businessRows.filter(
-    (e) => e.tax_treatment === "deductible" && !e.receipt_document_id
+    (e: Row) => e.tax_treatment === "deductible" && !e.receipt_document_id
   ).length;
 
   // Income (revenue) in the same range, so we can surface net profit
   // without forcing Cardi to call get_finance_summary too.
-  const payRows = (payments || []).map((p) => ({ ...p, _d: parseShortDate(p.date) }));
+  const payRows = (payments || []).map((p: Row) => ({ ...p, _d: parseShortDate(p.date) }));
   const total_income_mxn = payRows
-    .filter((p) => inRange(p._d))
-    .reduce((s, p) => s + (p.amount || 0), 0);
+    .filter((p: Row) => inRange(p._d))
+    .reduce((s: Row, p: Row) => s + (p.amount || 0), 0);
 
   return {
     date_from: input.date_from || null,
@@ -561,7 +564,7 @@ async function getExpenseSummary(svc, userId, input) {
   };
 }
 
-async function listRecurringExpenses(svc, userId, input) {
+async function listRecurringExpenses(svc: Row, userId: Row, input: Row): Promise<Row> {
   const activeOnly = input.active_only === true;
   let q = svc
     .from("recurring_expenses")
@@ -573,7 +576,7 @@ async function listRecurringExpenses(svc, userId, input) {
   const { data, error } = await q;
   if (error) throw new Error(error.message);
 
-  const templates = (data || []).map((t) => ({
+  const templates = (data || []).map((t: Row) => ({
     amount_mxn: t.amount,
     category: t.category,
     description: t.description || null,
@@ -585,12 +588,12 @@ async function listRecurringExpenses(svc, userId, input) {
   }));
 
   const monthly_total_active_mxn = templates
-    .filter((t) => t.active && t.tax_treatment !== "personal")
-    .reduce((s, t) => s + (t.amount_mxn || 0), 0);
+    .filter((t: Row) => t.active && t.tax_treatment !== "personal")
+    .reduce((s: Row, t: Row) => s + (t.amount_mxn || 0), 0);
 
   return {
     count: templates.length,
-    active_count: templates.filter((t) => t.active).length,
+    active_count: templates.filter((t: Row) => t.active).length,
     monthly_total_active_mxn,
     templates,
   };

@@ -52,7 +52,10 @@
 
 import { get as edgeGet } from "@vercel/edge-config";
 
-const DEFAULTS = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+const DEFAULTS: Row = {
   cron_paused: false,
   encryption_setup_enabled: true,
   signups_paused: false,
@@ -62,7 +65,7 @@ const DEFAULTS = {
   ocr_paused: false,
 };
 
-export async function getFlag(name) {
+export async function getFlag(name: string): Promise<Row> {
   if (!(name in DEFAULTS)) {
     throw new Error(`Unknown flag: ${name}`);
   }

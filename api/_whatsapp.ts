@@ -14,9 +14,12 @@
    the caller passes a string that already has a "+" prefix we
    trust it as-is. */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
 const GRAPH_VERSION = "v20.0";
 
-export function toE164MX(rawPhone) {
+export function toE164MX(rawPhone: Row): string | null {
   if (!rawPhone) return null;
   const s = String(rawPhone).trim();
   if (s.startsWith("+")) return s;
@@ -38,7 +41,7 @@ function requireEnv() {
   if (missing.length) {
     throw new Error(`WhatsApp env missing: ${missing.join(", ")}`);
   }
-  return { token: token.trim(), phoneId: phoneId.trim() };
+  return { token: token!.trim(), phoneId: phoneId!.trim() };
 }
 
 /**
@@ -51,7 +54,7 @@ function requireEnv() {
  * @param {string[]} args.variables    body parameters in template order.
  * @returns {Promise<{ok: boolean, messageId?: string, errorCode?: string, errorReason?: string, raw?: object}>}
  */
-export async function sendTemplate({ to, templateName, languageCode, variables }) {
+export async function sendTemplate({ to, templateName, languageCode, variables }: Row): Promise<Row> {
   const { token, phoneId } = requireEnv();
   if (!to || !to.startsWith("+")) {
     return { ok: false, errorCode: "invalid_phone", errorReason: "Recipient phone must be E.164 with leading +." };
@@ -67,14 +70,14 @@ export async function sendTemplate({ to, templateName, languageCode, variables }
       language: { code: languageCode },
       components: variables.length > 0 ? [{
         type: "body",
-        parameters: variables.map((v) => ({ type: "text", text: String(v ?? "") })),
+        parameters: variables.map((v: Row) => ({ type: "text", text: String(v ?? "") })),
       }] : [],
     },
   };
 
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(phoneId)}/messages`;
 
-  let resp;
+  let resp: Row;
   try {
     resp = await fetch(url, {
       method: "POST",
@@ -84,11 +87,11 @@ export async function sendTemplate({ to, templateName, languageCode, variables }
       },
       body: JSON.stringify(body),
     });
-  } catch (err) {
+  } catch (err: Row) {
     return { ok: false, errorCode: "network", errorReason: err?.message || "fetch failed" };
   }
 
-  let json = null;
+  let json: Row = null;
   try { json = await resp.json(); } catch { /* non-JSON response */ }
 
   if (!resp.ok) {
