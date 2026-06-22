@@ -14,7 +14,36 @@
    inline (e.g. ***both***) is not honored — too ambiguous and not
    rendered by our reference apps either. */
 
-export function escapeHtml(s) {
+export type InlineKind = "text" | "code" | "strong" | "strike" | "em" | "mark";
+
+export interface InlineToken {
+  kind: InlineKind;
+  rawStart: number;
+  rawEnd: number;
+  text: string;
+  contentStart?: number;
+  contentEnd?: number;
+  syntaxLen?: number;
+  leftSyntax?: string;
+  rightSyntax?: string;
+}
+
+export interface LineToken {
+  block: string;
+  blockSyntax: string;
+  blockSyntaxLen: number;
+  inline: InlineToken[];
+  taskChecked: boolean;
+  indent: number;
+  listMarker: string | null;
+  rawLen: number;
+  contentStart: number;
+  raw: string;
+  attachmentId?: string;
+  alt?: string;
+}
+
+export function escapeHtml(s?: string | null) {
   if (s == null) return "";
   return String(s)
     .replace(/&/g, "&amp;")
@@ -42,9 +71,9 @@ const INLINE_RULES = [
   { kind: "em",     re: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g, syntax: 1 },
 ];
 
-function parseInline(text, baseOffset = 0) {
+function parseInline(text?: string | null, baseOffset = 0): InlineToken[] {
   if (!text) return [];
-  const claims = [];
+  const claims: { start: number; end: number; kind: InlineKind; syntaxLen: number }[] = [];
   for (const rule of INLINE_RULES) {
     rule.re.lastIndex = 0;
     let m;
@@ -56,12 +85,12 @@ function parseInline(text, baseOffset = 0) {
       // Skip empty content (e.g. `** **` after trim)
       const inner = m[1];
       if (!inner || !inner.trim()) continue;
-      claims.push({ start, end, kind: rule.kind, syntaxLen: rule.syntax });
+      claims.push({ start, end, kind: rule.kind as InlineKind, syntaxLen: rule.syntax });
     }
   }
   claims.sort((a, b) => a.start - b.start);
 
-  const tokens = [];
+  const tokens: InlineToken[] = [];
   let cursor = 0;
   for (const c of claims) {
     if (c.start > cursor) {
@@ -99,9 +128,9 @@ function parseInline(text, baseOffset = 0) {
 /* Block + inline tokenizer for a single line. `contentStart` is the
    raw-text column where the inline content begins (after block syntax
    like "# " or "  - "). */
-export function tokenizeLine(raw) {
+export function tokenizeLine(raw?: string | null): LineToken {
   if (raw == null) raw = "";
-  let m;
+  let m: RegExpMatchArray | null;
 
   // Image-only line: `![alt](attachment:<uuid>)` on its own. Whole
   // line = one image. We special-case at block level so the renderer
@@ -222,7 +251,7 @@ export function tokenizeLine(raw) {
    DOM Range. Decorators that don't exist in the raw text use
    `data-nocount="1"` (or a DOM element with zero text) so the walker
    skips them. */
-export function renderLineHTML(token, { readOnly = false, lineIdx = 0 } = {}) {
+export function renderLineHTML(token: LineToken, { readOnly = false, lineIdx = 0 }: { readOnly?: boolean; lineIdx?: number } = {}) {
   let html = "";
 
   // Image block — emit the raw markdown span AND a sibling <img>
@@ -273,7 +302,7 @@ export function renderLineHTML(token, { readOnly = false, lineIdx = 0 } = {}) {
   return html;
 }
 
-function renderInline(tok) {
+function renderInline(tok: InlineToken) {
   if (tok.kind === "text") return escapeHtml(tok.text);
   const leftSyn  = `<span class="md-syntax" data-syn="${tok.syntaxLen}">${escapeHtml(tok.leftSyntax)}</span>`;
   const rightSyn = `<span class="md-syntax" data-syn="${tok.syntaxLen}">${escapeHtml(tok.rightSyntax)}</span>`;
@@ -290,7 +319,7 @@ function renderInline(tok) {
    handle display-font sizing, bullet/number ::before markers, task
    alignment, indent padding, etc.). Consumers also toggle
    "has-caret" based on selection state. */
-export function lineClassNames(token) {
+export function lineClassNames(token: LineToken) {
   const cls = ["mde-line", `mde-line--${token.block}`];
   if (token.block === "task" && token.taskChecked) cls.push("is-checked");
   if (token.indent > 0) cls.push("mde-line--indent");
@@ -299,11 +328,11 @@ export function lineClassNames(token) {
 
 /* Inline style for indent + ordered-list data attr so CSS ::before
    can render the right visible marker when off-caret. */
-export function lineDataAttrs(token) {
-  const attrs = {};
+export function lineDataAttrs(token: LineToken) {
+  const attrs: Record<string, string> = {};
   if (token.indent > 0) attrs["data-indent"] = String(Math.floor(token.indent / 2));
-  if (token.block === "ol") attrs["data-marker"] = token.listMarker; // "1."
-  if (token.block === "ul") attrs["data-marker"] = token.listMarker; // "-" / "*"
+  if (token.block === "ol") attrs["data-marker"] = token.listMarker ?? ""; // "1."
+  if (token.block === "ul") attrs["data-marker"] = token.listMarker ?? ""; // "-" / "*"
   return attrs;
 }
 
@@ -312,7 +341,7 @@ export function lineDataAttrs(token) {
    autoformat shortcuts and the slash-command menu when the caret
    is in a code block — typing "- " or "/" in pseudocode should
    stay literal, not transform. Pure O(lineIdx) scan; no allocation. */
-export function isInsideFence(lines, lineIdx) {
+export function isInsideFence(lines: string[], lineIdx?: number | null) {
   if (!Array.isArray(lines) || lineIdx == null || lineIdx < 0) return false;
   const upTo = Math.min(lineIdx, lines.length - 1);
   let inside = false;
@@ -333,9 +362,9 @@ export function isInsideFence(lines, lineIdx) {
 /* Smart Enter continuation: the caller feeds the current line text;
    we return the prefix that should start the next line, or null if
    we should exit list mode. Empty list item → exit. */
-export function getListPrefix(line) {
+export function getListPrefix(line?: string | null): { mode: string; prefix: string } | null {
   if (line == null) return null;
-  let m;
+  let m: RegExpMatchArray | null;
   if ((m = line.match(/^( *)[-*] /))) {
     const prefix = m[0];
     if (line.trim() === prefix.trim()) return { mode: "exit", prefix };
@@ -378,7 +407,7 @@ export function getListPrefix(line) {
    the markdown model already understands. We don't introduce NEW
    syntax via shortcuts — the in-app reference for "what markdown
    does this editor support" stays the renderer, not this list. */
-export function getShortcutTransform(line, caretCol, typed) {
+export function getShortcutTransform(line: string | null | undefined, caretCol: number, typed?: string | null): { newLine: string; newCol: number } | null {
   if (line == null) line = "";
   if (typed == null) return null;
   const before = line.slice(0, caretCol);
@@ -435,13 +464,13 @@ export function getShortcutTransform(line, caretCol, typed) {
 /* Which inline formats does the caret currently sit inside? Used by
    the toolbar to light up active buttons. `col` is the raw-markdown
    column in `line`. Block format is included alongside inline. */
-export function activeFormatsAt(line, col) {
+export function activeFormatsAt(line: string | null | undefined, col: number) {
   const token = tokenizeLine(line || "");
-  const set = new Set();
+  const set = new Set<string>();
   if (token.block !== "p") set.add(token.block);
   for (const inline of token.inline) {
     if (inline.kind === "text") continue;
-    if (col >= inline.contentStart && col <= inline.contentEnd) set.add(inline.kind);
+    if (col >= (inline.contentStart ?? 0) && col <= (inline.contentEnd ?? 0)) set.add(inline.kind);
   }
   return set;
 }
@@ -450,7 +479,7 @@ export function activeFormatsAt(line, col) {
    and keyboard shortcuts. Returns { line, colShift } where colShift
    is the delta to apply to the caret column (positive if syntax was
    added, negative if removed). Preserves the line's inline content. */
-export function toggleBlock(line, block) {
+export function toggleBlock(line: string | null | undefined, block: string) {
   if (line == null) line = "";
   const token = tokenizeLine(line);
   if (token.block === block) {
@@ -463,8 +492,8 @@ export function toggleBlock(line, block) {
     return { line: stripped, colShift: -token.blockSyntaxLen };
   }
   // Convert: strip existing block syntax, then add new.
-  let bare = line.slice(token.blockSyntaxLen);
-  let indentStr = " ".repeat(token.indent);
+  const bare = line.slice(token.blockSyntaxLen);
+  const indentStr = " ".repeat(token.indent);
   let addition = "";
   if (block === "h1") addition = "# ";
   else if (block === "h2") addition = "## ";
@@ -482,9 +511,9 @@ export function toggleBlock(line, block) {
 /* Toggle an inline wrap around [start, end] on a single line. If the
    selection is already fully wrapped in that delimiter, unwrap. If
    empty selection, insert delimiters at the caret. */
-export function toggleInline(line, start, end, kind) {
+export function toggleInline(line: string | null | undefined, start: number, end: number, kind: string) {
   const delimiter = kind === "strong" ? "**" : kind === "em" ? "*" : kind === "strike" ? "~~" : kind === "code" ? "`" : kind === "mark" ? "==" : null;
-  if (!delimiter) return { line, start, end };
+  if (!delimiter) return { line: line ?? "", start, end };
   if (line == null) line = "";
   const len = delimiter.length;
   const sel = line.slice(start, end);
@@ -509,8 +538,8 @@ export function toggleInline(line, start, end, kind) {
 /* Check if a markdown task line is checked (for tapping the checkbox
    in the editor). Returns { line, nextChecked } with the `[ ]` / `[x]`
    flipped. */
-export function toggleTaskOnLine(line) {
-  if (!line) return { line, nextChecked: false };
+export function toggleTaskOnLine(line: string | null | undefined) {
+  if (!line) return { line: line ?? "", nextChecked: false };
   const m = line.match(/^( *)\[( |x|X)\] /);
   if (!m) return { line, nextChecked: false };
   const wasChecked = m[2].toLowerCase() === "x";
@@ -520,7 +549,7 @@ export function toggleTaskOnLine(line) {
 
 /* Plain-text rendering of a note (strips markdown syntax, preserves
    line breaks). Used by the copy / export menu. */
-export function toPlainText(content) {
+export function toPlainText(content?: string | null) {
   if (!content) return "";
   return content.split("\n").map(line => {
     const token = tokenizeLine(line);

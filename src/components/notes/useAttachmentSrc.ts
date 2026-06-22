@@ -36,6 +36,12 @@ import { useCardigan } from "../../context/CardiganContext";
        naturally).
 */
 
+// Attachment rows arrive through the loosely-typed Cardigan data layer.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration bridge for loosely-typed rows
+type Row = any;
+
+interface TileState { url?: string; failed?: true }
+
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return {
@@ -44,7 +50,7 @@ async function authHeaders() {
   };
 }
 
-async function fetchPresigned(path, mime) {
+async function fetchPresigned(path: string, mime?: string) {
   const headers = await authHeaders();
   const res = await fetch("/api/note-attachment-url", {
     method: "POST",
@@ -56,23 +62,23 @@ async function fetchPresigned(path, mime) {
   return url || null;
 }
 
-export function useAttachmentSrc(noteId) {
+export function useAttachmentSrc(noteId?: string) {
   const { noteAttachments, noteCrypto } = useCardigan();
 
   const rows = useMemo(
-    () => (noteAttachments || []).filter(a => a.note_id === noteId),
+    () => (noteAttachments || []).filter((a: Row) => a.note_id === noteId),
     [noteAttachments, noteId]
   );
 
-  const [tiles, setTiles] = useState({});
-  const objectUrlsRef = useRef(new Map());
+  const [tiles, setTiles] = useState<Record<string, TileState>>({});
+  const objectUrlsRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     let alive = true;
     const tracked = objectUrlsRef.current;
 
     // Prune state + revoke blob URLs whose row is gone.
-    const liveIds = new Set(rows.map(r => r.id));
+    const liveIds = new Set(rows.map((r: Row) => r.id));
     for (const [id, url] of Array.from(tracked.entries())) {
       if (!liveIds.has(id)) {
         URL.revokeObjectURL(url);
@@ -81,7 +87,7 @@ export function useAttachmentSrc(noteId) {
     }
     setTiles(prev => {
       let changed = false;
-      const next = {};
+      const next: Record<string, TileState> = {};
       for (const key of Object.keys(prev)) {
         if (liveIds.has(key)) next[key] = prev[key];
         else changed = true;
@@ -89,7 +95,7 @@ export function useAttachmentSrc(noteId) {
       return changed ? next : prev;
     });
 
-    rows.forEach(async (row) => {
+    rows.forEach(async (row: Row) => {
       if (tiles[row.id]) return; // already resolved / failed once
       try {
         if (!row.encrypted) {
@@ -152,7 +158,7 @@ export function useAttachmentSrc(noteId) {
     if (!canDecrypt) return;
     setTiles(prev => {
       let changed = false;
-      const next = {};
+      const next: Record<string, TileState> = {};
       for (const k of Object.keys(prev)) {
         if (prev[k]?.failed) { changed = true; continue; }
         next[k] = prev[k];
@@ -161,7 +167,7 @@ export function useAttachmentSrc(noteId) {
     });
   }, [canDecrypt]);
 
-  const retryTile = useCallback((id) => {
+  const retryTile = useCallback((id: string) => {
     setTiles(prev => {
       if (!prev[id]) return prev;
       const next = { ...prev };

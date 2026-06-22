@@ -3,7 +3,9 @@
    heading. Used by NoteOutline and the format-detection badge.
    Fence-aware: lines inside a ``` code block are skipped so a `#`
    comment in pseudocode doesn't pollute the outline. */
-export function extractOutline(content) {
+export interface OutlineItem { line: number; level: number; text: string }
+
+export function extractOutline(content?: string | null): OutlineItem[] {
   if (!content) return [];
   const lines = content.split("\n");
   const out = [];
