@@ -1,0 +1,997 @@
+{
+  "generated_at": "2026-06-22T21:26:42.708Z",
+  "reference_today": "2026-06-22",
+  "purpose": "Point-in-time registry of accounting EXCEPTIONS — sessions that do not fall under the clean 'recurring slot' rule. Recorded so the figures stay traceable. NO figures were changed and NO rows were deleted; these are PRESERVED as-is so patient balances match production exactly.",
+  "methodology": "A past status='scheduled' row whose (day|time) slot is not among the patient's current future-dated slots. TIER_A = different weekday than any current slot (high-confidence abandoned slot / phantom). TIER_B = same weekday as a current slot, different time (almost certainly a real slot-time adjustment, NOT a phantom — flagged only for completeness).",
+  "decision": "PRESERVED. Per product owner, current production figures are correct and must not change. These rows continue to count toward consumed exactly as today. This registry isolates + annotates them so any future review knows which sessions are anomalous and why their inclusion is intentional.",
+  "tier_a_high_confidence": {
+    "count": 54,
+    "total_rate": 38400,
+    "patients": 16,
+    "rows": [
+      {
+        "session_id": "2f3ef79c-f9b8-4443-84fd-73b33a55d22b",
+        "patient": "María",
+        "date": "16-Jun",
+        "time": "18:45",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Lunes|16:00"
+      },
+      {
+        "session_id": "b195d6f0-15c7-4dae-883f-8ac34139741f",
+        "patient": "Inés Sagues",
+        "date": "16-Abr",
+        "time": "20:00",
+        "day": "Jueves",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "435c26f3-9f52-4ab3-9ac6-2a235e74b635",
+        "patient": "Inés Sagues",
+        "date": "9-Abr",
+        "time": "20:00",
+        "day": "Jueves",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "4a01be79-85bb-44d5-a166-a0dfd56f07a4",
+        "patient": "Inés Sagues",
+        "date": "13-Abr",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "7046a5b3-3eeb-4389-ba6c-4ffa5981876d",
+        "patient": "Inés Sagues",
+        "date": "16-Feb",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "18567fb3-83fe-4bd3-bdce-d320bd8cd6bf",
+        "patient": "Inés Sagues",
+        "date": "23-Feb",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "20e8e984-a43b-4b97-a7db-67de2a64129d",
+        "patient": "Inés Sagues",
+        "date": "2-Mar",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "240749af-7b57-4e84-bac4-2a51027042b6",
+        "patient": "Inés Sagues",
+        "date": "9-Mar",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "d126c9b2-c985-4fb5-983c-f3b450d87a5a",
+        "patient": "Inés Sagues",
+        "date": "16-Mar",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "0ac8d1ac-7d62-4f3d-80fa-441318273aa9",
+        "patient": "Inés Sagues",
+        "date": "23-Mar",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "f93f58be-fbfa-4114-93be-9c6dddb94e0b",
+        "patient": "Inés Sagues",
+        "date": "30-Mar",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "38100375-63f7-4b2e-b9b4-ad6061478f39",
+        "patient": "Inés Sagues",
+        "date": "6-Abr",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "1df7b437-703a-4485-93c4-62791c747b2d",
+        "patient": "Inés Sagues",
+        "date": "20-Abr",
+        "time": "20:00",
+        "day": "Lunes",
+        "rate": 500,
+        "current_slots": "Martes|13:15"
+      },
+      {
+        "session_id": "2e3eb53a-d30b-4600-83ed-de51cd178343",
+        "patient": "Ana O",
+        "date": "23-Abr",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "064d461f-5876-45e2-9034-5e5cd9a74472",
+        "patient": "Ana O",
+        "date": "27-Abr",
+        "time": "19:15",
+        "day": "Lunes",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "e99fda1d-abe5-4cdd-aa7a-d2b38cd805bf",
+        "patient": "Ana O",
+        "date": "4-May",
+        "time": "19:15",
+        "day": "Lunes",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "ccbfec8a-4f4c-4f8b-934f-ee64996baf1d",
+        "patient": "Ana O",
+        "date": "13-Abr",
+        "time": "19:15",
+        "day": "Lunes",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "5f00f89b-392c-44be-ac11-462941cc2ee3",
+        "patient": "Ana O",
+        "date": "20-Abr",
+        "time": "19:15",
+        "day": "Lunes",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "c7238623-0a4f-4019-8148-39d9f948dcf8",
+        "patient": "Ana O",
+        "date": "16-Abr",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "d5353c3a-ab23-4e58-8868-abc3362a965b",
+        "patient": "Ana O",
+        "date": "7-May",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "9d54e809-a5b3-44a1-aab5-128f6c0decd1",
+        "patient": "Ana O",
+        "date": "14-May",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "d680a25c-8ae8-4802-8cf9-ee4b8c43d8ce",
+        "patient": "Ana O",
+        "date": "28-May",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "dc814f0d-2d7b-4382-b7d0-27c27914982c",
+        "patient": "Ana O",
+        "date": "4-Jun",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 1200,
+        "current_slots": "Miércoles|12:00"
+      },
+      {
+        "session_id": "8bb42350-e1e9-4ca8-a63d-bfe17ff3f361",
+        "patient": "Isabella",
+        "date": "10-Jun",
+        "time": "12:45",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Lunes|18:15"
+      },
+      {
+        "session_id": "897d5c32-6ecb-49c0-814e-327ae14d60af",
+        "patient": "Daniela Nuñez",
+        "date": "2-Jun",
+        "time": "11:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Lunes|11:00"
+      },
+      {
+        "session_id": "e01b5078-573a-4bbd-b15c-f6bc96bed553",
+        "patient": "Regina Carrillo",
+        "date": "25-May",
+        "time": "15:45",
+        "day": "Lunes",
+        "rate": 700,
+        "current_slots": "Jueves|17:30"
+      },
+      {
+        "session_id": "71b0f532-75fa-4f8c-be48-faff78bc9f8f",
+        "patient": "Martina",
+        "date": "3-Jun",
+        "time": "12:15",
+        "day": "Miércoles",
+        "rate": 1000,
+        "current_slots": "Martes|20:15, Viernes|08:15"
+      },
+      {
+        "session_id": "0d5b6247-1ed3-48e1-837e-b7cd5633b01d",
+        "patient": "Olivia Rivera",
+        "date": "30-Abr",
+        "time": "19:15",
+        "day": "Jueves",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "56bf29c4-badb-4cf7-974f-415702b6363c",
+        "patient": "Olivia Rivera",
+        "date": "12-Feb",
+        "time": "20:00",
+        "day": "Jueves",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "141ccd47-67b6-4622-9e2e-643b0dc1927f",
+        "patient": "Olivia Rivera",
+        "date": "26-Feb",
+        "time": "20:00",
+        "day": "Jueves",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "41a1855b-da01-460c-966e-bf4a5a814d29",
+        "patient": "Olivia Rivera",
+        "date": "5-Mar",
+        "time": "20:00",
+        "day": "Jueves",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "ce847c2d-d8d9-4f11-b590-536231f2e9f8",
+        "patient": "Olivia Rivera",
+        "date": "21-May",
+        "time": "19:00",
+        "day": "Jueves",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "6aea611c-9612-4e73-9533-2db09e85a7e8",
+        "patient": "Olivia Rivera",
+        "date": "19-May",
+        "time": "17:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "aef8b2b4-eb07-4eef-a06a-9f1bfd8e0614",
+        "patient": "Olivia Rivera",
+        "date": "9-Jun",
+        "time": "18:15",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "8f910f82-016c-4d7a-b720-6d469fd5bd19",
+        "patient": "Olivia Rivera",
+        "date": "16-Jun",
+        "time": "17:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "b6c099e6-ddf0-4579-9c1a-1af331ed152d",
+        "patient": "Olivia Rivera",
+        "date": "2-Jun",
+        "time": "19:00",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15"
+      },
+      {
+        "session_id": "31517d10-2b3d-4888-adbd-e82b9dcdbc52",
+        "patient": "Lucia Perez",
+        "date": "21-May",
+        "time": "15:45",
+        "day": "Jueves",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45"
+      },
+      {
+        "session_id": "bf219f86-f2a9-404a-bdeb-f2ffa7539983",
+        "patient": "Denisse",
+        "date": "7-May",
+        "time": "17:00",
+        "day": "Jueves",
+        "rate": 1000,
+        "current_slots": "Martes|19:00, Sábado|12:00"
+      },
+      {
+        "session_id": "0eb31aec-8ec8-4f1e-9412-d752e77a9117",
+        "patient": "Jimena Miguel",
+        "date": "6-May",
+        "time": "19:30",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Jueves|13:00"
+      },
+      {
+        "session_id": "a216abfd-fa72-4e42-9e56-caa87045a4f9",
+        "patient": "Jimena Miguel",
+        "date": "22-May",
+        "time": "12:00",
+        "day": "Viernes",
+        "rate": 700,
+        "current_slots": "Jueves|13:00"
+      },
+      {
+        "session_id": "edf2a9f2-096a-4058-94ac-d6b28fcadd94",
+        "patient": "Jimena Miguel",
+        "date": "29-May",
+        "time": "12:00",
+        "day": "Viernes",
+        "rate": 700,
+        "current_slots": "Jueves|13:00"
+      },
+      {
+        "session_id": "3822fe5d-cf1d-4886-b897-39d8e9da72d6",
+        "patient": "Die Gax",
+        "date": "19-May",
+        "time": "09:00",
+        "day": "Martes",
+        "rate": 900,
+        "current_slots": "Viernes|10:00"
+      },
+      {
+        "session_id": "7171dc53-f387-4faa-83f1-b45c206d12b3",
+        "patient": "May Martinez",
+        "date": "3-Jun",
+        "time": "18:30",
+        "day": "Miércoles",
+        "rate": 0,
+        "current_slots": "Lunes|18:00"
+      },
+      {
+        "session_id": "20f23f99-6d56-48c5-b052-cafbc200f6ad",
+        "patient": "May Martinez",
+        "date": "17-Jun",
+        "time": "16:45",
+        "day": "Miércoles",
+        "rate": 0,
+        "current_slots": "Lunes|18:00"
+      },
+      {
+        "session_id": "f3410734-f54e-435d-a441-3ff0cd3a19f2",
+        "patient": "Rafael Ocampo",
+        "date": "19-May",
+        "time": "20:29",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Lunes|19:00"
+      },
+      {
+        "session_id": "9ce8a24b-e2f4-4dd6-8a0e-4c6d1f47d8a5",
+        "patient": "Jordan",
+        "date": "6-May",
+        "time": "08:45",
+        "day": "Miércoles",
+        "rate": 800,
+        "current_slots": "Lunes|12:00"
+      },
+      {
+        "session_id": "06d7ef73-208b-42a1-8bd7-0a88e02a5602",
+        "patient": "Jordan",
+        "date": "8-Abr",
+        "time": "08:45",
+        "day": "Miércoles",
+        "rate": 800,
+        "current_slots": "Lunes|12:00"
+      },
+      {
+        "session_id": "0649074d-2361-47b4-87e0-eee84cb8da52",
+        "patient": "Jordan",
+        "date": "15-Abr",
+        "time": "08:45",
+        "day": "Miércoles",
+        "rate": 800,
+        "current_slots": "Lunes|12:00"
+      },
+      {
+        "session_id": "e2af0f6d-de17-4ab3-b012-71728ad3943e",
+        "patient": "Jordan",
+        "date": "29-Abr",
+        "time": "08:45",
+        "day": "Miércoles",
+        "rate": 800,
+        "current_slots": "Lunes|12:00"
+      },
+      {
+        "session_id": "83a41d77-d20e-404d-a20c-13dc9b460124",
+        "patient": "Jordan",
+        "date": "19-Jun",
+        "time": "10:30",
+        "day": "Viernes",
+        "rate": 800,
+        "current_slots": "Lunes|12:00"
+      },
+      {
+        "session_id": "af526b8f-d7b3-48f7-bd8d-1490fd6fd3f8",
+        "patient": "Victor Hernández",
+        "date": "14-May",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 400,
+        "current_slots": "Miércoles|10:00"
+      },
+      {
+        "session_id": "39cc7919-03c6-4ad0-89ff-76c6b8b249e6",
+        "patient": "Victor Hernández",
+        "date": "21-May",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 400,
+        "current_slots": "Miércoles|10:00"
+      },
+      {
+        "session_id": "b8f31f03-7b2e-4f37-ae7f-41e5bdf44c17",
+        "patient": "Victor Hernández",
+        "date": "29-May",
+        "time": "17:00",
+        "day": "Viernes",
+        "rate": 400,
+        "current_slots": "Miércoles|10:00"
+      },
+      {
+        "session_id": "64ee8d1e-4b55-46d4-af10-a5a9719ea7bc",
+        "patient": "Victor Hernández",
+        "date": "4-Jun",
+        "time": "16:00",
+        "day": "Jueves",
+        "rate": 400,
+        "current_slots": "Miércoles|10:00"
+      }
+    ]
+  },
+  "tier_b_likely_real_timeshift": {
+    "count": 49,
+    "total_rate": 29950,
+    "patients": 10,
+    "rows": [
+      {
+        "session_id": "8f7fdb4f-ca2c-48c8-bb84-07d619cac712",
+        "patient": "Inés Sagues",
+        "date": "28-Abr",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "b0b6aaf1-a5a9-4830-9469-4082e10b4c2c",
+        "patient": "Inés Sagues",
+        "date": "14-Abr",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "eefd9c03-656a-4220-8079-be14057f0714",
+        "patient": "Inés Sagues",
+        "date": "10-Feb",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "37b543c9-9083-4fcc-9cbe-fc50f21b1db9",
+        "patient": "Inés Sagues",
+        "date": "24-Feb",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "7088d0fa-5957-4aea-b45a-91bee161ad3e",
+        "patient": "Inés Sagues",
+        "date": "3-Mar",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "7482a153-2d36-4290-9d5d-2326bb356df6",
+        "patient": "Inés Sagues",
+        "date": "10-Mar",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "c673d5d7-c3c8-4b55-b1d2-eddcd7a38b02",
+        "patient": "Inés Sagues",
+        "date": "24-Mar",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "5cb4265c-6080-4d34-ade9-d78903e5c007",
+        "patient": "Inés Sagues",
+        "date": "21-Abr",
+        "time": "13:00",
+        "day": "Martes",
+        "rate": 500,
+        "current_slots": "Martes|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "cbd387db-5685-4608-9d16-8dfbee27a18a",
+        "patient": "Zoe",
+        "date": "9-Abr",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "d8e8ed1c-1761-463f-a31e-a4ed89a816e1",
+        "patient": "Zoe",
+        "date": "16-Abr",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "6e108b53-2912-4787-8f6b-c811fb3544f7",
+        "patient": "Zoe",
+        "date": "23-Abr",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "9ab0eb23-3489-4bc4-b36a-e60466297c0a",
+        "patient": "Zoe",
+        "date": "7-May",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "a47f2eeb-341b-46ec-a054-567091406e15",
+        "patient": "Zoe",
+        "date": "14-May",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "ff803bab-7c6e-4ebc-b966-6c963a816448",
+        "patient": "Zoe",
+        "date": "28-May",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "6a3eed2d-21c6-48c8-8775-29ce6b8f27d5",
+        "patient": "Zoe",
+        "date": "4-Jun",
+        "time": "16:45",
+        "day": "Jueves",
+        "rate": 350,
+        "current_slots": "Lunes|16:45, Jueves|14:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "46037c6a-0c89-45ff-925f-55452f6cbdc3",
+        "patient": "Roberto Ramírez",
+        "date": "22-May",
+        "time": "10:00",
+        "day": "Viernes",
+        "rate": 500,
+        "current_slots": "Viernes|09:00",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "cf2e81d6-c16c-47a3-a17a-f15cddc5f4a3",
+        "patient": "Carly McCarly",
+        "date": "5-May",
+        "time": "15:00",
+        "day": "Martes",
+        "rate": 1100,
+        "current_slots": "Jueves|16:00, Martes|16:00",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "a101c5ce-5672-4282-9532-f8d22b6a1687",
+        "patient": "Carly McCarly",
+        "date": "14-May",
+        "time": "12:00",
+        "day": "Jueves",
+        "rate": 1100,
+        "current_slots": "Jueves|16:00, Martes|16:00",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "a01e803d-7ca7-4ef4-8728-06026e5a04d2",
+        "patient": "Carly McCarly",
+        "date": "12-May",
+        "time": "14:00",
+        "day": "Martes",
+        "rate": 1100,
+        "current_slots": "Jueves|16:00, Martes|16:00",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "227b5cf9-3a34-4e0f-a5c5-b70fd79a785d",
+        "patient": "Fernando Subia",
+        "date": "29-Abr",
+        "time": "14:45",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Miércoles|17:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "c42050b8-d72b-41e5-a474-bcff5da86fe3",
+        "patient": "Fernando Subia",
+        "date": "15-Abr",
+        "time": "14:45",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|17:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "b0cfd10e-593e-4789-a8d3-176e9cf0ea83",
+        "patient": "Fernando Subia",
+        "date": "11-Mar",
+        "time": "14:45",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Miércoles|17:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "940430cb-9ab4-4611-83b9-350ae4b0f8a7",
+        "patient": "Fernando Subia",
+        "date": "18-Mar",
+        "time": "14:45",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Miércoles|17:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "fe7ec447-2bcb-4a19-92a7-e0c42f0c3131",
+        "patient": "Fernando Subia",
+        "date": "25-Mar",
+        "time": "14:45",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Miércoles|17:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "49ae6112-a8bc-4700-ade2-aaa11820eca8",
+        "patient": "Fernando Subia",
+        "date": "22-Abr",
+        "time": "14:45",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|17:30",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "41017a91-8cd2-4086-8819-000538c55fa1",
+        "patient": "Olivia Rivera",
+        "date": "13-May",
+        "time": "18:30",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Miércoles|19:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "1fa17020-ccd3-46f7-918b-79d171affa8e",
+        "patient": "Lucia Perez",
+        "date": "20-Abr",
+        "time": "20:15",
+        "day": "Lunes",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "38d621fb-a6d4-4048-8942-22842d042a03",
+        "patient": "Lucia Perez",
+        "date": "15-Abr",
+        "time": "20:15",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "faf7b9cc-fe9d-4a34-82e2-d70c7eb9940a",
+        "patient": "Lucia Perez",
+        "date": "22-Abr",
+        "time": "20:15",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "627f75d7-5f4b-4a86-9e66-52cb04614c5e",
+        "patient": "Lucia Perez",
+        "date": "6-Abr",
+        "time": "20:15",
+        "day": "Lunes",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "d867ac27-2489-4b07-9c9a-384519e6c06e",
+        "patient": "Lucia Perez",
+        "date": "27-Abr",
+        "time": "20:15",
+        "day": "Lunes",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "8c654edc-2332-4879-9a8a-12e43c04c6c3",
+        "patient": "Lucia Perez",
+        "date": "13-Abr",
+        "time": "20:15",
+        "day": "Lunes",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "bc6acff8-4d83-4e9b-8515-196b073ae531",
+        "patient": "Lucia Perez",
+        "date": "11-May",
+        "time": "16:30",
+        "day": "Lunes",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "381a42e3-4db9-4112-be94-689ca39e4058",
+        "patient": "Lucia Perez",
+        "date": "6-May",
+        "time": "16:30",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "9b80a43f-166f-40cc-af39-1fe9b31bd9aa",
+        "patient": "Lucia Perez",
+        "date": "25-May",
+        "time": "16:30",
+        "day": "Lunes",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "205dca50-09a8-40c4-bfe1-6c0b2fd07c7c",
+        "patient": "Lucia Perez",
+        "date": "13-May",
+        "time": "16:30",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "b7c52612-eae7-43b8-b043-3e244c2f9fe8",
+        "patient": "Lucia Perez",
+        "date": "10-Jun",
+        "time": "18:15",
+        "day": "Miércoles",
+        "rate": 600,
+        "current_slots": "Miércoles|16:00, Lunes|16:15, Lunes|15:45",
+        "within_60min_of_current": false
+      },
+      {
+        "session_id": "06beba9f-ad9b-4cea-bf5f-da8a9f355a00",
+        "patient": "Maria Cordera",
+        "date": "22-Abr",
+        "time": "12:30",
+        "day": "Miércoles",
+        "rate": 700,
+        "current_slots": "Miércoles|13:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "c6f4bb75-6c1e-479e-8a4e-7b00b2605082",
+        "patient": "Marina Nuñez",
+        "date": "20-Ene",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "a5c88d86-ad3e-4189-993e-5ba387c887f6",
+        "patient": "Marina Nuñez",
+        "date": "27-Ene",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "2b6af414-fe96-4be8-8826-a40573f039dd",
+        "patient": "Marina Nuñez",
+        "date": "3-Feb",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "b060619a-7353-4c5f-9211-b2d2ba042d9f",
+        "patient": "Marina Nuñez",
+        "date": "24-Feb",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "4c84d678-6148-4f22-b416-933b46d50a6e",
+        "patient": "Marina Nuñez",
+        "date": "10-Mar",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "fe5f32b3-e097-46ac-bf8d-8a431048291e",
+        "patient": "Marina Nuñez",
+        "date": "17-Mar",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "8730d7e8-d674-4206-b0c0-ca75053c79c6",
+        "patient": "Marina Nuñez",
+        "date": "24-Mar",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "1cf0e59c-36d7-43fd-9242-a0f158284ef7",
+        "patient": "Marina Nuñez",
+        "date": "21-Abr",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|16:15",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "31e4df7e-acf7-47a0-8993-7c28d835355e",
+        "patient": "Sofia Baptista Garcia",
+        "date": "16-Jun",
+        "time": "16:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|17:00, Lunes|15:30",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "c3ce2b8b-a6bc-4f98-9951-a80a858ba018",
+        "patient": "Sofia Baptista Garcia",
+        "date": "2-Jun",
+        "time": "17:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|17:00, Lunes|15:30",
+        "within_60min_of_current": true
+      },
+      {
+        "session_id": "c4727547-987b-4402-8966-f971334838c4",
+        "patient": "Sofia Baptista Garcia",
+        "date": "9-Jun",
+        "time": "17:30",
+        "day": "Martes",
+        "rate": 700,
+        "current_slots": "Martes|17:00, Lunes|15:30",
+        "within_60min_of_current": true
+      }
+    ]
+  }
+}
