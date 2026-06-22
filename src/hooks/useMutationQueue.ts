@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { init, subscribe, drain, getEntries } from "../lib/mutationQueue";
 import { useConnectivity } from "./useConnectivity";
 
@@ -79,6 +79,29 @@ export function useMutationQueue() {
     // the drain itself shrinks the queue (would loop).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online, entries.length > 0]);
+
+  // M1: the effect above keys on the 0↔non-empty boolean, so while we're
+  // ALREADY online with a non-empty queue (e.g. a prior entry bailed and
+  // is being retried), enqueuing MORE mutations leaves the boolean
+  // true→true and schedules no fresh drain — the new work waits for the
+  // next reconnect/SW-nudge/manual retry. Add a drain on queue GROWTH,
+  // tracked via a ref so a drain that SHRINKS the queue can't re-trigger
+  // it (the loop the boolean dep was guarding against). drain()'s own
+  // in-flight guard dedupes against the effect above on the 0→1 overlap.
+  const prevLenRef = useRef(0);
+  useEffect(() => {
+    const grew = entries.length > prevLenRef.current;
+    prevLenRef.current = entries.length;
+    if (!online || !grew || entries.length === 0) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      if (cancelled) return;
+      setFlushing(true);
+      try { await drain(); } finally { if (!cancelled) setFlushing(false); }
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(t); };
+     
+  }, [online, entries.length]);
 
   async function flush() {
     setFlushing(true);

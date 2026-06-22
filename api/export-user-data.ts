@@ -50,16 +50,25 @@ async function handler(req: Row, res: Row) {
 
   const svc = getServiceClient();
 
-  // Rate-limit check.
+  // Rate limit — fail-closed against the check-then-act race. Record our
+  // attempt FIRST, then count attempts in the window: a plain "read, then
+  // do work, then write" lets two concurrent requests (e.g. a stolen
+  // token) both pass the read before either writes. By making the insert
+  // the gate and counting after, simultaneous callers each see ≥2 and both
+  // back off (safe direction). bytes is filled in after the export.
   const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
-  const { data: recent, error: rateErr } = await svc
+  const { data: auditRow, error: auditErr } = await svc
     .from("export_audit")
-    .select("exported_at")
+    .insert({ user_id: user.id, bytes: 0 })
+    .select("id")
+    .single();
+  if (auditErr) return res.status(500).json({ error: "Rate-limit check failed" });
+  const { count, error: cntErr } = await svc
+    .from("export_audit")
+    .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .gte("exported_at", since)
-    .limit(1);
-  if (rateErr) return res.status(500).json({ error: "Rate-limit check failed" });
-  if (recent && recent.length > 0) {
+    .gte("exported_at", since);
+  if (!cntErr && (count ?? 0) > 1) {
     return res.status(429).json({
       error: "Too many exports",
       hint: "Solo puedes descargar tus datos una vez por hora.",
@@ -108,11 +117,13 @@ async function handler(req: Row, res: Row) {
   };
   const body = JSON.stringify(payload, null, 2);
 
-  // Audit row + notice email — both best-effort. The user still gets
-  // their data if either fails; the audit row is the durable record.
+  // Fill in the byte count on the reservation row we inserted above
+  // (informational; best-effort). The durable rate-limit record already
+  // exists from the fail-closed reservation.
   await svc
     .from("export_audit")
-    .insert({ user_id: user.id, bytes: body.length })
+    .update({ bytes: body.length })
+    .eq("id", auditRow.id)
     .then(() => {}, () => {});
 
   if (user.email) {
