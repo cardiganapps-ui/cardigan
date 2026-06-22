@@ -7,31 +7,40 @@ import { useT } from "../../i18n/index";
 import { formatMXN } from "../../utils/format";
 import { EmptyState } from "../../components/EmptyState";
 
-export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/payment rows
+type Row = any;
+
+export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment, mutating }: {
+  patient: Row;
+  pPayments: Row[];
+  onRecordPayment: (patient: Row) => void;
+  deletePayment: (id: string) => Promise<unknown> | unknown;
+  mutating?: boolean;
+}) {
   const { t } = useT();
   const [payPeriod, setPayPeriod] = useState("all");
-  const [confirmDeletePayId, setConfirmDeletePayId] = useState(null);
+  const [confirmDeletePayId, setConfirmDeletePayId] = useState<string | null>(null);
 
   const { payFiltered, payTotal } = useMemo(() => {
-    const getPayDateFrom = (p) => {
+    const getPayDateFrom = (p: string) => {
       if (p === "all") return null;
-      const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
+      const months: Record<string, number> = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
       const d = new Date(); d.setMonth(d.getMonth() - (months[p] || 0));
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     };
     const payDateFrom = getPayDateFrom(payPeriod);
     const payToday = todayISO();
     let filtered = [...pPayments];
-    if (payDateFrom) filtered = filtered.filter(p => {
+    if (payDateFrom) filtered = filtered.filter((p: Row) => {
       const iso = shortDateToISO(p.date);
       return iso >= payDateFrom && iso <= payToday;
     });
-    filtered.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
-    const total = filtered.reduce((s, p) => s + p.amount, 0);
+    filtered.sort((a: Row, b: Row) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
+    const total = filtered.reduce((s: number, p: Row) => s + p.amount, 0);
     return { payFiltered: filtered, payTotal: total };
   }, [pPayments, payPeriod]);
 
-  const inlineBtnStyle = { height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 };
+  const inlineBtnStyle: React.CSSProperties = { height:36, padding:"0 14px", fontSize:"var(--text-sm)", width:"auto", minHeight:0 };
 
   return (
     <div style={{ padding:"16px" }}>
@@ -74,7 +83,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
       {payFiltered.length === 0
         ? <EmptyState kind="finances" compact title={t("finances.noPaymentsInPeriod")} />
         : <div className="card">
-            {payFiltered.map((p, i) => {
+            {payFiltered.map((p: Row, i: number) => {
               const isDeleting = confirmDeletePayId === p.id;
               const row = (
                 <div className="bal-row" role="button" tabIndex={0} onClick={() => setConfirmDeletePayId(isDeleting ? null : p.id)} style={{ cursor:"pointer", background:"var(--white)" }}>
@@ -89,7 +98,7 @@ export function FinanzasTab({ patient, pPayments, onRecordPayment, deletePayment
                 </div>
               );
               return (
-                <div key={p.id} className="list-entry-stagger" style={{ "--stagger-i": Math.min(i, 12) }}>
+                <div key={p.id} className="list-entry-stagger" style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties}>
                   <SwipeableRow
                     onAction={async () => { if (!mutating) await deletePayment(p.id); }}
                     actionLabel={t("delete")}

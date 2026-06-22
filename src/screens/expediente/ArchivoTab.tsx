@@ -8,29 +8,45 @@ import { useT } from "../../i18n/index";
 import { useCardigan } from "../../context/CardiganContext";
 import { EmptyState } from "../../components/EmptyState";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/note/session/doc rows
+type Row = any;
+
 export function ArchivoTab({
   patient, pNotes, pSessions, pDocuments,
   onNewNote, onEditNote,
   uploading, triggerUpload, onOpenDoc,
   renameDocument, tagDocumentSession, deleteDocument,
+}: {
+  patient: Row;
+  pNotes: Row[];
+  pSessions: Row[];
+  pDocuments: Row[];
+  onNewNote: (arg: null) => void;
+  onEditNote: (note: Row) => void;
+  uploading?: boolean;
+  triggerUpload: () => void;
+  onOpenDoc: (doc: Row) => void;
+  renameDocument: (id: string, name: string) => void | Promise<void>;
+  tagDocumentSession: (docId: string, sessionId: string | null) => void | Promise<void>;
+  deleteDocument: (id: string) => void | Promise<void>;
 }) {
   const { t } = useT();
   const { updatePatient, readOnly } = useCardigan();
   const [docSort, setDocSort] = useState("newest");
   const [docFilter, setDocFilter] = useState("all");
 
-  const handleSaveFolderUrl = async (newUrl) => {
+  const handleSaveFolderUrl = async (newUrl: string | null) => {
     if (!patient) return false;
     return updatePatient?.(patient.id, { external_folder_url: newUrl });
   };
 
   const sortedFilteredDocs = useMemo(() => {
     let docs = [...pDocuments];
-    if (docFilter === "image") docs = docs.filter(d => d.file_type?.startsWith("image/"));
-    else if (docFilter === "pdf") docs = docs.filter(d => d.file_type === "application/pdf");
-    else if (docFilter === "doc") docs = docs.filter(d => isWordDoc(d));
-    if (docSort === "oldest") docs.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
-    else if (docSort === "name") docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    if (docFilter === "image") docs = docs.filter((d: Row) => d.file_type?.startsWith("image/"));
+    else if (docFilter === "pdf") docs = docs.filter((d: Row) => d.file_type === "application/pdf");
+    else if (docFilter === "doc") docs = docs.filter((d: Row) => isWordDoc(d));
+    if (docSort === "oldest") docs.sort((a: Row, b: Row) => (a.created_at || "").localeCompare(b.created_at || ""));
+    else if (docSort === "name") docs.sort((a: Row, b: Row) => (a.name || "").localeCompare(b.name || ""));
     return docs;
   }, [pDocuments, docSort, docFilter]);
 
@@ -60,14 +76,14 @@ export function ArchivoTab({
       {pNotes.length === 0
         ? <EmptyState kind="notes" compact title={t("notes.noNotes")} />
         : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {pNotes.map(n => {
-              const linkedSession = n.session_id ? pSessions.find(s => s.id === n.session_id) : null;
+            {pNotes.map((n: Row) => {
+              const linkedSession = n.session_id ? pSessions.find((s: Row) => s.id === n.session_id) : null;
               return (
                 <div key={n.id} className="card" style={{ overflow:"hidden" }}>
                   <NoteCard
                     note={n}
                     onClick={() => onEditNote(n)}
-                    sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : null}
+                    sessionLabel={linkedSession ? `${linkedSession.date} · ${linkedSession.time}` : undefined}
                   />
                 </div>
               );

@@ -8,13 +8,16 @@ import { useCardigan } from "../../context/CardiganContext";
 import { usesVisitTypes, VISIT_TYPES } from "../../data/constants";
 import { EmptyState } from "../../components/EmptyState";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session/note rows
+type Row = any;
+
 const SESSIONS_COLLAPSED_COUNT = 5;
 
 // Map a period key ("1m"/"3m"/"6m"/"1y") to a from-ISO date N months before
 // today. Null is returned for "all". Mirrors the Pagos tab behavior.
-function periodFromKey(key) {
+function periodFromKey(key: string | null) {
   if (key === "all" || !key) return null;
-  const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
+  const months: Record<string, number> = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
   const m = months[key];
   if (!m) return null;
   const d = new Date(); d.setMonth(d.getMonth() - m);
@@ -24,7 +27,7 @@ function periodFromKey(key) {
 // Derive the active period chip from the current sessDateFrom/sessDateTo.
 // Returns "" when the range was set to something other than a canonical
 // period (e.g. navigated in from a Resumen tile with a custom earliest date).
-function sessPeriodKey(from, to) {
+function sessPeriodKey(from: string | null, to: string | null) {
   if (!from && !to) return "all";
   const today = todayISO();
   if (to !== today) return "";
@@ -34,13 +37,13 @@ function sessPeriodKey(from, to) {
   return "";
 }
 
-function applySessPeriod(key, setFrom, setTo) {
+function applySessPeriod(key: string, setFrom: (v: string | null) => void, setTo: (v: string | null) => void) {
   if (key === "all") { setFrom(null); setTo(null); return; }
   setFrom(periodFromKey(key));
   setTo(todayISO());
 }
 
-const FILTER_LABEL_STYLE = {
+const FILTER_LABEL_STYLE: React.CSSProperties = {
   fontSize: "10px",
   fontWeight: 700,
   textTransform: "uppercase",
@@ -56,6 +59,22 @@ export function SesionesTab({
   sessTutorOnly, setSessTutorOnly,
   filteredPSessions, upcomingPSessions, pastPSessions,
   onSelectSession, onOpenNote,
+}: {
+  pSessions: Row[];
+  pNotes: Row[];
+  sessStatusFilter: string;
+  setSessStatusFilter: (v: string) => void;
+  sessDateFrom: string | null;
+  setSessDateFrom: (v: string | null) => void;
+  sessDateTo: string | null;
+  setSessDateTo: (v: string | null) => void;
+  sessTutorOnly: boolean;
+  setSessTutorOnly: (v: boolean) => void;
+  filteredPSessions: Row[];
+  upcomingPSessions: Row[];
+  pastPSessions: Row[];
+  onSelectSession: (s: Row) => void;
+  onOpenNote?: (s: Row) => void;
 }) {
   const { t } = useT();
   const { profession, updateSessionVisitType, readOnly, showSuccess } = useCardigan();
@@ -65,7 +84,7 @@ export function SesionesTab({
      time is just a starting point. The cycle includes the "no tag"
      state so a row that's irrelevant (e.g. an unscheduled placeholder)
      can be cleared. */
-  const cycleVisitType = (s) => async (e) => {
+  const cycleVisitType = (s: Row) => async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (readOnly || !updateSessionVisitType) return;
     const seq = [null, ...VISIT_TYPES];
@@ -183,7 +202,7 @@ export function SesionesTab({
   );
 }
 
-const SECTION_LABEL_STYLE = {
+const SECTION_LABEL_STYLE: React.CSSProperties = {
   fontSize: "var(--text-xs)",
   fontWeight: 700,
   textTransform: "uppercase",
@@ -192,7 +211,19 @@ const SECTION_LABEL_STYLE = {
   marginBottom: 6,
 };
 
-function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, t, showVisitTypes, readOnly, cycleVisitType }) {
+function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpenNote, moreLabelKey, t, showVisitTypes, readOnly, cycleVisitType }: {
+  title: string;
+  emptyLabel: string;
+  sessions: Row[];
+  pNotes: Row[];
+  onSelect: (s: Row) => void;
+  onOpenNote?: (s: Row) => void;
+  moreLabelKey: string;
+  t: (key: string, vars?: Record<string, unknown>) => string;
+  showVisitTypes?: boolean;
+  readOnly?: boolean;
+  cycleVisitType: (s: Row) => (e: React.MouseEvent) => void;
+}) {
   const [visibleCount, setVisibleCount] = useState(SESSIONS_COLLAPSED_COUNT);
   // Reset to the initial window whenever the filtered list changes so
   // switching filters doesn't leave a stale expanded view visible.
@@ -219,10 +250,10 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
     <>
       <div style={SECTION_LABEL_STYLE}>{title}</div>
       <div className="card">
-        {visible.map((s, i) => {
+        {visible.map((s: Row, i: number) => {
           const tutor = isTutorSession(s);
           const interview = isInterviewSession(s);
-          const hasNote = pNotes.some(n => n.session_id === s.id);
+          const hasNote = pNotes.some((n: Row) => n.session_id === s.id);
           // Manual one-off — `is_recurring=false` is the explicit
           // signal. Migrations 027 + 028 cleaned up legacy rows so
           // this flag is now reliable across the entire dataset.
@@ -233,7 +264,7 @@ function SessionsSection({ title, emptyLabel, sessions, pNotes, onSelect, onOpen
           const showVisitChip = showVisitTypes && !tutor && !interview;
           const hasSecondLine = tutor || interview || oneOff || hasNote || showVisitChip;
           return (
-            <div className="row-item list-entry-stagger" key={s.id} style={{ "--stagger-i": Math.min(i, 12) }} onClick={() => onSelect(s)}>
+            <div className="row-item list-entry-stagger" key={s.id} style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties} onClick={() => onSelect(s)}>
               <div className="row-content">
                 {/* Title row: time on the left, status pill pinned to the
                     right of the same line. Keeps the row a single line when

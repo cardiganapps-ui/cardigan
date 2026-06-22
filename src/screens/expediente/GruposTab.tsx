@@ -12,27 +12,30 @@ import { haptic } from "../../utils/haptics";
 
 /* Patient expediente → Grupos tab. Lists the groups this patient is an
    active member of; tapping a row opens the full GroupDetail overlay. */
-export function GruposTab({ patient }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed group/member rows
+type Row = any;
+
+export function GruposTab({ patient }: { patient: Row }) {
   const { t } = useT();
   const { groups, groupMembers } = useCardigan();
-  const [openId, setOpenId] = useState(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const myGroups = useMemo(() => {
     const ids = new Set(
       (groupMembers || [])
-        .filter(m => m.patient_id === patient.id && m.left_at == null)
-        .map(m => m.group_id)
+        .filter((m: Row) => m.patient_id === patient.id && m.left_at == null)
+        .map((m: Row) => m.group_id)
     );
     return (groups || [])
-      .filter(g => ids.has(g.id))
-      .sort((a, b) => {
+      .filter((g: Row) => ids.has(g.id))
+      .sort((a: Row, b: Row) => {
         const ae = a.status === GROUP_STATUS.ENDED, be = b.status === GROUP_STATUS.ENDED;
         if (ae !== be) return ae ? 1 : -1;
         return (a.name || "").localeCompare(b.name || "");
       });
   }, [groups, groupMembers, patient.id]);
 
-  const openGroup = groups.find(g => g.id === openId) || null;
+  const openGroup = groups.find((g: Row) => g.id === openId) || null;
 
   return (
     <div style={{ padding: 16 }}>
@@ -40,7 +43,7 @@ export function GruposTab({ patient }) {
         <EmptyState kind="patients" compact title={t("groups.empty")} body={t("expediente.noGroupsBody")} />
       ) : (
         <div className="card">
-          {myGroups.map(g => {
+          {myGroups.map((g: Row) => {
             const count = activeMemberCount(g, groupMembers);
             const ended = g.status === GROUP_STATUS.ENDED;
             const sub = [

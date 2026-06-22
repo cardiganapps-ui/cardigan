@@ -24,12 +24,15 @@ import { IconTrendingUp } from "../../components/Icons";
    updateMeasurement / deleteMeasurement) and are guarded against
    read-only mode at the data layer. */
 
-const fmt = (n, digits = 1) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed measurement/patient rows
+type Row = any;
+
+const fmt = (n: number | string | null | undefined, digits = 1) => {
   if (n == null || Number.isNaN(n)) return null;
   return Number(n).toFixed(digits).replace(/\.0$/, "");
 };
 
-function formatDateShort(iso) {
+function formatDateShort(iso: string | null | undefined) {
   // "2026-04-12" → "12 Abr"
   const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
@@ -45,8 +48,8 @@ function formatDateShort(iso) {
    stroke-dasharray over 0.6s on the spring curve. The two end-point
    dots fade in immediately after the line finishes. Re-renders
    driven by adding a new measurement don't re-animate. */
-function Sparkline({ points, color = "var(--teal-dark)" }) {
-  const pathRef = useRef(null);
+function Sparkline({ points, color = "var(--teal-dark)" }: { points: { t: number; v: number }[]; color?: string }) {
+  const pathRef = useRef<SVGPathElement | null>(null);
   const [drawn, setDrawn] = useState(false);
   const firstRenderRef = useRef(true);
 
@@ -71,14 +74,14 @@ function Sparkline({ points, color = "var(--teal-dark)" }) {
 
   if (!points || points.length < 2) return null;
   const W = 320, H = 56, PAD = 4;
-  const xs = points.map(p => p.t);
-  const ys = points.map(p => p.v);
+  const xs = points.map((p) => p.t);
+  const ys = points.map((p) => p.v);
   const xMin = Math.min(...xs), xMax = Math.max(...xs);
   const yMin = Math.min(...ys), yMax = Math.max(...ys);
   const xRange = xMax - xMin || 1;
   const yRange = yMax - yMin || 1;
-  const sx = (x) => PAD + ((x - xMin) / xRange) * (W - 2 * PAD);
-  const sy = (y) => H - PAD - ((y - yMin) / yRange) * (H - 2 * PAD);
+  const sx = (x: number) => PAD + ((x - xMin) / xRange) * (W - 2 * PAD);
+  const sy = (y: number) => H - PAD - ((y - yMin) / yRange) * (H - 2 * PAD);
   const d = points.map((p, i) => `${i === 0 ? "M" : "L"} ${sx(p.t).toFixed(1)} ${sy(p.v).toFixed(1)}`).join(" ");
 
   return (
@@ -123,16 +126,16 @@ const METRICS = [
   { id: "score",   field: "inbody_score",       unit: "",   digits: 0 },
 ];
 
-export function MedicionesTab({ patient }) {
+export function MedicionesTab({ patient }: { patient: Row }) {
   const { t } = useT();
   const { measurements, createMeasurement, updateMeasurement, deleteMeasurement, readOnly, showSuccess } = useCardigan();
 
   // Newest first by date, then by created_at as tiebreaker.
   const ordered = useMemo(() => {
     return (measurements || [])
-      .filter(m => m.patient_id === patient.id)
+      .filter((m: Row) => m.patient_id === patient.id)
       .slice()
-      .sort((a, b) => {
+      .sort((a: Row, b: Row) => {
         if (a.taken_at !== b.taken_at) return a.taken_at < b.taken_at ? 1 : -1;
         return (b.created_at || "").localeCompare(a.created_at || "");
       });
@@ -143,7 +146,7 @@ export function MedicionesTab({ patient }) {
   // empty-data path doesn't flash an empty tab strip.
   const availableMetrics = useMemo(() => {
     return METRICS.filter(({ id, field }) =>
-      id === "weight" || ordered.some((m) => m[field] != null),
+      id === "weight" || ordered.some((m: Row) => m[field] != null),
     );
   }, [ordered]);
 
@@ -152,7 +155,7 @@ export function MedicionesTab({ patient }) {
   // e.g. the user deleted the only InBody scan), `activeMetric`
   // gracefully falls back to the first available tab without an
   // effect — derive at render time, no cascading setState.
-  const [requestedMetricId, setRequestedMetricId] = useState("weight");
+  const [requestedMetricId, setRequestedMetricId] = useState<string>("weight");
   const activeMetric = useMemo(
     () => availableMetrics.find((m) => m.id === requestedMetricId) || availableMetrics[0],
     [availableMetrics, requestedMetricId],
@@ -163,7 +166,7 @@ export function MedicionesTab({ patient }) {
   // have a value for the active metric.
   const sparkPoints = useMemo(() => {
     if (!activeMetric) return [];
-    const pts = [];
+    const pts: { t: number; v: number }[] = [];
     for (const m of ordered) {
       const v = m[activeMetric.field];
       if (v == null) continue;
@@ -181,7 +184,7 @@ export function MedicionesTab({ patient }) {
   const previous = ordered[1] || null;
   const earliest = ordered[ordered.length - 1] || null;
 
-  const renderDelta = (current, against, key, formatter) => {
+  const renderDelta = (current: Row, against: Row, key: string, formatter: (v: string) => string) => {
     if (!current || !against) return t("measurements.delta.none");
     const a = current[key];
     const b = against[key];
@@ -198,8 +201,8 @@ export function MedicionesTab({ patient }) {
      just the weight goal sees the original single line. */
   const goalLines = useMemo(() => {
     if (!latest) return [];
-    const lines = [];
-    const make = (label, current, target, fmtUnit) => {
+    const lines: string[] = [];
+    const make = (label: string, current: number | null | undefined, target: number | null | undefined, fmtUnit: string) => {
       if (current == null || target == null) return null;
       const remaining = Number(current) - Number(target);
       if (Math.abs(remaining) < 0.5) {
@@ -233,13 +236,13 @@ export function MedicionesTab({ patient }) {
 
   // Sheet state. `editing` is the row being edited, or a sentinel
   // string "new" for create mode.
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const sheetOpen = editing !== null;
 
   const closeSheet = () => setEditing(null);
 
-  const handleSave = async (form) => {
+  const handleSave = async (form: Row) => {
     if (editing === "new") {
       const created = await createMeasurement({
         patientId: patient.id,
@@ -268,7 +271,7 @@ export function MedicionesTab({ patient }) {
     return false;
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     const ok = await deleteMeasurement(id);
     if (ok) showSuccess?.(t("deleted"));
   };
@@ -277,7 +280,7 @@ export function MedicionesTab({ patient }) {
   // latest row doesn't have the metric (e.g. activeMetric is "muscle"
   // but the most recent entry was a manual weigh-in).
   const headlineValue = activeMetric ? latest?.[activeMetric.field] : null;
-  const deltaFormatter = (v) => {
+  const deltaFormatter = (v: string) => {
     if (!activeMetric) return v;
     const unit = activeMetric.unit ? ` ${activeMetric.unit}` : "";
     return `${v}${unit}`;
@@ -399,7 +402,7 @@ export function MedicionesTab({ patient }) {
 
       {ordered.length > 0 && (
         <div className="card mediciones-list">
-          {ordered.map((m, i) => {
+          {ordered.map((m: Row, i: number) => {
             const fields = [
               m.weight_kg    != null && `${fmt(m.weight_kg, 1)} kg`,
               m.waist_cm     != null && `Cintura ${fmt(m.waist_cm, 1)} cm`,

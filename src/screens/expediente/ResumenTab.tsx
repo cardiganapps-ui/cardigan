@@ -15,12 +15,15 @@ import { formatMXN, formatDate } from "../../utils/format";
 // Display format used across the Resumen card. Spanish locale renders
 // the short month lowercase ("nov"), so we capitalize the first letter
 // to match how the rest of the app shows dates ("14 Nov 2015").
-function capitalizeMonth(str) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session/measurement rows
+type Row = any;
+
+function capitalizeMonth(str: string) {
   // Match "<day> <mon>..." and uppercase the first letter of the
   // month token, wherever it falls after the day number.
-  return str.replace(/(\d+\s+)([a-záéíóúñ])/iu, (_, pre, first) => pre + first.toUpperCase());
+  return str.replace(/(\d+\s+)([a-záéíóúñ])/iu, (_: string, pre: string, first: string) => pre + first.toUpperCase());
 }
-function formatISODateLong(iso) {
+function formatISODateLong(iso: string | null | undefined) {
   if (!iso) return "";
   // Accept "YYYY-MM-DD" or full timestamps ("YYYY-MM-DDTHH:mm:ss...").
   const datePart = String(iso).slice(0, 10);
@@ -55,10 +58,10 @@ function formatISODateLong(iso) {
    is_recurring=false. Legacy one-offs were corrected by migration
    028 (uses slot-count signal: any ≤3-session slot on a patient
    with a real ≥10-session slot elsewhere is a one-off). */
-function derivePatientSchedules(sessions, patientId, includePast) {
+function derivePatientSchedules(sessions: Row[], patientId: string, includePast: boolean) {
   const today = todayISO();
-  const seen = new Set();
-  const result = [];
+  const seen = new Set<string>();
+  const result: { day: string; time: string; duration: number; frequency: string }[] = [];
   for (const s of sessions) {
     if (s.patient_id !== patientId) continue;
     if (s.status === "cancelled" || s.status === "charged") continue;
@@ -91,7 +94,7 @@ function derivePatientSchedules(sessions, patientId, includePast) {
 }
 
 // "14:00" + 60min → "15:00". Returns "" if either input is missing or malformed.
-function addMinutesToTime(time, minutes) {
+function addMinutesToTime(time: string | null | undefined, minutes: number | string | null | undefined) {
   if (!time || typeof time !== "string") return "";
   const [h, m] = time.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return "";
@@ -103,7 +106,7 @@ function addMinutesToTime(time, minutes) {
   return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
 }
 
-const SECTION_LABEL_STYLE = {
+const SECTION_LABEL_STYLE: React.CSSProperties = {
   fontSize: "var(--text-xs)",
   fontWeight: 700,
   textTransform: "uppercase",
@@ -116,6 +119,19 @@ export function ResumenTab({
   dateFrom, setDateFrom, dateTo, setDateTo, earliestISO,
   filteredSessions,
   onRecordPayment, onGoToSesiones, onGoToArchivo, mutating,
+}: {
+  patient: Row;
+  upcomingSessions: Row[];
+  dateFrom: string | null;
+  setDateFrom: (v: string | null) => void;
+  dateTo: string | null;
+  setDateTo: (v: string | null) => void;
+  earliestISO?: string | null;
+  filteredSessions: Row[];
+  onRecordPayment: (patient: Row) => void;
+  onGoToSesiones: (status: string, opts?: { tutorOnly?: boolean }) => void;
+  onGoToArchivo: () => void;
+  mutating?: boolean;
 }) {
   const { t } = useT();
   const { profession, measurements, updatePatient, showSuccess, openQuickSchedule, readOnly } = useCardigan();
@@ -130,9 +146,9 @@ export function ResumenTab({
   const patientMeasurements = useMemo(() => {
     if (!showHealthBlock) return [];
     return (measurements || [])
-      .filter((m) => m.patient_id === patient.id)
+      .filter((m: Row) => m.patient_id === patient.id)
       .slice()
-      .sort((a, b) => {
+      .sort((a: Row, b: Row) => {
         if (a.taken_at !== b.taken_at) return a.taken_at < b.taken_at ? 1 : -1;
         return (b.created_at || "").localeCompare(a.created_at || "");
       });
@@ -198,7 +214,7 @@ export function ResumenTab({
   );
 
   const lastSessionDate = useMemo(() => {
-    let latestIso = null;
+    let latestIso: string | null = null;
     for (const s of (upcomingSessions || [])) {
       if (s.patient_id !== patient.id) continue;
       if (s.status === "cancelled" || s.status === "charged") continue;
@@ -219,8 +235,8 @@ export function ResumenTab({
   const nextEpisodicSession = useMemo(() => {
     if (!patientIsEpisodic) return null;
     const today = todayISO();
-    let bestIso = null;
-    let bestRow = null;
+    let bestIso: string | null = null;
+    let bestRow: Row = null;
     for (const s of (upcomingSessions || [])) {
       if (s.patient_id !== patient.id) continue;
       if (s.status === "cancelled" || s.status === "charged") continue;
@@ -239,8 +255,8 @@ export function ResumenTab({
   const lastEpisodicSession = useMemo(() => {
     if (!patientIsEpisodic) return null;
     const today = todayISO();
-    let bestIso = null;
-    let bestRow = null;
+    let bestIso: string | null = null;
+    let bestRow: Row = null;
     for (const s of (upcomingSessions || [])) {
       if (s.patient_id !== patient.id) continue;
       if (s.status === "cancelled" || s.status === "charged") continue;
@@ -285,7 +301,7 @@ export function ResumenTab({
         {(() => {
           const scheduleValue = schedules.length === 0
             ? t("patients.notRecurring") || "Sin recurrencia"
-            : schedules.map(s => {
+            : schedules.map((s) => {
                 const end = addMinutesToTime(s.time, s.duration);
                 const base = end ? `${s.day} · ${s.time}–${end}` : `${s.day} · ${s.time}`;
                 // Show the frequency only when it's NOT the default
@@ -360,7 +376,7 @@ export function ResumenTab({
             : [
                 { label: t("expediente.scheduleRow"), value: scheduleValue, multiline: schedules.length > 1 },
               ];
-          const rows = [
+          const rows: Row[] = [
             ...scheduleRows,
             { label: t("patients.rate"), value:`$${patient.rate} ${t("expediente.perSession")}` },
             ...(patient.parent ? [{ label: t("sessions.tutor"), value: patient.parent }] : []),
@@ -371,7 +387,7 @@ export function ResumenTab({
           ];
           return (
             <>
-              {rows.map((row, i) => (
+              {rows.map((row: Row, i: number) => (
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems: row.multiline ? "flex-start" : "center", minHeight:42, padding:"10px 16px", borderBottom: i < rows.length - 1 ? "1px solid var(--border-lt)" : "none", gap:12 }}>
                   <span style={{ fontSize:"var(--text-sm)", lineHeight:1.25, color:"var(--charcoal-xl)" }}>{row.label}</span>
                   <span style={{ fontSize:"var(--text-sm)", lineHeight:1.35, fontWeight:600, color:"var(--charcoal)", textAlign:"right", whiteSpace:"pre-line" }}>
@@ -392,7 +408,7 @@ export function ResumenTab({
           plain manual weigh-in (the simpler "Peso" row inside the
           Salud block below covers that case). */}
       {showHealthBlock && hasInBodyDetail && latestMeasurement && (() => {
-        const renderDelta = (curKey) => {
+        const renderDelta = (curKey: string) => {
           if (!previousMeasurement) return null;
           const a = latestMeasurement[curKey];
           const b = previousMeasurement[curKey];
@@ -401,7 +417,7 @@ export function ResumenTab({
           const sign = diff > 0 ? "+" : "";
           return `${sign}${Number(diff).toFixed(1).replace(/\.0$/, "")}`;
         };
-        const fmt = (n, d = 1) => n == null ? "—" : Number(n).toFixed(d).replace(/\.0$/, "");
+        const fmt = (n: number | string | null | undefined, d = 1) => n == null ? "—" : Number(n).toFixed(d).replace(/\.0$/, "");
         const tiles = [
           { label: t("measurements.metric.weight"),  value: latestMeasurement.weight_kg != null
               ? `${fmt(latestMeasurement.weight_kg)} kg` : "—",
@@ -423,7 +439,7 @@ export function ResumenTab({
             </div>
             <div className="card resumen-bodycomp" style={{ padding: 10, marginBottom: 10 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {tiles.map((tile, i) => (
+                {tiles.map((tile, i: number) => (
                   <div key={i} style={{
                     background: "var(--cream)",
                     borderRadius: "var(--radius)",
@@ -469,7 +485,7 @@ export function ResumenTab({
           weight from the measurements log. Hidden completely when the
           profession doesn't use it. */}
       {showHealthBlock && (() => {
-        const rows = [];
+        const rows: Row[] = [];
         // Skip the duplicate "Peso" row when the InBody tile grid
         // above already surfaces the latest weight + Δ.
         if (latestWeight && latestWeight.weight_kg != null && !hasInBodyDetail) {
@@ -500,7 +516,7 @@ export function ResumenTab({
               {t("patientFields.sectionTitle")}
             </div>
             <div className="card" style={{ padding: 0, marginBottom: 10 }}>
-              {rows.map((r, i) => (
+              {rows.map((r: Row, i: number) => (
                 <div key={i} style={{
                   display: "flex", alignItems: r.multiline ? "flex-start" : "center",
                   justifyContent: "space-between", padding: "10px 12px",
@@ -524,17 +540,17 @@ export function ResumenTab({
         const nextTutor = getNextTutorSession(upcomingSessions, patient.id);
         const DAY_MS = 86400000;
         const todayMs = new Date(todayISO() + "T00:00:00").getTime();
-        let daysSince = null;
-        let daysUntilDue = null;
+        let daysSince: number | null = null;
+        let daysUntilDue: number | null = null;
         if (lastTutor) {
           const lastMs = new Date(shortDateToISO(lastTutor.date) + "T00:00:00").getTime();
           daysSince = Math.round((todayMs - lastMs) / DAY_MS);
           daysUntilDue = (patient.tutor_frequency * 7) - daysSince;
         }
-        const overdue = lastTutor ? daysUntilDue < 0 : true;
-        const dueSoon = lastTutor && daysUntilDue >= 0 && daysUntilDue <= 7;
-        const dueNextWeek = lastTutor && daysUntilDue > 7 && daysUntilDue <= 14;
-        const upToDate = lastTutor && daysUntilDue > 14;
+        const overdue = lastTutor ? daysUntilDue! < 0 : true;
+        const dueSoon = lastTutor && daysUntilDue! >= 0 && daysUntilDue! <= 7;
+        const dueNextWeek = lastTutor && daysUntilDue! > 7 && daysUntilDue! <= 14;
+        const upToDate = lastTutor && daysUntilDue! > 14;
         if (upToDate && !nextTutor) {
           return (
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"6px 12px", marginBottom:10, background:"var(--green-bg)", borderRadius:"var(--radius-pill)", fontSize:"var(--text-xs)", fontWeight:600, color:"var(--green)" }}>
@@ -551,7 +567,7 @@ export function ResumenTab({
               </div>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end" }}>
                 {nextTutor && <span className="badge badge-teal">{t("expediente.tutorScheduled")}</span>}
-                {!nextTutor && overdue && <span className="badge badge-red">{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue) }) : t("home.noTutorSession")}</span>}
+                {!nextTutor && overdue && <span className="badge badge-red">{daysSince != null ? t("expediente.tutorOverdue", { count: Math.abs(daysUntilDue!) }) : t("home.noTutorSession")}</span>}
                 {!nextTutor && dueSoon && <span className="badge badge-amber">{t("expediente.tutorDueSoon")}</span>}
                 {!nextTutor && dueNextWeek && <span className="badge badge-purple">{t("expediente.tutorDueNextWeek")}</span>}
               </div>
@@ -614,35 +630,35 @@ export function ResumenTab({
             { k: "6m", l: t("periods.6m"), m: 6 },
             { k: "1y", l: t("periods.1y"), m: 12 },
           ];
-          const periodFromKey = (p) => {
+          const periodFromKey = (p: Row) => {
             if (p.from) return p.from;
             const d = new Date(); d.setMonth(d.getMonth() - p.m);
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
           };
-          const activeKey = periods.find(p => dateFrom === periodFromKey(p) && dateTo === todayISO())?.k;
+          const activeKey = periods.find((p: Row) => dateFrom === periodFromKey(p) && dateTo === todayISO())?.k;
           return (
             <div style={{ marginBottom:8 }}>
               <SegmentedControl
                 value={activeKey || ""}
                 onChange={(k) => {
-                  const p = periods.find(x => x.k === k);
+                  const p = periods.find((x: Row) => x.k === k);
                   if (!p) return;
                   setDateFrom(periodFromKey(p));
                   setDateTo(todayISO());
                 }}
                 ariaLabel={t("expediente.period")}
-                items={periods.map(p => ({ k: p.k, l: p.l }))}
+                items={periods.map((p: Row) => ({ k: p.k, l: p.l }))}
               />
             </div>
           );
         })()}
         {(() => {
           const showTutor = !!patient.parent && fTutor > 0;
-          const tileStyle = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"6px 6px", textAlign:"center", border:"none", fontFamily:"inherit", width:"100%", minHeight:0 };
-          const tileStyleSmall = { ...tileStyle, padding:"5px 6px" };
-          const valStyle = { fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800 };
-          const valStyleSmall = { ...valStyle, fontSize:"var(--text-md)" };
-          const labelStyle = { fontSize:"var(--text-eyebrow)", color:"var(--charcoal-xl)", marginTop:1 };
+          const tileStyle: React.CSSProperties = { cursor:"pointer", WebkitTapHighlightColor:"transparent", borderRadius:"var(--radius)", padding:"6px 6px", textAlign:"center", border:"none", fontFamily:"inherit", width:"100%", minHeight:0 };
+          const tileStyleSmall: React.CSSProperties = { ...tileStyle, padding:"5px 6px" };
+          const valStyle: React.CSSProperties = { fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800 };
+          const valStyleSmall: React.CSSProperties = { ...valStyle, fontSize:"var(--text-md)" };
+          const labelStyle: React.CSSProperties = { fontSize:"var(--text-eyebrow)", color:"var(--charcoal-xl)", marginTop:1 };
           return (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             {/* Headline row — Programadas + Asistió, full size. The %
