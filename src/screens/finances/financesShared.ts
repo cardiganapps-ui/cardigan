@@ -15,13 +15,13 @@ export const FINANCES_WINDOW_INCREMENT = 40;
 // Compute the from-ISO date for a period key. "all" → null (no lower
 // bound). "1w" → 7 days ago; the month keys map to N calendar months
 // back. Shared verbatim by PagosTab and GastosTab.
-export function getDateFrom(p) {
+export function getDateFrom(p: string) {
   if (p === "all") return null;
   const d = new Date();
   if (p === "1w") {
     d.setDate(d.getDate() - 7);
   } else {
-    const months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
+    const months: Record<string, number> = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
     d.setMonth(d.getMonth() - (months[p] || 0));
   }
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -29,6 +29,6 @@ export function getDateFrom(p) {
 
 // Local Date → "YYYY-MM-DD" using the local calendar fields (no UTC
 // shift). Used by ResumenTab to bound period ranges.
-export function toIsoLocal(d) {
+export function toIsoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }

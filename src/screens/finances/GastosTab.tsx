@@ -28,9 +28,21 @@ import { getDateFrom } from "./financesShared";
 const EXPENSE_INITIAL_WINDOW = 60;
 const EXPENSE_WINDOW_INCREMENT = 40;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed expense/document rows
+type Row = any;
+
 export function GastosTab({
   expenses, recurringExpenses, onRecord, onEdit, onDelete,
   generatePending, onManageRecurring, mutating,
+}: {
+  expenses: Row[];
+  recurringExpenses: Row[];
+  onRecord: () => void;
+  onEdit: (e: Row) => void;
+  onDelete: (id: string) => Promise<unknown> | unknown;
+  generatePending: (pending: Row[]) => Promise<unknown> | unknown;
+  onManageRecurring: () => void;
+  mutating?: boolean;
 }) {
   const { t } = useT();
   // Documents + presign helper come from context — receipt rows in
@@ -38,18 +50,18 @@ export function GastosTab({
   // before we can mint a presigned URL for the viewer.
   const { documents = [], getDocumentUrl } = useCardigan();
   const [period, setPeriod] = useState("1m");
-  const [categoryFilter, setCategoryFilter] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [pendingOnly, setPendingOnly] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(EXPENSE_INITIAL_WINDOW);
-  const [viewingReceipt, setViewingReceipt] = useState(null);
-  const sentinelRef = useRef(null);
+  const [viewingReceipt, setViewingReceipt] = useState<{ doc: Row; url: string } | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Tap a receipt indicator on a row → presign GET URL → open lightbox.
   // Mirrors PatientExpediente's openDocViewer pattern verbatim.
-  const openReceipt = async (expense) => {
+  const openReceipt = async (expense: Row) => {
     if (!expense?.receipt_document_id) return;
-    const doc = documents.find(d => d.id === expense.receipt_document_id);
+    const doc = documents.find((d: Row) => d.id === expense.receipt_document_id);
     if (!doc?.file_path) return;
     const url = await getDocumentUrl(doc.file_path);
     if (!url) return;
@@ -65,7 +77,7 @@ export function GastosTab({
   // the contador deadline.
   const totalReceiptsPending = useMemo(() => (
     (expenses || []).filter(
-      e => e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id
+      (e: Row) => e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id
     ).length
   ), [expenses]);
 
@@ -73,20 +85,20 @@ export function GastosTab({
     const dateFrom = getDateFrom(period);
     const today = todayISO();
     let list = [...(expenses || [])];
-    if (dateFrom) list = list.filter(e => {
+    if (dateFrom) list = list.filter((e: Row) => {
       const iso = shortDateToISO(e.date);
       return iso >= dateFrom && iso <= today;
     });
     // Re-derive the effective filter inside the memo so the deps stay
     // primitive (categoryFilter + expenses) and the lint passes.
-    const presentCats = new Set((expenses || []).map(e => e.category));
+    const presentCats = new Set((expenses || []).map((e: Row) => e.category));
     const eff = (categoryFilter && presentCats.has(categoryFilter)) ? categoryFilter : null;
-    if (eff) list = list.filter(e => e.category === eff);
+    if (eff) list = list.filter((e: Row) => e.category === eff);
     if (pendingOnly) {
-      list = list.filter(e => e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id);
+      list = list.filter((e: Row) => e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id);
     }
-    list.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
-    const total = list.reduce((s, e) => s + e.amount, 0);
+    list.sort((a: Row, b: Row) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
+    const total = list.reduce((s: number, e: Row) => s + e.amount, 0);
 
     // KPI sums computed from full expense set (not the filtered view).
     const now = new Date();
@@ -105,7 +117,7 @@ export function GastosTab({
   // Compute pending recurring backfill slots for the prompt at the top.
   const pendingCount = useMemo(() => {
     if (!recurringExpenses || recurringExpenses.length === 0) return 0;
-    const { pending } = computeRecurringExpenseRows(recurringExpenses, expenses, new Date(), null);
+    const { pending } = computeRecurringExpenseRows(recurringExpenses, expenses, new Date(), undefined);
     return pending.length;
   }, [recurringExpenses, expenses]);
 
@@ -115,8 +127,8 @@ export function GastosTab({
   // Identity is the full expense set (not period-filtered) — chips
   // shouldn't pop in and out as the user changes the date window.
   const visibleCategories = useMemo(() => {
-    const present = new Set((expenses || []).map(e => e.category));
-    return EXPENSE_CATEGORIES.filter(c => present.has(c));
+    const present = new Set((expenses || []).map((e: Row) => e.category));
+    return EXPENSE_CATEGORIES.filter((c: string) => present.has(c));
   }, [expenses]);
 
   // If the user had a category filter set and then deleted the last
@@ -124,7 +136,7 @@ export function GastosTab({
   // stored filter — that way if they re-add an expense in the same
   // category the chip + their selection both come back. Done as a
   // derived value rather than a useEffect+setState (project lint rule).
-  const effectiveCategoryFilter = (categoryFilter && visibleCategories.includes(categoryFilter))
+  const effectiveCategoryFilter = (categoryFilter && (visibleCategories as string[]).includes(categoryFilter))
     ? categoryFilter
     : null;
 
@@ -145,7 +157,7 @@ export function GastosTab({
   const visibleRows = filtered.slice(0, visibleCount);
 
   const handleGeneratePending = async () => {
-    const { pending } = computeRecurringExpenseRows(recurringExpenses, expenses, new Date(), null);
+    const { pending } = computeRecurringExpenseRows(recurringExpenses, expenses, new Date(), undefined);
     if (pending.length === 0) return;
     await generatePending(pending);
   };
@@ -265,7 +277,7 @@ export function GastosTab({
             }}>
             {t("finances.periodAll")}
           </button>
-          {visibleCategories.map(c => (
+          {visibleCategories.map((c: string) => (
             <button key={c} type="button"
               className="btn-tap"
               onClick={() => setCategoryFilter(effectiveCategoryFilter === c ? null : c)}
@@ -316,12 +328,12 @@ export function GastosTab({
         />
       )}
 
-      {visibleRows.map((e, i) => {
+      {visibleRows.map((e: Row, i: number) => {
         const isExpanded = confirmDeleteId === e.id;
         const isReceiptPending = e.tax_treatment === TAX_TREATMENT.DEDUCTIBLE && !e.receipt_document_id;
         return (
           // Stagger wrapper mirrors PagosTab so Gastos reveals top-down too.
-          <div key={e.id} className="list-entry-stagger" style={{ "--stagger-i": Math.min(i, 12) }}>
+          <div key={e.id} className="list-entry-stagger" style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties}>
           <SwipeableRow
             onAction={() => setConfirmDeleteId(isExpanded ? null : e.id)}
             actionLabel={t("delete")}

@@ -20,7 +20,15 @@ import { toIsoLocal } from "./financesShared";
 // per the docstring on TAX_TREATMENT — keeping a personal Uber off
 // the business P&L while still letting the user keep one ledger.
 
-export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed payment/expense/patient/session rows
+type Row = any;
+
+export function ResumenTab({ payments, expenses, patients, upcomingSessions }: {
+  payments: Row[];
+  expenses: Row[];
+  patients: Row[];
+  upcomingSessions: Row[];
+}) {
   const { t } = useT();
   const [period, setPeriod] = useState("thisMonth");
 
@@ -40,7 +48,7 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
     return { from: `${now.getFullYear()}-01-01`, to: toIsoLocal(now) };
   }, [period]);
 
-  const inRange = (shortDate) => {
+  const inRange = (shortDate: string) => {
     const iso = shortDateToISO(shortDate);
     return iso >= from && iso <= to;
   };
@@ -49,7 +57,7 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
     let inc = 0;
     for (const p of (payments || [])) if (inRange(p.date)) inc += p.amount;
     let exp = 0;
-    const cat = {};
+    const cat: Record<string, number> = {};
     for (const e of (expenses || [])) {
       if (e.tax_treatment === TAX_TREATMENT.PERSONAL) continue;
       if (!inRange(e.date)) continue;
@@ -66,17 +74,17 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
   // month. Stays inside the SVG box (no chart lib). Uses the canonical
   // tax_treatment !== "personal" filter to match the KPI tiles above.
   const trend = useMemo(() => {
-    const months = [];
+    const months: { y: number; m: number; income: number; expense: number }[] = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push({ y: d.getFullYear(), m: d.getMonth(), income: 0, expense: 0 });
     }
-    const matchMonth = (shortDate) => {
+    const matchMonth = (shortDate: string) => {
       const iso = shortDateToISO(shortDate);
       if (!iso) return null;
       const [y, m] = iso.split("-").map(Number);
-      return months.find(x => x.y === y && x.m === m - 1) || null;
+      return months.find((x) => x.y === y && x.m === m - 1) || null;
     };
     for (const p of (payments || [])) {
       const bucket = matchMonth(p.date);
@@ -96,14 +104,14 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
   // contributing the most cash this period? Future enhancement could
   // toggle to consumed (predicate-based) for the "owed" lens.
   const topPatients = useMemo(() => {
-    const byPatient = new Map();
+    const byPatient = new Map<string, number>();
     for (const p of (payments || [])) {
       if (!inRange(p.date)) continue;
       if (!p.patient_id) continue;
       byPatient.set(p.patient_id, (byPatient.get(p.patient_id) || 0) + p.amount);
     }
     const rows = Array.from(byPatient.entries()).map(([id, amount]) => {
-      const patient = (patients || []).find(x => x.id === id);
+      const patient = (patients || []).find((x: Row) => x.id === id);
       return { id, name: patient?.name || "—", colorIdx: patient?.colorIdx ?? 0, amount };
     });
     rows.sort((a, b) => b.amount - a.amount);
@@ -162,7 +170,7 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
         gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
         marginBottom: 14,
       }}>
-        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 0 }}>
+        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 0 } as React.CSSProperties}>
           <div className="stat-tile-label">
             <IconTrendingUp size={12} style={{ marginRight: 4, verticalAlign: "-2px" }} />
             {t("gastos.incomeKpi")}
@@ -171,7 +179,7 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             +<AnimatedNumber value={income} format={formatMXN} />
           </div>
         </div>
-        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 1 }}>
+        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 1 } as React.CSSProperties}>
           <div className="stat-tile-label">
             <IconTrendingDown size={12} style={{ marginRight: 4, verticalAlign: "-2px" }} />
             {t("gastos.expensesKpi")}
@@ -180,7 +188,7 @@ export function ResumenTab({ payments, expenses, patients, upcomingSessions }) {
             −<AnimatedNumber value={egresos} format={formatMXN} />
           </div>
         </div>
-        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 2 }}>
+        <div className="stat-tile list-entry-stagger" style={{ "--stagger-i": 2 } as React.CSSProperties}>
           <div className="stat-tile-label">{profit >= 0 ? t("gastos.profitKpi") : t("gastos.profitNegative")}</div>
           <div className="stat-tile-val" style={{
             color: profit >= 0 ? "var(--teal-dark)" : "var(--amber)",

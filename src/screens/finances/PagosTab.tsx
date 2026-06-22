@@ -11,16 +11,27 @@ import { EmptyState } from "../../components/EmptyState";
 import { useT } from "../../i18n/index";
 import { FINANCES_INITIAL_WINDOW, FINANCES_WINDOW_INCREMENT, getDateFrom } from "./financesShared";
 
-export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating, onAddFirstPatient }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed payment/patient rows
+type Row = any;
+
+export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, onDeletePayment, mutating, onAddFirstPatient }: {
+  payments: Row[];
+  patients: Row[];
+  onRecordPayment: (arg: Row | null) => void;
+  onEditPayment: (p: Row) => void;
+  onDeletePayment: (id: string) => Promise<unknown> | unknown;
+  mutating?: boolean;
+  onAddFirstPatient?: () => void;
+}) {
   const { t } = useT();
-  const [expandedId, setExpandedId] = useState(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [groupByClient, setGroupByClient] = useState(false);
   // Patient-name keyed: which grouped row is expanded to show its
   // individual payments. Independent of `expandedId` (which controls
   // the per-payment edit/delete actions reveal) so the two expansion
   // levels nest cleanly.
-  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [period, setPeriod] = useState("all");
   // Lazy-load window. Rendering every payment row up-front was the
   // single worst scroll-jank source on iOS Safari — a therapist with
@@ -28,7 +39,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
   // window, first paint renders 60 rows; an IntersectionObserver
   // sentinel pulls 40 more as the user scrolls toward the end.
   const [visibleCount, setVisibleCount] = useState(FINANCES_INITIAL_WINDOW);
-  const sentinelRef = useRef(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Reset the visible window on filter change. The deps intentionally
   // don't include the full `filtered` array (changes on every render
@@ -49,13 +60,13 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
     const dateFrom = getDateFrom(period);
     const today = todayISO();
     let list = [...payments];
-    if (dateFrom) list = list.filter(p => {
+    if (dateFrom) list = list.filter((p: Row) => {
       const iso = shortDateToISO(p.date);
       return iso >= dateFrom && iso <= today;
     });
-    list.sort((a, b) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
-    const total = list.reduce((s, p) => s + p.amount, 0);
-    const byPatient = {};
+    list.sort((a: Row, b: Row) => shortDateToISO(b.date).localeCompare(shortDateToISO(a.date)));
+    const total = list.reduce((s: number, p: Row) => s + p.amount, 0);
+    const byPatient: Record<string, Row[]> = {};
     for (const p of list) {
       if (!byPatient[p.patient]) byPatient[p.patient] = [];
       byPatient[p.patient].push(p);
@@ -74,7 +85,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
     const el = sentinelRef.current;
     if (!el) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries.some(e => e.isIntersecting)) {
+      if (entries.some((e) => e.isIntersecting)) {
         setVisibleCount(n => Math.min(n + FINANCES_WINDOW_INCREMENT, filtered.length));
       }
     }, { rootMargin: "240px 0px" });
@@ -87,8 +98,8 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
   // the visual weight, and shifts the row right so the spine on the
   // wrapper draws the eye through the subset. Keeps the same expand /
   // swipe-to-delete interactions as the top-level row.
-  const renderRow = (p, i, nested = false) => {
-    const patient = patients.find(pt => pt.name === p.patient);
+  const renderRow = (p: Row, i: number, nested = false) => {
+    const patient = patients.find((pt: Row) => pt.name === p.patient);
     const isExpanded = expandedId === p.id;
     const rowBody = (
       <div
@@ -156,7 +167,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
       <div
         key={p.id}
         className="list-entry-stagger"
-        style={{ "--stagger-i": Math.min(i, 12) }}
+        style={{ "--stagger-i": Math.min(i, 12) } as React.CSSProperties}
       >
         <SwipeableRow
           onAction={async () => { if (!mutating) await onDeletePayment(p.id); }}
@@ -286,10 +297,10 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
           })()
         : groupByClient
           ? <div className="card">
-              {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, pList], gi) => {
-                const total = pList.reduce((s,p)=>s+p.amount,0);
+              {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, pList], gi: number) => {
+                const total = pList.reduce((s: number, p: Row) => s + p.amount, 0);
                 const first = pList[0];
-                const patient = patients.find(pt => pt.name === name);
+                const patient = patients.find((pt: Row) => pt.name === name);
                 const isOpen = expandedGroup === name;
                 return (
                   <div key={name}>
@@ -358,7 +369,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
                             pointerEvents: "none",
                           }}
                         />
-                        {pList.map((p, i) => renderRow(p, i, true))}
+                        {pList.map((p: Row, i: number) => renderRow(p, i, true))}
                       </div>
                     )}
                   </div>
@@ -367,7 +378,7 @@ export function PagosTab({ payments, patients, onRecordPayment, onEditPayment, o
             </div>
           : (
             <div className="card">
-              {filtered.slice(0, visibleCount).map((p, i) => renderRow(p, i))}
+              {filtered.slice(0, visibleCount).map((p: Row, i: number) => renderRow(p, i))}
               {visibleCount < filtered.length && (
                 // Sentinel + subtle hint so the blank band below the
                 // last visible row doesn't read as "no more rows".

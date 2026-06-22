@@ -9,12 +9,15 @@ import { AnimatedNumber } from "../../components/AnimatedNumber";
 import { useT } from "../../i18n/index";
 import { isPotentialOrDiscarded, SESSION_TYPE } from "../../data/constants";
 
-const PERIOD_DAYS = { "1w": 7, "1m": 30, "3m": 90 };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed session/patient rows
+type Row = any;
 
-export function ProyeccionTab({ sessions, patients }) {
+const PERIOD_DAYS: Record<string, number> = { "1w": 7, "1m": 30, "3m": 90 };
+
+export function ProyeccionTab({ sessions, patients }: { sessions: Row[]; patients: Row[] }) {
   const { t } = useT();
   const [period, setPeriod] = useState("1m");
-  const [customCancel, setCustomCancel] = useState(null); // null = use historical
+  const [customCancel, setCustomCancel] = useState<number | null>(null); // null = use historical
 
   const today = todayISO();
 
@@ -32,14 +35,14 @@ export function ProyeccionTab({ sessions, patients }) {
   // future ones, are one-off rose-rail rows we deliberately styled
   // separately).
   const projectablePatientIds = useMemo(() => {
-    const ids = new Set();
+    const ids = new Set<string>();
     for (const p of patients) if (!isPotentialOrDiscarded(p)) ids.add(p.id);
     return ids;
   }, [patients]);
 
   // Scheduled sessions within the projection period (today through cutoff)
   const futureSessions = useMemo(() =>
-    sessions.filter(s => {
+    sessions.filter((s: Row) => {
       if (s.status !== "scheduled") return false;
       // Interview sessions are one-offs by design and don't represent
       // recurring revenue; even on a converted patient they stay at
@@ -76,11 +79,11 @@ export function ProyeccionTab({ sessions, patients }) {
   // otherwise fall back to the patient's current rate (handles legacy
   // sessions created before rate was tracked per-session).
   const patientMap = useMemo(() => {
-    const m = new Map();
+    const m = new Map<string, Row>();
     for (const p of patients) m.set(p.id, p);
     return m;
   }, [patients]);
-  const sessionRate = (s) => {
+  const sessionRate = (s: Row) => {
     if (s.rate != null && s.rate > 0) return s.rate;
     const p = patientMap.get(s.patient_id);
     return p ? p.rate : 0;
@@ -89,7 +92,7 @@ export function ProyeccionTab({ sessions, patients }) {
   const cancelRate = customCancel !== null ? customCancel / 100 : histRate;
 
   // Gross and net
-  const gross = futureSessions.reduce((sum, s) => sum + sessionRate(s), 0);
+  const gross = futureSessions.reduce((sum: number, s: Row) => sum + sessionRate(s), 0);
   const net = Math.round(gross * (1 - cancelRate));
 
   // Weeks in period for weekly average (matches fixed day counts: 7, 30, 90)
@@ -102,7 +105,7 @@ export function ProyeccionTab({ sessions, patients }) {
     : 0;
 
   // Breakdown by patient (plain computation — trivial cost, always fresh)
-  const byPatientMap = {};
+  const byPatientMap: Record<string, { count: number; total: number; colorIdx: number; initials: string }> = {};
   for (const s of futureSessions) {
     const rate = sessionRate(s);
     if (!byPatientMap[s.patient]) byPatientMap[s.patient] = { count: 0, total: 0, colorIdx: s.colorIdx ?? s.color_idx, initials: s.initials };
@@ -114,7 +117,7 @@ export function ProyeccionTab({ sessions, patients }) {
     .sort((a, b) => b.total - a.total);
 
   // Active patients contributing
-  const activeContributing = new Set(futureSessions.map(s => s.patient_id)).size;
+  const activeContributing = new Set(futureSessions.map((s: Row) => s.patient_id)).size;
 
   const histPct = Math.round(histRate * 100);
   const displayPct = customCancel !== null ? customCancel : histPct;
@@ -198,8 +201,8 @@ export function ProyeccionTab({ sessions, patients }) {
         <div style={{ marginBottom:16 }}>
           <div className="section-title" style={{ marginBottom:10 }}>{t("finances.forecastByPatient")}</div>
           <div className="card">
-            {byPatient.map((p, i) => {
-              const patObj = patients.find(pt => pt.name === p.name);
+            {byPatient.map((p, i: number) => {
+              const patObj = patients.find((pt: Row) => pt.name === p.name);
               const initials = patObj ? patObj.initials : p.initials?.replace("T·", "") || p.name.slice(0,2).toUpperCase();
               return (
                 <div className="bal-row" key={p.name}>
