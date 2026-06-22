@@ -3,9 +3,21 @@ import { IconBell, IconCalendar, IconCreditCard, IconChevron } from "../../compo
 import { useT } from "../../i18n/index";
 import { ProBadge } from "./ProBadge";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed notifications hook object
+type Row = any;
+
 export const NotificationsCalendarPanel = React.memo(function NotificationsCalendarPanel({
   notifications, readOnly, bellFx, notifSummary, isPro, calendarSummary,
   requirePro, onOpenSheet,
+}: {
+  notifications?: Row;
+  readOnly?: boolean;
+  bellFx?: boolean;
+  notifSummary?: React.ReactNode;
+  isPro?: boolean;
+  calendarSummary?: React.ReactNode;
+  requirePro?: (feature: string) => void;
+  onOpenSheet: (sheet: string) => void;
 }) {
   const { t } = useT();
   if (!(notifications?.supported || !readOnly)) return null;

@@ -5,6 +5,11 @@ import { useT } from "../../i18n/index";
 
 export const FeaturesPanel = React.memo(function FeaturesPanel({
   groupsEnabled, groupsToggleLocked, readOnly, setGroupsEnabled,
+}: {
+  groupsEnabled?: boolean;
+  groupsToggleLocked?: boolean;
+  readOnly?: boolean;
+  setGroupsEnabled?: (v: boolean) => void;
 }) {
   const { t } = useT();
   return (

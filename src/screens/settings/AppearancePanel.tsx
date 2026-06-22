@@ -2,8 +2,15 @@ import React from "react";
 import { IconSun, IconMoon, IconChevron } from "../../components/Icons";
 import { useT } from "../../i18n/index";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed theme objects
+type Row = any;
+
 export const AppearancePanel = React.memo(function AppearancePanel({
   theme, accentTheme, onOpenSheet,
+}: {
+  theme?: Row;
+  accentTheme?: Row;
+  onOpenSheet: (sheet: string) => void;
 }) {
   const { t } = useT();
   return (

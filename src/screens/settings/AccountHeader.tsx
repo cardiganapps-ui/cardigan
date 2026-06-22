@@ -6,6 +6,14 @@ import { useT } from "../../i18n/index";
 export const AccountHeader = React.memo(function AccountHeader({
   userName, userEmail, userInitial, avatarImageUrl, readOnly,
   onOpenAvatar, onEditProfile,
+}: {
+  userName?: string;
+  userEmail?: string;
+  userInitial?: string;
+  avatarImageUrl?: string | null;
+  readOnly?: boolean;
+  onOpenAvatar: () => void;
+  onEditProfile: () => void;
 }) {
   const { t } = useT();
   return (

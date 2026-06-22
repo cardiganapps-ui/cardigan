@@ -5,6 +5,11 @@ import { useT } from "../../i18n/index";
 
 export const HelpPanel = React.memo(function HelpPanel({
   updateChecking, updateStatus, onRestartTutorial, onCheckForUpdate,
+}: {
+  updateChecking?: boolean;
+  updateStatus?: { tone?: string; msg?: string } | null;
+  onRestartTutorial: () => void;
+  onCheckForUpdate: () => void;
 }) {
   const { t } = useT();
   return (

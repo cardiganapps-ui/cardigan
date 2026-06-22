@@ -3,9 +3,23 @@ import { IconShield, IconKey, IconLock, IconChevron } from "../../components/Ico
 import { useT } from "../../i18n/index";
 import { ProBadge } from "./ProBadge";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed mfa/passkeys/noteCrypto hook objects
+type Row = any;
+
 export const SecurityPanel = React.memo(function SecurityPanel({
   readOnly, mfa, passkeys, noteCrypto, isPro, showEncryptionSetup, encSummary,
   onOpenMfa, onOpenPasskeys, onOpenEncryption,
+}: {
+  readOnly?: boolean;
+  mfa: Row;
+  passkeys: Row;
+  noteCrypto?: Row;
+  isPro?: boolean;
+  showEncryptionSetup?: boolean;
+  encSummary?: React.ReactNode;
+  onOpenMfa: () => void;
+  onOpenPasskeys: () => void;
+  onOpenEncryption: () => void;
 }) {
   const { t } = useT();
   if (readOnly) return null;

@@ -4,8 +4,17 @@ import { useT } from "../../i18n/index";
 import { MONETIZATION_ENABLED } from "../../config/monetization";
 import { rowSubLine } from "../../utils/subscriptionStatus";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed subscription hook object
+type Row = any;
+
 export const SubscriptionPanel = React.memo(function SubscriptionPanel({
   subscription, message, activeSheet, onOpenSheet, onOpenChangePassword,
+}: {
+  subscription?: Row;
+  message?: string | null;
+  activeSheet?: string | null;
+  onOpenSheet: (sheet: string) => void;
+  onOpenChangePassword: () => void;
 }) {
   const { t } = useT();
   return (

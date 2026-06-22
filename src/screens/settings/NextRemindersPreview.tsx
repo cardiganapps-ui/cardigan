@@ -9,7 +9,7 @@ import { useCardigan } from "../../context/CardiganContext";
    reconcile "what does the 30-min setting actually do" against
    their real schedule — closes a meaningful clarity gap that the
    row's summary text alone can't. */
-export function NextRemindersPreview({ minutes }) {
+export function NextRemindersPreview({ minutes }: { minutes: number }) {
   const { t } = useT();
   const { upcomingSessions } = useCardigan();
   // `now` lives in state so React Compiler's purity rules accept the
@@ -25,7 +25,7 @@ export function NextRemindersPreview({ minutes }) {
   }, []);
   const items = useMemo(() => {
     const horizonMs = now + 24 * 60 * 60 * 1000;
-    const out = [];
+    const out: { id: string; fireAt: number; sessionAt: number; patient: string }[] = [];
     for (const s of (upcomingSessions || [])) {
       if (s.status !== "scheduled") continue;
       if (!s.date || !s.time) continue;

@@ -4,6 +4,11 @@ import { useT } from "../../i18n/index";
 
 export const DataPrivacyPanel = React.memo(function DataPrivacyPanel({
   readOnly, exporting, onOpenExport, onOpenPrivacyPolicy,
+}: {
+  readOnly?: boolean;
+  exporting?: boolean;
+  onOpenExport: () => void;
+  onOpenPrivacyPolicy: () => void;
 }) {
   const { t } = useT();
   return (

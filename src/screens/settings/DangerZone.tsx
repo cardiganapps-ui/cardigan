@@ -5,6 +5,12 @@ import { useT } from "../../i18n/index";
 
 export const DangerZone = React.memo(function DangerZone({
   readOnly, onOpenDiagnostics, onSignOut, onOpenSignOutEverywhere, onOpenDeleteAccount,
+}: {
+  readOnly?: boolean;
+  onOpenDiagnostics: () => void;
+  onSignOut: () => void;
+  onOpenSignOutEverywhere: () => void;
+  onOpenDeleteAccount: () => void;
 }) {
   const { t } = useT();
   return (
