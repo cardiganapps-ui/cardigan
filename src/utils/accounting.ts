@@ -45,6 +45,7 @@ export interface BalanceSession {
   date: string;
   time?: string | null;
   rate?: number | null;
+  created_at?: string | null;
   _displayOnly?: boolean;
 }
 
@@ -72,8 +73,20 @@ const DISPLAY_ONLY_GUARD = !!(import.meta.env && import.meta.env.DEV);
 // auto-complete rule in useCardiganData::enrichedSessions — they MUST
 // agree so that a session visible as "completed" in the UI is also
 // the one that appears in amountDue.
+//
+// The (yearless "D-MMM") date's year is inferred relative to created_at,
+// NOT to today. created_at is always within the recurrence window of the
+// true session date, so it's a stable anchor; today-anchoring instead
+// flips a past-scheduled date >~6 months old into a FUTURE year, which
+// silently drops it out of `consumed` and understates amountDue (and the
+// drift is invisible to the audit because every predicate shared the same
+// today-anchoring). Falls back to today when created_at is absent (unit
+// fixtures) — i.e. the prior behavior. MUST stay in sync with the SQL
+// session_counts_at and the api/_cardiTools + audit-accounting mirrors.
 function sessionEndMoment(session: BalanceSession): Date {
-  const d = parseShortDate(session.date);
+  const created = session.created_at ? new Date(session.created_at) : null;
+  const anchor = created && !isNaN(created.getTime()) ? created : undefined;
+  const d = parseShortDate(session.date, anchor);
   if (session.time) {
     const [h, m] = session.time.split(":");
     d.setHours(parseInt(h) || 0, parseInt(m) || 0);

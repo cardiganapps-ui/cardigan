@@ -23,8 +23,10 @@
                    • status = completed, OR
                    • status = charged, OR
                    • status = scheduled AND (date+time+1h) ≤ now
-     amountDue = max(0, consumed − patient.paid)
-     credit    = max(0, patient.paid − consumed)
+     amountDue = max(0, consumed − patient.paid + patient.opening_balance)
+     credit    = max(0, patient.paid − consumed − patient.opening_balance)
+   (opening_balance: signed migrated starting balance — see the code at
+    the delta computation below; this header mirrors utils/accounting.ts.)
 */
 
 // Force the predicate calculation into the user's tz so the audit's JS
@@ -50,17 +52,25 @@ const SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct
 //       2. mirror the change here AND in
 //          scripts/backfill-billed-from-predicate.mjs
 //       3. re-run npm test to confirm src + accounting.test.js still pass
-function parseSessionEnd(dateStr, timeStr, now) {
+function parseSessionEnd(dateStr, timeStr, now, createdAt) {
   if (!dateStr) return null;
   const parts = dateStr.split(/[\s-]+/);
   const day = parseInt(parts[0]);
   const mIdx = SHORT_MONTHS.indexOf(parts[1]);
   if (!day || mIdx < 0) return null;
-  // Pick the closest year to `now` — matches inferYear() in utils/dates.
-  const refYear = now.getFullYear();
+  // Anchor the year inference on created_at (always within the recurrence
+  // window of the true session date), NOT now — matches the created_at
+  // anchor in utils/accounting.ts::sessionEndMoment. Falls back to now
+  // when created_at is missing. A past-scheduled date >~6mo old would
+  // otherwise infer to a future year and stop counting (understated
+  // balance, invisible to this very audit because the old code shared the
+  // bug). The "has it passed" comparison below still uses `now`.
+  const created = createdAt ? new Date(createdAt) : null;
+  const anchor = created && !isNaN(created.getTime()) ? created : now;
+  const refYear = anchor.getFullYear();
   let best = refYear, bestDiff = Infinity;
   for (const y of [refYear - 1, refYear, refYear + 1]) {
-    const diff = Math.abs(new Date(y, mIdx, day) - now);
+    const diff = Math.abs(new Date(y, mIdx, day) - anchor);
     if (diff < bestDiff) { bestDiff = diff; best = y; }
   }
   const d = new Date(best, mIdx, day);
@@ -75,7 +85,7 @@ function parseSessionEnd(dateStr, timeStr, now) {
 function sessionCountsTowardBalance(s, now) {
   if (s.status === "completed" || s.status === "charged") return true;
   if (s.status === "scheduled") {
-    const end = parseSessionEnd(s.date, s.time, now);
+    const end = parseSessionEnd(s.date, s.time, now, s.created_at);
     return end != null && now >= end;
   }
   return false;

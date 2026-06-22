@@ -472,3 +472,46 @@ describe("applyConsumedToPatients (memo-split equivalence)", () => {
     expect(applyConsumedToPatients(undefined, new Map())).toEqual([]);
   });
 });
+
+// ── C1 regression: old past-scheduled sessions must keep counting ──
+// The (yearless "D-MMM") date's year is inferred relative to the row's
+// created_at, not "today". With today-anchoring, a scheduled session more
+// than ~6 months old inferred to a FUTURE year and silently dropped out
+// of `consumed`, understating amountDue. These lock the created_at anchor.
+describe("C1 — yearless date inference anchored on created_at", () => {
+  // NOW = 2026-04-24. A genuinely-past scheduled session from Sep 2025
+  // (~7.5 months before NOW), created back then, must still count even
+  // though "1-Sep" is closest to a FUTURE September relative to NOW.
+  it("counts an 8-month-old scheduled session (created_at last year)", () => {
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "1-Sep", time: "10:00", created_at: "2025-09-01T10:00:00.000Z" }),
+      NOW,
+    )).toBe(true);
+  });
+
+  it("does NOT count a recently-created future scheduled session", () => {
+    // Created today; dated ~4 months ahead → genuinely future → no count.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "20-Ago", time: "10:00", created_at: "2026-04-20T10:00:00.000Z" }),
+      NOW,
+    )).toBe(false);
+  });
+
+  it("amountDue includes an old scheduled session that today-anchoring would drop", () => {
+    const patients = [pat("p", 700, 0)];
+    const sessions = [
+      sess("p", "scheduled", 700, { date: "1-Sep", time: "10:00", created_at: "2025-09-01T10:00:00.000Z" }),
+    ];
+    const [out] = enrichPatientsWithBalance(patients, sessions, NOW);
+    expect(out.amountDue).toBe(700);
+    expect(out.credit).toBe(0);
+  });
+
+  it("falls back to today-anchoring when created_at is absent (no regression)", () => {
+    // No created_at → prior behavior: a clearly-past date this year counts.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "23-Abr", time: "10:00" }),
+      NOW,
+    )).toBe(true);
+  });
+});

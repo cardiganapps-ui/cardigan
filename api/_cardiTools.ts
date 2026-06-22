@@ -64,7 +64,12 @@ function parseShortDate(str: Row, ref = new Date()): Date {
 // sync — if the predicate drifts the balances Cardi reports won't
 // match the in-app numbers and users will lose trust.
 function sessionEndMoment(s: Row): Date {
-  const d = parseShortDate(s.date);
+  // Anchor the yearless date's year inference on created_at, not today —
+  // otherwise a scheduled session >~6 months old infers to a future year
+  // and stops counting (understated balance). Mirrors utils/accounting.ts.
+  const created = s.created_at ? new Date(s.created_at) : null;
+  const ref = created && !isNaN(created.getTime()) ? created : new Date();
+  const d = parseShortDate(s.date, ref);
   if (s.time) {
     const [h, m] = s.time.split(":");
     d.setHours(parseInt(h, 10) || 0, parseInt(m, 10) || 0);
@@ -225,7 +230,7 @@ async function listPatients(svc: Row, userId: Row, input: Row): Promise<Row> {
   const ids = patients.map((p: Row) => p.id);
   const [{ data: sessions, error: se }, { data: payments, error: pe }] = await Promise.all([
     svc.from("sessions")
-      .select("patient_id,date,time,status,rate")
+      .select("patient_id,date,time,status,rate,created_at")
       .eq("user_id", userId)
       .in("patient_id", ids),
     svc.from("payments")
@@ -330,7 +335,7 @@ async function getPatientDetail(svc: Row, userId: Row, input: Row): Promise<Row>
 
   const [{ data: sessions, error: se }, { data: payments, error: pe }] = await Promise.all([
     svc.from("sessions")
-      .select("date,time,status,rate,duration,modality,session_type,is_recurring")
+      .select("date,time,status,rate,duration,modality,session_type,is_recurring,created_at")
       .eq("user_id", userId)
       .eq("patient_id", target.id)
       .order("date", { ascending: false })
@@ -400,7 +405,7 @@ async function getFinanceSummary(svc: Row, userId: Row, input: Row): Promise<Row
   // counters stay consistent with what the user sees on Agenda.
   const [{ data: patients, error: pe }, { data: sessions, error: se }, { data: payments, error: paye }] = await Promise.all([
     svc.from("patients").select("id,rate,paid,opening_balance,status").eq("user_id", userId).in("status", ["active", "ended"]),
-    svc.from("sessions").select("patient_id,date,time,status,rate,modality,session_type").eq("user_id", userId),
+    svc.from("sessions").select("patient_id,date,time,status,rate,modality,session_type,created_at").eq("user_id", userId),
     svc.from("payments").select("date,amount,method").eq("user_id", userId),
   ]);
   if (pe) throw new Error(pe.message);
