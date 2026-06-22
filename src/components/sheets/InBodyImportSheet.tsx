@@ -27,23 +27,32 @@ import { haptic } from "../../utils/haptics";
    the schema level — the local pre-filter in bulkCreateMeasurements
    is the suspenders, the index is the belt. */
 
-export function InBodyImportSheet({ open, patient, onClose, onImported }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed measurement/patient rows + parser output
+type Row = any;
+interface ParseResult { rows: Row[]; warnings: string[] }
+
+export function InBodyImportSheet({ open, patient, onClose, onImported }: {
+  open?: boolean;
+  patient?: Row;
+  onClose?: () => void;
+  onImported?: (result: Row) => void;
+}) {
   const { t } = useT();
   const { measurements, bulkCreateMeasurements, showSuccess } = useCardigan();
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
-  const panelRef = useFocusTrap(open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const panelRef = useFocusTrap(!!open);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
 
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState("pick"); // "pick" | "preview" | "saving"
-  const [parseResult, setParseResult] = useState(null); // { rows, warnings }
-  const [selected, setSelected] = useState(() => new Set()); // scanned_at strings
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set()); // scanned_at strings
   const [parseError, setParseError] = useState("");
   const [dropHover, setDropHover] = useState(false);
 
@@ -54,7 +63,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
   // the strings differ, so we round-trip through Date for stable
   // comparison.
   const existingScansForPatient = useMemo(() => {
-    const set = new Set();
+    const set = new Set<string>();
     for (const m of measurements || []) {
       if (m.patient_id === patient?.id && m.scanned_at) {
         const iso = canonIso(m.scanned_at);
@@ -64,7 +73,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
     return set;
   }, [measurements, patient?.id]);
 
-  const toggleRow = useCallback((scannedAt) => {
+  const toggleRow = useCallback((scannedAt: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(scannedAt)) next.delete(scannedAt);
@@ -75,12 +84,12 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
 
   const selectedRows = useMemo(() => {
     if (!parseResult) return [];
-    return parseResult.rows.filter((r) => selected.has(r.scanned_at));
+    return parseResult.rows.filter((r: Row) => selected.has(r.scanned_at));
   }, [parseResult, selected]);
 
   if (!open) return null;
 
-  const handleFile = async (file) => {
+  const handleFile = async (file?: File | null) => {
     setParseError("");
     if (!file) return;
     const name = (file.name || "").toLowerCase();
@@ -102,7 +111,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
       return;
     }
 
-    let result;
+    let result: ParseResult;
     if (isXlsx) {
       result = await parseInBodyXLSX(file, { expectedName: patient?.name });
     } else {
@@ -132,7 +141,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
     setParseResult(result);
     // Default selection: rows that match this patient AND aren't
     // already in the DB. Everything else stays visible but unchecked.
-    const initial = new Set();
+    const initial = new Set<string>();
     for (const r of result.rows) {
       const iso = canonIso(r.scanned_at);
       if (r._matchesPatient && iso && !existingScansForPatient.has(iso)) {
@@ -144,7 +153,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
     haptic.tap();
   };
 
-  const onDrop = (e) => {
+  const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDropHover(false);
     const file = e.dataTransfer?.files?.[0];
@@ -248,9 +257,9 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
               {t("measurements.import.foundRows", { count: String(parseResult.rows.length) })}
             </div>
             <div className="inbody-import-list" role="list">
-              {parseResult.rows.map((r) => {
+              {parseResult.rows.map((r: Row) => {
                 const isSelected = selected.has(r.scanned_at);
-                const alreadyImported = existingScansForPatient.has(canonIso(r.scanned_at));
+                const alreadyImported = existingScansForPatient.has(canonIso(r.scanned_at) ?? "");
                 const dateLabel = formatDateLabel(r.scanned_at);
                 const weight = r.weight_kg != null ? `${fmt(r.weight_kg)} kg` : "—";
                 const bodyFat = r.body_fat_pct != null ? `${fmt(r.body_fat_pct)}%` : null;
@@ -317,7 +326,7 @@ export function InBodyImportSheet({ open, patient, onClose, onImported }) {
   );
 }
 
-function fmt(n) {
+function fmt(n?: number | null) {
   if (n == null || Number.isNaN(n)) return "";
   return Number(n).toFixed(1).replace(/\.0$/, "");
 }
@@ -325,7 +334,7 @@ function fmt(n) {
 /* Round-trip an ISO string through Date so two equivalent
    representations (`+00:00` vs `Z`, with-vs-without millis) compare
    equal. Returns null on unparseable input. */
-function canonIso(s) {
+function canonIso(s?: string | null) {
   if (!s) return null;
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
@@ -333,7 +342,7 @@ function canonIso(s) {
 }
 
 /* "2026-04-12T10:30:00.000Z" → "12 Abr · 10:30" */
-function formatDateLabel(iso) {
+function formatDateLabel(iso?: string | null) {
   if (!iso) return "";
   const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso);

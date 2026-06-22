@@ -37,9 +37,21 @@ import { launchUrl } from "../../lib/nativeBrowser";
    files when a potential is discarded; deletePatient's R2 cleanup
    only fires on hard-delete). */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
+type Row = any;
+
 export function PotentialProfileSheet({
   patient, interviewSession, onClose,
   onConvert, onDiscard, onOpenSession, mutating, readOnly = false,
+}: {
+  patient?: Row;
+  interviewSession?: Row;
+  onClose: () => void;
+  onConvert?: (patient: Row) => void;
+  onDiscard?: (id: string) => Promise<boolean> | boolean;
+  onOpenSession?: (session: Row) => void;
+  mutating?: boolean;
+  readOnly?: boolean;
 }) {
   const { t } = useT();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
@@ -47,7 +59,7 @@ export function PotentialProfileSheet({
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
   useLayer("potential-profile", onClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -305,9 +317,14 @@ export function PotentialProfileSheet({
   );
 }
 
-function ContactLink({ href, icon, label, truncate = false }) {
+function ContactLink({ href, icon, label, truncate = false }: {
+  href?: string | null;
+  icon?: React.ReactNode;
+  label?: React.ReactNode;
+  truncate?: boolean;
+}) {
   if (!href) return null;
-  const onClick = (e) => {
+  const onClick = (e: React.MouseEvent) => {
     if (isNative()) {
       e.preventDefault();
       launchUrl(href);

@@ -19,17 +19,27 @@ import { IconBell, IconChevron } from "../Icons";
    just not a wall of monospace on open). Read-only info + a few test
    buttons — the point is to verify wiring, not to mutate state. */
 
-const reminderLabel = (m) =>
+declare const __SENTRY_RELEASE__: string | undefined;
+declare const __VERCEL_DEPLOYMENT_ID__: string | undefined;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed notifications bag from context
+type NotificationsBag = any;
+
+const reminderLabel = (m?: number | null) =>
   m == null ? "—" : m === 60 ? "1 hora antes" : `${m} min antes`;
 
-export function DiagnosticsSheet({ open, onClose, notifications }) {
-  const [nativePerm, setNativePerm] = useState(null);
-  const [launchUrl, setLaunchUrl] = useState(null);
-  const [testResult, setTestResult] = useState(null);
-  const [regResult, setRegResult] = useState(null);
+export function DiagnosticsSheet({ open, onClose, notifications }: {
+  open?: boolean;
+  onClose?: () => void;
+  notifications?: NotificationsBag;
+}) {
+  const [nativePerm, setNativePerm] = useState<string | null>(null);
+  const [launchUrl, setLaunchUrl] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [regResult, setRegResult] = useState<string | null>(null);
   const [showTech, setShowTech] = useState(false);
 
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
 
   useEffect(() => {
@@ -103,7 +113,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
   const accentBg = okTone ? "var(--green-bg)" : "var(--amber-bg)";
 
   // Plain-language status rows (the bits a human cares about).
-  const statusRows = [
+  const statusRows: [string, [string, string]][] = [
     [
       "Notificaciones",
       enabled
@@ -122,7 +132,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
   ];
 
   // Raw technical fields — kept for support, hidden behind the disclosure.
-  const techLines = [
+  const techLines: [string, string][] = [
     ["Platform", getPlatform()],
     ["Native", String(isNative())],
     ["Push supported", String(supported)],
@@ -152,7 +162,7 @@ export function DiagnosticsSheet({ open, onClose, notifications }) {
         ? `✓ token ${r.platform} · ${(r.token || "").length} chars`
         : `✗ ${r.code}${r.error ? ` — ${r.error}` : ""}`);
     } catch (err) {
-      setRegResult(`✗ excepción — ${err?.message || String(err)}`);
+      setRegResult(`✗ excepción — ${(err as Error)?.message || String(err)}`);
     }
   };
 

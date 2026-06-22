@@ -27,7 +27,19 @@ import { MoneyInput } from "../MoneyInput";
    because templates aren't destructive and the user can always re-enter).
 */
 
-export function RecurringExpenseSheet({ onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed template rows
+type Row = any;
+
+interface Draft {
+  amount: string;
+  category: string;
+  description: string;
+  dayOfMonth: number;
+  paymentMethod: string;
+  taxTreatment: string;
+}
+
+export function RecurringExpenseSheet({ onClose }: { onClose: () => void }) {
   const {
     recurringExpenses, updateRecurringTemplate, deleteRecurringTemplate,
     mutating,
@@ -39,24 +51,24 @@ export function RecurringExpenseSheet({ onClose }) {
   const safeAnimatedClose = mutating ? null : animatedClose;
   useEscape(safeAnimatedClose);
   const panelRef = useFocusTrap(true);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: true });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose || (() => {}), { isOpen: true });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
 
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [editError, setEditError] = useState("");
 
   // Sort: active first, then paused, then alpha by description.
-  const sorted = [...(recurringExpenses || [])].sort((a, b) => {
+  const sorted = [...(recurringExpenses || [])].sort((a: Row, b: Row) => {
     if (a.active !== b.active) return a.active ? -1 : 1;
     return (a.description || "").localeCompare(b.description || "");
   });
 
-  const startEdit = (tpl) => {
+  const startEdit = (tpl: Row) => {
     setEditingId(tpl.id);
     setEditError("");
     setDraft({
@@ -69,15 +81,15 @@ export function RecurringExpenseSheet({ onClose }) {
     });
   };
   const cancelEdit = () => { setEditingId(null); setDraft(null); setEditError(""); };
-  const updateDraft = (patch) => {
-    setDraft(d => ({ ...d, ...patch }));
+  const updateDraft = (patch: Partial<Draft>) => {
+    setDraft(d => (d ? { ...d, ...patch } : d));
     if (editError) setEditError("");
   };
 
-  const saveEdit = async (tpl) => {
+  const saveEdit = async (tpl: Row) => {
     if (!draft) return;
-    const amount = Number(draft.amount);
-    const dom = Number(draft.dayOfMonth);
+    const amount = Number(draft!.amount);
+    const dom = Number(draft!.dayOfMonth);
     // Surface field-level errors instead of silent no-op so the user
     // knows why the form didn't close. Order: amount > category > dom
     // (most-likely-wrong first).
@@ -85,7 +97,7 @@ export function RecurringExpenseSheet({ onClose }) {
       setEditError(t("gastos.enterAmount"));
       return;
     }
-    if (!draft.category) {
+    if (!draft!.category) {
       setEditError(t("gastos.selectCategory"));
       return;
     }
@@ -96,35 +108,35 @@ export function RecurringExpenseSheet({ onClose }) {
     setEditError("");
     const ok = await updateRecurringTemplate(tpl.id, {
       amount,
-      category: draft.category,
-      description: draft.description.trim(),
+      category: draft!.category,
+      description: draft!.description.trim(),
       dayOfMonth: dom,
-      paymentMethod: draft.paymentMethod,
-      taxTreatment: draft.taxTreatment,
+      paymentMethod: draft!.paymentMethod,
+      taxTreatment: draft!.taxTreatment,
     });
     if (ok) { haptic.success(); cancelEdit(); }
     else setEditError(t("gastos.saveError"));
   };
 
-  const handleToggle = async (tpl) => {
+  const handleToggle = async (tpl: Row) => {
     haptic.tap();
     await updateRecurringTemplate(tpl.id, { active: !tpl.active });
   };
 
-  const handleDelete = async (tpl) => {
+  const handleDelete = async (tpl: Row) => {
     if (!window.confirm(t("gastos.recurringDelete") + "\n\n" + t("gastos.recurringDeleteWarning"))) return;
     await deleteRecurringTemplate(tpl.id);
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("gastos.recurringTitle")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose || undefined}>
             <IconX size={14} />
           </button>
         </div>
@@ -208,12 +220,12 @@ export function RecurringExpenseSheet({ onClose }) {
                         individual generated expenses, not the template). */}
                     <div className="input-group">
                       <label className="input-label">{t("gastos.amount")}</label>
-                      <MoneyInput min="1" step="1" value={draft.amount}
+                      <MoneyInput min="1" step="1" value={draft!.amount}
                         onChange={(e) => updateDraft({ amount: e.target.value })} />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t("gastos.category")}</label>
-                      <select className="input" value={draft.category}
+                      <select className="input" value={draft!.category}
                         onChange={(e) => updateDraft({ category: e.target.value })}>
                         {EXPENSE_CATEGORIES.map(c => (
                           <option key={c} value={c}>{t(`gastos.cat.${c}`)}</option>
@@ -222,13 +234,13 @@ export function RecurringExpenseSheet({ onClose }) {
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t("gastos.description")}</label>
-                      <input className="input" type="text" value={draft.description}
+                      <input className="input" type="text" value={draft!.description}
                         onChange={(e) => updateDraft({ description: e.target.value })}
                         placeholder={t("gastos.descriptionPlaceholder")} />
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t("gastos.recurringDay")}</label>
-                      <input className="input" type="number" min="1" max="31" value={draft.dayOfMonth}
+                      <input className="input" type="number" min="1" max="31" value={draft!.dayOfMonth}
                         onChange={(e) => updateDraft({ dayOfMonth: Number(e.target.value) || 1 })} />
                       <span className="input-help" style={{ display: "block", marginTop: 4 }}>
                         {t("gastos.recurringDayHint")}
@@ -236,7 +248,7 @@ export function RecurringExpenseSheet({ onClose }) {
                     </div>
                     <div className="input-group">
                       <label className="input-label">{t("gastos.method")}</label>
-                      <select className="input" value={draft.paymentMethod}
+                      <select className="input" value={draft!.paymentMethod}
                         onChange={(e) => updateDraft({ paymentMethod: e.target.value })}>
                         {EXPENSE_PAYMENT_METHODS.map(m => {
                           const key = (
@@ -263,7 +275,7 @@ export function RecurringExpenseSheet({ onClose }) {
                             tt === TAX_TREATMENT.NON_DEDUCTIBLE ? "gastos.treatmentNonDeductible" :
                             "gastos.treatmentPersonal"
                           );
-                          const active = draft.taxTreatment === tt;
+                          const active = draft!.taxTreatment === tt;
                           return (
                             <button key={tt} type="button" role="radio" aria-checked={active}
                               className="btn-tap"
