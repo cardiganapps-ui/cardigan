@@ -23,7 +23,7 @@ const API_ORIGIN = "https://cardigan.mx";
 if (typeof window !== "undefined" && typeof window.fetch === "function") {
   const original = window.fetch.bind(window);
 
-  window.fetch = function nativeRewriteFetch(input, init) {
+  window.fetch = function nativeRewriteFetch(input: RequestInfo | URL, init?: RequestInit) {
     if (!isNative()) return original(input, init);
     if (typeof input !== "string") return original(input, init);
     // Only rewrite same-origin /api/* paths. Anything absolute already

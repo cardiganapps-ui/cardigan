@@ -20,7 +20,7 @@ export function isSharingSupported() {
   return typeof navigator !== "undefined" && typeof navigator.share === "function";
 }
 
-export async function shareContent({ title, text, url } = {}) {
+export async function shareContent({ title, text, url }: { title?: string; text?: string; url?: string } = {}) {
   if (isNative()) {
     try {
       const { Share } = await import("@capacitor/share");
@@ -30,7 +30,7 @@ export async function shareContent({ title, text, url } = {}) {
       // The plugin throws on user-cancel with a message like "Share canceled".
       // Treat anything non-Error-shaped or matching that pattern as an
       // intentional dismissal so callers don't toast a failure.
-      const msg = err?.message || String(err || "");
+      const msg = (err as Error)?.message || String(err || "");
       if (/cancel/i.test(msg)) return { ok: false, aborted: true };
       return { ok: false, error: msg };
     }
@@ -41,8 +41,8 @@ export async function shareContent({ title, text, url } = {}) {
       await navigator.share({ title, text, url });
       return { ok: true };
     } catch (err) {
-      if (err?.name === "AbortError") return { ok: false, aborted: true };
-      return { ok: false, error: err?.message || String(err) };
+      if ((err as Error)?.name === "AbortError") return { ok: false, aborted: true };
+      return { ok: false, error: (err as Error)?.message || String(err) };
     }
   }
 

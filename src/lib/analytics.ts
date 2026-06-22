@@ -57,14 +57,13 @@ const PII_KEYS = new Set([
    the top level. Nested objects are dropped (logged once in dev) so
    a property bag that grew an object accidentally fails fast and
    visibly rather than silently throwing inside the SDK. */
-function scrubAndFlatten(props) {
+function scrubAndFlatten(props?: unknown): Record<string, string | number | boolean> {
   if (!props || typeof props !== "object") return {};
-  const out = {};
+  const out: Record<string, string | number | boolean> = {};
   for (const [k, v] of Object.entries(props)) {
     if (PII_KEYS.has(k)) continue;
     if (v == null) continue;
-    const t = typeof v;
-    if (t === "string" || t === "number" || t === "boolean") {
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
       out[k] = v;
     }
     // Anything else (object, array, function) is silently dropped —
@@ -77,9 +76,9 @@ function scrubAndFlatten(props) {
 // dashboard level, but stamping them on every event gives us a
 // filter dimension in the Custom Events view ("show events where
 // user_id = X").
-let userContext = {};
+let userContext: Record<string, string | number | boolean> = {};
 
-export function identify(userId, properties) {
+export function identify(userId?: string, properties?: Record<string, unknown>) {
   if (!userId) return;
   userContext = {
     user_id: userId,
@@ -87,7 +86,7 @@ export function identify(userId, properties) {
   };
 }
 
-export function track(event, properties) {
+export function track(event?: string, properties?: Record<string, unknown>) {
   if (!event || typeof event !== "string") return;
   const merged = { ...userContext, ...scrubAndFlatten(properties || {}) };
   // vercelTrack is a no-op outside production by default (the

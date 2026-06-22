@@ -40,7 +40,7 @@ const OVERLAY_SELECTORS = [
 ];
 
 let installed = false;
-let observer = null;
+let observer: MutationObserver | null = null;
 let lockedScrollY = 0;
 let isLocked = false;
 

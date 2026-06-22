@@ -15,26 +15,34 @@
 
 const STRIPE_JS_URL = "https://js.stripe.com/v3/";
 
-let scriptPromise = null;
+// Loose shapes — we don't pull in @stripe/stripe-js types for a single
+// runtime call site. The publishable-key constructor returns the Stripe
+// instance the checkout sheet uses.
+type StripeCtor = (key: string) => unknown;
+const stripeWindow = () => window as unknown as { Stripe?: StripeCtor };
 
-function loadScript() {
+let scriptPromise: Promise<StripeCtor> | null = null;
+
+function loadScript(): Promise<StripeCtor> {
   if (scriptPromise) return scriptPromise;
   // SSR safety — should never run server-side, but bail cleanly anyway.
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Stripe.js can only load in the browser"));
   }
+  const w = stripeWindow();
   // The CDN may already have a script tag injected (HMR, double-mount).
   // Reuse the existing global if present.
-  if (window.Stripe) {
-    scriptPromise = Promise.resolve(window.Stripe);
+  if (w.Stripe) {
+    scriptPromise = Promise.resolve(w.Stripe);
     return scriptPromise;
   }
-  scriptPromise = new Promise((resolve, reject) => {
+  scriptPromise = new Promise<StripeCtor>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = STRIPE_JS_URL;
     script.async = true;
     script.onload = () => {
-      if (window.Stripe) resolve(window.Stripe);
+      const s = stripeWindow().Stripe;
+      if (s) resolve(s);
       else reject(new Error("Stripe.js loaded but window.Stripe is undefined"));
     };
     script.onerror = () => reject(new Error("Failed to load Stripe.js"));
@@ -43,7 +51,7 @@ function loadScript() {
   return scriptPromise;
 }
 
-let stripeInstancePromise = null;
+let stripeInstancePromise: Promise<unknown> | null = null;
 
 export function getStripe() {
   if (stripeInstancePromise) return stripeInstancePromise;

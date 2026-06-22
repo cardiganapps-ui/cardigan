@@ -16,18 +16,20 @@
    environments where the var isn't set, the wrapper is a no-op —
    nothing gets added. */
 
+declare const __VERCEL_DEPLOYMENT_ID__: string | undefined;
+
 const DEPLOYMENT_ID = typeof __VERCEL_DEPLOYMENT_ID__ === 'string' ? __VERCEL_DEPLOYMENT_ID__ : '';
 
 if (DEPLOYMENT_ID && typeof window !== 'undefined' && typeof window.fetch === 'function') {
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = function patchedFetch(input, init) {
-    let url;
+  window.fetch = function patchedFetch(input: RequestInfo | URL, init?: RequestInit) {
+    let url: string | null | undefined;
     try {
       url = typeof input === 'string'
         ? input
         : input instanceof URL ? input.href
-        : input?.url;
+        : input.url;
     } catch { url = null; }
 
     // Only stamp same-origin /api/* requests. Calls to Supabase, R2,
@@ -51,7 +53,7 @@ if (DEPLOYMENT_ID && typeof window !== 'undefined' && typeof window.fetch === 'f
     // Merge our header without clobbering caller-set headers. The
     // Headers constructor accepts Headers, plain object, or array of
     // pairs; we feed it whatever the caller gave us and `set` on top.
-    const headers = new Headers(init?.headers || (typeof input === 'object' && input?.headers) || undefined);
+    const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined) || undefined);
     if (!headers.has('x-deployment-id')) {
       headers.set('x-deployment-id', DEPLOYMENT_ID);
     }
