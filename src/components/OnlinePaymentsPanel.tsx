@@ -20,7 +20,7 @@ import { IconCreditCard, IconCheck, IconRefresh } from "./Icons";
    renders a vertical column of UI. Mounting Settings or any other
    surface can wrap it however they like. */
 
-export function OnlinePaymentsPanel({ user }) {
+export function OnlinePaymentsPanel({ user }: { user?: { id?: string } | null }) {
   const { t } = useT();
   const { showToast } = useCardigan();
   const c = useTherapistConnect(user);
@@ -44,7 +44,7 @@ export function OnlinePaymentsPanel({ user }) {
       // future refactor breaks that, the click must still surface
       // something to the user instead of looking dead.
       console.error("[OnlinePaymentsPanel] handleStart threw:", err);
-      r = { ok: false, error: err?.message || "unknown" };
+      r = { ok: false, error: (err as Error)?.message || "unknown" };
     }
     if (!r.ok) {
       const detail = r.error ? ` (${r.error})` : "";
@@ -58,7 +58,7 @@ export function OnlinePaymentsPanel({ user }) {
       r = await c.openDashboard();
     } catch (err) {
       console.error("[OnlinePaymentsPanel] handleDashboard threw:", err);
-      r = { ok: false, error: err?.message || "unknown" };
+      r = { ok: false, error: (err as Error)?.message || "unknown" };
     }
     if (!r.ok) {
       if (r.code === "incomplete") {

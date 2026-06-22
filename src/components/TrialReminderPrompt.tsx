@@ -13,7 +13,7 @@ import { haptic } from "../utils/haptics";
    render-only — it expects `open` to already account for accessState,
    the daysLeft threshold, and the once-per-day localStorage key. */
 
-const TIER_KEYS = {
+const TIER_KEYS: Record<number, { tone: string; icon: typeof IconSparkle }> = {
   15: { tone: "soft",    icon: IconSparkle },
   10: { tone: "soft",    icon: IconSparkle },
   5:  { tone: "warm",    icon: IconSparkle },
@@ -27,6 +27,11 @@ export default function TrialReminderPrompt({
   daysLeft,
   onSubscribe,
   onDismiss,
+}: {
+  open?: boolean;
+  daysLeft?: number;
+  onSubscribe?: () => void;
+  onDismiss?: () => void;
 }) {
   const { t } = useT();
   const [mounted, setMounted] = useState(false);
@@ -43,7 +48,7 @@ export default function TrialReminderPrompt({
 
   if (!open) return null;
 
-  const tier = TIER_KEYS[daysLeft] || TIER_KEYS[15];
+  const tier = TIER_KEYS[daysLeft ?? -1] || TIER_KEYS[15];
   const tone = tier.tone;
   const Icon = tier.icon;
 

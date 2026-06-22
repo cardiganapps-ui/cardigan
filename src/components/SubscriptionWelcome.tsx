@@ -24,6 +24,10 @@ export default function SubscriptionWelcome({
   daysLeftInTrial,
   onSubscribe,
   onContinue,
+}: {
+  daysLeftInTrial?: number;
+  onSubscribe?: () => void | Promise<void>;
+  onContinue?: () => void;
 }) {
   const { t } = useT();
   const [submitting, setSubmitting] = useState(false);

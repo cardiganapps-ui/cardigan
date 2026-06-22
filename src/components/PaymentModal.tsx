@@ -12,23 +12,29 @@ import { useSheetExit } from "../hooks/useSheetExit";
 import { haptic } from "../utils/haptics";
 import { formatMXN } from "../utils/format";
 
-export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }) {
+export function PaymentModal({ open, onClose, initialPatientName, initialAmount, editingPayment }: {
+  open?: boolean;
+  onClose?: () => void;
+  initialPatientName?: string;
+  initialAmount?: string | number;
+  editingPayment?: { id?: string; patient?: string; amount?: number; method?: string; date?: string; note?: string } | null;
+}) {
   const { patients, createPayment, updatePayment, mutating } = useCardigan();
   const { t } = useT();
   const isEditing = !!editingPayment;
   // Animated close — see useSheetExit / SessionSheet for the pattern.
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
-  const panelRef = useFocusTrap(open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const panelRef = useFocusTrap(!!open);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [amount, setAmount] = useState(initialAmount || "");
-  const [method, setMethod] = useState(PAYMENT_METHOD.TRANSFER);
+  const [method, setMethod] = useState<string>(PAYMENT_METHOD.TRANSFER);
   const [customMethod, setCustomMethod] = useState("");
   const [date, setDate] = useState(todayISO());
   const [paymentNote, setPaymentNote] = useState("");
@@ -39,15 +45,15 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
   // the React-recommended alternative to a reset-in-effect for this
   // "when inputs change, reset derived state" pattern.
   const inputKey = open ? `${editingPayment?.id ?? "new"}:${initialPatientName || ""}:${initialAmount || ""}` : null;
-  const [prevInputKey, setPrevInputKey] = useState(null);
+  const [prevInputKey, setPrevInputKey] = useState<string | null>(null);
   if (inputKey !== prevInputKey) {
     setPrevInputKey(inputKey);
     if (inputKey) {
       if (editingPayment) {
         setPatientName(editingPayment.patient || "");
         setAmount(String(editingPayment.amount || ""));
-        const stdMethods = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.CARD, PAYMENT_METHOD.CARDLESS, PAYMENT_METHOD.OTHER];
-        if (stdMethods.includes(editingPayment.method)) {
+        const stdMethods: string[] = [PAYMENT_METHOD.TRANSFER, PAYMENT_METHOD.CASH, PAYMENT_METHOD.CARD, PAYMENT_METHOD.CARDLESS, PAYMENT_METHOD.OTHER];
+        if (editingPayment.method && stdMethods.includes(editingPayment.method)) {
           setMethod(editingPayment.method);
           setCustomMethod("");
         } else {
@@ -68,10 +74,10 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
     }
   }
 
-  const handlePatientChange = (name) => {
+  const handlePatientChange = (name: string) => {
     setPatientName(name);
     if (name) {
-      const p = patients.find(pt => pt.name === name);
+      const p = patients.find((pt: { name?: string; amountDue?: number }) => pt.name === name);
       if (p && p.amountDue > 0) setAmount(String(p.amountDue));
       else setAmount("");
     }
@@ -79,7 +85,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
 
   if (!open) return null;
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = Number(amount);
     if (!patientName.trim()) {
@@ -113,7 +119,7 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
         if (ok) { haptic.success(); animatedClose(`Pago registrado: ${formatMXN(parsedAmount)} de ${patientName.trim()}`); }
       }
     } catch (ex) {
-      setFormError(ex?.message || "Error al guardar");
+      setFormError((ex as Error)?.message || "Error al guardar");
     }
   };
 
@@ -144,11 +150,11 @@ export function PaymentModal({ open, onClose, initialPatientName, initialAmount,
                   trigger recalcs their `paid` counter. */}
               {patients
                 .slice()
-                .sort((a, b) => {
-                  const rank = (s) => (s === "active" ? 0 : s === "potential" ? 1 : s === "ended" ? 2 : 3);
+                .sort((a: { status?: string }, b: { status?: string }) => {
+                  const rank = (s?: string) => (s === "active" ? 0 : s === "potential" ? 1 : s === "ended" ? 2 : 3);
                   return rank(a.status) - rank(b.status);
                 })
-                .map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                .map((p: { id?: string; name?: string }) => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div className="input-group">

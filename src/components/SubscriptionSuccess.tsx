@@ -17,10 +17,10 @@ import { useSheetExit } from "../hooks/useSheetExit";
      - Hidden from admins + comp-granted users (handled by parent
        only mounting when `subscribedActive` flips true). */
 
-export function SubscriptionSuccess({ open, onClose }) {
+export function SubscriptionSuccess({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const { t } = useT();
-  const canvasRef = useRef(null);
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
 
   // Track the open prop to drive the entrance animation. We update
   // `mounted` in a one-shot rAF on open (so the initial styles paint

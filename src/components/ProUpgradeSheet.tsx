@@ -22,7 +22,7 @@ const StripePaymentSheet = lazy(() => import("./StripePaymentSheet"));
    The "Suscribirme" CTA opens the same StripePaymentSheet the welcome
    modal uses — keeping the conversion path in one place. */
 
-const FEATURE_ICON = {
+const FEATURE_ICON: Record<string, typeof IconSparkle> = {
   documents: IconDocument,
   encryption: IconLock,
   calendar: IconCalendar,
@@ -30,7 +30,7 @@ const FEATURE_ICON = {
   default: IconSparkle,
 };
 
-export function ProUpgradeSheet({ open, feature, onClose }) {
+export function ProUpgradeSheet({ open, feature, onClose }: { open?: boolean; feature?: string; onClose?: () => void }) {
   const { t } = useT();
   const { subscription } = useCardigan();
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -50,7 +50,7 @@ export function ProUpgradeSheet({ open, feature, onClose }) {
 
   if (!open) return null;
 
-  const Icon = FEATURE_ICON[feature] || FEATURE_ICON.default;
+  const Icon = (feature && FEATURE_ICON[feature]) || FEATURE_ICON.default;
   const featureKey = feature && FEATURE_ICON[feature] ? feature : "default";
 
   const handleSubscribe = () => {
@@ -249,6 +249,7 @@ export function ProUpgradeSheet({ open, feature, onClose }) {
         {paymentOpen && (
           <StripePaymentSheet
             open={paymentOpen}
+            referralCode={undefined}
             daysLeftInTrial={subscription?.daysLeftInTrial}
             onClose={() => setPaymentOpen(false)}
             onSuccess={() => {
