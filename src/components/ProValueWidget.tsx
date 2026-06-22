@@ -77,7 +77,7 @@ export function ProValueWidget() {
   );
 }
 
-function Stat({ value, label }) {
+function Stat({ value, label }: { value: React.ReactNode; label?: React.ReactNode }) {
   return (
     <div>
       <div style={{ fontFamily: "var(--font-d)", fontSize: 24, fontWeight: 800, color: "var(--charcoal)", lineHeight: 1 }}>

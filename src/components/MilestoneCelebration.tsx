@@ -22,19 +22,19 @@ import { haptic } from "../utils/haptics";
 
 const STORAGE_PREFIX = "cardigan.milestone";
 
-function alreadyCelebrated(userId, key) {
+function alreadyCelebrated(userId: string | undefined, key: string) {
   if (!userId) return true;
   try { return localStorage.getItem(`${STORAGE_PREFIX}.${key}.${userId}`) === "1"; }
   catch { return true; } // private mode — pretend yes, fail-quiet
 }
 
-function markCelebrated(userId, key) {
+function markCelebrated(userId: string | undefined, key: string) {
   if (!userId) return;
   try { localStorage.setItem(`${STORAGE_PREFIX}.${key}.${userId}`, "1"); }
   catch { /* private mode — fine */ }
 }
 
-export function MilestoneCelebration({ userId, accessState }) {
+export function MilestoneCelebration({ userId, accessState }: { userId?: string; accessState?: string }) {
   const { t } = useT();
   const ctx = useCardigan() || {};
   // Mirror the latest showSuccess into a ref so the firing effect
@@ -65,7 +65,7 @@ export function MilestoneCelebration({ userId, accessState }) {
     // real user) but we belt-and-braces it via accessState too.
     if (!accessState || accessState === "loading") return;
 
-    const fire = (key, message) => {
+    const fire = (key: string, message: string) => {
       if (alreadyCelebrated(userId, key)) return;
       markCelebrated(userId, key);
       haptic.success();

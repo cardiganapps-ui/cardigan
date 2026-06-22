@@ -24,12 +24,15 @@ const COLORS = {
   other:  "var(--charcoal-light, #BDB7AE)",
 };
 
-function fmt(n, digits = 1) {
+function fmt(n?: number | null, digits = 1) {
   if (n == null || Number.isNaN(n)) return "—";
   return Number(n).toFixed(digits).replace(/\.0$/, "");
 }
 
-export function BodyCompositionStack({ measurement, t }) {
+export function BodyCompositionStack({ measurement, t }: {
+  measurement?: { weight_kg?: number; total_body_water_kg?: number; skeletal_muscle_kg?: number; body_fat_kg?: number } | null;
+  t: (key: string) => string;
+}) {
   if (!measurement) return null;
   const total = Number(measurement.weight_kg);
   const water = Number(measurement.total_body_water_kg);

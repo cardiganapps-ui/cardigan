@@ -11,17 +11,20 @@ import { PasswordInput } from "./PasswordInput";
    This component is render-time pure: all state lives in props +
    local input state. The hook owns persistence and crypto. */
 
-export default function EncryptionUnlockGate({ noteCrypto, onSkip }) {
+export default function EncryptionUnlockGate({ noteCrypto, onSkip }: {
+  noteCrypto?: { status?: string; error?: string; unlock?: (passphrase: string) => Promise<boolean> } | null;
+  onSkip?: () => void;
+}) {
   const [passphrase, setPassphrase] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!noteCrypto || noteCrypto.status !== "locked") return null;
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passphrase || submitting) return;
     setSubmitting(true);
-    const ok = await noteCrypto.unlock(passphrase);
+    const ok = await noteCrypto.unlock?.(passphrase);
     setSubmitting(false);
     if (ok) setPassphrase("");
   };
