@@ -23,7 +23,7 @@ import { IconX } from "./Icons";
  *  - variant: "default" | "dark" — styles the trigger button for light vs
  *             dark surfaces (topbar / expediente header).
  */
-export function HelpTip({ tipsKey, variant = "default" }) {
+export function HelpTip({ tipsKey, variant = "default" }: { tipsKey: string; variant?: "default" | "dark" }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
 

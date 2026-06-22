@@ -7,18 +7,18 @@ import { useT } from "../i18n/index";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/i.test(navigator.platform);
 
-export default function TopbarActions({ onOpenPalette }) {
+export default function TopbarActions({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { t } = useT();
   const { requestFabAction, readOnly } = useCardigan();
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEscape(open ? () => setOpen(false) : null);
 
   useEffect(() => {
     if (!open) return;
-    const onDocClick = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -26,7 +26,7 @@ export default function TopbarActions({ onOpenPalette }) {
 
   if (readOnly) return null;
 
-  const handlePick = (key) => {
+  const handlePick = (key: string) => {
     setOpen(false);
     requestFabAction?.(key);
   };

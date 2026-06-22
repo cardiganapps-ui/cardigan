@@ -3,12 +3,17 @@ import { useState, useRef, useEffect, cloneElement, isValidElement } from "react
 const SHOW_DELAY = 500;
 const HIDE_DELAY = 80;
 
-export default function Tooltip({ label, children, placement = "bottom", shortcut }) {
+export default function Tooltip({ label, children, placement = "bottom", shortcut }: {
+  label?: React.ReactNode;
+  children: React.ReactElement;
+  placement?: "top" | "bottom" | "left" | "right";
+  shortcut?: React.ReactNode;
+}) {
   const [visible, setVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
-  const anchorRef = useRef(null);
-  const showTimer = useRef(null);
-  const hideTimer = useRef(null);
+  const anchorRef = useRef<HTMLElement | null>(null);
+  const showTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => () => {
     clearTimeout(showTimer.current);
@@ -52,23 +57,30 @@ export default function Tooltip({ label, children, placement = "bottom", shortcu
 
   if (!label || !isValidElement(children)) return children || null;
 
+  const childProps = children.props as {
+    onMouseEnter?: (e: React.SyntheticEvent) => void;
+    onMouseLeave?: (e: React.SyntheticEvent) => void;
+    onFocus?: (e: React.SyntheticEvent) => void;
+    onBlur?: (e: React.SyntheticEvent) => void;
+    onClick?: (e: React.SyntheticEvent) => void;
+  };
+  const childRef = (children as { ref?: React.Ref<HTMLElement> }).ref;
   const anchor = cloneElement(children, {
-    ref: (node) => {
+    ref: (node: HTMLElement | null) => {
       anchorRef.current = node;
-      const { ref } = children;
-      if (typeof ref === "function") ref(node);
+      if (typeof childRef === "function") childRef(node);
       // A ref object's `.current` is explicitly mutable by the React
       // API contract (that's how refs work). The Compiler's immutability
       // rule doesn't have a carve-out for ref-merging patterns.
       // eslint-disable-next-line react-hooks/immutability
-      else if (ref && typeof ref === "object") ref.current = node;
+      else if (childRef && typeof childRef === "object") (childRef as React.RefObject<HTMLElement | null>).current = node;
     },
-    onMouseEnter: (e) => { children.props.onMouseEnter?.(e); show(); },
-    onMouseLeave: (e) => { children.props.onMouseLeave?.(e); hide(); },
-    onFocus: (e) => { children.props.onFocus?.(e); show(); },
-    onBlur: (e) => { children.props.onBlur?.(e); hide(); },
-    onClick: (e) => { children.props.onClick?.(e); hide(); },
-  });
+    onMouseEnter: (e: React.SyntheticEvent) => { childProps.onMouseEnter?.(e); show(); },
+    onMouseLeave: (e: React.SyntheticEvent) => { childProps.onMouseLeave?.(e); hide(); },
+    onFocus: (e: React.SyntheticEvent) => { childProps.onFocus?.(e); show(); },
+    onBlur: (e: React.SyntheticEvent) => { childProps.onBlur?.(e); hide(); },
+    onClick: (e: React.SyntheticEvent) => { childProps.onClick?.(e); hide(); },
+  } as React.Attributes);
 
   return (
     <>

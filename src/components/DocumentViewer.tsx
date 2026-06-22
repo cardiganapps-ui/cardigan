@@ -3,7 +3,14 @@ import { IconChevron } from "./Icons";
 import { getFileIcon, formatFileSize, isImageDoc, isPdfDoc } from "../utils/files";
 import { useT } from "../i18n/index";
 
-export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, onPatientClick }) {
+export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, onPatientClick }: {
+  doc: { name?: string | null; file_type?: string | null; file_size?: number | null };
+  url?: string;
+  patientName?: string;
+  linkedSession?: { date?: string } | null;
+  onClose?: () => void;
+  onPatientClick?: () => void;
+}) {
   const { t } = useT();
   const isImage = isImageDoc(doc);
   const isPdf = isPdfDoc(doc);
@@ -44,7 +51,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
           </div>
         </div>
         <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", background: isImage ? "var(--doc-viewer-image-bg)" : "var(--white)" }}>
-          {isImage && !imgFailed && <img src={url} alt={doc.name} onError={() => setImgFailed(true)} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
+          {isImage && !imgFailed && <img src={url} alt={doc.name || ""} onError={() => setImgFailed(true)} style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />}
           {isImage && imgFailed && (
             <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
               <div style={{ fontSize:48, marginBottom:12 }}>{getFileIcon(doc)}</div>
@@ -55,7 +62,7 @@ export function DocumentViewer({ doc, url, patientName, linkedSession, onClose, 
               </a>
             </div>
           )}
-          {isPdf && <iframe src={url} title={doc.name} sandbox="allow-same-origin allow-scripts" style={{ width:"100%", height:"100%", border:"none" }} />}
+          {isPdf && <iframe src={url} title={doc.name || ""} sandbox="allow-same-origin allow-scripts" style={{ width:"100%", height:"100%", border:"none" }} />}
           {!isImage && !isPdf && (
             <div style={{ textAlign:"center", padding:32, color:"var(--charcoal-xl)" }}>
               <div style={{ fontSize:48, marginBottom:12 }}>{getFileIcon(doc)}</div>

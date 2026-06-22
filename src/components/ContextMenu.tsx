@@ -1,10 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useEscape } from "../hooks/useEscape";
+import type { ReactNode } from "react";
 
 const MARGIN = 8;
 
-export default function ContextMenu({ open, x, y, onClose, items }) {
-  const panelRef = useRef(null);
+interface MenuItem {
+  key?: string;
+  label?: ReactNode;
+  icon?: ReactNode;
+  shortcut?: ReactNode;
+  divider?: boolean;
+  destructive?: boolean;
+  disabled?: boolean;
+  onSelect?: () => void;
+}
+
+export default function ContextMenu({ open, x, y, onClose, items }: { open?: boolean; x: number; y: number; onClose: () => void; items: MenuItem[] }) {
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEscape(open ? onClose : null);
 
@@ -30,8 +42,8 @@ export default function ContextMenu({ open, x, y, onClose, items }) {
 
   useEffect(() => {
     if (!open) return;
-    const onDocClick = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+    const onDocClick = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
     };
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("contextmenu", onDocClick);
@@ -55,7 +67,7 @@ export default function ContextMenu({ open, x, y, onClose, items }) {
         if (item.divider) return <div key={`d${i}`} className="context-menu-divider" />;
         return (
           <button
-            key={item.key || item.label}
+            key={item.key || i}
             type="button"
             role="menuitem"
             className={`context-menu-item ${item.destructive ? "context-menu-item--destructive" : ""}`}
@@ -76,8 +88,8 @@ export default function ContextMenu({ open, x, y, onClose, items }) {
 // controls; splitting would just fragment the module.
 // eslint-disable-next-line react-refresh/only-export-components
 export function useContextMenu() {
-  const [state, setState] = useState({ open: false, x: 0, y: 0, items: [] });
-  const openAt = (e, items) => {
+  const [state, setState] = useState<{ open: boolean; x: number; y: number; items: MenuItem[] }>({ open: false, x: 0, y: 0, items: [] });
+  const openAt = (e: React.MouseEvent, items: MenuItem[]) => {
     e.preventDefault();
     setState({ open: true, x: e.clientX, y: e.clientY, items });
   };
