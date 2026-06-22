@@ -31,7 +31,10 @@ const LAST_CATEGORY_KEY = "cardigan.lastExpenseCategory";
    ALSO creates a recurring_expenses template the auto-generator will
    honor on subsequent app loads. */
 
-export function ExpenseSheet({ editingExpense, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed expense/document rows + OCR payload
+type Row = any;
+
+export function ExpenseSheet({ editingExpense, onClose }: { editingExpense?: Row; onClose: () => void }) {
   const {
     createExpense, updateExpense, deleteExpense,
     createRecurringTemplate, mutating, mutationError,
@@ -50,8 +53,8 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   const safeAnimatedClose = mutating ? null : animatedClose;
   useEscape(safeAnimatedClose);
   const panelRef = useFocusTrap(true);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: true });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose || (() => {}), { isOpen: true });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -60,16 +63,16 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   const lastCategory = (typeof window !== "undefined" && localStorage.getItem(LAST_CATEGORY_KEY)) || EXPENSE_CATEGORIES[0];
 
   const [amount, setAmount] = useState(editingExpense ? String(editingExpense.amount || "") : "");
-  const [category, setCategory] = useState(editingExpense?.category || lastCategory);
+  const [category, setCategory] = useState<string>(editingExpense?.category || lastCategory);
   const [description, setDescription] = useState(editingExpense?.description || "");
   const [date, setDate] = useState(editingExpense?.date ? shortDateToISO(editingExpense.date) : todayISO());
-  const [paymentMethod, setPaymentMethod] = useState(editingExpense?.payment_method || PAYMENT_METHOD.TRANSFER);
-  const [taxTreatment, setTaxTreatment] = useState(editingExpense?.tax_treatment || TAX_TREATMENT.DEDUCTIBLE);
+  const [paymentMethod, setPaymentMethod] = useState<string>(editingExpense?.payment_method || PAYMENT_METHOD.TRANSFER);
+  const [taxTreatment, setTaxTreatment] = useState<string>(editingExpense?.tax_treatment || TAX_TREATMENT.DEDUCTIBLE);
   const [cfdiUuid, setCfdiUuid] = useState(editingExpense?.cfdi_uuid || "");
   const [cfdiUrl, setCfdiUrl] = useState(editingExpense?.cfdi_url || "");
   const [showCfdi, setShowCfdi] = useState(!!editingExpense?.cfdi_uuid);
   const [note, setNote] = useState(editingExpense?.note || "");
-  const [receiptDocId, setReceiptDocId] = useState(editingExpense?.receipt_document_id || null);
+  const [receiptDocId, setReceiptDocId] = useState<string | null>(editingExpense?.receipt_document_id || null);
   const [receiptName, setReceiptName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [makeRecurring, setMakeRecurring] = useState(false);
@@ -80,14 +83,14 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   const [formError, setFormError] = useState("");
   const [ocring, setOcring] = useState(false);
   const [ocrNotice, setOcrNotice] = useState("");
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // OCR fires after a fresh receipt upload — never on edit (the
   // existing row already has fields the user reviewed). Pre-fills
   // ONLY empty fields so the user's typed input is sacred. Pro-only
   // for cost control; non-Pro uploads still attach the receipt, just
   // without auto-fill.
-  const runOcr = async (documentId) => {
+  const runOcr = async (documentId: string) => {
     if (isEditing) return; // never re-OCR an existing row
     if (!subscription?.isPro) return;
     setOcring(true);
@@ -117,7 +120,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
       if (ocr.amount != null) setAmount((a) => a ? a : String(ocr.amount));
       if (ocr.date) setDate((d) => (d && d !== todayISO()) ? d : ocr.date);
       if (ocr.vendor || ocr.description) {
-        setDescription((cur) => {
+        setDescription((cur: string) => {
           if (cur && cur.trim()) return cur;
           // Prefer description; fall back to vendor; concatenate if
           // both look distinct enough to be useful.
@@ -129,7 +132,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
       }
       if (ocr.category) setCategory((c) => c && c !== EXPENSE_CATEGORIES[0] ? c : ocr.category);
       if (ocr.cfdiUuid) {
-        setCfdiUuid((u) => u || ocr.cfdiUuid);
+        setCfdiUuid((u: string) => u || ocr.cfdiUuid);
         setShowCfdi(true);
       }
       // Build a transparent narration of what Cardi actually filled
@@ -140,7 +143,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
       if (ocr.confidence === "low") {
         setOcrNotice(t("gastos.ocrLowConfidence"));
       } else {
-        const filled = [];
+        const filled: string[] = [];
         if (ocr.amount != null) filled.push(formatMXN(ocr.amount));
         if (ocr.category) filled.push(t(`gastos.cat.${ocr.category}`));
         if (ocr.date) {
@@ -168,7 +171,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     if (editingExpense?.receipt_document_id) setReceiptName(t("gastos.receiptAttached"));
   }, [editingExpense?.receipt_document_id, t]);
 
-  const handleFile = async (file) => {
+  const handleFile = async (file?: File | null) => {
     if (!file) return;
     setUploading(true);
     setFormError("");
@@ -186,7 +189,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         setFormError(t("docs.uploadFailed") || "Error al subir el recibo");
       }
     } catch (e) {
-      setFormError(e?.message || "Error al subir el recibo");
+      setFormError((e as Error)?.message || "Error al subir el recibo");
     } finally {
       setUploading(false);
     }
@@ -205,13 +208,13 @@ export function ExpenseSheet({ editingExpense, onClose }) {
     // open in a new tab. We deliberately avoid mounting a lightbox
     // inside the sheet — modal-on-modal is awkward, and the new-tab
     // path works for both images and PDFs without z-index drama.
-    const doc = documents.find((d) => d.id === receiptDocId);
+    const doc = documents.find((d: Row) => d.id === receiptDocId);
     if (!doc?.file_path) return;
     const url = await getDocumentUrl(doc.file_path);
     if (url && typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -249,7 +252,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         // auto-extension sees the slot as unclaimed (recurring_id is
         // null on the manual row) and inserts a SECOND expense for
         // the same month — a real double-billing bug.
-        let recurringLink = {};
+        let recurringLink: Record<string, unknown> = {};
         if (makeRecurring) {
           const tpl = await createRecurringTemplate({
             amount: parsedAmount,
@@ -282,7 +285,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
         animatedClose(`${t("gastos.saved")}: −${formatMXN(parsedAmount)}`);
       }
     } catch (ex) {
-      setFormError(ex?.message || "Error al guardar");
+      setFormError((ex as Error)?.message || "Error al guardar");
     }
   };
 
@@ -294,14 +297,14 @@ export function ExpenseSheet({ editingExpense, onClose }) {
   };
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{isEditing ? t("gastos.edit") : t("gastos.record")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose || undefined}>
             <IconX size={14} />
           </button>
         </div>
@@ -520,7 +523,7 @@ export function ExpenseSheet({ editingExpense, onClose }) {
                 <div style={{
                   display: "flex", alignItems: "center", gap: 6,
                   marginTop: 6, fontSize: 12,
-                  color: ocrNotice && !ocring && ocring !== "low"
+                  color: ocrNotice && !ocring && String(ocring) !== "low"
                     ? "var(--teal-dark)" : "var(--charcoal-md)",
                 }}>
                   <IconSparkle size={12} />

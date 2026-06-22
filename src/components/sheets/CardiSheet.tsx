@@ -27,17 +27,20 @@ import { CardiConsentGate } from "../CardiConsentGate";
 
 const SUGGESTED_KEYS = ["balance", "summary", "schedule", "calendar"];
 
-export function CardiSheet({ open, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed rows + chat messages
+type Row = any;
+
+export function CardiSheet({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const { t, strings } = useT();
   const { profession, subscription, screen, patients = [], expenses = [], recurringExpenses = [], user } = useCardigan();
   // Cardi-specific data-access consent (separate from the global
   // privacy-policy consent in ConsentBanner). Only checked while the
   // sheet is open so we don't fire the lookup on every drawer render.
   const consent = useCardiConsent({ user, enabled: open });
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
-  const panelRef = useFocusTrap(open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
+  const panelRef = useFocusTrap(!!open);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}));
   useLayer(open ? "cardi" : null, animatedClose);
 
   // patientCount surfaces in cardiKnowledge.js as "Pacientes activos".
@@ -45,7 +48,7 @@ export function CardiSheet({ open, onClose }) {
   // potentials/discarded (interview lane) aren't conflated with real
   // patient count.
   const activePatientCount = useMemo(
-    () => patients.filter(p => p.status === "active").length,
+    () => patients.filter((p: Row) => p.status === "active").length,
     [patients]
   );
   const context = useMemo(() => ({
@@ -60,8 +63,8 @@ export function CardiSheet({ open, onClose }) {
   const { messages, pending, streaming, send, retry, reset } = useCardiChat({ context });
 
   const [input, setInput] = useState("");
-  const inputRef = useRef(null);
-  const bodyRef = useRef(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -93,20 +96,20 @@ export function CardiSheet({ open, onClose }) {
   }, []);
   useEffect(() => { adjustTextareaHeight(); }, [input, adjustTextareaHeight]);
 
-  const setPanel = useCallback((el) => {
+  const setPanel = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   }, [panelRef, scrollRef, setPanelEl]);
 
-  const submit = useCallback((text) => {
+  const submit = useCallback((text?: string) => {
     const trimmed = (text ?? input).trim();
     if (!trimmed || pending) return;
     setInput("");
     send(trimmed);
   }, [input, pending, send]);
 
-  const onKeyDown = useCallback((e) => {
+  const onKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       submit();
@@ -313,7 +316,7 @@ export function CardiSheet({ open, onClose }) {
   );
 }
 
-function CardiEmptyState({ t, onSuggest }) {
+function CardiEmptyState({ t, onSuggest }: { t: (key: string) => string; onSuggest: (text: string) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 14, paddingBottom: 8 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "0 8px" }}>
@@ -396,7 +399,12 @@ function CardiEmptyState({ t, onSuggest }) {
   );
 }
 
-function CardiBubble({ message, t, onRetry, pending }) {
+function CardiBubble({ message, t, onRetry, pending }: {
+  message: Row;
+  t: (key: string) => string;
+  onRetry?: () => void;
+  pending?: boolean;
+}) {
   const isUser = message.role === "user";
   const isError = message.error;
 
@@ -472,8 +480,8 @@ function CardiBubble({ message, t, onRetry, pending }) {
    than looping (typical first-token latency is < 4s, so we never
    reach the end in normal use; if we do, "Casi listo…" is the
    right message to land on). */
-function CardiThinking({ strings }) {
-  const phrases = strings?.cardi?.thinkingRotation || ["Pensando…"];
+function CardiThinking({ strings }: { strings?: Row }) {
+  const phrases: string[] = strings?.cardi?.thinkingRotation || ["Pensando…"];
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     if (idx >= phrases.length - 1) return;
