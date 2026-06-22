@@ -27,25 +27,28 @@ import {
    sheet is the active surface — surfacing an error on a different
    layer would leave the user wondering which row failed. */
 
-export function SessionRequestsSheet({ onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed request/patient rows
+type Row = any;
+
+export function SessionRequestsSheet({ onClose }: { onClose: () => void }) {
   const { t } = useT();
   const { rescheduleRequests = [], patients, refresh, showToast } = useCardigan();
-  const [actingId, setActingId] = useState(null);
-  const [rowError, setRowError] = useState({});
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<Record<string, string | null>>({});
 
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   const safeClose = actingId ? null : onClose;
   const safeAnimatedClose = actingId ? null : animatedClose;
   useEscape(safeAnimatedClose);
   const panelRef = useFocusTrap(true);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose, { isOpen: true });
-  const setPanel = (el) => {
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(safeClose || (() => {}), { isOpen: true });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
 
-  const respond = async (request, action) => {
+  const respond = async (request: Row, action: string) => {
     if (actingId) return;
     setActingId(request.id);
     setRowError(s => ({ ...s, [request.id]: null }));
@@ -86,17 +89,17 @@ export function SessionRequestsSheet({ onClose }) {
   };
 
   // Hydrate patient names from the patients array we already have.
-  const patientNameById = new Map((patients || []).map(p => [p.id, p.name]));
+  const patientNameById = new Map<string, string>((patients || []).map((p: Row): [string, string] => [p.id, p.name]));
 
   return (
-    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose}>
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={safeAnimatedClose || undefined}>
       <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()} {...panelHandlers}
         style={{ maxHeight: "min(92lvh, calc(100lvh - var(--sat) - 16px))" }}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span className="sheet-title">{t("sessionRequests.title")}</span>
-          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose}>
+          <button className="sheet-close" aria-label={t("close")} onClick={safeAnimatedClose || undefined}>
             <IconX size={14} />
           </button>
         </div>
@@ -117,7 +120,7 @@ export function SessionRequestsSheet({ onClose }) {
                 {t("sessionRequests.subtitle")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {rescheduleRequests.map(r => {
+                {rescheduleRequests.map((r: Row) => {
                   const name = patientNameById.get(r.patient_id) || t("sessionRequests.unknownPatient");
                   const acting = actingId === r.id;
                   const err = rowError[r.id];

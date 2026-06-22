@@ -8,14 +8,22 @@ import { useSheetDrag } from "../../hooks/useSheetDrag";
 import { useSheetExit } from "../../hooks/useSheetExit";
 import { useCardigan } from "../../context/CardiganContext";
 
-export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed rows
+type Row = any;
+
+export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDocument }: {
+  onClose: () => void;
+  patients?: Row[];
+  upcomingSessions?: Row[];
+  uploadDocument: (args: Row) => Promise<unknown> | unknown;
+}) {
   const { t } = useT();
   const { showToast } = useCardigan();
   const { exiting, animatedClose } = useSheetExit(true, onClose);
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -29,20 +37,20 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
   // valid-files array, so the UI can show a stack of bars when
   // uploading multiple at once. Total files in flight = totalFiles;
   // the progress bar uses the average across all of them.
-  const [batchProgress, setBatchProgress] = useState({ totalFiles: 0, perFile: [] });
-  const fileInputRef = useRef(null);
+  const [batchProgress, setBatchProgress] = useState<{ totalFiles: number; perFile: number[] }>({ totalFiles: 0, perFile: [] });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
   const patientSessions = patientId
-    ? (upcomingSessions || []).filter(s => s.patient_id === patientId)
-        .sort((a, b) => {
+    ? (upcomingSessions || []).filter((s: Row) => s.patient_id === patientId)
+        .sort((a: Row, b: Row) => {
           const da = shortDateToISO(a.date), db = shortDateToISO(b.date);
           return db.localeCompare(da);
         })
     : [];
 
-  const handleUpload = async (e) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     // patientId="" is the "Documento general" option — explicitly
     // valid (uploadDocument coerces empty → null below). The earlier
@@ -64,7 +72,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
         file,
         sessionId: sessionId || null,
         name: file.name,
-        onProgress: (frac) => {
+        onProgress: (frac: number) => {
           setBatchProgress((prev) => {
             const perFile = [...prev.perFile];
             perFile[i] = frac;
@@ -100,7 +108,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
     setDone(true);
   };
 
-  const selectedPatient = patients.find(p => p.id === patientId);
+  const selectedPatient = (patients || []).find((p: Row) => p.id === patientId);
 
   return (
     <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={animatedClose}>
@@ -135,7 +143,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                 <label className="input-label">{t("sessions.patient")}</label>
                 <select className="input" value={patientId} onChange={e => { setPatientId(e.target.value); setSessionId(""); }}>
                   <option value="">{t("docs.general")}</option>
-                  {(patients || []).filter(p => p.status === "active").sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                  {(patients || []).filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)).map((p: Row) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
@@ -145,7 +153,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                   <label className="input-label">{t("notes.linkToSession")}</label>
                   <select className="input" value={sessionId} onChange={e => setSessionId(e.target.value)}>
                     <option value="">{t("docs.unlink")}</option>
-                    {patientSessions.map(s => (
+                    {patientSessions.map((s: Row) => (
                       <option key={s.id} value={s.id}>{s.date} · {s.time} — {t(`sessions.${s.status}`)}</option>
                     ))}
                   </select>
@@ -170,7 +178,7 @@ export function NewDocumentSheet({ onClose, patients, upcomingSessions, uploadDo
                   of "frozen". The bar animates from 0 → 1 fluidly
                   thanks to the CSS transition. */}
               {uploading && batchProgress.totalFiles > 0 && (() => {
-                const avg = batchProgress.perFile.reduce((s, p) => s + p, 0) / batchProgress.totalFiles;
+                const avg = batchProgress.perFile.reduce((s: number, p: number) => s + p, 0) / batchProgress.totalFiles;
                 const pct = Math.round(avg * 100);
                 return (
                   <div style={{ marginTop:12 }}>

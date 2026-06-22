@@ -17,7 +17,10 @@ import { formatMXN } from "../../utils/format";
    patients keep today's behavior since their next slot is implied by
    the schedule, not a date the user invents. */
 const EPISODIC_DEFAULT_OFFSET_DAYS = 14;
-function defaultDateForPatient(patient) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
+type Row = any;
+
+function defaultDateForPatient(patient: Row) {
   if (!isEpisodic(patient)) return todayISO();
   const d = new Date();
   d.setHours(12, 0, 0, 0);
@@ -28,7 +31,17 @@ function defaultDateForPatient(patient) {
   return `${y}-${m}-${day}`;
 }
 
-export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime, initialPatientName, initialSessionType }) {
+export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutating, initialDate, initialTime, initialPatientName, initialSessionType }: {
+  onClose: () => void;
+  onSubmit: (params: Row) => Promise<boolean> | boolean;
+  patients: Row[];
+  sessions?: Row[];
+  mutating?: boolean;
+  initialDate?: string;
+  initialTime?: string;
+  initialPatientName?: string;
+  initialSessionType?: string;
+}) {
   const { t } = useT();
   const { profession } = useCardigan();
   const modalities = getModalitiesForProfession(profession);
@@ -37,12 +50,12 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   useEscape(animatedClose);
   const panelRef = useFocusTrap(true);
   const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
-  const setPanel = (el) => {
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
   };
-  const initialPatient = initialPatientName ? patients.find(p => p.name === initialPatientName) : null;
+  const initialPatient = initialPatientName ? patients.find((p: Row) => p.name === initialPatientName) : null;
   const tutorAllowed = initialSessionType === "tutor" && initialPatient && !!initialPatient.parent;
   const [patientName, setPatientName] = useState(initialPatientName || "");
   const [sessionType, setSessionType] = useState(tutorAllowed ? "tutor" : "patient");
@@ -56,7 +69,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const [customRate, setCustomRate] = useState(tutorAllowed ? String(initialPatient.rate) : (initialPatient ? String(initialPatient.rate) : ""));
   const [err, setErr]   = useState("");
 
-  const selectedPatient = patients.find(p => p.name === patientName);
+  const selectedPatient = patients.find((p: Row) => p.name === patientName);
   const isMinor = selectedPatient && !!selectedPatient.parent;
   const isTutor = sessionType === "tutor";
 
@@ -69,9 +82,9 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
     return selectedPatient?.rate ?? 0;
   })();
 
-  const handlePatientChange = (name) => {
+  const handlePatientChange = (name: string) => {
     setPatientName(name);
-    const p = patients.find(pt => pt.name === name);
+    const p = patients.find((pt: Row) => pt.name === name);
     setSessionType("patient");
     setCustomRate(p ? String(p.rate) : "");
     // Re-default the date when the picked patient is episodic — saves
@@ -85,16 +98,16 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
   const conflict = useMemo(() => {
     if (!date || !time || !sessions) return null;
     const shortDate = isoToShortDate(date);
-    return sessions.find(s => s.date === shortDate && s.time === time && s.status === "scheduled");
+    return sessions.find((s: Row) => s.date === shortDate && s.time === time && s.status === "scheduled");
   }, [date, time, sessions]);
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName) { setErr(t("finances.selectPatient")); return; }
     if (!date) { setErr(t("sessions.selectDate")); return; }
     if (!time.trim()) { setErr(t("sessions.selectTime")); return; }
     setErr("");
-    const params = { patientName, date: isoToShortDate(date), time, duration: Number(duration) || 60, modality };
+    const params: Row = { patientName, date: isoToShortDate(date), time, duration: Number(duration) || 60, modality };
     if (isTutor) {
       params.isTutor = true;
       params.tutorName = selectedPatient.parent;
@@ -104,7 +117,7 @@ export function NewSessionSheet({ onClose, onSubmit, patients, sessions, mutatin
       const ok = await onSubmit(params);
       if (ok) animatedClose();
     } catch (ex) {
-      setErr(ex?.message || "Error al guardar");
+      setErr((ex as Error)?.message || "Error al guardar");
     }
   };
 

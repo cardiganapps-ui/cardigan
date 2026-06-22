@@ -21,13 +21,21 @@ import { haptic } from "../../utils/haptics";
      onClose
    The parent passes the patient context — the sheet is otherwise
    stateless about which patient it's editing for. */
-export function MeasurementSheet({ open, measurement, onSave, onClose }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed measurement row
+type Row = any;
+
+export function MeasurementSheet({ open, measurement, onSave, onClose }: {
+  open?: boolean;
+  measurement?: Row;
+  onSave: (data: Row) => Promise<boolean> | boolean;
+  onClose?: () => void;
+}) {
   const { t } = useT();
-  const { exiting, animatedClose } = useSheetExit(open, onClose);
+  const { exiting, animatedClose } = useSheetExit(!!open, onClose);
   useEscape(open ? animatedClose : null);
-  const panelRef = useFocusTrap(open);
-  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose, { isOpen: open });
-  const setPanel = (el) => {
+  const panelRef = useFocusTrap(!!open);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose || (() => {}), { isOpen: !!open });
+  const setPanel = (el: HTMLElement | null) => {
     panelRef.current = el;
     scrollRef.current = el;
     setPanelEl(el);
@@ -48,7 +56,7 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }) {
 
   if (!open) return null;
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
@@ -160,7 +168,7 @@ export function MeasurementSheet({ open, measurement, onSave, onClose }) {
             <label className="input-label">{t("measurements.fields.notes")}</label>
             <textarea
               className="input"
-              rows="2"
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
