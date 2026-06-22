@@ -55,6 +55,20 @@ describe("isAllowedOrigin", () => {
     expect(isAllowedOrigin("https://my-vercel.app")).toBe(false);
   });
 
+  it("rejects non-Cardigan *.vercel.app hosts (open-redirect hardening)", () => {
+    // Any attacker-controlled Vercel app must not be accepted as a
+    // redirect base — only the project's own preview/alias hosts.
+    expect(isAllowedOrigin("https://attacker-project.vercel.app")).toBe(false);
+    expect(isAllowedOrigin("https://evil.vercel.app")).toBe(false);
+    expect(isAllowedOrigin("https://notcardigan.vercel.app")).toBe(false);
+  });
+
+  it("accepts the project's own Vercel hosts", () => {
+    expect(isAllowedOrigin("https://cardigan.vercel.app")).toBe(true);
+    expect(isAllowedOrigin("https://cardigan-app.vercel.app")).toBe(true);
+    expect(isAllowedOrigin("https://cardigan-git-main-cardiganapps.vercel.app")).toBe(true);
+  });
+
   it("rejects javascript: and data: schemes", () => {
     expect(isAllowedOrigin("javascript:alert(1)")).toBe(false);
     expect(isAllowedOrigin("data:text/html,<script>")).toBe(false);

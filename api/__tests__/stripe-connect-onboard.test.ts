@@ -174,11 +174,11 @@ describe("POST /api/stripe-connect-onboard", () => {
       expires_at: 1234567890,
     });
     const req = makeReq();
-    req.headers.origin = "https://preview-abc.vercel.app";
+    req.headers.origin = "https://cardigan-abc.vercel.app";
     const res = makeRes();
     await handler(req, res);
     const linkCall = createAccountLink.mock.calls[0][0];
-    expect(linkCall.returnUrl).toContain("https://preview-abc.vercel.app/");
-    expect(linkCall.refreshUrl).toContain("https://preview-abc.vercel.app/");
+    expect(linkCall.returnUrl).toContain("https://cardigan-abc.vercel.app/");
+    expect(linkCall.refreshUrl).toContain("https://cardigan-abc.vercel.app/");
   });
 });

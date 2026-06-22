@@ -37,11 +37,16 @@ function isAllowedOrigin(originHeader: unknown): boolean {
     // Force https. Stripe redirects must always be https in production.
     return url.protocol === "https:";
   }
-  // Vercel preview deployments. The hostname pattern
-  // `<project>-<hash>-<team>.vercel.app` is generated; we just check
-  // the suffix.
+  // Vercel preview deployments. Generated hosts look like
+  // `cardigan-<hash|branch>-<scope>.vercel.app` (plus the bare
+  // `cardigan.vercel.app` production alias). Require the project prefix —
+  // accepting ANY `*.vercel.app` would let an attacker-controlled Vercel
+  // app be used as a redirect base (open-redirect hardening). A
+  // non-matching host falls through to the canonical domain, which is a
+  // safe graceful default, not a broken flow.
   if (host.endsWith(".vercel.app")) {
-    return url.protocol === "https:";
+    return url.protocol === "https:"
+      && (host === "cardigan.vercel.app" || host.startsWith("cardigan-"));
   }
   // Dev servers — both vite (5173) and any random port. Localhost is
   // private to the developer's machine, so http is fine.
