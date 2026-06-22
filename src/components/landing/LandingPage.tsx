@@ -9,7 +9,12 @@ import {
 } from "../Icons";
 
 /* ── Shared primitives ───────────────────────────────────────────── */
-function CTAButton({ variant = "primary", onClick, children, type = "button" }) {
+function CTAButton({ variant = "primary", onClick, children, type = "button" }: {
+  variant?: string;
+  onClick?: () => void;
+  children?: React.ReactNode;
+  type?: "button" | "submit" | "reset";
+}) {
   return (
     <button type={type} className={`lp-btn lp-btn--${variant}`} onClick={onClick}>
       {children}
@@ -77,8 +82,12 @@ const FAQS = [
 ];
 
 /* ── Landing page ────────────────────────────────────────────────── */
-export function LandingPage({ onPrimary, onSecondary, onLogin }) {
-  const rootRef = useRef(null);
+export function LandingPage({ onPrimary, onSecondary, onLogin }: {
+  onPrimary?: () => void;
+  onSecondary?: () => void;
+  onLogin?: () => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
   // Mock data is locked to the psychologist demo seed. We tried a
   // tab control that swapped seeds per profession, but visitors
   // (correctly) noted the surfaces all look the same — the patient
@@ -88,8 +97,8 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
 
   // Sticky-nav style change after the hero scrolls past. Cheap
   // IntersectionObserver + class toggle on the nav.
-  const navRef = useRef(null);
-  const heroRef = useRef(null);
+  const navRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const nav = navRef.current;
     const hero = heroRef.current;
@@ -188,15 +197,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       {/* 2. Trust strip — what visitors need to know before scrolling. */}
       <section className="lp-section lp-trust" aria-label="Confianza">
         <div className="lp-container lp-trust-row">
-          <div className="lp-trust-pill" data-reveal style={{ "--i": 0 }}>
+          <div className="lp-trust-pill" data-reveal style={{ "--i": 0 } as React.CSSProperties}>
             <IconLock size={16} />
             <span>Notas blindadas</span>
           </div>
-          <div className="lp-trust-pill" data-reveal style={{ "--i": 1 }}>
+          <div className="lp-trust-pill" data-reveal style={{ "--i": 1 } as React.CSSProperties}>
             <IconDownload size={16} />
             <span>Tus datos, tuyos</span>
           </div>
-          <div className="lp-trust-pill" data-reveal style={{ "--i": 2 }}>
+          <div className="lp-trust-pill" data-reveal style={{ "--i": 2 } as React.CSSProperties}>
             <IconCalendar size={16} />
             <span>Cero contratos</span>
           </div>
@@ -212,7 +221,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
           </p>
           <div className="lp-feature-deck">
             {FEATURES.map((f, i) => (
-              <article key={f.title} className="lp-feature-card" data-reveal style={{ "--i": i }}>
+              <article key={f.title} className="lp-feature-card" data-reveal style={{ "--i": i } as React.CSSProperties}>
                 <div className="lp-feature-icon">
                   <f.Icon size={20} />
                 </div>
@@ -230,15 +239,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       <section className="lp-section">
         <div className="lp-container">
           <div className="lp-features">
-            <article className="lp-feature-v2" data-reveal style={{ "--i": 0 }}>
+            <article className="lp-feature-v2" data-reveal style={{ "--i": 0 } as React.CSSProperties}>
               <MiniSessions mock={mock} />
               <div className="lp-feature-label">Tu día. De un vistazo.</div>
             </article>
-            <article className="lp-feature-v2" data-reveal style={{ "--i": 1 }}>
+            <article className="lp-feature-v2" data-reveal style={{ "--i": 1 } as React.CSSProperties}>
               <MiniPatients mock={mock} />
               <div className="lp-feature-label">Cada cliente, un toque.</div>
             </article>
-            <article className="lp-feature-v2" data-reveal style={{ "--i": 2 }}>
+            <article className="lp-feature-v2" data-reveal style={{ "--i": 2 } as React.CSSProperties}>
               <MiniFinances mock={mock} />
               <div className="lp-feature-label">Cobras lo que toca.</div>
             </article>
@@ -251,15 +260,15 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
         <div className="lp-container">
           <h2 className="lp-section-title">Listo en 3 pasos.</h2>
           <ol className="lp-steps">
-            <li className="lp-step" data-reveal style={{ "--i": 0 }}>
+            <li className="lp-step" data-reveal style={{ "--i": 0 } as React.CSSProperties}>
               <span className="lp-step-num">1</span>
               <span className="lp-step-label">Crea tu cuenta</span>
             </li>
-            <li className="lp-step" data-reveal style={{ "--i": 1 }}>
+            <li className="lp-step" data-reveal style={{ "--i": 1 } as React.CSSProperties}>
               <span className="lp-step-num">2</span>
               <span className="lp-step-label">Agrega tu primer cliente</span>
             </li>
-            <li className="lp-step" data-reveal style={{ "--i": 2 }}>
+            <li className="lp-step" data-reveal style={{ "--i": 2 } as React.CSSProperties}>
               <span className="lp-step-num">3</span>
               <span className="lp-step-label">Agenda tu primera cita</span>
             </li>
@@ -273,7 +282,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
           flips back on. */}
       {MONETIZATION_ENABLED ? (
       <section id="pricing" className="lp-section lp-pricing" aria-labelledby="lp-pricing-title">
-        <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 }}>
+        <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 } as React.CSSProperties}>
           <div className="lp-pricing-eyebrow">Cardigan Pro</div>
           <h2 id="lp-pricing-title" className="lp-pricing-title">
             <span className="lp-pricing-amount">$149</span>
@@ -299,7 +308,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
       </section>
       ) : (
       <section className="lp-section lp-pricing" aria-labelledby="lp-pricing-title">
-        <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 }}>
+        <div className="lp-container lp-pricing-card" data-reveal style={{ "--i": 0 } as React.CSSProperties}>
           <h2 id="lp-pricing-title" className="lp-pricing-title">Tu práctica, en orden.</h2>
           <p className="lp-pricing-sub">Gratis. Sin tarjeta. Empieza en un minuto.</p>
           <div className="lp-pricing-ctas">
@@ -320,7 +329,7 @@ export function LandingPage({ onPrimary, onSecondary, onLogin }) {
           <h2 id="lp-faq-title" className="lp-section-title">Preguntas frecuentes</h2>
           <div className="lp-faq-list">
             {FAQS.map((f, i) => (
-              <details key={i} className="lp-faq-item" data-reveal style={{ "--i": i }}>
+              <details key={i} className="lp-faq-item" data-reveal style={{ "--i": i } as React.CSSProperties}>
                 <summary className="lp-faq-q">
                   <span>{f.q}</span>
                   <span className="lp-faq-chevron" aria-hidden="true">

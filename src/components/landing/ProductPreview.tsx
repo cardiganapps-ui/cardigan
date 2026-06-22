@@ -1,5 +1,9 @@
 import { LogoIcon } from "../LogoMark";
 import { formatTimeRange, formatMxn, getClientColor } from "./landingMock";
+import type { LandingMock } from "./landingMock";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- demo rows are loosely typed
+type Row = any;
 
 /* Landing "product preview" — phone-framed snapshot of the real Home
    screen, driven by the shared `mock` from landingMock.js. Mirrors
@@ -11,7 +15,7 @@ import { formatTimeRange, formatMxn, getClientColor } from "./landingMock";
    data — every number on the phone is rolled up from the same demo
    seed the mini cards below the hero use. */
 
-function avatarBg(s) {
+function avatarBg(s: Row) {
   if (s.session_type === "tutor" || (typeof s.initials === "string" && s.initials.startsWith("T·"))) {
     return "var(--purple)";
   }
@@ -21,35 +25,35 @@ function avatarBg(s) {
   return getClientColor(s.colorIdx ?? s.color_idx ?? 0);
 }
 
-function modalityLabel(modality) {
+function modalityLabel(modality?: string) {
   if (modality === "virtual") return "VIRTUAL";
   if (modality === "telefonica") return "TELEFÓNICA";
   if (modality === "a-domicilio") return "A DOMICILIO";
   return "PRESENCIAL";
 }
 
-function modalityKey(modality) {
+function modalityKey(modality?: string) {
   if (modality === "virtual") return "virtual";
   if (modality === "telefonica") return "telefonica";
   if (modality === "a-domicilio") return "adomicilio";
   return "presencial";
 }
 
-function statusKey(status) {
+function statusKey(status?: string) {
   if (status === "completed") return "completed";
   if (status === "charged") return "cancelled";
   if (status === "cancelled") return "cancelled";
   return "scheduled";
 }
 
-function statusBadge(status) {
+function statusBadge(status?: string) {
   if (status === "completed") return "Completada";
   if (status === "charged") return "Cancelada";
   if (status === "cancelled") return "Cancelada";
   return "Agendada";
 }
 
-export function ProductPreview({ mock, floatingKpi = true }) {
+export function ProductPreview({ mock, floatingKpi = true }: { mock?: LandingMock; floatingKpi?: boolean }) {
   const sessions = (mock?.todaySessions || []).slice(0, 3);
   const todaySessionCount = sessions.length;
   const activeCount = mock?.activeCount ?? 0;

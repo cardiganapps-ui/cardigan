@@ -19,9 +19,14 @@
 import { generateDemoData } from "../../data/demoData";
 import { formatShortDate } from "../../utils/dates";
 
+// Demo rows come from generateDemoData (loosely typed); model them as
+// Row at this curation layer.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- demo data rows are loosely typed
+type Row = any;
+
 const SHORT_MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
-function parseShort(short) {
+function parseShort(short?: string | null) {
   if (!short) return null;
   const m = String(short).match(/^(\d{1,2})[\s-]([A-Za-z]{3})/);
   if (!m) return null;
@@ -34,7 +39,7 @@ function parseShort(short) {
    Demo data only stores month-day (matches the live app's date
    format). For ranking purposes we just need monotonic comparison
    with `now`, so picking the closest year (current) is enough. */
-function shortToDate(short, now) {
+function shortToDate(short: string | null | undefined, now: Date) {
   const p = parseShort(short);
   if (!p) return null;
   return new Date(now.getFullYear(), p.monthIdx, p.day);
@@ -45,7 +50,7 @@ function shortToDate(short, now) {
    today; if there aren't enough, we extend forward. The demo
    generator produces 4 weeks of future sessions, so this always
    has material to show. */
-function pickUpcomingSessions(sessions, now, n = 3) {
+function pickUpcomingSessions(sessions: Row[], now: Date, n = 3) {
   const today = formatShortDate(now);
   const todays = sessions
     .filter((s) => s.date === today)
@@ -58,7 +63,7 @@ function pickUpcomingSessions(sessions, now, n = 3) {
     .map((s) => ({ s, d: shortToDate(s.date, now) }))
     .filter((x) => x.d && x.d.getTime() >= todayMs && x.s.status === "scheduled")
     .sort((a, b) => {
-      const dt = a.d.getTime() - b.d.getTime();
+      const dt = a.d!.getTime() - b.d!.getTime();
       if (dt !== 0) return dt;
       return (a.s.time || "").localeCompare(b.s.time || "");
     })
@@ -76,11 +81,11 @@ function pickUpcomingSessions(sessions, now, n = 3) {
   return out.slice(0, n);
 }
 
-function startOfMonth(now) {
+function startOfMonth(now: Date) {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-function paymentsThisMonth(payments, now) {
+function paymentsThisMonth(payments: Row[], now: Date) {
   const start = startOfMonth(now).getTime();
   const monthIdx = now.getMonth();
   let total = 0;
@@ -95,7 +100,7 @@ function paymentsThisMonth(payments, now) {
   return total;
 }
 
-function outstandingTotal(patients) {
+function outstandingTotal(patients: Row[]) {
   let total = 0;
   for (const p of patients || []) {
     const billed = Number(p.billed) || 0;
@@ -106,7 +111,7 @@ function outstandingTotal(patients) {
   return total;
 }
 
-function patientsWithBalance(patients) {
+function patientsWithBalance(patients: Row[]) {
   let n = 0;
   for (const p of patients || []) {
     if ((Number(p.billed) || 0) - (Number(p.paid) || 0) > 0) n += 1;
@@ -160,10 +165,12 @@ export function getLandingMock(profession = "psychologist") {
   };
 }
 
+export type LandingMock = ReturnType<typeof getLandingMock>;
+
 /* Format a session's time range from "HH:MM" + duration → "HH:MM - HH:MM"
    (the format the live SessionRow uses). Centralised so every mock
    surface displays the same shape. */
-export function formatTimeRange(time, durationMin = 60) {
+export function formatTimeRange(time?: string | null, durationMin = 60) {
   if (!time) return "";
   const [hStr, mStr] = String(time).split(":");
   const h = parseInt(hStr, 10) || 0;
@@ -177,7 +184,7 @@ export function formatTimeRange(time, durationMin = 60) {
 }
 
 /* MXN formatter matching the rest of the app. */
-export function formatMxn(n) {
+export function formatMxn(n?: number | null) {
   return `$${Number(n || 0).toLocaleString("es-MX")}`;
 }
 

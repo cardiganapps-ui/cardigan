@@ -10,8 +10,12 @@
    landing to the actual app encounters no rendering surprise. */
 
 import { formatTimeRange, formatMxn, getClientColor } from "./landingMock";
+import type { LandingMock } from "./landingMock";
 
-function avatarBg(row) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- demo rows are loosely typed
+type Row = any;
+
+function avatarBg(row: Row) {
   // Match production's modality + tutor → colour decisions
   // (mirrors the SessionRow logic in screens/Agenda.jsx).
   if (row.session_type === "tutor" || (typeof row.initials === "string" && row.initials.startsWith("T·"))) {
@@ -23,34 +27,34 @@ function avatarBg(row) {
   return getClientColor(row.colorIdx ?? row.color_idx ?? 0);
 }
 
-function modalityClass(modality) {
+function modalityClass(modality?: string) {
   if (modality === "virtual") return "lp-mini-eyebrow--virtual";
   if (modality === "telefonica") return "lp-mini-eyebrow--telefonica";
   if (modality === "a-domicilio") return "lp-mini-eyebrow--adomicilio";
   return "lp-mini-eyebrow--presencial";
 }
 
-function modalityLabel(modality) {
+function modalityLabel(modality?: string) {
   if (modality === "virtual") return "VIRTUAL";
   if (modality === "telefonica") return "TELEFÓNICA";
   if (modality === "a-domicilio") return "A DOMICILIO";
   return "PRESENCIAL";
 }
 
-function statusClass(status) {
+function statusClass(status?: string) {
   if (status === "completed" || status === "charged") return "lp-mini-row--completed";
   if (status === "cancelled") return "lp-mini-row--cancelled";
   return "lp-mini-row--scheduled";
 }
 
-function statusLabel(status) {
+function statusLabel(status?: string) {
   if (status === "completed") return "Completada";
   if (status === "charged")   return "Cancelada";
   if (status === "cancelled") return "Cancelada";
   return "Agendada";
 }
 
-function statusBadgeClass(status) {
+function statusBadgeClass(status?: string) {
   if (status === "completed") return "lp-mini-badge--completed";
   if (status === "charged")   return "lp-mini-badge--cancelled";
   if (status === "cancelled") return "lp-mini-badge--cancelled";
@@ -60,14 +64,14 @@ function statusBadgeClass(status) {
 /* Short display name — "Andrea M." form like the live SessionRow
    uses for compact tiles. Falls back to the full name if it's
    already short. */
-function shortName(name) {
+function shortName(name?: string) {
   if (!name) return "—";
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[1].charAt(0)}.`;
 }
 
-export function MiniSessions({ mock }) {
+export function MiniSessions({ mock }: { mock?: LandingMock }) {
   const rows = (mock?.todaySessions || []).slice(0, 2);
   if (rows.length === 0) {
     return <div className="lp-mini lp-mini--sessions" aria-hidden="true" />;
@@ -97,7 +101,7 @@ export function MiniSessions({ mock }) {
   );
 }
 
-export function MiniPatients({ mock }) {
+export function MiniPatients({ mock }: { mock?: LandingMock }) {
   const rows = (mock?.featuredPatients || []).slice(0, 2);
   if (rows.length === 0) {
     return <div className="lp-mini lp-mini--patients" aria-hidden="true" />;
@@ -131,7 +135,7 @@ export function MiniPatients({ mock }) {
   );
 }
 
-export function MiniFinances({ mock }) {
+export function MiniFinances({ mock }: { mock?: LandingMock }) {
   const collected = mock?.monthlyCollected || 0;
   const outstanding = mock?.outstanding || 0;
   const owingCount = mock?.owingCount || 0;
