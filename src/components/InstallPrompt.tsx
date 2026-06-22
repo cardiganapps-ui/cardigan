@@ -15,7 +15,7 @@ function isIOSSafariNotInstalled() {
   if (isNative()) return false;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   if (!isIOS) return false;
-  const isStandalone = window.navigator.standalone === true
+  const isStandalone = (window.navigator as { standalone?: boolean }).standalone === true
     || window.matchMedia("(display-mode: standalone)").matches;
   if (isStandalone) return false;
   // One-time: once dismissed, never nag again on this device.

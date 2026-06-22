@@ -52,9 +52,9 @@ function anyDirtyInput() {
   for (const el of els) {
     if (document.activeElement === el) return true;
     if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-      const val = el.value;
-      if (val && val !== el.defaultValue) return true;
-    } else if (el.isContentEditable) {
+      const val = (el as HTMLInputElement).value;
+      if (val && val !== (el as HTMLInputElement).defaultValue) return true;
+    } else if ((el as HTMLElement).isContentEditable) {
       if ((el.textContent || "").trim().length > 0) return true;
     }
   }
@@ -81,20 +81,20 @@ function markUpdateApplied() {
 
 export function UpdatePrompt() {
   const { t } = useT();
-  const [waitingSW, setWaitingSW] = useState(null);
-  const [phase, setPhase] = useState("idle"); // idle | available | applying | stuck
+  const [waitingSW, setWaitingSW] = useState<ServiceWorker | null>(null);
+  const [phase, setPhase] = useState<"idle" | "available" | "applying" | "stuck">("idle");
   // Read once on mount. Legacy stamp from older builds; we no longer
   // create new ones. The state stays read-only for the component's
   // lifetime, then expires naturally per the timestamp comparison
   // in the auto-apply effect.
   const [deferredUntil] = useState(() => getDeferredUntil());
-  const stuckTimerRef = useRef(null);
-  const reloadFailsafeRef = useRef(null);
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reloadFailsafeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isIdle = useIdle(30_000);
 
   // Pick up the waiting SW from main.jsx.
   useEffect(() => {
-    const onReady = (e) => setWaitingSW(e.detail || null);
+    const onReady = (e: Event) => setWaitingSW((e as CustomEvent).detail || null);
     window.addEventListener("cardigan-update-ready", onReady);
     return () => window.removeEventListener("cardigan-update-ready", onReady);
   }, []);

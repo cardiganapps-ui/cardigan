@@ -5,7 +5,7 @@
    prop so the visuals stay consistent across screens without the
    caller wiring up an icon. */
 
-function EmptyIllustration({ kind, size = 160 }) {
+function EmptyIllustration({ kind, size = 160 }: { kind?: string; size?: number }) {
   const stroke = "var(--teal-dark)";
   const fill = "var(--teal)";
   const tint = "var(--teal-pale)";
@@ -281,7 +281,13 @@ function EmptyIllustration({ kind, size = 160 }) {
   return null;
 }
 
-export function EmptyState({ kind, title, body, cta, compact = false }) {
+export function EmptyState({ kind, title, body, cta, compact = false }: {
+  kind?: string;
+  title?: React.ReactNode;
+  body?: React.ReactNode;
+  cta?: React.ReactNode;
+  compact?: boolean;
+}) {
   return (
     <div style={{
       display: "flex", flexDirection: "column",

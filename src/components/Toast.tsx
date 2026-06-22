@@ -5,7 +5,7 @@ import { haptic } from "../utils/haptics";
 
 /* Inline alert glyph for warning + error toasts. Stroke-2 to match
    the rest of the icon family. */
-function GlyphAlert({ size = 16 }) {
+function GlyphAlert({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -16,7 +16,16 @@ function GlyphAlert({ size = 16 }) {
   );
 }
 
-export function Toast({ message, type = "error", duration, onDismiss, onRetry, actionLabel, persistent = false, stackIndex = 0 }) {
+export function Toast({ message, type = "error", duration, onDismiss, onRetry, actionLabel, persistent = false, stackIndex = 0 }: {
+  message?: string;
+  type?: string;
+  duration?: number;
+  onDismiss?: () => void;
+  onRetry?: () => void;
+  actionLabel?: React.ReactNode;
+  persistent?: boolean;
+  stackIndex?: number;
+}) {
   const { t } = useT();
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -43,7 +52,7 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
   // never fire, and visible would stay false forever — Toast would
   // render null on every mount. (Repro: render a fresh <Toast /> with
   // a unique key; without the null seed, no aria-live region appears.)
-  const [prevMessage, setPrevMessage] = useState(null);
+  const [prevMessage, setPrevMessage] = useState<string | null | undefined>(null);
   if (message !== prevMessage) {
     setPrevMessage(message);
     if (message) { setVisible(true); setLeaving(false); }
@@ -164,8 +173,17 @@ export function Toast({ message, type = "error", duration, onDismiss, onRetry, a
      - While dragging, the entrance/exit CSS animation and the
        stack-promotion transition are suspended — the finger is the
        source of truth for position. Restored on release. */
-function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRole, liveness, children }) {
-  const wrapperRef = useRef(null);
+function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRole, liveness, children }: {
+  scale: number;
+  opacity: number;
+  top: string;
+  leaving?: boolean;
+  onSwipeRemove: () => void;
+  liveRole?: string;
+  liveness?: "assertive" | "polite" | "off";
+  children?: React.ReactNode;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({ startY: 0, dy: 0, dragging: false });
 
   const SETTLE = "transform 0.32s cubic-bezier(0.34, 1.4, 0.6, 1)";
@@ -197,7 +215,7 @@ function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRo
   // would visibly clobber the in-flight entrance. The kill happens
   // in onTouchMove once we've crossed the engagement threshold and
   // know the user is actually dragging.
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
     const el = wrapperRef.current;
     if (!el || leaving) return;
     const t = e.touches[0];
@@ -205,7 +223,7 @@ function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRo
     dragRef.current = { startY: t.clientY, dy: 0, dragging: false };
   }, [leaving]);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
     const el = wrapperRef.current;
     if (!el) return;
     const t = e.touches[0];
@@ -318,7 +336,11 @@ function SwipeDismissToast({ scale, opacity, top, leaving, onSwipeRemove, liveRo
  * subtle opacity + scale decay. Each entry auto-dismisses unless
  * marked persistent; clicking dismisses immediately.
  */
-export function ToastStack({ toasts, onDismiss, max = 3 }) {
+export function ToastStack({ toasts, onDismiss, max = 3 }: {
+  toasts: Array<{ id: string | number; message?: string; kind?: string; persistent?: boolean; duration?: number; onRetry?: () => void; actionLabel?: React.ReactNode }>;
+  onDismiss: (id: string | number) => void;
+  max?: number;
+}) {
   const visible = toasts.slice(-max);
   // Reverse so the newest entry sits at the top (stackIndex 0).
   const reversed = [...visible].reverse();
