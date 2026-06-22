@@ -7,6 +7,7 @@ import { useCardigan } from "../context/CardiganContext";
 import { useLayer } from "../hooks/useLayer";
 import { useNoteTemplates } from "../hooks/useNoteTemplates";
 import { MarkdownEditor } from "./notes/MarkdownEditor";
+import type { MarkdownEditorHandle } from "./notes/MarkdownEditor";
 import { captureMessage } from "../lib/sentry";
 import { useAttachmentSrc } from "./notes/useAttachmentSrc";
 import { CoverPickerSheet } from "./notes/CoverPickerSheet";
@@ -27,7 +28,12 @@ import { formatDate } from "../utils/format";
 
 const TEMPLATE_ICONS = { edit: IconEdit, clipboard: IconClipboard, document: IconDocument, check: IconCheck, user: IconUser };
 
-function relativeTime(dateStr, t) {
+// Loosely-typed rows + i18n t flow through the Cardigan data layer.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration bridge for loosely-typed rows
+type Row = any;
+type TFn = (key: string, vars?: Record<string, unknown>) => string;
+
+function relativeTime(dateStr: string | null | undefined, t: TFn) {
   if (!dateStr) return "";
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -48,7 +54,7 @@ function relativeTime(dateStr, t) {
    bandwidth and Vercel function quota for what is almost always a
    mis-drop. Cap + soft-warn. */
 const MAX_UPLOADS_PER_ACTION = 10;
-function capUploadBatch(files, showToast, t) {
+function capUploadBatch(files: File[], showToast: ((msg: string, kind?: string) => void) | undefined, t: TFn) {
   if (files.length > MAX_UPLOADS_PER_ACTION) {
     showToast?.(t("notes.attachments.tooMany", { count: MAX_UPLOADS_PER_ACTION }), "warning");
     return files.slice(0, MAX_UPLOADS_PER_ACTION);
@@ -61,7 +67,7 @@ function capUploadBatch(files, showToast, t) {
    - Both title and body are whitespace-only, OR
    - Content matches a pristine template.
    On close we silently delete those instead of persisting clutter. */
-function isEffectivelyEmpty(title, content, templates) {
+function isEffectivelyEmpty(title: string, content: string, templates: Row[]) {
   const t = (title || "").trim();
   const c = (content || "").trim();
   if (!t && !c) return true;
@@ -77,7 +83,14 @@ function isEffectivelyEmpty(title, content, templates) {
    buttons, title input, template chooser, autosave, close flow,
    patient/session linking plumbing. Editing logic lives in
    MarkdownEditor. */
-export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay", originRect = null }) {
+export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay", originRect = null }: {
+  note?: Row;
+  onSave: (data: { title: string; content: string }) => Promise<unknown> | unknown;
+  onDelete?: () => Promise<unknown> | unknown;
+  onClose: () => void;
+  layout?: string;
+  originRect?: { left: number; top: number; width: number; height: number } | null;
+}) {
   const inlineMode = layout === "inline";
   const { t } = useT();
   const { patients, upcomingSessions, togglePinNote, updateNoteLink, readOnly, showToast, uploadNoteAttachment, noteAttachments, noteCrypto, userName, setNoteCover } = useCardigan();
@@ -97,7 +110,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [activeFormats, setActiveFormats] = useState(new Set());
+  const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [exiting, setExiting] = useState(false);
   const [toast, setToast] = useState("");
   const [findOpen, setFindOpen] = useState(false);
@@ -113,16 +126,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   // Heading scroll-spy state. The IntersectionObserver effect below
   // updates this whenever the topmost-visible heading changes; the
   // outline drawer reads it to highlight the matching entry.
-  const [activeHeadingLine, setActiveHeadingLine] = useState(null);
-  const saveTimer = useRef(null);
-  const toastTimer = useRef(null);
-  const scrollRef = useRef(null);
-  const editorRef = useRef(null);
+  const [activeHeadingLine, setActiveHeadingLine] = useState<number | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<MarkdownEditorHandle | null>(null);
   // Holds the latest typed args while a debounced save is pending. We
   // read this on unmount so a tablet-split-view note switch (which
   // unmounts the editor without going through doClose) doesn't drop
   // the user's last 800 ms of typing.
-  const pendingSaveArgs = useRef(null);
+  const pendingSaveArgs = useRef<{ title: string; content: string } | null>(null);
 
   // Always close through this ref so "empty on close" → delete fires
   // regardless of what triggered the close (back button, ESC, etc.).
@@ -152,7 +165,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     cl();
   }, [showToast, t]);
 
-  const exitTimer = useRef(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Cancel the exit-animation timer on unmount so a queued doClose()
   // can't fire against a detached editor (e.g. user navigates away
   // mid-exit-animation).
@@ -175,7 +188,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   useLayer(inlineMode ? null : "noteEditor", inlineMode ? null : handleClose);
 
   /* ── Autosave ───────────────────────────────────────────────────── */
-  const autoSave = useCallback((newTitle, newContent) => {
+  const autoSave = useCallback((newTitle: string, newContent: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     pendingSaveArgs.current = { title: newTitle, content: newContent };
     setSaveState("dirty");
@@ -218,24 +231,24 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   }, []);
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
-  const handleTitleChange = (e) => {
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
     autoSave(e.target.value, content);
   };
 
-  const handleTitleKeyDown = (e) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
       editorRef.current?.focus();
     }
   };
 
-  const handleContentChange = useCallback((newContent) => {
+  const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
     autoSave(title, newContent);
   }, [autoSave, title]);
 
-  const handleSelectionChange = useCallback(({ active }) => {
+  const handleSelectionChange = useCallback(({ active }: { active?: Set<string> }) => {
     setActiveFormats(active || new Set());
   }, []);
 
@@ -268,7 +281,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     const visible = new Map(); // lineIdx → top (relative to viewport)
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
-        const lineIdx = parseInt(entry.target.dataset.line, 10);
+        const lineIdx = parseInt((entry.target as HTMLElement).dataset.line || "", 10);
         if (Number.isNaN(lineIdx)) continue;
         if (entry.isIntersecting) {
           visible.set(lineIdx, entry.boundingClientRect.top);
@@ -334,15 +347,15 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   }, []);
 
   /* ── Link change ───────────────────────────────────────────────── */
-  const handleLinkChange = async ({ patientId, sessionId }) => {
+  const handleLinkChange = async ({ patientId, sessionId }: { patientId: string | null; sessionId: string | null }) => {
     setLinkedPatientId(patientId || "");
     setLinkedSessionId(sessionId || "");
     if (note?.id) await updateNoteLink(note.id, { patientId, sessionId });
   };
 
   /* ── Format buttons ────────────────────────────────────────────── */
-  const onInlineFormat = (kind) => editorRef.current?.applyInlineFormat(kind);
-  const onBlockFormat = (block) => editorRef.current?.applyBlockFormat(block);
+  const onInlineFormat = (kind: string) => editorRef.current?.applyInlineFormat(kind);
+  const onBlockFormat = (block: string) => editorRef.current?.applyBlockFormat(block);
 
   /* ── Voice dictation ─────────────────────────────────────────────
      Hidden entirely on browsers without SpeechRecognition (Safari).
@@ -351,7 +364,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
      strip below the toolbar but is NOT inserted until the engine
      finalises it. We append a single trailing space after each
      finalised chunk so consecutive utterances stay readable. */
-  const insertVoiceText = useCallback((text) => {
+  const insertVoiceText = useCallback((text: string) => {
     const t = text.trim();
     if (!t) return;
     editorRef.current?.insertText(`${t} `);
@@ -412,16 +425,16 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
      trailing newline + markdown reference at the end of the body
      so the source preserves the link even though v1 renders the
      image in the strip below the editor, not inline. */
-  const attachInputRef = useRef(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
 
-  const insertAttachmentMarkdown = useCallback((id) => {
+  const insertAttachmentMarkdown = useCallback((id: string) => {
     const ref = `\n![](attachment:${id})\n`;
     editorRef.current?.insertText(ref);
   }, []);
 
-  const uploadFileAsAttachment = useCallback(async (file) => {
+  const uploadFileAsAttachment = useCallback(async (file?: File | null) => {
     if (!file || !note?.id || readOnly) return;
     // 10MB ceiling — anything larger is almost always an iPhone HEIC
     // straight out of the camera, and our v1 doesn't HEIC-convert
@@ -453,7 +466,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     attachInputRef.current?.click();
   }, [attachBusy, readOnly, note?.id]);
 
-  const onAttachInputChange = useCallback(async (e) => {
+  const onAttachInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const all = Array.from(e.target.files || []);
     e.target.value = ""; // allow re-uploading the same file later
     const files = capUploadBatch(all, showToast, t);
@@ -465,9 +478,9 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     }
   }, [uploadFileAsAttachment, showToast, t]);
 
-  const onScrollPaste = useCallback((e) => {
+  const onScrollPaste = useCallback((e: React.ClipboardEvent) => {
     if (readOnly || !note?.id) return;
-    const items = e.clipboardData?.items || [];
+    const items = e.clipboardData?.items ? Array.from(e.clipboardData.items) : [];
     for (const it of items) {
       if (it.kind === "file" && /^image\//.test(it.type)) {
         const file = it.getAsFile();
@@ -480,7 +493,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     }
   }, [readOnly, note?.id, uploadFileAsAttachment]);
 
-  const onScrollDrop = useCallback(async (e) => {
+  const onScrollDrop = useCallback(async (e: React.DragEvent) => {
     if (readOnly || !note?.id) return;
     e.preventDefault();
     setDragOver(false);
@@ -491,7 +504,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     }
   }, [readOnly, note?.id, uploadFileAsAttachment, showToast, t]);
 
-  const onScrollDragOver = useCallback((e) => {
+  const onScrollDragOver = useCallback((e: React.DragEvent) => {
     if (readOnly || !note?.id) return;
     if (e.dataTransfer?.types?.includes("Files")) {
       e.preventDefault();
@@ -499,7 +512,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     }
   }, [readOnly, note?.id]);
 
-  const onScrollDragLeave = useCallback((e) => {
+  const onScrollDragLeave = useCallback((e: React.DragEvent) => {
     // Only clear when leaving the editor entirely — bubbling
     // dragleave inside child elements would otherwise flicker.
     if (e.currentTarget === e.target) setDragOver(false);
@@ -527,7 +540,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
         the pre-restore content — otherwise the editor shows the
         "restored" content while the DB still holds the old content,
         and the next keystroke would silently persist the divergence. */
-  const handleRestoreVersion = useCallback(async ({ title: newTitle, content: newContent }) => {
+  const handleRestoreVersion = useCallback(async ({ title: newTitle, content: newContent }: { title?: string; content?: string }) => {
     // The kebab menu (and therefore Historial) is already gated on
     // !readOnly, so this branch is unreachable from the UI. Belt-and-
     // braces in case a future caller wires restore from somewhere
@@ -579,17 +592,17 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   }, [note, noteCrypto, title, content, onSave, readOnly]);
 
   /* ── Find + outline ────────────────────────────────────────────── */
-  const handleJumpToMatch = useCallback((match) => {
+  const handleJumpToMatch = useCallback((match: { line: number; startCol: number; endCol: number }) => {
     editorRef.current?.jumpTo(match);
   }, []);
-  const handleJumpToLine = useCallback((line) => {
+  const handleJumpToLine = useCallback((line: number) => {
     editorRef.current?.jumpTo({ line, startCol: 0, endCol: 0 });
     if (!isDesktop) setOutlineOpen(false);
   }, [isDesktop]);
   const hasHeadings = useMemo(() => extractOutline(content).length > 0, [content]);
 
   /* ── Template pick — only for brand-new empty notes ────────────── */
-  const pickTemplate = (tpl) => {
+  const pickTemplate = (tpl: Row) => {
     setTitle(tpl.title);
     setContent(tpl.content);
     editorRef.current?.setContent(tpl.content);
@@ -599,7 +612,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   };
 
   /* ── Export/copy menu ──────────────────────────────────────────── */
-  const flashToast = (msg) => {
+  const flashToast = (msg: string) => {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(""), 1800);
@@ -655,7 +668,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
      awaits the promise per attachment. Encrypted rows go through
      the bytes lane (fetch → decrypt → b64); unencrypted rows just
      reuse the presigned URL → blob → b64 pipeline. */
-  const resolveAttachmentDataUrl = useCallback(async (att) => {
+  const resolveAttachmentDataUrl = useCallback(async (att: Row) => {
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
       const headers = {
@@ -702,9 +715,9 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   const exportPdf = async () => {
     if (!note?.id) { setMenuOpen(false); return; }
     setMenuOpen(false);
-    const noteAttachmentsForThis = (noteAttachments || []).filter(a => a.note_id === note.id);
-    const linkedPatient = note.patient_id ? (patients || []).find(p => p.id === note.patient_id) : null;
-    const linkedSession = note.session_id ? (upcomingSessions || []).find(s => s.id === note.session_id) : null;
+    const noteAttachmentsForThis = (noteAttachments || []).filter((a: Row) => a.note_id === note.id);
+    const linkedPatient = note.patient_id ? (patients || []).find((p: Row) => p.id === note.patient_id) : null;
+    const linkedSession = note.session_id ? (upcomingSessions || []).find((s: Row) => s.id === note.session_id) : null;
     try {
       // Lazy-load notePdf (and its jsPDF dep) so the ~700KB lib
       // never lands in the main bundle. Vite splits this into its
@@ -728,8 +741,9 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
 
   useEffect(() => {
     if (!menuOpen) return;
-    const onDoc = (e) => {
-      if (!e.target.closest(".mde-menu") && !e.target.closest("[data-menu-trigger]")) setMenuOpen(false);
+    const onDoc = (e: Event) => {
+      const el = e.target as HTMLElement;
+      if (!el.closest(".mde-menu") && !el.closest("[data-menu-trigger]")) setMenuOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("touchstart", onDoc, { passive: true });
@@ -775,17 +789,17 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
     && originRect.width > 4
     && originRect.height > 4
   );
-  const shellStyle = inlineMode
+  const shellStyle: React.CSSProperties = inlineMode
     ? { flex: 1, minHeight: 0, background: "var(--white)", display: "flex", flexDirection: "column" }
     : {
         position: "fixed", inset: 0, background: "var(--white)", zIndex: "var(--z-note-editor)", display: "flex", flexDirection: "column",
-        ...(hasValidOrigin ? {
+        ...(hasValidOrigin && originRect ? {
           "--mde-origin-x":  `${originRect.left}px`,
           "--mde-origin-y":  `${originRect.top}px`,
           "--mde-origin-sx": originRect.width  / window.innerWidth,
           "--mde-origin-sy": originRect.height / window.innerHeight,
         } : {}),
-      };
+      } as React.CSSProperties;
 
   return (
     <div className={shellClass} style={shellStyle} data-from-origin={hasValidOrigin ? "true" : undefined}>
@@ -1010,7 +1024,7 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
               <div style={{ fontSize: 13, color: "var(--charcoal-lt)", lineHeight: 1.5, marginBottom: 20 }}>
                 {t("notes.deleteWarning")}
               </div>
-              <button className="btn btn-danger" onClick={async () => { haptic.warn(); await onDelete(); onClose(); }}>
+              <button className="btn btn-danger" onClick={async () => { haptic.warn(); await onDelete?.(); onClose(); }}>
                 {t("delete")}
               </button>
               <button className="btn btn-secondary" style={{ marginTop: 8, width: "100%" }}
@@ -1042,8 +1056,8 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
           <div className={"mde-templates" + (isBrandNewEmpty ? "" : " is-collapsed")} aria-hidden={!isBrandNewEmpty}>
             <div className="mde-templates-label">{t("notes.templates")}</div>
             <div className="mde-template-pills">
-              {noteTemplates.filter(tp => tp.id !== "blank").map(tpl => {
-                const Ic = TEMPLATE_ICONS[tpl.icon];
+              {noteTemplates.filter((tp: Row) => tp.id !== "blank").map((tpl: Row) => {
+                const Ic = TEMPLATE_ICONS[tpl.icon as keyof typeof TEMPLATE_ICONS];
                 return (
                   <button key={tpl.id} type="button" className="mde-template-pill" onClick={() => pickTemplate(tpl)} tabIndex={isBrandNewEmpty ? 0 : -1}>
                     {Ic && <Ic size={14} />}
@@ -1231,7 +1245,13 @@ export function NoteEditor({ note, onSave, onDelete, onClose, layout = "overlay"
   );
 }
 
-export function NoteCard({ note, onClick, patientName, sessionLabel, onPatientClick }) {
+export function NoteCard({ note, onClick, patientName, sessionLabel, onPatientClick }: {
+  note: Row;
+  onClick?: () => void;
+  patientName?: string;
+  sessionLabel?: string;
+  onPatientClick?: () => void;
+}) {
   const { t } = useT();
   const preview = note.content?.replace(/[*~#`[\]]/g, "").replace(/\n/g, " ").slice(0, 100) || t("notes.noContent");
   const timeAgo = relativeTime(note.updated_at, t);
