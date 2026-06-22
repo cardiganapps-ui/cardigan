@@ -20,9 +20,12 @@ import { haptic } from "../utils/haptics";
    `onSelect(profession)` is expected to return a boolean indicating
    whether the row was created. On false we leave the spinner state up
    and surface an inline error so the user can retry. */
-export function ProfessionOnboarding({ onSelect, onSignOut }) {
+export function ProfessionOnboarding({ onSelect, onSignOut }: {
+  onSelect: (profession: string) => Promise<boolean> | boolean;
+  onSignOut?: () => void;
+}) {
   const { t } = useT();
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -41,12 +44,12 @@ export function ProfessionOnboarding({ onSelect, onSignOut }) {
   return (
     <div className="shell profession-onboarding">
       <div className="profession-onboarding-inner">
-        <div className="profession-onboarding-brand" style={{ "--rise-i": 0 }}>
+        <div className="profession-onboarding-brand" style={{ "--rise-i": 0 } as React.CSSProperties}>
           <LogoIcon size={22} color="var(--teal)" />
           <span className="profession-onboarding-brand-text">cardigan</span>
         </div>
 
-        <div style={{ "--rise-i": 1 }} className="profession-onboarding-headline">
+        <div style={{ "--rise-i": 1 } as React.CSSProperties} className="profession-onboarding-headline">
           <div className="profession-onboarding-title">
             {t("onboarding.title")}
           </div>
@@ -63,7 +66,7 @@ export function ProfessionOnboarding({ onSelect, onSignOut }) {
                 key={p}
                 type="button"
                 className={`profession-onboarding-tile ${active ? "profession-onboarding-tile--active" : ""}`}
-                style={{ "--rise-i": 2 + i }}
+                style={{ "--rise-i": 2 + i } as React.CSSProperties}
                 onClick={() => { setSelected(p); setErr(""); haptic.tap(); }}
                 disabled={saving}
                 aria-pressed={active}>
@@ -90,7 +93,7 @@ export function ProfessionOnboarding({ onSelect, onSignOut }) {
           <div className="form-error profession-onboarding-error">{err}</div>
         )}
 
-        <div className="profession-onboarding-actions" style={{ "--rise-i": 2 + PROFESSIONS.length }}>
+        <div className="profession-onboarding-actions" style={{ "--rise-i": 2 + PROFESSIONS.length } as React.CSSProperties}>
           <button
             className="btn btn-primary"
             type="button"

@@ -14,13 +14,16 @@ import { haptic } from "../utils/haptics";
    Reuses the .profession-onboarding-* CSS so visual rhythm stays
    identical between the two wizard steps. Tiles are label-only here
    (no description) so 8 tiles fit a screen comfortably. */
-export function SignupSourceStep({ onSubmit, onSignOut }) {
+export function SignupSourceStep({ onSubmit, onSignOut }: {
+  onSubmit: (payload: { signupSource: string | null; signupSourceDetail: string | null }) => Promise<boolean> | boolean;
+  onSignOut?: () => void;
+}) {
   const { t } = useT();
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-  const detailRef = useRef(null);
+  const detailRef = useRef<HTMLInputElement>(null);
 
   const isOther = selected === SIGNUP_SOURCE.OTHER;
   const detailValid = !isOther || detail.trim().length > 0;
@@ -61,12 +64,12 @@ export function SignupSourceStep({ onSubmit, onSignOut }) {
   return (
     <div className="shell profession-onboarding">
       <div className="profession-onboarding-inner">
-        <div className="profession-onboarding-brand" style={{ "--rise-i": 0 }}>
+        <div className="profession-onboarding-brand" style={{ "--rise-i": 0 } as React.CSSProperties}>
           <LogoIcon size={22} color="var(--teal)" />
           <span className="profession-onboarding-brand-text">cardigan</span>
         </div>
 
-        <div style={{ "--rise-i": 1 }} className="profession-onboarding-headline">
+        <div style={{ "--rise-i": 1 } as React.CSSProperties} className="profession-onboarding-headline">
           <div className="profession-onboarding-title">
             {t("onboarding.sourceTitle")}
           </div>
@@ -83,7 +86,7 @@ export function SignupSourceStep({ onSubmit, onSignOut }) {
                 key={s}
                 type="button"
                 className={`profession-onboarding-tile ${active ? "profession-onboarding-tile--active" : ""}`}
-                style={{ "--rise-i": 2 + i, padding: "12px 16px" }}
+                style={{ "--rise-i": 2 + i, padding: "12px 16px" } as React.CSSProperties}
                 onClick={() => { setSelected(s); setErr(""); haptic.tap(); }}
                 disabled={saving}
                 aria-pressed={active}
@@ -113,7 +116,7 @@ export function SignupSourceStep({ onSubmit, onSignOut }) {
             the form stays clean when other channels are picked. The
             stagger index continues from where the tile list ended. */}
         {isOther && (
-          <div style={{ "--rise-i": 2 + SIGNUP_SOURCES.length }} className="profession-onboarding-tile" >
+          <div style={{ "--rise-i": 2 + SIGNUP_SOURCES.length } as React.CSSProperties} className="profession-onboarding-tile" >
             <input
               ref={detailRef}
               type="text"
@@ -141,7 +144,7 @@ export function SignupSourceStep({ onSubmit, onSignOut }) {
           <div className="form-error profession-onboarding-error">{err}</div>
         )}
 
-        <div className="profession-onboarding-actions" style={{ "--rise-i": 2 + SIGNUP_SOURCES.length + 1 }}>
+        <div className="profession-onboarding-actions" style={{ "--rise-i": 2 + SIGNUP_SOURCES.length + 1 } as React.CSSProperties}>
           <button
             className="btn btn-primary"
             type="button"
