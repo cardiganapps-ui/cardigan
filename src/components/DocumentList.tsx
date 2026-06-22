@@ -11,12 +11,24 @@ export function DocumentList({
   onOpen, onRename, onTag, onDelete,
   emptyMessage, showPatientName, onPatientClick,
   variant = "list", // "list" (single card with dividers) | "cards" (individual cards with gaps)
+}: {
+  documents: Array<{ id: string; name?: string; patient_id?: string | null; session_id?: string | null; file_size?: number | null; file_type?: string | null; created_at?: string; uploaded_by_user_id?: string | null; user_id?: string }>;
+  sessions?: Array<{ id: string; patient_id?: string | null; date?: string; time?: string; status?: string; created_at?: string; [key: string]: unknown }>;
+  patients?: Array<{ id: string; name?: string; [key: string]: unknown }>;
+  onOpen: (doc: { id: string; [key: string]: unknown }) => void;
+  onRename: (id: string, name: string) => void | Promise<void>;
+  onTag: (docId: string, sessionId: string | null) => void | Promise<void>;
+  onDelete: (id: string) => void | Promise<void>;
+  emptyMessage?: React.ReactNode;
+  showPatientName?: boolean;
+  onPatientClick?: (p: { id: string; name?: string }) => void;
+  variant?: "list" | "cards";
 }) {
   const { t } = useT();
-  const [renamingDoc, setRenamingDoc] = useState(null);
+  const [renamingDoc, setRenamingDoc] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [taggingDoc, setTaggingDoc] = useState(null);
-  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
+  const [taggingDoc, setTaggingDoc] = useState<string | null>(null);
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<string | null>(null);
 
   const handleRename = async () => {
     if (renamingDoc && renameValue.trim()) {
@@ -26,12 +38,12 @@ export function DocumentList({
     setRenameValue("");
   };
 
-  const handleTag = async (docId, sessionId) => {
+  const handleTag = async (docId: string, sessionId: string | null) => {
     await onTag(docId, sessionId);
     setTaggingDoc(null);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     await onDelete(id);
     setConfirmDeleteDoc(null);
   };
@@ -48,7 +60,7 @@ export function DocumentList({
   }
 
   const isCards = variant === "cards";
-  const containerStyle = isCards
+  const containerStyle: React.CSSProperties = isCards
     ? { display: "flex", flexDirection: "column", gap: 8 }
     : { padding: 0 };
   const containerClass = isCards ? undefined : "card";
@@ -70,7 +82,7 @@ export function DocumentList({
           ...(isCards
             ? { overflow: "hidden" }
             : { borderBottom: i < documents.length - 1 ? "1px solid var(--border-lt)" : "none" }),
-        };
+        } as unknown as React.CSSProperties;
 
         return (
           <div key={doc.id} className={itemClass} style={itemStyle}>
@@ -165,7 +177,7 @@ export function DocumentList({
         })()}
         confirmLabel={t("delete")}
         destructive
-        onConfirm={() => handleDelete(confirmDeleteDoc)}
+        onConfirm={() => { if (confirmDeleteDoc) handleDelete(confirmDeleteDoc); }}
         onCancel={() => setConfirmDeleteDoc(null)}
       />
     </div>

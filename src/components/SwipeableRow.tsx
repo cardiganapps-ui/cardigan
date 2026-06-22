@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
 import { haptic } from "../utils/haptics";
 import { IconTrash } from "./Icons";
 import { tryClaim as trySwipeClaim, release as releaseSwipe } from "../hooks/swipeCoordinator";
@@ -28,7 +29,7 @@ const HINT_STORAGE_KEY = "cardigan.swipe.hint.shown";
    the durable record; the in-memory bool covers private mode. */
 let hintShownThisSession = false;
 
-const TONE_BG = {
+const TONE_BG: Record<string, string> = {
   danger: "var(--red)",
   success: "var(--green)",
   warn: "var(--amber)",
@@ -40,8 +41,14 @@ const TONE_BG = {
    action instead reveals an inline confirm step (e.g. expenses): the
    row must stay in place, so we just snap shut and fire onAction without
    the exit animation. */
-export function SwipeableRow({ children, onAction, actionLabel, actionTone = "danger", exitOnAction = true }) {
-  const ref = useRef(null);
+export function SwipeableRow({ children, onAction, actionLabel, actionTone = "danger", exitOnAction = true }: {
+  children?: ReactNode;
+  onAction?: () => void;
+  actionLabel?: string;
+  actionTone?: "danger" | "success" | "warn";
+  exitOnAction?: boolean;
+}) {
+  const ref = useRef<{ x: number; y: number; startOffset: number; active: boolean } | null>(null);
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
   const [swiping, setSwiping] = useState(false);
@@ -51,7 +58,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
   // value to set the height inline for the collapse transition.
   const [pinnedHeight, setPinnedHeight] = useState(0);
   const revealedRef = useRef(false);
-  const rootElRef = useRef(null);
+  const rootElRef = useRef<HTMLDivElement>(null);
 
   // Keep ref in sync so touch handlers see the latest committed offset
   // without re-binding on every render.
@@ -75,7 +82,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
     return () => { clearTimeout(peekIn); clearTimeout(peekOut); };
   }, []);
 
-  const onTouchStart = useCallback((e) => {
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
     ref.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
@@ -84,7 +91,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
     };
   }, []);
 
-  const onTouchMove = useCallback((e) => {
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (!ref.current) return;
     const dx = e.touches[0].clientX - ref.current.x;
     const dy = e.touches[0].clientY - ref.current.y;
@@ -151,7 +158,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
     setOffset(0);
     revealedRef.current = false;
   }, []);
-  const handleActionKey = useCallback((e) => {
+  const handleActionKey = useCallback((e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === "Escape") {
       setOffset(0);
       revealedRef.current = false;
@@ -243,7 +250,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
           // to <body> when this row unmounts. Walk to the next
           // SwipeableRow action button in the same list.
           const isKeyboardActivation = e.detail === 0;
-          let nextFocus = null;
+          let nextFocus: HTMLElement | null = null;
           if (isKeyboardActivation) {
             const currentRow = e.currentTarget.closest("[data-swipeable-row]");
             if (currentRow) {
@@ -253,7 +260,7 @@ export function SwipeableRow({ children, onAction, actionLabel, actionTone = "da
                   "[data-swipeable-row] [data-swipeable-action]",
                 );
                 for (const btn of siblings) {
-                  if (btn !== e.currentTarget) { nextFocus = btn; break; }
+                  if (btn !== e.currentTarget) { nextFocus = btn as HTMLElement; break; }
                 }
                 parent = parent.parentElement;
               }
