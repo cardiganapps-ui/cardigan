@@ -1,0 +1,272 @@
+import { useState, useMemo, useRef } from "react";
+import { IconSearch, IconUpload } from "../components/Icons";
+import { isWordDoc, isImageDoc, isPdfDoc } from "../utils/files";
+import { DocumentList } from "../components/DocumentList";
+import { DocumentViewer } from "../components/DocumentViewer";
+import { useCardigan } from "../context/CardiganContext";
+import { useT } from "../i18n/index";
+import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed document/patient/session rows
+type Row = any;
+
+export function Documents() {
+  const { documents, patients, upcomingSessions, uploadDocument, renameDocument, tagDocumentSession, deleteDocument, getDocumentUrl, openExpediente, showToast, subscription, requirePro } = useCardigan();
+  const isPro = !!subscription?.isPro;
+  const { t } = useT();
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest"); // newest | name
+  const [filterPatient, setFilterPatient] = useState("all");
+  const [filterType, setFilterType] = useState("all"); // all | image | pdf | doc
+  const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ doc: Row; url: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const closePending = () => setPendingFiles(null);
+  const { scrollRef: pendingScrollRef, setPanelEl: setPendingPanelEl, panelHandlers: pendingPanelHandlers } = useSheetDrag(closePending, { isOpen: !!pendingFiles });
+  const pendingPanelRef = useFocusTrap(!!pendingFiles);
+  const setPendingPanel = (el: HTMLElement | null) => { pendingPanelRef.current = el; pendingScrollRef.current = el; setPendingPanelEl(el); };
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+  // Patients with documents or active (for upload target)
+  const activePatients = useMemo(() =>
+    (patients || []).filter((p: Row) => p.status === "active").sort((a: Row, b: Row) => a.name.localeCompare(b.name)),
+    [patients]
+  );
+  const patientsWithDocs = useMemo(() => {
+    const ids = new Set((documents || []).map((d: Row) => d.patient_id).filter(Boolean));
+    return (patients || []).filter((p: Row) => ids.has(p.id)).sort((a: Row, b: Row) => a.name.localeCompare(b.name));
+  }, [documents, patients]);
+
+  // Filter & sort
+  const filteredDocs = useMemo(() => {
+    // Receipts (kind='receipt') belong to expenses, not the patient
+    // Documents screen — surface them only via the Gastos tab.
+    let docs = (documents || []).filter((d: Row) => (d.kind || "patient") !== "receipt");
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      docs = docs.filter((d: Row) => {
+        const p = patients.find((pt: Row) => pt.id === d.patient_id);
+        return d.name?.toLowerCase().includes(q) || p?.name?.toLowerCase().includes(q);
+      });
+    }
+
+    // Patient filter
+    if (filterPatient === "general") {
+      docs = docs.filter((d: Row) => !d.patient_id);
+    } else if (filterPatient !== "all") {
+      docs = docs.filter((d: Row) => d.patient_id === filterPatient);
+    }
+
+    // Type filter
+    if (filterType === "image") docs = docs.filter((d: Row) => isImageDoc(d));
+    else if (filterType === "pdf") docs = docs.filter((d: Row) => isPdfDoc(d));
+    else if (filterType === "doc") docs = docs.filter((d: Row) => isWordDoc(d));
+
+    // Sort
+    if (sortBy === "name") docs.sort((a: Row, b: Row) => (a.name || "").localeCompare(b.name || ""));
+    else docs.sort((a: Row, b: Row) => (b.created_at || "").localeCompare(a.created_at || ""));
+
+    return docs;
+  }, [documents, search, filterPatient, filterType, sortBy, patients]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      showToast(t("docs.sizeLimit", { names: oversized.map(f => f.name).join(", "), count: oversized.length }), "warning");
+    }
+    const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (valid.length === 0) return;
+    setPendingFiles(valid);
+  };
+
+  const confirmUpload = async (patientId: string | null) => {
+    if (!pendingFiles) return;
+    const total = pendingFiles.length;
+    setUploading(true);
+    setPendingFiles(null);
+    let ok = 0;
+    try {
+      for (const file of pendingFiles) {
+        const result = await uploadDocument({ patientId, file, sessionId: null, name: file.name });
+        if (result) ok++;
+      }
+    } finally {
+      setUploading(false);
+    }
+    // Toast feedback — explicit success / partial / failure so the
+    // user knows whether anything actually landed. Nothing happens
+    // visually otherwise except the document list re-rendering, which
+    // is hard to spot for a single file.
+    const failed = total - ok;
+    if (failed === 0) {
+      showToast(ok === 1 ? t("docs.uploadSuccessOne") : t("docs.uploadSuccessMany", { count: ok }), "success");
+    } else if (ok === 0) {
+      showToast(total === 1 ? t("docs.uploadFailedOne") : t("docs.uploadFailedMany"), "error");
+    } else {
+      showToast(
+        failed === 1
+          ? t("docs.uploadPartial", { ok, total, failed })
+          : t("docs.uploadPartialMany", { ok, total, failed }),
+        "warning"
+      );
+    }
+  };
+
+  const openDocViewer = async (doc: Row) => {
+    let url: string | undefined;
+    try {
+      url = await getDocumentUrl(doc.file_path);
+    } catch {
+      showToast(t("docs.openError"), "error");
+      return;
+    }
+    if (!url) {
+      showToast(t("docs.openError"), "error");
+      return;
+    }
+    if (isWordDoc(doc)) {
+      window.open(url, "_blank");
+      return;
+    }
+    setViewingDoc({ doc, url });
+  };
+
+  return (
+    <>
+    {viewingDoc && (
+      <DocumentViewer
+        doc={viewingDoc.doc} url={viewingDoc.url}
+        patientName={(patients || []).find((pt: Row) => pt.id === viewingDoc.doc.patient_id)?.name}
+        linkedSession={viewingDoc.doc.session_id ? (upcomingSessions || []).find((s: Row) => s.id === viewingDoc.doc.session_id) : null}
+        onClose={() => setViewingDoc(null)}
+        onPatientClick={(() => { const p = (patients || []).find((pt: Row) => pt.id === viewingDoc.doc.patient_id); return p ? () => { setViewingDoc(null); openExpediente(p); } : undefined; })()}
+      />
+    )}
+    <div className="page" style={{ paddingTop:16, paddingLeft:16, paddingRight:16 }}>
+      <div style={{ marginBottom:12 }}>
+        <div className="section-title">{t("docs.title")}</div>
+      </div>
+
+      {/* Search bar */}
+      <div className="search-bar" style={{ marginBottom:12 }}>
+        <IconSearch size={16} style={{ color:"var(--charcoal-xl)" }} />
+        <input type="search" aria-label={t("docs.searchPlaceholder")} placeholder={t("docs.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Upload button — Pro-gated. Non-Pro users see a "PRO" badge
+          on the button and tapping pops the upgrade sheet instead of
+          opening the file picker. */}
+      <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        style={{ display:"none" }} onChange={handleFileSelect} />
+      <button className="btn btn-primary" style={{ width:"100%", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:12 }}
+        onClick={() => isPro ? fileInputRef.current?.click() : requirePro?.("documents")}
+        disabled={uploading}>
+        <IconUpload size={14} />
+        {uploading ? "..." : t("docs.uploadBtn")}
+        {!isPro && (
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
+            padding: "2px 6px", borderRadius: 999,
+            background: "rgba(255,255,255,0.18)", color: "var(--white)",
+            lineHeight: 1.2,
+          }}>PRO</span>
+        )}
+      </button>
+
+      {/* Patient picker after file selection */}
+      {pendingFiles && (
+        <div className="sheet-overlay" onClick={() => setPendingFiles(null)}>
+          <div ref={setPendingPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...pendingPanelHandlers} style={{ maxHeight:"60vh" }}>
+            <div className="sheet-handle" />
+            <div style={{ padding:"16px 20px 8px" }}>
+              <div style={{ fontFamily:"var(--font-d)", fontSize:15, fontWeight:700, color:"var(--charcoal)", marginBottom:4 }}>
+                {t("docs.linkToPatient")}
+              </div>
+              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:12 }}>
+                {pendingFiles.length === 1 ? pendingFiles[0].name : t("docs.count", { count: pendingFiles.length })}
+              </div>
+            </div>
+            <div style={{ overflowY:"auto", padding:"0 20px 22px" }}>
+              <div className="card" style={{ padding:0 }}>
+                <div className="row-item" role="button" tabIndex={0} style={{ cursor:"pointer" }}
+                  onClick={() => confirmUpload(null)}>
+                  <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{t("docs.general")}</span>
+                </div>
+                {activePatients.map((p: Row) => (
+                  <div className="row-item" key={p.id} role="button" tabIndex={0} style={{ cursor:"pointer" }}
+                    onClick={() => confirmUpload(p.id)}>
+                    <span style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters & sort */}
+      <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>
+        {/* Sort */}
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+          style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer" }}>
+          <option value="newest">{t("docs.newest")}</option>
+          <option value="name">{t("docs.nameAZ")}</option>
+        </select>
+        {/* Patient filter */}
+        <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
+          style={{ fontSize:11, fontWeight:600, fontFamily:"var(--font)", padding:"6px 8px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--white)", color:"var(--charcoal-md)", cursor:"pointer", flex:1, minWidth:0 }}>
+          <option value="all">{t("docs.allPatients")}</option>
+          <option value="general">{t("docs.generalFilter")}</option>
+          {patientsWithDocs.map((p: Row) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      </div>
+      {/* Type filter pills */}
+      <div style={{ display:"flex", gap:4, marginBottom:14 }}>
+        {[
+          { k:"all", l:t("docs.allTypes") },
+          { k:"image", l:t("docs.image") },
+          { k:"pdf", l:t("docs.pdf") },
+          { k:"doc", l:t("docs.word") },
+        ].map(f => (
+          <button key={f.k} onClick={() => setFilterType(f.k)}
+            style={{ padding:"5px 12px", fontSize:11, fontWeight:600, borderRadius:"var(--radius-pill)", border:"none", cursor:"pointer", fontFamily:"var(--font)",
+              background: filterType === f.k ? "var(--teal)" : "var(--white)", color: filterType === f.k ? "white" : "var(--charcoal-md)",
+              boxShadow: filterType === f.k ? "none" : "var(--shadow-sm)" }}>
+            {f.l}
+          </button>
+        ))}
+      </div>
+
+      {/* Results count */}
+      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginBottom:8 }}>
+        {t("docs.count", { count: filteredDocs.length })}
+        {filterPatient !== "all" && (() => { const p = patients.find((pt: Row) => pt.id === filterPatient); return p ? ` · ${p.name}` : ""; })()}
+      </div>
+
+      <DocumentList
+        documents={filteredDocs}
+        sessions={upcomingSessions}
+        patients={patients}
+        showPatientName
+        onPatientClick={openExpediente}
+        onOpen={openDocViewer}
+        onRename={renameDocument}
+        onTag={tagDocumentSession}
+        onDelete={deleteDocument}
+        emptyMessage={(documents || []).length === 0 ? t("docs.noDocuments") : t("docs.noResults")}
+      />
+
+    </div>
+    </>
+  );
+}

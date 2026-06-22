@@ -1,0 +1,464 @@
+/* ── Recurring-session generation helpers ──
+
+   Pure functions used by useSessions (initial generation, schedule
+   change) and useCardiganData (auto-extend on login). Kept React-free
+   so they can be unit-tested without the supabase client or any UI
+   surface — the auto-extend logic in particular is critical for
+   accounting integrity (its bugs inflated amountDue for sessions that
+   never happened) and must stay covered by tests.
+*/
+
+import {
+  PATIENT_STATUS, SESSION_STATUS,
+  RECURRENCE_WINDOW_WEEKS,
+  RECURRENCE_FREQUENCY, RECURRENCE_STRIDE_DAYS, DEFAULT_RECURRENCE_FREQUENCY,
+} from "../data/constants";
+import { isTutorSession, isInterviewSession } from "./sessions";
+import { formatShortDate, parseLocalDate, parseShortDate, shortDateToISO, toISODate } from "./dates";
+
+/* ── Structural types for the rows these pure helpers walk ── */
+export interface RecPatient {
+  id: string;
+  name?: string | null;
+  initials?: string | null;
+  status?: string | null;
+  scheduling_mode?: string | null;
+  rate?: number | null;
+  color_idx?: number | null;
+}
+export interface RecSession {
+  status?: string | null;
+  day: string;
+  time: string;
+  date: string;
+  duration?: number | null;
+  modality?: string | null;
+  is_recurring?: boolean | null;
+  recurrence_frequency?: string | null;
+  session_type?: string | null;
+  initials?: string | null;
+  created_at?: string | null;
+}
+export interface AutoExtendArgs {
+  patient: RecPatient | null | undefined;
+  allPSess: RecSession[] | null | undefined;
+  today: Date;
+  threshold: Date;
+  extendEnd: string;
+  userId: string;
+}
+interface SlotInfo { day: string; time: string; duration: number; modality: string; frequency: string }
+export interface AutoExtendRow {
+  user_id: string;
+  patient_id: string;
+  patient: string | null | undefined;
+  initials: string | null | undefined;
+  time: string;
+  day: string;
+  date: string;
+  duration: number;
+  rate: number | null | undefined;
+  modality: string;
+  is_recurring: true;
+  recurrence_frequency: string;
+  color_idx: number;
+}
+
+const DAY_TO_JS: Record<string, number> = { "Lunes":1, "Martes":2, "Miércoles":3, "Jueves":4, "Viernes":5, "Sábado":6, "Domingo":0 };
+
+/* Resolve a frequency string to its stride in days. Falls back to
+   weekly for unknown / null / undefined values so legacy rows with
+   no recurrence_frequency column read as weekly (matches the DB
+   migration 044 default). */
+function strideFor(frequency: string | null | undefined): number {
+  return RECURRENCE_STRIDE_DAYS[frequency ?? ""] || RECURRENCE_STRIDE_DAYS[DEFAULT_RECURRENCE_FREQUENCY];
+}
+
+/**
+ * Recurring date series for `dayName` from `startDateStr` (inclusive)
+ * to `endDateStr` (inclusive). Stride varies by `frequency` —
+ * 'weekly' (every 7 days, default), 'biweekly' (every 14), 'monthly'
+ * (every 28). Both date inputs are ISO ("YYYY-MM-DD"). If `endDateStr`
+ * is omitted, defaults to RECURRENCE_WINDOW_WEEKS past start.
+ *
+ * Note on monthly: stride=28 (4 weeks) so the day-of-week is
+ * preserved. Calendar-monthly (same date each month) would shift
+ * the weekday with the monthly drift, which doesn't match how a
+ * therapist's "Lunes" slot actually works.
+ */
+export function getRecurringDates(
+  dayName: string,
+  startDateStr: string,
+  endDateStr?: string | null,
+  frequency: string = DEFAULT_RECURRENCE_FREQUENCY,
+): Date[] {
+  const target = DAY_TO_JS[dayName];
+  if (target == null) return [];
+  const stride = strideFor(frequency);
+  const start = parseLocalDate(startDateStr);
+  let diff = target - start.getDay();
+  if (diff < 0) diff += 7;
+  const end = endDateStr ? parseLocalDate(endDateStr) : new Date(start);
+  if (!endDateStr) end.setDate(end.getDate() + RECURRENCE_WINDOW_WEEKS * 7);
+  const dates: Date[] = [];
+  const current = new Date(start);
+  current.setDate(start.getDate() + diff);
+  while (current <= end) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + stride);
+  }
+  return dates;
+}
+
+/**
+ * Decide which session rows to insert when auto-extending a patient's
+ * recurring schedule. Pure — returns rows ready to insert (or `[]`).
+ *
+ * Accounting invariants enforced here:
+ *   1. NEVER generate a session with a date in the past. Past-dated
+ *      sessions auto-complete in display, get summed into `consumed`,
+ *      and inflate amountDue for sessions that never happened. The
+ *      window therefore starts at max(latest+1day, today).
+ *   2. The "current" recurring schedule is reflected ONLY in
+ *      currently-scheduled, non-tutor sessions. Walking historical
+ *      rows pulled in abandoned slots (after a Mon→Wed schedule
+ *      change) and one-off tutor day/times, both of which caused
+ *      duplicate weekly sessions on slots the patient no longer uses.
+ *
+ * Inputs:
+ *   patient    — the patient row
+ *   allPSess   — all sessions for that patient (any status, any date)
+ *   today      — Date at midnight, the floor for generated dates
+ *   threshold  — Date; if latest scheduled session is later than this,
+ *                the schedule isn't running out yet → no extend
+ *   extendEnd  — ISO date string; the upper bound for new sessions
+ *   userId     — user_id to stamp on inserted rows
+ */
+export function computeAutoExtendRows({ patient, allPSess, today, threshold, extendEnd, userId }: AutoExtendArgs): AutoExtendRow[] {
+  if (!patient || patient.status !== PATIENT_STATUS.ACTIVE) return [];
+  // Episodic patients have no perpetual weekly slot — the practitioner
+  // schedules the next visit at the end of each consult. Defensive
+  // guard that mirrors the call-site filter in useCardiganData; cheaper
+  // here than scanning allPSess for is_recurring=true rows.
+  if (patient.scheduling_mode === "episodic") return [];
+  if (!Array.isArray(allPSess) || allPSess.length === 0) return [];
+
+  // CRITICAL — see CLAUDE.md prime directive on financial integrity.
+  //
+  // The patient's "current recurring schedule" is the set of (day,
+  // time) tuples found in FUTURE-DATED scheduled sessions only.
+  //
+  // Why the date filter matters:
+  //   - Auto-complete is display-only (CLAUDE.md). Past sessions
+  //     whose `date < today` keep `status='scheduled'` in the DB
+  //     even though the UI renders them as completed.
+  //   - When a user moves a patient from Lunes to Miércoles,
+  //     applyScheduleChange deletes FUTURE Mondays but PAST Mondays
+  //     remain in the DB as status='scheduled' (auto-display
+  //     completed). Without this date filter they'd leak into
+  //     `schedMap` and auto-extend would regenerate phantom future
+  //     Mondays — and those phantoms eventually become past, count
+  //     toward `consumed`, and silently inflate amountDue.
+  //   - Tutor sessions are also excluded so a one-off appointment
+  //     with a parent doesn't mint weekly recurrences on that day.
+  const todayISOStr = toISODate(today);
+  const scheduledRegular = allPSess.filter(s => {
+    if (s.status !== SESSION_STATUS.SCHEDULED) return false;
+    if (isTutorSession(s)) return false;
+    // Interview sessions (migration 047) are one-offs by definition
+    // even after a potential is converted to an active patient. The
+    // is_recurring=false guard below also catches them — but
+    // explicitly skipping by session_type makes the intent obvious
+    // for any future maintainer reading this filter, and makes the
+    // function correct under any (defensive) regression where an
+    // interview row gets is_recurring=true by mistake.
+    if (isInterviewSession(s)) return false;
+    // Anchor the (yearless) date's year inference on created_at, not today.
+    // With today-anchoring a scheduled row >~6 months old infers to a
+    // FUTURE year, bypasses this past-row guard, and — with ≥2 such rows on
+    // a slot the patient already abandoned — resurrects it as phantom future
+    // sessions (rule #8). created_at sits within the recurrence window of
+    // the true date, so old rows correctly resolve to the past and drop out.
+    // Mirrors the created_at anchor in utils/accounting.ts::sessionEndMoment.
+    // Falls back to today-anchoring when created_at is absent.
+    const createdAnchor = s.created_at ? new Date(s.created_at) : null;
+    const dateAnchor = createdAnchor && !isNaN(createdAnchor.getTime()) ? createdAnchor : undefined;
+    if (shortDateToISO(s.date, dateAnchor) < todayISOStr) return false;
+    // is_recurring is the explicit "this row was created as part of
+    // a recurring schedule" flag. Manual one-offs from
+    // NewSessionSheet set it to false. Historical rows (pre-
+    // migration 025) have it true via the migration's backfill.
+    // Reading `=== false` rather than `!== true` is intentional:
+    // any row that genuinely has the flag set to false is treated
+    // as a one-off; any other value (including older rows that
+    // somehow lack the column) is allowed through.
+    if (s.is_recurring === false) return false;
+    return true;
+  });
+  if (scheduledRegular.length === 0) return [];
+
+  // A (day, time) slot is part of the recurring schedule only if it
+  // has MULTIPLE future scheduled sessions on it. The patient-creation
+  // flow + applyScheduleChange both insert a full recurrence window
+  // (~15 weeks) of sessions in one batch, so an active recurring slot
+  // always has many in flight. A one-off session sits alone on its
+  // slot — and historically has been mis-classified as a recurring
+  // anchor when the user forgot to toggle the "tutor" type picker
+  // before saving (e.g. a one-off Saturday with the parent saved as
+  // `session_type='regular'`). Requiring ≥2 future sessions on the
+  // slot lets one-offs remain one-offs and prevents a single mistaken
+  // row from minting a weekly schedule.
+  const slotCounts = new Map<string, number>();
+  scheduledRegular.forEach(s => {
+    const k = `${s.day}|${s.time}`;
+    slotCounts.set(k, (slotCounts.get(k) || 0) + 1);
+  });
+  const schedMap = new Map<string, SlotInfo>();
+  scheduledRegular.forEach(s => {
+    const k = `${s.day}|${s.time}`;
+    if ((slotCounts.get(k) ?? 0) < 2) return;
+    if (schedMap.has(k)) return;
+    schedMap.set(k, {
+      day: s.day, time: s.time,
+      duration: s.duration || 60,
+      modality: s.modality || "presencial",
+      // Read frequency from the slot's existing future sessions —
+      // every session in a slot carries the same value (set at
+      // create / applyScheduleChange time). When a user changes
+      // frequency, applyScheduleChange replays the future window at
+      // the new value, so this naturally tracks the latest decision.
+      // Legacy rows missing the column read as weekly via the
+      // strideFor fallback.
+      frequency: s.recurrence_frequency || DEFAULT_RECURRENCE_FREQUENCY,
+    });
+  });
+  if (schedMap.size === 0) return [];
+
+  // Dedup key is (date, time) — not date alone. A patient can have two
+  // sessions on the same day at different times, and a cancelled slot at
+  // 10:00 must not block a new 14:00 slot on the same date. Mirrors the
+  // DB unique index uniq_sessions_patient_date_time.
+  const existingSlots = new Set(allPSess.map(s => `${s.date}|${s.time}`));
+
+  // Per-slot latest. Each slot's cadence is preserved by anchoring
+  // its extension to that slot's most recent scheduled session — not
+  // a global "latest across all slots" — so a multi-slot patient
+  // with mixed frequencies (e.g. Lunes weekly + Miércoles monthly)
+  // extends each one correctly.
+  const latestPerSlot = new Map<string, Date>();
+  scheduledRegular.forEach(s => {
+    const k = `${s.day}|${s.time}`;
+    if (!schedMap.has(k)) return;
+    const d = parseShortDate(s.date);
+    const cur = latestPerSlot.get(k);
+    if (!cur || d > cur) latestPerSlot.set(k, d);
+  });
+
+  // Threshold gate uses the soonest-running-out slot — if every
+  // slot is comfortably out past the threshold, no extend.
+  let earliestLast = null;
+  for (const d of latestPerSlot.values()) {
+    if (!earliestLast || d < earliestLast) earliestLast = d;
+  }
+  if (!earliestLast || earliestLast > threshold) return [];
+
+  const DAY_MS = 86400000;
+  const rows: AutoExtendRow[] = [];
+  for (const [slotKey, sched] of schedMap.entries()) {
+    const slotLatest = latestPerSlot.get(slotKey);
+    if (!slotLatest) continue;
+    // Stride-aware step from THIS slot's latest, then floored at
+    // today so a hiatus doesn't back-fill the gap with phantoms.
+    // For weekly (stride=7), this matches the previous "+1 day +
+    // weekday-skip" behavior (the getRecurringDates skip absorbed
+    // the missing 6 days). For biweekly/monthly the stride must be
+    // applied here, otherwise the first inserted row would land 7
+    // days after `latest` and break the cadence.
+    const stride = RECURRENCE_STRIDE_DAYS[sched.frequency] || 7;
+    const startMs = Math.max(slotLatest.getTime() + stride * DAY_MS, today.getTime());
+    const startISO = toISODate(new Date(startMs));
+    if (startISO > extendEnd) continue;
+    getRecurringDates(sched.day, startISO, extendEnd, sched.frequency).forEach(d => {
+      const ds = formatShortDate(d);
+      const slot = `${ds}|${sched.time}`;
+      if (existingSlots.has(slot)) return;
+      // Belt-and-suspenders: even though startISO is clamped to today,
+      // we re-check each generated row before pushing. If anything
+      // upstream regresses (timezone bug, off-by-one, etc.), we'd
+      // rather drop a row than corrupt accounting.
+      const rowISO = toISODate(d);
+      if (rowISO < toISODate(today)) return;
+      rows.push({
+        user_id: userId,
+        patient_id: patient.id,
+        patient: patient.name,
+        initials: patient.initials,
+        time: sched.time, day: sched.day,
+        date: ds, duration: sched.duration,
+        rate: patient.rate,
+        modality: sched.modality,
+        // Auto-extend rows ARE recurring by definition.
+        is_recurring: true,
+        // Carry the slot's frequency forward so the next auto-extend
+        // round reads the same value.
+        recurrence_frequency: sched.frequency,
+        color_idx: patient.color_idx || 0,
+      });
+      existingSlots.add(slot);
+    });
+  }
+  return rows;
+}
+
+/* ── Recurring expenses ──
+
+   Mirror of the recurring-sessions auto-extend logic but simpler:
+   expenses don't have a per-row time/duration/modality, just a monthly
+   slot keyed on (recurring_id, period_year, period_month). The DB-level
+   partial unique index `uniq_expenses_recurring_period` is the truth —
+   this helper only proposes rows; insert with `on conflict do nothing`
+   and the DB rejects duplicates. Backfill is intentionally CAPPED at
+   `RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS` so we never silently insert
+   money rows for months the user might have already paid in cash.
+   Anything older surfaces as a one-tap "Generar N gastos pendientes"
+   prompt on the Gastos tab.
+
+   Per CLAUDE.md prime directive: financial data integrity > convenience.
+*/
+
+export const RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS = 2;
+
+export interface ExpenseTemplate {
+  id: string;
+  active?: boolean | null;
+  start_year?: number | null;
+  start_month?: number | null;
+  day_of_month: number;
+  amount?: number | null;
+  category?: string | null;
+  description?: string | null;
+  payment_method?: string | null;
+  tax_treatment?: string | null;
+}
+export interface ExistingExpense {
+  recurring_id?: string | null;
+  period_year?: number | null;
+  period_month?: number | null;
+}
+interface MonthSlot { year: number; month: number }
+export interface PendingExpense { recurring_id: string; year: number; month: number }
+export interface RecurringExpenseRow {
+  user_id: string | undefined;
+  amount: number | null | undefined;
+  date: string;
+  category: string | null | undefined;
+  description: string | null;
+  payment_method: string | null;
+  tax_treatment: string;
+  recurring_id: string;
+  period_year: number;
+  period_month: number;
+  color_idx: number;
+}
+
+// Days in (year, month) — 1-indexed month, JS Date.getDate at end-of-month
+// trick. Pure function, no timezone surprises.
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+// Build a "DD-MMM" Spanish short-date string for the day-of-month clamp.
+// Mirror of utils/dates.js::SHORT_MONTHS — duplicated here to keep this
+// file React-free and test-pure.
+const _GASTOS_SHORT_MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function _formatGastoDate(year: number, month: number, day: number): string {
+  return `${day}-${_GASTOS_SHORT_MONTHS[month - 1]}`;
+}
+
+// Compute (year, month) slots that should exist for a recurring template
+// between its start and `now`, as a sorted ascending array. Inactive or
+// paused-only-future templates produce []. The caller decides which slice
+// to auto-create vs. surface as a backfill prompt.
+export function expectedSlotsForTemplate(template: ExpenseTemplate | null | undefined, now: Date = new Date()): MonthSlot[] {
+  if (!template?.active) return [];
+  const startY = template.start_year;
+  const startM = template.start_month;
+  if (!Number.isFinite(startY) || !Number.isFinite(startM)) return [];
+  const slots: MonthSlot[] = [];
+  // Number.isFinite above guarantees both are real numbers at runtime;
+  // it isn't a TS type guard, so assert the narrowed type here.
+  let y = startY as number, m = startM as number;
+  const nowY = now.getFullYear();
+  const nowM = now.getMonth() + 1;
+  while (y < nowY || (y === nowY && m <= nowM)) {
+    slots.push({ year: y, month: m });
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return slots;
+}
+
+// Given templates + already-generated expenses, return the rows that
+// SHOULD be inserted automatically (within the auto-backfill cap) and
+// the rows that should be surfaced as a backfill prompt. Idempotent:
+// any slot already represented in `existingExpenses` (by recurring_id +
+// period_year + period_month) is skipped.
+//
+// Returns:
+//   {
+//     auto: [...rows to insert now],
+//     pending: [...{recurring_id, year, month}] // older, awaiting user CTA
+//   }
+export function computeRecurringExpenseRows(
+  templates: ExpenseTemplate[] | null | undefined,
+  existingExpenses: ExistingExpense[] | null | undefined,
+  now: Date = new Date(),
+  userId?: string,
+): { auto: RecurringExpenseRow[]; pending: PendingExpense[] } {
+  const auto: RecurringExpenseRow[] = [];
+  const pending: PendingExpense[] = [];
+  if (!Array.isArray(templates) || templates.length === 0) return { auto, pending };
+
+  // Index existing slots for O(1) lookup.
+  const taken = new Set<string>();
+  for (const e of (existingExpenses || [])) {
+    if (e.recurring_id && e.period_year != null && e.period_month != null) {
+      taken.add(`${e.recurring_id}::${e.period_year}::${e.period_month}`);
+    }
+  }
+
+  // The "auto" cutoff: the (year, month) `RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS`
+  // before "now" inclusive. Anything older becomes a pending prompt.
+  const autoCutoff = new Date(now.getFullYear(), now.getMonth() - RECURRING_EXPENSE_AUTO_BACKFILL_MONTHS, 1);
+  const autoY = autoCutoff.getFullYear();
+  const autoM = autoCutoff.getMonth() + 1;
+  const isWithinAuto = (y: number, m: number) => (y > autoY) || (y === autoY && m >= autoM);
+
+  for (const t of templates) {
+    if (!t?.active) continue;
+    const slots = expectedSlotsForTemplate(t, now);
+    for (const { year, month } of slots) {
+      const key = `${t.id}::${year}::${month}`;
+      if (taken.has(key)) continue;
+      if (isWithinAuto(year, month)) {
+        const dom = Math.min(t.day_of_month, daysInMonth(year, month));
+        auto.push({
+          user_id: userId,
+          amount: t.amount,
+          date: _formatGastoDate(year, month, dom),
+          category: t.category,
+          description: t.description || null,
+          payment_method: t.payment_method || null,
+          tax_treatment: t.tax_treatment || "deductible",
+          recurring_id: t.id,
+          period_year: year,
+          period_month: month,
+          color_idx: 0,
+        });
+      } else {
+        pending.push({ recurring_id: t.id, year, month });
+      }
+    }
+  }
+  return { auto, pending };
+}

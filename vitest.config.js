@@ -10,12 +10,12 @@ export default defineConfig({
     environment: "node",
     environmentMatchGlobs: [
       ["src/hooks/__tests__/**", "happy-dom"],
-      // Component tests (.test.jsx anywhere under src) render real DOM via
+      // Component tests (.test.tsx anywhere under src) render real DOM via
       // @testing-library/react, so they need happy-dom too. Pure utils
-      // tests (.test.js) stay in the lighter node env.
-      ["src/**/__tests__/**/*.test.jsx", "happy-dom"],
+      // tests (.test.ts) stay in the lighter node env.
+      ["src/**/__tests__/**/*.test.tsx", "happy-dom"],
     ],
-    setupFiles: ["./src/test/setup.js"],
+    setupFiles: ["./src/test/setup.ts"],
     globals: false,
     // Vitest's default include pattern (`**/*.{test,spec}.{js,...}`)
     // would scoop up the Playwright spec in e2e/ and try to run it

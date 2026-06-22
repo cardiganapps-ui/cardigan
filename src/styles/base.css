@@ -75,6 +75,14 @@
   /* Document viewer backdrop for image content. Near-black so the
      image edges contrast cleanly; PDFs / docs render on --white. */
   --doc-viewer-image-bg: #1A1A1A;
+  /* Brand/social constants — intentionally theme-CONSTANT (deliberately
+     NOT overridden in dark.css): a WhatsApp pill must stay
+     WhatsApp-green with a white label in both light and dark mode.
+     --white flips to #1A1A1A in dark, so labels on brand pills use
+     --social-on-brand instead. */
+  --social-whatsapp: #25D366;
+  --social-dark:     #1A1A1A;
+  --social-on-brand: #FFFFFF;
   --radius-sm:   8px;
   --radius:      12px;
   --radius-lg:   16px;
@@ -82,6 +90,30 @@
   --shadow-sm:   0 1px 4px rgba(46,46,46,0.07);
   --shadow:      0 2px 12px rgba(46,46,46,0.09);
   --shadow-lg:   0 8px 28px rgba(46,46,46,0.12);
+  /* Heavy elevations for centered dialogs/prompts and bottom sheets.
+     Tokenized (with dark-mode overrides in dark.css) so overlay
+     surfaces stop hand-rolling rgba(0,0,0,…) literals that don't flip
+     in dark mode — every modal now shares one elevation language. */
+  --shadow-overlay:  0 16px 48px rgba(46,46,46,0.20);
+  --shadow-sheet-up: 0 -10px 40px rgba(46,46,46,0.16);
+  /* ── Spacing scale ──
+     The vertical/horizontal rhythm documented in CLAUDE.md, finally
+     tokenized so new surfaces stop hand-coding padding/gap px. Use the
+     numeric steps for raw spacing and the semantic aliases for the
+     common card/sheet/row recipes. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 14px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --pad-card:    var(--space-5);   /* card inner padding (14–16) */
+  --pad-sheet-x: var(--space-6);   /* sheet body horizontal */
+  --pad-sheet-y: var(--space-7);   /* sheet body vertical */
+  --gap-row:     var(--space-3);   /* list row gap */
+  --gap-section: var(--space-5);   /* gap between stacked sections */
   /* Type scale — 7 steps. Use var(--text-*) instead of raw px.
      --text-scale is overridden at iPad+ breakpoints to bump body sizes
      without re-tuning every inline style. Eyebrow stays literal at 10px —

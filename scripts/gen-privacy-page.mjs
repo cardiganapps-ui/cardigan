@@ -16,7 +16,7 @@ const ROOT = resolve(__dirname, "..");
 // privacy.js is plain data (no imports), but it's authored as a browser ESM
 // module; import it dynamically so we get POLICY_SECTIONS etc. directly.
 const { POLICY_SECTIONS, POLICY_VERSION, POLICY_PUBLISHED } =
-  await import(resolve(ROOT, "src/data/privacy.js"));
+  await import(resolve(ROOT, "src/data/privacy.ts"));
 
 // The policy uses profession-vocabulary placeholders ({client.p}/{client.s})
 // that the app resolves per-profession at runtime. The public page is

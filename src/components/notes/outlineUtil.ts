@@ -1,0 +1,25 @@
+/* Extract the heading outline from raw markdown content. Returns a
+   list of { line, level, text } items, one per `#` / `##` / `###`
+   heading. Used by NoteOutline and the format-detection badge.
+   Fence-aware: lines inside a ``` code block are skipped so a `#`
+   comment in pseudocode doesn't pollute the outline. */
+export interface OutlineItem { line: number; level: number; text: string }
+
+export function extractOutline(content?: string | null): OutlineItem[] {
+  if (!content) return [];
+  const lines = content.split("\n");
+  const out = [];
+  let insideFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^ {0,3}```/.test(lines[i] || "")) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (insideFence) continue;
+    const m = lines[i].match(/^(#{1,3}) (.+)$/);
+    if (m) {
+      out.push({ line: i, level: m[1].length, text: m[2].trim() });
+    }
+  }
+  return out;
+}

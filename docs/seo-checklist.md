@@ -16,7 +16,7 @@ todo — none of it requires code changes.
 - [ ] Submit to [Bing Webmaster Tools](https://www.bing.com/webmasters/).
       Bing has 5–10% of MX search traffic — easy win.
 - [ ] Confirm Vercel Analytics is firing (already wired in
-      `src/main.jsx`). Check dashboard for the new routes
+      `src/main.tsx`). Check dashboard for the new routes
       (`/psicologos/`, etc.) showing up after deploy.
 
 ## Mexican / LATAM SaaS directories

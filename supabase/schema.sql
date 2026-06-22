@@ -719,12 +719,20 @@ end $$;
 create policy "Users insert own bug reports" on bug_reports for insert with check (auth.uid() is not null);
 create policy "Users read own bug reports" on bug_reports for select using (auth.uid() = user_id);
 
--- Admin read-only access (can view all users' data)
-create or replace function is_admin() returns boolean as $$
+-- Admin read-only access (can view all users' data).
+-- SECURITY DEFINER with a pinned empty search_path (migration 081): the
+-- body only calls fully-qualified auth.jwt(), and pinning removes the
+-- mutable-search_path audit finding. Keep the email in sync with
+-- ADMIN_EMAIL (data/constants.ts).
+create or replace function is_admin() returns boolean
+  language plpgsql
+  security definer
+  set search_path = ''
+as $$
 begin
   return auth.jwt() ->> 'email' = 'gaxioladiego@gmail.com';
 end;
-$$ language plpgsql security definer;
+$$;
 
 create policy "Admin reads all patients" on patients for select using (is_admin());
 create policy "Admin reads all sessions" on sessions for select using (is_admin());
@@ -834,6 +842,14 @@ create table if not exists admin_audit_log (
   ua text,
   created_at timestamptz not null default now()
 );
+-- RLS (migration 045): admin-only SELECT; writes are service-role only
+-- (no INSERT policy). Mirrored here so a fresh bootstrap from schema.sql
+-- doesn't create the audit table with RLS OFF.
+alter table admin_audit_log enable row level security;
+drop policy if exists "Admin reads audit log" on admin_audit_log;
+create policy "Admin reads audit log"
+  on admin_audit_log for select
+  using (is_admin());
 
 -- Revenue overview RPC (migration 046). Single-snapshot JSON for the
 -- /admin/revenue page. is_admin() gated. Mirrors useSubscription.js
@@ -1213,8 +1229,14 @@ begin
 end;
 $$;
 
+-- p_created_at anchors the yearless-date year inference (migration 080):
+-- created_at is always within the recurrence window of the true session
+-- date, so a past-scheduled row >~6mo old keeps counting instead of being
+-- inferred into a future year and silently dropped from `billed` (the C1
+-- understatement). Falls back to ref/now when null. MUST stay in sync with
+-- utils/accounting.ts::sessionEndMoment + the _cardiTools/audit mirrors.
 create or replace function public.session_counts_at(
-  p_status text, p_date text, p_time text, p_tz text, ref timestamptz
+  p_status text, p_date text, p_time text, p_tz text, ref timestamptz, p_created_at timestamptz default null
 ) returns boolean language plpgsql immutable parallel safe as $$
 declare
   parts text[];
@@ -1224,6 +1246,7 @@ declare
   tp text[];
   session_end_local timestamp;
   session_end_at timestamptz;
+  anchor timestamptz := coalesce(p_created_at, ref);
 begin
   if p_status = 'completed' or p_status = 'charged' then return true; end if;
   if p_status <> 'scheduled' then return false; end if;
@@ -1237,7 +1260,7 @@ begin
   if yr_suffix is not null then
     y := (2000 + yr_suffix::smallint)::smallint;
   else
-    y := public.infer_short_date_year(m, d_num, ref, p_tz);
+    y := public.infer_short_date_year(m, d_num, anchor, p_tz);
   end if;
   tp := string_to_array(p_time, ':');
   if array_length(tp, 1) >= 2 then
@@ -1248,6 +1271,7 @@ begin
   exception when others then return false;
   end;
   session_end_at := session_end_local at time zone p_tz;
+  -- "has the slot passed" still compares against now (ref), not the anchor.
   return ref >= session_end_at;
 end;
 $$;
@@ -1274,7 +1298,7 @@ begin
   select coalesce(sum(coalesce(s.rate, v_patient_rate, 0)), 0)::integer into v_billed
     from sessions s
     where s.patient_id = p_patient_id
-      and public.session_counts_at(s.status, s.date, s.time, v_tz, v_now);
+      and public.session_counts_at(s.status, s.date, s.time, v_tz, v_now, s.created_at);
   update patients set sessions = coalesce(v_sessions, 0), billed = coalesce(v_billed, 0)
     where id = p_patient_id;
 end;

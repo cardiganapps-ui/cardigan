@@ -1,0 +1,517 @@
+import { describe, it, expect } from "vitest";
+import {
+  sessionCountsTowardBalance,
+  computeConsumedByPatient,
+  enrichPatientsWithBalance,
+  applyConsumedToPatients,
+} from "../accounting";
+
+// Fixed reference time so tests are deterministic across years.
+// Today (in these tests) = 2026-04-24 10:00.
+const NOW = new Date(2026, 3, 24, 10, 0);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+
+// Builders
+const sess = (patient_id: Row, status: Row, rate: Row = 700, overrides: Row = {}) => ({
+  patient_id, status, rate,
+  date: overrides.date ?? "1-Ene",
+  time: overrides.time ?? "10:00",
+  ...overrides,
+});
+const pat = (id: Row, rate = 700, paid = 0, extra: Row = {}) => ({
+  id, rate, paid, ...extra,
+});
+
+describe("sessionCountsTowardBalance", () => {
+  it("counts explicit completed", () => {
+    expect(sessionCountsTowardBalance(
+      sess("p", "completed", 700, { date: "1-Ene" }), NOW
+    )).toBe(true);
+  });
+
+  it("counts charged even on a future date (cancel-with-charge owes immediately)", () => {
+    expect(sessionCountsTowardBalance(
+      sess("p", "charged", 700, { date: "31-Dic", time: "10:00" }), NOW
+    )).toBe(true);
+  });
+
+  it("counts scheduled whose date+time has passed (auto-complete equivalent)", () => {
+    // 23-Abr is yesterday — past.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "23-Abr", time: "10:00" }), NOW
+    )).toBe(true);
+  });
+
+  it("does NOT count scheduled whose date is in the future", () => {
+    // 28-Abr is a few days away — future.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "28-Abr", time: "10:00" }), NOW
+    )).toBe(false);
+  });
+
+  it("does NOT count a scheduled session that started less than an hour ago", () => {
+    // Session was today 09:30; now is 10:00, so it's only 30m in. +1h grace
+    // means it doesn't flip to consumed yet — matches the display auto-
+    // complete rule so the UI and the balance agree.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "24-Abr", time: "09:30" }), NOW
+    )).toBe(false);
+  });
+
+  it("counts a scheduled session whose 1-hour grace has elapsed", () => {
+    // Session at 09:00 today; now is 10:00 — past end-of-grace.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "24-Abr", time: "09:00" }), NOW
+    )).toBe(true);
+  });
+
+  it("does NOT count cancelled", () => {
+    expect(sessionCountsTowardBalance(
+      sess("p", "cancelled", 700, { date: "1-Ene" }), NOW
+    )).toBe(false);
+  });
+
+  it("handles null/undefined session input", () => {
+    expect(sessionCountsTowardBalance(null, NOW)).toBe(false);
+    expect(sessionCountsTowardBalance(undefined, NOW)).toBe(false);
+  });
+
+  it("handles a session whose 1-hour grace crosses midnight", () => {
+    // Session at 23:45 on 23-Abr → end-moment is 00:45 on 24-Abr.
+    // NOW is 24-Abr at 10:00, well past the rollover.
+    // setHours+setMinutes mutates the Date in place; combined with the
+    // +1h add, the wall-clock is 24-Abr 00:45 not 23-Abr 24:45 — JS
+    // Date math handles the day rollover, so the predicate should
+    // return true.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "23-Abr", time: "23:45" }), NOW
+    )).toBe(true);
+  });
+
+  it("handles a session right at the year boundary (Dec 31 23:30)", () => {
+    // 31-Dic inferred to 2025 (closest to NOW=2026-04-24 is 2025-12-31,
+    // ~115 days back; 2026-12-31 is ~250 days ahead). +1h end = 2026-01-01
+    // 00:30 — past relative to NOW.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "31-Dic", time: "23:30" }), NOW
+    )).toBe(true);
+  });
+});
+
+describe("computeConsumedByPatient", () => {
+  it("sums completed + charged + past-scheduled", () => {
+    const rateById = new Map([["p1", 700]]);
+    const m = computeConsumedByPatient([
+      sess("p1", "completed", 700, { date: "1-Ene" }),
+      sess("p1", "charged",   500, { date: "1-Ene" }),
+      sess("p1", "scheduled", 700, { date: "23-Abr", time: "10:00" }),  // past → counts
+      sess("p1", "scheduled", 700, { date: "28-Abr", time: "10:00" }),  // future → skipped
+      sess("p1", "cancelled", 700, { date: "1-Ene" }),                  // never counts
+    ], rateById, NOW);
+    expect(m.get("p1")).toBe(700 + 500 + 700);  // 1900
+  });
+
+  it("falls back to patient.rate when session.rate is null", () => {
+    // Imported historical rows often have rate=null. We apply the current
+    // patient rate as fallback so consumed reflects reality.
+    const rateById = new Map([["p1", 800]]);
+    const m = computeConsumedByPatient([
+      sess("p1", "scheduled", null, { date: "1-Ene" }),
+    ], rateById, NOW);
+    expect(m.get("p1")).toBe(800);
+  });
+
+  it("skips sessions with no patient_id", () => {
+    const m = computeConsumedByPatient([
+      { patient_id: null, status: "completed", rate: 700, date: "1-Ene", time: "10:00" },
+    ], new Map(), NOW);
+    expect(m.size).toBe(0);
+  });
+
+  it("handles empty / nullish input without throwing", () => {
+    expect(computeConsumedByPatient(null, new Map(), NOW).size).toBe(0);
+    expect(computeConsumedByPatient([], new Map(), NOW).size).toBe(0);
+  });
+
+  it("keeps different patients isolated", () => {
+    const rateById = new Map([["p1", 700], ["p2", 500]]);
+    const m = computeConsumedByPatient([
+      sess("p1", "completed", 700, { date: "1-Ene" }),
+      sess("p2", "charged",   500, { date: "1-Ene" }),
+    ], rateById, NOW);
+    expect(m.get("p1")).toBe(700);
+    expect(m.get("p2")).toBe(500);
+  });
+});
+
+describe("enrichPatientsWithBalance", () => {
+  it("amountDue = consumed − paid when consumed > paid", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 300)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(400);
+    expect(out.credit).toBe(0);
+  });
+
+  it("credit = paid − consumed when paid > consumed (prepaid)", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 2000)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(1300);
+  });
+
+  it("amountDue and credit are mutually exclusive", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 700)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("includes past-scheduled sessions (the critical product requirement)", () => {
+    // Therapists almost never mark sessions completed — they rely on the
+    // past-scheduled-counts rule. If that branch regresses, every active
+    // patient goes to credit and therapists appear to owe the user money.
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0)],
+      [
+        sess("p1", "scheduled", 700, { date: "10-Abr", time: "10:00" }),
+        sess("p1", "scheduled", 700, { date: "17-Abr", time: "10:00" }),
+        sess("p1", "scheduled", 700, { date: "23-Abr", time: "10:00" }),  // yesterday
+      ],
+      NOW,
+    );
+    expect(out.amountDue).toBe(2100);
+  });
+
+  it("future-scheduled sessions are excluded", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0)],
+      [
+        sess("p1", "scheduled", 700, { date: "28-Abr", time: "10:00" }),
+        sess("p1", "scheduled", 700, { date: "5-May", time: "10:00" }),
+      ],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+  });
+
+  it("cancel-with-charge (CHARGED) contributes immediately, no date filter", () => {
+    // A CHARGED session owes the therapist from the moment the cancel
+    // fee is booked — even if the original session date is in the future.
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0)],
+      [sess("p1", "charged", 700, { date: "31-Dic", time: "10:00" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(700);
+  });
+
+  it("cancelled (without charge) never inflates", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0)],
+      [
+        sess("p1", "cancelled", 700, { date: "10-Abr" }),
+        sess("p1", "cancelled", 700, { date: "17-Abr" }),
+      ],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("preserves historical rate accuracy when patient.rate changes", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 900, 0)],  // rate was raised to 900
+      [
+        sess("p1", "completed", 700, { date: "1-Ene" }),  // old session at old rate
+        sess("p1", "completed", 900, { date: "1-Feb" }),  // new session at new rate
+      ],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1600);
+  });
+
+  it("returns empty array for null/undefined patients input", () => {
+    expect(enrichPatientsWithBalance(null, [], NOW)).toEqual([]);
+    expect(enrichPatientsWithBalance(undefined, [], NOW)).toEqual([]);
+  });
+
+  it("preserves all other patient fields", () => {
+    const [out] = enrichPatientsWithBalance(
+      [{ id: "p1", rate: 700, paid: 0, name: "Ana", status: "active" }],
+      [],
+      NOW,
+    );
+    expect(out.name).toBe("Ana");
+    expect(out.status).toBe("active");
+  });
+});
+
+/* ── Opening balance (migration 078) ──
+   A signed starting balance the patient was migrated in with: >0 = owes
+   (pre-existing debt), <0 = saldo a favor. It's a standalone term in the
+   delta, never folded into consumed or paid:
+       delta = consumed − paid + opening_balance
+   These pin that it composes correctly with sessions and payments. */
+describe("opening balance", () => {
+  it("pure opening debt (no sessions/payments) → amountDue", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: 1500 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1500);
+    expect(out.credit).toBe(0);
+  });
+
+  it("pure opening credit (negative) → saldo a favor", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: -800 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(800);
+  });
+
+  it("opening debt is reduced by payments", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 500, { opening_balance: 1500 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1000); // 0 consumed − 500 paid + 1500 debt
+  });
+
+  it("opening credit absorbs consumed sessions before any debt shows", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: -1000 })],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);   // 700 consumed − 1000 credit
+    expect(out.credit).toBe(300);
+  });
+
+  it("opening debt stacks on top of consumed sessions", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { opening_balance: 500 })],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(1200); // 700 consumed + 500 debt
+  });
+
+  it("missing opening_balance defaults to 0 (no effect)", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 300)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(400); // unchanged vs. the baseline test
+  });
+
+  it("accepts a camelCase openingBalance fallback", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { openingBalance: 250 })],
+      [],
+      NOW,
+    );
+    expect(out.amountDue).toBe(250);
+  });
+});
+
+/* ── Interview-stage / potential patients (migration 047) ──
+   Critical safety: an interview session on a 'potential' patient must
+   pass through sessionCountsTowardBalance the same way a regular
+   session does — no special-case branch in the predicate. The
+   difference between a potential's interview balance and a real
+   patient's session balance is enforced ONE LEVEL UP, in the KPI
+   filters that exclude isPotentialOrDiscarded(p) from Home / Finances
+   / Cardi totals. These tests pin the predicate's behavior so a
+   future change can't accidentally couple the two layers. */
+describe("interview sessions (potential patients)", () => {
+  it("free interview (rate=0, completed) → consumed=0, amountDue=0, credit=0", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 0, 0, { status: "potential" })],
+      [sess("p1", "completed", 0, { date: "10-Abr", session_type: "interview" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("scheduled future interview does NOT pre-fire auto-complete", () => {
+    // 1-May is in the future from NOW (24-Abr).
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 500, 0, { status: "potential" })],
+      [sess("p1", "scheduled", 500, { date: "1-May", time: "10:00", session_type: "interview" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("completed paid interview at $500 contributes to consumed like any session", () => {
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 500, 0, { status: "potential" })],
+      [sess("p1", "completed", 500, { date: "10-Abr", session_type: "interview" })],
+      NOW,
+    );
+    expect(out.amountDue).toBe(500);
+  });
+
+  it("interview at $0 doesn't poison rate fallback for active patient's other sessions", () => {
+    // patient.rate = 700; one historical interview at $0 + one
+    // recurring session at $700. Rate fallback must use session.rate
+    // first so the interview's $0 doesn't override the regular rate.
+    const [out] = enrichPatientsWithBalance(
+      [pat("p1", 700, 0, { status: "active" })],
+      [
+        sess("p1", "completed", 0,   { date: "5-Abr",  session_type: "interview" }),
+        sess("p1", "completed", 700, { date: "12-Abr", session_type: "regular" }),
+      ],
+      NOW,
+    );
+    // consumed = 0 (interview) + 700 (regular) = 700
+    expect(out.amountDue).toBe(700);
+  });
+});
+
+/* ── Display-only guard (prime directive) ──
+   Accounting must iterate RAW sessions, never the display-enriched ones
+   (which auto-complete past-scheduled rows). A non-enumerable _displayOnly
+   marker + a dev assertion turns that comment-only rule into a hard
+   failure. The guard is dev/test-only (DCE'd in prod). */
+describe("display-only guard", () => {
+  const marked = (s: Row) => {
+    Object.defineProperty(s, "_displayOnly", { value: true, enumerable: false });
+    return s;
+  };
+
+  it("throws when a display-only session reaches computeConsumedByPatient", () => {
+    const row = marked(sess("p1", "completed", 700, { date: "1-Ene" }));
+    expect(() => computeConsumedByPatient([row], new Map([["p1", 700]]), NOW))
+      .toThrow(/display-only/);
+  });
+
+  it("throws via enrichPatientsWithBalance too", () => {
+    const row = marked(sess("p1", "completed", 700, { date: "1-Ene" }));
+    expect(() => enrichPatientsWithBalance([pat("p1", 700, 0)], [row], NOW))
+      .toThrow(/display-only/);
+  });
+
+  it("raw sessions (no marker) never throw", () => {
+    expect(() => enrichPatientsWithBalance(
+      [pat("p1", 700, 0)],
+      [sess("p1", "completed", 700, { date: "1-Ene" })],
+      NOW,
+    )).not.toThrow();
+  });
+
+  it("the marker is non-enumerable (invisible to spread/JSON)", () => {
+    const row = marked(sess("p1", "completed", 700));
+    expect(Object.keys(row)).not.toContain("_displayOnly");
+    expect(JSON.parse(JSON.stringify(row))._displayOnly).toBeUndefined();
+  });
+});
+
+describe("applyConsumedToPatients (memo-split equivalence)", () => {
+  // The hook (useCardiganData) memoizes the two stages separately for
+  // perf: computeConsumedByPatient (O(sessions)) keyed on the raw sessions,
+  // then applyConsumedToPatients (O(patients)) keyed on the patients. These
+  // tests lock that the split produces byte-identical balances to the
+  // one-shot enrichPatientsWithBalance — i.e. the formula has exactly ONE
+  // home and the split can never drift from it.
+  const patients = [
+    pat("p1", 700, 1400),                 // owes (2 done @700 = 1400, paid 1400 → even)
+    pat("p2", 500, 0, { opening_balance: 250 }),
+    pat("p3", 800, 5000),                 // prepaid → credit
+  ];
+  const sessions = [
+    sess("p1", "completed", 700, { date: "1-Ene" }),
+    sess("p1", "completed", 700, { date: "8-Ene" }),
+    sess("p2", "charged", 500, { date: "3-Ene" }),
+    sess("p3", "completed", 800, { date: "2-Ene" }),
+  ];
+
+  it("composition equals the one-shot enrich", () => {
+    const oneShot = enrichPatientsWithBalance(patients, sessions, NOW);
+    const rateById = new Map(patients.map(p => [p.id, p.rate || 0]));
+    const consumed = computeConsumedByPatient(sessions, rateById, NOW);
+    const split = applyConsumedToPatients(patients, consumed);
+    expect(split).toEqual(oneShot);
+  });
+
+  it("uses the canonical delta (consumed − paid + opening)", () => {
+    const consumed = new Map([["p2", 500]]);
+    const [out] = applyConsumedToPatients([pat("p2", 500, 100, { opening_balance: 250 })], consumed);
+    // 500 consumed − 100 paid + 250 opening = 650 owed
+    expect(out.amountDue).toBe(650);
+    expect(out.credit).toBe(0);
+  });
+
+  it("missing patient in the map → consumed 0 (no throw)", () => {
+    const [out] = applyConsumedToPatients([pat("p9", 700, 0)], new Map());
+    expect(out.amountDue).toBe(0);
+    expect(out.credit).toBe(0);
+  });
+
+  it("null guards", () => {
+    expect(applyConsumedToPatients(null, new Map())).toEqual([]);
+    expect(applyConsumedToPatients(undefined, new Map())).toEqual([]);
+  });
+});
+
+// ── C1 regression: old past-scheduled sessions must keep counting ──
+// The (yearless "D-MMM") date's year is inferred relative to the row's
+// created_at, not "today". With today-anchoring, a scheduled session more
+// than ~6 months old inferred to a FUTURE year and silently dropped out
+// of `consumed`, understating amountDue. These lock the created_at anchor.
+describe("C1 — yearless date inference anchored on created_at", () => {
+  // NOW = 2026-04-24. A genuinely-past scheduled session from Sep 2025
+  // (~7.5 months before NOW), created back then, must still count even
+  // though "1-Sep" is closest to a FUTURE September relative to NOW.
+  it("counts an 8-month-old scheduled session (created_at last year)", () => {
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "1-Sep", time: "10:00", created_at: "2025-09-01T10:00:00.000Z" }),
+      NOW,
+    )).toBe(true);
+  });
+
+  it("does NOT count a recently-created future scheduled session", () => {
+    // Created today; dated ~4 months ahead → genuinely future → no count.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "20-Ago", time: "10:00", created_at: "2026-04-20T10:00:00.000Z" }),
+      NOW,
+    )).toBe(false);
+  });
+
+  it("amountDue includes an old scheduled session that today-anchoring would drop", () => {
+    const patients = [pat("p", 700, 0)];
+    const sessions = [
+      sess("p", "scheduled", 700, { date: "1-Sep", time: "10:00", created_at: "2025-09-01T10:00:00.000Z" }),
+    ];
+    const [out] = enrichPatientsWithBalance(patients, sessions, NOW);
+    expect(out.amountDue).toBe(700);
+    expect(out.credit).toBe(0);
+  });
+
+  it("falls back to today-anchoring when created_at is absent (no regression)", () => {
+    // No created_at → prior behavior: a clearly-past date this year counts.
+    expect(sessionCountsTowardBalance(
+      sess("p", "scheduled", 700, { date: "23-Abr", time: "10:00" }),
+      NOW,
+    )).toBe(true);
+  });
+});

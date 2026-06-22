@@ -1,0 +1,819 @@
+import React, { useState, useCallback, useRef, useMemo } from "react";
+import { getClientColor, TODAY, DAY_ORDER } from "../data/seedData";
+import { IconClipboard, IconX, IconPlus, IconSun } from "../components/Icons";
+import { formatShortDate, SHORT_MONTHS } from "../utils/dates";
+import { isTutorSession, isInterviewSession, tutorDisplayInitials, statusClass, statusLabel, railClass } from "../utils/sessions";
+import { ActivationChecklist } from "../components/ActivationChecklist";
+import { useEscape } from "../hooks/useEscape";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useSheetDrag } from "../hooks/useSheetDrag";
+import { useCardigan } from "../context/CardiganContext";
+import { SessionSheet } from "../components/SessionSheet";
+import { NewSessionSheet } from "../components/sheets/NewSessionSheet";
+import { NotificationsPrompt } from "../components/NotificationsPrompt";
+import { SessionRequestsSheet } from "../components/sheets/SessionRequestsSheet";
+import { CalendarLinkPromptCard } from "../components/CalendarLinkPromptCard";
+import { NoteEditor } from "../components/NoteEditor";
+import { Avatar } from "../components/Avatar";
+import { GroupSessionRow } from "../components/GroupSessionRow";
+import { GroupOccurrenceSheet } from "../components/sheets/GroupOccurrenceSheet";
+import { collapseGroupOccurrences } from "../utils/groups";
+import { useT } from "../i18n/index";
+import { formatMXN } from "../utils/format";
+import { isPotentialOrDiscarded, SESSION_STATUS } from "../data/constants";
+import { haptic } from "../utils/haptics";
+import { SwipeRevealRow } from "../components/SwipeRevealRow";
+import { IconCheck } from "../components/Icons";
+import { AnimatedNumber } from "../components/AnimatedNumber";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session/note/group rows
+type Row = any;
+
+/* ── Free-day empty state ──
+   Positive "you have no sessions today" surface. Reuses the canonical
+   .empty-state structure with the --day variant for the premium warm
+   icon + gentle float. Promoted out of the JSX because it was repeated
+   four times across the Today/Mañana carousel + desktop side-by-side
+   panels — keeps the copy and styling in one place to avoid drift. */
+function FreeDayEmptyState({ t }: { t: (key: string, vars?: Record<string, unknown>) => string }) {
+  return (
+    <div className="empty-state empty-state--day">
+      <div className="empty-state-icon"><IconSun size={32} /></div>
+      <div className="empty-state-title">{t("sessions.freeDay")}</div>
+      <div className="empty-state-body">{t("sessions.freeDayMessage")}</div>
+    </div>
+  );
+}
+
+/* ── Compute next working day for the "Mañana" carousel panel ── */
+function getNextDay(today: Date, sessions: Row[]) {
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // On Friday (day 5), check if Sat/Sun have sessions. If not, skip to Monday.
+  if (today.getDay() === 5) {
+    const sat = new Date(today); sat.setDate(sat.getDate() + 1);
+    const sun = new Date(today); sun.setDate(sun.getDate() + 2);
+    const satStr = formatShortDate(sat);
+    const sunStr = formatShortDate(sun);
+    const hasSatSessions = sessions.some((s: Row) => s.date === satStr);
+    const hasSunSessions = sessions.some((s: Row) => s.date === sunStr);
+    if (!hasSatSessions && !hasSunSessions) {
+      const monday = new Date(today);
+      monday.setDate(monday.getDate() + 3);
+      return monday;
+    }
+  }
+  // On Saturday (day 6), same idea: if Sunday has no sessions, skip to Monday.
+  if (today.getDay() === 6) {
+    const sun = new Date(today); sun.setDate(sun.getDate() + 1);
+    const sunStr = formatShortDate(sun);
+    const hasSunSessions = sessions.some((s: Row) => s.date === sunStr);
+    if (!hasSunSessions) {
+      const monday = new Date(today);
+      monday.setDate(monday.getDate() + 2);
+      return monday;
+    }
+  }
+  return tomorrow;
+}
+
+type HomeProps = {
+  setScreen: (screen: string) => void;
+  userName?: string;
+};
+
+export function Home({ setScreen, userName }: HomeProps) {
+  const { patients, upcomingSessions, groups, payments, notes, tutorReminders, openRecordPaymentModal, onCancelSession, onMarkCompleted, deleteSession, rescheduleSession, updateSessionModality, updateSessionRate, updateCancelReason, createSession, createNote, updateNote, deleteNote, readOnly, mutating, setAgendaView, requestFabAction, openExpediente, user, subscription, rescheduleRequests = [] } = useCardigan();
+  const groupsById = useMemo(() => new Map<string, Row>((groups || []).map((g: Row) => [g.id, g])), [groups]);
+  const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
+  const { t, strings } = useT();
+  const todayStr     = formatShortDate(TODAY);
+  const todayDayName = DAY_ORDER[(TODAY.getDay() + 6) % 7];
+
+  // All three derivations sit in the render path on a screen that
+  // re-renders on any CardiganContext change (notes, documents,
+  // drawerOpen, etc). Memo scopes recomputation to the inputs that
+  // actually affect the result — cheap individually, but Home is
+  // rendered ~50ms on a mid-range phone so every bit counts.
+  // Outstanding total + the "Saldos pendientes" list both belong to the
+  // active-patient lane. Potentials with a past-1h-old scheduled
+  // interview auto-complete via sessionCountsTowardBalance and would
+  // otherwise inject a ghost balance into Home before the practitioner
+  // has decided whether to convert them. Their interview's amountDue
+  // is still surfaced inside the Potencial profile sheet — just not in
+  // the global KPI.
+  const totalOwed = useMemo(
+    () => patients.reduce((s: number, p: Row) => isPotentialOrDiscarded(p) ? s : s + p.amountDue, 0),
+    [patients]
+  );
+  const activeCount = useMemo(
+    () => patients.filter((p: Row) => p.status === "active").length,
+    [patients]
+  );
+  const todaySessions = useMemo(
+    () => collapseGroupOccurrences(
+      upcomingSessions
+        .filter((s: Row) => s.date === todayStr)
+        .sort((a: Row, b: Row) => (a.time || "").localeCompare(b.time || "")),
+      groupsById
+    ),
+    [upcomingSessions, todayStr, groupsById]
+  );
+
+  // Next-day carousel data
+  const nextDay = useMemo(() => getNextDay(TODAY, upcomingSessions), [upcomingSessions]);
+  const nextDayStr = formatShortDate(nextDay);
+  const nextDayName = DAY_ORDER[(nextDay.getDay() + 6) % 7];
+  const nextDaySessions = useMemo(() =>
+    collapseGroupOccurrences(
+      upcomingSessions.filter((s: Row) => s.date === nextDayStr).sort((a: Row, b: Row) => (a.time || "").localeCompare(b.time || "")),
+      groupsById
+    ),
+    [upcomingSessions, nextDayStr, groupsById]
+  );
+  // Label: "Mañana" if it's actually tomorrow, otherwise the day name
+  const diffDays = Math.round((nextDay.getTime() - TODAY.getTime()) / 86400000);
+  const nextDayLabel = diffDays === 1 ? t("home.tomorrow") : nextDayName;
+
+  // Carousel swipe state
+  const [carouselPage, setCarouselPage] = useState(0); // 0 = today, 1 = next day
+  const carouselRef = useRef<{ x: number; y: number; active: boolean } | null>(null);
+  const [carouselOffset, setCarouselOffset] = useState(0);
+  const [carouselSwiping, setCarouselSwiping] = useState(false);
+  const [carouselSettling, setCarouselSettling] = useState(false);
+
+  const onCarouselTouchStart = useCallback((e: React.TouchEvent) => {
+    // Keep a 50px dead zone so the left-edge drawer gesture wins — with
+    // App.jsx's 20px drawer threshold, this gives a 30px gap where
+    // neither fires, preventing the "drawer opens mid-swipe" bug.
+    if (e.touches[0].clientX < 50) return;
+    carouselRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
+  }, []);
+
+  const onCarouselTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!carouselRef.current) return;
+    const dx = e.touches[0].clientX - carouselRef.current.x;
+    const dy = e.touches[0].clientY - carouselRef.current.y;
+    if (!carouselRef.current.active) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        carouselRef.current.active = true;
+        setCarouselSwiping(true);
+      } else if (Math.abs(dy) > 10) {
+        carouselRef.current = null;
+        return;
+      } else return;
+    }
+    if (carouselRef.current.active) setCarouselOffset(dx);
+  }, []);
+
+  const onCarouselTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!carouselRef.current?.active) { carouselRef.current = null; return; }
+    const dx = e.changedTouches[0].clientX - carouselRef.current.x;
+    carouselRef.current = null;
+    setCarouselSwiping(false);
+
+    const triggered = Math.abs(dx) > 60;
+    setCarouselSettling(true);
+    if (triggered) {
+      if (dx < -60 && carouselPage === 0) {
+        setCarouselPage(1);
+      } else if (dx > 60 && carouselPage === 1) {
+        setCarouselPage(0);
+      }
+    }
+    setCarouselOffset(0);
+    // Match the 550ms settle transition above with a tiny buffer so we
+    // don't strip easing one frame before the transform reaches its end.
+    setTimeout(() => setCarouselSettling(false), 540);
+  }, [carouselPage]);
+
+  const currentMonthPayments = payments.filter((p: Row) => {
+    if (p.created_at) {
+      const d = new Date(p.created_at);
+      return d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth();
+    }
+    const parts = p.date.split(" ");
+    return parts[1] === SHORT_MONTHS[TODAY.getMonth()];
+  });
+  const cobradoMes = currentMonthPayments.reduce((s: number, p: Row) => s+p.amount, 0);
+
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Row | null>(null);
+  const [selectedGroupOcc, setSelectedGroupOcc] = useState<Row | null>(null);
+  const [tutorBooking, setTutorBooking] = useState<Row | null>(null);
+  const [editingNote, setEditingNote] = useState<Row | null>(null);
+  const closeSelected = useCallback(() => setSelected(null), [setSelected]);
+  useEscape(selected ? closeSelected : selectedSession ? () => setSelectedSession(null) : tutorBooking ? () => setTutorBooking(null) : editingNote ? () => setEditingNote(null) : null);
+  const { scrollRef: selectedScrollRef, setPanelEl: setSelectedPanelEl, panelHandlers: selectedPanelHandlers } = useSheetDrag(closeSelected);
+  const selectedPanelRef = useFocusTrap(!!selected);
+  const setSelectedPanel = (el: HTMLDivElement | null) => { selectedPanelRef.current = el; selectedScrollRef.current = el; setSelectedPanelEl(el); };
+
+  // Mirrors Notes.jsx so the NoteEditor's handleClose always sees a stable
+  // save/delete pair and always reaches its onClose() cleanup — critical in
+  // demo mode where the underlying mutations are no-ops.
+  const handleSaveNote = useCallback(async ({ title, content }: { title: string; content: string }) => {
+    if (editingNote?.id) await updateNote(editingNote.id, { title, content });
+  }, [editingNote, updateNote]);
+  const handleDeleteNote = useCallback(async () => {
+    if (editingNote?.id) await deleteNote(editingNote.id);
+  }, [editingNote, deleteNote]);
+  const handleCloseNote = useCallback(() => setEditingNote(null), [setEditingNote]);
+  // Open the note attached to a session, or create+open one if none.
+  // Mirrors PatientExpediente::openSessionNote so the "Agregar nota"
+  // button in SessionSheet behaves identically across Home, Agenda,
+  // and the patient profile. Closing the SessionSheet first so the
+  // sheet's focus trap doesn't fight the NoteEditor's.
+  const openSessionNote = useCallback(async (session: Row) => {
+    if (!session) return;
+    const existing = (notes || []).find((n: Row) => n.session_id === session.id);
+    setSelectedSession(null);
+    if (existing) { setEditingNote(existing); return; }
+    const created = await createNote?.({ patientId: session.patient_id || null, sessionId: session.id, title: "", content: "" });
+    if (created) setEditingNote(created);
+  }, [notes, createNote, setSelectedSession, setEditingNote]);
+  const owingPatients = patients.filter((p: Row) => p.amountDue > 0 && !isPotentialOrDiscarded(p));
+
+  const openPatient = (name: string) => {
+    const p = patients.find((p: Row) => p.name === name);
+    if (p) setSelected(p);
+  };
+
+  const emptyHint = (text: React.ReactNode, action?: React.ReactNode) => (
+    <div className="empty-hint">
+      {text}
+      {action && <div style={{ marginTop:8 }}>{action}</div>}
+    </div>
+  );
+
+  const renderSessionRow = (s: Row) => {
+    if (s._groupOccurrence) {
+      return <GroupSessionRow key={s.id} occ={s} onClick={() => setSelectedGroupOcc(s)} />;
+    }
+    const tutor = isTutorSession(s);
+    const interview = isInterviewSession(s);
+    const isVirtual = s.modality === "virtual";
+    const isTelefonica = s.modality === "telefonica";
+    const isADomicilio = s.modality === "a-domicilio";
+    // Interview sessions get the rose avatar regardless of modality —
+    // they're a distinct lane (the "before they're a patient" lane)
+    // and should read as such even on the unified Home stream.
+    const avatarBg = interview ? "var(--rose)" : tutor ? "var(--purple)" : isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : getClientColor(s.colorIdx);
+    const modalityColor = isVirtual ? "var(--blue)" : isTelefonica ? "var(--green)" : isADomicilio ? "var(--amber)" : "var(--teal-dark)";
+    const modalityKey = isVirtual ? "sessions.virtual" : isTelefonica ? "sessions.telefonica" : isADomicilio ? "sessions.aDomicilio" : "sessions.presencial";
+    // Swipe-reveal enabled only for actionable rows: scheduled, non-
+    // interview, not in read-only mode. Other statuses still open the
+    // sheet on tap so users keep full access to revert / re-mark.
+    const swipeEnabled = !readOnly && !interview && s.status === SESSION_STATUS.SCHEDULED;
+    const rowBody = (
+      <div className={`row-item session-row ${railClass(s.status)}`} onClick={swipeEnabled ? undefined : () => setSelectedSession(s)}>
+        <Avatar initials={tutor ? tutorDisplayInitials(s) : s.initials} color={avatarBg} size="md" />
+        <div className="row-content">
+          <div className="row-title">
+            {s.patient}
+            {tutor && (
+              <span
+                className="badge badge-purple"
+                style={{
+                  marginLeft: 6,
+                  fontSize: "var(--text-eyebrow)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {t("sessions.tutor")}
+              </span>
+            )}
+            {interview && (
+              <span
+                className="badge badge-rose"
+                style={{
+                  marginLeft: 6,
+                  fontSize: "var(--text-eyebrow)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {t("sessions.interview")}
+              </span>
+            )}
+          </div>
+          <div className="row-sub">
+            {s.time} - {(() => { const [h,m] = (s.time||"0:0").split(":"); const end = new Date(0,0,0,+h,+m); end.setMinutes(end.getMinutes()+(s.duration||60)); return `${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`; })()}
+            <span style={{ fontSize:"var(--text-eyebrow)", fontWeight:700, color: modalityColor, marginLeft:6, textTransform:"uppercase" }}>
+              {t(modalityKey)}
+            </span>
+          </div>
+        </div>
+        <div className="row-right" style={{ display:"flex", alignItems:"center" }}>
+          <span className={`session-status ${statusClass(s.status)}`}>{statusLabel(s.status)}</span>
+        </div>
+      </div>
+    );
+    if (!swipeEnabled) return <div key={s.id}>{rowBody}</div>;
+    return (
+      <SwipeRevealRow
+        key={s.id}
+        onClick={() => setSelectedSession(s)}
+        actions={[{
+          key: "complete",
+          icon: <IconCheck size={20} />,
+          label: t("sessions.swipeComplete"),
+          color: "var(--green)",
+          onAction: () => onMarkCompleted?.(s),
+        }]}>
+        {rowBody}
+      </SwipeRevealRow>
+    );
+  };
+
+  // Carousel transform — 50% because translateX(%) is relative to the element's
+  // own width (200% of parent), so 50% of element = 100% of parent = one panel.
+  const baseShift = -carouselPage * 50;
+  const dragPx = carouselSwiping ? carouselOffset : 0;
+  const carouselTransform = `translateX(calc(${baseShift}% + ${dragPx}px))`;
+  // Settle eases with the app's springy curve and a slightly slower
+  // duration (550ms) — at 400ms the panels snapped past each other too
+  // quickly to read as "moving through space", which made the carousel
+  // feel mechanical. The longer arc gives the panel a beat of weight.
+  const carouselTransition = carouselSwiping
+    ? "none"
+    : carouselSettling
+      ? "transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)"
+      : "none";
+
+  return (
+    <div className="page">
+      {patients.length === 0 && !readOnly && (
+        <div style={{ padding:"24px 16px 8px", textAlign:"center" }}>
+          <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-xl)", fontWeight:800, color:"var(--charcoal)", marginBottom:6 }}>
+            {userName ? `${t("home.welcome")}, ${userName.split(" ")[0]}` : t("home.welcome")}
+          </div>
+          <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", lineHeight:1.5, marginBottom:14 }}>
+            {t("patients.addFirst")}
+          </div>
+          {/* Day-1 trial chip — surfaces the trial state to brand-new
+              users on Home without waiting for the ≤7-days banner to
+              kick in. Renders only while the user is actively in
+              trial; subscribed/comp/expired users see nothing. */}
+          {subscription?.accessState === "trial" && typeof subscription?.daysLeftInTrial === "number" && (
+            <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 12px",
+                borderRadius: "var(--radius-pill)",
+                background: "var(--teal-pale)",
+                color: "var(--teal-dark)",
+                fontSize: "var(--text-xs)",
+                fontWeight: 700,
+                letterSpacing: "0.02em",
+              }}>
+                {subscription.daysLeftInTrial >= 30
+                  ? t("subscription.trialChipStart")
+                  : t("subscription.trialChipDaysLeft", { n: subscription.daysLeftInTrial })}
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => requestFabAction?.("patient")}
+            className="btn btn-primary"
+            style={{ display:"inline-flex", alignItems:"center", gap:8, width:"auto", padding:"10px 22px", height:"auto", minHeight:0 }}>
+            <IconPlus size={16} /> {t("patients.addFirstCta")}
+          </button>
+        </div>
+      )}
+
+      {/* Activation checklist — only visible during the trial; auto-
+          hides once all four steps complete. Promoted above the rest
+          of Home (notifications prompt, today's sessions, balances)
+          so it's the first persistent affordance new users see. The
+          component self-derives state from context arrays and is a
+          no-op for users who've left trial. */}
+      {!readOnly && user?.id && (
+        <div style={{ padding: "8px 16px 0" }}>
+          <ActivationChecklist
+            userId={user.id}
+            accessState={subscription?.accessState}
+            onNavigate={setScreen}
+          />
+        </div>
+      )}
+
+      {/* Initial-variant notification prompt only renders pre-first-
+          patient. Once the user has at least one patient, the
+          post-patient variant below takes over so we never stack
+          both. Eliminates the "two near-identical 'enable
+          notifications' cards" pile-up at first home open. */}
+      {(patients?.length || 0) === 0 && (
+        <NotificationsPrompt variant="initial" />
+      )}
+
+      {/* Reschedule requests banner — shown when patients have
+          submitted pending requests waiting on this therapist's
+          accept/reject. The banner is intentionally compact and
+          actionable: count + tap-to-open. The actual list lives in
+          a sheet so the home screen stays scannable. The same
+          requests are also reachable via the email links Cardigan
+          sent at submit time. */}
+      {!readOnly && rescheduleRequests.length > 0 && (
+        <button
+          type="button"
+          className="btn-tap"
+          onClick={() => { haptic.tap?.(); setRescheduleSheetOpen(true); }}
+          style={{
+            display: "flex", alignItems: "center", gap: 12,
+            margin: "0 16px 12px",
+            padding: "12px 14px",
+            width: "calc(100% - 32px)",
+            background: "var(--amber-bg)",
+            border: "1px solid var(--amber)",
+            borderRadius: "var(--radius)",
+            cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          }}
+        >
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 32, height: 32, borderRadius: "50%",
+            background: "var(--amber)", color: "var(--white)",
+            fontFamily: "var(--font-d)", fontWeight: 800, fontSize: 14,
+            flexShrink: 0,
+          }}>
+            {rescheduleRequests.length}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{
+              display: "block",
+              fontFamily: "var(--font-d)", fontWeight: 800, fontSize: 14,
+              color: "var(--charcoal)",
+            }}>
+              {t("home.rescheduleRequestsTitle", { count: rescheduleRequests.length })}
+            </span>
+            <span style={{
+              display: "block",
+              fontSize: 12, color: "var(--charcoal-md)", marginTop: 2,
+            }}>
+              {t("home.rescheduleRequestsSub")}
+            </span>
+          </span>
+          <span style={{
+            color: "var(--charcoal-xl)",
+            fontSize: 11, fontWeight: 700,
+          }}>
+            {t("home.rescheduleRequestsCta")}
+          </span>
+        </button>
+      )}
+      {/* Second-chance nudge: once the user has added their first
+          patient, the highest-intent moment to ask for push perm.
+          The component itself is gated on its own dismiss key + the
+          existing eligibility checks (already enabled, permission
+          denied, etc.), so this mount is a no-op when the user has
+          already opted in. */}
+      {(patients?.length || 0) >= 1 && (
+        <NotificationsPrompt variant="post_patient" />
+      )}
+
+      {/* Calendar feed discovery card — surfaces only after the user
+          has at least one patient or session, and only when they
+          haven't already linked a calendar. The card itself handles
+          its own dismiss + read-only gates. */}
+      {!readOnly && ((patients?.length || 0) >= 1 || (upcomingSessions?.length || 0) >= 1) && (
+        <CalendarLinkPromptCard />
+      )}
+
+      <div className="kpi-grid-desktop" style={{ padding:"16px 16px 4px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <button type="button" className="kpi-card" onClick={() => setScreen("agenda")}>
+          <div className="kpi-label">{t("home.sessionsToday")}</div>
+          <div className="kpi-value"><AnimatedNumber value={todaySessions.length} /></div>
+          <div className="kpi-meta">{todayDayName} {todayStr}</div>
+        </button>
+        <button type="button" className="kpi-card" onClick={() => setScreen("patients")}>
+          <div className="kpi-label">{t("patients.title")}</div>
+          <div className="kpi-value"><AnimatedNumber value={activeCount} /></div>
+          <div className="kpi-meta">{activeCount === 0 ? t("patients.noPatients").toLowerCase() : t("patients.active").toLowerCase()}</div>
+        </button>
+        <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
+          <div className="kpi-label">{t("finances.monthlyCollected")}</div>
+          <div className="kpi-value"><AnimatedNumber value={cobradoMes} format={formatMXN} /></div>
+          <div className="kpi-meta">{strings.months[TODAY.getMonth()]}</div>
+        </button>
+        <button type="button" className="kpi-card" onClick={() => setScreen("finances")}>
+          <div className="kpi-label">{t("finances.outstanding")}</div>
+          <div className="kpi-value" style={{ color: totalOwed > 0 ? "var(--red)" : undefined }}><AnimatedNumber value={totalOwed} format={formatMXN} /></div>
+          <div className="kpi-meta">{owingPatients.length} {t("home.patientCount", { count: owingPatients.length })}</div>
+        </button>
+      </div>
+
+      <div className="home-columns">
+      <div className="section home-col-main">
+        <div className="section-header home-carousel">
+          <span className="section-title" style={{ transition:"opacity 0.3s" }}>
+            {carouselPage === 0
+              ? <>{t("sessions.today")} — {todayDayName} {todayStr}</>
+              : nextDayLabel === nextDayName
+                ? <>{nextDayName} {nextDayStr}</>
+                : <>{nextDayLabel} — {nextDayName} {nextDayStr}</>
+            }
+          </span>
+          <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+        </div>
+
+        {/* Mobile/tablet: swipe carousel */}
+        <div className="home-carousel">
+        <div style={{ overflow: "hidden", borderRadius: "var(--radius-lg)", touchAction: "pan-y" }}
+          onTouchStart={onCarouselTouchStart} onTouchMove={onCarouselTouchMove} onTouchEnd={onCarouselTouchEnd}>
+          <div style={{
+            display: "flex", width: "200%",
+            transform: carouselTransform,
+            transition: carouselTransition,
+            willChange: carouselSwiping || carouselSettling ? "transform" : undefined,
+          }}>
+            {/* Panel 1: Today */}
+            <div style={{ width: "50%", flexShrink: 0 }}>
+              <div className="card">
+                {todaySessions.length === 0
+                  ? <FreeDayEmptyState t={t} />
+                  : todaySessions.map(renderSessionRow)
+                }
+              </div>
+            </div>
+            {/* Panel 2: Next day */}
+            <div style={{ width: "50%", flexShrink: 0 }}>
+              <div className="card">
+                {nextDaySessions.length === 0
+                  ? <FreeDayEmptyState t={t} />
+                  : nextDaySessions.map(renderSessionRow)
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Carousel dots + hint */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px 0 2px" }}>
+          <button onClick={() => { if (carouselPage !== 0) { setCarouselSettling(true); setCarouselPage(0); setTimeout(() => setCarouselSettling(false), 380); } }} aria-label={t("sessions.today")}
+            style={{ width:7, height:7, minHeight:0, minWidth:0, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
+              background: carouselPage === 0 ? "var(--teal)" : "var(--cream-deeper)",
+              transition:"all 0.3s ease",
+              transform: carouselPage === 0 ? "scale(1)" : "scale(0.8)",
+            }} />
+          <button onClick={() => { if (carouselPage !== 1) { setCarouselSettling(true); setCarouselPage(1); setTimeout(() => setCarouselSettling(false), 380); } }} aria-label={nextDayLabel}
+            style={{ width:7, height:7, minHeight:0, minWidth:0, borderRadius:"50%", border:"none", padding:0, cursor:"pointer",
+              background: carouselPage === 1 ? "var(--teal)" : "var(--cream-deeper)",
+              transition:"all 0.3s ease",
+              transform: carouselPage === 1 ? "scale(1)" : "scale(0.8)",
+            }} />
+        </div>
+        </div>
+
+        {/* Tablet/desktop (≥768px): Today + Tomorrow as stacked, unified
+            section cards — identical treatment to the rail sections below.
+            Replaces the old two-panel grid + absolute "see-all" link. */}
+        <div className="home-schedule-desktop">
+          <div className="section">
+            <div className="section-header">
+              <div className="section-headline">
+                <span className="section-title">{t("sessions.today")}</span>
+                <span className="section-sub">{todayDayName} {todayStr}</span>
+              </div>
+              <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+            </div>
+            <div className="card">
+              {todaySessions.length === 0
+                ? <FreeDayEmptyState t={t} />
+                : todaySessions.map(renderSessionRow)
+              }
+            </div>
+          </div>
+          <div className="section">
+            <div className="section-header">
+              <div className="section-headline">
+                <span className="section-title">{nextDayLabel}</span>
+                <span className="section-sub">{nextDayName} {nextDayStr}</span>
+              </div>
+              <button className="see-all" onClick={() => { setAgendaView("week"); setScreen("agenda"); }}>{t("home.seeWeek")}</button>
+            </div>
+            <div className="card">
+              {nextDaySessions.length === 0
+                ? <FreeDayEmptyState t={t} />
+                : nextDaySessions.map(renderSessionRow)
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="home-col-side">
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">{t("home.pendingBalances")}</span>
+          <button className="see-all" onClick={() => setScreen("finances")}>{t("home.seeAll")}</button>
+        </div>
+        <div className="card">
+          {owingPatients.length === 0
+            ? emptyHint(t("home.emptyBalances"))
+            : owingPatients.slice(0,4).map((p: Row, i: number) => (
+                <div className="row-item" key={p.id} onClick={() => setSelected(p)}>
+                  <Avatar initials={p.initials} color={getClientColor(p.colorIdx ?? i)} size="md" />
+                  <div className="row-content">
+                    <div className="row-title">{p.name}</div>
+                  </div>
+                  <div className="row-right">
+                    <div className="row-amount amount-owe">{formatMXN(p.amountDue)}</div>
+                  </div>
+                </div>
+              ))}
+        </div>
+      </div>
+
+      {/* Tutor reminders — only shown when at least one minor has tutor_frequency set */}
+      {patients.some((p: Row) => p.tutor_frequency) && (
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">{t("home.tutorReminders")}</span>
+          {tutorReminders.length > 3 && <button className="see-all" onClick={() => setScreen("patients")}>{t("home.seeAll")}</button>}
+        </div>
+        <div className="card">
+          {tutorReminders.length === 0
+            ? emptyHint(t("home.tutorRemindersEmpty"))
+            : tutorReminders.slice(0, 3).map((r: Row) => {
+              const overdue = r.daysUntilDue < 0;
+              const dueSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
+              const hasScheduled = !!r.nextTutorSession;
+              const lastLine = r.lastTutorSession
+                ? `${t("home.lastTutorSession")}: ${r.lastTutorSession.date}`
+                : t("home.noTutorSession");
+              const scheduledLine = hasScheduled
+                ? `${t("home.nextTutorSession")}: ${r.nextTutorSession.date}`
+                : null;
+              const handleClick = () => {
+                if (readOnly) return openPatient(r.patient.name);
+                if (hasScheduled) return setSelectedSession(r.nextTutorSession);
+                setTutorBooking(r.patient);
+              };
+              return (
+                <div className="row-item" key={r.patient.id} onClick={handleClick}>
+                  <Avatar initials={r.patient.initials} color="var(--purple)" size="md" />
+                  <div className="row-content">
+                    <div className="row-title">{r.patient.name}</div>
+                    <div className="row-sub">
+                      {scheduledLine
+                        ? <>{scheduledLine}<span style={{ color:"var(--charcoal-xl)" }}> · {lastLine}</span></>
+                        : lastLine}
+                    </div>
+                  </div>
+                  <div className="row-right">
+                    {hasScheduled && (
+                      <span className="badge badge-teal" style={{ whiteSpace:"nowrap" }}>
+                        {t("home.scheduledBadge")}
+                      </span>
+                    )}
+                    {!hasScheduled && overdue && (
+                      <span className="badge badge-red" style={{ whiteSpace:"nowrap" }}>
+                        {r.daysSince != null ? t("home.overdueDays", { count: Math.abs(r.daysUntilDue) }) : t("home.noTutorSession")}
+                      </span>
+                    )}
+                    {!hasScheduled && dueSoon && (
+                      <span className="badge badge-amber" style={{ whiteSpace:"nowrap" }}>
+                        {t("home.dueThisWeek")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+      </div>
+      )}
+
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">{t("home.recentNotes")}</span>
+          <button className="see-all" onClick={() => setScreen("archivo")}>{t("home.seeAll")}</button>
+        </div>
+        <div className="card">
+          {(notes || []).length === 0
+            ? emptyHint(t("home.emptyNotes"))
+            : (notes || []).slice(0,3).map((n: Row) => {
+              const pat = n.patient_id ? patients.find((p: Row) => p.id === n.patient_id) : null;
+              const preview = n.content?.replace(/[*~#[\]]/g, "").replace(/\n/g, " ").slice(0, 60) || "";
+              return (
+                <div className="row-item" key={n.id} onClick={() => setEditingNote(n)}>
+                  <div className="row-icon" style={{ background:"var(--teal-pale)", color:"var(--teal-dark)" }}><IconClipboard size={18} /></div>
+                  <div className="row-content">
+                    <div className="row-title">{n.title || t("notes.noTitle")}</div>
+                    <div className="row-sub">{pat ? pat.name : t("notes.generalNote")}{preview ? ` · ${preview}` : ""}</div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+      </div>
+      </div>
+
+      {tutorBooking && (
+        <NewSessionSheet
+          onClose={() => setTutorBooking(null)}
+          onSubmit={createSession}
+          patients={patients}
+          sessions={upcomingSessions}
+          mutating={mutating}
+          initialPatientName={tutorBooking.name}
+          initialSessionType="tutor"
+        />
+      )}
+
+      {selectedGroupOcc && selectedGroupOcc.group && (
+        <GroupOccurrenceSheet
+          group={selectedGroupOcc.group}
+          occurrence={selectedGroupOcc}
+          onClose={() => setSelectedGroupOcc(null)}
+        />
+      )}
+
+      <SessionSheet
+        session={selectedSession}
+        patients={patients}
+        notes={notes}
+        onOpenNote={openSessionNote}
+        onClose={() => setSelectedSession(null)}
+        onCancelSession={onCancelSession}
+        onMarkCompleted={onMarkCompleted}
+        onDelete={deleteSession}
+        onReschedule={rescheduleSession}
+        onUpdateModality={updateSessionModality}
+        onUpdateRate={updateSessionRate}
+        onUpdateCancelReason={updateCancelReason}
+        mutating={mutating}
+      />
+
+      {editingNote && (
+        <NoteEditor
+          note={editingNote}
+          onSave={handleSaveNote}
+          onDelete={editingNote.id ? handleDeleteNote : undefined}
+          onClose={handleCloseNote}
+        />
+      )}
+
+      {selected && (
+        <div className="sheet-overlay" onClick={() => setSelected(null)}>
+          <div ref={setSelectedPanel} className="sheet-panel" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...selectedPanelHandlers}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <span className="sheet-title">{t("home.balanceDetail")}</span>
+              <button className="sheet-close" aria-label={t("close")} onClick={() => setSelected(null)}><IconX size={14} /></button>
+            </div>
+            <div style={{ padding:"0 20px 22px" }}>
+              {/* Tappable patient block — matches SessionSheet identity row */}
+              <div className="flex items-center gap-3" style={{ marginBottom:20, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}
+                onClick={() => { const p = selected; setSelected(null); openExpediente(p); }}>
+                <Avatar initials={selected.initials} color={getClientColor(selected.colorIdx ?? 0)} size="lg" />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-lg)", fontWeight:800, color:"var(--charcoal)" }}>
+                    {selected.name}
+                  </div>
+                  <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                    {selected.day} {t("home.atTime")} {selected.time}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
+                {[
+                  { label: t("finances.collected"), value:`${formatMXN(selected.paid)}`, color:"var(--green)" },
+                  // When the patient has overpaid, swap the "Balance
+                  // $0" tile for "Saldo a favor +$X" (green) so the
+                  // prepayment doesn't read as a null state.
+                  selected.credit > 0
+                    ? { label: t("finances.credit"),  value:`+${formatMXN(selected.credit)}`, color:"var(--green)" }
+                    : { label: t("finances.balance"), value:`${formatMXN(selected.amountDue)}`, color: selected.amountDue>0?"var(--red)":"var(--charcoal-xl)" },
+                ].map((s, i: number) => (
+                  <div key={i} className="stat-tile" style={{ textAlign:"center" }}>
+                    <div className="stat-tile-label">{s.label}</div>
+                    <div className="stat-tile-val" style={{ color:s.color||"var(--charcoal)", fontSize:"var(--text-lg)" }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid var(--border-lt)" }}>
+                <span style={{ fontSize:"var(--text-md)", color:"var(--charcoal-xl)" }}>{t("patients.rate")}</span>
+                <span style={{ fontSize:"var(--text-md)", fontWeight:600, color:"var(--charcoal)" }}>${selected.rate} {t("expediente.perSession")}</span>
+              </div>
+              <div style={{ marginTop:20 }}>
+                <button className="btn btn-primary-teal" onClick={() => openRecordPaymentModal(selected)} disabled={mutating}>
+                  {mutating ? t("saving") : t("finances.recordPayment")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rescheduleSheetOpen && (
+        <SessionRequestsSheet onClose={() => setRescheduleSheetOpen(false)} />
+      )}
+    </div>
+  );
+}

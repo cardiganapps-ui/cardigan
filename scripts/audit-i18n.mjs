@@ -28,6 +28,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
+import { transform } from "esbuild";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -38,7 +39,7 @@ async function walk(dir, out = []) {
     if (e.isDirectory()) {
       if (e.name === "__tests__" || e.name === "node_modules") continue;
       await walk(p, out);
-    } else if (/\.(js|jsx)$/.test(e.name)) {
+    } else if (/\.(js|jsx|ts|tsx)$/.test(e.name)) {
       out.push(p);
     }
   }
@@ -67,12 +68,20 @@ const T_STATIC = /\bt\(\s*["'`]([^"'`$]+)["'`]\s*[,)]/g;
 const T_DYNAMIC = /\bt\(\s*`([^`]*?)\$\{/g;
 
 async function main() {
-  // Dynamic import so we evaluate es.js the same way the bundler does.
-  const mod = await import(`file://${ROOT}/src/i18n/es.js`);
-  // es.js exports default or a named `es` — try both.
+  // Load es.ts the same way the bundler does, portably across Node
+  // versions. esbuild strips any TS syntax in-memory (it's annotation-
+  // free today, but this stays correct if types are added later) and we
+  // import the result via a data: URL — so this doesn't depend on Node's
+  // native type-stripping (which only lands in ≥22.18).
+  const { code } = await transform(
+    await readFile(join(ROOT, "src/i18n/es.ts"), "utf8"),
+    { loader: "ts", format: "esm" }
+  );
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
+  // es.ts exports default or a named `es` — try both.
   const root = mod.default || mod.es;
   if (!root || typeof root !== "object") {
-    console.error("Could not load i18n keys from src/i18n/es.js");
+    console.error("Could not load i18n keys from src/i18n/es.ts");
     process.exit(2);
   }
   const defined = flatten(root);
@@ -105,7 +114,7 @@ async function main() {
     .filter((k) => ![...dynamicPrefixes].some((p) => k === p || k.startsWith(`${p}.`)))
     .sort();
 
-  console.log(`i18n audit — src/i18n/es.js vs src tree (.js and .jsx)`);
+  console.log(`i18n audit — src/i18n/es.ts vs src tree`);
   console.log("");
   console.log(`  Defined keys:       ${defined.size}`);
   console.log(`  Statically used:    ${usedStatic.size}`);

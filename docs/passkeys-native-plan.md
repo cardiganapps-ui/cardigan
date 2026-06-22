@@ -41,8 +41,8 @@ auth-flow forking.
 ## What's implemented
 
 ### Shared / web
-- `supabaseClient.js` — `auth.experimental.passkey: true`; supabase-js ≥ 2.105.
-- `src/config/passkeys.js` — `VITE_PASSKEYS_UI_ENABLED` flag +
+- `supabaseClient.ts` — `auth.experimental.passkey: true`; supabase-js ≥ 2.105.
+- `src/config/passkeys.ts` — `VITE_PASSKEYS_UI_ENABLED` flag +
   `passkeysSupported()` (web: any browser with `PublicKeyCredential`;
   native: **iOS only**, Android excluded).
 - `usePasskeys` hook, `useAuth.signInWithPasskey`, the AuthScreen
@@ -52,9 +52,9 @@ auth-flow forking.
 
 ### Native iOS
 - **Dependency:** `@capgo/capacitor-passkey` (v8, matches Capacitor 8).
-- **Shim bootstrap:** `src/lib/nativePasskeyShim.js::initNativePasskeys()`
+- **Shim bootstrap:** `src/lib/nativePasskeyShim.ts::initNativePasskeys()`
   calls `autoShimWebAuthn({ origin: "https://cardigan.mx" })` at launch
-  (iOS only), invoked from `src/main.jsx`.
+  (iOS only), invoked from `src/main.tsx`.
 - **Capacitor config:** `plugins.CapacitorPasskey` in
   `capacitor.config.json` (`origin` + `domains`).
 - **Associated domains:** `webcredentials:cardigan.mx` added to

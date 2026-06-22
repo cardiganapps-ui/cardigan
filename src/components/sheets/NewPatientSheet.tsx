@@ -1,0 +1,1172 @@
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from "react";
+import { DAY_ORDER } from "../../data/seedData";
+import { todayISO } from "../../utils/dates";
+import { formatPhoneMX, phoneDigits } from "../../utils/contact";
+import { capitalizeName } from "../../utils/names";
+import { Toggle } from "../Toggle";
+import { IconX } from "../Icons";
+import { MoneyInput } from "../MoneyInput";
+import { SegmentedControl } from "../SegmentedControl";
+import { useEscape } from "../../hooks/useEscape";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useSheetDrag } from "../../hooks/useSheetDrag";
+import { useSheetExit } from "../../hooks/useSheetExit";
+import { useT } from "../../i18n/index";
+import { useCardigan } from "../../context/CardiganContext";
+import { parseFolderLink } from "../../utils/folderLinks";
+import { getModalitiesForProfession, MODALITY_I18N_KEY, PROFESSION, SCHEDULING_MODE, defaultSchedulingMode, usesAnthropometrics, RECURRENCE_FREQUENCY, DEFAULT_RECURRENCE_FREQUENCY } from "../../data/constants";
+
+// Weekdays + hours to search through when picking a sensible default
+// for the first recurring slot. Weekday-major, then by hour — the
+// common case is a therapist filling mornings of one day before
+// moving to the next. Sábado is included as a last resort.
+const SLOT_SEARCH_DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const SLOT_SEARCH_TIMES = [
+  "09:00", "10:00", "11:00", "12:00", "13:00",
+  "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00",
+];
+
+/**
+ * Find the first day/time combination that isn't already booked, either
+ * by an existing scheduled session for any patient or by a slot the
+ * user has already added in the form. Used to pre-fill the first
+ * schedule row and to pick a sensible default when the user clicks
+ * "+ Agregar otro horario".
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely-typed patient/session rows
+type Row = any;
+interface Schedule { day: string; time: string; duration: string; modality: string; frequency: string }
+
+function findEmptySlot(sessions: Row[] | undefined, extraTaken: string[]) {
+  const taken = new Set<string>([
+    ...((sessions || []).filter((s: Row) => s.status === "scheduled").map((s: Row) => `${s.day}|${s.time}`)),
+    ...(extraTaken || []),
+  ]);
+  for (const day of SLOT_SEARCH_DAYS) {
+    for (const time of SLOT_SEARCH_TIMES) {
+      if (!taken.has(`${day}|${time}`)) return { day, time };
+    }
+  }
+  // Whole search space is full — fall back to the original hardcoded
+  // default. The conflict banner will still warn the user.
+  return { day: "Lunes", time: "16:00" };
+}
+
+export function NewPatientSheet({ onClose, onSubmit, onPotentialSubmit, mutating, patients, sessions, initialMode = "patient" }: {
+  onClose: () => void;
+  onSubmit: (payload: Row) => Promise<boolean> | boolean;
+  onPotentialSubmit?: (payload: Row) => Promise<boolean> | boolean;
+  mutating?: boolean;
+  patients?: Row[];
+  sessions?: Row[];
+  initialMode?: string;
+}) {
+  const { t } = useT();
+  const { profession } = useCardigan();
+  const modalities = getModalitiesForProfession(profession);
+  // Animated close — same pattern as SessionSheet. useSheetDrag
+  // stays on raw onClose because it owns its own slide-down anim.
+  const { exiting, animatedClose } = useSheetExit(true, onClose);
+  useEscape(animatedClose);
+  const panelRef = useFocusTrap(true);
+  const { scrollRef, setPanelEl, panelHandlers } = useSheetDrag(onClose);
+  const setPanel = (el: HTMLElement | null) => {
+    panelRef.current = el;
+    setPanelEl(el);
+  };
+  // Scroll happens inside a wrapper div between the header and the
+  // footer (see the flex layout below) — not on .sheet-panel itself.
+  // useSheetDrag reads scrollTop to decide drag vs. scroll, so point
+  // it at the inner scroll body.
+  const setScrollBody = (el: HTMLElement | null) => { scrollRef.current = el; };
+
+  // Record type — "patient" (full two-step regular patient flow) or
+  // "potential" (slim single-step interview-stage flow). The user
+  // picks at the top of the sheet so the same FAB action handles
+  // both. `initialMode` lets external entry points (e.g. the
+  // Potenciales chip's inline CTA) pre-select the mode without an
+  // extra tap. Migration 047 introduced the potential lane; the form
+  // gained the mode toggle so the workflow stays a single primary
+  // path: + Paciente → pick mode → fill the right fields.
+  const [recordType, setRecordType] = useState(
+    initialMode === "potential" ? "potential" : "patient"
+  );
+  const isPotentialMode = recordType === "potential";
+
+  // ── Smooth height transition between Paciente ↔ Potencial ──
+  // The two record-type forms have very different vertical lengths
+  // (Paciente is a full recurring-schedule grid, Potencial is a
+  // slim single-interview form). Without a transition, switching
+  // the segmented control snaps the sheet panel to the new height
+  // — feels glitchy and unpolished on iPhone where the user's eye
+  // is on the toggle, not the bottom.
+  //
+  // Strategy: wrap the conditional form in a ref'd container.
+  // Before the type changes, snapshot the current rendered height
+  // (the OLD content). After React commits the swap, set the
+  // container to that old height, then on the next frame transition
+  // to the new content's natural height. After the transition, set
+  // height back to "auto" so dynamic content (keyboard pop-up,
+  // input growth, validation rows) flows naturally again.
+  const morphRef = useRef<HTMLDivElement>(null);
+  const morphFromHeight = useRef<number | null>(null);
+  const handleRecordTypeChange = (v: string) => {
+    // Only snapshot when the value actually changes — otherwise a
+    // re-tap on the active segment would leave a stale height in
+    // morphFromHeight for the next genuine toggle to pick up.
+    if (v !== recordType && morphRef.current) {
+      morphFromHeight.current = morphRef.current.offsetHeight;
+    }
+    setRecordType(v);
+    setFeedback(null);
+    if (v === "potential") setStep(1);
+  };
+  useLayoutEffect(() => {
+    const el = morphRef.current;
+    if (!el || morphFromHeight.current == null) return;
+    const fromH = morphFromHeight.current;
+    morphFromHeight.current = null;
+    // Force the OLD height (which the new layout has just blown
+    // away), then transition to the new content's measured height.
+    const newH = el.scrollHeight;
+    el.style.height = fromH + "px";
+    // Force a reflow so the browser commits the OLD height before
+    // the next paint — without this, both the from and to heights
+    // get coalesced into a single style mutation and the transition
+    // is skipped. Reading offsetHeight forces layout; assign to a
+    // throwaway so the linter doesn't flag the standalone access.
+    void el.offsetHeight;
+    el.style.transition = "height 280ms cubic-bezier(0.32, 0.72, 0, 1)";
+    el.style.height = newH + "px";
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      el.style.height = "auto";
+      el.style.transition = "";
+      el.removeEventListener("transitionend", onEnd);
+    };
+    const onEnd = (e: TransitionEvent) => {
+      if (e.target !== el || e.propertyName !== "height") return;
+      cleanup();
+    };
+    el.addEventListener("transitionend", onEnd);
+    // Safety: transitionend can fail to fire on rapid retoggles or
+    // background tabs. Hard fallback after the transition's
+    // budget so the container doesn't get stuck at a fixed height.
+    const t = setTimeout(cleanup, 360);
+    return () => clearTimeout(t);
+  }, [recordType]);
+
+  // Two-step flow (patient mode only): 1 = essentials + schedule,
+  // 2 = contact + birthdate. Potential mode is single-step.
+  // Step 2 fields are entirely optional but the user must pass through
+  // it so they confirm the completed profile rather than creating half
+  // a patient by tapping out of a collapsed "advanced" section.
+  const [step, setStep] = useState(1);
+
+  // Essentials
+  const [name, setName] = useState("");
+  // Tutor + music_teacher default the "is minor" toggle on — most of
+  // their clientele are minors, and the parent contact card is the
+  // primary phone number anyway.
+  const minorDefault = profession === PROFESSION.TUTOR || profession === PROFESSION.MUSIC_TEACHER;
+  const [isMinor, setIsMinor] = useState(minorDefault);
+  const [parent, setParent] = useState("");
+  const [rate, setRate] = useState("");
+  // Optional opening balance for a patient migrated into Cardigan
+  // mid-relationship. `openingBalanceDir` picks debt vs. credit; the
+  // amount is always entered positive and signed at submit time.
+  const [openingBalanceAmount, setOpeningBalanceAmount] = useState("");
+  const [openingBalanceDir, setOpeningBalanceDir] = useState("owes"); // 'owes' | 'credit'
+  const [tutorFrequency, setTutorFrequency] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [externalFolderUrl, setExternalFolderUrl] = useState("");
+  // Birthdate defaults to today so the control renders a filled-in
+  // date picker; we track "untouched" so the placeholder-ish styling
+  // doesn't lock us into saving today's date as birthdate.
+  const [birthdate, setBirthdate] = useState(todayISO());
+  const birthdateUntouched = birthdate === todayISO();
+  // Anthropometric / health-history fields. Only collected for
+  // nutritionist + trainer; ignored at insert time for everyone else.
+  const showHealthFields = usesAnthropometrics(profession);
+  const [heightCm, setHeightCm] = useState("");
+  const [goalWeightKg, setGoalWeightKg] = useState("");
+  const [goalBodyFatPct, setGoalBodyFatPct] = useState("");
+  const [goalSkeletalMuscleKg, setGoalSkeletalMuscleKg] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [medicalConditions, setMedicalConditions] = useState("");
+
+  // Schedule defaults are computed once on mount from the calendar —
+  // we don't want them to bounce around if `sessions` updates while
+  // the user is typing.
+  const [schedules, setSchedules] = useState<Schedule[]>(() => {
+    const slot = findEmptySlot(sessions, []);
+    return [{ ...slot, duration: "60", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }];
+  });
+  const [startDate, setStartDate] = useState(todayISO());
+  const [hasEndDate, setHasEndDate] = useState(false);
+  const [endDate, setEndDate] = useState("");
+
+  // Scheduling mode — per-patient (not per-profession). Profession sets
+  // the default in the form; the user can flip either way at creation.
+  // Episodic patients have NO perpetual weekly slot; they have at most
+  // one "first consult" (which itself is optional — intake-call-first
+  // workflows leave it blank and schedule from Resumen later).
+  const [schedulingMode, setSchedulingMode] = useState<string>(() => defaultSchedulingMode(profession));
+  const [firstConsultDate, setFirstConsultDate] = useState(todayISO());
+  const [firstConsultTime, setFirstConsultTime] = useState("10:00");
+  const [firstConsultDuration, setFirstConsultDuration] = useState("60");
+  const [firstConsultModality, setFirstConsultModality] = useState(modalities[0] || "presencial");
+  const [skipFirstConsult, setSkipFirstConsult] = useState(false);
+
+  // Transient feedback for missed-field / conflict nudges on tap of
+  // "Siguiente" or "Agregar paciente". A silently-disabled button was
+  // leaving the user wondering why the form wasn't advancing — this
+  // fades in the exact reason for ~2.6s and blurs out. `id` forces
+  // the animation to replay when the same message is set twice.
+  const [feedback, setFeedback] = useState<{ msg: string; id: number } | null>(null);
+  useEffect(() => {
+    if (!feedback) return;
+    const id = setTimeout(() => setFeedback(null), 2600);
+    return () => clearTimeout(id);
+  }, [feedback]);
+  const flash = (msg: string) => setFeedback({ msg, id: Date.now() });
+
+  const [submitting, setSubmitting] = useState(false);
+
+  // External conflicts: any form schedule collides with an existing
+  // scheduled session for another patient at the same day/time.
+  // Internal conflicts: the form has two schedule rows at the same
+  // day/time (can happen after user edits). Both block progression.
+  const { externalConflicts, internalConflictRows } = useMemo(() => {
+    const external: { row: number; match: Row }[] = [];
+    const internal = new Set<number>();
+    const seen = new Map<string, number>(); // `${day}|${time}` -> first row index
+    for (let i = 0; i < schedules.length; i++) {
+      const s = schedules[i];
+      const key = `${s.day}|${s.time}`;
+      if (seen.has(key)) { internal.add(i); internal.add(seen.get(key)!); }
+      else seen.set(key, i);
+      const match = (sessions || []).find(
+        (x: Row) => x.status === "scheduled" && x.day === s.day && x.time === s.time
+      );
+      if (match) external.push({ row: i, match });
+    }
+    return { externalConflicts: external, internalConflictRows: [...internal] };
+  }, [schedules, sessions]);
+
+  const hasConflict = externalConflicts.length > 0 || internalConflictRows.length > 0;
+
+  const updateSched = (i: number, f: keyof Schedule, v: string) => setSchedules(prev => prev.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
+  const removeSched = (i: number) => setSchedules(prev => prev.filter((_, idx) => idx !== i));
+  const addSched = () => {
+    setSchedules(prev => {
+      const extraTaken = prev.map(s => `${s.day}|${s.time}`);
+      const slot = findEmptySlot(sessions, extraTaken);
+      return [...prev, { ...slot, duration: "60", modality: "presencial", frequency: DEFAULT_RECURRENCE_FREQUENCY }];
+    });
+  };
+
+  // Gate used for UI affordances (disabled indicators etc.) — not
+  // enforced by the button itself. Keeping "Siguiente" clickable so
+  // the user always gets feedback is the whole point of the flash
+  // toast.
+  const rateNum = Number(rate);
+  const rateValid = rate !== "" && Number.isFinite(rateNum) && rateNum >= 0;
+  // Episodic mode skips weekly-slot validation entirely — the only
+  // schedule-shaped field is the optional "Primera consulta" picker,
+  // which is allowed to be empty (`skipFirstConsult`). Recurring mode
+  // keeps today's gate: at least one slot, no internal/external
+  // conflicts.
+  const isEpisodicMode = schedulingMode === SCHEDULING_MODE.EPISODIC;
+  const scheduleValid = isEpisodicMode ? true : (schedules.length > 0 && !hasConflict);
+  const canAdvance = !!name.trim() && rateValid && scheduleValid;
+
+  const goNext = () => {
+    if (!name.trim()) { flash(t("patients.enterName")); return; }
+    if (patients?.some((p: Row) => p.name.toLowerCase() === name.trim().toLowerCase())) {
+      flash(t("patients.duplicateName")); return;
+    }
+    if (!rateValid) { flash(t("patients.enterRate")); return; }
+    // Skip slot-conflict + slot-presence checks for episodic patients.
+    // The recurring-slot UI isn't even rendered in that mode.
+    if (!isEpisodicMode && hasConflict) { flash(t("patients.resolveConflicts")); return; }
+    // Dismiss the iOS keyboard when stepping past step 1 (rate input).
+    // Without this, the soft keyboard stays open over step 2's date
+    // pickers because the previously-focused MoneyInput unmounts but
+    // iOS doesn't release the keyboard until something explicitly
+    // blurs the active element.
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (active && typeof active.blur === "function") {
+      active.blur();
+    }
+    setFeedback(null);
+    setStep(2);
+    // Scroll to top on step change so the user sees the first field
+    // rather than landing mid-scroll.
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  };
+
+  const goBack = () => {
+    setFeedback(null);
+    setStep(1);
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  };
+
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    // Potential mode — single-step slim form. Validate, then call
+    // onPotentialSubmit (createPotential under the hood). Same flash-
+    // toast pattern as patient mode for missed-field feedback.
+    if (isPotentialMode) {
+      if (!name.trim()) { flash(t("patients.enterName")); return; }
+      const dupe = (patients || []).some((p: Row) =>
+        (p.status === "active" || p.status === "potential")
+        && p.name.toLowerCase() === name.trim().toLowerCase()
+      );
+      if (dupe) { flash(t("patients.potentialDuplicate")); return; }
+      if (!rateValid) { flash(t("patients.enterRate")); return; }
+      if (!firstConsultDate) { flash(t("sessions.selectDate")); return; }
+      if (!firstConsultTime) { flash(t("sessions.selectTime")); return; }
+      setFeedback(null);
+      setSubmitting(true);
+      try {
+        const ok = await onPotentialSubmit?.({
+          name: name.trim(),
+          parent: isMinor ? parent.trim() : "",
+          rate: Number(rate) || 0,
+          phone: phoneDigits(phone),
+          email: email.trim(),
+          whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
+          interview: {
+            date: firstConsultDate,
+            time: firstConsultTime,
+            duration: Number(firstConsultDuration) || 60,
+            modality: firstConsultModality,
+          },
+        });
+        if (ok) animatedClose();
+        else setSubmitting(false);
+      } catch (ex) {
+        flash((ex as Error)?.message || "Error al guardar");
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (step === 1) { goNext(); return; }
+    // Step 2: re-check the gate in case the user bounced back to step 1
+    // and introduced a conflict before coming back.
+    if (!canAdvance) { setStep(1); flash(t("patients.resolveConflicts")); return; }
+    // Folder URL: only validate when non-empty. Empty = user opted
+    // out of the optional field; that's fine and submits as null.
+    if (externalFolderUrl.trim() !== "" && !parseFolderLink(externalFolderUrl).valid) {
+      flash(t("expediente.folder.errorBadUrl"));
+      return;
+    }
+    setFeedback(null);
+    setSubmitting(true);
+    try {
+      // Sign the opening balance: positive = owes (debt), negative =
+      // saldo a favor. Empty / non-positive amount → 0 (no opening row).
+      const obNum = Number(openingBalanceAmount);
+      const openingBalance =
+        openingBalanceAmount !== "" && Number.isFinite(obNum) && obNum > 0
+          ? (openingBalanceDir === "credit" ? -Math.round(obNum) : Math.round(obNum))
+          : 0;
+      const ok = await onSubmit({
+        name, parent: isMinor ? parent : "", rate: Number(rate) || 0,
+        openingBalance,
+        tutorFrequency: isMinor && tutorFrequency ? Number(tutorFrequency) : null,
+        phone: phoneDigits(phone), email: email.trim(),
+        whatsappEnabled: whatsappEnabled && !!phoneDigits(phone),
+        externalFolderUrl: externalFolderUrl.trim() || null,
+        birthdate: (birthdate && !birthdateUntouched) ? birthdate : null,
+        // Health fields. Server-side they're always present as columns;
+        // we just don't surface the form section unless the profession
+        // actually uses them.
+        heightCm: showHealthFields && heightCm ? Number(heightCm) : null,
+        goalWeightKg: showHealthFields && goalWeightKg ? Number(goalWeightKg) : null,
+        goalBodyFatPct: showHealthFields && goalBodyFatPct ? Number(goalBodyFatPct) : null,
+        goalSkeletalMuscleKg: showHealthFields && goalSkeletalMuscleKg ? Number(goalSkeletalMuscleKg) : null,
+        allergies: showHealthFields ? allergies.trim() : "",
+        medicalConditions: showHealthFields ? medicalConditions.trim() : "",
+        schedulingMode,
+        // Recurring path: today's params are unchanged.
+        // Episodic path: pass the optional first consult (or null when
+        // skipFirstConsult is set). schedules/recurring/startDate are
+        // ignored on the hook side when schedulingMode === 'episodic'.
+        schedules: isEpisodicMode ? [] : schedules,
+        recurring: !isEpisodicMode,
+        startDate: isEpisodicMode ? null : startDate,
+        endDate: !isEpisodicMode && hasEndDate ? endDate : null,
+        firstConsult: isEpisodicMode && !skipFirstConsult && firstConsultDate ? {
+          date: firstConsultDate,
+          time: firstConsultTime,
+          duration: Number(firstConsultDuration) || 60,
+          modality: firstConsultModality,
+        } : null,
+      });
+      if (ok) animatedClose();
+      else setSubmitting(false);
+    } catch (ex) {
+      flash((ex as Error)?.message || "Error al guardar");
+      setSubmitting(false);
+    }
+  };
+
+  // Schedule-row columns are proportional, weighted by the longest
+  // option each cell needs to fit:
+  //   Día        "Miércoles"   (9 chars)
+  //   Hora       "HH:MM"       (5 chars, native time chrome)
+  //   Duración   "1½h"         (3 chars)
+  //   Modalidad  "Telefónica"  (10 chars)
+  // Floors via minmax() guarantee no option truncates on phone-width
+  // viewports while letting all four cells stretch on wider screens.
+  const scheduleRowCols = schedules.length > 1
+    ? "minmax(86px, 1.1fr) minmax(64px, 0.85fr) minmax(48px, 0.6fr) minmax(94px, 1.2fr) 28px"
+    : "minmax(86px, 1.1fr) minmax(64px, 0.85fr) minmax(48px, 0.6fr) minmax(94px, 1.2fr)";
+
+  return (
+    <div className={`sheet-overlay ${exiting ? "sheet-overlay--exit" : ""}`} onClick={submitting ? undefined : animatedClose}>
+      {/* maxHeight clamps to leave the status bar / Dynamic Island
+          uncovered. The previous 92vh value didn't subtract the safe-
+          area-inset-top, so on notched iPhones the sheet pushed up
+          into the system clock. var(--sat) is env(safe-area-inset-
+          top) (with 0 fallback for non-notch devices) plus a 16px
+          gap so the sheet handle stays comfortably reachable. */}
+      {/* Flex column: header at top, scroll body (flex 1) in the
+          middle, footer at the bottom. The previous design relied on
+          position:sticky inside the form to pin the Siguiente button,
+          but on this sheet specifically (the only one tall enough to
+          actually scroll) sticky never engaged reliably — ancestor
+          overflow/containment combinations differ enough across iOS
+          Safari versions that a flex-pinned footer is the only
+          bulletproof option. */}
+      <div ref={setPanel} className={`sheet-panel ${exiting ? "sheet-panel--exit" : ""}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} {...panelHandlers} style={{ maxHeight:"min(92lvh, calc(100lvh - var(--sat) - 16px))", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        {submitting && (
+          <div role="status" aria-live="polite"
+            style={{ position:"absolute", inset:0, background:"var(--white)", zIndex:2,
+              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+              padding:"40px 24px", gap:14, animation:"fadeIn 0.18s ease" }}>
+            <div aria-hidden
+              style={{ width:46, height:46, borderRadius:"50%",
+                border:"3px solid var(--cream-deeper)", borderTopColor:"var(--teal)",
+                animation:"ptr-spin 0.9s linear infinite" }} />
+            <div style={{ fontFamily:"var(--font-d)", fontSize:"var(--text-md)", fontWeight:800, color:"var(--charcoal)", textAlign:"center" }}>
+              {t("patients.configuring")}
+            </div>
+            <div style={{ fontSize:"var(--text-sm)", color:"var(--charcoal-xl)", textAlign:"center" }}>
+              {t("patients.configuringHint")}
+            </div>
+          </div>
+        )}
+        <div className="sheet-handle" />
+        <div className="sheet-header" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <span className="sheet-title">
+              {isPotentialMode ? t("patients.newPotential") : t("patients.newPatient")}
+            </span>
+            {/* Progress strips — patient mode only (potential is
+                single-step). Current step is always teal; subsequent
+                steps fade to the neutral border color. Role=progressbar
+                + aria-valuenow keep it meaningful to screen readers even
+                though the visual is just two bars. */}
+            {!isPotentialMode && (
+              <div role="progressbar" aria-valuemin={1} aria-valuemax={2} aria-valuenow={step}
+                aria-label={t("patients.stepIndicator", { current: step, total: 2 })}
+                style={{ display:"flex", gap:6 }}>
+                <span aria-hidden style={{ height:4, width:72, borderRadius:2, background:"var(--teal)", transition:"background 0.3s" }} />
+                <span aria-hidden style={{ height:4, width:72, borderRadius:2, background: step >= 2 ? "var(--teal)" : "var(--border)", transition:"background 0.3s" }} />
+              </div>
+            )}
+          </div>
+          <button className="sheet-close" aria-label={t("close")} onClick={animatedClose} disabled={submitting}><IconX size={14} /></button>
+        </div>
+
+        <form onSubmit={submit} style={{ padding:"0 20px 0", display:"flex", flexDirection:"column", flex:"1 1 auto", minHeight:0 }}>
+          {/* Scroll body — everything between here and its matching
+              </div> at line ~1042 scrolls. The feedback toast + footer
+              below sit outside this scroll surface and pin to the
+              form's bottom via the flex column above. */}
+          <div ref={setScrollBody} style={{ flex:"1 1 auto", minHeight:0, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+
+          {/* Mode toggle — first thing the user sees so they can
+              pick "Paciente" (full profile + recurring schedule) or
+              "Potencial" (slim interview-stage flow) without leaving
+              the standard + Paciente entry point. Switching modes
+              keeps already-typed shared fields (name, rate, contact)
+              so the form doesn't penalize indecision. */}
+          <div style={{ marginBottom: 16, marginTop: 4 }}>
+            <SegmentedControl
+              size="md"
+              value={recordType}
+              onChange={handleRecordTypeChange}
+              ariaLabel={t("patients.recordTypeLabel")}
+              items={[
+                { k: "patient",   l: t("patients.recordTypePatient") },
+                { k: "potential", l: t("patients.recordTypePotential") },
+              ]}
+            />
+            <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6, lineHeight:1.5 }}>
+              {isPotentialMode ? t("patients.recordTypePotentialHint") : t("patients.recordTypePatientHint")}
+            </div>
+          </div>
+
+          {/* Animated-height container — see handleRecordTypeChange
+              + the useLayoutEffect that snapshots the old height,
+              transitions to the new one, then releases back to
+              `auto`. overflow:hidden prevents content from briefly
+              spilling past the animating boundary while the height
+              shrinks. */}
+          <div ref={morphRef} style={{ overflow: "hidden" }}>
+
+          {/* ── POTENTIAL MODE — single-step slim form ──
+              Reuses the existing first-consult inputs (date / time /
+              duration / modality) as the interview slot to avoid a
+              parallel set of state. Submits via onPotentialSubmit
+              (createPotential). */}
+          {isPotentialMode && (
+            <>
+              <div className="input-group">
+                <label className="input-label">
+                  {t("settings.fullName")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <input className="input" type="text" required value={name}
+                  onChange={e => setName((capitalizeName(e.target.value) || ""))}
+                  placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
+              </div>
+
+              <div
+                onClick={() => setIsMinor(v => !v)}
+                style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  padding:"14px 16px", marginBottom:14, cursor:"pointer",
+                  borderRadius:"var(--radius)",
+                  border: isMinor ? "1.5px solid var(--purple)" : "1.5px solid var(--border-lt)",
+                  background: isMinor ? "var(--purple-bg)" : "var(--white)",
+                  transition: "all 0.4s",
+                }}>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:700, color: isMinor ? "var(--purple)" : "var(--charcoal)" }}>{t("patients.isMinor")}</div>
+                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.isMinorHint")}</div>
+                </div>
+                <Toggle on={isMinor} onToggle={() => {}} />
+              </div>
+              {isMinor && (
+                <div className="input-group">
+                  <label className="input-label">{t("patients.tutor")}</label>
+                  <input className="input" type="text" value={parent}
+                    onChange={e => setParent((capitalizeName(e.target.value) || ""))}
+                    placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
+                </div>
+              )}
+
+              <div className="input-group">
+                <label className="input-label">
+                  {t("patients.ratePerSession")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <MoneyInput min="0" step="50" required value={rate}
+                  onChange={e => setRate(e.target.value)}
+                  placeholder={t("patients.ratePlaceholder")} />
+              </div>
+
+              {/* Interview block — rose-tinted to match the lane's
+                  visual identity. Same fields as the episodic first-
+                  consult picker; the difference is server-side, where
+                  this row is created with session_type='interview'. */}
+              <div style={{ background:"var(--rose-bg)", borderRadius:"var(--radius)", padding:"14px", marginBottom:14 }}>
+                <div style={{ fontSize:"var(--text-sm)", fontWeight:700, color:"var(--rose)", marginBottom:8 }}>
+                  {t("sessions.interview")}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <div className="input-group">
+                    <label className="input-label">
+                      {t("sessions.date")}
+                      <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                    </label>
+                    <input className="input" type="date" required
+                      value={firstConsultDate}
+                      min={todayISO()}
+                      onChange={e => setFirstConsultDate(e.target.value)} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">
+                      {t("patients.time")}
+                      <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                    </label>
+                    <input className="input" type="time" required
+                      value={firstConsultTime}
+                      onChange={e => setFirstConsultTime(e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <div className="input-group" style={{ marginBottom:0 }}>
+                    <label className="input-label">{t("sessions.duration")}</label>
+                    <select className="input" value={firstConsultDuration} onChange={e => setFirstConsultDuration(e.target.value)}>
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">1 h</option>
+                      <option value="90">1½ h</option>
+                      <option value="120">2 h</option>
+                    </select>
+                  </div>
+                  <div className="input-group" style={{ marginBottom:0 }}>
+                    <label className="input-label">{t("sessions.modality")}</label>
+                    <select className="input" value={firstConsultModality} onChange={e => setFirstConsultModality(e.target.value)}>
+                      {modalities.map(m => (
+                        <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional contact — same fields as patient mode's
+                  step 2, surfaced inline since potential mode is
+                  single-step. */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div className="input-group">
+                  <label className="input-label">{t("patients.phone")}</label>
+                  <input className="input" type="tel" inputMode="tel" autoComplete="tel"
+                    value={phone}
+                    onChange={e => setPhone(formatPhoneMX(e.target.value))}
+                    placeholder={t("patients.phonePlaceholder")} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">{t("settings.email")}</label>
+                  <input className="input" type="email" inputMode="email" autoComplete="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={t("patients.emailPlaceholder")} />
+                </div>
+              </div>
+              {import.meta.env.VITE_WHATSAPP_UI_ENABLED === "true" && (
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:4, marginBottom:8, gap:12 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                      {t("patients.whatsappReminders")}
+                    </div>
+                    <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                      {phoneDigits(phone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                    </div>
+                  </div>
+                  <Toggle
+                    on={whatsappEnabled && !!phoneDigits(phone)}
+                    disabled={!phoneDigits(phone)}
+                    ariaLabel={t("patients.whatsappReminders")}
+                    onToggle={() => setWhatsappEnabled(v => !v)}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {!isPotentialMode && step === 1 && (
+            <>
+              {/* 1. Name */}
+              <div className="input-group">
+                <label className="input-label">
+                  {t("settings.fullName")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <input className="input" type="text" required value={name} onChange={e => setName((capitalizeName(e.target.value) || ""))} placeholder={t("patients.namePlaceholder")} autoCapitalize="words" />
+              </div>
+
+              {/* 2. Minor toggle — second question, immediately after name */}
+              <div
+                onClick={() => setIsMinor(v => !v)}
+                style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  padding:"14px 16px", marginBottom:14, cursor:"pointer",
+                  borderRadius:"var(--radius)", border: isMinor ? "1.5px solid var(--purple)" : "1.5px solid var(--border-lt)",
+                  background: isMinor ? "var(--purple-bg)" : "var(--white)",
+                  transition: "all 0.4s",
+                }}>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:700, color: isMinor ? "var(--purple)" : "var(--charcoal)" }}>{t("patients.isMinor")}</div>
+                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("patients.isMinorHint")}</div>
+                </div>
+                <Toggle on={isMinor} onToggle={() => {}} />
+              </div>
+
+              {/* Tutor details — inline when minor is on, so the user
+                  sets the immediate relationship before moving on. */}
+              {isMinor && (
+                <div className="input-group">
+                  <label className="input-label">{t("patients.tutor")}</label>
+                  <input className="input" type="text" value={parent} onChange={e => setParent((capitalizeName(e.target.value) || ""))} placeholder={t("patients.tutorPlaceholder")} autoCapitalize="words" />
+                </div>
+              )}
+
+              {/* 3. Rate */}
+              <div className="input-group">
+                <label className="input-label">
+                  {t("patients.ratePerSession")}
+                  <span style={{ color:"var(--red)", marginLeft:4 }} aria-hidden>*</span>
+                </label>
+                <MoneyInput min="0" step="50" required value={rate} onChange={e => setRate(e.target.value)} placeholder={t("patients.ratePlaceholder")} />
+              </div>
+
+              {/* 3b. Opening balance (optional) — a pre-existing debt or
+                  saldo a favor for a patient migrated mid-relationship.
+                  Direction toggle + positive amount; signed at submit. */}
+              <div className="input-group">
+                <label className="input-label">{t("patients.openingBalanceLabel")}</label>
+                <div style={{ display:"flex", gap:8, alignItems:"stretch" }}>
+                  <div style={{ flexShrink:0, width:150 }}>
+                    <SegmentedControl
+                      size="md"
+                      value={openingBalanceDir}
+                      onChange={setOpeningBalanceDir}
+                      ariaLabel={t("patients.openingBalanceLabel")}
+                      items={[
+                        { k: "owes",   l: t("patients.openingBalanceOwes") },
+                        { k: "credit", l: t("patients.openingBalanceCredit") },
+                      ]}
+                    />
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <MoneyInput min="0" step="50" value={openingBalanceAmount}
+                      onChange={e => setOpeningBalanceAmount(e.target.value)}
+                      placeholder="0" />
+                  </div>
+                </div>
+                <div className="input-help">{t("patients.openingBalanceHelp")}</div>
+              </div>
+
+              {/* 4. Scheduling mode — recurring (perpetual weekly slot)
+                  vs episodic (no slot, schedule next at end of each
+                  consult). Profession sets the default; user can flip. */}
+              <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 8px" }}>{t("scheduling.modeLabel")}</div>
+              <div style={{ marginBottom:12 }}>
+                <SegmentedControl
+                  size="md"
+                  value={schedulingMode}
+                  onChange={setSchedulingMode}
+                  ariaLabel={t("scheduling.modeLabel")}
+                  items={[
+                    { k: SCHEDULING_MODE.RECURRING, l: t("scheduling.recurring") },
+                    { k: SCHEDULING_MODE.EPISODIC,  l: t("scheduling.episodic")  },
+                  ]}
+                />
+                <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:6, lineHeight:1.5 }}>
+                  {isEpisodicMode ? t("scheduling.episodicHint") : t("scheduling.recurringHint")}
+                </div>
+              </div>
+
+              {/* 5a. EPISODIC schedule block — single optional first
+                  consult. Skipping is legal so an intake-call-first
+                  workflow can create the patient without committing
+                  to a date and schedule from Resumen later. */}
+              {isEpisodicMode && (
+                <>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 10px" }}>{t("scheduling.firstConsult")}</div>
+                  <div
+                    onClick={() => setSkipFirstConsult(v => !v)}
+                    style={{
+                      display:"flex", alignItems:"center", justifyContent:"space-between",
+                      padding:"10px 14px", marginBottom:12, cursor:"pointer",
+                      borderRadius:"var(--radius)",
+                      border: skipFirstConsult ? "1.5px solid var(--teal)" : "1.5px solid var(--border-lt)",
+                      background: skipFirstConsult ? "var(--cream)" : "var(--white)",
+                      transition: "all 0.3s",
+                    }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"var(--charcoal)" }}>{t("scheduling.skipFirstConsult")}</div>
+                      <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:2 }}>{t("scheduling.skipFirstConsultHint")}</div>
+                    </div>
+                    <Toggle on={skipFirstConsult} onToggle={() => {}} />
+                  </div>
+                  {!skipFirstConsult && (
+                    <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14, display:"grid", gap:10 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("patients.start")}</label>
+                          <input className="input" type="date"
+                            value={firstConsultDate}
+                            min={todayISO()}
+                            onChange={e => setFirstConsultDate(e.target.value)} />
+                        </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("patients.time")}</label>
+                          <input className="input" type="time"
+                            value={firstConsultTime}
+                            onChange={e => setFirstConsultTime(e.target.value)} />
+                        </div>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("sessions.duration")}</label>
+                          <select className="input" value={firstConsultDuration} onChange={e => setFirstConsultDuration(e.target.value)}>
+                            <option value="30">30 min</option>
+                            <option value="45">45 min</option>
+                            <option value="60">1 h</option>
+                            <option value="90">1½ h</option>
+                            <option value="120">2 h</option>
+                          </select>
+                        </div>
+                        <div className="input-group" style={{ marginBottom:0 }}>
+                          <label className="input-label">{t("sessions.modality")}</label>
+                          <select className="input" value={firstConsultModality} onChange={e => setFirstConsultModality(e.target.value)}>
+                            {modalities.map(m => (
+                              <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 5b. RECURRING schedule block — today's UI unchanged.
+                  Hidden in episodic mode. */}
+              {!isEpisodicMode && (
+                <>
+              <div style={{ fontSize:13, fontWeight:700, color:"var(--charcoal)", margin:"18px 0 10px" }}>{t("patients.schedules")}</div>
+              {schedules.map((s, i) => {
+                const hasIssue = internalConflictRows.includes(i) || externalConflicts.some(c => c.row === i);
+                return (
+                  <div key={i} style={{ marginBottom:10 }}>
+                    <div style={{ display:"grid", gridTemplateColumns: scheduleRowCols, gap:8, alignItems:"end" }}>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("patients.day")}</label>}
+                        <select
+                          className="input"
+                          value={s.day}
+                          onChange={e => updateSched(i, "day", e.target.value)}
+                          style={hasIssue ? { borderColor:"var(--amber)" } : undefined}>
+                          {DAY_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("patients.time")}</label>}
+                        <input
+                          className="input"
+                          type="time"
+                          value={s.time}
+                          onChange={e => updateSched(i, "time", e.target.value)}
+                          style={hasIssue ? { borderColor:"var(--amber)" } : undefined} />
+                      </div>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("sessions.duration")}</label>}
+                        <select className="input" value={s.duration || "60"} onChange={e => updateSched(i, "duration", e.target.value)}>
+                          <option value="30">30m</option>
+                          <option value="45">45m</option>
+                          <option value="60">1h</option>
+                          <option value="90">1½h</option>
+                          <option value="120">2h</option>
+                        </select>
+                      </div>
+                      <div className="input-group" style={{ marginBottom:0 }}>
+                        {i === 0 && <label className="input-label">{t("sessions.modality")}</label>}
+                        <select className="input" value={s.modality || "presencial"} onChange={e => updateSched(i, "modality", e.target.value)}>
+                          {modalities.map(m => (
+                            <option key={m} value={m}>{t(`sessions.${MODALITY_I18N_KEY[m]}`)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {schedules.length > 1 && (
+                        <button type="button" onClick={() => removeSched(i)}
+                          style={{ width:28, height:28, borderRadius:"50%", border:"none", background:"var(--red-bg)", color:"var(--red)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                          <IconX size={12} />
+                        </button>
+                      )}
+                    </div>
+                    {/* Frequency picker as a row-below segmented control —
+                        keeps the day/time/duration/modality grid uncluttered
+                        on phone widths while still surfacing the new
+                        feature inline with each slot it applies to. */}
+                    <div style={{ marginTop:6, display:"flex", alignItems:"center", gap:8 }}>
+                      <span style={{ fontSize:11, color:"var(--charcoal-md)", fontWeight:600, flexShrink:0 }}>
+                        {t("patients.frequency")}
+                      </span>
+                      <SegmentedControl
+                        items={[
+                          { k: RECURRENCE_FREQUENCY.WEEKLY,   l: t("patients.frequencyWeekly") },
+                          { k: RECURRENCE_FREQUENCY.BIWEEKLY, l: t("patients.frequencyBiweekly") },
+                          { k: RECURRENCE_FREQUENCY.MONTHLY,  l: t("patients.frequencyMonthly") },
+                        ]}
+                        value={s.frequency || DEFAULT_RECURRENCE_FREQUENCY}
+                        onChange={(v) => updateSched(i, "frequency", v)}
+                        ariaLabel={t("patients.frequency")}
+                        style={{ flex:1 }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <button type="button" onClick={addSched}
+                style={{ fontSize:12, fontWeight:600, color:"var(--teal-dark)", background:"none", border:"none", cursor:"pointer", padding:"4px 0 14px", fontFamily:"var(--font)" }}>
+                {t("patients.addSchedule")}
+              </button>
+
+              {externalConflicts.length > 0 && (
+                <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>
+                  {externalConflicts.map((c, i) => (
+                    <div key={i}>{t("sessions.conflict", { patient: c.match.patient })}</div>
+                  ))}
+                </div>
+              )}
+              {internalConflictRows.length > 0 && (
+                <div style={{ background:"var(--amber-bg)", borderRadius:"var(--radius-sm)", padding:"8px 12px", marginBottom:12, fontSize:12, color:"var(--amber)", fontWeight:600, lineHeight:1.4 }}>
+                  {t("patients.duplicateSchedule")}
+                </div>
+              )}
+
+              {/* 5. Dates */}
+              <div style={{ background:"var(--cream)", borderRadius:"var(--radius)", padding:"12px 14px", marginBottom:14 }}>
+                <div className="input-group" style={{ marginBottom:10 }}>
+                  <label className="input-label">{t("patients.start")}</label>
+                  <input className="input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </div>
+                <div
+                  onClick={() => setHasEndDate(v => !v)}
+                  style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", marginBottom: hasEndDate ? 8 : 0 }}>
+                  <span style={{ fontSize:12, fontWeight:600, color:"var(--charcoal-md)" }}>{t("patients.endDate")}</span>
+                  <Toggle on={hasEndDate} onToggle={() => {}} />
+                </div>
+                {hasEndDate ? (
+                  <div className="input-group" style={{ marginBottom:0 }}>
+                    <input className="input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  </div>
+                ) : (
+                  <div style={{ fontSize:11, color:"var(--charcoal-xl)", marginTop:4 }}>{t("patients.permanent")}</div>
+                )}
+              </div>
+                </>
+              )}
+            </>
+          )}
+
+          {!isPotentialMode && step === 2 && (
+            <>
+              <div style={{ fontSize:12, color:"var(--charcoal-xl)", marginBottom:14, lineHeight:1.5 }}>
+                {t("patients.detailsHint")}
+              </div>
+
+              {/* Anthropometric / health-history block — nutritionist
+                  + trainer only. Sits above the tutor-frequency block
+                  because most of these clients are adults; minors are
+                  the exception in fitness/nutrition contexts. */}
+              {showHealthFields && (() => {
+                // Inline validation: out-of-range numeric inputs flag
+                // a soft error state. We don't block submission — the
+                // caller still coerces — but flagging the field gives
+                // the user a chance to fix typos before submitting.
+                const heightInvalid = heightCm !== "" && (isNaN(Number(heightCm)) || Number(heightCm) < 50 || Number(heightCm) > 250);
+                const goalInvalid = goalWeightKg !== "" && (isNaN(Number(goalWeightKg)) || Number(goalWeightKg) < 20 || Number(goalWeightKg) > 300);
+                return (
+                  <>
+                    <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:8, marginTop:4 }}>
+                      {t("patientFields.sectionTitle")}
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.height")}</label>
+                        <input className={`input ${heightInvalid ? "input-error" : ""}`} type="number" inputMode="numeric"
+                          value={heightCm} onChange={e => setHeightCm(e.target.value)}
+                          min="50" max="250" step="1" />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.goalWeight")}</label>
+                        <input className={`input ${goalInvalid ? "input-error" : ""}`} type="number" inputMode="decimal"
+                          value={goalWeightKg} onChange={e => setGoalWeightKg(e.target.value)}
+                          min="20" max="300" step="0.1" />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.goalBodyFat")}</label>
+                        <input className="input" type="number" inputMode="decimal"
+                          value={goalBodyFatPct} onChange={e => setGoalBodyFatPct(e.target.value)}
+                          min="3" max="60" step="0.1" />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">{t("patientFields.goalMuscle")}</label>
+                        <input className="input" type="number" inputMode="decimal"
+                          value={goalSkeletalMuscleKg} onChange={e => setGoalSkeletalMuscleKg(e.target.value)}
+                          min="5" max="100" step="0.1" />
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("patientFields.allergies")}</label>
+                      <input className="input" type="text"
+                        value={allergies} onChange={e => setAllergies(e.target.value)}
+                        placeholder={t("patientFields.allergiesPlaceholder")} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">{t("patientFields.medicalConditions")}</label>
+                      <input className="input" type="text"
+                        value={medicalConditions} onChange={e => setMedicalConditions(e.target.value)}
+                        placeholder={t("patientFields.medicalConditionsPlaceholder")} />
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Tutor frequency — only if minor, so we can surface it
+                  without cluttering step 1 with another required-
+                  looking select. */}
+              {isMinor && (
+                <div className="input-group">
+                  <label className="input-label">{t("patients.tutorFrequency")}</label>
+                  <select className="input" value={tutorFrequency} onChange={e => setTutorFrequency(e.target.value)}>
+                    <option value="">{t("patients.frequencyNone")}</option>
+                    <option value="4">{t("patients.everyNWeeks", { count: 4 })}</option>
+                    <option value="6">{t("patients.everyNWeeks", { count: 6 })}</option>
+                    <option value="8">{t("patients.everyNWeeks", { count: 8 })}</option>
+                    <option value="12">{t("patients.everyNWeeks", { count: 12 })}</option>
+                  </select>
+                  <div style={{ fontSize:11, color: tutorFrequency ? "var(--teal-dark)" : "var(--charcoal-xl)", marginTop:2 }}>
+                    {tutorFrequency
+                      ? t("patients.tutorFrequencyConfirm", { count: tutorFrequency })
+                      : t("patients.tutorFrequencyHint")}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact info */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div className="input-group">
+                  <label className="input-label">{t("patients.phone")}</label>
+                  <input className="input" type="tel" inputMode="tel" autoComplete="tel"
+                    value={phone}
+                    onChange={e => setPhone(formatPhoneMX(e.target.value))}
+                    placeholder={t("patients.phonePlaceholder")} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">{t("settings.email")}</label>
+                  <input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("patients.emailPlaceholder")} />
+                </div>
+              </div>
+              {/* Optional cloud-folder link. Uncluttered for the 80%
+                  of users who don't paste one — single line, only
+                  shows the inline error when invalid. The
+                  parseFolderLink result also drives the Save gate
+                  in the parent: an invalid URL blocks submission
+                  via canAdvance. */}
+              <div className="input-group" style={{ marginTop: 12 }}>
+                <label className="input-label">{t("patients.newPatientFolderLabel")}</label>
+                <input
+                  className="input"
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={externalFolderUrl}
+                  onChange={e => setExternalFolderUrl(e.target.value)}
+                  placeholder={t("expediente.folder.inputPlaceholder")}
+                />
+                {externalFolderUrl.trim() !== "" && !parseFolderLink(externalFolderUrl).valid && (
+                  <div role="alert" style={{ fontSize: 12, color: "var(--red)", marginTop: 6, lineHeight: 1.4 }}>
+                    {(() => {
+                      const r = parseFolderLink(externalFolderUrl).reason;
+                      if (r === "bad_scheme") return t("expediente.folder.errorBadScheme");
+                      if (r === "too_long") return t("expediente.folder.errorTooLong");
+                      return t("expediente.folder.errorBadUrl");
+                    })()}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: "var(--charcoal-xl)", marginTop: 4, lineHeight: 1.4 }}>
+                  {t("patients.newPatientFolderHint")}
+                </div>
+              </div>
+              {/* WhatsApp opt-in — gated until Meta setup is live. Flip
+                  VITE_WHATSAPP_UI_ENABLED=true in Vercel + redeploy
+                  once the template is approved and env vars are set. */}
+              {import.meta.env.VITE_WHATSAPP_UI_ENABLED === "true" && (
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, gap:12 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--charcoal-md)" }}>
+                      {t("patients.whatsappReminders")}
+                    </div>
+                    <div style={{ fontSize:"var(--text-xs)", color:"var(--charcoal-xl)", marginTop:2 }}>
+                      {phoneDigits(phone) ? t("patients.whatsappRemindersHint") : t("patients.whatsappRemindersDisabledHint")}
+                    </div>
+                  </div>
+                  <Toggle
+                    on={whatsappEnabled && !!phoneDigits(phone)}
+                    disabled={!phoneDigits(phone)}
+                    ariaLabel={t("patients.whatsappReminders")}
+                    onToggle={() => setWhatsappEnabled(v => !v)}
+                  />
+                </div>
+              )}
+              <div className="input-group">
+                <label className="input-label">{t("patients.birthdate")}</label>
+                <input className="input" type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)}
+                  style={{ height: 52, fontSize: 16, padding: "14px 14px",
+                    color: birthdateUntouched ? "var(--charcoal-xl)" : "var(--charcoal)",
+                  }} />
+              </div>
+            </>
+          )}
+
+          </div>
+
+          {/* /morphRef container */}
+          </div>
+
+          {/* Fade-in / hold / blur-out toast — flex child between
+              the scroll body and the footer; no sticky needed. */}
+          {feedback && (
+            <div key={feedback.id} role="alert" aria-live="polite"
+              style={{
+                pointerEvents:"none", display:"flex", justifyContent:"center",
+                padding:"6px 0", flexShrink:0,
+                animation:"formFeedbackFade 2.6s ease forwards",
+              }}>
+              <div style={{
+                background:"var(--red-bg)", color:"var(--red)",
+                padding:"9px 16px", borderRadius:"var(--radius-pill)",
+                fontSize:"var(--text-sm)", fontWeight:600,
+                fontFamily:"var(--font)", textAlign:"center",
+                boxShadow:"var(--shadow-sm)",
+                border:"1px solid rgba(217,107,107,0.22)",
+                maxWidth:"calc(100% - 24px)",
+              }}>
+                {feedback.msg}
+              </div>
+            </div>
+          )}
+
+          {/* Footer — regular flex child, sits at the form's bottom
+              edge by virtue of the flex column layout above. */}
+          <div style={{ flexShrink:0, background:"var(--white)", padding:"12px 0 22px", borderTop:"1px solid var(--border-lt)" }}>
+            {isPotentialMode ? (
+              /* Potential mode — single rose-tinted submit button to
+                  match the lane's visual identity. No back button
+                  (single-step). */
+              <button className="btn" type="submit"
+                disabled={mutating || !name.trim() || rate === ""}
+                style={{ background:"var(--rose)", color:"var(--white)", boxShadow:"none", width:"100%" }}>
+                {mutating ? t("saving") : t("patients.newPotential")}
+              </button>
+            ) : step === 1 ? (
+              <button className="btn btn-primary-teal" type="submit">
+                {t("next")}
+              </button>
+            ) : (
+              <div style={{ display:"flex", gap:10 }}>
+                <button type="button" className="btn btn-secondary" onClick={goBack}
+                  style={{ flex:"0 0 auto", padding:"0 20px" }}>
+                  {t("back")}
+                </button>
+                <button className="btn btn-primary-teal" type="submit" disabled={mutating} style={{ flex:1 }}>
+                  {mutating ? t("saving") : t("patients.addPatient")}
+                </button>
+              </div>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
